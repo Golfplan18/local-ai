@@ -22,7 +22,7 @@ Steps the script performs in order:
       verified rather than trusted from any single provider's metadata.
       An optional AA key improves the registry path after install, but it is
       not required for installation.
-  5. Auto-populate user-pipeline configuration from the Optimum preset.
+  5. Auto-populate user-pipeline configuration from the Budget preset.
   6. Smoke test: populate the Free configuration, then make one tiny
      OpenRouter chat round-trip when a key is already available. Without a
      key, the smoke test validates config and tells the user to add keys
@@ -497,9 +497,9 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
 
 
 def step_autopopulate(state: dict, dry_run: bool) -> bool:
-    log("Step 5/7: Auto-populate user-pipeline configuration (Optimum preset)")
+    log("Step 5/7: Auto-populate user-pipeline configuration (Budget preset)")
     if dry_run:
-        log("  [dry-run] would run scripts/auto-populate-configuration.py optimum user-pipeline")
+        log("  [dry-run] would run scripts/auto-populate-configuration.py budget user-pipeline")
         return True
     script = REPO_ROOT / "scripts" / "auto-populate-configuration.py"
     if not script.exists():
@@ -507,7 +507,7 @@ def step_autopopulate(state: dict, dry_run: bool) -> bool:
         return False
     try:
         result = subprocess.run(
-            [sys.executable, str(script), "optimum", "user-pipeline"],
+            [sys.executable, str(script), "budget", "user-pipeline"],
             cwd=str(REPO_ROOT),
             capture_output=True, text=True, timeout=60,
         )

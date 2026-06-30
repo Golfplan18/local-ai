@@ -65,7 +65,7 @@ def _fixture_presets():
     return {
         "presets": {
             "premium":  {"mode": "paid_intelligence", "floor_pct": None, "cost_ceiling_per_m": None, "loosening": False},
-            "optimum":  {
+            "budget":   {
                 "mode": "paid_intelligence",
                 "floor_pct": 70,
                 "cost_ceiling_per_m": None,
@@ -80,19 +80,23 @@ def _fixture_presets():
                 "ceiling_growth_factor": 1.25,
                 "min_floor_pct": 50,
             },
-            "budget":   {
+            "speed":    {
                 "mode": "paid_intelligence",
-                "floor_pct": 70,
+                "speed_mode": True,
+                "sort_by": "latency_asc",
+                "floor_pct": 40,
+                "min_floor_pct": 25,
                 "cost_ceiling_per_m": None,
-                "reference_cost_ceiling": {
+                "adaptive_cost_ceiling": {
                     "enabled": True,
-                    "preset": "optimum",
-                    "buffer_per_m": 0.01,
+                    "peak_fraction": 0.4,
+                    "outlier_median_multiple": 3.0,
                 },
                 "loosening": True,
+                "loosening_strategy": "paired",
                 "floor_step_pct": 5,
                 "ceiling_growth_factor": 1.25,
-                "min_floor_pct": 55,
+                "exclude_reasoning": True,
             },
             "free":     {"mode": "free_intelligence", "floor_pct": None, "cost_ceiling_per_m": None, "loosening": False},
         },
@@ -183,7 +187,7 @@ class TestAdaptiveCostCeiling(unittest.TestCase):
 
 
 class TestPickForPaidSlot(unittest.TestCase):
-    def test_optimum_picks_cheapest_in_top_80(self):
+    def test_budget_picks_cheapest_in_top_80(self):
         catalog = _fixture_catalog()
         picks, notes = auto_populate.pick_for_paid_slot(
             catalog, size_bucket="large", top_n=3,
@@ -248,7 +252,7 @@ class TestPickForPaidSlot(unittest.TestCase):
         )
         self.assertNotEqual(picks_second[0]["id"], first_primary)
 
-    def test_adaptive_ceiling_blocks_expensive_optimum_pick(self):
+    def test_adaptive_ceiling_blocks_expensive_budget_pick(self):
         catalog = [
             _model("value/a", intelligence=45, blended=0.55, size="large"),
             _model("value/b", intelligence=44, blended=0.75, size="large"),
@@ -614,7 +618,7 @@ class TestVisionOnlyToggle(unittest.TestCase):
     def test_populate_configuration_respects_cli_override(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=True)
+        config = auto_populate.populate_configuration("budget", catalog, presets, vision_only=True)
         self.assertTrue(config["_auto_populate_metadata"]["vision_only"])
         # Verify every populated cell's primary is vision-capable
         by_id = {m["id"]: m for m in catalog}
@@ -629,17 +633,17 @@ class TestVisionOnlyToggle(unittest.TestCase):
     def test_populate_configuration_respects_preset_default(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        # Add vision_only=True to the optimum preset
-        presets["presets"]["optimum"]["vision_only"] = True
+        # Add vision_only=True to the budget preset
+        presets["presets"]["budget"]["vision_only"] = True
         # CLI override absent → preset default applies
-        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=None)
+        config = auto_populate.populate_configuration("budget", catalog, presets, vision_only=None)
         self.assertTrue(config["_auto_populate_metadata"]["vision_only"])
 
     def test_cli_override_beats_preset_default(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        presets["presets"]["optimum"]["vision_only"] = True  # preset says yes
-        config = auto_populate.populate_configuration("optimum", catalog, presets, vision_only=False)
+        presets["presets"]["budget"]["vision_only"] = True  # preset says yes
+        config = auto_populate.populate_configuration("budget", catalog, presets, vision_only=False)
         # CLI override (False) wins
         self.assertFalse(config["_auto_populate_metadata"]["vision_only"])
 
@@ -703,11 +707,11 @@ class TestFilterInRegistry(unittest.TestCase):
 
 
 class TestPopulateConfiguration(unittest.TestCase):
-    def test_optimum_end_to_end(self):
+    def test_budget_end_to_end(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        config = auto_populate.populate_configuration("optimum", catalog, presets)
-        self.assertEqual(config["preset_lineage"], "optimum")
+        config = auto_populate.populate_configuration("budget", catalog, presets)
+        self.assertEqual(config["preset_lineage"], "budget")
         # All workhorse cells populated
         self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["depth"])
         self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["breadth"])
@@ -740,39 +744,17 @@ class TestPopulateConfiguration(unittest.TestCase):
         # Budget should have triggered loosening somewhere
         self.assertIn("loosening_log", config["_auto_populate_metadata"])
 
-    def test_budget_ceiling_tracks_optimum_lane(self):
+    def test_speed_end_to_end(self):
         catalog = _fixture_catalog()
         presets = _fixture_presets()
-        config = auto_populate.populate_configuration("budget", catalog, presets)
-        log = config["_auto_populate_metadata"]["loosening_log"]
-        self.assertIn("analysis.gear4.depth", log)
-        self.assertTrue(
-            any("ceiling set below optimum" in note
-                for note in log["analysis.gear4.depth"]),
-            log["analysis.gear4.depth"],
-        )
-
-    def test_budget_large_primaries_do_not_exceed_cheapest_optimum_large(self):
-        catalog = _fixture_catalog()
-        presets = _fixture_presets()
-        budget = auto_populate.populate_configuration("budget", catalog, presets)
-        optimum = auto_populate.populate_configuration("optimum", catalog, presets)
-
-        def large_primaries(config):
-            cells = config["cells"]
-            analysis = cells.get("analysis") or {}
-            gear4 = analysis.get("gear4") or {}
-            return [
-                cell["primary"]
-                for cell in [gear4.get("depth"), gear4.get("breadth")]
-                if isinstance(cell, dict) and cell.get("primary")
-            ]
-
-        by_id = {m["id"]: m for m in catalog}
-        optimum_floor = min(auto_populate.cost_of(by_id[mid])
-                            for mid in large_primaries(optimum))
-        for mid in large_primaries(budget):
-            self.assertLessEqual(auto_populate.cost_of(by_id[mid]), optimum_floor)
+        config = auto_populate.populate_configuration("speed", catalog, presets)
+        self.assertEqual(config["preset_lineage"], "speed")
+        # Workhorse cells populated under the latency-sort path
+        self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["depth"])
+        self.assertIsNotNone(config["cells"]["analysis"]["gear4"]["breadth"])
+        self.assertIsNotNone(config["cells"]["post_analysis"]["consolidation"])
+        # gear3.breadth is explicitly null (sequential mode)
+        self.assertIsNone(config["cells"]["analysis"]["gear3"]["breadth"])
 
     def test_unknown_preset_raises(self):
         catalog = _fixture_catalog()

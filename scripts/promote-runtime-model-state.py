@@ -26,10 +26,6 @@ PAIRS = [
         ROOT / "config" / "configurations" / "budget.json",
     ),
     (
-        RUNTIME / "configurations" / "optimum.json",
-        ROOT / "config" / "configurations" / "optimum.json",
-    ),
-    (
         RUNTIME / "configurations" / "premium.json",
         ROOT / "config" / "configurations" / "premium.json",
     ),

@@ -5,17 +5,17 @@ Algorithm (per the install plan):
   Per slot, against its size bucket:
     1. Percentage floor — keep models scoring at least floor_pct% of the
        top intelligence in the bucket.
-    2. Cost ceiling — fixed, adaptive (Optimum), or referenced to another
-       preset's lane (Budget tracks just below Optimum). The adaptive ceiling
-       trims obvious price outliers from picker math.
-    4. Sort by cost ascending.
+    2. Cost ceiling — fixed, adaptive (Budget derives a moving ceiling from
+       the current high-end market), or referenced to another preset's lane.
+       The adaptive ceiling trims obvious price outliers from picker math.
+    4. Sort by cost ascending (Speed sorts by latency ascending instead).
     5. Return top N (3 for workhorse slots, 2 for utility).
 
-  Budget preset has a loosening rule: if fewer than top-N pass both bounds,
+  Paid presets have a loosening rule: if fewer than top-N pass both bounds,
   loosen the floor by 10pp at a time, then loosen the ceiling 2x, until
-  top-N pass or the bucket is exhausted. Optimum can use paired loosening:
-  lower the floor and raise the adaptive ceiling together, in smaller steps.
-  Loosening events surface in output metadata.
+  top-N pass or the bucket is exhausted. Budget and Speed use paired
+  loosening: lower the floor and raise the adaptive ceiling together, in
+  smaller steps. Loosening events surface in output metadata.
 
   Free preset operates over a parallel free-models list — no cost math,
   sort by intelligence descending, return top N. Free models are never
@@ -36,8 +36,8 @@ Output:
     config/configurations/<name>.json  — the auto-populated configuration
 
 Usage:
-    python3 scripts/auto-populate-configuration.py optimum user-pipeline
-    python3 scripts/auto-populate-configuration.py budget my-budget-config
+    python3 scripts/auto-populate-configuration.py budget user-pipeline
+    python3 scripts/auto-populate-configuration.py speed my-speed-config
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ def _normal_price_peak(
 
     Source catalogs sometimes carry extreme prices (GPT-Pro / o1-Pro style
     rows). Those prices should still be displayed, but they should not define
-    what Optimum considers the current high-end market. Trim any price above
+    what the adaptive ceiling considers the current high-end market. Trim any price above
     ``median * outlier_median_multiple`` and use the largest remaining price.
     If trimming would remove everything, fall back to the raw max.
     """
@@ -216,7 +216,7 @@ def adaptive_cost_ceiling_for(
     *,
     cost_fn=cost_of,
 ) -> tuple[float | None, dict]:
-    """Compute a moving Optimum price ceiling.
+    """Compute a moving adaptive price ceiling (Budget / Speed).
 
     The ceiling is ``peak_fraction`` of the current normal high-end price.
     The peak is computed after applying the quality floor, so a weak cheap
@@ -331,7 +331,7 @@ def filter_paid(candidates: list[dict]) -> list[dict]:
     """Paid = NOT free by either signal (catalog flag OR :free suffix).
 
     Symmetric with filter_free — together they partition the catalog
-    cleanly so a paid preset (Premium/Optimum/Budget) can't accidentally
+    cleanly so a paid preset (Premium/Budget/Speed) can't accidentally
     pick a :free variant just because its is_free flag was unset."""
     return [
         m for m in candidates
@@ -648,7 +648,7 @@ def pick_for_paid_slot(
     """Pick top-N models for a paid slot.
 
     ``sort_by`` controls the final selection order after filtering:
-      "cost_asc"             — cheapest first (default; used by Optimum/Budget)
+      "cost_asc"             — cheapest first (default; used by Budget)
       "intelligence_desc"    — smartest first (used by Premium for Big)
       "tokens_per_sec_desc"  — fastest first (available for speed-first slots)
       "latency_asc"          — lowest time-to-first-token (used by Speed)
@@ -657,12 +657,12 @@ def pick_for_paid_slot(
     ``reasoning_model=True`` in the registry. Kept for older preset rules;
     Fast now uses ``min_tokens_per_second`` instead.
 
-    ``adaptive_cost_ceiling``: optional Optimum rule. Computes a moving
+    ``adaptive_cost_ceiling``: optional Budget/Speed rule. Computes a moving
     ceiling from the current candidate pool while ignoring price outliers.
 
-    ``max_cost_ceiling``: optional upper bound for ceiling loosening.
-    Budget uses this to start below Optimum, then allow equality only
-    when needed.
+    ``max_cost_ceiling``: optional upper bound for ceiling loosening. A
+    reference-ceiling preset uses this to start below another preset's lane,
+    then allow equality only when needed.
 
     ``min_tokens_per_second``: optional hard throughput floor. Candidates
     missing speed data do not pass this gate.
@@ -886,7 +886,7 @@ def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: s
 
     For the free preset, or any intelligence-first preset (Premium): highest
     intelligence vision-capable in bucket — cost is no object / 0. For cost-first
-    paid presets (Optimum/Budget): lowest cost vision-capable in bucket.
+    paid presets (Budget/Speed): lowest cost vision-capable in bucket.
     """
     # Same chat + text-output guards as the chat-slot pickers — vision
     # substitute is the image-input handler for chat output, so audio /
@@ -977,7 +977,7 @@ def populate_configuration(
     preset = presets[preset_name]
     # Intelligence-first preset (Premium): cost is no object, so even the
     # specialized slots (Fast, Visual substitute) favor intelligence over
-    # cheap/fast picks. Cost-first presets (Optimum/Budget) keep the cheap picks.
+    # cheap/fast picks. Cost-first presets (Budget/Speed) keep the cheap picks.
     intelligence_first = preset.get("sort_by") == "intelligence_desc"
 
     # Drop catalog entries no longer in the live registry before any pick —
@@ -1052,10 +1052,12 @@ def populate_configuration(
         slot_spec: dict,
         cell_vision_only: bool,
     ) -> tuple[float | None, float | None, str | None]:
-        """Budget helper: price just below the matching Optimum lane.
+        """Reference-ceiling helper: price just below another preset's lane.
 
+        Generic ``reference_cost_ceiling`` support — no current preset uses it,
+        but the path is retained for any preset that references another's lane.
         The reference section is picked independently using the referenced
-        preset's own diversity order. Budget starts below the cheapest
+        preset's own diversity order. The configuration starts below the cheapest
         referenced pick, but ceiling loosening may rise to that reference price
         when equality is the better value than paying more for an older model.
         """
@@ -1256,7 +1258,7 @@ def populate_configuration(
 
 def main():
     parser = argparse.ArgumentParser(description="Auto-populate a named configuration from the model catalog.")
-    parser.add_argument("preset", help="Preset name: premium | optimum | budget | speed | free")
+    parser.add_argument("preset", help="Preset name: premium | budget | speed | free")
     parser.add_argument("config_name", help="Configuration name (e.g. user-pipeline)")
     parser.add_argument("--dry-run", action="store_true", help="Print the populated configuration without writing.")
     parser.add_argument(

@@ -63,9 +63,9 @@ class TestActivePointer(_Fixture):
                          self.module.DEFAULT_ACTIVE_NAME)
 
     def test_set_and_get_roundtrip(self):
-        self._write_config("optimum-bake", {"name": "optimum-bake", "cells": {}})
-        self.module.set_active_name("optimum-bake")
-        self.assertEqual(self.module.get_active_name(), "optimum-bake")
+        self._write_config("budget-bake", {"name": "budget-bake", "cells": {}})
+        self.module.set_active_name("budget-bake")
+        self.assertEqual(self.module.get_active_name(), "budget-bake")
 
     def test_set_rejects_nonexistent_config(self):
         with self.assertRaises(ValueError):
@@ -150,14 +150,14 @@ class TestToggles(_Fixture):
         self._write_config("c", {
             "name": "c",
             "description": "keep me",
-            "preset_lineage": "optimum",
+            "preset_lineage": "budget",
             "cells": {"utility": {"step1_cleanup": {"primary": "x"}}},
         })
         self.module.set_toggles("c", {"adversarial_diversity": True})
         with open(self.config_dir / "c.json") as f:
             data = json.load(f)
         self.assertEqual(data["description"], "keep me")
-        self.assertEqual(data["preset_lineage"], "optimum")
+        self.assertEqual(data["preset_lineage"], "budget")
         self.assertIn("step1_cleanup", data["cells"]["utility"])
 
     def test_get_toggles_raises_for_missing_config(self):
@@ -244,7 +244,7 @@ class TestListConfigurations(_Fixture):
         self.config_dir.mkdir()
         result = self.module.list_configurations()
         self.assertEqual(set(result["presets"].keys()),
-                         {"free", "budget", "optimum", "premium"})
+                         {"free", "budget", "speed", "premium"})
         for v in result["presets"].values():
             self.assertIsNone(v)
         self.assertEqual(result["customs"], [])
@@ -252,13 +252,13 @@ class TestListConfigurations(_Fixture):
     def test_canonical_named_preset_files_picked_up(self):
         self._write_config("free", self._ap_config(
             "free", "free", "llama-70b", "nemotron", "llama-3b"))
-        self._write_config("optimum", self._ap_config(
-            "optimum", "optimum", "qwen-plus", "kimi-k2", "nano-paid"))
+        self._write_config("speed", self._ap_config(
+            "speed", "speed", "qwen-plus", "kimi-k2", "nano-paid"))
         result = self.module.list_configurations()
         self.assertEqual(result["presets"]["free"]["big1"], "llama-70b")
         self.assertEqual(result["presets"]["free"]["big2"], "nemotron")
         self.assertEqual(result["presets"]["free"]["small"], "llama-3b")
-        self.assertEqual(result["presets"]["optimum"]["big1"], "qwen-plus")
+        self.assertEqual(result["presets"]["speed"]["big1"], "qwen-plus")
         self.assertIsNone(result["presets"]["budget"])
         self.assertIsNone(result["presets"]["premium"])
 
@@ -382,7 +382,7 @@ class TestDuplicateAndCreate(_Fixture):
     def test_duplicate_with_explicit_new_name(self):
         self._write_config("source", {
             "name": "source",
-            "preset_lineage": "optimum",
+            "preset_lineage": "budget",
             "cells": {"analysis": {"gear4": {"depth": {"primary": "p"}}}},
             "_auto_populate_metadata": {"loosening_log": {}},
         })
@@ -470,9 +470,9 @@ class TestDelete(_Fixture):
             self.module.delete_configuration("user-pipeline")
 
     def test_delete_refuses_named_presets(self):
-        # The four named presets (free/budget/optimum/premium) are
+        # The four named presets (free/budget/speed/premium) are
         # also system-managed and cannot be deleted.
-        for preset in ("free", "budget", "optimum", "premium"):
+        for preset in ("free", "budget", "speed", "premium"):
             self._write_config(preset, {"cells": {}})
             with self.assertRaises(ValueError):
                 self.module.delete_configuration(preset)

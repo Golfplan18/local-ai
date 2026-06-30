@@ -14,7 +14,6 @@ WATCHED = [
     "config/routing-config.json",
     "config/configurations/free.json",
     "config/configurations/budget.json",
-    "config/configurations/optimum.json",
     "config/configurations/premium.json",
     "data/model-catalog-changes.jsonl",
     "data/model-registry-discrepancies.jsonl",

@@ -631,7 +631,12 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
             pricing[spec["id"]] = dict(eq, cost_basis="api_equivalent")
             pricing[spec["model_id"]] = pricing[spec["id"]]
 
-    pairs = [("optimum", "campaign-optimum")]
+    # campaign-optimum now derives from the renamed "budget" preset (the
+    # old "optimum"). The campaign pipeline + config keep the "optimum"
+    # name for continuity (campaign-optimum is the live active config);
+    # only the SOURCE preset changed. A fuller campaign-harness rename is
+    # a separate decision.
+    pairs = [("budget", "campaign-optimum")]
     if premium_mode == "api":
         pairs.insert(0, ("premium", "campaign-premium"))
     else:
