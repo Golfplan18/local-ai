@@ -100,6 +100,27 @@ class ModalEndpointTests(unittest.TestCase):
         closed = {c["conversation_id"]: c.get("closed") for c in rows}
         self.assertTrue(closed.get("c-book"))
 
+    def test_project_conversations_candidates(self):
+        # Candidates = threads NOT already in this project, not closed.
+        r = self.client.get("/api/projects/my-book/conversations?candidates=1")
+        ids = {c["conversation_id"] for c in json.loads(r.data)["conversations"]}
+        self.assertIn("c-other", ids)      # not in my-book → a candidate
+        self.assertNotIn("c-book", ids)    # already a member → excluded
+
+    def test_candidates_query_filter_and_general(self):
+        # q filters by title substring (titles derive from the first user msg "u").
+        r = self.client.get("/api/projects/my-book/conversations?candidates=1&q=zzznope")
+        self.assertEqual(json.loads(r.data)["conversations"], [])
+        # General contains everything → no candidates to add.
+        r2 = self.client.get("/api/projects/general/conversations?candidates=1")
+        self.assertEqual(json.loads(r2.data)["conversations"], [])
+
+    def test_candidates_excludes_closed(self):
+        cm.set_conversation_closed("c-other", True, sessions_root=self.sess)
+        r = self.client.get("/api/projects/my-book/conversations?candidates=1")
+        ids = {c["conversation_id"] for c in json.loads(r.data)["conversations"]}
+        self.assertNotIn("c-other", ids)  # closed threads aren't add-candidates
+
     # ── membership ─────────────────────────────────────────────────────────
     def test_set_conversation_projects(self):
         r = self.client.post(

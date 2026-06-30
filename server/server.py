@@ -3968,19 +3968,56 @@ def api_projects_files(nexus):
 
 @app.route("/api/projects/<nexus>/conversations", methods=["GET"])
 def api_projects_conversations(nexus):
-    """List a project's conversations for the modal (membership + restore).
+    """List conversations for the project modal (membership + restore + add).
 
-    ``?include_closed=1`` includes closed threads (the restore-closed browser);
-    General (or empty nexus) is the all-inclusive view. Rows carry ``closed`` so
-    the modal can offer restore via POST /api/conversation/<id>/restore."""
+    Two modes:
+      * **members** (default) — the project's own threads. ``?include_closed=1``
+        includes closed ones (the restore-closed browser). General (empty nexus)
+        is the all-inclusive view.
+      * **candidates** (``?candidates=1``) — threads NOT in this project, for the
+        "add a conversation" search: title-filtered by ``?q=`` (case-insensitive
+        substring), excludes closed, capped by ``?limit=`` (default 50, max 200),
+        so the client never receives the full ~39k corpus.
+
+    Rows carry ``closed`` + ``project_ids`` so the modal can restore (POST
+    /api/conversation/<id>/restore) and edit membership safely."""
     try:
         from conversation_memory import iter_conversations
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
-    include_closed = (request.args.get("include_closed") or "").strip().lower() in (
-        "1", "true", "yes", "on")
     nexus_l = (nexus or "").strip().lower()
     all_projects = (not nexus_l) or nexus_l == "general"
+    candidates = (request.args.get("candidates") or "").strip().lower() in (
+        "1", "true", "yes", "on")
+
+    if candidates:
+        # Threads to ADD: not already in this project, not closed, title-matched.
+        if all_projects:
+            # General contains everything — nothing to add.
+            return _json_response({"ok": True, "conversations": []})
+        q = (request.args.get("q") or "").strip().lower()
+        try:
+            limit = max(1, min(200, int(request.args.get("limit") or 50)))
+        except (TypeError, ValueError):
+            limit = 50
+        try:
+            rows = iter_conversations(include_closed=False)
+        except Exception as exc:
+            return _json_response({"ok": False, "error": str(exc)}, 500)
+        out = []
+        for r in rows:
+            if nexus_l in (r.get("project_ids") or []):
+                continue
+            if r.get("is_welcome"):
+                continue
+            if q and q not in (r.get("title") or "").lower():
+                continue
+            out.append(r)
+        out.sort(key=lambda r: (r.get("last_activity_at") or ""), reverse=True)
+        return _json_response({"ok": True, "conversations": out[:limit]})
+
+    include_closed = (request.args.get("include_closed") or "").strip().lower() in (
+        "1", "true", "yes", "on")
     try:
         rows = iter_conversations(include_closed=include_closed)
     except Exception as exc:

@@ -323,14 +323,88 @@
 }
 .project-modal__btn--primary:hover:not(:disabled) { filter: brightness(1.08); }
 
-/* Placeholder panels (Files / Conversations land in a later step) */
-.project-modal__placeholder {
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  line-height: 1.6;
-  padding: 24px 8px;
-  text-align: center;
+/* Files + Conversations tabs */
+.project-modal__listhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
+.project-modal__listhead .project-modal__hint,
+.project-modal__listhead .project-modal__status { flex: 1; margin: 0; }
+
+.project-modal__btn--mini {
+  font-size: var(--font-ui-smaller);
+  padding: 4px 10px;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.project-modal__btn--danger { color: var(--ora-status-error, #ff6e6e); }
+.project-modal__btn--danger:hover { border-color: var(--ora-status-error, #ff6e6e); }
+
+.project-modal__filelist,
+.project-modal__convolist {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 5px);
+  overflow: hidden;
+}
+.project-modal__filelist:empty,
+.project-modal__convolist:empty { display: none; }
+
+.project-modal__file,
+.project-modal__convo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.project-modal__file:first-child,
+.project-modal__convo:first-child { border-top: none; }
+.project-modal__file:hover,
+.project-modal__convo:hover { background: var(--background-modifier-hover); }
+.project-modal__file.is-matrix { background: var(--background-secondary); }
+.project-modal__convo.is-closed { opacity: 0.7; }
+
+.project-modal__file-main,
+.project-modal__convo-main { flex: 1; min-width: 0; }
+.project-modal__file-name,
+.project-modal__convo-title {
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-modal__file-meta,
+.project-modal__convo-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.project-modal__file-actions,
+.project-modal__convo-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.project-modal__convo-section-label {
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 18px 0 8px;
+}
+.project-modal__convo-section-label:first-child { margin-top: 0; }
+#pmConvoSearch { margin-bottom: 8px; }
 
 /* The gear entry point on the Active-Project label row. */
 .sidebar-project-manage {

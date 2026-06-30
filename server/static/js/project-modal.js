@@ -11,12 +11,15 @@
  *
  * Tabs:
  *   Overview        — name, status, private + inert model/style/persona slots.
- *   Mission & Goals — MOM read/write against the vault Operation-Matrix.
- *   Files           — placeholder (wired in the next step).
- *   Conversations   — placeholder (membership + restore, next step).
+ *   Mission & Goals — MOM read/write against the vault Operation-Matrix (+ AI draft).
+ *   Files           — read-only index of the project vault folder → Obsidian / Finder.
+ *   Conversations   — membership (add/remove), restore closed.
  *
  * Endpoints: GET /api/projects/meta, POST /api/projects/<nexus>,
- *   GET/POST /api/projects/<nexus>/mom.
+ *   GET/POST /api/projects/<nexus>/mom, POST /api/projects/<nexus>/mom-assist,
+ *   GET /api/projects/<nexus>/files, POST /api/fs/reveal,
+ *   GET /api/projects/<nexus>/conversations[?candidates&q&include_closed],
+ *   POST /api/conversation/<id>/projects, POST /api/conversation/<id>/restore.
  */
 (() => {
   let modal = null;
@@ -24,6 +27,9 @@
   let current = { nexus: 'general', name: 'General' };
   let momRawMode = false;
   let momCache = null;
+  let filesCache = null;
+  let convosCache = null;
+  let candidateSearchTimer = null;
 
   const isGeneral = () => (current.nexus || '').toLowerCase() === 'general';
 
@@ -63,8 +69,8 @@
           <div class="project-modal__content">
             ${overviewPanel()}
             ${momPanel()}
-            ${placeholderPanel('files', 'A clickable index of the project vault files — open in Obsidian or reveal in Finder — lands in the next step.')}
-            ${placeholderPanel('convos', 'Multi-project membership and restoring closed conversations land in the next step.')}
+            ${filesPanel()}
+            ${convosPanel()}
           </div>
         </div>
       </div>`;
@@ -93,6 +99,17 @@
       momNote:   modal.querySelector('#pmMomNote'),
       momAssist: modal.querySelector('#pmMomAssist'),
       momIntent: modal.querySelector('#pmMomIntent'),
+      // files
+      filesNote: modal.querySelector('#pmFilesNote'),
+      fileList:  modal.querySelector('#pmFileList'),
+      filesRefresh: modal.querySelector('#pmFilesRefresh'),
+      // conversations
+      convosClosed: modal.querySelector('#pmConvosClosed'),
+      convosMsg: modal.querySelector('#pmConvosMsg'),
+      convoList: modal.querySelector('#pmConvoList'),
+      convoAddWrap: modal.querySelector('#pmConvoAddWrap'),
+      convoSearch: modal.querySelector('#pmConvoSearch'),
+      convoAddList: modal.querySelector('#pmConvoAddList'),
     };
 
     // Wiring
@@ -104,6 +121,9 @@
     els.momAddBtn.addEventListener('click', () => { addMilestoneRow({ text: '', done: false, indent: 0 }); });
     els.momRawToggle.addEventListener('change', toggleMomRaw);
     els.momAssist.addEventListener('click', assistMom);
+    if (els.filesRefresh) els.filesRefresh.addEventListener('click', () => { filesCache = null; loadFiles(); });
+    if (els.convosClosed) els.convosClosed.addEventListener('change', () => { convosCache = null; loadConvos(); });
+    if (els.convoSearch) els.convoSearch.addEventListener('input', scheduleCandidateSearch);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal.classList.contains('show')) {
@@ -216,10 +236,33 @@
       </div>`;
   }
 
-  function placeholderPanel(id, text) {
-    return `<div class="project-modal__panel" data-panel="${id}">
-      <div class="project-modal__placeholder">${text}</div>
-    </div>`;
+  function filesPanel() {
+    return `
+      <div class="project-modal__panel" data-panel="files">
+        <div class="project-modal__listhead">
+          <div class="project-modal__hint" id="pmFilesNote"></div>
+          <button type="button" class="project-modal__btn" id="pmFilesRefresh">Refresh</button>
+        </div>
+        <div class="project-modal__filelist" id="pmFileList"></div>
+      </div>`;
+  }
+
+  function convosPanel() {
+    return `
+      <div class="project-modal__panel" data-panel="convos">
+        <div class="project-modal__listhead">
+          <label class="project-modal__checkbox-field"><input type="checkbox" id="pmConvosClosed"> Show closed</label>
+          <div class="project-modal__status" id="pmConvosMsg"></div>
+        </div>
+        <div class="project-modal__convo-section-label">In this project</div>
+        <div class="project-modal__convolist" id="pmConvoList"></div>
+        <div id="pmConvoAddWrap">
+          <div class="project-modal__convo-section-label">Add a conversation</div>
+          <input class="project-modal__input" id="pmConvoSearch" type="text"
+            placeholder="Search conversations by title to add…" autocomplete="off" spellcheck="false" />
+          <div class="project-modal__convolist" id="pmConvoAddList"></div>
+        </div>
+      </div>`;
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────────
@@ -227,6 +270,8 @@
     els.tabs.forEach(t => t.classList.toggle('is-active', t.dataset.tab === id));
     els.panels.forEach(p => p.classList.toggle('is-active', p.dataset.panel === id));
     if (id === 'mom' && momCache === null) loadMom();
+    if (id === 'files' && filesCache === null) loadFiles();
+    if (id === 'convos' && convosCache === null) loadConvos();
   }
 
   // ── Open / close ─────────────────────────────────────────────────────────
@@ -240,11 +285,14 @@
   async function open(nexus, name) {
     build();
     current = { nexus: nexus || 'general', name: name || nexus || 'General' };
-    momRawMode = false; momCache = null;
+    momRawMode = false; momCache = null; filesCache = null; convosCache = null;
     els.titleName.textContent = current.name;
     selectTab('overview');
     // Fresh state per open — the AI-draft hint must not leak across projects.
     if (els.momIntent) els.momIntent.value = '';
+    if (els.convoSearch) els.convoSearch.value = '';
+    if (els.convosClosed) els.convosClosed.checked = false;
+    if (els.convoAddList) els.convoAddList.innerHTML = '';
     if (els.momRawToggle) els.momRawToggle.checked = false;
     toggleMomRaw();
     setStatus(els.ovMsg, ''); setStatus(els.momMsg, '');
@@ -489,6 +537,263 @@
       setStatus(els.momMsg, 'Save failed: ' + (e.message || e), 'error');
     } finally {
       els.momSave.disabled = false;
+    }
+  }
+
+  // ── Files (read-only index → Obsidian / Finder) ──────────────────────────
+  const fmtBytes = (n) => {
+    if (!n && n !== 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  };
+  const fmtDate = (iso) => {
+    try { return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch (e) { return ''; }
+  };
+
+  function fileRow(f, isMatrix) {
+    const row = document.createElement('div');
+    row.className = 'project-modal__file' + (isMatrix ? ' is-matrix' : '');
+    const main = document.createElement('div');
+    main.className = 'project-modal__file-main';
+    const name = document.createElement('div');
+    name.className = 'project-modal__file-name';
+    name.textContent = (isMatrix ? '📋 ' : '') + (f.name || f.rel_path || '(file)');
+    name.title = f.rel_path || f.name || '';
+    main.appendChild(name);
+    const meta = document.createElement('div');
+    meta.className = 'project-modal__file-meta';
+    const bits = [];
+    if (!isMatrix && f.rel_path && f.rel_path !== f.name) bits.push(f.rel_path);
+    if (f.mtime) bits.push(fmtDate(f.mtime));
+    if (f.size != null) bits.push(fmtBytes(f.size));
+    meta.textContent = bits.join('  ·  ');
+    main.appendChild(meta);
+    row.appendChild(main);
+
+    const actions = document.createElement('div');
+    actions.className = 'project-modal__file-actions';
+    if (f.obsidian_uri) {
+      const a = document.createElement('a');
+      a.className = 'project-modal__btn project-modal__btn--mini';
+      a.href = f.obsidian_uri;
+      a.textContent = 'Obsidian';
+      a.title = 'Open in Obsidian';
+      actions.appendChild(a);
+    }
+    if (f.abs_path) {
+      const rev = document.createElement('button');
+      rev.type = 'button';
+      rev.className = 'project-modal__btn project-modal__btn--mini';
+      rev.textContent = 'Finder';
+      rev.title = 'Reveal in Finder';
+      rev.addEventListener('click', () => revealFile(f.abs_path, rev));
+      actions.appendChild(rev);
+    }
+    row.appendChild(actions);
+    return row;
+  }
+
+  async function loadFiles() {
+    filesCache = {};
+    els.fileList.innerHTML = '';
+    els.filesNote.textContent = 'Loading…';
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+        + '/files?name=' + encodeURIComponent(current.name));
+      const data = await r.json();
+      filesCache = data;
+      const frag = document.createDocumentFragment();
+      if (data.matrix) frag.appendChild(fileRow(data.matrix, true));
+      (data.files || []).forEach(f => frag.appendChild(fileRow(f, false)));
+      els.fileList.appendChild(frag);
+      if (!data.exists) {
+        els.filesNote.textContent = 'No project folder yet — outputs saved to this project land in '
+          + (data.folder || 'the project folder') + '.';
+      } else if (!(data.files || []).length && !data.matrix) {
+        els.filesNote.textContent = 'No files yet in ' + (data.folder || 'the project folder') + '.';
+      } else {
+        els.filesNote.textContent = (data.folder || '') + (data.truncated ? '  (showing the most recent files)' : '');
+      }
+    } catch (e) {
+      els.filesNote.textContent = 'Could not load files.';
+    }
+  }
+
+  async function revealFile(absPath, btn) {
+    const prev = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const r = await fetch('/api/fs/reveal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: absPath }),
+      });
+      const data = await r.json();
+      if (!(data && data.ok)) {
+        els.filesNote.textContent = (data && data.error) || 'Could not reveal the file.';
+      }
+    } catch (e) {
+      els.filesNote.textContent = 'Reveal failed: ' + (e.message || e);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = prev; }
+    }
+  }
+
+  // ── Conversations (membership + restore + add) ───────────────────────────
+  function convoRow(c, kind) {
+    // kind: 'member' | 'candidate'
+    const row = document.createElement('div');
+    row.className = 'project-modal__convo' + (c.closed ? ' is-closed' : '');
+    const main = document.createElement('div');
+    main.className = 'project-modal__convo-main';
+    const title = document.createElement('div');
+    title.className = 'project-modal__convo-title';
+    title.textContent = c.title || '(untitled)';
+    title.title = c.title || '';
+    main.appendChild(title);
+    const meta = document.createElement('div');
+    meta.className = 'project-modal__convo-meta';
+    const bits = [];
+    if (c.closed) bits.push('closed');
+    if (c.last_activity_at) bits.push(fmtDate(c.last_activity_at));
+    const others = (c.project_ids || []).filter(p => p !== current.nexus);
+    if (others.length) bits.push('also in: ' + others.join(', '));
+    meta.textContent = bits.join('  ·  ');
+    main.appendChild(meta);
+    row.appendChild(main);
+
+    const actions = document.createElement('div');
+    actions.className = 'project-modal__convo-actions';
+    if (kind === 'member') {
+      if (c.closed) {
+        const restore = document.createElement('button');
+        restore.type = 'button';
+        restore.className = 'project-modal__btn project-modal__btn--mini';
+        restore.textContent = 'Restore';
+        restore.title = 'Restore this closed conversation to the sidebar';
+        restore.addEventListener('click', () => restoreConvo(c.conversation_id));
+        actions.appendChild(restore);
+      }
+      if (!isGeneral()) {
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'project-modal__btn project-modal__btn--mini project-modal__btn--danger';
+        rm.textContent = 'Remove';
+        rm.title = 'Remove from this project (the conversation is kept)';
+        rm.addEventListener('click', () => setMembership(c, current.nexus, false));
+        actions.appendChild(rm);
+      }
+    } else {
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'project-modal__btn project-modal__btn--mini';
+      add.textContent = 'Add';
+      add.title = 'Add this conversation to the project';
+      add.addEventListener('click', () => setMembership(c, current.nexus, true));
+      actions.appendChild(add);
+    }
+    row.appendChild(actions);
+    return row;
+  }
+
+  async function loadConvos() {
+    convosCache = {};
+    els.convoList.innerHTML = '';
+    setStatus(els.convosMsg, 'Loading…');
+    // The "add" section is meaningless for General (it contains everything).
+    if (els.convoAddWrap) els.convoAddWrap.style.display = isGeneral() ? 'none' : '';
+    const includeClosed = !!(els.convosClosed && els.convosClosed.checked);
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+        + '/conversations?include_closed=' + (includeClosed ? '1' : '0'));
+      const data = await r.json();
+      const rows = (data && data.conversations) || [];
+      const frag = document.createDocumentFragment();
+      rows.forEach(c => frag.appendChild(convoRow(c, 'member')));
+      els.convoList.appendChild(frag);
+      if (!rows.length) {
+        setStatus(els.convosMsg, isGeneral()
+          ? 'No conversations yet.'
+          : 'No conversations in this project yet — add some below.');
+      } else {
+        setStatus(els.convosMsg, rows.length + (rows.length === 1 ? ' conversation' : ' conversations'));
+      }
+    } catch (e) {
+      setStatus(els.convosMsg, 'Could not load conversations.', 'error');
+    }
+  }
+
+  function scheduleCandidateSearch() {
+    if (candidateSearchTimer) clearTimeout(candidateSearchTimer);
+    candidateSearchTimer = setTimeout(runCandidateSearch, 220);
+  }
+
+  async function runCandidateSearch() {
+    if (isGeneral()) return;
+    const q = (els.convoSearch.value || '').trim();
+    if (!q) { els.convoAddList.innerHTML = ''; return; }
+    els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">Searching…</div>';
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+        + '/conversations?candidates=1&limit=40&q=' + encodeURIComponent(q));
+      const data = await r.json();
+      const rows = (data && data.conversations) || [];
+      els.convoAddList.innerHTML = '';
+      if (!rows.length) {
+        els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">No matching conversations to add.</div>';
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      rows.forEach(c => frag.appendChild(convoRow(c, 'candidate')));
+      els.convoAddList.appendChild(frag);
+    } catch (e) {
+      els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">Search failed.</div>';
+    }
+  }
+
+  async function setMembership(c, nexus, add) {
+    const existing = (c.project_ids || []).filter(p => p && p !== 'general');
+    let next;
+    if (add) next = existing.includes(nexus) ? existing : [...existing, nexus];
+    else next = existing.filter(p => p !== nexus);
+    setStatus(els.convosMsg, add ? 'Adding…' : 'Removing…');
+    try {
+      const r = await fetch('/api/conversation/' + encodeURIComponent(c.conversation_id) + '/projects', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_ids: next }),
+      });
+      const data = await r.json();
+      if (!(data && data.ok)) {
+        setStatus(els.convosMsg, (data && data.error) || 'Update failed.', 'error');
+        return;
+      }
+      // Refresh the member list; re-run the add search so the moved row leaves it.
+      convosCache = null;
+      await loadConvos();
+      if (!add && els.convoSearch && els.convoSearch.value.trim()) runCandidateSearch();
+      else if (add) runCandidateSearch();
+      try { window.OraSidebar && window.OraSidebar.refresh && window.OraSidebar.refresh(); } catch (e) {}
+      try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}
+    } catch (e) {
+      setStatus(els.convosMsg, 'Update failed: ' + (e.message || e), 'error');
+    }
+  }
+
+  async function restoreConvo(id) {
+    setStatus(els.convosMsg, 'Restoring…');
+    try {
+      const r = await fetch('/api/conversation/' + encodeURIComponent(id) + '/restore', { method: 'POST' });
+      const data = await r.json();
+      if (!(data && data.ok)) {
+        setStatus(els.convosMsg, (data && data.error) || 'Restore failed.', 'error');
+        return;
+      }
+      convosCache = null;
+      await loadConvos();
+      try { window.OraSidebar && window.OraSidebar.refresh && window.OraSidebar.refresh(); } catch (e) {}
+    } catch (e) {
+      setStatus(els.convosMsg, 'Restore failed: ' + (e.message || e), 'error');
     }
   }
 
