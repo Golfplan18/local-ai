@@ -71,6 +71,7 @@ _CURRENT_STEP_CV: ContextVar[str | None] = ContextVar(
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
+MIND_MD = os.path.join(WORKSPACE, "mind.md")  # user values; save dest == load source
 ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
 TOOLS_DIR = os.path.join(WORKSPACE, "orchestrator/tools/")
 FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
@@ -1261,6 +1262,26 @@ def load_boot_md() -> str:
         if total_chars > 8000:
             print(f"[WARNING] Context directory contains {total_chars} characters "
                   f"(~{total_chars // 4} tokens). Consider moving large files to the vault.")
+
+    # Custom values — when the user has opted into their own values (Output
+    # Styles tab → "custom values") AND authored a personal mind.md, inject it
+    # as the authoritative values layer. Default off → no change (the engine's
+    # hardcoded Mind Seeds in boot.md still apply). Best-effort.
+    try:
+        try:
+            import user_settings as _us
+        except ImportError:
+            from orchestrator import user_settings as _us
+        if _us.get_setting("styles.use_custom_values") and os.path.isfile(MIND_MD):
+            with open(MIND_MD, encoding="utf-8") as _mf:
+                _mind = _mf.read().strip()
+            if _mind:
+                boot_content += (
+                    "\n\n---\n[YOUR VALUES — mind.md (authoritative; supersedes "
+                    "the default Mind Seeds above)]\n\n" + _mind
+                )
+    except Exception:
+        pass
 
     # Universal anti-confabulation directive — appended at load_boot_md level
     # so every code path that loads boot.md gets the directive, not only
@@ -7022,6 +7043,39 @@ def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
     }
 
 
+def _resolve_effective_style_id(config):
+    """Effective default Output Style id for this turn, BEFORE any one-off:
+    the active project's default_style_id, else the engine config default, else
+    None (no style). A one-off /style overrides this on context_pkg afterward.
+    Best-effort — a lookup failure never breaks step-2 assembly."""
+    try:
+        try:
+            from active_project import get_active_project
+            from project_registry import get_project
+        except ImportError:
+            from orchestrator.active_project import get_active_project
+            from orchestrator.project_registry import get_project
+        nexus = get_active_project()
+        proj = get_project(nexus) if nexus else None
+        if proj is not None and getattr(proj, "default_style_id", None):
+            return proj.default_style_id
+    except Exception:
+        pass
+    # Account-wide default set via the Output Styles settings tab.
+    try:
+        try:
+            import user_settings as _us
+        except ImportError:
+            from orchestrator import user_settings as _us
+        sid = _us.get_setting("styles.default_id")
+        if isinstance(sid, str) and sid.strip():
+            return sid.strip()
+    except Exception:
+        pass
+    val = (config or {}).get("default_style_id")  # legacy explicit engine config
+    return val if isinstance(val, str) and val.strip() else None
+
+
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None,
@@ -7603,6 +7657,12 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # the configuration this turn was asked to run on.
         "config_name": config_name,
         "gear": gear,
+        # Output Style — effective default for this turn (active project's
+        # default_style_id, else engine config default, else None = no style).
+        # A one-off /style overrides this on context_pkg after step 2.
+        "style_id": _resolve_effective_style_id(config),
+        "style_register": "written",
+        "style_deltas": None,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
@@ -8250,6 +8310,29 @@ def _fenced(label: str, body: str, note: str = "") -> str:
     return f"\n=== {label} ===\n{mid}{str(body).strip()}\n=== END {label} ==="
 
 
+def _compose_output_style(context_package: dict) -> str:
+    """Best-effort Output Style block for the style_id resolved onto the context
+    package. Returns "" (no-op) when no style is set or anything fails — style is
+    secondary to substance and must never break the pipeline. gear<=2 yields the
+    compact demeanor block; gear>=3 the full style block (see style_assembly)."""
+    style_id = (context_package.get("style_id") or "").strip()
+    if not style_id:
+        return ""
+    try:
+        try:
+            import style_assembly as _sa
+        except ImportError:
+            from orchestrator import style_assembly as _sa
+        return _sa.compose(
+            style_id,
+            register=(context_package.get("style_register") or "written"),
+            gear=(context_package.get("gear") or 4),
+            deltas=context_package.get("style_deltas") or None,
+        )
+    except Exception:
+        return ""
+
+
 def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
@@ -8316,6 +8399,16 @@ def build_system_prompt_for_gear(
     # / legacy callers (line 5926, 8051) still get the full boot.md via
     # load_boot_md(); only pipeline step prompts use the trimmed form.
     parts = [_extract_boot_behavioral_preamble(boot_md)]
+
+    # Output Style (gears 1-2) — compact DEMEANOR block for fast judgments /
+    # short replies, framed high. Gated on gear<=2 so the gear-3/4 breadth
+    # analyst (which shares this function) stays thorough. No-op unless a
+    # style_id has been resolved onto the context package.
+    _osf_gear = context_package.get("gear") or 0
+    if 0 < _osf_gear <= 2:
+        _osf_block = _compose_output_style(context_package)
+        if _osf_block:
+            parts.append(_osf_block)
 
     # Phase A INFERRED_ITEMS block — fix for silent failure #10. When
     # Phase A ran in assume-mode and resolved ambiguities by inferring
@@ -8478,6 +8571,16 @@ def build_system_prompt_for_gear(
             parts.append(_fenced(
                 f"MODE OUTPUT FORMAT GUIDANCE — {mode_name}", format_guidance,
             ))
+
+    # Output Style (gears 3-4) — full STYLE block appended AFTER the step's
+    # substance so style stays secondary to it. Producing/shaping steps only;
+    # the evaluator and verifier are excluded so a style mismatch can never
+    # lower a verdict. No-op unless a style_id has been resolved onto the context.
+    _osf_gear = context_package.get("gear") or 0
+    if _osf_gear >= 3 and step in ("analyst", "reviser", "consolidator", "formatter"):
+        _osf_block = _compose_output_style(context_package)
+        if _osf_block:
+            parts.append(_osf_block)
 
     # RAG / retrieved reference material (all steps benefit from conversation +
     # knowledge + relationship + web context + deterministic tool results).
@@ -8792,7 +8895,9 @@ def run_pipeline(user_input: str, history: list = None,
                  ambiguity_mode: str = "assume",
                  stealth: bool = False,
                  config_name: str | None = None,
-                 conversation_tag: str = "") -> str:
+                 conversation_tag: str = "",
+                 style_id: str | None = None,
+                 style_register: str | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -8835,6 +8940,8 @@ def run_pipeline(user_input: str, history: list = None,
             conversation_id=conversation_id,
             raw_input=user_input,
             ambiguity_mode=ambiguity_mode,
+            style_id=style_id,
+            style_register=style_register,
             stealth=stealth,
         )
 
@@ -14003,6 +14110,20 @@ def run_agentic_loop(user_input: str, history: list = None,
     return _run_model_with_tools(messages, endpoint)
 
 
+def _is_known_style_id(style_id: str) -> bool:
+    """True if ``style_id`` names a known Output Style profile. Degrades to True
+    (accept) when the registry can't be read (e.g. PyYAML missing) so a one-off
+    /style command isn't silently eaten in a degraded environment."""
+    try:
+        try:
+            import style_assembly as _sa
+        except ImportError:
+            from orchestrator import style_assembly as _sa
+        return style_id in _sa.load_registry()
+    except Exception:
+        return True
+
+
 def parse_user_command(user_input: str) -> tuple:
     """Parse user input for commands and output directives.
 
@@ -14011,10 +14132,17 @@ def parse_user_command(user_input: str) -> tuple:
       /gear N — override gear for this query
       /save path — write output to file instead of screen
       /saveboth path — write output to file AND display
+      /style <id> — apply an Output Style to this turn (/style off to clear)
+
+    Returns ``(clean_input, use_pipeline, output_target, style_override)``.
+    ``style_override`` is ``{"style_id": <id-or-empty>}`` for a /style command
+    (empty string clears the style for this turn) or ``None`` when no /style
+    command was given.
     """
     use_pipeline = True
     output_target = "screen"
     clean_input = user_input
+    style_override = None
 
     if clean_input.startswith("/direct "):
         use_pipeline = False
@@ -14029,8 +14157,20 @@ def parse_user_command(user_input: str) -> tuple:
         if len(parts) >= 3:
             output_target = f"both:{parts[1]}"
             clean_input = parts[2]
+    elif clean_input.startswith("/style "):
+        parts = clean_input.split(" ", 2)
+        if len(parts) >= 2:
+            style_id = parts[1].strip()
+            rest = parts[2] if len(parts) >= 3 else ""
+            if style_id.lower() == "off":
+                style_override = {"style_id": ""}
+                clean_input = rest
+            elif _is_known_style_id(style_id):
+                style_override = {"style_id": style_id}
+                clean_input = rest
+            # unknown id → leave input intact so a /style typo passes as text
 
-    return clean_input, use_pipeline, output_target
+    return clean_input, use_pipeline, output_target, style_override
 
 
 def main():
@@ -14068,7 +14208,7 @@ def main():
                 print("Goodbye.")
                 break
 
-            clean_input, use_pipeline, output_target = parse_user_command(user_input)
+            clean_input, use_pipeline, output_target, _style_override = parse_user_command(user_input)
 
             response = run_agentic_loop(
                 clean_input, history,

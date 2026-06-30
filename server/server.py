@@ -1164,6 +1164,29 @@ def settings_post():
     return _json_response({"settings": merged})
 
 
+@app.route("/api/styles/registry", methods=["GET"])
+def styles_registry_get():
+    """Built-in Output Style profiles for the Output Styles settings tab.
+    Returns {"styles": [{id, display_name, description}, ...]} — never 500;
+    an unreadable registry (e.g. PyYAML missing) yields an empty list."""
+    items = []
+    try:
+        try:
+            from style_assembly import load_registry
+        except ImportError:
+            from orchestrator.style_assembly import load_registry
+        for sid, entry in (load_registry() or {}).items():
+            entry = entry or {}
+            items.append({
+                "id": sid,
+                "display_name": entry.get("display_name", sid),
+                "description": entry.get("description", ""),
+            })
+    except Exception:
+        items = []
+    return _json_response({"styles": items})
+
+
 @app.route("/api/retrieval/config", methods=["GET"])
 def retrieval_config_get():
     if not _HAS_RETRIEVAL_CONFIG or _retrieval_config is None:
@@ -5150,8 +5173,13 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
 
-    # Parse /direct, /save, /saveboth commands from input
-    clean_input, use_pipeline, output_target = parse_user_command(user_input)
+    # Parse /direct, /save, /saveboth, /style commands from input
+    clean_input, use_pipeline, output_target, style_override = parse_user_command(user_input)
+    # /style <id> one-off — fold onto extra_context so it lands on context_pkg
+    # (overriding any project/engine default; "" clears the style this turn).
+    if style_override is not None:
+        extra_context = dict(extra_context or {})
+        extra_context["style_id"] = style_override["style_id"]
 
     # Sidebar window integration: use rolling window for sidebar panels
     is_sidebar = panel_id.startswith("sidebar")

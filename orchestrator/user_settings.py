@@ -97,6 +97,16 @@ DEFAULTS: dict = {
         # the browser-side default from keyboard-shortcuts.js".
         "shortcuts": {},
     },
+    "styles": {
+        # Output Style framework. default_id is the account-wide default
+        # Output Style profile id ("" = no style; a one-off /style overrides
+        # it per turn). The two toggles are the global modifiers shown on the
+        # Output Styles tab (use_custom_values wires in with mind.md onboarding;
+        # adapt_to_context with situational register deltas).
+        "default_id": "",
+        "use_custom_values": False,
+        "adapt_to_context": True,
+    },
 }
 
 # Whitelisted providers for keyring writes/reads — derived from the
@@ -261,6 +271,13 @@ def _validate_updates(updates: dict) -> None:
     kb = updates.get("keyboard") or {}
     if "shortcuts" in kb and not isinstance(kb["shortcuts"], dict):
         raise SettingsError("keyboard.shortcuts must be a dict")
+
+    st = updates.get("styles") or {}
+    if "default_id" in st and not isinstance(st["default_id"], str):
+        raise SettingsError("styles.default_id must be a string ('' = none)")
+    for _flag in ("use_custom_values", "adapt_to_context"):
+        if _flag in st and not isinstance(st[_flag], bool):
+            raise SettingsError(f"styles.{_flag} must be a boolean")
 
 
 # ── API key handling (keyring) ──────────────────────────────────────────────

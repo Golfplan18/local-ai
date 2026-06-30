@@ -75,6 +75,8 @@ def _now_ts() -> str:
 def start_trace(conversation_id: str | None,
                 raw_input: str = "",
                 ambiguity_mode: str = "assume",
+                style_id: str | None = None,
+                style_register: str | None = None,
                 stealth: bool = False) -> str | None:
     """Open a new per-turn trace directory.
 
@@ -126,6 +128,8 @@ def start_trace(conversation_id: str | None,
             "turn_timestamp_utc": ts,
             "raw_input": raw_input,
             "ambiguity_mode": ambiguity_mode,
+            "style_id": style_id,
+            "style_register": style_register,
             "started_at": _dt.datetime.utcnow().isoformat() + "Z",
         }
         _atomic_write_json(os.path.join(trace_dir, "metadata.json"), meta)
