@@ -82,22 +82,22 @@ def rewrite_frontmatter_nexus(text: str, old: str, new: str) -> str | None:
             in_nexus = True
             i += 1
             continue
-        # `nexus: <scalar>` — single inline value.
-        m_scalar = re.match(r"^nexus:\s+(.+?)\s*$", line)
+        # `nexus: <scalar>` — single inline value (comment preserved).
+        m_scalar = re.match(r"^nexus:\s+(.*)$", line)
         if m_scalar:
-            val = m_scalar.group(1).strip().strip("\"'")
+            val, comment = _split_value_comment(m_scalar.group(1))
             if val == old:
-                lines[i] = f"nexus: {new}"
+                lines[i] = f"nexus: {new}{comment}"
                 changed = True
             in_nexus = False
             i += 1
             continue
         if in_nexus:
-            m_item = re.match(r"^(\s*-\s*)(.+?)\s*$", line)
+            m_item = re.match(r"^(\s*-\s+)(.*)$", line)
             if m_item:
-                val = m_item.group(2).strip().strip("\"'")
+                val, comment = _split_value_comment(m_item.group(2))
                 if val == old:
-                    lines[i] = f"{m_item.group(1)}{new}"
+                    lines[i] = f"{m_item.group(1)}{new}{comment}"
                     changed = True
                 i += 1
                 continue
@@ -109,6 +109,23 @@ def rewrite_frontmatter_nexus(text: str, old: str, new: str) -> str | None:
     return "\n".join(lines) if changed else None
 
 
+def _split_value_comment(raw: str) -> tuple[str, str]:
+    """Split a YAML scalar into (value, trailing-comment).
+
+    The value is unquoted; ``comment`` keeps its leading whitespace + ``#`` so
+    it can be re-appended verbatim. A ``#`` without preceding whitespace (or one
+    inside a quoted string) is treated as part of the value, matching YAML."""
+    s = raw.rstrip()
+    comment = ""
+    if s[:1] not in ("\"", "'"):
+        m = re.search(r"(\s+#.*)$", s)
+        if m:
+            comment = m.group(1)
+            s = s[: m.start()]
+    val = s.strip().strip("\"'")
+    return val, comment
+
+
 def _frontmatter_has_nexus(text: str, slug: str) -> bool:
     """Cheap check: does the frontmatter's nexus contain ``slug``?"""
     if not text.startswith("---"):
@@ -118,15 +135,15 @@ def _frontmatter_has_nexus(text: str, slug: str) -> bool:
         return False
     fm = m.group(1)
     # Scalar form.
-    ms = re.search(r"^nexus:\s+(.+?)\s*$", fm, re.MULTILINE)
-    if ms and ms.group(1).strip().strip("\"'") == slug:
+    ms = re.search(r"^nexus:\s+(.*)$", fm, re.MULTILINE)
+    if ms and _split_value_comment(ms.group(1))[0] == slug:
         return True
     # Block-list form: `nexus:` then indented `- slug` items until the next key.
     block = re.search(r"^nexus:\s*$\n((?:[ \t].*\n?)*)", fm, re.MULTILINE)
     if block:
         for line in block.group(1).splitlines():
-            m_item = re.match(r"^\s*-\s*(.+?)\s*$", line)
-            if m_item and m_item.group(1).strip().strip("\"'") == slug:
+            m_item = re.match(r"^\s*-\s+(.*)$", line)
+            if m_item and _split_value_comment(m_item.group(1))[0] == slug:
                 return True
     return False
 
@@ -199,6 +216,11 @@ def rename_nexus(
         raise NexusRenameError(f"{old!r} is reserved and cannot be renamed")
     if new in RESERVED_NEXUS:
         raise NexusRenameError(f"{new!r} is reserved")
+    # Validate BOTH slugs' shape before any path is built from them — guards the
+    # pointer-file path against traversal (defense-in-depth; the HTTP route
+    # already can't carry a slash, but this module is reusable).
+    if not _NEXUS_RE.match(old):
+        raise NexusRenameError(f"{old!r} is not a valid nexus")
     if not _NEXUS_RE.match(new):
         raise NexusRenameError(
             f"{new!r} is not a valid nexus (lowercase letters, digits, - and _)")

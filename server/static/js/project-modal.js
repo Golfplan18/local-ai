@@ -484,6 +484,10 @@
       mode = 'edit';
       applyMode();
       els.status.disabled = false;
+      // Advanced (nexus rename) was hidden during create — reveal it now that
+      // the project exists, seeded with its new nexus.
+      if (els.advanced) els.advanced.style.display = '';
+      if (els.nexus) els.nexus.value = current.nexus;
       els.titleName.textContent = current.name;
       setStatus(els.ovMsg, 'Project created' + (data.vault_folder ? ' — folder added to the vault.' : '.'), 'ok');
       try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}

@@ -47,6 +47,23 @@ class RewriteFrontmatterTests(unittest.TestCase):
         self.assertIn("  - new\n", out)
         self.assertIn("  - old task\n", out)  # body list item preserved
 
+    def test_inline_comment_list(self):
+        # A nexus value bearing an inline comment is still matched + renamed,
+        # and the comment is preserved.
+        text = "---\nnexus:\n  - old # keep me\n---\nbody\n"
+        out = nr.rewrite_frontmatter_nexus(text, "old", "new")
+        self.assertIn("  - new # keep me\n", out)
+
+    def test_inline_comment_scalar(self):
+        text = "---\nnexus: old   # note\n---\nbody\n"
+        out = nr.rewrite_frontmatter_nexus(text, "old", "new")
+        self.assertIn("nexus: new   # note\n", out)
+
+    def test_hash_inside_value_not_a_comment(self):
+        # No whitespace before '#': the '#' is part of the value, not a comment.
+        v, c = nr._split_value_comment("a#b")
+        self.assertEqual((v, c), ("a#b", ""))
+
 
 class RenameCascadeTests(unittest.TestCase):
     def setUp(self):
@@ -139,6 +156,12 @@ class RenameCascadeTests(unittest.TestCase):
                             sessions_root=self.sess, dry_run=True)
         with self.assertRaises(nr.NexusRenameError):
             nr.rename_nexus("ghost", "x", vault=self.vault, pointer_dir=self.pdir,
+                            sessions_root=self.sess, dry_run=True)
+
+    def test_old_slug_traversal_rejected(self):
+        # A malformed `old` (path traversal) is rejected before any path is built.
+        with self.assertRaises(nr.NexusRenameError):
+            nr.rename_nexus("../../etc/x", "safe", vault=self.vault, pointer_dir=self.pdir,
                             sessions_root=self.sess, dry_run=True)
 
     def test_collision(self):
