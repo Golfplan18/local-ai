@@ -13,9 +13,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # ~/ora, so this ordering concern is test-only.)
 import project_registry   # noqa: E402
 import active_project     # noqa: E402
+import user_settings      # noqa: E402
 import boot               # noqa: E402
 
 _orig = (active_project.get_active_project, project_registry.get_project)
+# Neutralize the account-default (settings) source by default; the tests that
+# exercise it set get_setting explicitly and reset to this neutralizer.
+user_settings.get_setting = lambda *a, **k: None
 
 
 def _patch(nexus, proj):
@@ -86,6 +90,27 @@ def test_manifest_field_parses_and_rejects_bad():
     except project_registry.ManifestError:
         return
     raise AssertionError("empty default_style_id should raise ManifestError")
+
+
+def test_settings_default_used_when_no_project():
+    _patch("general", None)   # no active project
+    user_settings.get_setting = lambda path, default=None: (
+        "marketing" if path == "styles.default_id" else default)
+    try:
+        assert boot._resolve_effective_style_id({}) == "marketing"
+    finally:
+        user_settings.get_setting = lambda *a, **k: None
+        _restore()
+
+
+def test_project_beats_settings_default():
+    _patch("fake", _proj("business"))
+    user_settings.get_setting = lambda path, default=None: "marketing"
+    try:
+        assert boot._resolve_effective_style_id({}) == "business"
+    finally:
+        user_settings.get_setting = lambda *a, **k: None
+        _restore()
 
 
 if __name__ == "__main__":

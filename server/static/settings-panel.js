@@ -54,6 +54,7 @@
     { id: 'capture',        label: 'Capture' },
     { id: 'apis',           label: 'External APIs' },
     { id: 'export',         label: 'Export' },
+    { id: 'styles',         label: 'Output Styles' },
   ];
 
   var WHISPER_MODELS = [
@@ -161,6 +162,7 @@
     if (_activeTab === 'retrieval') { _renderRetrievalTab();   return; }
     if (_activeTab === 'visual')  { _renderVisualSlotsPane(); return; }
     if (_activeTab === 'projects') { _renderProjectsTab();    return; }
+    if (_activeTab === 'styles')  { _renderStylesPane();     return; }
     if (!_settings) {
       _tabContentEl.textContent = 'Loading…';
       return;
@@ -535,6 +537,27 @@
       OraModelsPane.init(host);
     } catch (err) {
       host.textContent = 'Could not load model configuration: '
+        + ((err && err.message) || 'unknown error');
+    }
+  }
+
+  // ── Output Styles tab ──────────────────────────────────────────────────
+  // Hosts OraStylesPane (server/static/styles-pane.js): lists the built-in
+  // Output Style profiles and sets the account-wide default style.
+  function _renderStylesPane() {
+    if (typeof OraStylesPane === 'undefined') {
+      _tabContentEl.textContent =
+        'styles-pane.js is not loaded. Reload the page or check the network tab.';
+      return;
+    }
+    _tabContentEl.innerHTML = '';
+    var host = document.createElement('div');
+    host.className = 'ora-settings-styles-host';
+    _tabContentEl.appendChild(host);
+    try {
+      OraStylesPane.init(host);
+    } catch (err) {
+      host.textContent = 'Could not load Output Styles: '
         + ((err && err.message) || 'unknown error');
     }
   }

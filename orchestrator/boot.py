@@ -7040,7 +7040,18 @@ def _resolve_effective_style_id(config):
             return proj.default_style_id
     except Exception:
         pass
-    val = (config or {}).get("default_style_id")
+    # Account-wide default set via the Output Styles settings tab.
+    try:
+        try:
+            import user_settings as _us
+        except ImportError:
+            from orchestrator import user_settings as _us
+        sid = _us.get_setting("styles.default_id")
+        if isinstance(sid, str) and sid.strip():
+            return sid.strip()
+    except Exception:
+        pass
+    val = (config or {}).get("default_style_id")  # legacy explicit engine config
     return val if isinstance(val, str) and val.strip() else None
 
 

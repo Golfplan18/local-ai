@@ -1164,6 +1164,29 @@ def settings_post():
     return _json_response({"settings": merged})
 
 
+@app.route("/api/styles/registry", methods=["GET"])
+def styles_registry_get():
+    """Built-in Output Style profiles for the Output Styles settings tab.
+    Returns {"styles": [{id, display_name, description}, ...]} — never 500;
+    an unreadable registry (e.g. PyYAML missing) yields an empty list."""
+    items = []
+    try:
+        try:
+            from style_assembly import load_registry
+        except ImportError:
+            from orchestrator.style_assembly import load_registry
+        for sid, entry in (load_registry() or {}).items():
+            entry = entry or {}
+            items.append({
+                "id": sid,
+                "display_name": entry.get("display_name", sid),
+                "description": entry.get("description", ""),
+            })
+    except Exception:
+        items = []
+    return _json_response({"styles": items})
+
+
 @app.route("/api/retrieval/config", methods=["GET"])
 def retrieval_config_get():
     if not _HAS_RETRIEVAL_CONFIG or _retrieval_config is None:
