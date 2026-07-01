@@ -41,6 +41,24 @@ def test_compose_merges_custom_entry():
     assert "STYLE" in sa.compose("business", gear=4, custom_entries=custom)
 
 
+def test_conversational_override_only_affects_gears_1_2():
+    reg = sa.load_registry()
+    axes, _ = sa.load_demeanor_axes()
+    base = dict(reg["explainer"])                 # written warmth = warm
+    base["conversational"] = {"demeanor": {"warmth": "cool"}}
+    custom = {"mine": base}
+
+    # gears 1-2: the conversational override applies (cool replaces warm)
+    conv_block = sa.compose("mine", gear=2, custom_entries=custom)
+    assert axes["warmth"]["cool"] in conv_block
+    assert axes["warmth"]["warm"] not in conv_block
+
+    # gears 3-4: written demeanor wins, override ignored
+    written_block = sa.compose("mine", gear=4, custom_entries=custom)
+    assert axes["warmth"]["warm"] in written_block
+    assert axes["warmth"]["cool"] not in written_block
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))

@@ -28,6 +28,7 @@
   var _editingSlot = null;       // "id::field" whose inline picker is open
   var _openLib = new Set();      // library section ids currently expanded
   var _fictionOpen = false;
+  var _convFor = null;           // profile id whose conversational popout is open
 
   var AXIS_LABELS = {
     warmth: 'warmth', force: 'force', energy: 'energy', outlook: 'outlook',
@@ -97,7 +98,8 @@
   }
   function destroy() {
     if (_host) { _host.classList.remove('ora-styles-host-mounted'); _host.innerHTML = ''; _host = null; }
-    _data = null; _expanded = new Set(); _editingSlot = null; _openLib = new Set(); _fictionOpen = false;
+    _data = null; _expanded = new Set(); _editingSlot = null; _openLib = new Set();
+    _fictionOpen = false; _convFor = null;
   }
   function _reload() {
     var host = _host;
@@ -126,6 +128,7 @@
       + _libraryHTML()
       + _fictionHTML()
       + '<p class="ora-styles-status" data-role="status" aria-live="polite"></p>'
+      + _popoutHTML()
       + '</div>';
     _wire();
   }
@@ -143,9 +146,6 @@
       +   _switchHTML('use_custom_values', !!s.use_custom_values,
                       'custom values', '(mind.md)',
                       'compose the voice from your mind.md, not the default')
-      +   _switchHTML('adapt_to_context', s.adapt_to_context !== false,
-                      'adapt to context', '',
-                      'loosen for chats, tighten for documents')
       + '</section>';
   }
 
@@ -209,10 +209,9 @@
       +   '<div class="ora-styles-card-sub">' + _esc(sub) + '</div>'
       +   '<div class="ora-styles-card-slots">'
       +     _slotHTML(p, 'arrangement', 'arrangement', p.arrangement_label, isCustom)
-      +     _slotHTML(p, 'demeanor', 'demeanor', p.demeanor_label, isCustom)
       +     _slotHTML(p, 'elaboration', 'elaboration', p.elaboration_label, isCustom)
-      +     _slotHTML(p, 'register', 'register', p.register, isCustom)
       +   '</div>'
+      +   _demeanorFPHTML(p, isCustom)
       +   (_expanded.has(p.id) ? _moreHTML(p, isCustom) : '')
       +   '<div class="ora-styles-card-actions">'
       +     '<button type="button" class="ora-styles-link" data-action="more" data-id="' + _esc(p.id) + '">'
@@ -263,6 +262,85 @@
         + ' data-value="' + _esc(o.value) + '">' + _esc(o.label) + '</button>';
     }).join('');
     return '<div class="ora-styles-picker">' + items + '</div>';
+  }
+
+  function _axisOrder() {
+    var axes = (_data && _data.library && _data.library.axes) || [];
+    return axes.length ? axes.map(function (a) { return a.id; })
+      : ['warmth', 'force', 'energy', 'outlook', 'playfulness', 'directness', 'agreeableness'];
+  }
+
+  // The demeanor "fingerprint" at the bottom of the card: all seven axis values,
+  // right-justified three-over-four (no lossy 2-axis summary). Each value carries
+  // its axis name on hover. On a custom card the block opens "more" to edit, and
+  // a "conversational" link opens the side popout for the gears-1-2 override.
+  function _demeanorFPHTML(p, isCustom) {
+    var order = _axisOrder();
+    var picks = p.demeanor || {};
+    function val(axis) {
+      return '<span class="ora-styles-fp-val" title="' + _esc(axis) + '">'
+        + _esc(picks[axis] || '—') + '</span>';
+    }
+    function line(ids) {
+      return '<div class="ora-styles-fp-line">'
+        + ids.map(val).join('<span class="ora-styles-fp-sep">·</span>') + '</div>';
+    }
+    var hasConv = !!(p.conversational && (p.conversational.demeanor || p.conversational.devices));
+    var conv = isCustom
+      ? '<button type="button" class="ora-styles-conv-link' + (hasConv ? ' ora-styles-conv-set' : '') + '"'
+        + ' data-action="conv" data-id="' + _esc(p.id) + '"'
+        + ' title="Set a different demeanor for quick chat replies (gears 1-2).">'
+        + 'conversational' + (hasConv ? ' •' : ' …') + '</button>'
+      : '';
+    var editAttr = isCustom ? ' data-action="more" data-id="' + _esc(p.id) + '"' : '';
+    return '<div class="ora-styles-fp' + (isCustom ? ' ora-styles-fp-editable' : '') + '"' + editAttr + '>'
+      + '<div class="ora-styles-fp-head"><span class="ora-styles-fp-label">demeanor</span>' + conv + '</div>'
+      + line(order.slice(0, 3))
+      + line(order.slice(3, 7))
+      + '</div>';
+  }
+
+  // Side popout: the conversational-register override. Same seven axes as rung
+  // chips; an unset axis inherits the written demeanor (shown but not marked).
+  // The only place conversational is edited — nothing else about it is separate.
+  function _popoutHTML() {
+    if (!_convFor) return '';
+    var p = _profileById(_convFor);
+    if (!p) return '';
+    var axes = (_data && _data.library && _data.library.axes) || [];
+    var conv = (p.conversational && p.conversational.demeanor) || {};
+    var written = p.demeanor || {};
+    var hasConv = !!(p.conversational && (p.conversational.demeanor || p.conversational.devices));
+    var rows = axes.map(function (ax) {
+      var overridden = (conv[ax.id] != null && conv[ax.id] !== written[ax.id]);
+      var cur = (conv[ax.id] != null) ? conv[ax.id] : written[ax.id];
+      var chips = (ax.rungs || []).map(function (r) {
+        var on = (r.id === cur);
+        return '<button type="button" class="ora-styles-rung' + (on ? ' ora-styles-rung-on' : '') + '"'
+          + ' data-action="conv-axis" data-id="' + _esc(p.id) + '" data-axis="' + _esc(ax.id) + '"'
+          + ' data-rung="' + _esc(r.id) + '" title="' + _esc(r.text) + '">' + _esc(r.id) + '</button>';
+      }).join('');
+      return '<div class="ora-styles-axis-row">'
+        + '<span class="ora-styles-axis-name">' + _esc(AXIS_LABELS[ax.id] || ax.id)
+        + (overridden ? ' <span class="ora-styles-conv-dot">•</span>' : '') + '</span>'
+        + '<span class="ora-styles-axis-rungs">' + chips + '</span></div>';
+    }).join('');
+    return ''
+      + '<div class="ora-styles-popout-backdrop" data-action="conv-close"></div>'
+      + '<aside class="ora-styles-popout" role="dialog" aria-label="Conversational demeanor">'
+      +   '<header class="ora-styles-popout-head">'
+      +     '<span class="ora-styles-popout-title">Conversational demeanor — ' + _esc(p.display_name) + '</span>'
+      +     '<button type="button" class="ora-styles-popout-x" data-action="conv-close">×</button>'
+      +   '</header>'
+      +   '<p class="ora-styles-popout-note">Used only for quick chat replies (gears 1–2). '
+      +     'Unset axes inherit the written demeanor; a dot marks the ones you\'ve changed. '
+      +     'Nothing else about conversational differs from written.</p>'
+      +   rows
+      +   '<div class="ora-styles-popout-actions">'
+      +     (hasConv ? '<button type="button" class="ora-styles-link" data-action="conv-reset" data-id="'
+                       + _esc(p.id) + '">reset to written</button>' : '')
+      +   '</div>'
+      + '</aside>';
   }
 
   // The "more" expand: the seven demeanor axes (rung chips), device overlays,
@@ -438,7 +516,10 @@
       _commitField(el);
       el.blur();
     }
-    if (evt.key === 'Escape' && _editingSlot) { _editingSlot = null; _render(); }
+    if (evt.key === 'Escape') {
+      if (_convFor) { _convFor = null; _render(); }
+      else if (_editingSlot) { _editingSlot = null; _render(); }
+    }
   }
 
   function _onClick(evt) {
@@ -459,6 +540,10 @@
     else if (a === 'pick-axis') { _pickAxis(id, t.dataset.axis, t.dataset.rung); }
     else if (a === 'lib')       { _toggle(_openLib, t.dataset.section); _render(); }
     else if (a === 'fiction')   { _fictionOpen = !_fictionOpen; _render(); }
+    else if (a === 'conv')       { _convFor = id; _render(); }
+    else if (a === 'conv-close') { _convFor = null; _render(); }
+    else if (a === 'conv-axis')  { _convAxis(id, t.dataset.axis, t.dataset.rung); }
+    else if (a === 'conv-reset') { _convReset(id); }
   }
 
   function _onChange(evt) {
@@ -541,6 +626,21 @@
     var dem = {}; dem[axis] = rung;
     _status('Saving…');
     _patch(id, { demeanor: dem }).then(function () { return _reload(); })
+      .then(function () { _status(''); })
+      .catch(function () { _status('Could not save — try again.'); });
+  }
+
+  function _convAxis(id, axis, rung) {
+    var dem = {}; dem[axis] = rung;
+    _status('Saving…');
+    _patch(id, { conversational: { demeanor: dem } }).then(function () { return _reload(); })
+      .then(function () { _status(''); })
+      .catch(function () { _status('Could not save — try again.'); });
+  }
+
+  function _convReset(id) {
+    _status('Saving…');
+    _patch(id, { conversational: null }).then(function () { return _reload(); })
       .then(function () { _status(''); })
       .catch(function () { _status('Could not save — try again.'); });
   }

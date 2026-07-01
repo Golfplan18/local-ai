@@ -3302,3 +3302,89 @@ a.ora-settings-apikey-label:hover {
   font-size: 12px;
   color: var(--text-muted, #A89F8A);
 }
+
+/* ── demeanor fingerprint (bottom of card: all seven, 3-over-4, right-just) ── */
+.ora-styles-fp {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
+}
+.ora-styles-fp-editable { cursor: pointer; }
+.ora-styles-fp-editable:hover { border-top-color: var(--link-color, #A48055); }
+.ora-styles-fp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.ora-styles-fp-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-conv-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--link-color, #A48055);
+  cursor: pointer;
+}
+.ora-styles-conv-link:hover { text-decoration: underline; }
+.ora-styles-conv-set { color: var(--color-active, #5FA86E); }
+.ora-styles-fp-line {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+  line-height: 1.5;
+}
+.ora-styles-fp-val { color: var(--text-normal, #E8E0CC); }
+.ora-styles-fp-sep { color: var(--text-muted, #A89F8A); margin: 0 5px; }
+.ora-styles-conv-dot { color: var(--color-active, #5FA86E); }
+
+/* ── conversational-override side popout ── */
+.ora-styles-popout-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+}
+.ora-styles-popout {
+  position: fixed;
+  top: 50%;
+  right: 3vw;
+  transform: translateY(-50%);
+  width: 360px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--background-secondary, #1F1A0F);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 8px;
+  padding: 14px 16px;
+  z-index: 41;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ora-styles-popout-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ora-styles-popout-title { font-size: 13px; font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-popout-x {
+  background: none;
+  border: none;
+  color: var(--text-muted, #A89F8A);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ora-styles-popout-x:hover { color: var(--text-normal, #E8E0CC); }
+.ora-styles-popout-note {
+  margin: 2px 0 8px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.45;
+}
+.ora-styles-popout-actions { margin-top: 8px; min-height: 14px; }

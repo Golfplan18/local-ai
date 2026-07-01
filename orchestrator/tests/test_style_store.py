@@ -77,6 +77,22 @@ def test_missing_store_is_empty():
     assert ss.load_custom_profiles() == {}
 
 
+def test_conversational_override_merge_and_clear():
+    _fresh_store()
+    prof = ss.create_custom_profile(base_entry={"display_name": "X",
+                                                "demeanor": {"warmth": "warm"}})
+    pid = prof["id"]
+    upd = ss.update_custom_profile(pid, {"conversational": {"demeanor": {"warmth": "cool"}}})
+    assert upd["conversational"]["demeanor"]["warmth"] == "cool"
+    # a second axis merges in; the first is preserved
+    upd = ss.update_custom_profile(pid, {"conversational": {"demeanor": {"force": "forceful"}}})
+    assert upd["conversational"]["demeanor"]["warmth"] == "cool"
+    assert upd["conversational"]["demeanor"]["force"] == "forceful"
+    # null clears the override entirely
+    upd = ss.update_custom_profile(pid, {"conversational": None})
+    assert "conversational" not in upd
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))

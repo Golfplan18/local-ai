@@ -1201,6 +1201,9 @@ def _enrich_style_entry(sid, entry):
         "devices": entry.get("devices", {}) or {},
         "glossary": entry.get("glossary", {}) or {},
         "values_source": entry.get("values_source", "default-mindspec"),
+        # Optional conversational-register override (alternate demeanor); shown
+        # only in the side popout. Absent/None means "inherit the written demeanor".
+        "conversational": entry.get("conversational"),
     }
     try:
         _sa = _style_assembly_mod()

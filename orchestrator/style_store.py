@@ -48,6 +48,9 @@ DEFAULT_PROFILE = {
 PATCHABLE = {
     "display_name", "description", "arrangement", "register_default",
     "elaboration", "demeanor", "devices", "glossary", "values_source", "format",
+    # The optional conversational-register override: an alternate demeanor
+    # (+ devices) used only on the gears 1-2 quick-reply path.
+    "conversational",
 }
 
 
@@ -156,7 +159,20 @@ def update_custom_profile(sid, patch):
     for key, val in (patch or {}).items():
         if key not in PATCHABLE:
             continue
-        if key in ("demeanor", "devices", "glossary", "format") and isinstance(val, dict):
+        if key == "conversational":
+            # {} / null clears the override (back to inheriting written);
+            # otherwise deep-merge its demeanor/devices per key.
+            if not val:
+                entry.pop("conversational", None)
+            else:
+                cur = dict(entry.get("conversational") or {})
+                for sub in ("demeanor", "devices"):
+                    if isinstance(val.get(sub), dict):
+                        merged = dict(cur.get(sub) or {})
+                        merged.update(val[sub])
+                        cur[sub] = merged
+                entry["conversational"] = cur
+        elif key in ("demeanor", "devices", "glossary", "format") and isinstance(val, dict):
             merged = dict(entry.get(key) or {})
             merged.update(val)
             entry[key] = merged

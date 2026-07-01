@@ -235,6 +235,17 @@ def compose(style_id, register="written", gear=3, deltas=None, base=None,
     entry = registry[style_id]
     axes, devices = load_demeanor_axes(base)
     if gear <= 2:
+        # Gears 1-2 (quick conversational replies) inject demeanor only, so the
+        # conversational register is nothing more than an optional alternate
+        # demeanor. Overlay it on the written demeanor per-axis; unset axes
+        # inherit written. Gears 3-4 (produced/written output) ignore it.
+        conv = entry.get("conversational") or {}
+        if conv.get("demeanor") or conv.get("devices"):
+            entry = {**entry,
+                     "demeanor": {**(entry.get("demeanor") or {}),
+                                  **(conv.get("demeanor") or {})},
+                     "devices": {**(entry.get("devices") or {}),
+                                 **(conv.get("devices") or {})}}
         return compose_demeanor_block(entry, axes, devices, deltas)
     schemas = load_arrangement_schemas(base)
     craft = load_craft_floor(base)
