@@ -5289,10 +5289,37 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     return chunk_id
 
 
+def _apply_style_audience(extra_context, style_audience):
+    """G1.36 honne/tatemae — when the input-pane toggle marks this turn
+    ``internal``, fold the active project's ``interaction_style`` onto
+    ``extra_context["style_id"]`` (how Ora talks TO you), overriding the default
+    OUTPUT style for this turn only. ``external`` (default), General, an
+    unset interaction_style, or an explicit /style one-off already on
+    extra_context → unchanged. Returns extra_context (possibly a new dict);
+    best-effort, never raises."""
+    if (style_audience or "").strip().lower() != "internal":
+        return extra_context
+    if extra_context and "style_id" in extra_context:
+        return extra_context  # an explicit /style one-off wins
+    try:
+        from orchestrator.active_project import get_active_project
+        from orchestrator import project_meta as _pm
+        nx = get_active_project()
+        if nx and nx.lower() != "general":
+            rec = _pm.read_project_meta(nx)
+            isid = (rec or {}).get("interaction_style")
+            if isinstance(isid, str) and isid.strip():
+                extra_context = dict(extra_context or {})
+                extra_context["style_id"] = isid.strip()
+    except Exception:
+        pass
+    return extra_context
+
+
 def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                       manual_mode_selection="", manual_lens_selection="",
                       framework_selected="", submission_id="", output_destination="",
-                      config_name=None):
+                      config_name=None, style_audience=""):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -5342,6 +5369,11 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     if style_override is not None:
         extra_context = dict(extra_context or {})
         extra_context["style_id"] = style_override["style_id"]
+
+    # G1.36 honne/tatemae — an "internal" audience (the input-pane toggle) makes
+    # this turn read in the active project's INTERACTION style rather than the
+    # default OUTPUT style. An explicit /style one-off above still wins.
+    extra_context = _apply_style_audience(extra_context, style_audience)
 
     # Sidebar window integration: use rolling window for sidebar panels
     is_sidebar = panel_id.startswith("sidebar")
@@ -5600,6 +5632,8 @@ def chat():
     manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
+    # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
+    style_audience        = (data.get("style_audience") or "").strip()
     # Optional per-request target visual kind. When the caller knows exactly
     # which diagram the turn should produce (the visual-tool campaign threads
     # the technique's kind; a UI "draw a <kind>" affordance could too), it is
@@ -5654,7 +5688,8 @@ def chat():
                              framework_selected=framework_selected,
                              submission_id=submission_id,
                              output_destination=output_destination,
-                             config_name=config_name)
+                             config_name=config_name,
+                             style_audience=style_audience)
 
 
 # ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
@@ -5756,6 +5791,7 @@ def chat_multipart():
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
+    style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
     # Install Chunk 2c — same config_name field as /chat for per-request
@@ -5934,6 +5970,7 @@ def chat_multipart():
         submission_id=submission_id,
         output_destination=output_destination,
         config_name=config_name,
+        style_audience=style_audience,
     )
 
 
