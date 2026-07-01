@@ -41,8 +41,8 @@
           <button type="button" class="export-toolbar__item" role="menuitem" data-action="output">Save output to Vault</button>
           <button type="button" class="export-toolbar__item" role="menuitem" data-action="conversation">Save full conversation</button>
           <div class="export-toolbar__sep"></div>
-          <button type="button" class="export-toolbar__item is-disabled" role="menuitem" disabled title="Arrives with the bundled Pandoc step">Word (.docx) — soon</button>
-          <button type="button" class="export-toolbar__item is-disabled" role="menuitem" disabled title="Arrives with the bundled Pandoc step">PDF — soon</button>
+          <button type="button" class="export-toolbar__item is-disabled" id="exportDocx" role="menuitem" disabled data-action="docx" title="Checking Pandoc…">Word (.docx)</button>
+          <button type="button" class="export-toolbar__item is-disabled" id="exportPdf" role="menuitem" disabled data-action="pdf" title="Checking Pandoc…">PDF</button>
         </div>
       </div>`;
     pane.appendChild(bar);
@@ -82,6 +82,23 @@
     menu.querySelectorAll('.export-toolbar__item[data-action]').forEach(item => {
       item.addEventListener('click', () => { closeMenu(); runExport(item.dataset.action, setStatus); });
     });
+
+    // Enable Word/PDF once the server confirms Pandoc (+ a PDF engine) is present.
+    fetch('/api/export/locations').then(r => r.json()).then(d => {
+      const caps = (d && d.capabilities) || {};
+      const docx = bar.querySelector('#exportDocx');
+      const pdf = bar.querySelector('#exportPdf');
+      if (docx) {
+        docx.disabled = !caps.docx;
+        docx.classList.toggle('is-disabled', !caps.docx);
+        docx.title = caps.docx ? 'Export this output as a Word document' : 'Install Pandoc to enable';
+      }
+      if (pdf) {
+        pdf.disabled = !caps.pdf;
+        pdf.classList.toggle('is-disabled', !caps.pdf);
+        pdf.title = caps.pdf ? 'Export this output as a PDF' : 'Install Pandoc + a PDF engine (Typst) to enable';
+      }
+    }).catch(() => {});
   };
 
   const firstHeading = (md) => {
@@ -105,6 +122,12 @@
       if (!cid) { setStatus('No conversation to save.'); return; }
       setStatus('Saving conversation…');
       await postExport({ scope: 'full_conversation', conversation_id: cid }, setStatus);
+    } else if (action === 'docx' || action === 'pdf') {
+      const turn = conv && typeof conv.getCurrentTurn === 'function' ? conv.getCurrentTurn() : null;
+      const content = turn && turn.assistant ? (turn.assistant.content || '') : '';
+      if (!content.trim()) { setStatus('Nothing to export in this output.'); return; }
+      setStatus('Rendering ' + action.toUpperCase() + '…');
+      await postExport({ scope: 'current_output', format: action, content, title: firstHeading(content) }, setStatus);
     }
   }
 

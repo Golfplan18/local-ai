@@ -14,10 +14,13 @@ target (Export §1.9). This module owns:
     shared ``<vault>/Outputs/`` folder. (Full-conversation export already lives
     in ``vault_export.export_session_to_vault``; this is the per-output scope.)
 
-Pandoc-backed formats (docx/pdf) are intentionally **not** implemented here —
-they require the bundled Pandoc from the installer step (G1.34 build note). The
-server reports them as unavailable until then; this module stays markdown-only
-so it never depends on an external binary.
+  * **Render targets (docx / pdf).** When Pandoc is on the machine, a rendered
+    output is converted from its canonical markdown and written to
+    ``~/Documents/Ora Exports/``. PDF uses Typst as the engine (the plan's
+    bundleable choice). Both are *detected at runtime* — absent Pandoc / engine,
+    the format is reported unavailable and nothing breaks. The installer bundles
+    Pandoc + Typst so this works out of the box for shipped users; here it works
+    once ``brew install pandoc typst`` has run.
 
 Everything is best-effort and path-sandboxed; it never raises on a missing
 vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
@@ -25,7 +28,11 @@ vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -149,10 +156,108 @@ def _safe_folder(name: str | None) -> str:
     return cleaned or "Untitled"
 
 
-# Formats this module can produce on its own (no external binary).
+# ---------------------------------------------------------------------------
+# Render targets — docx / pdf via Pandoc (detected at runtime)
+# ---------------------------------------------------------------------------
+
+# Formats this module can always produce (no external binary).
 NATIVE_FORMATS = ("markdown",)
-# Formats that need the bundled Pandoc (installer step) — reported, not built.
+# Formats that need Pandoc (+ a PDF engine for pdf). Available when the binaries
+# are present; the installer bundles them.
 PANDOC_FORMATS = ("docx", "pdf")
+
+# Homebrew/user installs aren't always on a service's minimal PATH — resolve
+# against the common bin dirs too.
+_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
+# PDF engines Pandoc can drive, preferred order (Typst is the plan's choice).
+_PDF_ENGINES = ("typst", "weasyprint", "wkhtmltopdf", "tectonic", "xelatex", "pdflatex")
+
+
+def _which(name: str) -> str | None:
+    """Absolute path to ``name``, checking PATH then the common bin dirs."""
+    found = shutil.which(name)
+    if found:
+        return found
+    for d in _BIN_DIRS:
+        cand = os.path.join(d, name)
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
+def pandoc_path() -> str | None:
+    return _which("pandoc")
+
+
+def pdf_engine_path() -> tuple[str, str] | None:
+    """Return (engine_name, engine_abs_path) for the first available PDF engine."""
+    for eng in _PDF_ENGINES:
+        p = _which(eng)
+        if p:
+            return eng, p
+    return None
+
+
+def export_capabilities() -> dict[str, Any]:
+    """What non-markdown formats this machine can currently produce."""
+    pandoc = pandoc_path() is not None
+    engine = pdf_engine_path()
+    return {
+        "pandoc": pandoc,
+        "docx": pandoc,
+        "pdf": pandoc and engine is not None,
+        "pdf_engine": engine[0] if engine else None,
+    }
+
+
+def export_to_file(
+    content: str,
+    *,
+    title: str | None = None,
+    fmt: str = "docx",
+    exports_dir: Path | None = None,
+) -> Path | None:
+    """Render one output's canonical markdown to ``fmt`` (docx/pdf) via Pandoc,
+    landing in ``~/Documents/Ora Exports/`` (the §2.8 boundary). Returns the
+    written path, or None if the content is empty, the format is unsupported, or
+    Pandoc / the PDF engine isn't available. Never raises."""
+    if not content or not content.strip() or fmt not in PANDOC_FORMATS:
+        return None
+    pandoc = pandoc_path()
+    if pandoc is None:
+        return None
+    base = exports_dir or EXPORTS_DIR
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+    display = (title or "").strip() or _derive_title(content)
+    today = datetime.now().strftime("%Y-%m-%d")
+    out = _unique_path(base, f"{today} {_slugify(display)}", "." + fmt)
+
+    tmp_md = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".md", delete=False, encoding="utf-8"
+        ) as tf:
+            tf.write(content)
+            tmp_md = tf.name
+        cmd = [pandoc, tmp_md, "-o", str(out)]
+        if fmt == "pdf":
+            engine = pdf_engine_path()
+            if engine is None:
+                return None
+            cmd += ["--pdf-engine", engine[1]]
+        subprocess.run(cmd, check=True, capture_output=True, timeout=90)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    finally:
+        if tmp_md:
+            try:
+                os.unlink(tmp_md)
+            except OSError:
+                pass
+    return out if out.exists() else None
 
 
 __all__ = [
@@ -162,4 +267,8 @@ __all__ = [
     "PANDOC_FORMATS",
     "ensure_export_dirs",
     "save_output_to_vault",
+    "export_capabilities",
+    "export_to_file",
+    "pandoc_path",
+    "pdf_engine_path",
 ]

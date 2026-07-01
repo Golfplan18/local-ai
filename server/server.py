@@ -4244,12 +4244,15 @@ def api_projects_conversations(nexus):
 
 @app.route("/api/fs/reveal", methods=["POST"])
 def api_fs_reveal():
-    """Reveal a vault file in the OS file manager (Finder on macOS).
+    """Reveal a file in the OS file manager (Finder on macOS).
 
-    Sandboxed: the path must resolve inside the vault root. Best-effort and
-    macOS-only (cloud-ora is headless Linux → 501). Body: ``{"path": "..."}``."""
+    Sandboxed: the path must resolve inside the vault root OR the Ora Exports /
+    Ora Resources boundary folders (§2.8) — the only places Ora writes. Best-
+    effort and macOS-only (cloud-ora is headless Linux → 501). Body:
+    ``{"path": "..."}``."""
     try:
         from orchestrator import operation_matrix as _om
+        from orchestrator import export as _export
         from pathlib import Path as _P
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
@@ -4259,10 +4262,14 @@ def api_fs_reveal():
         return _json_response({"ok": False, "error": "path is required"}, 400)
     try:
         target = _P(raw).resolve()
-        root = _om.vault_root()
-        target.relative_to(root)  # raises if outside the vault
-    except ValueError:
-        return _json_response({"ok": False, "error": "path is outside the vault"}, 403)
+        allowed_roots = [_om.vault_root()]
+        try:
+            allowed_roots += [_export.EXPORTS_DIR.resolve(), _export.RESOURCES_DIR.resolve()]
+        except Exception:
+            pass
+        if not any(target == r or r in target.parents for r in allowed_roots):
+            return _json_response(
+                {"ok": False, "error": "path is outside the allowed folders"}, 403)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 400)
     if not target.exists():
@@ -14177,9 +14184,10 @@ def api_export_locations():
         return _json_response({"ok": False, "error": str(exc)}, 503)
     try:
         dirs = _export.ensure_export_dirs()
+        caps = _export.export_capabilities()
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
-    return _json_response({"ok": True, **dirs})
+    return _json_response({"ok": True, "capabilities": caps, **dirs})
 
 
 @app.route("/api/export", methods=["POST"])
@@ -14198,8 +14206,9 @@ def api_export():
     Markdown is canonical (Export §1.9). ``current_output`` saves the rendered
     output as a vault markdown note — in the active project's folder when set,
     else ``<vault>/Outputs/``. ``full_conversation`` delegates to the existing
-    canonical session export. Non-markdown formats return ``deferred`` until the
-    installer bundles Pandoc."""
+    canonical session export. ``docx`` / ``pdf`` render the output's markdown via
+    Pandoc into ``~/Documents/Ora Exports/`` when Pandoc (+ a PDF engine) is
+    present; otherwise they return ``deferred``."""
     try:
         from orchestrator import export as _export
     except Exception as exc:
@@ -14209,10 +14218,24 @@ def api_export():
     fmt = (data.get("format") or "markdown").strip().lower()
 
     if fmt in _export.PANDOC_FORMATS:
-        return _json_response(
-            {"ok": False, "deferred": True,
-             "error": f"{fmt.upper()} export arrives with the bundled Pandoc step; "
-                      "Save to Vault (Markdown) and Print are available now."}, 501)
+        caps = _export.export_capabilities()
+        if not caps.get(fmt):
+            missing = "Pandoc" if not caps.get("pandoc") else "a PDF engine (e.g. Typst)"
+            return _json_response(
+                {"ok": False, "deferred": True,
+                 "error": f"{fmt.upper()} export needs {missing} installed. "
+                          "Save to Vault (Markdown) and Print work now."}, 501)
+        content = data.get("content")
+        if not isinstance(content, str) or not content.strip():
+            return _json_response({"ok": False, "error": "content is required"}, 400)
+        try:
+            path = _export.export_to_file(content, title=data.get("title"), fmt=fmt)
+        except Exception as exc:
+            return _json_response({"ok": False, "error": str(exc)}, 500)
+        if path is None:
+            return _json_response(
+                {"ok": False, "error": f"{fmt.upper()} conversion failed."}, 500)
+        return _json_response({"ok": True, "scope": "file", "format": fmt, "path": str(path)})
     if fmt not in _export.NATIVE_FORMATS:
         return _json_response({"ok": False, "error": f"unknown format {fmt!r}"}, 400)
 
