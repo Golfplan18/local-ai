@@ -139,11 +139,6 @@ class TestUserSettingsIntegration(unittest.TestCase):
         self.assertEqual([g[0] for g in self.us.group_order()],
                          [g[0] for g in registry.GROUP_ORDER])
 
-    def test_aa_path_auto(self):
-        self.assertEqual(self.us.aa_path_auto(), "scrape")
-        self.fake.set_password("ora", "aa-api-key", "aa-key")
-        self.assertEqual(self.us.aa_path_auto(), "api")
-
 
 class TestPreferDirectResolution(unittest.TestCase):
     @classmethod

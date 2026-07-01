@@ -326,25 +326,6 @@
       ? 'Refreshed ' + refreshedAt.substring(0, 10)
       : 'Never refreshed';
 
-    // AA source badge: which path the last sync used for Artificial
-    // Analysis intelligence + pricing data. Set under Settings →
-    // External APIs → "AA intelligence data source". Older registries
-    // (synced before the API path landed) don't carry the field;
-    // default to "scrape" since that was the only path then.
-    var aaSource = (_registry && _registry.aa_source) || (refreshedAt ? 'scrape' : null);
-    var aaBadgeLabel = null;
-    var aaBadgeTitle = null;
-    if (aaSource === 'api') {
-      aaBadgeLabel = 'AA: API';
-      aaBadgeTitle = 'AA data came from the official REST API. Switch in Settings → External APIs.';
-    } else if (aaSource === 'mixed') {
-      aaBadgeLabel = 'AA: Mixed';
-      aaBadgeTitle = 'API was selected but one or more endpoints fell back to the scrape on this run.';
-    } else if (aaSource === 'scrape') {
-      aaBadgeLabel = 'AA: Scrape';
-      aaBadgeTitle = 'AA data came from the public /models page (no API key needed). Switch in Settings → External APIs.';
-    }
-
     header.innerHTML = ''
       + '<div class="ora-models-header-strip">'
       +   '<div class="ora-models-active">'
@@ -381,11 +362,8 @@
                      + 'floor. A slot with no eligible ~1M-context model '
                      + 'keeps its best pick instead — the floor is skipped '
                      + 'for that slot and noted in the bake log.')
-      +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
+      +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + Artificial Analysis + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
-      +     (aaBadgeLabel
-        ? '<span class="ora-models-aa-source-badge" title="' + _esc(aaBadgeTitle) + '">' + _esc(aaBadgeLabel) + '</span>'
-        : '')
       +     '<button type="button" class="ora-models-refresh-btn" data-action="refresh">↻</button>'
       +   '</div>'
       + '</div>';
@@ -2735,6 +2713,46 @@
   // counts so the user knows the freshness picture before deciding
   // whether to re-run.
 
+  // Benchmark-data provenance line (lives here with the other
+  // registry-health diagnostics; used to be a cryptic "AA: SCRAPE"
+  // badge in the header strip). Reports which path the LAST sync used
+  // for Artificial Analysis benchmark data — the source of the
+  // "% peak intel", tokens/sec and latency figures, which also drive
+  // preset auto-picks. Older registries (before the API path landed)
+  // don't carry aa_source; default to "scrape" since that was the
+  // only path then.
+  function _benchmarkSourceHTML() {
+    if (!_registry || !_registry.generated_at) return '';
+    var src = _registry.aa_source || 'scrape';
+    var label, tip;
+    if (src === 'api') {
+      label = 'Artificial Analysis — official API';
+      tip = 'Model benchmark scores (the "% peak intel", speed and '
+          + 'latency figures) come from the Artificial Analysis official '
+          + 'API, using your key from Settings → External APIs.';
+    } else if (src === 'mixed') {
+      label = 'Artificial Analysis — API, with website fallback this run';
+      tip = 'The Artificial Analysis API was used, but one or more '
+          + 'requests fell back to reading their public website on this '
+          + 'run. Repeated fallbacks can mean an expired or invalid key — '
+          + 'check the Artificial Analysis row in Settings → External '
+          + 'APIs (the Verify button tests the key).';
+    } else {
+      label = 'Artificial Analysis — public website';
+      tip = 'Model benchmark scores (the "% peak intel", speed and '
+          + 'latency figures) come from Artificial Analysis '
+          + '(artificialanalysis.ai), read from their public website — '
+          + 'no key needed. Add a free Artificial Analysis API key in '
+          + 'Settings → External APIs and the next refresh switches to '
+          + 'their official API automatically (more robust when their '
+          + 'site changes).';
+    }
+    return ''
+      + '<p class="ora-models-benchmark-source" title="' + _esc(tip) + '">'
+      +   'Benchmark scores: <strong>' + _esc(label) + '</strong>'
+      + '</p>';
+  }
+
   function _renderMaintenance() {
     if (!_hostEl) return;
     var section = _hostEl.querySelector('[data-section="maintenance"]');
@@ -2793,6 +2811,7 @@
       +         ' confirmed · ' + counts.vendor_false + ' phantom · '
       +         counts.vendor_null + ' not audited</span></div>'
       +   '</div>'
+      +   _benchmarkSourceHTML()
       +   '<p class="ora-models-maintenance-explainer">'
       +     'A reachability probe sends a 16-token "hi" completion to '
       +     'every chat model in the registry and watches the HTTP status:'

@@ -15,15 +15,15 @@ that tool continues to maintain ``config/openrouter-catalog.json`` for
 existing readers (server.py, the bucket selector, etc.). The new
 ``model-catalog.json`` is consumed only by the new auto-populate engine.
 
-Intelligence enrichment (2026-05-20): direct Artificial Analysis (AA)
-API access was retired. The ``aa_intelligence_index`` field on each
-catalog entry is now populated from ``config/model-registry.json``,
-which is itself populated by ``scripts/sync_model_registry.py`` from
-free public sources (OpenRouter + LiteLLM + Chatbot Arena + AA's
-public website + empirical probe). No API key required anywhere.
-When the registry is missing (fresh clone, no sync run yet),
-``aa_intelligence_index`` stays null and auto-populate falls back to
-cost-sort — same as today's no-AA-key state.
+Intelligence enrichment: the ``aa_intelligence_index`` field on each
+catalog entry is populated from ``config/model-registry.json``, which
+is itself populated by ``scripts/sync_model_registry.py`` (OpenRouter +
+LiteLLM + Chatbot Arena + Artificial Analysis + empirical probe). No
+key is required — AA data defaults to their public website; an AA key
+(keyring 'ora/aa-api-key' or AA_API_KEY env) auto-switches the sync to
+AA's official API. When the registry is missing (fresh clone, no sync
+run yet), ``aa_intelligence_index`` stays null and auto-populate falls
+back to cost-sort.
 
 API keys (read from env):
     OPENROUTER_API_KEY   — optional. The /models endpoint is public, but

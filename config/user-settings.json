@@ -1,14 +1,18 @@
 {
   "capture": {
-    "frame_rate": 25
+    "frame_rate": 25,
+    "default_system_audio": false
   },
   "interface": {
-    "tooltips_enabled": true
+    "tooltips_enabled": true,
+    "visual_help_enabled": true
   },
   "whisper": {
     "provider": "openrouter_audio"
   },
-  "external_apis": {
-    "aa_path": "scrape"
+  "external_apis": {},
+  "styles": {
+    "use_custom_values": true,
+    "default_id": "explainer"
   }
 }
