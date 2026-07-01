@@ -30,6 +30,8 @@
   let filesCache = null;
   let convosCache = null;
   let candidateSearchTimer = null;
+  let configsCache = null;   // /api/configurations profile names
+  let stylesCache = null;    // /api/styles/registry profiles
   let mode = 'edit';  // 'edit' | 'create'
   let pendingNexus = null;  // a previewed nexus rename awaiting Apply
 
@@ -89,6 +91,9 @@
       priv:      modal.querySelector('#pmPrivate'),
       ovSave:    modal.querySelector('#pmOverviewSave'),
       ovMsg:     modal.querySelector('#pmOverviewMsg'),
+      modelProfile: modal.querySelector('#pmModelProfile'),
+      outputStyle:  modal.querySelector('#pmOutputStyle'),
+      interactionStyle: modal.querySelector('#pmInteractionStyle'),
       advanced:  modal.querySelector('#pmAdvanced'),
       nexus:     modal.querySelector('#pmNexus'),
       nexusPreview: modal.querySelector('#pmNexusPreview'),
@@ -177,8 +182,9 @@
         <div class="project-modal__fieldset-legend">Defaults</div>
         <div class="project-modal__row">
           <div class="project-modal__field">
-            <label class="project-modal__label">Model profile <span class="project-modal__inert-badge">(coming soon)</span></label>
-            <select class="project-modal__select" disabled><option>—</option></select>
+            <label class="project-modal__label" for="pmModelProfile">Model profile</label>
+            <select class="project-modal__select" id="pmModelProfile"></select>
+            <div class="project-modal__hint">The default execution profile for this project's runs (a per-run pick still overrides it).</div>
           </div>
           <div class="project-modal__field">
             <label class="project-modal__label">Persona <span class="project-modal__inert-badge">(coming soon)</span></label>
@@ -187,12 +193,14 @@
         </div>
         <div class="project-modal__row">
           <div class="project-modal__field">
-            <label class="project-modal__label">Interaction style <span class="project-modal__inert-badge">(coming soon)</span></label>
-            <select class="project-modal__select" disabled><option>—</option></select>
+            <label class="project-modal__label" for="pmOutputStyle">Output style</label>
+            <select class="project-modal__select" id="pmOutputStyle"></select>
+            <div class="project-modal__hint">How this project's deliverables read to the world.</div>
           </div>
           <div class="project-modal__field">
-            <label class="project-modal__label">Output style <span class="project-modal__inert-badge">(coming soon)</span></label>
-            <select class="project-modal__select" disabled><option>—</option></select>
+            <label class="project-modal__label" for="pmInteractionStyle">Interaction style <span class="project-modal__inert-badge">(stored; not yet applied)</span></label>
+            <select class="project-modal__select" id="pmInteractionStyle"></select>
+            <div class="project-modal__hint">How Ora talks to you here (the honne/tatemae split lands with the persona work).</div>
           </div>
         </div>
 
@@ -358,6 +366,8 @@
     els.priv.disabled = false;
     els.ovSave.disabled = false;
     if (els.advanced) els.advanced.style.display = 'none';  // no nexus until created
+    [els.modelProfile, els.outputStyle, els.interactionStyle].forEach(s => { if (s) s.disabled = false; });
+    populateDefaults({});  // empty registries selection for a fresh project
     toggleMomRaw();
     setStatus(els.ovMsg, 'Name your project. You can set Mission, Objectives & Milestones next — or skip it.');
     setStatus(els.momMsg, '');
@@ -401,6 +411,7 @@
       els.advanced.open = false;
     }
     if (els.nexus) els.nexus.value = general ? '' : current.nexus;
+    [els.modelProfile, els.outputStyle, els.interactionStyle].forEach(s => { if (s) s.disabled = general; });
     if (general) {
       setStatus(els.ovMsg, 'General is the built-in default project and can\'t be configured.');
       return;
@@ -416,9 +427,65 @@
         current.name = els.name.value;
         els.titleName.textContent = current.name;
       }
+      await populateDefaults(rec || {});
     } catch (e) {
       setStatus(els.ovMsg, 'Could not load project details.', 'error');
     }
+  }
+
+  // ── Execution defaults (model profile + styles) ──────────────────────────
+  function _fillSelect(sel, items, currentValue, emptyLabel) {
+    if (!sel) return;
+    sel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = emptyLabel;
+    sel.appendChild(none);
+    items.forEach(it => {
+      const o = document.createElement('option');
+      o.value = it.value;
+      o.textContent = it.label;
+      sel.appendChild(o);
+    });
+    sel.value = currentValue || '';
+    // If the stored value is no longer available, keep it visible so a Save
+    // doesn't silently drop it.
+    if ((currentValue || '') && sel.value !== currentValue) {
+      const o = document.createElement('option');
+      o.value = currentValue;
+      o.textContent = currentValue + ' (unavailable)';
+      sel.appendChild(o);
+      sel.value = currentValue;
+    }
+  }
+
+  async function _ensureRegistries() {
+    if (configsCache === null) {
+      try {
+        const d = await (await fetch('/api/configurations')).json();
+        const names = [
+          ...Object.keys((d && d.presets) || {}),
+          ...Object.keys((d && d.customs) || {}),
+        ];
+        configsCache = names.map(n => ({ value: n, label: n }));
+      } catch (e) { configsCache = []; }
+    }
+    if (stylesCache === null) {
+      try {
+        const d = await (await fetch('/api/styles/registry')).json();
+        const profiles = (d && d.profiles) || [];
+        stylesCache = profiles.map(p => ({
+          value: p.id, label: p.display_name || p.id,
+        }));
+      } catch (e) { stylesCache = []; }
+    }
+  }
+
+  async function populateDefaults(rec) {
+    await _ensureRegistries();
+    _fillSelect(els.modelProfile, configsCache, rec.default_model_profile, '— Global default —');
+    _fillSelect(els.outputStyle, stylesCache, rec.output_style, '— None —');
+    _fillSelect(els.interactionStyle, stylesCache, rec.interaction_style, '— None —');
   }
 
   async function saveOverview() {
@@ -428,6 +495,9 @@
       name: (els.name.value || '').trim(),
       status: els.status.value,
       private: !!els.priv.checked,
+      default_model_profile: (els.modelProfile && els.modelProfile.value) || '',
+      output_style: (els.outputStyle && els.outputStyle.value) || '',
+      interaction_style: (els.interactionStyle && els.interactionStyle.value) || '',
     };
     if (!body.name) { setStatus(els.ovMsg, 'Name can\'t be empty.', 'error'); return; }
     els.ovSave.disabled = true;
