@@ -125,20 +125,14 @@ class UserSettingsModuleTests(unittest.TestCase):
                 "export": {"background_render_threshold_seconds": 99999},
             })
 
-    def test_aa_path_defaults_to_scrape(self):
-        self.assertEqual(
-            self._mod.load_settings()["external_apis"]["aa_path"], "scrape"
-        )
-
-    def test_aa_path_accepts_scrape_or_api(self):
-        self._mod.save_settings({"external_apis": {"aa_path": "api"}})
-        self.assertEqual(self._mod.get_setting("external_apis.aa_path"), "api")
-        self._mod.save_settings({"external_apis": {"aa_path": "scrape"}})
-        self.assertEqual(self._mod.get_setting("external_apis.aa_path"), "scrape")
-
-    def test_invalid_aa_path_rejected(self):
-        with self.assertRaises(self._mod.SettingsError):
-            self._mod.save_settings({"external_apis": {"aa_path": "bogus"}})
+    def test_no_aa_path_default(self):
+        # Regression guard (2026-07-01): an "aa_path" DEFAULT here is
+        # returned unconditionally by get_setting()'s deep merge, which
+        # makes the sync script's key-presence auto-activation
+        # unreachable — every sync scrapes even with an AA key
+        # configured. The AA data path must stay auto-derived.
+        self.assertNotIn("aa_path", self._mod.DEFAULTS["external_apis"])
+        self.assertIsNone(self._mod.get_setting("external_apis.aa_path"))
 
     def test_reset_clears_overrides(self):
         self._mod.save_settings({"capture": {"frame_rate": 24}})

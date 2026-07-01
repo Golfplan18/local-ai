@@ -405,10 +405,11 @@ def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
     # meaning auto-populate will pick the cheapest model per slot
     # regardless of how capable it actually is. That is almost certainly
     # not what you want for production pipelines.
-    # Chunk 2025-05-20: AA (Artificial Analysis) API dependency removed.
-    # Intelligence rankings now come from Chatbot Arena's public dataset
-    # (free, no auth) via scripts/sync_model_registry.py, called below.
-    # Legacy AA_API_KEY env var is ignored even if set.
+    # Intelligence rankings come from scripts/sync_model_registry.py
+    # (OpenRouter + Chatbot Arena + Artificial Analysis), called below.
+    # No key is required: AA data defaults to their public website; an
+    # AA key (keyring 'ora/aa-api-key' or AA_API_KEY env) auto-switches
+    # the sync to AA's official API.
 
     if dry_run:
         log("  [dry-run] would run scripts/refresh-catalog.py")

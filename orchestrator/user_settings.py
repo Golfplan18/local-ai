@@ -76,12 +76,13 @@ DEFAULTS: dict = {
     "external_apis": {
         "transcription_provider": "whisper_local",   # whisper_local | assemblyai | deepgram
         "tts_provider": "openai",                    # openai | elevenlabs
-        # Source for Artificial Analysis intelligence + pricing data.
-        # "scrape" pulls from the public /models page (no key needed);
-        # "api" uses the official REST API (requires a key — set it under
-        # the Artificial Analysis row in External APIs). Env var
-        # ORA_AA_PATH and the sync script's --aa-path flag override.
-        "aa_path": "scrape",                         # scrape | api
+        # NOTE: deliberately no "aa_path" default. The Artificial
+        # Analysis data path is auto-derived by the sync script from
+        # key presence (keyring 'ora/aa-api-key' or AA_API_KEY env) —
+        # a stored default here shadowed that auto-activation through
+        # get_setting()'s deep merge and pinned every sync to the
+        # scrape path (bug fixed 2026-07-01). ORA_AA_PATH / --aa-path
+        # remain as expert overrides.
     },
     "interface": {
         # Universal hover tooltips on every interactive element. When
@@ -264,11 +265,6 @@ def _validate_updates(updates: dict) -> None:
         raise SettingsError(
             "external_apis.tts_provider must be one of openai / elevenlabs"
         )
-    if "aa_path" in ap and ap["aa_path"] not in ("scrape", "api"):
-        raise SettingsError(
-            f"external_apis.aa_path must be 'scrape' or 'api' (got {ap['aa_path']!r})"
-        )
-
     kb = updates.get("keyboard") or {}
     if "shortcuts" in kb and not isinstance(kb["shortcuts"], dict):
         raise SettingsError("keyboard.shortcuts must be a dict")
@@ -340,16 +336,6 @@ def group_order() -> list[list]:
     return [list(pair) for pair in _registry.GROUP_ORDER]
 
 
-def aa_path_auto() -> str:
-    """Auto-derived AA data path: 'api' when an AA key is present, else 'scrape'.
-
-    Key-presence is the enable signal — no toggle. ``ORA_AA_PATH`` and the
-    sync script's ``--aa-path`` flag still override (see
-    scripts/sync_model_registry.py::_resolve_aa_path).
-    """
-    return "api" if api_key_present("artificial_analysis") else "scrape"
-
-
 __all__ = [
     "DEFAULTS",
     "PROVIDER_LABELS",
@@ -364,5 +350,4 @@ __all__ = [
     "api_key_present",
     "list_api_key_status",
     "group_order",
-    "aa_path_auto",
 ]

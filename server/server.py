@@ -1487,8 +1487,11 @@ def _verify_provider_key(entry: dict, key: str):
             _post("https://api.exa.ai/search", {"x-api-key": key},
                   {"query": "ping", "numResults": 1})
         elif pid == "artificial_analysis":
+            # AA auths via x-api-key (Bearer returns 401 — verified
+            # empirically 2026-07-01); keep in sync with
+            # scripts/sync_model_registry.py::_aa_api_get.
             _get("https://artificialanalysis.ai/api/v2/data/llms/models",
-                 {"Authorization": f"Bearer {key}"})
+                 {"x-api-key": key})
         elif pid == "fred":
             _get(f"https://api.stlouisfed.org/fred/series?series_id=GNPCA"
                  f"&api_key={key}&file_type=json", {})

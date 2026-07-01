@@ -1900,8 +1900,15 @@ def append_discrepancy(entry: dict) -> None:
 # Resolution order (first match wins):
 #   1. ``--aa-path scrape|api`` CLI flag (if passed)
 #   2. ``ORA_AA_PATH`` env var (scrape|api)
-#   3. user setting ``external_apis.aa_path`` from user-settings.json
+#   3. auto-activate: an AA key in keyring/env means "api" — key
+#      presence is the enable signal, no toggle (PR #53)
 #   4. default "scrape" — friction-free, no key required
+#
+# There is deliberately NO stored-setting step: user-settings DEFAULTS
+# used to carry ``external_apis.aa_path: "scrape"``, which the deep
+# merge in ``get_setting`` returned unconditionally — so the
+# auto-activation below it was unreachable and every sync scraped even
+# with a key configured (bug found 2026-07-01).
 #
 # Hard-fail rule: when the resolved path is "api" but no key is
 # configured, ``cmd_sync`` aborts with a pointer to Settings → External
@@ -1923,20 +1930,9 @@ def _resolve_aa_path(args) -> str:
     env_path = (os.environ.get("ORA_AA_PATH") or "").strip().lower()
     if env_path in ("scrape", "api"):
         return env_path
-    # An explicit user-setting still overrides (legacy panels wrote one).
-    # Import lazily so this script still runs in environments where
-    # orchestrator/ isn't on the path (it normally is, via ORA_HOME).
-    try:
-        sys.path.insert(0, str(ORA_HOME))
-        from orchestrator import user_settings  # type: ignore
-        stored = user_settings.get_setting("external_apis.aa_path")
-        if stored in ("scrape", "api"):
-            return stored
-    except Exception:
-        pass
     # Auto-activate: if an AA key is configured (keyring 'ora/aa-api-key' or
     # AA_API_KEY env) use the API path — having the key is the enable signal,
-    # no toggle. The CLI flag / ORA_AA_PATH / explicit user-setting override.
+    # no toggle. The CLI flag / ORA_AA_PATH override for expert use.
     if _load_aa_api_key():
         return "api"
     return "scrape"

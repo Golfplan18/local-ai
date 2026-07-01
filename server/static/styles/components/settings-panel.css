@@ -2317,15 +2317,18 @@ a.ora-settings-apikey-label:hover {
   color: var(--text-muted, #A89F8A);
 }
 
-.ora-models-aa-source-badge {
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+/* Benchmark-data provenance line in the maintenance section
+   (relocated from the header's old "AA: SCRAPE" badge) */
+.ora-models-benchmark-source {
+  font-size: 11px;
   color: var(--text-muted, #A89F8A);
-  border: 1px solid var(--background-modifier-border, #3A3022);
-  border-radius: 3px;
-  padding: 1px 5px;
+  margin: 6px 0 0;
   cursor: help;
+}
+
+.ora-models-benchmark-source strong {
+  color: var(--text-normal, #E8E0CC);
+  font-weight: 500;
 }
 
 .ora-models-refresh-btn {
