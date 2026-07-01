@@ -72,6 +72,35 @@ class ExportModuleTests(unittest.TestCase):
         blocker.write_text("x")
         self.assertIsNone(ex.save_output_to_vault("c", vault=blocker / "vault"))
 
+    def test_export_capabilities_shape(self):
+        caps = ex.export_capabilities()
+        for key in ("pandoc", "docx", "pdf"):
+            self.assertIn(key, caps)
+            self.assertIsInstance(caps[key], bool)
+
+    def test_export_to_file_guards(self):
+        # Empty content / unsupported format → None regardless of Pandoc.
+        self.assertIsNone(ex.export_to_file("", fmt="docx", exports_dir=self.root))
+        self.assertIsNone(ex.export_to_file("x", fmt="rtf", exports_dir=self.root))
+
+    @unittest.skipUnless(ex.pandoc_path(), "pandoc not installed")
+    def test_export_to_file_docx_real(self):
+        out = ex.export_to_file(
+            "# Title\n\nA **paragraph**.\n", title="Doc", fmt="docx",
+            exports_dir=self.root)
+        self.assertIsNotNone(out)
+        self.assertTrue(out.is_file())
+        self.assertEqual(out.suffix, ".docx")
+        self.assertGreater(out.stat().st_size, 0)
+        self.assertEqual(out.parent, self.root)  # landed in the given exports dir
+
+    @unittest.skipUnless(ex.pandoc_path() and ex.pdf_engine_path(), "no pandoc+pdf engine")
+    def test_export_to_file_pdf_real(self):
+        out = ex.export_to_file("# P\n\nbody\n", fmt="pdf", exports_dir=self.root)
+        self.assertIsNotNone(out)
+        self.assertEqual(out.suffix, ".pdf")
+        self.assertGreater(out.stat().st_size, 0)
+
 
 class ExportEndpointTests(unittest.TestCase):
     def setUp(self):
@@ -106,11 +135,36 @@ class ExportEndpointTests(unittest.TestCase):
         r = self.client.post("/api/export", json={"scope": "current_output", "content": "  "})
         self.assertEqual(r.status_code, 400)
 
-    def test_pandoc_formats_deferred_501(self):
-        for fmt in ("docx", "pdf"):
-            r = self.client.post("/api/export", json={"format": fmt, "content": "x"})
-            self.assertEqual(r.status_code, 501)
-            self.assertTrue(json.loads(r.data).get("deferred"))
+    def test_pandoc_deferred_when_incapable(self):
+        # No Pandoc → docx/pdf report deferred (501), never write.
+        import server as _srv
+        _mod = _srv.__dict__  # endpoint imports orchestrator.export lazily
+        from orchestrator import export as _ex
+        orig = _ex.export_capabilities
+        _ex.export_capabilities = lambda: {"pandoc": False, "docx": False, "pdf": False}
+        try:
+            for fmt in ("docx", "pdf"):
+                r = self.client.post("/api/export", json={"format": fmt, "content": "x"})
+                self.assertEqual(r.status_code, 501)
+                self.assertTrue(json.loads(r.data).get("deferred"))
+        finally:
+            _ex.export_capabilities = orig
+
+    def test_docx_converts_when_capable(self):
+        # Capable → the endpoint returns the rendered file path (conversion
+        # stubbed so the test needs neither Pandoc nor the real Exports dir).
+        from orchestrator import export as _ex
+        orig_caps, orig_conv = _ex.export_capabilities, _ex.export_to_file
+        _ex.export_capabilities = lambda: {"pandoc": True, "docx": True, "pdf": True}
+        _ex.export_to_file = lambda content, **k: pathlib.Path(self._tmp.name) / "out.docx"
+        try:
+            r = self.client.post("/api/export", json={"format": "docx", "content": "# X"})
+            self.assertEqual(r.status_code, 200)
+            body = json.loads(r.data)
+            self.assertTrue(body["ok"])
+            self.assertTrue(body["path"].endswith("out.docx"))
+        finally:
+            _ex.export_capabilities, _ex.export_to_file = orig_caps, orig_conv
 
     def test_unknown_format_400(self):
         r = self.client.post("/api/export", json={"format": "rtf", "content": "x"})
