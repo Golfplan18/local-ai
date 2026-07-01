@@ -10447,6 +10447,17 @@ def capability_image_generates():
         _gemini.register(registry)
     except Exception:
         pass
+    # OpenRouter-catalog image models (openrouter:<vendor>/<model> ids).
+    # Registration is catalog-file-based (no network) and MUST happen on
+    # this invoke route, not just on GET /api/capability/providers:
+    # resolve_provider_chain silently skips unregistered ids, so without
+    # this the shipped default chain (and any openrouter:* pick saved in
+    # the Visual pane) collapsed to [local-diffusers] at dispatch time.
+    try:
+        import openrouter_images as _orimg
+        _orimg.register(registry)
+    except Exception:
+        pass
 
     inputs = {"prompt": prompt, "aspect_ratio": aspect_ratio}
     if style:
@@ -12163,6 +12174,16 @@ def capability_video_generates():
         import replicate as _replicate
         registry = _load_registry()
         _replicate.register_replicate_provider(registry)
+        # OpenRouter-catalog video models (openrouter:<vendor>/<model>).
+        # Must register on this invoke route too — the configured chain
+        # (Wan 2.6 → Veo 3.1 Fast) is all openrouter:* ids, and
+        # resolve_provider_chain skips unregistered ids, so without this
+        # the chain collapsed to whatever replicate registered.
+        try:
+            import openrouter_images as _orimg
+            _orimg.register(registry)
+        except Exception:
+            pass
         # Tell the replicate dispatcher which conversation bucket to file
         # the job under (per replicate.set_active_conversation).
         try:
@@ -13349,9 +13370,27 @@ def routing_slots_get():
 
     Consumed by the V3 Settings → Visual tab (OraVisualSlotsPane),
     which only needs the slots block — not the full routing config.
+
+    ``defaults`` carries the SEED config's per-slot chains so the pane
+    can label what an empty slot actually does: since 2026-07-01 the
+    capability registry materializes seed defaults into all-empty slots
+    at load time, so "(no preference)" is really "the shipped default
+    chain", and the pane should say which one.
     """
     cfg = _load_routing_config()
-    return json.dumps({"slots": cfg.get("slots", {})})
+    payload = {"slots": cfg.get("slots", {})}
+    try:
+        with open(rp.seed_path("config", "routing-config.json")) as f:
+            _seed_slots = (json.load(f) or {}).get("slots") or {}
+        payload["defaults"] = {
+            name: {"preferred": c.get("preferred"),
+                   "fallback": c.get("fallback") or []}
+            for name, c in _seed_slots.items()
+            if isinstance(c, dict) and (c.get("preferred") or c.get("fallback"))
+        }
+    except Exception:
+        payload["defaults"] = {}
+    return json.dumps(payload)
 
 
 @app.route("/config/routing/slots", methods=["POST"])

@@ -735,14 +735,74 @@ def load_registry(
         capabilities = json.load(f)
 
     # 2. Load publisher routing-config.json (publisher's preferences).
+    #
+    #    Resolve through runtime_paths like every other reader/writer of
+    #    this file: the Visual pane's /config/routing/slots endpoints and
+    #    boot's chat Router use the runtime overlay
+    #    (data/runtime/config/routing-config.json) when it exists.
+    #    Before 2026-07-01 this hardcoded the SEED config, so capability
+    #    dispatch and the pane read DIFFERENT files — nothing saved in
+    #    the Visual tab ever reached actual image/video routing.
     routing_config = None
-    if routing_config_path is not None or ROUTING_CONFIG_JSON.exists():
-        rc_path = Path(routing_config_path) if routing_config_path else ROUTING_CONFIG_JSON
+    rc_default = ROUTING_CONFIG_JSON
+    if routing_config_path is None:
+        try:
+            from orchestrator import runtime_paths as _rp
+        except ImportError:  # flat import context (orchestrator on sys.path)
+            try:
+                import runtime_paths as _rp  # type: ignore
+            except ImportError:
+                _rp = None
+        if _rp is not None:
+            try:
+                rc_default = _rp.routing_config_path()
+            except Exception:
+                rc_default = ROUTING_CONFIG_JSON
+    if routing_config_path is not None or Path(rc_default).exists():
+        rc_path = Path(routing_config_path) if routing_config_path else Path(rc_default)
         try:
             with open(rc_path) as f:
                 routing_config = json.load(f)
         except Exception:
             routing_config = None
+
+    # 2b. Materialize seed defaults into all-empty slots. An overlay slot
+    #     with preferred=null and fallback=[] (e.g. cleared in the pane,
+    #     or nulled by the pre-2026-07-01 non-hermetic endpoint test)
+    #     used to silently dispatch in provider-registration order —
+    #     an accidental, undocumented chain. Treat "all-empty" as "use
+    #     the shipped default" instead: copy preferred/fallback from the
+    #     seed config so behavior is the documented default chain.
+    #     In-memory only — the overlay file is not rewritten. Applies
+    #     only on DEFAULT path resolution: a caller passing an explicit
+    #     routing_config_path (tests, project sandboxes) controls its
+    #     config completely and gets no seed injection.
+    if (routing_config is not None and routing_config_path is None
+            and ROUTING_CONFIG_JSON.exists()):
+        try:
+            _rc_resolved = Path(rc_default)
+            if _rc_resolved.resolve() != ROUTING_CONFIG_JSON.resolve():
+                with open(ROUTING_CONFIG_JSON) as f:
+                    _seed_slots = (json.load(f) or {}).get("slots") or {}
+                _live_slots = routing_config.setdefault("slots", {})
+                for _name, _seed_cfg in _seed_slots.items():
+                    if not isinstance(_seed_cfg, dict):
+                        continue
+                    if not (_seed_cfg.get("preferred") or _seed_cfg.get("fallback")):
+                        continue  # seed itself has no chain for this slot
+                    _cur = _live_slots.get(_name)
+                    if _cur is None:
+                        _live_slots[_name] = dict(_seed_cfg)
+                    elif (isinstance(_cur, dict)
+                          and not _cur.get("preferred")
+                          and not _cur.get("fallback")
+                          and not _cur.get("inherits")):
+                        _merged = dict(_cur)
+                        _merged["preferred"] = _seed_cfg.get("preferred")
+                        _merged["fallback"] = list(_seed_cfg.get("fallback") or [])
+                        _live_slots[_name] = _merged
+        except Exception:
+            pass  # defaults are best-effort; never block registry load
 
     # 3. Merge project-declared capability_slots (Plugin Convention §12).
     #    Defensive: if project_registry isn't importable for any reason,

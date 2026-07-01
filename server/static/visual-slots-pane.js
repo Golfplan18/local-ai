@@ -44,6 +44,7 @@
 
   var _hostEl = null;
   var _slots = null;        // slots block from /config/routing/slots
+  var _defaults = null;     // seed-config default chains (same endpoint)
   var _providers = null;    // per-slot provider lists from /api/capability/providers
   var _summaries = null;    // slot → one-line summary from capabilities.json
 
@@ -104,6 +105,7 @@
     }
     _hostEl = null;
     _slots = null;
+    _defaults = null;
     _providers = null;
     _summaries = null;
   }
@@ -123,6 +125,7 @@
         .catch(function () { return { slots: {} }; }),
     ]).then(function (resp) {
       _slots = (resp[0] && resp[0].slots) || {};
+      _defaults = (resp[0] && resp[0].defaults) || {};
       _providers = (resp[1] && resp[1].slots) || {};
       _summaries = {};
       var contracts = (resp[2] && resp[2].slots) || {};
@@ -180,7 +183,7 @@
         +   '<label class="ora-vslots-field">'
         +     '<span class="ora-vslots-field-label">Preferred model</span>'
         +     _selectHtml(s.id, 'preferred', cfg.preferred || '',
-                          '(no preference — use fallback chain)')
+                          _emptyOptionLabel(s.id))
         +   '</label>'
         +   '<div class="ora-vslots-field">'
         +     '<span class="ora-vslots-field-label">If unavailable, try in order</span>'
@@ -205,22 +208,28 @@
       +   '<div class="ora-vslots-advanced-title">Advanced routing</div>'
       +   '<div class="ora-vslots-advanced-hint">'
       +     'Specialized image operations. Each one picks its own provider '
-      +     'because not every model supports every operation — these '
-      +     'inherit working defaults, so change them only if you want a '
-      +     'specific capability handled by a specific provider.'
+      +     'because not every model supports every operation — an '
+      +     'unconfigured slot uses the shipped default chain (shown '
+      +     'greyed), so change these only if you want a specific '
+      +     'capability handled by a specific provider.'
       +   '</div>'
       +   rows.map(function (s) {
             var cfg = _slots[s.id] || {};
             var fallback = Array.isArray(cfg.fallback) ? cfg.fallback : [];
             var off = !cfg.preferred && !fallback.length;
+            var defChain = off ? _defaultChainLabel(s.id) : null;
             return ''
               + '<div class="ora-vslots-row" data-adv-row="' + _esc(s.id) + '">'
               +   '<div class="ora-vslots-row-top">'
               +     '<span class="ora-vslots-row-label">' + _esc(s.label) + '</span>'
-              +     _selectHtml(s.id, 'preferred', cfg.preferred || '', '(none)')
+              +     _selectHtml(s.id, 'preferred', cfg.preferred || '', _emptyOptionLabel(s.id))
               +     '<span class="ora-vslots-row-chain">'
               +       (off
-                        ? '<span class="ora-vslots-off">off — no provider set</span>'
+                        ? (defChain
+                            ? '<span class="ora-vslots-default" title="Shipped default — '
+                              + 'applies while this slot is unconfigured. Pick a preferred '
+                              + 'model to override.">default: ' + _esc(defChain) + '</span>'
+                            : '<span class="ora-vslots-off">off — no provider set</span>')
                         : _chainEditorHtml(s.id, cfg.preferred || '', fallback, true))
               +     '</span>'
               +   '</div>'
@@ -232,6 +241,35 @@
           }).join('')
       + '</section>';
     _bindEditors(section);
+  }
+
+  // Short "A → B → C" preview of the seed default chain for a slot;
+  // null when the seed carries no chain. Truncated after three entries
+  // — the preview labels an option / a greyed row, not an editor.
+  function _defaultChainLabel(slotId) {
+    var d = (_defaults || {})[slotId];
+    if (!d) return null;
+    var chain = [];
+    if (d.preferred) chain.push(d.preferred);
+    (d.fallback || []).forEach(function (pid) {
+      if (chain.indexOf(pid) === -1) chain.push(pid);
+    });
+    if (!chain.length) return null;
+    var names = chain.map(_displayName);
+    var extra = names.length > 3 ? ' → …' : '';
+    return names.slice(0, 3).join(' → ') + extra;
+  }
+
+  // The empty <option> must say what empty DOES. Since 2026-07-01 the
+  // capability registry materializes seed defaults into all-empty
+  // slots, so empty = the shipped default chain — never a dead end.
+  // (The old label promised "use fallback chain" even when the chain
+  // was empty, which meant undocumented registration-order dispatch.)
+  function _emptyOptionLabel(slotId) {
+    var chain = _defaultChainLabel(slotId);
+    return chain
+      ? '(system default: ' + chain + ')'
+      : '(not configured — first available provider is used)';
   }
 
   // One <select> for a slot field. Candidates come from the provider

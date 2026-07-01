@@ -43,8 +43,22 @@ const SLOTS = {
   video_generates: { preferred: 'replicate', fallback: [] },
   image_edits: { preferred: 'local-diffusers', fallback: ['replicate'] },
   image_critique: { preferred: null, fallback: [] },
+  image_to_prompt: { preferred: null, fallback: [] },
   style_trains: { preferred: 'ghost-provider', fallback: [] },
   image_extracts: { interactive: 'openrouter:openai/gpt-5', agent: 'x' },
+};
+
+// Seed-config default chains, served alongside the slots block by
+// GET /config/routing/slots since 2026-07-01. image_critique has one
+// (its empty slot renders the greyed default); image_to_prompt does
+// not (its empty slot stays "off — no provider set").
+const DEFAULTS = {
+  image_generates: {
+    preferred: 'openrouter:openai/gpt-5.4-image-2',
+    fallback: ['openrouter:google/gemini-3.1-flash-image-preview',
+               'openrouter:openai/gpt-5-image'],
+  },
+  image_critique: { preferred: 'replicate', fallback: [] },
 };
 
 const PROVIDERS = {
@@ -101,7 +115,10 @@ module.exports = {
         return jsonResponse({ ok: true, router_reloaded: true });
       }
       if (url === '/config/routing/slots') {
-        return jsonResponse({ slots: JSON.parse(JSON.stringify(SLOTS)) });
+        return jsonResponse({
+          slots: JSON.parse(JSON.stringify(SLOTS)),
+          defaults: JSON.parse(JSON.stringify(DEFAULTS)),
+        });
       }
       if (url === '/api/capability/providers') {
         return jsonResponse({ slots: PROVIDERS });
@@ -192,11 +209,29 @@ module.exports = {
              && editsHint.textContent.indexOf('Modify a region') !== -1,
              editsHint && editsHint.textContent);
 
-      // Empty slot reads "off"
+      // Empty slot WITH a seed default renders the greyed default chain
       const critRow = adv.querySelector('[data-adv-row="image_critique"]');
-      record('advanced: empty slot marked off — no provider set',
+      record('advanced: empty slot with seed default shows greyed default chain',
              !!critRow
-             && critRow.textContent.indexOf('off — no provider set') !== -1);
+             && !!critRow.querySelector('.ora-vslots-default')
+             && critRow.textContent.indexOf('default: replicate') !== -1,
+             critRow && critRow.textContent.trim().slice(0, 120));
+
+      // Empty slot WITHOUT a seed default still reads "off"
+      const i2pRow = adv.querySelector('[data-adv-row="image_to_prompt"]');
+      record('advanced: empty slot without seed default marked off',
+             !!i2pRow
+             && i2pRow.textContent.indexOf('off — no provider set') !== -1);
+
+      // Primary empty-option label names the system default chain
+      const prefSelIG = host.querySelector(
+        '[data-slot-card="image_generates"] [data-field="preferred"]');
+      const emptyOpt = prefSelIG && prefSelIG.options[0];
+      record('primary: empty option labels the system default chain',
+             !!emptyOpt
+             && emptyOpt.textContent.indexOf('system default:') !== -1
+             && emptyOpt.textContent.indexOf('GPT-5.4 Image 2') !== -1,
+             emptyOpt && emptyOpt.textContent);
 
       // 5. Stored-but-unregistered provider still renders, tagged
       const ghostSel = host.querySelector(
