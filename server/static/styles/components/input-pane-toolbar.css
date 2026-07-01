@@ -122,3 +122,10 @@
     right: 88px;
   }
 }
+
+/* G1.36 honne/tatemae audience toggle — two icons (globe = external default,
+   person = internal); accent when internal. Theme tokens only. */
+#inputToolbarAudience .input-toolbar-audience-internal { display: none; }
+#inputToolbarAudience.is-audience-internal svg:not(.input-toolbar-audience-internal) { display: none; }
+#inputToolbarAudience.is-audience-internal .input-toolbar-audience-internal { display: block; }
+#inputToolbarAudience.is-audience-internal { color: var(--interactive-accent); }

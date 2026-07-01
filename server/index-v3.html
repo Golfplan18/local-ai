@@ -295,6 +295,7 @@
      before the pickers so commitSelection can write the staged selection.
      All are defer-loaded; ordering follows declaration order. -->
 <script src="/static/js/input-state.js" defer></script>
+<script src="/static/js/style-audience-toggle.js?v=g136-20260701" defer></script>
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
@@ -647,6 +648,25 @@
             <line x1="14" y1="2" x2="14" y2="6"/>
             <line x1="8" y1="10" x2="8" y2="14"/>
             <line x1="16" y1="18" x2="16" y2="22"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarAudience"
+                aria-label="Audience: external (deliverable)"
+                aria-pressed="false"
+                title="External — reads for the world (output style). Click for Internal (interaction style)."
+                data-input-toolbar="audience">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="input-toolbar-audience-internal" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
           </svg>
         </button>
         <button class="input-pane-toolbar__btn" type="button"
@@ -1573,6 +1593,13 @@
       const lens = window.OraInputState.getAnalysisLens();
       if (lens && lens.id) body.append('manual_lens_selection', lens.id);
     }
+    // G1.36 honne/tatemae — mark this turn internal so it reads in the project's
+    // interaction style (default external uses the output style).
+    try {
+      if (window.OraStyleAudience && window.OraStyleAudience.get() === 'internal') {
+        body.append('style_audience', 'internal');
+      }
+    } catch (e) {}
 
     // V3 Phase 7.2 — include canvas content if any. captureFromPanel
     // returns null when the userInputLayer has no shapes, in which case
