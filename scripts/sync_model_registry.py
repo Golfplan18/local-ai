@@ -2170,12 +2170,15 @@ def cmd_sync(args) -> int:
         )
         _run_probe(args, mode="unverified_positive")
 
-    # Reachability probe — opt-in. Costs ~15 minutes and a few cents of
-    # API tokens against the full 358-chat-model catalog, so it doesn't
-    # run on every sync. The user invokes it via the Models pane button
-    # (or `python scripts/sync_model_registry.py reach`) when they want
-    # to re-verify which models actually respond. Verdicts persist
-    # between runs via the field-preservation logic in `_build_registry`.
+    # Reachability probe — opt-in ON THIS CLI PATH (--with-reach).
+    # Costs ~15 minutes and a few cents of API tokens against the full
+    # chat catalog, so the sync subcommand doesn't run it by itself.
+    # Note the server refreshes with `sync --no-probe` and then spawns
+    # the `reach` subcommand separately after every successful refresh
+    # (server.py::_spawn_reach_probe) — so on a running Ora install the
+    # probe IS automatic; --with-reach and the pane's re-verify buttons
+    # are for forcing it. Verdicts persist between runs via the
+    # field-preservation logic in `_build_registry`.
     if getattr(args, "with_reach", False):
         with open(REGISTRY_PATH) as f:
             registry = json.load(f)

@@ -2707,11 +2707,16 @@
 
   // ── Maintenance section (bottom of pane) ─────────────────────────────
   //
-  // Houses the manual reachability-probe trigger. The probe is opt-in
-  // because it costs ~15 minutes of wall time and a few cents of
-  // OpenRouter tokens. Surfaces the prior probe's date + per-verdict
-  // counts so the user knows the freshness picture before deciding
-  // whether to re-run.
+  // Registry-health diagnostics + the manual reachability-probe
+  // triggers. Probes run AUTOMATICALLY after every registry refresh
+  // (server-side kick since 2026-06-11: never-probed models + verdicts
+  // older than 7 days); the buttons exist to force an immediate
+  // re-check — e.g. picks failing, a deprecation announcement, or a
+  // freshly-added vendor key. Verdict counts come from the server's
+  // reach_counts block (the probe's actual read/write target, the BASE
+  // registry) — counting the served inventory instead under-reports,
+  // because direct-dispatch/local/subscription entries get reachable
+  // synthesized to true at serve time.
 
   // Benchmark-data provenance line (lives here with the other
   // registry-health diagnostics; used to be a cryptic "AA: SCRAPE"
@@ -2758,41 +2763,51 @@
     var section = _hostEl.querySelector('[data-section="maintenance"]');
     if (!section) return;
 
-    // Walk the registry once to compute reach + vendor verdict counts.
-    var models = (_registry && _registry.models) || {};
-    var counts = {
-      total: 0, reach_true: 0, reach_rate: 0,
-      reach_false: 0, reach_null: 0,
-      vendor_true: 0, vendor_false: 0, vendor_null: 0,
-      last_probe: null,
-    };
-    Object.values(models).forEach(function (m) {
-      var cat = (m && m.category) || 'chat';
-      if (cat !== 'chat') return;
-      counts.total += 1;
-      if (m.reachable === true) {
-        counts.reach_true += 1;
-        if (m.reachable_rate_limited) counts.reach_rate += 1;
-      } else if (m.reachable === false) {
-        counts.reach_false += 1;
-      } else {
-        counts.reach_null += 1;
-      }
-      if (m.vendor_listed === true) counts.vendor_true += 1;
-      else if (m.vendor_listed === false) counts.vendor_false += 1;
-      else counts.vendor_null += 1;
-      var d = m.reachable_probed_at;
-      if (d && (!counts.last_probe || d > counts.last_probe)) counts.last_probe = d;
-    });
+    // Prefer the server-computed base-registry counts; fall back to
+    // walking the served inventory for pre-reach_counts payloads (the
+    // fallback over-counts reachable — see the section comment above).
+    var counts = (_registry && _registry.reach_counts) || null;
+    if (!counts) {
+      var models = (_registry && _registry.models) || {};
+      counts = {
+        total: 0, reach_true: 0, reach_rate: 0,
+        reach_false: 0, reach_null: 0,
+        vendor_true: 0, vendor_false: 0, vendor_null: 0,
+        newest_probed_at: null,
+      };
+      Object.values(models).forEach(function (m) {
+        var cat = (m && m.category) || 'chat';
+        if (cat !== 'chat') return;
+        counts.total += 1;
+        if (m.reachable === true) {
+          counts.reach_true += 1;
+          if (m.reachable_rate_limited) counts.reach_rate += 1;
+        } else if (m.reachable === false) {
+          counts.reach_false += 1;
+        } else {
+          counts.reach_null += 1;
+        }
+        if (m.vendor_listed === true) counts.vendor_true += 1;
+        else if (m.vendor_listed === false) counts.vendor_false += 1;
+        else counts.vendor_null += 1;
+        var d = m.reachable_probed_at;
+        if (d && (!counts.newest_probed_at || d > counts.newest_probed_at)) {
+          counts.newest_probed_at = d;
+        }
+      });
+    }
 
-    var lastProbeStr = counts.last_probe
-      ? counts.last_probe.slice(0, 10)
+    // "Newest verdict", not "Last full probe" — this is the max
+    // per-model probed_at, and partial probes (new-models-only) move it
+    // just as much as a full re-verify does.
+    var newestStr = counts.newest_probed_at
+      ? counts.newest_probed_at.slice(0, 10)
       : 'never run';
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
-      +   '<h3>Reachability probe</h3>'
+      +   '<h3>Model health checks</h3>'
       +   '<span class="ora-models-section-hint">'
-      +     'Last full probe: <strong>' + _esc(lastProbeStr) + '</strong>'
+      +     'Newest verdict: <strong>' + _esc(newestStr) + '</strong>'
       +   '</span>'
       + '</header>'
       + '<div class="ora-models-maintenance-body">'
@@ -2828,25 +2843,35 @@
       +     '<strong>Time:</strong> ~15 minutes (1–3s per model). Runs in the '
       +     'background; you can keep using Ora during the probe.'
       +     '<br><br>'
-      +     'Re-run if your auto-populated picks have started failing, if '
-      +     'OpenRouter announces a model deprecation, or if you want to verify '
-      +     'a freshly-added vendor key.'
+      +     '<strong>Probes run automatically</strong> after every registry '
+      +     'refresh (models never probed or with verdicts older than 7 '
+      +     'days). Use the buttons only to force an immediate re-check — '
+      +     'picks failing at runtime, an OpenRouter deprecation '
+      +     'announcement, or a freshly-added vendor key.'
       +   '</p>'
       +   '<div class="ora-models-maintenance-actions">'
       +     '<button type="button" class="ora-models-card-btn ora-models-card-btn-primary"'
       +       ' data-action="reach-probe-start">'
-      +       'Probe ' + counts.total + ' models</button>'
-      +     '<button type="button" class="ora-models-card-btn"'
-      +       ' data-action="reach-probe-only-unknown">'
-      +       'Probe ' + counts.reach_null + ' unverified only</button>'
+      +       'Re-verify all ' + counts.total + ' models (~15 min · ~$0.05–$0.20)</button>'
+      // Zero new models → nothing for the button to do; hide it rather
+      // than render "Verify 0 …".
+      +     (counts.reach_null > 0
+        ? '<button type="button" class="ora-models-card-btn"'
+          + ' data-action="reach-probe-only-unknown">'
+          + 'Verify ' + counts.reach_null + ' new model'
+          + (counts.reach_null === 1 ? '' : 's') + ' (fast · pennies)</button>'
+        : '')
       +     '<span class="ora-models-maintenance-status" data-role="reach-status"></span>'
       +   '</div>'
       + '</div>';
 
     section.querySelector('[data-action="reach-probe-start"]')
       .addEventListener('click', function () { _startReachProbe({revalidate: true}); });
-    section.querySelector('[data-action="reach-probe-only-unknown"]')
-      .addEventListener('click', function () { _startReachProbe({only_unknown: true}); });
+    var onlyUnknownBtn = section.querySelector('[data-action="reach-probe-only-unknown"]');
+    if (onlyUnknownBtn) {
+      onlyUnknownBtn
+        .addEventListener('click', function () { _startReachProbe({only_unknown: true}); });
+    }
 
     // If a probe is already running (started in a prior pane open),
     // resume polling now so the user sees status immediately.
@@ -2911,6 +2936,18 @@
         if (btnAll) btnAll.disabled = true;
         if (btnUnk) btnUnk.disabled = true;
         _pollReachStatus();
+        return;
+      }
+      // Surface a failed prior probe on pane open — errors used to be
+      // visible only while the pane happened to be polling, so a probe
+      // that died (e.g. key not resolvable in the subprocess) looked
+      // identical to one that never ran.
+      var summary = s.last_summary || {};
+      if (summary.error) {
+        _setReachStatus('Last probe failed: ' + summary.error);
+      } else if (summary.returncode !== undefined && summary.returncode !== 0) {
+        _setReachStatus('Last probe exited with code ' + summary.returncode
+          + ' — check server logs.');
       }
     });
   }

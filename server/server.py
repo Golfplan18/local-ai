@@ -12270,9 +12270,11 @@ def models_endpoint():
 # (intelligence scores, latency, TPS, vision flags) via these endpoints
 # instead of going to OpenRouter / LiteLLM / Chatbot Arena / AA directly.
 # Refresh runs `sync_model_registry.py sync --no-probe`: 4 HTTP fetches,
-# ~15-30 seconds wall-time, zero tokens. The probe layer (which DOES
-# burn tokens) is excluded from the on-pane refresh — it stays a
-# maintainer action.
+# ~15-30 seconds wall-time, zero tokens. The reach probe (which DOES
+# burn tokens) is not part of the sync subprocess itself — the refresh
+# endpoint spawns it separately at the end of every successful refresh
+# (_spawn_reach_probe with defaults: never-probed models + verdicts
+# older than 7 days), since 2026-06-11's probe-gated picks.
 #
 # A 5-minute TTL guard short-circuits re-syncs when the registry was
 # recently refreshed (multiple pane opens in quick succession shouldn't
@@ -12287,8 +12289,9 @@ _registry_refresh_state = {
 }
 _registry_refresh_lock = threading.Lock()
 
-# Reach-probe state. Separate from the refresh state because it runs
-# on its own opt-in cadence (the Models pane's "Probe reachability" button).
+# Reach-probe state. Separate from the refresh state because probes run
+# on their own cadence: auto-kicked after every registry refresh, plus
+# the Models pane's manual re-verify buttons.
 # Holds progress so the UI can show a status indicator while a probe runs.
 _reach_probe_state = {
     "in_progress": False,
@@ -12345,6 +12348,43 @@ def model_registry_get():
         for _mid, _m in (registry.get("models") or {}).items()
         if isinstance(_m, dict) and _m.get("or_ttft_ms") is not None
     }
+
+    # Probe/audit verdict counts from the BASE registry — the reach
+    # probe's actual read/write target (`sync_model_registry.py reach`
+    # selects targets and flushes verdicts against it). The served
+    # inventory built below synthesizes reachable=True onto
+    # direct-dispatch / local / subscription entries, so counting THAT
+    # under-reports unverified models: the pane once showed
+    # "UNVERIFIED 0" while the base registry held 11 null verdicts, and
+    # its "Probe 0 unverified only" button would really have probed 11.
+    _reach_counts = {
+        "total": 0, "reach_true": 0, "reach_rate": 0,
+        "reach_false": 0, "reach_null": 0,
+        "vendor_true": 0, "vendor_false": 0, "vendor_null": 0,
+        "newest_probed_at": None,
+    }
+    for _m in (registry.get("models") or {}).values():
+        if not isinstance(_m, dict) or (_m.get("category") or "chat") != "chat":
+            continue
+        _reach_counts["total"] += 1
+        if _m.get("reachable") is True:
+            _reach_counts["reach_true"] += 1
+            if _m.get("reachable_rate_limited"):
+                _reach_counts["reach_rate"] += 1
+        elif _m.get("reachable") is False:
+            _reach_counts["reach_false"] += 1
+        else:
+            _reach_counts["reach_null"] += 1
+        if _m.get("vendor_listed") is True:
+            _reach_counts["vendor_true"] += 1
+        elif _m.get("vendor_listed") is False:
+            _reach_counts["vendor_false"] += 1
+        else:
+            _reach_counts["vendor_null"] += 1
+        _d = _m.get("reachable_probed_at")
+        if _d and (not _reach_counts["newest_probed_at"]
+                   or _d > _reach_counts["newest_probed_at"]):
+            _reach_counts["newest_probed_at"] = _d
 
     # Vendor-catalogue-authoritative inventory (flag-gated, default off): when on
     # and the preview registry exists, serve each keyed vendor's OWN catalogue
@@ -12649,6 +12689,9 @@ def model_registry_get():
         "generated_at": registry.get("generated_at"),
         "last_probe_at": registry.get("last_probe_at"),
         "aa_source": registry.get("aa_source"),
+        # Base-registry probe/audit counts for the maintenance section
+        # (see the comment where _reach_counts is computed).
+        "reach_counts": _reach_counts,
         "stats": stats,
     })
 
