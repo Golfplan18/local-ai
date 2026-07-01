@@ -88,17 +88,17 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 - Each task runs independently. A task failure is logged but does not halt subsequent tasks.
 - All tasks log to `~/ora/logs/maintenance-YYYY-MM-DD.log`.
 - Alert summary generated at end of each run.
-- Callable from shell (`run-maintenance.sh weekly|monthly`) and from Python.
+- Callable from Python (`orchestrator/tools/periodic_maintenance.py`), and scheduled automatically.
 
-## Cron Schedule
+## Scheduling
 
-```
-# Weekly: Sunday 2 AM
-0 2 * * 0 /Users/oracle/ora/scripts/run-maintenance.sh weekly >> /Users/oracle/ora/logs/maintenance-cron.log 2>&1
-
-# Monthly: 1st of month 3 AM
-0 3 1 * * /Users/oracle/ora/scripts/run-maintenance.sh monthly >> /Users/oracle/ora/logs/maintenance-cron.log 2>&1
-```
+Cadences are governed by `orchestrator/maintenance_scheduler.py`, which runs
+from the oversight daemon (hourly check, `ORA_MAINTENANCE_SCHEDULER_SEC`). The
+control surface is the vault doc `Reference — Ora Periodic Maintenance.md` —
+its frontmatter `maintenance:` block sets each task to
+`daily`/`weekly`/`monthly`/`off` and is re-read on every check, so edits take
+effect without a restart. (The original cron runner,
+`scripts/run-maintenance.sh`, was never installed and has been removed.)
 
 ## Dependencies
 
