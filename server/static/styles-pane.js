@@ -388,9 +388,15 @@
   }
 
   // The demeanor "fingerprint" at the bottom of the card: all seven axis values,
-  // right-justified three-over-four (no lossy 2-axis summary). Each value carries
-  // its axis name on hover. On a custom card the block opens "more" to edit, and
-  // a "conversational" link opens the side popout for the gears-1-2 override.
+  // right-justified three-over-four (no lossy 2-axis summary), labeled
+  // "written demeanor". Two lines below it, EVERY card carries a
+  // "chat demeanor (gears 1–2)" entry so the gear-1/2 rule is visible on
+  // presets too (it used to appear only after customizing, which read as
+  // if presets had some other hidden default): presets and un-overridden
+  // customs show "same as written"; a custom with an override lists the
+  // changed axes. On customs the entry is the click target that opens the
+  // override popout. Each value carries its axis name on hover; a custom
+  // card's block opens "more" to edit.
   function _demeanorFPHTML(p, isCustom) {
     var order = _axisOrder();
     var picks = p.demeanor || {};
@@ -402,21 +408,47 @@
       return '<span class="ora-styles-fp-vals">'
         + ids.map(val).join('<span class="ora-styles-fp-sep">·</span>') + '</span>';
     }
+    var conv = (p.conversational && p.conversational.demeanor) || {};
+    var overridden = order.filter(function (ax) {
+      return conv[ax] != null && conv[ax] !== picks[ax];
+    });
     var hasConv = !!(p.conversational && (p.conversational.demeanor || p.conversational.devices));
-    // Compact: the "demeanor" label shares the first row with the first three
-    // values; the "conversational" link (custom only) sits at the left of row 2.
-    var lead = isCustom
+
+    var presetTip = 'Quick chat replies (gears 1–2) use this same demeanor; '
+      + 'arrangement, elaboration and glossary apply only to produced '
+      + 'output (gears 3–4). Customize the preset to set a separate '
+      + 'chat demeanor.';
+    var customTip = 'Set a different demeanor for quick chat replies '
+      + '(gears 1–2). Unset axes inherit the written demeanor.';
+
+    // Label line: a button on customs (opens the override popout), a
+    // tooltip-bearing span on presets.
+    var chatLabel = isCustom
       ? '<button type="button" class="ora-styles-conv-link' + (hasConv ? ' ora-styles-conv-set' : '') + '"'
         + ' data-action="conv" data-id="' + _esc(p.id) + '"'
-        + ' title="Set a different demeanor for quick chat replies (gears 1-2).">'
-        + 'conversational' + (hasConv ? ' •' : ' …') + '</button>'
-      : '<span></span>';
+        + ' title="' + _esc(customTip) + '">'
+        + 'chat demeanor (gears 1–2)' + (hasConv ? ' •' : '') + '</button>'
+      : '<span class="ora-styles-fp-label" title="' + _esc(presetTip) + '">'
+        + 'chat demeanor (gears 1–2)</span>';
+
+    // Value line: the override diff when one is set, else the rule.
+    var chatValue = overridden.length
+      ? overridden.map(function (ax) {
+          return '<span class="ora-styles-fp-val" title="' + _esc(ax) + '">'
+            + _esc(ax) + ': ' + _esc(conv[ax]) + '</span>';
+        }).join('<span class="ora-styles-fp-sep">·</span>')
+      : '<span class="ora-styles-fp-same">same as written</span>';
+
     var editAttr = isCustom ? ' data-action="more" data-id="' + _esc(p.id) + '"' : '';
     return '<div class="ora-styles-fp' + (isCustom ? ' ora-styles-fp-editable' : '') + '"' + editAttr + '>'
       + '<div class="ora-styles-fp-row">'
-      +   '<span class="ora-styles-fp-label">demeanor</span>' + vals(order.slice(0, 3))
+      +   '<span class="ora-styles-fp-label">written demeanor</span>' + vals(order.slice(0, 3))
       + '</div>'
-      + '<div class="ora-styles-fp-row ora-styles-fp-row2">' + lead + vals(order.slice(3, 7)) + '</div>'
+      + '<div class="ora-styles-fp-row ora-styles-fp-row2"><span></span>' + vals(order.slice(3, 7)) + '</div>'
+      + '<div class="ora-styles-fp-row ora-styles-fp-chat">' + chatLabel + '</div>'
+      + '<div class="ora-styles-fp-row ora-styles-fp-chat-val">'
+      +   '<span></span><span class="ora-styles-fp-vals">' + chatValue + '</span>'
+      + '</div>'
       + '</div>';
   }
 
@@ -447,14 +479,14 @@
     }).join('');
     return ''
       + '<div class="ora-styles-popout-backdrop" data-action="conv-close"></div>'
-      + '<aside class="ora-styles-popout" role="dialog" aria-label="Conversational demeanor">'
+      + '<aside class="ora-styles-popout" role="dialog" aria-label="Chat demeanor (gears 1–2)">'
       +   '<header class="ora-styles-popout-head">'
-      +     '<span class="ora-styles-popout-title">Conversational demeanor — ' + _esc(p.display_name) + '</span>'
+      +     '<span class="ora-styles-popout-title">Chat demeanor (gears 1–2) — ' + _esc(p.display_name) + '</span>'
       +     '<button type="button" class="ora-styles-popout-x" data-action="conv-close">×</button>'
       +   '</header>'
       +   '<p class="ora-styles-popout-note">Used only for quick chat replies (gears 1–2). '
       +     'Unset axes inherit the written demeanor; a dot marks the ones you\'ve changed. '
-      +     'Nothing else about conversational differs from written.</p>'
+      +     'Nothing else about chat replies differs from written output.</p>'
       +   rows
       +   '<div class="ora-styles-popout-actions">'
       +     (hasConv ? '<button type="button" class="ora-styles-link" data-action="conv-reset" data-id="'

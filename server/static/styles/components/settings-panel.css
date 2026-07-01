@@ -3436,6 +3436,16 @@ a.ora-settings-apikey-label:hover {
 .ora-styles-fp-sep { color: var(--text-muted, #A89F8A); margin: 0 5px; }
 .ora-styles-conv-dot { color: var(--color-active, #5FA86E); }
 
+/* "chat demeanor (gears 1–2)" entry — two lines below written demeanor */
+.ora-styles-fp-chat { margin-top: 4px; }
+.ora-styles-fp-chat .ora-styles-fp-label { cursor: help; }
+.ora-styles-fp-chat-val .ora-styles-fp-vals { font-size: 11px; }
+.ora-styles-fp-same {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted, #A89F8A);
+}
+
 /* ── conversational-override side popout ── */
 .ora-styles-popout-backdrop {
   position: fixed;
