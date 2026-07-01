@@ -100,12 +100,13 @@ DEFAULTS: dict = {
     "styles": {
         # Output Style framework. default_id is the account-wide default
         # Output Style profile id ("" = no style; a one-off /style overrides
-        # it per turn). The two toggles are the global modifiers shown on the
-        # Output Styles tab (use_custom_values wires in with mind.md onboarding;
-        # adapt_to_context with situational register deltas).
-        "default_id": "",
+        # it per turn). Ships defaulting to "explainer" so output is styled out
+        # of the box. use_custom_values is the global modifier shown on the
+        # Output Styles tab (wires in with mind.md onboarding). Register is
+        # determined by the pipeline path (conversational at gears 1-2, written
+        # at gears 3-4), not a stored toggle.
+        "default_id": "explainer",
         "use_custom_values": False,
-        "adapt_to_context": True,
     },
 }
 
@@ -275,9 +276,8 @@ def _validate_updates(updates: dict) -> None:
     st = updates.get("styles") or {}
     if "default_id" in st and not isinstance(st["default_id"], str):
         raise SettingsError("styles.default_id must be a string ('' = none)")
-    for _flag in ("use_custom_values", "adapt_to_context"):
-        if _flag in st and not isinstance(st[_flag], bool):
-            raise SettingsError(f"styles.{_flag} must be a boolean")
+    if "use_custom_values" in st and not isinstance(st["use_custom_values"], bool):
+        raise SettingsError("styles.use_custom_values must be a boolean")
 
 
 # ── API key handling (keyring) ──────────────────────────────────────────────

@@ -404,7 +404,8 @@
            the list; Model configuration is a setting, anchored as a bottom
            footer (order:1 pushes only it below the flex:1 accordion). */
         .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
-        .sidebar-modelconfig-section {
+        .sidebar-modelconfig-section,
+        .sidebar-outputstyle-section {
           order: 1;
           border-top: 1px solid var(--background-modifier-border);
           margin-top: 6px; padding-top: 8px;
@@ -486,6 +487,17 @@
             <span class="plus-glyph">+</span><span>New project</span>
           </button>
         </div>
+      </div>
+      <!-- Both this and Model configuration are order:1, so they sit below the
+           flex:1 accordion (Automated Processes is its last section). Output
+           style is first in DOM, so it renders directly above Model config. -->
+      <div class="sidebar-fixed-section sidebar-outputstyle-section">
+        <div class="sidebar-group-label">Output style</div>
+        <button class="sidebar-modelconfig-current" id="sidebarOutputStyleBtn" type="button"
+                title="Configure output style">
+          <span class="sidebar-modelconfig-name" id="sidebarOutputStyleName">—</span>
+          <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
+        </button>
       </div>
       <div class="sidebar-fixed-section sidebar-modelconfig-section">
         <div class="sidebar-group-label">Model configuration</div>

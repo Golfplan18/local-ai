@@ -55,6 +55,8 @@
   const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
   const modelConfigBtn  = sidebar.querySelector('#sidebarModelConfigBtn');
   const modelConfigName = sidebar.querySelector('#sidebarModelConfigName');
+  const outputStyleBtn  = sidebar.querySelector('#sidebarOutputStyleBtn');
+  const outputStyleName = sidebar.querySelector('#sidebarOutputStyleName');
 
   const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
   let activeProjectId = 'general';
@@ -1126,10 +1128,35 @@
   if (modelConfigBtn) modelConfigBtn.addEventListener('click', () => {
     try {
       const sp = window.OraSettingsPanel;
-      if (sp && typeof sp.open === 'function') sp.open('models');
+      if (sp && typeof sp.open === 'function') sp.open({ tab: 'models' });
     } catch (e) {}
   });
   fetchModelConfig();
+
+  // ── Output-style section — mirrors model configuration. Shows the active
+  // Output Style; clicking opens Settings → Output Styles. ────────────────
+  const fetchOutputStyle = async () => {
+    try {
+      const r = await fetch('/api/styles/registry');
+      if (!r.ok) return;
+      const d = await r.json();
+      const id = d && d.settings && d.settings.default_id;
+      let name = 'None';
+      if (id) {
+        const all = (d.profiles || []).concat(d.custom || []);
+        const p = all.find(x => x && x.id === id);
+        name = p ? p.display_name : id;
+      }
+      if (outputStyleName) outputStyleName.textContent = name;
+    } catch (e) {}
+  };
+  if (outputStyleBtn) outputStyleBtn.addEventListener('click', () => {
+    try {
+      const sp = window.OraSettingsPanel;
+      if (sp && typeof sp.open === 'function') sp.open({ tab: 'styles' });
+    } catch (e) {}
+  });
+  fetchOutputStyle();
 
   // ── Polling ─────────────────────────────────────────────────────────
   fetchList();

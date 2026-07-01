@@ -3052,13 +3052,15 @@ a.ora-settings-apikey-label:hover {
 
 /* slot rows: label left, value right-justified */
 .ora-styles-card-slots { display: flex; flex-direction: column; }
+/* A divider under each row separates the items (arrangement / elaboration /
+   demeanor) so the card reads as a compact list. */
 .ora-styles-slot {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding: 2px 0;
-  border-radius: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
 }
 .ora-styles-slot-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
 .ora-styles-slot-value {
@@ -3066,7 +3068,7 @@ a.ora-settings-apikey-label:hover {
   color: var(--text-normal, #E8E0CC);
   text-align: right;
 }
-.ora-styles-slot-editable { cursor: pointer; margin: 0 -6px; padding: 2px 6px; }
+.ora-styles-slot-editable { cursor: pointer; margin: 0 -6px; padding: 4px 6px; }
 .ora-styles-slot-editable:hover { background: var(--interactive-hover, #2A2218); }
 .ora-styles-slot-editable .ora-styles-slot-value { color: var(--link-color, #A48055); }
 .ora-styles-slot-picking { background: var(--interactive-hover, #2A2218); }
@@ -3309,21 +3311,24 @@ a.ora-settings-apikey-label:hover {
 }
 
 /* ── demeanor fingerprint (bottom of card: all seven, 3-over-4, right-just) ── */
-.ora-styles-fp {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--background-modifier-border, #3A3022);
-}
+/* Demeanor block: the label shares row 1 with the first three values (no wasted
+   label-only row); the remaining four are right-justified on row 2. */
+.ora-styles-fp { padding-top: 4px; }
 .ora-styles-fp-editable { cursor: pointer; }
-.ora-styles-fp-editable:hover { border-top-color: var(--link-color, #A48055); }
-.ora-styles-fp-head {
+.ora-styles-fp-editable:hover .ora-styles-fp-label { color: var(--link-color, #A48055); }
+.ora-styles-fp-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 3px;
+  gap: 10px;
+  line-height: 1.5;
 }
 .ora-styles-fp-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-fp-vals {
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+  text-align: right;
+}
 .ora-styles-conv-link {
   background: none;
   border: none;
@@ -3331,15 +3336,10 @@ a.ora-settings-apikey-label:hover {
   font-size: 11px;
   color: var(--link-color, #A48055);
   cursor: pointer;
+  white-space: nowrap;
 }
 .ora-styles-conv-link:hover { text-decoration: underline; }
 .ora-styles-conv-set { color: var(--color-active, #5FA86E); }
-.ora-styles-fp-line {
-  text-align: right;
-  font-size: 12px;
-  color: var(--text-normal, #E8E0CC);
-  line-height: 1.5;
-}
 .ora-styles-fp-val { color: var(--text-normal, #E8E0CC); }
 .ora-styles-fp-sep { color: var(--text-muted, #A89F8A); margin: 0 5px; }
 .ora-styles-conv-dot { color: var(--color-active, #5FA86E); }
