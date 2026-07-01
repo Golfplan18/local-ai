@@ -823,6 +823,23 @@ class Router:
         if config_name is not None:
             return config_name
         if context == "interactive":
+            # G1.35×G1.33 — the active project's default model profile (if set
+            # and resolvable) overrides the account-wide active configuration:
+            # per the plan §1.3 inheritance, a project default is "closer" than
+            # the global default, but a per-run config_name (handled above) still
+            # wins over both. Best-effort; never breaks chat.
+            try:
+                from orchestrator import active_project as _ap
+                from orchestrator import project_meta as _pm
+                nexus = _ap.get_active_project()
+                if nexus and nexus.lower() != "general":
+                    rec = _pm.read_project_meta(nexus)
+                    prof = (rec or {}).get("default_model_profile")
+                    if (isinstance(prof, str) and prof.strip()
+                            and self._load_configuration(prof.strip()) is not None):
+                        return prof.strip()
+            except Exception:
+                pass
             try:
                 from orchestrator import active_configuration as ac
                 return ac.get_active_name()
