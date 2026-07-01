@@ -20,16 +20,6 @@ def test_elaboration_label():
     assert sa.elaboration_label(None) == "balanced"   # defaults to 3
 
 
-def test_demeanor_summary():
-    reg = sa.load_registry()
-    s = sa.demeanor_summary(reg["business"])
-    assert s and s != "neutral"                       # business is marked
-    parts = s.split(" · ")
-    assert 1 <= len(parts) <= 2
-    neutral = {"demeanor": {a: sa.RUNGS[a][1] for a in sa.AXIS_ORDER}}
-    assert sa.demeanor_summary(neutral) == "neutral"
-
-
 def test_compose_merges_custom_entry():
     custom = {"mine": {
         "display_name": "Mine", "arrangement": "answer-first",

@@ -223,15 +223,15 @@
       + '</div>';
   }
 
-  // One headline slot row. ``slot`` is the display label; ``field`` is the logical
-  // field. Custom cards make arrange/elabor/register single-pick (inline list);
-  // demeanor opens the "more" editor (seven axes). Presets are read-only.
+  // One headline slot row (arrangement / elaboration). ``slot`` is the display
+  // label; ``field`` the logical field. Custom cards single-pick from an inline
+  // list; presets are read-only. (Demeanor is its own bottom block; register is
+  // determined by the pipeline path, not a slot.)
   function _slotHTML(p, slot, field, value, isCustom) {
     var key = p.id + '::' + field;
-    var act = '';
-    if (isCustom) act = (field === 'demeanor')
-      ? ' data-action="more" data-id="' + _esc(p.id) + '"'
-      : ' data-action="edit-slot" data-id="' + _esc(p.id) + '" data-slot="' + _esc(field) + '"';
+    var act = isCustom
+      ? ' data-action="edit-slot" data-id="' + _esc(p.id) + '" data-slot="' + _esc(field) + '"'
+      : '';
     var picking = (_editingSlot === key);
     var row = ''
       + '<div class="ora-styles-slot' + (isCustom ? ' ora-styles-slot-editable' : '')
@@ -239,22 +239,20 @@
       +   '<span class="ora-styles-slot-label">' + _esc(slot) + '</span>'
       +   '<span class="ora-styles-slot-value">' + _esc(value || '—') + '</span>'
       + '</div>';
-    if (picking && field !== 'demeanor') row += _pickerHTML(p, field);
+    if (picking) row += _pickerHTML(p, field);
     return row;
   }
 
-  // Inline option list for a single-pick slot (arrangement / register / elaboration).
+  // Inline option list for a single-pick slot (arrangement / elaboration).
   function _pickerHTML(p, field) {
     var lib = (_data && _data.library) || {};
     var opts = [];
     if (field === 'arrangement') {
       opts = (lib.schemas || []).map(function (s) { return { value: s.id, label: s.label || s.id }; });
-    } else if (field === 'register') {
-      opts = (lib.registers || []).map(function (r) { return { value: r.id, label: r.label || r.id }; });
     } else if (field === 'elaboration') {
       opts = (lib.elaboration_scale || []).map(function (e) { return { value: e.value, label: e.label }; });
     }
-    var cur = (field === 'register') ? p.register : p[field];
+    var cur = p[field];
     var items = opts.map(function (o) {
       var on = (String(o.value) === String(cur));
       return '<button type="button" class="ora-styles-opt' + (on ? ' ora-styles-opt-on' : '') + '"'
@@ -281,22 +279,25 @@
       return '<span class="ora-styles-fp-val" title="' + _esc(axis) + '">'
         + _esc(picks[axis] || '—') + '</span>';
     }
-    function line(ids) {
-      return '<div class="ora-styles-fp-line">'
-        + ids.map(val).join('<span class="ora-styles-fp-sep">·</span>') + '</div>';
+    function vals(ids) {
+      return '<span class="ora-styles-fp-vals">'
+        + ids.map(val).join('<span class="ora-styles-fp-sep">·</span>') + '</span>';
     }
     var hasConv = !!(p.conversational && (p.conversational.demeanor || p.conversational.devices));
-    var conv = isCustom
+    // Compact: the "demeanor" label shares the first row with the first three
+    // values; the "conversational" link (custom only) sits at the left of row 2.
+    var lead = isCustom
       ? '<button type="button" class="ora-styles-conv-link' + (hasConv ? ' ora-styles-conv-set' : '') + '"'
         + ' data-action="conv" data-id="' + _esc(p.id) + '"'
         + ' title="Set a different demeanor for quick chat replies (gears 1-2).">'
         + 'conversational' + (hasConv ? ' •' : ' …') + '</button>'
-      : '';
+      : '<span></span>';
     var editAttr = isCustom ? ' data-action="more" data-id="' + _esc(p.id) + '"' : '';
     return '<div class="ora-styles-fp' + (isCustom ? ' ora-styles-fp-editable' : '') + '"' + editAttr + '>'
-      + '<div class="ora-styles-fp-head"><span class="ora-styles-fp-label">demeanor</span>' + conv + '</div>'
-      + line(order.slice(0, 3))
-      + line(order.slice(3, 7))
+      + '<div class="ora-styles-fp-row">'
+      +   '<span class="ora-styles-fp-label">demeanor</span>' + vals(order.slice(0, 3))
+      + '</div>'
+      + '<div class="ora-styles-fp-row ora-styles-fp-row2">' + lead + vals(order.slice(3, 7)) + '</div>'
       + '</div>';
   }
 
@@ -613,7 +614,6 @@
   function _pickSlot(id, field, value) {
     var patch = {};
     if (field === 'arrangement') patch.arrangement = value;
-    else if (field === 'register') patch.register_default = value;
     else if (field === 'elaboration') patch.elaboration = parseInt(value, 10);
     _editingSlot = null;
     _status('Saving…');

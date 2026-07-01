@@ -145,25 +145,6 @@ def elaboration_label(n):
     return ELABORATION_LABELS.get(max(1, min(5, n)), "balanced")
 
 
-def demeanor_summary(entry, max_terms=2):
-    """A one-glance label for the demeanor slot: the rung words of the one or two
-    axes furthest from neutral (e.g. ``warm · affirming``). ``neutral`` when every
-    axis sits on its middle rung. The card's "more" view shows all seven."""
-    picks = (entry or {}).get("demeanor") or {}
-    marked = []
-    for axis in AXIS_ORDER:
-        order = RUNGS.get(axis, [])
-        rung = picks.get(axis)
-        if not order or rung not in order:
-            continue
-        dist = abs(order.index(rung) - len(order) // 2)
-        if dist > 0:
-            marked.append((dist, AXIS_ORDER.index(axis), rung))
-    marked.sort(key=lambda t: (-t[0], t[1]))
-    terms = [r for _, _, r in marked[:max_terms]]
-    return " · ".join(terms) if terms else "neutral"
-
-
 def _demeanor_lines(entry, axes, devices, deltas=None, prefix=""):
     picks = resolve_demeanor(entry, deltas)
     lines = []

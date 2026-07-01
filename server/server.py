@@ -1195,7 +1195,6 @@ def _enrich_style_entry(sid, entry):
         "custom": bool(entry.get("custom")),
         "forked_from": entry.get("forked_from"),
         "arrangement": arr,
-        "register": entry.get("register_default", "written"),
         "elaboration": elab,
         "demeanor": entry.get("demeanor", {}) or {},
         "devices": entry.get("devices", {}) or {},
@@ -1208,11 +1207,9 @@ def _enrich_style_entry(sid, entry):
     try:
         _sa = _style_assembly_mod()
         card["arrangement_label"] = _sa.arrangement_short(arr)
-        card["demeanor_label"] = _sa.demeanor_summary(entry)
         card["elaboration_label"] = _sa.elaboration_label(elab)
     except Exception:
         card["arrangement_label"] = arr
-        card["demeanor_label"] = ""
         card["elaboration_label"] = str(elab)
     return card
 
@@ -1220,12 +1217,10 @@ def _enrich_style_entry(sid, entry):
 def _style_library():
     """The component-library payload explained beneath the cards: the seven
     demeanor axes with their rung text, the device overlays, the arrangement
-    schemas, the craft-floor lines, the elaboration scale, and the registers."""
+    schemas, the craft-floor lines, and the elaboration scale."""
     lib = {
         "axes": [], "devices": [], "schemas": [], "craft": [],
         "elaboration_scale": [],
-        "registers": [{"id": "conversational", "label": "Conversational"},
-                      {"id": "written", "label": "Written"}],
     }
     try:
         _sa = _style_assembly_mod()
@@ -1250,14 +1245,13 @@ def _style_library():
 
 
 def _styles_settings_block():
-    block = {"default_id": "", "use_custom_values": False, "adapt_to_context": True}
+    block = {"default_id": "", "use_custom_values": False}
     try:
         if _HAS_USER_SETTINGS and _user_settings is not None:
             st = (_user_settings.load_settings() or {}).get("styles") or {}
             block = {
                 "default_id": st.get("default_id", ""),
                 "use_custom_values": bool(st.get("use_custom_values", False)),
-                "adapt_to_context": bool(st.get("adapt_to_context", True)),
             }
     except Exception:
         pass

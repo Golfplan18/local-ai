@@ -49,16 +49,16 @@
   // APIs, which every user sets up on install — stays in the main list.
   var TABS = [
     { id: 'models',         label: 'Models' },
-    { id: 'retrieval',      label: 'Retrieval' },
     { id: 'visual',         label: 'Visual' },
+    { id: 'styles',         label: 'Output Styles' },
     { id: 'transcription',  label: 'Transcription' },
     { id: 'speech',         label: 'Speech' },
+    { id: 'retrieval',      label: 'Retrieval' },
     { id: 'interface',      label: 'Interface' },
     { id: 'shortcuts',      label: 'Shortcuts' },
     { id: 'capture',        label: 'Capture' },
     { id: 'apis',           label: 'External APIs' },
     { id: 'export',         label: 'Export' },
-    { id: 'styles',         label: 'Output Styles' },
     { id: 'projects',       label: 'Project Plugins', group: 'advanced' },
   ];
 
