@@ -2592,6 +2592,14 @@ a.ora-settings-apikey-label:hover {
   font-style: italic;
 }
 
+/* Greyed shipped-default chain shown on unconfigured Advanced rows */
+.ora-vslots-default {
+  font-style: italic;
+  color: var(--text-muted, #A89F8A);
+  opacity: 0.85;
+  cursor: help;
+}
+
 /* ── fallback-chain editor (chips + add select) ───────────────────── */
 
 .ora-vslots-chainedit {

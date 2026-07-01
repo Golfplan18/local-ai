@@ -37,15 +37,14 @@
   "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) \u2014 so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity). Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
   "slots": {
     "image_generates": {
-      "preferred": "openrouter:openai/gpt-5.4-image-2",
+      "preferred": "local-diffusers",
       "fallback": [
-        "openrouter:google/gemini-3.1-flash-image-preview",
-        "openrouter:google/gemini-3-pro-image-preview",
-        "openrouter:openai/gpt-5-image",
+        "openrouter:google/gemini-2.5-flash-image",
         "openrouter:openai/gpt-5-image-mini",
-        "local-diffusers"
+        "openrouter:openai/gpt-5.4-image-2",
+        "openrouter:google/gemini-3.1-flash-image"
       ],
-      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Preferred = openai-gpt-image-1 (artistic richness, moderation-lottery on boundary-pushing prompts); Fallback chain revised 2026-06-05 to Google-first (gemini-3.1-flash, then gemini-3-pro) so an OpenAI moderation refusal lands on a non-refusing cloud model at full quality, mirroring image_generates_cartoon; gpt-5-image and gpt-5-image-mini retained as deeper fallback; local-diffusers is the last-resort floor. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
+      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Chain revised 2026-07-01 to free-first: preferred = local-diffusers (zero marginal cost, offline; on machines without diffusers installed the id never registers and resolution falls through to the cloud entries automatically); first cloud fallback = gemini-2.5-flash-image (Nano Banana \u2014 the cheapest cloud image model with real published pricing, ~$0.003-0.01/image), then gpt-5-image-mini (low-cost), then gpt-5.4-image-2 / gemini-3.1-flash-image (GA id \u2014 the -preview id was deprecated) as the quality tier. There is no free cloud image model: OpenRouter reports media-model token pricing as literal 0 because billing is per image with unpublished rates \u2014 do not read $0.0 as free. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
     },
     "image_generates_cartoon": {
       "preferred": "openrouter:openai/gpt-5.4-image-2",

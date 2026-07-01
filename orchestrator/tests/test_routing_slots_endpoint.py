@@ -113,15 +113,24 @@ class RoutingSlotsEndpoint(unittest.TestCase):
 
     # ── GET ──────────────────────────────────────────────────────────────
 
-    def test_get_returns_just_the_slots_block(self):
+    def test_get_returns_slots_plus_seed_defaults(self):
         resp = self.client.get("/config/routing/slots")
         self.assertEqual(resp.status_code, 200, resp.data)
         payload = json.loads(resp.data)
-        self.assertEqual(set(payload.keys()), {"slots"})
+        self.assertEqual(set(payload.keys()), {"slots", "defaults"})
         self.assertEqual(
             payload["slots"]["image_generates"]["preferred"],
             "openrouter:openai/gpt-5.4-image-2",
         )
+        # defaults come from the SEED config (not the fixture this test
+        # redirected the live path to) and carry chain fields only.
+        defaults = payload["defaults"]
+        self.assertIsInstance(defaults, dict)
+        if "image_generates" in defaults:  # seed present in checkout
+            self.assertEqual(
+                set(defaults["image_generates"].keys()),
+                {"preferred", "fallback"},
+            )
 
     # ── POST merge semantics ─────────────────────────────────────────────
 
