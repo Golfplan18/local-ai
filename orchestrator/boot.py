@@ -7059,6 +7059,19 @@ def _resolve_effective_style_id(config):
         proj = get_project(nexus) if nexus else None
         if proj is not None and getattr(proj, "default_style_id", None):
             return proj.default_style_id
+        # Container-record fallback (G1.35×G1.33): a project created through the
+        # Projects feature has no plugin manifest, so get_project() is None. Read
+        # its output_style from the container record so the modal's choice
+        # actually drives the deliverable.
+        if nexus and nexus.lower() != "general":
+            try:
+                from project_meta import read_project_meta
+            except ImportError:
+                from orchestrator.project_meta import read_project_meta
+            rec = read_project_meta(nexus)
+            sid = (rec or {}).get("output_style")
+            if isinstance(sid, str) and sid.strip():
+                return sid.strip()
     except Exception:
         pass
     # Account-wide default set via the Output Styles settings tab.
