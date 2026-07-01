@@ -42,11 +42,11 @@
   // Models tab hosts OraModelsPane (server/static/models-pane.js); the
   // Visual tab hosts OraVisualSlotsPane (server/static/visual-slots-pane.js)
   // — the classic ConfigPanel embed was retired with install Chunk 11.
-  // User-facing settings first; developer/advanced tabs (marked group:
-  // 'advanced') are grouped at the end behind an "Advanced" divider so a
-  // typical user isn't confronted with them. "Project Plugins" is the plugin/
-  // extension registry (register a folder with an ora-project.json) — NOT the
-  // sidebar's "+ New project" workspace feature; the rename disambiguates them.
+  // Only "Project Plugins" (the developer plugin/extension registry — register
+  // a folder with an ora-project.json, NOT the sidebar's "+ New project"
+  // workspace feature) is grouped at the end behind an "Advanced" divider so a
+  // typical user isn't confronted with it. Everything else — including External
+  // APIs, which every user sets up on install — stays in the main list.
   var TABS = [
     { id: 'models',         label: 'Models' },
     { id: 'retrieval',      label: 'Retrieval' },
@@ -56,9 +56,9 @@
     { id: 'interface',      label: 'Interface' },
     { id: 'shortcuts',      label: 'Shortcuts' },
     { id: 'capture',        label: 'Capture' },
+    { id: 'apis',           label: 'External APIs' },
     { id: 'export',         label: 'Export' },
     { id: 'styles',         label: 'Output Styles' },
-    { id: 'apis',           label: 'External APIs',  group: 'advanced' },
     { id: 'projects',       label: 'Project Plugins', group: 'advanced' },
   ];
 
