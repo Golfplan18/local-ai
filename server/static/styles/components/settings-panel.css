@@ -2900,3 +2900,496 @@ a.ora-settings-apikey-label:hover {
     justify-content: flex-start;
   }
 }
+
+/* ── Output Styles configurator ──────────────────────────────────────
+   The Output Styles tab (OraStylesPane, server/static/styles-pane.js) mirrors
+   the Models tab: a header with the active profile + two switches, genre preset
+   cards, custom-profile cards, a component-library, and a deferred fiction row.
+   Dedicated .ora-styles-* classes (not the .ora-models-* ones) so this pane is
+   insulated from changes to the models pane. Same warm tokens + green active
+   accent the model cards use. */
+
+.ora-styles-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 2px 12px;
+}
+
+.ora-styles-loading,
+.ora-styles-empty {
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted, #A89F8A);
+}
+
+/* ── header strip ── */
+.ora-styles-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  padding: 6px 4px 12px;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+}
+
+.ora-styles-active { font-size: 13px; white-space: nowrap; }
+.ora-styles-active-label { color: var(--text-muted, #A89F8A); }
+.ora-styles-active-name { color: var(--text-normal, #E8E0CC); font-weight: 600; }
+
+.ora-styles-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.ora-styles-switch input[type="checkbox"] { display: none; }
+.ora-styles-switch-knob {
+  flex-shrink: 0;
+  width: 30px;
+  height: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  box-sizing: border-box;
+  background: var(--background-secondary, #1F1A0F);
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ora-styles-switch-knob::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted, #A89F8A);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.ora-styles-switch input[type="checkbox"]:checked + .ora-styles-switch-knob {
+  background: var(--color-green, #87905B);
+  border-color: var(--color-green, #87905B);
+}
+.ora-styles-switch input[type="checkbox"]:checked + .ora-styles-switch-knob::before {
+  background: #fff;
+  transform: translateX(14px);
+}
+.ora-styles-switch-label { font-size: 12px; font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-switch-sub { font-weight: 400; color: var(--text-muted, #A89F8A); }
+.ora-styles-switch-help { font-size: 11px; color: var(--text-muted, #A89F8A); }
+
+/* ── section + grid ── */
+.ora-styles-section { display: flex; flex-direction: column; gap: 8px; }
+
+.ora-styles-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ora-styles-section-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal, #E8E0CC);
+}
+.ora-styles-section-hint { font-size: 11px; color: var(--text-muted, #A89F8A); }
+
+/* Four fixed columns, like the Models picker's preset row. The extra card
+   width lets a demeanor axis show all three rungs on one line. */
+.ora-styles-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .ora-styles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── profile card ── */
+.ora-styles-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--background-secondary, #1F1A0F);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.ora-styles-card-active {
+  border-color: var(--color-active, #5FA86E);
+  border-width: 2px;
+  padding: 9px 11px;
+}
+
+.ora-styles-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+.ora-styles-card-title { font-size: 13px; font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-card-flag {
+  font-size: 10px;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  color: var(--color-active, #5FA86E);
+  font-weight: 600;
+}
+.ora-styles-card-sub {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  margin-bottom: 3px;
+  min-height: 13px;
+}
+
+/* slot rows: label left, value right-justified */
+.ora-styles-card-slots { display: flex; flex-direction: column; }
+.ora-styles-slot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-radius: 4px;
+}
+.ora-styles-slot-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-slot-value {
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+  text-align: right;
+}
+.ora-styles-slot-editable { cursor: pointer; margin: 0 -6px; padding: 2px 6px; }
+.ora-styles-slot-editable:hover { background: var(--interactive-hover, #2A2218); }
+.ora-styles-slot-editable .ora-styles-slot-value { color: var(--link-color, #A48055); }
+.ora-styles-slot-picking { background: var(--interactive-hover, #2A2218); }
+
+/* inline option picker */
+.ora-styles-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0 4px;
+}
+.ora-styles-opt {
+  font-size: 11px;
+  color: var(--text-normal, #E8E0CC);
+  background: var(--background-primary, #15110A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.ora-styles-opt:hover { border-color: var(--link-color, #A48055); }
+.ora-styles-opt-on {
+  border-color: var(--color-active, #5FA86E);
+  color: var(--color-active, #5FA86E);
+}
+
+.ora-styles-card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 2px;
+}
+.ora-styles-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--link-color, #A48055);
+  cursor: pointer;
+}
+.ora-styles-link:hover { text-decoration: underline; }
+
+/* + new profile card */
+.ora-styles-card-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  background: transparent;
+  border: 1px dashed var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  color: var(--text-muted, #A89F8A);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.ora-styles-card-new:hover {
+  border-color: var(--link-color, #A48055);
+  color: var(--text-normal, #E8E0CC);
+}
+
+/* ── "more" expand ── */
+.ora-styles-more {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ora-styles-more-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #A89F8A);
+  margin-top: 4px;
+}
+.ora-styles-more-ident { display: flex; flex-direction: column; gap: 5px; }
+.ora-styles-input {
+  background: var(--background-primary, #15110A);
+  color: var(--text-normal, #E8E0CC);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 4px 7px;
+  font-size: 12px;
+  width: 100%;
+  outline: none;
+  box-sizing: border-box;
+}
+.ora-styles-input:focus { border-color: var(--link-color, #A48055); }
+
+/* Each axis is one pick-one-of-three group: a divider under every row makes the
+   grouping legible, and the three rungs sit in an even 3-across row. */
+.ora-styles-axis-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
+}
+.ora-styles-axis-name { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-axis-rungs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.ora-styles-rung {
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-muted, #A89F8A);
+  background: var(--background-primary, #15110A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.ora-styles-rung:hover { border-color: var(--link-color, #A48055); }
+.ora-styles-rung-on {
+  border-color: var(--color-active, #5FA86E);
+  color: var(--color-active, #5FA86E);
+  font-weight: 600;
+}
+.ora-styles-rung-ro { cursor: default; }
+.ora-styles-rung-ro:hover { border-color: var(--background-modifier-border, #3A3022); }
+
+.ora-styles-devices { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.ora-styles-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-normal, #E8E0CC);
+  cursor: pointer;
+}
+.ora-styles-gloss { display: flex; flex-direction: column; gap: 5px; }
+.ora-styles-gloss label {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+.ora-styles-gloss-ro { font-size: 11px; color: var(--text-muted, #A89F8A); }
+
+/* ── component library ── */
+.ora-styles-library { gap: 6px; }
+.ora-styles-lib-row {
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.ora-styles-lib-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--background-secondary, #1F1A0F);
+  border: none;
+  padding: 9px 12px;
+  cursor: pointer;
+  color: var(--text-normal, #E8E0CC);
+}
+.ora-styles-lib-head:hover { background: var(--interactive-hover, #2A2218); }
+.ora-styles-lib-caret { color: var(--text-muted, #A89F8A); font-size: 11px; }
+.ora-styles-lib-title { font-size: 12px; font-weight: 600; }
+.ora-styles-lib-hint { margin-left: auto; font-size: 11px; color: var(--text-muted, #A89F8A); }
+
+.ora-styles-lib-body {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+  line-height: 1.45;
+}
+.ora-styles-lib-item { font-size: 12px; color: var(--text-muted, #A89F8A); }
+.ora-styles-lib-item strong { color: var(--text-normal, #E8E0CC); }
+.ora-styles-lib-axis-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--link-color, #A48055);
+  margin-bottom: 2px;
+}
+.ora-styles-lib-rung { font-size: 12px; color: var(--text-muted, #A89F8A); padding-left: 8px; }
+.ora-styles-lib-rung strong { color: var(--text-normal, #E8E0CC); }
+.ora-styles-craft { margin: 4px 0 0; padding-left: 18px; }
+.ora-styles-craft li { font-size: 12px; color: var(--text-muted, #A89F8A); margin: 2px 0; }
+.ora-styles-scale { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ora-styles-scale-pip {
+  font-size: 11px;
+  color: var(--text-normal, #E8E0CC);
+  background: var(--background-primary, #15110A);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+/* ── fiction (advanced, deferred) ── */
+.ora-styles-fiction {
+  border: 1px dashed var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ora-styles-fiction-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--text-muted, #A89F8A);
+}
+.ora-styles-fiction-head:hover { background: var(--interactive-hover, #2A2218); }
+.ora-styles-fiction-title { font-size: 12px; font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-fiction-sub { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-fiction-flag {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--color-yellow, #D4AC4A);
+}
+.ora-styles-fiction-caret { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-fiction-body {
+  padding: 4px 12px 12px;
+  font-size: 12px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.45;
+}
+.ora-styles-fiction-body strong { color: var(--text-normal, #E8E0CC); }
+
+.ora-styles-status {
+  min-height: 16px;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted, #A89F8A);
+}
+
+/* ── demeanor fingerprint (bottom of card: all seven, 3-over-4, right-just) ── */
+.ora-styles-fp {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border, #3A3022);
+}
+.ora-styles-fp-editable { cursor: pointer; }
+.ora-styles-fp-editable:hover { border-top-color: var(--link-color, #A48055); }
+.ora-styles-fp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.ora-styles-fp-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-conv-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--link-color, #A48055);
+  cursor: pointer;
+}
+.ora-styles-conv-link:hover { text-decoration: underline; }
+.ora-styles-conv-set { color: var(--color-active, #5FA86E); }
+.ora-styles-fp-line {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-normal, #E8E0CC);
+  line-height: 1.5;
+}
+.ora-styles-fp-val { color: var(--text-normal, #E8E0CC); }
+.ora-styles-fp-sep { color: var(--text-muted, #A89F8A); margin: 0 5px; }
+.ora-styles-conv-dot { color: var(--color-active, #5FA86E); }
+
+/* ── conversational-override side popout ── */
+.ora-styles-popout-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+}
+.ora-styles-popout {
+  position: fixed;
+  top: 50%;
+  right: 3vw;
+  transform: translateY(-50%);
+  width: 360px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--background-secondary, #1F1A0F);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 8px;
+  padding: 14px 16px;
+  z-index: 41;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ora-styles-popout-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ora-styles-popout-title { font-size: 13px; font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-popout-x {
+  background: none;
+  border: none;
+  color: var(--text-muted, #A89F8A);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ora-styles-popout-x:hover { color: var(--text-normal, #E8E0CC); }
+.ora-styles-popout-note {
+  margin: 2px 0 8px;
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  line-height: 1.45;
+}
+.ora-styles-popout-actions { margin-top: 8px; min-height: 14px; }

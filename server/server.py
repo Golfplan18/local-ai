@@ -1164,27 +1164,189 @@ def settings_post():
     return _json_response({"settings": merged})
 
 
+def _style_assembly_mod():
+    try:
+        import style_assembly as _sa
+    except ImportError:
+        from orchestrator import style_assembly as _sa
+    return _sa
+
+
+def _style_store_mod():
+    try:
+        import style_store as _ss
+    except ImportError:
+        from orchestrator import style_store as _ss
+    return _ss
+
+
+def _enrich_style_entry(sid, entry):
+    """A registry or custom entry -> the card dict the Output Styles picker reads:
+    the four headline slots (arrangement / demeanor / elaboration / register) with
+    both raw values (for editing) and short labels (for the card face), plus the
+    full demeanor picks, devices, and glossary the "more" view expands."""
+    entry = entry or {}
+    arr = entry.get("arrangement", "")
+    elab = entry.get("elaboration", 3)
+    card = {
+        "id": sid,
+        "display_name": entry.get("display_name", sid),
+        "description": entry.get("description", ""),
+        "custom": bool(entry.get("custom")),
+        "forked_from": entry.get("forked_from"),
+        "arrangement": arr,
+        "register": entry.get("register_default", "written"),
+        "elaboration": elab,
+        "demeanor": entry.get("demeanor", {}) or {},
+        "devices": entry.get("devices", {}) or {},
+        "glossary": entry.get("glossary", {}) or {},
+        "values_source": entry.get("values_source", "default-mindspec"),
+        # Optional conversational-register override (alternate demeanor); shown
+        # only in the side popout. Absent/None means "inherit the written demeanor".
+        "conversational": entry.get("conversational"),
+    }
+    try:
+        _sa = _style_assembly_mod()
+        card["arrangement_label"] = _sa.arrangement_short(arr)
+        card["demeanor_label"] = _sa.demeanor_summary(entry)
+        card["elaboration_label"] = _sa.elaboration_label(elab)
+    except Exception:
+        card["arrangement_label"] = arr
+        card["demeanor_label"] = ""
+        card["elaboration_label"] = str(elab)
+    return card
+
+
+def _style_library():
+    """The component-library payload explained beneath the cards: the seven
+    demeanor axes with their rung text, the device overlays, the arrangement
+    schemas, the craft-floor lines, the elaboration scale, and the registers."""
+    lib = {
+        "axes": [], "devices": [], "schemas": [], "craft": [],
+        "elaboration_scale": [],
+        "registers": [{"id": "conversational", "label": "Conversational"},
+                      {"id": "written", "label": "Written"}],
+    }
+    try:
+        _sa = _style_assembly_mod()
+        axes, devices = _sa.load_demeanor_axes()
+        for axis in _sa.AXIS_ORDER:
+            rungs = _sa.RUNGS.get(axis, [])
+            lib["axes"].append({
+                "id": axis,
+                "rungs": [{"id": r, "text": axes.get(axis, {}).get(r, "")}
+                          for r in rungs],
+            })
+        lib["devices"] = [{"id": d, "text": t} for d, t in devices.items()]
+        schemas = _sa.load_arrangement_schemas()
+        lib["schemas"] = [{"id": s, "label": _sa.arrangement_short(s), "text": txt}
+                          for s, txt in schemas.items()]
+        lib["craft"] = _sa.load_craft_floor()
+        lib["elaboration_scale"] = [{"value": n, "label": _sa.ELABORATION_LABELS[n]}
+                                    for n in sorted(_sa.ELABORATION_LABELS)]
+    except Exception:
+        pass
+    return lib
+
+
+def _styles_settings_block():
+    block = {"default_id": "", "use_custom_values": False, "adapt_to_context": True}
+    try:
+        if _HAS_USER_SETTINGS and _user_settings is not None:
+            st = (_user_settings.load_settings() or {}).get("styles") or {}
+            block = {
+                "default_id": st.get("default_id", ""),
+                "use_custom_values": bool(st.get("use_custom_values", False)),
+                "adapt_to_context": bool(st.get("adapt_to_context", True)),
+            }
+    except Exception:
+        pass
+    return block
+
+
 @app.route("/api/styles/registry", methods=["GET"])
 def styles_registry_get():
-    """Built-in Output Style profiles for the Output Styles settings tab.
-    Returns {"styles": [{id, display_name, description}, ...]} — never 500;
-    an unreadable registry (e.g. PyYAML missing) yields an empty list."""
-    items = []
+    """Everything the Output Styles configurator renders in one call: the built-in
+    genre profiles, the user's saved custom profiles, the component library, and
+    the current account settings (active id + the two toggles). Never 500s — an
+    unreadable registry (e.g. PyYAML missing) yields empty lists."""
+    profiles, custom = [], []
     try:
-        try:
-            from style_assembly import load_registry
-        except ImportError:
-            from orchestrator.style_assembly import load_registry
-        for sid, entry in (load_registry() or {}).items():
-            entry = entry or {}
-            items.append({
-                "id": sid,
-                "display_name": entry.get("display_name", sid),
-                "description": entry.get("description", ""),
-            })
+        for sid, entry in (_style_assembly_mod().load_registry() or {}).items():
+            profiles.append(_enrich_style_entry(sid, entry or {}))
     except Exception:
-        items = []
-    return _json_response({"styles": items})
+        profiles = []
+    try:
+        for sid, entry in (_style_store_mod().load_custom_profiles() or {}).items():
+            custom.append(_enrich_style_entry(sid, entry))
+    except Exception:
+        custom = []
+    return _json_response({
+        "profiles": profiles,
+        "custom": custom,
+        "library": _style_library(),
+        "settings": _styles_settings_block(),
+    })
+
+
+@app.route("/api/styles/custom", methods=["POST"])
+def styles_custom_create():
+    """Fork a new custom profile from a genre (or another custom), or a blank one.
+    Body: {forked_from?: id, display_name?: str}. Returns {profile}."""
+    payload = request.get_json(silent=True) or {}
+    forked_from = (payload.get("forked_from") or "").strip() or None
+    display_name = (payload.get("display_name") or "").strip() or None
+    base_entry = None
+    if forked_from:
+        try:
+            base_entry = (_style_assembly_mod().load_registry() or {}).get(forked_from)
+        except Exception:
+            base_entry = None
+        if base_entry is None:
+            try:
+                base_entry = _style_store_mod().get_custom_profile(forked_from)
+            except Exception:
+                base_entry = None
+    try:
+        prof = _style_store_mod().create_custom_profile(
+            base_entry=base_entry, display_name=display_name, forked_from=forked_from)
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+    return _json_response({"profile": _enrich_style_entry(prof["id"], prof)})
+
+
+@app.route("/api/styles/custom/<sid>", methods=["PATCH", "POST"])
+def styles_custom_update(sid):
+    """Edit one or more lines of a custom profile. Body is the patch directly, or
+    {patch: {...}}. Nested blocks (demeanor / devices / glossary) merge key-wise."""
+    payload = request.get_json(silent=True) or {}
+    patch = payload.get("patch") if isinstance(payload.get("patch"), dict) else payload
+    try:
+        prof = _style_store_mod().update_custom_profile(sid, patch or {})
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+    if prof is None:
+        return _json_response({"error": "unknown custom profile: %s" % sid}, status=404)
+    return _json_response({"profile": _enrich_style_entry(sid, prof)})
+
+
+@app.route("/api/styles/custom/<sid>", methods=["DELETE"])
+def styles_custom_delete(sid):
+    """Delete a custom profile. If it was the account default, clear the default
+    so nothing points at a missing id."""
+    try:
+        existed = _style_store_mod().delete_custom_profile(sid)
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+    if existed:
+        try:
+            if _HAS_USER_SETTINGS and _user_settings is not None:
+                st = (_user_settings.load_settings() or {}).get("styles") or {}
+                if st.get("default_id") == sid:
+                    _user_settings.save_settings({"styles": {"default_id": ""}})
+        except Exception:
+            pass
+    return _json_response({"ok": bool(existed)})
 
 
 @app.route("/api/retrieval/config", methods=["GET"])
