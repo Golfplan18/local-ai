@@ -12,6 +12,12 @@
       "runtimeExecutable": "/opt/homebrew/bin/python3",
       "runtimeArgs": ["/Users/oracle/ora/server/server.py"],
       "port": 5001
+    },
+    {
+      "name": "ora-preview",
+      "runtimeExecutable": "/opt/homebrew/bin/python3",
+      "runtimeArgs": ["/Users/oracle/ora/server/server.py"],
+      "port": 5002
     }
   ]
 }
