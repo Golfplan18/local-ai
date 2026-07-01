@@ -42,19 +42,24 @@
   // Models tab hosts OraModelsPane (server/static/models-pane.js); the
   // Visual tab hosts OraVisualSlotsPane (server/static/visual-slots-pane.js)
   // — the classic ConfigPanel embed was retired with install Chunk 11.
+  // User-facing settings first; developer/advanced tabs (marked group:
+  // 'advanced') are grouped at the end behind an "Advanced" divider so a
+  // typical user isn't confronted with them. "Project Plugins" is the plugin/
+  // extension registry (register a folder with an ora-project.json) — NOT the
+  // sidebar's "+ New project" workspace feature; the rename disambiguates them.
   var TABS = [
     { id: 'models',         label: 'Models' },
     { id: 'retrieval',      label: 'Retrieval' },
     { id: 'visual',         label: 'Visual' },
-    { id: 'projects',       label: 'Projects' },
     { id: 'transcription',  label: 'Transcription' },
     { id: 'speech',         label: 'Speech' },
     { id: 'interface',      label: 'Interface' },
     { id: 'shortcuts',      label: 'Shortcuts' },
     { id: 'capture',        label: 'Capture' },
-    { id: 'apis',           label: 'External APIs' },
     { id: 'export',         label: 'Export' },
     { id: 'styles',         label: 'Output Styles' },
+    { id: 'apis',           label: 'External APIs',  group: 'advanced' },
+    { id: 'projects',       label: 'Project Plugins', group: 'advanced' },
   ];
 
   var WHISPER_MODELS = [
@@ -136,7 +141,16 @@
 
   function _renderTabs() {
     _tabsEl.innerHTML = '';
+    var advancedDividerDrawn = false;
     TABS.forEach(function (t) {
+      if (t.group === 'advanced' && !advancedDividerDrawn) {
+        advancedDividerDrawn = true;
+        var sep = document.createElement('span');
+        sep.className = 'ora-settings-tab-divider';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = 'Advanced';
+        _tabsEl.appendChild(sep);
+      }
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'ora-settings-tab';
@@ -600,6 +614,18 @@
     var pane = document.createElement('div');
     pane.className = 'ora-settings-projects';
     _tabContentEl.appendChild(pane);
+
+    // Disambiguate from the sidebar's "+ New project" workspace feature — this
+    // is the developer plugin/extension registry.
+    var explain = document.createElement('div');
+    explain.className = 'ora-settings-projects-explainer';
+    explain.innerHTML =
+      '<strong>Project plugins</strong> extend Ora with a folder\'s custom tools, '
+      + 'slash commands, and configs (a repo containing an <code>ora-project.json</code> '
+      + 'manifest). Register the folder path below to load them.<br>'
+      + 'Looking to organize your conversations and files instead? Use '
+      + '<strong>+ New project</strong> in the sidebar — that\'s a separate feature.';
+    pane.appendChild(explain);
 
     var toolbar = document.createElement('div');
     toolbar.className = 'ora-settings-projects-toolbar';
