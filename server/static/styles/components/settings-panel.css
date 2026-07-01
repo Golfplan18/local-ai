@@ -699,7 +699,7 @@ a.ora-settings-apikey-label:hover {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 18px;
+  gap: 6px 12px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--background-modifier-border, #3A3022);
 }
@@ -785,6 +785,16 @@ a.ora-settings-apikey-label:hover {
 .ora-models-toggle-help {
   font-size: 11px;
   color: var(--text-muted, #A89F8A);
+}
+
+/* Below ~1500px the three toggles + refresh cluster can't share one
+   row even with short help text — drop the muted help spans and lean
+   on the title tooltips (which carry the fuller copy anyway) rather
+   than letting the strip wrap to a second row. */
+@media (max-width: 1500px) {
+  .ora-models-toggle-help {
+    display: none;
+  }
 }
 
 /* ── Section header (compact) ────────────────────────────────────── */

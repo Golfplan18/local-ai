@@ -356,10 +356,18 @@
       +   '</div>'
       +   _toggleHTML('adversarial_diversity', adv,
                      'Adversarial Diversity',
-                     'two workhorses cross-check — doubles cost, catches blind spots')
+                     'two workhorses cross-check — 2× cost, catches blind spots',
+                     'Re-bakes all four presets with the two workhorse slots '
+                     + '(BIG 1 / BIG 2) drawn from different training families '
+                     + 'so they cross-check each other. When off, the top '
+                     + 'model fills both slots and the BIG 2 row is hidden.')
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
-                     'restrict picks to models that see images directly')
+                     'restrict picks to models that see images directly',
+                     'Re-bakes all four presets restricted to vision-capable '
+                     + 'models, so image inputs never need a text-only '
+                     + 'substitute. Also checks the inventory\'s Vision '
+                     + 'filter chip.')
       // Real preset toggle (like the two above): POSTs to the bake
       // endpoint and re-bakes all four presets with a ~1M context floor
       // so the picks fit long prompts. Its checked state reads from the
@@ -368,7 +376,11 @@
       // vision_only syncs the Vision chip — see _setToggle.
       +   _toggleHTML('min_context_1m', ctx1m,
                      '1M context',
-                     'Constrain presets to ~1M-context models so long prompts fit — re-bakes all four; slots with none degrade gracefully.')
+                     'restrict picks to ~1M-context models for long prompts',
+                     'Re-bakes all four presets with a ~1M (900K+) context '
+                     + 'floor. A slot with no eligible ~1M-context model '
+                     + 'keeps its best pick instead — the floor is skipped '
+                     + 'for that slot and noted in the bake log.')
       +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + AA + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     (aaBadgeLabel
@@ -438,12 +450,17 @@
     if (ageHours > 24) _refreshRegistry(false);
   }
 
-  function _toggleHTML(name, checked, label, helpText) {
+  function _toggleHTML(name, checked, label, helpText, titleText) {
     // Compact inline layout: knob · bold-label · muted-help — all on
-    // one row so two toggles + active-config name fit on a single
-    // horizontal line at typical settings-modal widths.
+    // one row so the three toggles + active-config name + refresh
+    // cluster fit on a single horizontal line at typical
+    // settings-modal widths. Keep helpText short (~50 chars, lowercase,
+    // no trailing period); mechanism detail goes in titleText, which
+    // renders as a hover tooltip (and is all that's left when the
+    // narrow-width media query hides the help spans).
     return ''
-      + '<label class="ora-models-toggle">'
+      + '<label class="ora-models-toggle"'
+      +   (titleText ? ' title="' + _esc(titleText) + '"' : '') + '>'
       +   '<input type="checkbox" data-toggle="' + name + '"' + (checked ? ' checked' : '') + '>'
       +   '<span class="ora-models-toggle-knob"></span>'
       +   '<span class="ora-models-toggle-label">' + _esc(label) + '</span>'
