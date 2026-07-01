@@ -208,9 +208,9 @@
       +   '</header>'
       +   '<div class="ora-styles-card-sub">' + _esc(sub) + '</div>'
       +   '<div class="ora-styles-card-slots">'
-      +     _slotHTML(p, 'arrange', 'arrangement', p.arrangement_label, isCustom)
+      +     _slotHTML(p, 'arrangement', 'arrangement', p.arrangement_label, isCustom)
       +     _slotHTML(p, 'demeanor', 'demeanor', p.demeanor_label, isCustom)
-      +     _slotHTML(p, 'elabor.', 'elaboration', p.elaboration_label, isCustom)
+      +     _slotHTML(p, 'elaboration', 'elaboration', p.elaboration_label, isCustom)
       +     _slotHTML(p, 'register', 'register', p.register, isCustom)
       +   '</div>'
       +   (_expanded.has(p.id) ? _moreHTML(p, isCustom) : '')
