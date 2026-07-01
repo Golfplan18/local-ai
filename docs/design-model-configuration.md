@@ -1,6 +1,9 @@
 # Model Configuration Architecture — Design Document
 
-**Status:** Design complete, pending implementation
+**Status:** Historical. Implemented 2026-04/05, then superseded — the bucket
+abstraction described here was dissolved by the named-configuration
+architecture (install Chunk 10, V3 Models pane), and the provider database /
+bucket auto-population were removed 2026-07-01. Kept as design history.
 **Date:** 2026-04-15
 **Scope:** Model routing, bucket system, pipeline configuration UI, resource reservation, multi-machine support
 

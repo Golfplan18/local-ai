@@ -73,19 +73,30 @@ class RoutingSlotsEndpoint(unittest.TestCase):
         # never touch the machine's real config, and stub out the
         # router-reload hook (it imports boot's singleton — irrelevant
         # to the merge semantics under test here).
+        #
+        # The redirect MUST go through ORA_ROUTING_CONFIG_PATH:
+        # the endpoints resolve the path per-request via
+        # runtime_paths.routing_config_path(), which honors that env
+        # var. (An earlier version of this setup patched a module
+        # constant the endpoints never read — the POSTs landed in the
+        # machine's live runtime overlay and nulled its
+        # image_generates slot every time the suite ran.)
         self._tmp = tempfile.TemporaryDirectory()
         self._cfg_path = os.path.join(self._tmp.name, "routing-config.json")
         with open(self._cfg_path, "w") as f:
             json.dump(FIXTURE, f, indent=2)
-        self._saved_path = self.S.ROUTING_CONFIG
+        self._saved_env = os.environ.get("ORA_ROUTING_CONFIG_PATH")
+        os.environ["ORA_ROUTING_CONFIG_PATH"] = self._cfg_path
         self._saved_reload = self.S._reload_pipeline_router_after_config_change
-        self.S.ROUTING_CONFIG = self._cfg_path
         self.S._reload_pipeline_router_after_config_change = lambda: False
         self.client = self.S.app.test_client()
 
     def tearDown(self):
         if self.import_ok:
-            self.S.ROUTING_CONFIG = self._saved_path
+            if self._saved_env is None:
+                os.environ.pop("ORA_ROUTING_CONFIG_PATH", None)
+            else:
+                os.environ["ORA_ROUTING_CONFIG_PATH"] = self._saved_env
             self.S._reload_pipeline_router_after_config_change = self._saved_reload
             self._tmp.cleanup()
 

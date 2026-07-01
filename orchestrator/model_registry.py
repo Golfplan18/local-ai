@@ -81,62 +81,6 @@ def reload() -> dict:
     return load_registry(force=True)
 
 
-def lookup(model_id: str) -> dict | None:
-    """Return the registry entry for a model id, or None when not found."""
-    if not model_id:
-        return None
-    return load_registry().get("models", {}).get(model_id)
-
-
-def vision_capable(model_id: str, default: Any = None) -> Any:
-    """Return the registry's authoritative vision_capable value for a
-    model id, or ``default`` when the registry has no entry / the field
-    is null. Most callers should pass the routing-config's existing flag
-    as the default so the overlay degrades gracefully."""
-    entry = lookup(model_id)
-    if entry is None:
-        return default
-    val = entry.get("vision_capable")
-    return val if val is not None else default
-
-
-def intelligence_score(model_id: str) -> float | None:
-    """Return the Chatbot Arena ELO for a model id, or None."""
-    entry = lookup(model_id)
-    if entry is None:
-        return None
-    return entry.get("intelligence_score")
-
-
-def aa_intelligence_index(model_id: str) -> float | None:
-    """Return Artificial Analysis's intelligence_index (0-100 scale)
-    for a model, or None when AA doesn't list it. Used as a fallback
-    ranking metric when Chatbot Arena ELO is unavailable — see the
-    coverage audit notes in scripts/sync_model_registry.py."""
-    entry = lookup(model_id)
-    if entry is None:
-        return None
-    return entry.get("aa_intelligence_index")
-
-
-def latency_ttft_seconds(model_id: str) -> float | None:
-    """Return Artificial Analysis's median time-to-first-token (seconds)
-    for a model, or None when not measured. Useful for selecting
-    interactive-feel models — lower is better."""
-    entry = lookup(model_id)
-    if entry is None:
-        return None
-    return entry.get("latency_ttft_seconds")
-
-
-def output_tokens_per_second(model_id: str) -> float | None:
-    """Return AA's median output throughput (tokens/sec) for a model,
-    or None when not measured. Higher is better; useful for ranking
-    when generating long outputs."""
-    entry = lookup(model_id)
-    if entry is None:
-        return None
-    return entry.get("output_tokens_per_second")
 
 
 def overlay_routing_config(rc: dict) -> dict:

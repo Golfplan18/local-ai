@@ -106,37 +106,6 @@ class TestLoadRegistry(_RegistryFixture):
         self.assertEqual(reg["models"], {})
 
 
-class TestLookup(_RegistryFixture):
-
-    def test_lookup_known_model(self):
-        entry = self.module.lookup("moonshotai/kimi-k2.6")
-        self.assertIsNotNone(entry)
-        self.assertEqual(entry["vision_capable"], False)
-
-    def test_lookup_unknown_returns_none(self):
-        self.assertIsNone(self.module.lookup("not-a-real-model"))
-
-    def test_lookup_none_or_empty_returns_none(self):
-        self.assertIsNone(self.module.lookup(""))
-        self.assertIsNone(self.module.lookup(None))
-
-    def test_vision_capable_returns_value(self):
-        self.assertIs(self.module.vision_capable("moonshotai/kimi-k2.6"), False)
-        self.assertIs(self.module.vision_capable("openai/gpt-4o"), True)
-
-    def test_vision_capable_default_for_unknown(self):
-        self.assertIsNone(self.module.vision_capable("unknown-model"))
-        self.assertEqual(
-            self.module.vision_capable("unknown-model", default="fallback"),
-            "fallback",
-        )
-
-    def test_intelligence_score(self):
-        self.assertEqual(self.module.intelligence_score("openai/gpt-4o"), 1287.0)
-        self.assertIsNone(self.module.intelligence_score("moonshotai/kimi-k2.6"))
-        self.assertIsNone(self.module.intelligence_score("unknown"))
-
-
 class TestOverlayRoutingConfig(_RegistryFixture):
 
     def test_overlay_corrects_vision_capable(self):
