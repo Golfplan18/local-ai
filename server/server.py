@@ -1163,6 +1163,92 @@ def settings_post():
     return _json_response({"settings": merged})
 
 
+# ── mind.md (personal values layer) ─────────────────────────────────────────
+#
+# Backs the Output Styles tab's "personal values" toggle. mind.md is the
+# user-authored values file load_boot_md injects as the authoritative
+# values layer when styles.use_custom_values is on. These endpoints give
+# the toggle a real surface: existence/summary for the state check, a
+# viewer/editor, and a create-from-template flow. The stock template is
+# tracked at mindspec/mind-template.md; a mind.md whose "Default
+# configuration" marker line is still present counts as un-customized.
+
+MIND_MD_PATH = os.path.join(WORKSPACE, "mind.md")
+MIND_TEMPLATE_PATH = os.path.join(WORKSPACE, "mindspec", "mind-template.md")
+_MIND_DEFAULT_MARKER = "*Default configuration. Customize by running the"
+_MIND_MAX_BYTES = 128 * 1024
+
+
+def _mind_summary() -> dict:
+    """The GET /api/mind payload: existence + content + derived facts."""
+    if not os.path.isfile(MIND_MD_PATH):
+        return {
+            "exists": False,
+            "template_available": os.path.isfile(MIND_TEMPLATE_PATH),
+        }
+    with open(MIND_MD_PATH, encoding="utf-8") as f:
+        content = f.read()
+    sections = re.findall(r"^## +(.+?)\s*$", content, flags=re.MULTILINE)
+    st = os.stat(MIND_MD_PATH)
+    return {
+        "exists": True,
+        "content": content,
+        "size": st.st_size,
+        "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
+        "sections": sections,
+        "is_default_template": _MIND_DEFAULT_MARKER in content,
+        "template_available": os.path.isfile(MIND_TEMPLATE_PATH),
+    }
+
+
+@app.route("/api/mind", methods=["GET"])
+def mind_get():
+    try:
+        return _json_response(_mind_summary())
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
+@app.route("/api/mind", methods=["POST"])
+def mind_post():
+    """Write mind.md. Body is either ``{"content": "..."}`` (editor save)
+    or ``{"action": "create_from_template"}`` (seeds from the tracked
+    stock template; refuses to overwrite an existing customized file).
+    Atomic write (tmp + os.replace) either way."""
+    payload = request.get_json(silent=True) or {}
+    action = payload.get("action")
+    try:
+        if action == "create_from_template":
+            if not os.path.isfile(MIND_TEMPLATE_PATH):
+                return _json_response(
+                    {"error": "template missing (mindspec/mind-template.md)"},
+                    status=503)
+            current = _mind_summary()
+            if current.get("exists") and not current.get("is_default_template"):
+                return _json_response(
+                    {"error": "mind.md exists and is customized — edit it "
+                              "instead of overwriting from the template"},
+                    status=409)
+            with open(MIND_TEMPLATE_PATH, encoding="utf-8") as f:
+                content = f.read()
+        else:
+            content = payload.get("content")
+            if not isinstance(content, str) or not content.strip():
+                return _json_response(
+                    {"error": "content (non-empty string) required"}, status=400)
+            if len(content.encode("utf-8")) > _MIND_MAX_BYTES:
+                return _json_response(
+                    {"error": f"content too large (max {_MIND_MAX_BYTES} bytes)"},
+                    status=400)
+        tmp = MIND_MD_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, MIND_MD_PATH)
+        return _json_response(_mind_summary())
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
 def _style_assembly_mod():
     try:
         import style_assembly as _sa

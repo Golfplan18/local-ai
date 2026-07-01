@@ -3003,6 +3003,77 @@ a.ora-settings-apikey-label:hover {
 .ora-styles-switch-sub { font-weight: 400; color: var(--text-muted, #A89F8A); }
 .ora-styles-switch-help { font-size: 11px; color: var(--text-muted, #A89F8A); }
 
+/* ── personal values (mind.md) panel under the header ── */
+.ora-styles-btn {
+  background: var(--interactive-normal, #2A2620);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  color: var(--text-normal, #E8E0CC);
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.ora-styles-btn:hover { background: var(--interactive-hover, #35302a); }
+.ora-styles-btn--ghost {
+  background: transparent;
+  color: var(--text-muted, #A89F8A);
+}
+
+.ora-styles-mind {
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 6px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.ora-styles-mind--warn { border-color: var(--color-yellow, #D4AC4A); }
+.ora-styles-mind--choice { border-style: dashed; }
+.ora-styles-mind-off {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+  margin: 4px 0 10px;
+}
+.ora-styles-mind-title { font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-mind-body { color: var(--text-muted, #A89F8A); line-height: 1.5; }
+.ora-styles-mind-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.ora-styles-mind-name { font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-mind-meta { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-mind-chip {
+  font-size: 10px;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 10px;
+  padding: 1px 8px;
+  color: var(--text-muted, #A89F8A);
+}
+.ora-styles-mind-stock {
+  font-size: 11px;
+  color: var(--color-yellow, #D4AC4A);
+}
+.ora-styles-mind-hint { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-mind-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ora-styles-mind-editor { display: flex; flex-direction: column; gap: 8px; }
+.ora-styles-mind-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--background-primary, #1E1B14);
+  color: var(--text-normal, #E8E0CC);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 4px;
+  padding: 8px;
+  resize: vertical;
+}
+
 /* ── section + grid ── */
 .ora-styles-section { display: flex; flex-direction: column; gap: 8px; }
 

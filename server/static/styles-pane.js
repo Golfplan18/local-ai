@@ -29,6 +29,9 @@
   var _openLib = new Set();      // library section ids currently expanded
   var _fictionOpen = false;
   var _convFor = null;           // profile id whose conversational popout is open
+  var _mind = null;              // GET /api/mind summary (null until loaded)
+  var _mindEditorOpen = false;   // mind.md view/edit expander state
+  var _mindChoiceOpen = false;   // "no mind.md yet" create/interview panel
 
   var AXIS_LABELS = {
     warmth: 'warmth', force: 'force', energy: 'energy', outlook: 'outlook',
@@ -100,12 +103,19 @@
     if (_host) { _host.classList.remove('ora-styles-host-mounted'); _host.innerHTML = ''; _host = null; }
     _data = null; _expanded = new Set(); _editingSlot = null; _openLib = new Set();
     _fictionOpen = false; _convFor = null;
+    _mind = null; _mindEditorOpen = false; _mindChoiceOpen = false;
   }
   function _reload() {
     var host = _host;
-    return _get().then(function (data) {
+    return Promise.all([
+      _get(),
+      // mind.md state drives the personal-values panel; absence of the
+      // endpoint (older server) degrades to the pre-panel behavior.
+      fetch('/api/mind').then(_json).catch(function () { return null; }),
+    ]).then(function (resp) {
       if (_host !== host) return;          // a later mount/destroy superseded us
-      _data = data || { profiles: [], custom: [], library: {}, settings: {} };
+      _data = resp[0] || { profiles: [], custom: [], library: {}, settings: {} };
+      _mind = resp[1];
       _render();
     });
   }
@@ -137,6 +147,10 @@
     var s = (_data && _data.settings) || {};
     var active = _profileById(s.default_id);
     var activeName = active ? active.display_name : 'None';
+    // Switch copy states what the toggle DOES: it swaps the VALUES layer
+    // of the system prompt (mind.md vs the built-in Mind Seeds). It does
+    // not compose voice/style — presets do that (the old copy promised
+    // voice composition that never happened).
     return ''
       + '<section class="ora-styles-header">'
       +   '<div class="ora-styles-active">'
@@ -144,8 +158,113 @@
       +     '<strong class="ora-styles-active-name">' + _esc(activeName) + '</strong>'
       +   '</div>'
       +   _switchHTML('use_custom_values', !!s.use_custom_values,
-                      'custom values', '(mind.md)',
-                      'compose the voice from your mind.md, not the default')
+                      'personal values', '(mind.md)',
+                      'inject your mind.md as the authoritative values layer, '
+                      + 'replacing the built-in defaults')
+      + '</section>'
+      + _mindHTML(!!s.use_custom_values);
+  }
+
+  // The personal-values panel under the header. States:
+  //   choice panel — toggle flipped ON with no (or stock) mind.md;
+  //   summary card — toggle ON and mind.md exists;
+  //   one-line off note — toggle OFF.
+  // Style presets set tone/arrangement/diction; mind.md sets values and
+  // posture. Precedence: values floor > completeness > craft > substance
+  // > style.
+  function _mindHTML(on) {
+    if (_mindChoiceOpen) {
+      var stock = _mind && _mind.exists && _mind.is_default_template;
+      return ''
+        + '<section class="ora-styles-mind ora-styles-mind--choice">'
+        +   '<div class="ora-styles-mind-title">'
+        +     (stock ? 'Your mind.md is still the stock template'
+                     : 'No mind.md yet')
+        +   '</div>'
+        +   '<div class="ora-styles-mind-body">'
+        +     'mind.md is your personal values file — communication '
+        +     'preferences, intellectual posture, ethical boundaries. '
+        +     'Turning on personal values injects it into every prompt '
+        +     'as the authoritative values layer. How do you want to '
+        +     (stock ? 'make it yours?' : 'create it?')
+        +   '</div>'
+        +   '<div class="ora-styles-mind-actions">'
+        +     (stock ? ''
+              : '<button type="button" class="ora-styles-btn" data-action="mind-create">'
+                + 'Create from the default template</button>')
+        +     '<button type="button" class="ora-styles-btn" data-action="mind-interview">'
+        +       'Run the MindSpec interview</button>'
+        +     (stock
+              ? '<button type="button" class="ora-styles-btn" data-action="mind-edit-from-choice">'
+                + 'Edit it now</button>'
+              : '')
+        +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+        +       'data-action="mind-choice-cancel">Cancel</button>'
+        +   '</div>'
+        + '</section>';
+    }
+    if (!on) {
+      return ''
+        + '<p class="ora-styles-mind-off">'
+        +   'Off — the engine’s built-in Mind Seeds apply. Turn on '
+        +   'personal values to inject your own mind.md instead.'
+        + '</p>';
+    }
+    if (!_mind) return '';  // endpoint unavailable — degrade silently
+    if (!_mind.exists) {
+      return ''
+        + '<section class="ora-styles-mind ora-styles-mind--warn">'
+        +   '<div class="ora-styles-mind-body">'
+        +     '⚠ Personal values is ON but no mind.md exists — '
+        +     'the built-in defaults still apply. '
+        +     '<button type="button" class="ora-styles-btn" data-action="mind-create">'
+        +       'Create from the default template</button> '
+        +     '<button type="button" class="ora-styles-btn" data-action="mind-interview">'
+        +       'Run the MindSpec interview</button>'
+        +   '</div>'
+        + '</section>';
+    }
+    var secs = _mind.sections || [];
+    var chips = secs.map(function (name) {
+      return '<span class="ora-styles-mind-chip">' + _esc(name) + '</span>';
+    }).join('');
+    return ''
+      + '<section class="ora-styles-mind">'
+      +   '<div class="ora-styles-mind-row">'
+      +     '<span class="ora-styles-mind-name">mind.md</span>'
+      +     '<span class="ora-styles-mind-meta">'
+      +       secs.length + ' section' + (secs.length === 1 ? '' : 's')
+      +       (_mind.mtime ? ' · last edited ' + _esc(String(_mind.mtime).slice(0, 10)) : '')
+      +     '</span>'
+      +     chips
+      +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+      +       'data-action="mind-edit">'
+      +       (_mindEditorOpen ? 'close editor' : 'view / edit') + '</button>'
+      +   '</div>'
+      +   (_mind.is_default_template
+          ? '<div class="ora-styles-mind-stock">This is still the stock '
+            + 'template — run the MindSpec interview '
+            + '(<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+            + 'data-action="mind-interview">start</button>) or edit it to '
+            + 'make it yours.</div>'
+          : '')
+      +   '<div class="ora-styles-mind-hint">'
+      +     'Injected into every prompt as the authoritative values layer. '
+      +     'Style presets set tone and arrangement; mind.md sets values '
+      +     'and posture — precedence: values floor &gt; completeness '
+      +     '&gt; craft &gt; substance &gt; style.'
+      +   '</div>'
+      +   (_mindEditorOpen
+          ? '<div class="ora-styles-mind-editor">'
+            + '<textarea class="ora-styles-mind-textarea" data-role="mind-content" '
+            +   'rows="16" spellcheck="false">' + _esc(_mind.content || '') + '</textarea>'
+            + '<div class="ora-styles-mind-actions">'
+            +   '<button type="button" class="ora-styles-btn" data-action="mind-save">Save</button>'
+            +   '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+            +     'data-action="mind-cancel">Cancel</button>'
+            + '</div>'
+            + '</div>'
+          : '')
       + '</section>';
   }
 
@@ -545,11 +664,120 @@
     else if (a === 'conv-close') { _convFor = null; _render(); }
     else if (a === 'conv-axis')  { _convAxis(id, t.dataset.axis, t.dataset.rung); }
     else if (a === 'conv-reset') { _convReset(id); }
+    else if (a === 'mind-create')          { _mindCreate(); }
+    else if (a === 'mind-interview')       { _mindInterview(); }
+    else if (a === 'mind-choice-cancel')   { _mindChoiceOpen = false; _render(); }
+    else if (a === 'mind-edit')            { _mindEditorOpen = !_mindEditorOpen; _render(); }
+    else if (a === 'mind-edit-from-choice') {
+      // "Edit it now" on the stock-template choice panel: commit the
+      // toggle (the user chose to proceed with the template as a base)
+      // and open the editor.
+      _mindChoiceOpen = false;
+      _mindEditorOpen = true;
+      _status('Saving…');
+      _saveSettings({ use_custom_values: true })
+        .then(function () { return _reload(); })
+        .then(function () {
+          _status('Personal values ON — edit mind.md below to make it yours.');
+        })
+        .catch(function () { _status('Could not save — try again.'); });
+    }
+    else if (a === 'mind-cancel') { _mindEditorOpen = false; _render(); }
+    else if (a === 'mind-save')   { _mindSave(); }
+  }
+
+  // ── mind.md actions ───────────────────────────────────────────────────────
+
+  function _mindCreate() {
+    _status('Creating mind.md from the template…');
+    fetch('/api/mind', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_from_template' }),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) throw new Error(resp.error);
+      _mindChoiceOpen = false;
+      _mindEditorOpen = true;   // land the user in the editor
+      return _saveSettings({ use_custom_values: true });
+    }).then(function () { return _reload(); })
+      .then(function () {
+        _status('mind.md created and personal values turned ON — '
+          + 'edit it below to make it yours.');
+      })
+      .catch(function (err) {
+        _status('Could not create mind.md: '
+          + ((err && err.message) || 'unknown error'));
+      });
+  }
+
+  function _mindInterview() {
+    // Same idiom as External APIs' "+ Add new provider": drop the
+    // framework command into the chat input for the user to review and
+    // send. The MindSpec interview's MSI-Self mode persists its
+    // deliverable to ~/ora/mind.md on completion.
+    var input = document.querySelector('.input-pane textarea');
+    if (!input) {
+      _status('Could not find the chat input — type '
+        + '/framework mindspec-interview there yourself.');
+      return;
+    }
+    input.value = '/framework mindspec-interview';
+    try {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (_) { /* old browser fallback — ignore */ }
+    _mindChoiceOpen = false;
+    _render();
+    _status('Prompt dropped into the chat input — close Settings and press '
+      + 'Enter to start the interview. Turn personal values on afterwards.');
+    try { input.focus(); } catch (_) { /* ignore */ }
+  }
+
+  function _mindSave() {
+    var ta = _host && _host.querySelector('[data-role="mind-content"]');
+    if (!ta) return;
+    _status('Saving mind.md…');
+    fetch('/api/mind', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: ta.value }),
+    }).then(_json).then(function (resp) {
+      if (resp && resp.error) throw new Error(resp.error);
+      _mindEditorOpen = false;
+      return _reload();
+    }).then(function () { _status('mind.md saved.'); })
+      .catch(function (err) {
+        _status('Could not save mind.md: '
+          + ((err && err.message) || 'unknown error'));
+      });
   }
 
   function _onChange(evt) {
     var el = evt.target;
-    if (el.dataset.toggle) {
+    if (el.dataset.toggle === 'use_custom_values') {
+      // State check before the silent save: flipping ON with no mind.md
+      // (or one that's still the stock template) opens the create/
+      // interview choice panel instead of committing a toggle that
+      // would change nothing meaningful.
+      if (el.checked && _mind
+          && (!_mind.exists || _mind.is_default_template)) {
+        el.checked = false;           // don't commit until resolved
+        _mindChoiceOpen = true;
+        _render();
+        return;
+      }
+      var flag = { use_custom_values: el.checked };
+      var onMsg = _mind && _mind.exists
+        ? 'Personal values ON — mind.md ('
+          + ((_mind.sections || []).length) + ' section'
+          + (((_mind.sections || []).length) === 1 ? '' : 's')
+          + ') is injected as your values layer.'
+        : 'Personal values ON.';
+      var doneMsg = el.checked
+        ? onMsg
+        : 'Personal values OFF — the built-in defaults apply.';
+      _status('Saving…');
+      _saveSettings(flag).then(function () { return _reload(); })
+        .then(function () { _status(doneMsg); })
+        .catch(function () { _status('Could not save — try again.'); });
+    } else if (el.dataset.toggle) {
       var styles = {}; styles[el.dataset.toggle] = el.checked;
       _status('Saving…');
       _saveSettings(styles).then(function () { return _reload(); })
