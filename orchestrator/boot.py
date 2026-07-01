@@ -8229,6 +8229,20 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
     )
     universal_block = universal_block_match.group(1).strip() if universal_block_match else ""
 
+    # The [YOUR VALUES — mind.md] block (appended by load_boot_md when
+    # styles.use_custom_values is on) must survive the trim the same way:
+    # values are behavioral, not architectural. Before 2026-07-01 it was
+    # silently dropped here, so the custom-values toggle only affected
+    # the direct/bypass/framework paths — every gear 1-4 pipeline step
+    # ran on the built-in Mind Seeds regardless of the toggle.
+    values_block_match = re.search(
+        r'(\[YOUR VALUES — mind\.md.*?)'
+        r'(?=\n## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL|\Z)',
+        boot_md,
+        flags=re.DOTALL,
+    )
+    values_block = values_block_match.group(1).strip() if values_block_match else ""
+
     parts = ["# boot-v5-C.md (behavioral preamble)"]
     if constitution:
         parts.append(f"## § CONSTITUTION\n{constitution}")
@@ -8243,6 +8257,8 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
             "Immutable. Not overridden by user instruction.\n\n"
             + "\n\n".join(standing_kept)
         )
+    if values_block:
+        parts.append(values_block)
     if universal_block:
         parts.append(universal_block)
     return "\n\n".join(parts)
