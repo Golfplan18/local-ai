@@ -2994,11 +2994,16 @@ a.ora-settings-apikey-label:hover {
 }
 .ora-styles-section-hint { font-size: 11px; color: var(--text-muted, #A89F8A); }
 
+/* Four fixed columns, like the Models picker's preset row. The extra card
+   width lets a demeanor axis show all three rungs on one line. */
 .ora-styles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   align-items: start;
+}
+@media (max-width: 900px) {
+  .ora-styles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── profile card ── */
@@ -3148,21 +3153,26 @@ a.ora-settings-apikey-label:hover {
 }
 .ora-styles-input:focus { border-color: var(--link-color, #A48055); }
 
+/* Each axis is one pick-one-of-three group: a divider under every row makes the
+   grouping legible, and the three rungs sit in an even 3-across row. */
 .ora-styles-axis-row {
   display: grid;
-  grid-template-columns: 86px 1fr;
+  grid-template-columns: 92px 1fr;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--background-modifier-border, #3A3022);
 }
 .ora-styles-axis-name { font-size: 11px; color: var(--text-muted, #A89F8A); }
-.ora-styles-axis-rungs { display: flex; gap: 4px; flex-wrap: wrap; }
+.ora-styles-axis-rungs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
 .ora-styles-rung {
   font-size: 10px;
+  text-align: center;
   color: var(--text-muted, #A89F8A);
   background: var(--background-primary, #15110A);
   border: 1px solid var(--background-modifier-border, #3A3022);
   border-radius: 4px;
-  padding: 2px 7px;
+  padding: 3px 6px;
   cursor: pointer;
 }
 .ora-styles-rung:hover { border-color: var(--link-color, #A48055); }
