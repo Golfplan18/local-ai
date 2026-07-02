@@ -48,19 +48,30 @@
   // typical user isn't confronted with it. Everything else — including External
   // APIs, which every user sets up on install — stays in the main list.
   var TABS = [
-    { id: 'models',         label: 'Models' },
-    { id: 'visual',         label: 'Visual' },
-    { id: 'styles',         label: 'Output Styles' },
-    { id: 'transcription',  label: 'Transcription' },
-    { id: 'speech',         label: 'Speech' },
-    { id: 'retrieval',      label: 'Retrieval' },
-    { id: 'interface',      label: 'Interface' },
-    { id: 'shortcuts',      label: 'Shortcuts' },
-    { id: 'capture',        label: 'Capture' },
-    { id: 'apis',           label: 'External APIs' },
-    { id: 'export',         label: 'Export' },
-    { id: 'projects',       label: 'Project Plugins', group: 'advanced' },
+    { id: 'models',    label: 'Models' },
+    { id: 'visual',    label: 'Visual' },
+    { id: 'styles',    label: 'Output Styles' },
+    { id: 'avmedia',   label: 'Audio & Video' },
+    { id: 'general',   label: 'General' },
+    { id: 'shortcuts', label: 'Shortcuts' },
+    { id: 'apis',      label: 'External APIs' },
+    { id: 'projects',  label: 'Project Plugins', group: 'advanced' },
   ];
+
+  // 2026-07-01 consolidation: six low-traffic tabs became sections on
+  // two pages — Audio & Video (Transcription · Speech · Screen
+  // recording · Media export) and General (Retrieval · Interface).
+  // Old tab ids stay routable so open({tab}) callers and open-settings
+  // deep links keep working; the alias also targets the section anchor.
+  var TAB_ALIASES = {
+    transcription: { tab: 'avmedia', section: 'transcription' },
+    speech:        { tab: 'avmedia', section: 'speech' },
+    capture:       { tab: 'avmedia', section: 'capture' },
+    export:        { tab: 'avmedia', section: 'export' },
+    whisper:       { tab: 'avmedia', section: 'transcription' },  // pre-rename id
+    retrieval:     { tab: 'general', section: 'retrieval' },
+    interface:     { tab: 'general', section: 'interface' },
+  };
 
   var WHISPER_MODELS = [
     { id: 'tiny',     label: 'tiny (fastest, lowest accuracy)' },
@@ -173,7 +184,6 @@
     // tab hosts OraVisualSlotsPane (install Chunk 11). Buckets was
     // retired (see the TABS comment above).
     if (_activeTab === 'models')  { _renderModelsPane();      return; }
-    if (_activeTab === 'retrieval') { _renderRetrievalTab();   return; }
     if (_activeTab === 'visual')  { _renderVisualSlotsPane(); return; }
     if (_activeTab === 'projects') { _renderProjectsTab();    return; }
     if (_activeTab === 'styles')  { _renderStylesPane();     return; }
@@ -181,13 +191,93 @@
       _tabContentEl.textContent = 'Loading…';
       return;
     }
-    if (_activeTab === 'capture') _renderCaptureTab();
-    else if (_activeTab === 'interface') _renderInterfaceTab();
+    if (_activeTab === 'avmedia') _renderAVMediaTab();
+    else if (_activeTab === 'general') _renderGeneralTab();
     else if (_activeTab === 'shortcuts') _renderShortcutsTab();
-    else if (_activeTab === 'transcription') _renderTranscriptionTab();
-    else if (_activeTab === 'speech') _renderSpeechTab();
     else if (_activeTab === 'apis') _renderAPIsTab();
-    else if (_activeTab === 'export') _renderExportTab();
+  }
+
+  // ── consolidated tabs (2026-07-01): sections in a two-column grid ────────
+  //
+  // Each former tab renders as a titled section. The legacy render
+  // functions append to the module-level _tabContentEl, so _withTarget
+  // swaps it to the section body for the synchronous render pass and
+  // restores it after. (Async work inside those functions only mutates
+  // elements it already appended, so the swap-window is safe; the one
+  // exception was the Retrieval pane, which re-entered _tabContentEl
+  // from a fetch callback — it now renders into an explicit container.)
+
+  function _withTarget(el, fn) {
+    var saved = _tabContentEl;
+    _tabContentEl = el;
+    try { fn(); } finally { _tabContentEl = saved; }
+  }
+
+  function _sectionInto(grid, id, title, intro) {
+    var sec = document.createElement('section');
+    sec.className = 'ora-settings-group';
+    sec.dataset.settingsSection = id;
+    var h = document.createElement('h3');
+    h.className = 'ora-settings-group-title';
+    h.textContent = title;
+    sec.appendChild(h);
+    if (intro) {
+      var p = document.createElement('p');
+      p.className = 'ora-settings-note ora-settings-group-intro';
+      p.textContent = intro;
+      sec.appendChild(p);
+    }
+    var body = document.createElement('div');
+    body.className = 'ora-settings-group-body';
+    sec.appendChild(body);
+    grid.appendChild(sec);
+    return body;
+  }
+
+  function _renderAVMediaTab() {
+    var grid = document.createElement('div');
+    grid.className = 'ora-settings-sections-grid';
+    _tabContentEl.appendChild(grid);
+
+    _withTarget(
+      _sectionInto(grid, 'transcription', 'Transcription',
+        'Audio in → text out: how uploaded (or recorded) audio becomes '
+        + 'transcripts.'),
+      _renderTranscriptionTab);
+    _renderSpeechSection(
+      _sectionInto(grid, 'speech', 'Speech',
+        'Text out → audio: the Read-aloud speaker button on scratchpad '
+        + 'answers uses this voice.'));
+    _renderCaptureSection(
+      _sectionInto(grid, 'capture', 'Screen recording',
+        'Records your screen as video, with optional microphone audio '
+        + 'and a webcam picture-in-picture. Start and stop it from the '
+        + 'camera button on the spine — these are the defaults it uses.'));
+    _withTarget(
+      _sectionInto(grid, 'export', 'Media export',
+        'Video and audio renders of the timeline (MP4 · MOV · WebM · '
+        + 'M4A).'),
+      _renderExportTab);
+
+    _scrollToPendingSection();
+  }
+
+  function _renderGeneralTab() {
+    var grid = document.createElement('div');
+    grid.className = 'ora-settings-sections-grid';
+    _tabContentEl.appendChild(grid);
+
+    _renderRetrievalSection(
+      _sectionInto(grid, 'retrieval', 'Retrieval (memory search)',
+        'How Ora\'s memory is encoded and searched. These two choices '
+        + 'shape what context every answer retrieves — they matter more '
+        + 'than they look.'));
+    _withTarget(
+      _sectionInto(grid, 'interface', 'Interface',
+        'Small interface preferences.'),
+      _renderInterfaceTab);
+
+    _scrollToPendingSection();
   }
 
   function _renderInterfaceTab() {
@@ -866,31 +956,122 @@
 
   // ── tabs ─────────────────────────────────────────────────────────────────
 
-  function _renderCaptureTab() {
-    var cap = (_dirty.capture || _settings.capture || {});
-    var src = _settings.capture || {};
-    _appendField('Default capture directory',
-      _textInput('capture.default_directory',
-                 cap.default_directory || src.default_directory || ''));
-    _appendField('Frame rate',
-      _selectInput('capture.frame_rate',
-                   FRAME_RATES.map(function (n) {
-                     return { id: n, label: n + ' fps' };
-                   }),
-                   cap.frame_rate || src.frame_rate));
-    _appendField('Default audio device',
-      _textInput('capture.default_audio_device',
-                 cap.default_audio_device || src.default_audio_device || '',
-                 'leave blank for system default'));
-    _appendField('Capture system audio by default',
-      _checkboxInput('capture.default_system_audio',
-                     cap.default_system_audio !== undefined
-                       ? cap.default_system_audio
-                       : src.default_system_audio));
-    _appendField('Default webcam device',
-      _textInput('capture.default_webcam_device',
-                 cap.default_webcam_device || src.default_webcam_device || '',
-                 'leave blank to disable'));
+  // Screen-recording section. Device pickers are real dropdowns fed by
+  // GET /api/capture/devices (FFmpeg avfoundation enumeration) — the
+  // runtime matches devices by EXACT display name, so free-text entry
+  // silently failed on any typo. Devices are fetched once per panel
+  // lifetime; when enumeration is unavailable (no FFmpeg / non-macOS)
+  // the fields degrade back to free text.
+  //
+  // The old "Capture system audio by default" checkbox is gone: it was
+  // wired to nothing (no system-audio path exists in the FFmpeg command
+  // builder — capturing system audio requires a loopback device like
+  // BlackHole, which then shows up as an ordinary audio device below).
+  var _captureDevices = null;  // null = not fetched; {video:[],audio:[]}
+
+  function _renderCaptureSection(container) {
+    if (_captureDevices === null) {
+      var loading = document.createElement('p');
+      loading.className = 'ora-settings-note';
+      loading.textContent = 'Detecting capture devices…';
+      container.appendChild(loading);
+      fetch('/api/capture/devices')
+        .then(function (r) { return r.json(); })
+        .then(function (resp) {
+          _captureDevices = {
+            video: (resp && resp.video) || [],
+            audio: (resp && resp.audio) || [],
+          };
+        })
+        .catch(function () { _captureDevices = { video: [], audio: [] }; })
+        .then(function () { _drawCaptureSection(container); });
+      return;
+    }
+    _drawCaptureSection(container);
+  }
+
+  // Device dropdown: empty option + enumerated device names; a stored
+  // value the enumeration doesn't list still renders (tagged "not
+  // detected") so the user sees the staleness instead of a silently
+  // reset selection.
+  function _deviceSelect(path, names, current, emptyLabel) {
+    var options = [{ id: '', label: emptyLabel }].concat(
+      names.map(function (n) { return { id: n, label: n }; }));
+    if (current && names.indexOf(current) === -1) {
+      options.push({ id: current, label: current + ' — not detected' });
+    }
+    return _selectInput(path, options, current || '');
+  }
+
+  function _drawCaptureSection(container) {
+    container.innerHTML = '';
+    _withTarget(container, function () {
+      var cap = (_dirty.capture || _settings.capture || {});
+      var src = _settings.capture || {};
+      var audioNames = _captureDevices.audio.map(function (d) { return d.name; });
+      var camNames = _captureDevices.video
+        .map(function (d) { return d.name; })
+        .filter(function (n) { return !/screen/i.test(n); });
+      var haveDevices = audioNames.length > 0 || camNames.length > 0;
+
+      _appendField('Save recordings to',
+        _textInput('capture.default_directory',
+                   cap.default_directory || src.default_directory || ''));
+      _appendNote(
+        'Where finished recordings land. Applies from the next recording; '
+        + 'stealth conversations keep their recordings inside the '
+        + 'conversation\'s own folder regardless.'
+      );
+
+      _appendField('Frame rate',
+        _selectInput('capture.frame_rate',
+                     FRAME_RATES.map(function (n) {
+                       return { id: n, label: n + ' fps' };
+                     }),
+                     cap.frame_rate || src.frame_rate));
+      _appendNote(
+        'Higher = smoother motion but more encoding load; file size '
+        + 'barely changes (the bitrate is fixed). 25–30 fps suits screen '
+        + 'demos; pick 50–60 only for fast motion.'
+      );
+
+      var audioCur = cap.default_audio_device !== undefined
+        ? cap.default_audio_device
+        : (src.default_audio_device || '');
+      _appendField('Microphone / audio device',
+        haveDevices
+          ? _deviceSelect('capture.default_audio_device', audioNames,
+                          audioCur, '(system default)')
+          : _textInput('capture.default_audio_device', audioCur,
+                       'leave blank for system default'));
+      _appendNote(
+        'The audio source recorded with the screen. To record SYSTEM '
+        + 'audio (what the speakers play), install a loopback device '
+        + 'such as BlackHole and pick it here.'
+      );
+
+      var camCur = cap.default_webcam_device !== undefined
+        ? cap.default_webcam_device
+        : (src.default_webcam_device || '');
+      _appendField('Webcam picture-in-picture',
+        haveDevices
+          ? _deviceSelect('capture.default_webcam_device', camNames,
+                          camCur, '(off — screen only)')
+          : _textInput('capture.default_webcam_device', camCur,
+                       'leave blank to disable'));
+      _appendNote(
+        'When set, the webcam is overlaid in a corner of the recording. '
+        + 'The corner is adjustable from the capture toolbar.'
+      );
+
+      if (!haveDevices) {
+        _appendNote(
+          'Device detection is unavailable on this machine (FFmpeg '
+          + 'missing or unsupported platform) — device names entered '
+          + 'above must match exactly.'
+        );
+      }
+    });
   }
 
   // Transcription tab — replaces the former "Whisper" tab. Adds a
@@ -997,43 +1178,95 @@
       });
   }
 
-  // Speech (TTS) tab — controls the speaker button on assistant
-  // messages. Provider options:
+  // Speech (TTS) section — controls the Read-aloud speaker button on
+  // scratchpad answers. Provider options:
   //   local_say   — macOS `say` (free, instant, no network)
   //   openrouter  — OpenRouter speech endpoint (paid; better voices)
-  function _renderSpeechTab() {
-    var sp  = (_dirty.speech || _settings.speech || {});
-    var src = _settings.speech || {};
-    var provider = sp.provider || src.provider || 'local_say';
+  //
+  // Platform-aware: /api/tts/voices returns [] when the `say` binary
+  // is missing (Windows / Linux), in which case the "macOS say" option
+  // and its System-Settings note would be pure confusion — the section
+  // then offers OpenRouter only and says why. Voices are fetched once
+  // and cached for the panel's lifetime.
+  var _sayVoices = null;  // null = not fetched; [] = no local speech
 
-    var providerSel = _selectInput('speech.provider', [
-        { id: 'local_say',  label: 'macOS say (free, instant)' },
-        { id: 'openrouter', label: 'OpenRouter (paid; better voices)' },
-      ], provider);
-    _appendField('Speech provider', providerSel);
-    providerSel.addEventListener('change', function () { _renderTabContent(); });
-
-    if (provider === 'local_say') {
-      _appendSayVoicePicker(sp.local_voice || src.local_voice || 'Samantha');
-      _appendNote(
-        'The "say" binary ships with macOS. Voices are managed in '
-        + 'System Settings → Accessibility → Spoken Content → System Voice. '
-        + 'New voices download on first use.'
-      );
-    } else if (provider === 'openrouter') {
-      _appendOpenRouterSpeechPicker(sp.openrouter_model || src.openrouter_model || '');
-      _appendField('Voice (optional)',
-        _textInput('speech.openrouter_voice',
-                   sp.openrouter_voice || src.openrouter_voice || '',
-                   'leave blank for the model default'));
-      _appendNote(
-        'OpenRouter forwards to whichever upstream the chosen model lives on. '
-        + 'Some models honor a voice id ("alloy", "echo", "shimmer" for OpenAI; '
-        + 'voice names for ElevenLabs). Leave blank if unsure.'
-      );
+  function _renderSpeechSection(container) {
+    if (_sayVoices === null) {
+      var loading = document.createElement('p');
+      loading.className = 'ora-settings-note';
+      loading.textContent = 'Checking local voices…';
+      container.appendChild(loading);
+      fetch('/api/tts/voices')
+        .then(function (r) { return r.json(); })
+        .then(function (resp) { _sayVoices = (resp && resp.voices) || []; })
+        .catch(function () { _sayVoices = []; })
+        .then(function () { _drawSpeechSection(container); });
+      return;
     }
+    _drawSpeechSection(container);
   }
 
+  function _drawSpeechSection(container) {
+    container.innerHTML = '';
+    _withTarget(container, function () {
+      var sp  = (_dirty.speech || _settings.speech || {});
+      var src = _settings.speech || {};
+      var sayAvailable = (_sayVoices || []).length > 0;
+      var provider = sp.provider || src.provider
+        || (sayAvailable ? 'local_say' : 'openrouter');
+      // A stored local_say on a machine without `say` (settings copied
+      // from a Mac) would render a dead pane — show OpenRouter instead;
+      // the server-side default is platform-aware the same way.
+      if (!sayAvailable && provider === 'local_say') provider = 'openrouter';
+
+      var providerOptions = [];
+      if (sayAvailable) {
+        providerOptions.push({
+          id: 'local_say',
+          label: 'System speech — macOS say (free, instant)',
+        });
+      }
+      providerOptions.push(
+        { id: 'openrouter', label: 'OpenRouter (paid; better voices)' });
+
+      var providerSel = _selectInput('speech.provider', providerOptions, provider);
+      _appendField('Speech provider', providerSel);
+      providerSel.addEventListener('change', function () {
+        _drawSpeechSection(container);
+      });
+
+      if (!sayAvailable) {
+        _appendNote(
+          'Local system speech isn\'t available on this machine, so '
+          + 'reading aloud goes through OpenRouter — it needs an '
+          + 'OpenRouter key (External APIs tab).'
+        );
+      }
+
+      if (provider === 'local_say') {
+        _appendSayVoicePicker(sp.local_voice || src.local_voice || 'Samantha');
+        _appendNote(
+          'The "say" binary ships with macOS. Voices are managed in '
+          + 'System Settings → Accessibility → Spoken Content → System Voice. '
+          + 'New voices download on first use.'
+        );
+      } else if (provider === 'openrouter') {
+        _appendOpenRouterSpeechPicker(sp.openrouter_model || src.openrouter_model || '');
+        _appendField('Voice (optional)',
+          _textInput('speech.openrouter_voice',
+                     sp.openrouter_voice || src.openrouter_voice || '',
+                     'leave blank for the model default'));
+        _appendNote(
+          'OpenRouter forwards to whichever upstream the chosen model lives on. '
+          + 'Some models honor a voice id ("alloy", "echo", "shimmer" for OpenAI; '
+          + 'voice names for ElevenLabs). Leave blank if unsure.'
+        );
+      }
+    });
+  }
+
+  // Voice picker built from the cached _sayVoices list (fetched by
+  // _renderSpeechSection — no per-render refetch).
   function _appendSayVoicePicker(currentVoice) {
     var row = document.createElement('div');
     row.className = 'ora-settings-row';
@@ -1044,31 +1277,21 @@
     var sel = document.createElement('select');
     sel.className = 'ora-settings-row-input';
     sel.dataset.key = 'speech.local_voice';
-    sel.innerHTML = '<option value="">Loading voices…</option>';
     sel.addEventListener('change', function (e) {
       _setDirty('speech.local_voice', e.target.value);
     });
+    var voices = _sayVoices || [];
+    if (!voices.length) {
+      sel.innerHTML = '<option value="">(no voices found)</option>';
+    } else {
+      sel.innerHTML = voices.map(function (v) {
+        var sel_attr = (v.name === currentVoice) ? ' selected' : '';
+        var label = v.name + (v.language ? ' — ' + v.language : '');
+        return '<option value="' + v.name + '"' + sel_attr + '>' + label + '</option>';
+      }).join('');
+    }
     row.appendChild(sel);
     _tabContentEl.appendChild(row);
-
-    fetch('/api/tts/voices')
-      .then(function (r) { return r.json(); })
-      .then(function (resp) {
-        var voices = (resp && resp.voices) || [];
-        if (!voices.length) {
-          sel.innerHTML = '<option value="">(no voices found)</option>';
-          return;
-        }
-        var opts = voices.map(function (v) {
-          var sel_attr = (v.name === currentVoice) ? ' selected' : '';
-          var label = v.name + (v.language ? ' — ' + v.language : '');
-          return '<option value="' + v.name + '"' + sel_attr + '>' + label + '</option>';
-        });
-        sel.innerHTML = opts.join('');
-      })
-      .catch(function () {
-        sel.innerHTML = '<option value="">(voice list failed)</option>';
-      });
   }
 
   function _appendOpenRouterSpeechPicker(currentModelId) {
@@ -1126,12 +1349,16 @@
     return bits.length ? (label + ' - ' + bits.join(' / ')) : label;
   }
 
-  function _renderRetrievalTab() {
-    _tabContentEl.innerHTML = '';
+  // Retrieval section — renders into an explicit container (NOT the
+  // module-level _tabContentEl) because its fetch callback re-enters
+  // after _withTarget has restored the target; writing to _tabContentEl
+  // from there would wipe the whole General tab.
+  function _renderRetrievalSection(container) {
+    container.innerHTML = '';
     var loading = document.createElement('p');
     loading.className = 'ora-settings-note';
     loading.textContent = 'Loading retrieval settings...';
-    _tabContentEl.appendChild(loading);
+    container.appendChild(loading);
 
     fetch('/api/retrieval/config')
       .then(function (r) {
@@ -1142,18 +1369,24 @@
           throw new Error((res.data && res.data.error) || 'load failed');
         }
         _retrieval = res.data.retrieval || {};
-        _drawRetrievalTab();
+        _drawRetrievalSection(container);
       })
       .catch(function (err) {
-        _tabContentEl.innerHTML = '';
-        _appendNote('Could not load retrieval settings: ' + err.message);
+        container.innerHTML = '';
+        var note = document.createElement('p');
+        note.className = 'ora-settings-note';
+        note.textContent = 'Could not load retrieval settings: ' + err.message;
+        container.appendChild(note);
       });
   }
 
-  function _drawRetrievalTab() {
+  function _drawRetrievalSection(container) {
     var retrieval = _retrieval || {};
-    _tabContentEl.innerHTML = '';
+    container.innerHTML = '';
+    _drawRetrievalFields(container, retrieval);
+  }
 
+  function _drawRetrievalFields(container, retrieval) {
     var activeEmbedding = retrieval.active_embedding || {};
     var embeddingOptions = retrieval.embedding_options || [];
     var embeddingSel = document.createElement('select');
@@ -1165,13 +1398,18 @@
       if (String(opt.id) === String(activeEmbedding.id)) o.selected = true;
       embeddingSel.appendChild(o);
     });
-    _appendField('Embedding model', embeddingSel);
+    _fieldInto(container, 'Embedding model', embeddingSel);
 
     var embeddingNote = document.createElement('p');
     embeddingNote.className = 'ora-settings-note';
-    embeddingNote.textContent = 'Active: ' + (activeEmbedding.label || activeEmbedding.id || 'unknown')
-      + '. Changing this requires rebuilding the memory database before activation.';
-    _tabContentEl.appendChild(embeddingNote);
+    embeddingNote.textContent = 'Active: '
+      + (activeEmbedding.label || activeEmbedding.id || 'unknown')
+      + '. The embedding model turns every stored document into search '
+      + 'vectors — it decides what Ora\'s memory can find. Switching '
+      + 'means re-encoding the entire memory database (hundreds of '
+      + 'thousands of documents on a mature install). Selecting here '
+      + 'only STAGES the choice; nothing is rebuilt or activated yet.';
+    container.appendChild(embeddingNote);
 
     embeddingSel.addEventListener('change', function () {
       var selected = embeddingSel.value;
@@ -1207,8 +1445,16 @@
       if (String(opt.id) === String(activeReranker.id)) o.selected = true;
       rerankerSel.appendChild(o);
     });
-    _appendField('Reranker', rerankerSel);
-    _appendNote('Reranker changes take effect immediately. Auto uses Cohere Pro through OpenRouter first, then the local Qwen fallback when available.');
+    _fieldInto(container, 'Reranker', rerankerSel);
+    var rerankNote = document.createElement('p');
+    rerankNote.className = 'ora-settings-note';
+    rerankNote.textContent = 'After a memory search, the reranker '
+      + 're-orders the retrieved snippets by true relevance before they '
+      + 'enter the prompt. Changes apply immediately — no rebuild. If a '
+      + 'reranker is unreachable, Ora falls back to the original search '
+      + 'order. Auto uses Cohere Pro through OpenRouter first, then the '
+      + 'local Qwen fallback when available.';
+    container.appendChild(rerankNote);
 
     rerankerSel.addEventListener('change', function () {
       _setStatus('Saving reranker...');
@@ -1236,7 +1482,7 @@
     keyNote.textContent = retrieval.openrouter_key_present
       ? 'OpenRouter key detected.'
       : 'OpenRouter key not detected. OpenRouter embedding and reranking choices need a key.';
-    _tabContentEl.appendChild(keyNote);
+    container.appendChild(keyNote);
   }
 
   // Populate the OpenRouter transcription-model dropdown from the
@@ -1295,22 +1541,20 @@
 
     var topL = document.createElement('div');
     topL.className = 'ora-settings-apis-top-left';
+    // (The old "Text-to-speech provider" select was removed 2026-07-01:
+    // external_apis.tts_provider had zero runtime consumers — the real
+    // speech routing lives on Audio & Video → Speech.)
     _fieldInto(topL, 'Transcription provider',
       _selectInput('external_apis.transcription_provider', [
         { id: 'whisper_local', label: 'Whisper (local)' },
         { id: 'assemblyai',    label: 'AssemblyAI' },
         { id: 'deepgram',      label: 'Deepgram' },
       ], api.transcription_provider || src.transcription_provider));
-    _fieldInto(topL, 'Text-to-speech provider',
-      _selectInput('external_apis.tts_provider', [
-        { id: 'openai',     label: 'OpenAI TTS' },
-        { id: 'elevenlabs', label: 'ElevenLabs' },
-      ], api.tts_provider || src.tts_provider));
     var lnote = document.createElement('p');
     lnote.className = 'ora-settings-note ora-settings-apis-topnote';
-    lnote.textContent = 'Transcription & speech are an explicit choice — local '
-      + 'Whisper and macOS say are free; pick a cloud provider above only to '
-      + 'override (set its key below).';
+    lnote.textContent = 'Transcription is an explicit choice — local '
+      + 'Whisper is free; pick a cloud provider above only to override '
+      + '(set its key below). Speech routing lives under Audio & Video.';
     topL.appendChild(lnote);
     top.appendChild(topL);
 
@@ -1438,6 +1682,11 @@
       'Renders longer than this estimate run as background jobs '
       + 'with a progress pill instead of a blocking modal. '
       + 'Set to 0 to always render in the background.'
+    );
+    _appendNote(
+      'Word and PDF document exports are not configured here — they run '
+      + 'from the Export toolbar above the output pane and save to '
+      + '~/Documents/Ora Exports.'
     );
   }
 
@@ -1855,21 +2104,44 @@
   // _renderAPIsTab body when rows render.
   var _pendingHighlight = null;
 
+  // Queued section id to scroll to after the next consolidated-tab
+  // render (set when open({tab}) resolves a legacy id via TAB_ALIASES;
+  // consumed by _scrollToPendingSection).
+  var _pendingSection = null;
+
+  function _scrollToPendingSection() {
+    if (!_pendingSection || !_tabContentEl) return;
+    var sec = _tabContentEl.querySelector(
+      '[data-settings-section="' + _pendingSection + '"]');
+    _pendingSection = null;
+    if (!sec) return;
+    try {
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (_) { /* older browsers — ignore */ }
+  }
+
   function open(opts) {
     opts = opts || {};
     if (!_backdropEl) _build();
     if (!_backdropEl.parentNode) document.body.appendChild(_backdropEl);
     _backdropEl.classList.add('ora-settings-backdrop--visible');
-    // Optional tab switch — caller passes a TABS entry id
-    // ('models', 'interface', 'capture', 'whisper', 'apis', 'export').
+    // Optional tab switch — caller passes a TABS entry id or a legacy
+    // pre-consolidation id ('transcription', 'speech', 'retrieval',
+    // 'interface', 'capture', 'export', 'whisper' — see TAB_ALIASES),
+    // which resolves to the hosting tab plus a section to scroll to.
     // Unknown tab ids are silently ignored (defensive against future
     // tab additions / removals).
-    if (opts.tab && _isValidTabId(opts.tab)) {
-      _activeTab = opts.tab;
-      // _renderTabs reflects the new active tab in the tab strip;
-      // _renderTabContent is called by _fetchState below for the
-      // models tab and runs synchronously for the others.
-      if (_tabsEl) _renderTabs();
+    if (opts.tab) {
+      var alias = TAB_ALIASES[opts.tab];
+      var wantedTab = alias ? alias.tab : opts.tab;
+      if (_isValidTabId(wantedTab)) {
+        _activeTab = wantedTab;
+        _pendingSection = alias ? alias.section : null;
+        // _renderTabs reflects the new active tab in the tab strip;
+        // _renderTabContent is called by _fetchState below for the
+        // models tab and runs synchronously for the others.
+        if (_tabsEl) _renderTabs();
+      }
     }
     if (opts.highlight) {
       _pendingHighlight = String(opts.highlight).toLowerCase();

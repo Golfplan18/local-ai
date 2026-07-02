@@ -604,7 +604,10 @@ def tts_synthesize():
             if not or_voice: or_voice = _user_settings.get_setting("speech.openrouter_voice") or ""
         except Exception:
             pass
-    provider = provider or "local_say"
+    # Platform-aware default: `say` only exists on macOS. Defaulting a
+    # Windows/Linux install to local_say made every Read-aloud click 502
+    # before the user ever visited the Speech settings.
+    provider = provider or ("local_say" if shutil.which("say") else "openrouter")
 
     if provider == "local_say":
         audio, mime = _tts_local_say(text, voice)

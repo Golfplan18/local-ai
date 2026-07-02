@@ -392,6 +392,22 @@ class CaptureManager:
             capture_dir = SESSIONS_ROOT / conversation_id / "captures"
         else:
             capture_dir = self._default_capture_dir
+            # Honor the Settings → Screen recording directory, read
+            # per-capture so a change applies to the NEXT recording
+            # without a restart. Before 2026-07-01 the setting existed
+            # but was never consumed — the hardcoded default happened
+            # to match its default value, masking the dead wire.
+            # Best-effort: any failure keeps the constructor default.
+            try:
+                try:
+                    from user_settings import get_setting as _get_setting
+                except ImportError:
+                    from orchestrator.user_settings import get_setting as _get_setting
+                _configured = (_get_setting("capture.default_directory") or "").strip()
+                if _configured:
+                    capture_dir = Path(_configured).expanduser()
+            except Exception:
+                pass
         capture_dir.mkdir(parents=True, exist_ok=True)
 
         capture_id = uuid.uuid4().hex[:12]
