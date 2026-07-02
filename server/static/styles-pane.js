@@ -32,6 +32,8 @@
   var _mind = null;              // GET /api/mind summary (null until loaded)
   var _mindEditorOpen = false;   // mind.md view/edit expander state
   var _mindChoiceOpen = false;   // "no mind.md yet" create/interview panel
+  var _guided = null;            // guided values wizard state, or null when closed:
+                                 // { questions, step, answers, freeText, needsConfirm }
 
   var AXIS_LABELS = {
     warmth: 'warmth', force: 'force', energy: 'energy', outlook: 'outlook',
@@ -103,7 +105,7 @@
     if (_host) { _host.classList.remove('ora-styles-host-mounted'); _host.innerHTML = ''; _host = null; }
     _data = null; _expanded = new Set(); _editingSlot = null; _openLib = new Set();
     _fictionOpen = false; _convFor = null;
-    _mind = null; _mindEditorOpen = false; _mindChoiceOpen = false;
+    _mind = null; _mindEditorOpen = false; _mindChoiceOpen = false; _guided = null;
   }
   function _reload() {
     var host = _host;
@@ -173,6 +175,7 @@
   // posture. Precedence: values floor > completeness > craft > substance
   // > style.
   function _mindHTML(on) {
+    if (_guided) return _guidedHTML();
     if (_mindChoiceOpen) {
       var stock = _mind && _mind.exists && _mind.is_default_template;
       return ''
@@ -189,15 +192,16 @@
         +     (stock ? 'make it yours?' : 'create it?')
         +   '</div>'
         +   '<div class="ora-styles-mind-actions">'
-        +     (stock ? ''
-              : '<button type="button" class="ora-styles-btn" data-action="mind-create">'
-                + 'Create from the default template</button>')
+        +     '<button type="button" class="ora-styles-btn ora-styles-btn--primary" '
+        +       'data-action="guided-start">Guided setup — ~2 minutes, '
+        +       'covers the values that actually change responses</button>'
         +     '<button type="button" class="ora-styles-btn" data-action="mind-interview">'
-        +       'Run the MindSpec interview</button>'
+        +       'Full MindSpec interview — deep self-specification in chat, 1–3+ hours</button>'
         +     (stock
               ? '<button type="button" class="ora-styles-btn" data-action="mind-edit-from-choice">'
-                + 'Edit it now</button>'
-              : '')
+                + 'Edit the raw file</button>'
+              : '<button type="button" class="ora-styles-btn" data-action="mind-create">'
+                + 'Start from the template and edit</button>')
         +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
         +       'data-action="mind-choice-cancel">Cancel</button>'
         +   '</div>'
@@ -217,6 +221,8 @@
         +   '<div class="ora-styles-mind-body">'
         +     '⚠ Personal values is ON but no mind.md exists — '
         +     'the built-in defaults still apply. '
+        +     '<button type="button" class="ora-styles-btn" data-action="guided-start">'
+        +       'Guided setup (~2 min)</button> '
         +     '<button type="button" class="ora-styles-btn" data-action="mind-create">'
         +       'Create from the default template</button> '
         +     '<button type="button" class="ora-styles-btn" data-action="mind-interview">'
@@ -248,8 +254,14 @@
       +     (_mind.is_default_template
             ? '<span class="ora-styles-mind-stock">stock template — '
               + '<button type="button" class="ora-styles-link" '
-              + 'data-action="mind-interview">run the interview</button> '
+              + 'data-action="guided-start">guided setup</button>, '
+              + '<button type="button" class="ora-styles-link" '
+              + 'data-action="mind-interview">interview</button>, '
               + 'or edit it</span>'
+            : '')
+      +     (_mind.is_guided
+            ? '<button type="button" class="ora-styles-link" '
+              + 'data-action="guided-start">re-run guided setup</button>'
             : '')
       +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
       +       'data-action="mind-edit">'
@@ -266,6 +278,75 @@
             + '</div>'
             + '</div>'
           : '')
+      + '</section>';
+  }
+
+  // The guided values wizard — one question per step, option cards with
+  // "what this sounds like" examples, Back/Next/Finish. Deterministic (no
+  // model calls): answers compile server-side into mind.md prose via
+  // POST /api/mind/guided. Defaults (or prior answers, parsed from the
+  // guided file's provenance marker) pre-select every step, so clicking
+  // straight through yields the recommended configuration.
+  function _guidedHTML() {
+    var g = _guided;
+    var q = g.questions[g.step];
+    var total = g.questions.length;
+    var last = (g.step === total - 1);
+    var opts = (q.options || []).map(function (o) {
+      var on = (g.answers[q.id] === o.id);
+      return ''
+        + '<button type="button" class="ora-styles-gopt' + (on ? ' ora-styles-gopt-on' : '') + '"'
+        +   ' data-action="guided-pick" data-q="' + _esc(q.id) + '" data-opt="' + _esc(o.id) + '">'
+        +   '<span class="ora-styles-gopt-label">' + _esc(o.label) + '</span>'
+        +   '<span class="ora-styles-gopt-example">' + _esc(o.example) + '</span>'
+        + '</button>';
+    }).join('');
+    var ft = '';
+    if (q.free_text) {
+      var fid = q.free_text.id;
+      var cur = g.freeText[fid] || '';
+      ft = ''
+        + '<label class="ora-styles-gfree">'
+        +   '<span class="ora-styles-gfree-label">' + _esc(q.free_text.label) + '</span>'
+        +   (q.free_text.multiline
+            ? '<textarea class="ora-styles-mind-textarea" rows="4" data-role="guided-free" '
+              + 'data-ft="' + _esc(fid) + '" placeholder="' + _esc(q.free_text.placeholder || '')
+              + '">' + _esc(cur) + '</textarea>'
+            : '<input type="text" class="ora-styles-input" data-role="guided-free" '
+              + 'data-ft="' + _esc(fid) + '" placeholder="' + _esc(q.free_text.placeholder || '')
+              + '" value="' + _esc(cur) + '">')
+        + '</label>';
+    }
+    var confirm = g.needsConfirm
+      ? '<div class="ora-styles-gconfirm">Your mind.md has hand edits (or a '
+        + 'MindSpec interview result). Finishing will replace it. '
+        + '<button type="button" class="ora-styles-btn" data-action="guided-confirm">'
+        + 'Replace it</button> '
+        + '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+        + 'data-action="guided-cancel">Keep the current file</button></div>'
+      : '';
+    return ''
+      + '<section class="ora-styles-mind ora-styles-guided">'
+      +   '<div class="ora-styles-guided-head">'
+      +     '<span class="ora-styles-mind-title">Guided values setup</span>'
+      +     '<span class="ora-styles-guided-progress">' + (g.step + 1) + ' of ' + total + '</span>'
+      +     '<button type="button" class="ora-styles-popout-x" data-action="guided-cancel">×</button>'
+      +   '</div>'
+      +   '<div class="ora-styles-guided-section">' + _esc(q.section) + '</div>'
+      +   '<div class="ora-styles-guided-q">' + _esc(q.prompt) + '</div>'
+      +   (q.help ? '<div class="ora-styles-guided-help">' + _esc(q.help) + '</div>' : '')
+      +   (opts ? '<div class="ora-styles-gopts">' + opts + '</div>' : '')
+      +   ft
+      +   confirm
+      +   '<div class="ora-styles-guided-nav">'
+      +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
+      +       'data-action="guided-back"' + (g.step === 0 ? ' disabled' : '') + '>Back</button>'
+      +     (last
+          ? '<button type="button" class="ora-styles-btn ora-styles-btn--primary" '
+            + 'data-action="guided-finish">Finish — write mind.md</button>'
+          : '<button type="button" class="ora-styles-btn ora-styles-btn--primary" '
+            + 'data-action="guided-next">Next</button>')
+      +   '</div>'
       + '</section>';
   }
 
@@ -670,7 +751,8 @@
       el.blur();
     }
     if (evt.key === 'Escape') {
-      if (_convFor) { _convFor = null; _render(); }
+      if (_guided) { _guided = null; _render(); }
+      else if (_convFor) { _convFor = null; _render(); }
       else if (_editingSlot) { _editingSlot = null; _render(); }
     }
   }
@@ -697,6 +779,13 @@
     else if (a === 'conv-close') { _convFor = null; _render(); }
     else if (a === 'conv-axis')  { _convAxis(id, t.dataset.axis, t.dataset.rung); }
     else if (a === 'conv-reset') { _convReset(id); }
+    else if (a === 'guided-start')   { _guidedStart(); }
+    else if (a === 'guided-pick')    { _guidedCaptureFreeText(); _guided.answers[t.dataset.q] = t.dataset.opt; _render(); }
+    else if (a === 'guided-back')    { _guidedCaptureFreeText(); _guided.step = Math.max(0, _guided.step - 1); _render(); }
+    else if (a === 'guided-next')    { _guidedCaptureFreeText(); _guided.step = Math.min(_guided.questions.length - 1, _guided.step + 1); _render(); }
+    else if (a === 'guided-finish')  { _guidedFinish(false); }
+    else if (a === 'guided-confirm') { _guidedFinish(true); }
+    else if (a === 'guided-cancel')  { _guided = null; _render(); }
     else if (a === 'mind-create')          { _mindCreate(); }
     else if (a === 'mind-interview')       { _mindInterview(); }
     else if (a === 'mind-choice-cancel')   { _mindChoiceOpen = false; _render(); }
@@ -717,6 +806,91 @@
     }
     else if (a === 'mind-cancel') { _mindEditorOpen = false; _render(); }
     else if (a === 'mind-save')   { _mindSave(); }
+  }
+
+  // ── guided values wizard actions ──────────────────────────────────────────
+
+  function _guidedStart() {
+    _status('Loading guided setup…');
+    fetch('/api/mind/guided').then(_json).then(function (resp) {
+      if (!resp || resp.error || !resp.questions || !resp.questions.length) {
+        throw new Error((resp && resp.error) || 'guided setup unavailable');
+      }
+      // Defaults: prior answers from the guided marker, else each
+      // question's first (recommended) option.
+      var answers = {};
+      resp.questions.forEach(function (q) {
+        if (q.options && q.options.length) answers[q.id] = q.options[0].id;
+      });
+      var prior = resp.answers || {};
+      Object.keys(prior).forEach(function (k) {
+        if (k in answers) answers[k] = prior[k];
+      });
+      _guided = {
+        questions: resp.questions,
+        step: 0,
+        answers: answers,
+        freeText: resp.free_text || {},
+        needsConfirm: false,
+      };
+      _mindChoiceOpen = false;
+      _mindEditorOpen = false;
+      _render();
+      _status('');
+    }).catch(function (err) {
+      _status('Could not load guided setup: '
+        + ((err && err.message) || 'unknown error'));
+    });
+  }
+
+  // Free-text inputs live in the re-rendered DOM — capture their current
+  // values into wizard state before any action that re-renders.
+  function _guidedCaptureFreeText() {
+    if (!_guided || !_host) return;
+    Array.prototype.forEach.call(
+      _host.querySelectorAll('[data-role="guided-free"]'),
+      function (el) {
+        var v = (el.value || '').trim();
+        if (v) _guided.freeText[el.dataset.ft] = v;
+        else delete _guided.freeText[el.dataset.ft];
+      });
+  }
+
+  function _guidedFinish(confirmOverwrite) {
+    if (!_guided) return;
+    _guidedCaptureFreeText();
+    _status('Writing mind.md…');
+    fetch('/api/mind/guided', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        answers: _guided.answers,
+        free_text: _guided.freeText,
+        confirm_overwrite: !!confirmOverwrite,
+      }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (resp) {
+      if (resp.status === 409 && resp.body && resp.body.needs_confirm) {
+        _guided.needsConfirm = true;
+        _render();
+        _status('');
+        return null;
+      }
+      if (resp.body && resp.body.error) throw new Error(resp.body.error);
+      _guided = null;
+      // Completion flips personal values ON (merge endpoint — same idiom
+      // as create-from-template) and confirms in the summary card.
+      return _saveSettings({ use_custom_values: true })
+        .then(function () { return _reload(); })
+        .then(function () {
+          var n = (_mind && _mind.sections || []).length;
+          _status('mind.md written (' + n + ' section' + (n === 1 ? '' : 's')
+            + ') and personal values turned ON.');
+        });
+    }).catch(function (err) {
+      _status('Could not write mind.md: '
+        + ((err && err.message) || 'unknown error'));
+    });
   }
 
   // ── mind.md actions ───────────────────────────────────────────────────────

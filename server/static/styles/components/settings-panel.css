@@ -3018,6 +3018,73 @@ a.ora-settings-apikey-label:hover {
   background: transparent;
   color: var(--text-muted, #A89F8A);
 }
+.ora-styles-btn--primary {
+  border-color: var(--link-color, #A48055);
+  color: var(--text-normal, #E8E0CC);
+  font-weight: 600;
+}
+
+/* ── guided values wizard ── */
+.ora-styles-guided { gap: 6px; }
+.ora-styles-guided-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ora-styles-guided-head .ora-styles-popout-x { margin-left: auto; }
+.ora-styles-guided-progress { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-guided-section {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--link-color, #A48055);
+}
+.ora-styles-guided-q { font-weight: 600; color: var(--text-normal, #E8E0CC); }
+.ora-styles-guided-help { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-gopts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0;
+}
+.ora-styles-gopt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: var(--background-primary, #1E1B14);
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.ora-styles-gopt:hover { background: var(--interactive-hover, #35302a); }
+.ora-styles-gopt-on {
+  border-color: var(--link-color, #A48055);
+  box-shadow: 0 0 0 1px var(--link-color, #A48055) inset;
+}
+.ora-styles-gopt-label { font-weight: 600; color: var(--text-normal, #E8E0CC); font-size: 12px; }
+.ora-styles-gopt-example { font-size: 11px; color: var(--text-muted, #A89F8A); font-style: italic; }
+.ora-styles-gfree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+.ora-styles-gfree-label { font-size: 11px; color: var(--text-muted, #A89F8A); }
+.ora-styles-gconfirm {
+  border: 1px solid var(--color-yellow, #D4AC4A);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--color-yellow, #D4AC4A);
+}
+.ora-styles-guided-nav {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
 
 .ora-styles-mind {
   border: 1px solid var(--background-modifier-border, #3A3022);

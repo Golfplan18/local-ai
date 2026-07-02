@@ -1,6 +1,6 @@
 # mind.md — Values Framework
 
-*Default configuration. Customize by running the MindSpec interview (`/framework mindspec-interview`) or by editing this file under Settings → Output Styles.*
+*Default configuration. Customize by running the guided values setup under Settings → Output Styles (recommended, ~2 minutes), by running the full MindSpec interview (`/framework mindspec-interview`), or by editing this file directly.*
 
 ## Communication Preferences
 
