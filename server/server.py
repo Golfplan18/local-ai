@@ -1176,6 +1176,9 @@ def settings_post():
 MIND_MD_PATH = os.path.join(WORKSPACE, "mind.md")
 MIND_TEMPLATE_PATH = os.path.join(WORKSPACE, "mindspec", "mind-template.md")
 _MIND_DEFAULT_MARKER = "*Default configuration. Customize by running the"
+# Mirrors orchestrator/mind_guided.py::MARKER_PREFIX (kept as a literal so
+# GET /api/mind never depends on that import; a unit test pins the pair).
+_MIND_GUIDED_MARKER = "<!-- ora-mind-guided:"
 _MIND_MAX_BYTES = 128 * 1024
 
 
@@ -1197,6 +1200,7 @@ def _mind_summary() -> dict:
         "mtime": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
         "sections": sections,
         "is_default_template": _MIND_DEFAULT_MARKER in content,
+        "is_guided": _MIND_GUIDED_MARKER in content,
         "template_available": os.path.isfile(MIND_TEMPLATE_PATH),
     }
 
@@ -1240,6 +1244,76 @@ def mind_post():
                 return _json_response(
                     {"error": f"content too large (max {_MIND_MAX_BYTES} bytes)"},
                     status=400)
+        tmp = MIND_MD_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, MIND_MD_PATH)
+        return _json_response(_mind_summary())
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
+def _mind_guided_mod():
+    try:
+        import mind_guided as _mg
+    except ImportError:
+        from orchestrator import mind_guided as _mg
+    return _mg
+
+
+@app.route("/api/mind/guided", methods=["GET"])
+def mind_guided_get():
+    """The guided-setup wizard's bootstrap: the question registry plus any
+    prior answers (parsed from the provenance marker of a guided mind.md)
+    so re-running the wizard prefills previous choices."""
+    try:
+        mg = _mind_guided_mod()
+        summary = _mind_summary()
+        answers, free_text = None, None
+        if summary.get("exists"):
+            parsed = mg.parse_marker(summary.get("content", ""))
+            if parsed:
+                answers = parsed.get("answers")
+                free_text = parsed.get("free_text")
+        return _json_response({
+            "questions": mg.questions_payload(),
+            "answers": answers,
+            "free_text": free_text,
+            "exists": summary.get("exists", False),
+            "is_default_template": summary.get("is_default_template", False),
+            "is_guided": summary.get("is_guided", False),
+        })
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
+@app.route("/api/mind/guided", methods=["POST"])
+def mind_guided_post():
+    """Compose mind.md from wizard answers and write it atomically.
+
+    Body: ``{"answers": {...}, "free_text": {...}, "confirm_overwrite": bool}``.
+    An existing mind.md that is neither the stock template nor a previous
+    guided file (i.e. hand-edited, or written by the MindSpec interview)
+    is only replaced when ``confirm_overwrite`` is set — mirrors the
+    create-from-template guard."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        mg = _mind_guided_mod()
+        try:
+            content = mg.compose(payload.get("answers") or {},
+                                 payload.get("free_text") or {})
+        except ValueError as e:
+            return _json_response({"error": str(e)}, status=400)
+        current = _mind_summary()
+        if (current.get("exists")
+                and not current.get("is_default_template")
+                and not current.get("is_guided")
+                and not payload.get("confirm_overwrite")):
+            return _json_response(
+                {"error": "mind.md has hand edits (or a MindSpec interview "
+                          "result) — pass confirm_overwrite to replace it",
+                 "needs_confirm": True},
+                status=409)
         tmp = MIND_MD_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(content)

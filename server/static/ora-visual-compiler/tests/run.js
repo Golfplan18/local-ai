@@ -355,6 +355,7 @@ async function runSuite(label, fn, ctx) {
     './cases/test-toolbar-docking.js',
     './cases/test-icon-size.js',
     './cases/test-visual-slots-pane.js',
+    './cases/test-styles-pane-guided.js',
   ];
   for (const rel of caseFiles) {
     const mod = require(path.resolve(__dirname, rel));
