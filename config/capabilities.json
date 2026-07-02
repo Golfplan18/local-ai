@@ -69,7 +69,7 @@
         {
           "code": "model_unavailable",
           "description": "No provider configured for this slot.",
-          "fix_path": "Configure a provider via Framework \u2014 API Key Acquisition.md"
+          "fix_path": "Configure a provider via Framework \u2014 API Key Setup.md"
         },
         {
           "code": "prompt_rejected",
@@ -561,7 +561,7 @@
         {
           "code": "model_unavailable",
           "description": "No provider configured for this slot.",
-          "fix_path": "Configure a provider via Framework \u2014 API Key Acquisition.md"
+          "fix_path": "Configure a provider via Framework \u2014 API Key Setup.md"
         },
         {
           "code": "prompt_rejected",

@@ -431,7 +431,7 @@ class StabilityKeyringTests(unittest.TestCase):
                 stability._get_api_key()
         self.assertEqual(cm.exception.code, "model_unavailable")
         self.assertIn(
-            "API Key Acquisition", str(cm.exception)
+            "API Key Setup", str(cm.exception)
         )
 
 

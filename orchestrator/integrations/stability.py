@@ -99,7 +99,7 @@ def _get_api_key() -> str:
     """Pull the Stability API key from the macOS Keychain.
 
     Raises ``CapabilityError(model_unavailable)`` with a fix-path
-    pointer to the API Key Acquisition framework when no key is stored.
+    pointer to the API Key Setup framework when no key is stored.
     Matches the §11.13 acquisition flow.
     """
     try:
@@ -246,7 +246,7 @@ def _translate_http_error(exc: urllib.error.HTTPError, slot: str | None):
         return _capability_error(
             "model_unavailable",
             "Stability rejected the API key (HTTP "
-            f"{status}). Re-run the API Key Acquisition flow. "
+            f"{status}). Re-run the API Key Setup flow. "
             f"Server detail: {detail}",
             slot=slot,
         )

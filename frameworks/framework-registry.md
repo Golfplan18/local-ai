@@ -213,7 +213,7 @@ Each framework has one entry with these fields:
 - **Version:** 1.0
 - **Delivers:** Processed conversation chunks with ChromaDB indexing (batch mode). Inline mode is pipeline-stage-exempt — invoked automatically by the orchestrator on every session turn, not PEF-selectable.
 
-### API Key Acquisition
+### API Key Setup
 
 - **Purpose:** Acquire and securely store API keys for commercial AI services, then register endpoints in endpoints.json
 - **Problem Class:** Credential management
