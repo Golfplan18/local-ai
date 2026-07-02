@@ -403,5 +403,88 @@ class TestSyncFromVault(RelationshipGraphTestBase):
         self.assertEqual(stats["rows_removed"], 0)
 
 
+class TestFrontmatterLiteralDelimiter(unittest.TestCase):
+    """A literal '---' inside a quoted YAML scalar must not truncate the
+    frontmatter. Incident 2026-07-02: "Framework — MSI Malcolm Little King
+    Spinner" carried a `supersedes` value quoting another note's '---'
+    delimiter; the bare-substring terminator search cut the YAML mid-value,
+    yaml.safe_load raised "found unexpected end of stream", and the note went
+    invisible to the relationship-graph scanner."""
+
+    # '---' appears mid-line inside a double-quoted scalar, ahead of the real
+    # terminator. A '# ' YAML comment sits just after it to catch an H1
+    # extractor that stops at the wrong place.
+    NOTE = (
+        "---\n"
+        "type: framework\n"
+        'supersedes: "MSI Malcolm Little King Spinner `---` legacy spec"\n'
+        "# a yaml comment after the inline delimiter\n"
+        "relationships:\n"
+        "  - type: supersedes\n"
+        "    target: Legacy Spinner\n"
+        "    confidence: high\n"
+        "---\n"
+        "\n"
+        "# Malcolm Little King Spinner\n"
+        "\n"
+        "Body.\n"
+    )
+
+    def test_relationships_parsed_despite_inline_delimiter(self):
+        errors = []
+        rows = RelationshipGraph._parse_relationships_text(
+            self.NOTE, "Spinner.md", errors)
+        self.assertEqual(errors, [])
+        self.assertIn(("Legacy Spinner", "supersedes", "high"), rows)
+
+    def test_h1_found_past_the_real_terminator(self):
+        # The H1 is the body heading — never the '# ' YAML comment that lives
+        # inside the frontmatter, after the inline '---'.
+        self.assertEqual(
+            RelationshipGraph._extract_h1(self.NOTE),
+            "Malcolm Little King Spinner")
+
+    def test_line_starting_with_dashes_inside_scalar_is_not_a_terminator(self):
+        # A quoted scalar whose continuation line *starts* with '---' (but is
+        # not a bare '---' line) would fool even a naive '\\n---' search; only
+        # the line-anchored terminator skips it and reaches the real closer.
+        note = (
+            "---\n"
+            'note: "first line\n'
+            '---but still the quoted value"\n'
+            "relationships:\n"
+            "  - type: supports\n"
+            "    target: NoteB\n"
+            "---\n"
+            "# Title\n"
+        )
+        errors = []
+        rows = RelationshipGraph._parse_relationships_text(note, "n.md", errors)
+        self.assertEqual(errors, [])
+        self.assertIn(("NoteB", "supports", "medium"), rows)
+
+
+class TestFrontmatterLiteralDelimiterScan(RelationshipGraphTestBase):
+    def test_note_with_inline_delimiter_is_indexed_not_dropped(self):
+        # End-to-end: a real vault note carrying an inline '---' in a quoted
+        # scalar is scanned, parsed, and its relationship indexed — not
+        # silently dropped with a parse error.
+        path = os.path.join(self.vault, "Spinner.md")
+        with open(path, "w") as f:
+            f.write(
+                "---\n"
+                "type: framework\n"
+                'supersedes: "quotes another note\'s `---` delimiter"\n'
+                "relationships:\n"
+                "  - type: supports\n"
+                "    target: NoteB\n"
+                "    confidence: high\n"
+                "---\n\n# Spinner\n\nBody.\n"
+            )
+        result = self.graph.build_from_vault()
+        self.assertEqual(result["errors"], [])
+        self.assertIn(("Spinner", "NoteB", "supports", "high"), self.all_rows())
+
+
 if __name__ == "__main__":
     unittest.main()
