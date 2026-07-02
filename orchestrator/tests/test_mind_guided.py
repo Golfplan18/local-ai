@@ -133,6 +133,14 @@ class Composer(unittest.TestCase):
         self.assertIn("Do not fabricate sources", out)
         self.assertIn("Honesty is the foundation.", out)
 
+    def test_calibration_fixed_lines_present(self):
+        # The pushback-threshold calibration (2026-07-01) is emitted
+        # regardless of answers — it is a floor, not a preference.
+        out = mg.compose({"pushback": "defer"}, {})
+        self.assertIn("agree cooperatively", out)
+        self.assertIn("distinguish nitpicks from material objections", out)
+        self.assertIn("Never silently override instructions.", out)
+
     def test_non_default_choice_swaps_prose(self):
         out = mg.compose({"length": "thorough"}, {})
         self.assertIn("Default to thorough answers", out)

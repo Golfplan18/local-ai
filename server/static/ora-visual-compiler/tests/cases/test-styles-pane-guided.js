@@ -75,6 +75,7 @@ module.exports = {
       exists: false, is_default_template: false, is_guided: false,
     };
     let guidedPostResponses = [];   // queue of {status, body} for POST /api/mind/guided
+    let projectPosts = 0;
     const guidedPosts = [];
     const settingsPosts = [];
 
@@ -99,6 +100,17 @@ module.exports = {
           };
         }
         return jsonResponse(next.body, next.status);
+      }
+      if (url === '/api/mind/project' && method === 'POST') {
+        projectPosts += 1;
+        mindState = {
+          exists: true, is_guided: true, is_projected: true,
+          is_default_template: false, self_spec_available: true,
+          sections: ['S1', 'S2', 'What to Challenge Me On'],
+          content: '<!-- ora-mind-guided: {} -->\n<!-- ora-mind-projected: {} -->',
+          template_available: true, mtime: '2026-07-01T00:00:00',
+        };
+        return jsonResponse(JSON.parse(JSON.stringify(mindState)));
       }
       if (url === '/api/settings' && method === 'POST') {
         settingsPosts.push(JSON.parse(opts.body));
@@ -235,8 +247,29 @@ module.exports = {
       record('409: wizard closes after confirmed write',
              !host2.querySelector('.ora-styles-guided'));
 
+      // 8. Assistant-directives projection: link appears when a self-spec
+      // archive exists; clicking POSTs /api/mind/project and the row
+      // re-renders in the projected state.
+      mindState.self_spec_available = true;
       P.destroy();
-      host.remove(); host2.remove();
+      const host3 = win.document.createElement('div');
+      win.document.body.appendChild(host3);
+      P.init(host3);
+      await tick(); await tick();
+      const projLink = host3.querySelector('[data-action="mind-project"]');
+      record('project: link offered when self-spec archive exists',
+             !!projLink
+             && projLink.textContent === 'derive assistant directives');
+      projLink.click();
+      await tick(); await tick(); await tick(); await tick();
+      record('project: click POSTs /api/mind/project once', projectPosts === 1);
+      const projLink2 = host3.querySelector('[data-action="mind-project"]');
+      record('project: row re-renders as re-derive after projection',
+             !!projLink2
+             && projLink2.textContent === 're-derive assistant directives');
+
+      P.destroy();
+      host.remove(); host2.remove(); host3.remove();
     } finally {
       win.fetch = savedFetch;
     }

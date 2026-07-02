@@ -263,6 +263,19 @@
             ? '<button type="button" class="ora-styles-link" '
               + 'data-action="guided-start">re-run guided setup</button>'
             : '')
+      // Assistant-directives projection: offered when a self-spec archive
+      // exists, or when mind.md itself is a raw interview output (neither
+      // guided nor projected nor the stock template).
+      +     (_mind.self_spec_available
+             || (!_mind.is_default_template && !_mind.is_guided && !_mind.is_projected)
+            ? '<button type="button" class="ora-styles-link" '
+              + 'data-action="mind-project" title="One model call: reads your '
+              + 'MindSpec self-specification and derives directives for the '
+              + 'assistant (what to challenge you on, how to deliver pushback, '
+              + 'your red lines). May take a minute.">'
+              + (_mind.is_projected ? 're-derive assistant directives' : 'derive assistant directives')
+              + '</button>'
+            : '')
       +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
       +       'data-action="mind-edit">'
       +       (_mindEditorOpen ? 'close editor' : 'view / edit') + '</button>'
@@ -787,6 +800,7 @@
     else if (a === 'guided-confirm') { _guidedFinish(true); }
     else if (a === 'guided-cancel')  { _guided = null; _render(); }
     else if (a === 'mind-create')          { _mindCreate(); }
+    else if (a === 'mind-project')         { _mindProject(); }
     else if (a === 'mind-interview')       { _mindInterview(); }
     else if (a === 'mind-choice-cancel')   { _mindChoiceOpen = false; _render(); }
     else if (a === 'mind-edit')            { _mindEditorOpen = !_mindEditorOpen; _render(); }
@@ -894,6 +908,22 @@
   }
 
   // ── mind.md actions ───────────────────────────────────────────────────────
+
+  function _mindProject() {
+    _status('Deriving assistant directives from your self-specification — '
+      + 'one model call, this can take a minute…');
+    fetch('/api/mind/project', { method: 'POST' }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (resp) {
+      if (resp.body && resp.body.error) throw new Error(resp.body.error);
+      return _reload().then(function () {
+        _status('Assistant directives derived and written into mind.md — '
+          + 'the guided-setup sections are preserved above them.');
+      });
+    }).catch(function (err) {
+      _status('Projection failed: ' + ((err && err.message) || 'unknown error'));
+    });
+  }
 
   function _mindCreate() {
     _status('Creating mind.md from the template…');
