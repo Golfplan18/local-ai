@@ -96,15 +96,14 @@
           "name": "mask",
           "type": "mask",
           "description": "Mask defining the region to modify."
-        }
-      ],
-      "optional_inputs": [
+        },
         {
           "name": "prompt",
           "type": "text",
-          "description": "Optional description of what should appear in the masked region. Leave blank to fill from surrounding context.",
-          "default": null
-        },
+          "description": "Description of what should appear in the masked region."
+        }
+      ],
+      "optional_inputs": [
         {
           "name": "strength",
           "type": "float",
