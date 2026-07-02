@@ -66,6 +66,8 @@ Tier-dependent artifact subsets per §VII.
 
 **Note:** the Interaction Framework (companion, to be built) takes over VOICE / COMMUNICATION / RELATIONSHIPS / PLAYBOOK production in the four-framework ecosystem. MindSpec v0.2.3 outputs will reference these as engagement-layer files produced by Interaction Framework rather than produced by MindSpec directly.
 
+**Ora runtime integration (2026-07-01):** when MSI-Self completes inside Ora chat, the orchestrator archives the full self-specification (the portrait) to `~/ora/mindspec/self-spec.md` and writes the *assistant-directives projection* — a second-person transform of the portrait, produced by one model call, compiling each commitment weight through its scale anchor into behavioral directives for the assistant — to `~/ora/mind.md`, the file Ora injects as the values layer when personal values are enabled (Settings → Output Styles). On projection failure the portrait is written to mind.md verbatim (the pre-2026-07 behavior). `ledger.md` / `modifications.md` are unaffected. This is Ora-specific persistence, not part of the framework's platform-agnostic output contract; see `Reference — Ora Output Styles Pane.md` §6 for the projection contract.
+
 ## EXECUTION TIER
 
 Single-pass in commercial AI sessions. Stages execute sequentially with natural break points for Tier 3 assessments spanning multiple sessions. Model-agnostic.
