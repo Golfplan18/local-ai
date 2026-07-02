@@ -240,7 +240,7 @@
   // IN USE BY ACTIVE / IN ACTIVE CONFIG calc walks active_name.
   function _refreshActive() {
     var scrollState = _capturePaneScroll();
-    fetch('/api/configurations').then(_json).then(function (configs) {
+    return fetch('/api/configurations').then(_json).then(function (configs) {
       _configs = configs || _configs;
       _renderHeader();
       _renderPresets();
@@ -248,6 +248,49 @@
       _renderHardware();
       _restorePaneScroll(scrollState);
     });
+  }
+
+  // Stable signature of every preset's slot primaries — used to tell the
+  // user whether a toggle re-bake actually changed any pick. Toggles can
+  // legitimately produce identical picks (e.g. Vision off while the
+  // 1M-context floor is on: the non-vision alternatives lack ~1M context,
+  // so the same models win), and without feedback that reads as a dead
+  // toggle.
+  function _presetPicksSignature() {
+    var presets = (_configs && _configs.presets) || {};
+    var sig = {};
+    Object.keys(presets).sort().forEach(function (name) {
+      var cells = (presets[name] && presets[name].cells) || {};
+      var picks = [];
+      (function walk(node) {
+        if (!node || typeof node !== 'object') return;
+        if (typeof node.primary === 'string') picks.push(node.primary);
+        Object.keys(node).sort().forEach(function (k) {
+          if (k !== 'primary' && node[k] && typeof node[k] === 'object') walk(node[k]);
+        });
+      })(cells);
+      sig[name] = picks;
+    });
+    return JSON.stringify(sig);
+  }
+
+  // Show a transient note in the Presets section header (roomier than the
+  // one-row header strip), restoring the standard hint after a few seconds.
+  var _presetNoteTimer = null;
+  function _flashPresetNote(text) {
+    var hint = _hostEl && _hostEl.querySelector(
+      '[data-section="presets"] .ora-models-section-hint');
+    if (!hint) return;
+    if (_presetNoteTimer) clearTimeout(_presetNoteTimer);
+    var original = hint.dataset.originalText || hint.textContent;
+    hint.dataset.originalText = original;
+    hint.textContent = text;
+    _presetNoteTimer = setTimeout(function () {
+      var h = _hostEl && _hostEl.querySelector(
+        '[data-section="presets"] .ora-models-section-hint');
+      if (h) h.textContent = h.dataset.originalText || original;
+      _presetNoteTimer = null;
+    }, 8000);
   }
 
   function _json(r) { return r.json(); }
@@ -335,20 +378,29 @@
         ? ' <span class="ora-models-warn">(missing — pick another)</span>'
         : '')
       +   '</div>'
+      // No cost claim in the adversarial copy: both analysis streams run
+      // whether the toggle is on or off (off just copies BIG 1 into the
+      // BIG 2 slot), so diversity changes WHICH models run, not how many
+      // calls happen — cost is the same either way.
       +   _toggleHTML('adversarial_diversity', adv,
                      'Adversarial Diversity',
-                     'two workhorses cross-check — 2× cost, catches blind spots',
+                     'two model families cross-check — catches shared blind spots',
                      'Re-bakes all four presets with the two workhorse slots '
                      + '(BIG 1 / BIG 2) drawn from different training families '
                      + 'so they cross-check each other. When off, the top '
-                     + 'model fills both slots and the BIG 2 row is hidden.')
+                     + 'model fills both slots and the BIG 2 row is hidden. '
+                     + 'Cost is unchanged either way — both analysis streams '
+                     + 'always run; this only decides whether they use '
+                     + 'different models.')
       +   _toggleHTML('vision_only', vis,
                      'Vision-capable only',
-                     'restrict picks to models that see images directly',
+                     'restrict picks to models that see images',
                      'Re-bakes all four presets restricted to vision-capable '
                      + 'models, so image inputs never need a text-only '
                      + 'substitute. Also checks the inventory\'s Vision '
-                     + 'filter chip.')
+                     + 'filter chip. Note: picks may not change if another '
+                     + 'toggle (like the 1M-context floor) already rules out '
+                     + 'the alternative models.')
       // Real preset toggle (like the two above): POSTs to the bake
       // endpoint and re-bakes all four presets with a ~1M context floor
       // so the picks fit long prompts. Its checked state reads from the
@@ -357,11 +409,12 @@
       // vision_only syncs the Vision chip — see _setToggle.
       +   _toggleHTML('min_context_1m', ctx1m,
                      '1M context',
-                     'restrict picks to ~1M-context models for long prompts',
+                     'restrict picks to ~1M-context models',
                      'Re-bakes all four presets with a ~1M (900K+) context '
-                     + 'floor. A slot with no eligible ~1M-context model '
-                     + 'keeps its best pick instead — the floor is skipped '
-                     + 'for that slot and noted in the bake log.')
+                     + 'floor so long prompts fit. A slot with no eligible '
+                     + '~1M-context model keeps its best pick instead — the '
+                     + 'floor is skipped for that slot and noted in the '
+                     + 'bake log.')
       +   '<div class="ora-models-refresh-wrap" title="Re-sync the model registry (OpenRouter + Artificial Analysis + LiteLLM) and rebuild the picker\'s model catalog from it, so the two stay in lockstep (~20-40s, no tokens). Auto-runs on pane open when the data is more than 24h old.">'
       +     '<span class="ora-models-refresh-label">' + _esc(refreshLabel) + '</span>'
       +     '<button type="button" class="ora-models-refresh-btn" data-action="refresh">↻</button>'
@@ -466,6 +519,7 @@
     if (name === 'min_context_1m') {
       _filters.context_1m = !!value;
     }
+    var picksBefore = _presetPicksSignature();
     fetch('/api/configurations/active/toggles', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -475,7 +529,17 @@
         if (_configs) _configs.active_toggles = resp.toggles;
         // Refresh both header + presets — the active preset card may
         // change its toggle-chip footer when the active toggles flip.
-        _refreshActive();
+        _refreshActive().then(function () {
+          // Tell the user what the re-bake did. "Nothing changed" is a
+          // legitimate outcome (another toggle can already rule out the
+          // alternatives) but looks like a broken toggle without this.
+          if (_presetPicksSignature() === picksBefore) {
+            _flashPresetNote('Re-baked all four presets — picks unchanged '
+              + '(with your other toggles, the same models still win).');
+          } else {
+            _flashPresetNote('Re-baked all four presets — picks updated.');
+          }
+        });
         _renderInventory();  // pick up the auto-synced filter
       }
     }).catch(function (err) {
