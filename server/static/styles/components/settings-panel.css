@@ -3057,6 +3057,16 @@ a.ora-settings-apikey-label:hover {
   font-size: 11px;
   color: var(--color-yellow, #D4AC4A);
 }
+
+/* Compact single-row variant: tighter padding; row wraps only when the
+   viewport genuinely can't fit the chips. */
+.ora-styles-mind--compact {
+  padding: 6px 10px;
+  margin: 4px 0 8px;
+  gap: 6px;
+}
+.ora-styles-mind--compact .ora-styles-mind-row { cursor: help; }
+.ora-styles-mind--compact .ora-styles-mind-stock { white-space: nowrap; }
 .ora-styles-mind-hint { font-size: 11px; color: var(--text-muted, #A89F8A); }
 .ora-styles-mind-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ora-styles-mind-editor { display: flex; flex-direction: column; gap: 8px; }

@@ -224,35 +224,36 @@
         +   '</div>'
         + '</section>';
     }
+    // Compact single-row summary — everything side-by-side; the
+    // what-this-does explainer lives in the row's tooltip and the
+    // stock-template notice collapses to a short inline warning, so the
+    // header block stays two rows tall (switch row + this row).
     var secs = _mind.sections || [];
     var chips = secs.map(function (name) {
       return '<span class="ora-styles-mind-chip">' + _esc(name) + '</span>';
     }).join('');
+    var rowTip = 'Injected into every prompt as the authoritative values '
+      + 'layer. Style presets set tone and arrangement; mind.md sets '
+      + 'values and posture — precedence: values floor > completeness > '
+      + 'craft > substance > style.';
     return ''
-      + '<section class="ora-styles-mind">'
-      +   '<div class="ora-styles-mind-row">'
+      + '<section class="ora-styles-mind ora-styles-mind--compact">'
+      +   '<div class="ora-styles-mind-row" title="' + _esc(rowTip) + '">'
       +     '<span class="ora-styles-mind-name">mind.md</span>'
       +     '<span class="ora-styles-mind-meta">'
       +       secs.length + ' section' + (secs.length === 1 ? '' : 's')
-      +       (_mind.mtime ? ' · last edited ' + _esc(String(_mind.mtime).slice(0, 10)) : '')
+      +       (_mind.mtime ? ' · edited ' + _esc(String(_mind.mtime).slice(0, 10)) : '')
       +     '</span>'
       +     chips
+      +     (_mind.is_default_template
+            ? '<span class="ora-styles-mind-stock">stock template — '
+              + '<button type="button" class="ora-styles-link" '
+              + 'data-action="mind-interview">run the interview</button> '
+              + 'or edit it</span>'
+            : '')
       +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
       +       'data-action="mind-edit">'
       +       (_mindEditorOpen ? 'close editor' : 'view / edit') + '</button>'
-      +   '</div>'
-      +   (_mind.is_default_template
-          ? '<div class="ora-styles-mind-stock">This is still the stock '
-            + 'template — run the MindSpec interview '
-            + '(<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
-            + 'data-action="mind-interview">start</button>) or edit it to '
-            + 'make it yours.</div>'
-          : '')
-      +   '<div class="ora-styles-mind-hint">'
-      +     'Injected into every prompt as the authoritative values layer. '
-      +     'Style presets set tone and arrangement; mind.md sets values '
-      +     'and posture — precedence: values floor &gt; completeness '
-      +     '&gt; craft &gt; substance &gt; style.'
       +   '</div>'
       +   (_mindEditorOpen
           ? '<div class="ora-styles-mind-editor">'
