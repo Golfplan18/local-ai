@@ -1639,6 +1639,163 @@ def retrieval_config_post():
     return _json_response(result)
 
 
+# ── Retrieval: embedding rebuild job ────────────────────────────────────────
+#
+# Switching the embedding model requires re-encoding every stored
+# document. The complete primitive already exists as a CLI —
+# scripts/re-embed-local.py re-embeds each collection into a PARALLEL
+# new collection (sources stay live and searchable), checkpoints every
+# 1000 docs, verifies target counts match sources, and with
+# --activate-on-success writes the new profile + collection map into
+# config/chromadb.json. These endpoints wrap it as a background job so
+# the Settings → General → Retrieval pane can run it with progress.
+#
+# Two caveats surfaced by the 2026-07-01 review, handled here:
+#   * orchestrator/embedding.py freezes its config at import — after a
+#     successful activation the summary carries requires_restart: true
+#     and the pane says so (the running server keeps using the old
+#     index until restarted; that index is still valid, so nothing
+#     breaks in the meantime).
+#   * Project-managed collections (e.g. MSI's) live outside
+#     target_collections_for_profile and are NOT rebuilt here — the
+#     pane's confirm dialog says so.
+
+_REEMBED_SCRIPT = os.path.join(WORKSPACE, "scripts", "re-embed-local.py")
+_reembed_state = {
+    "in_progress": False,
+    "started_at": 0.0,
+    "completed_at": 0.0,
+    "profile_id": "",
+    "progress": "",       # last progress line from the script
+    "last_summary": None,  # {"ok", "returncode", "requires_restart"} | {"error"}
+}
+_reembed_lock = threading.Lock()
+
+# Progress lines look like:
+#   "  progress: 12000/138696 (8.7%)  rate: 43.1 docs/sec"
+_REEMBED_PROGRESS_RE = re.compile(r"progress:\s*(\d+)/(\d+)\s*\(([\d.]+)%\)")
+
+
+def _resolve_reembed_profile(profile_id: str):
+    """Return the embedding-option dict for ``profile_id`` or None.
+
+    Split out of the route so tests can patch it — option lists come
+    from the machine's retrieval config otherwise.
+    """
+    if not _HAS_RETRIEVAL_CONFIG or _retrieval_config is None:
+        return None
+    return _retrieval_config.option_by_id(
+        _retrieval_config.list_embedding_options(), profile_id)
+
+
+def _spawn_reembed(profile_id: str) -> tuple:
+    """Start the background re-embed for ``profile_id``.
+
+    Returns ``(payload, http_status)``. Refuses when a job is already
+    running, when the profile is unknown, already active, or has no
+    known vector dimension (the script requires --target-dim; a probe
+    must fill it in first).
+    """
+    import subprocess
+
+    opt = _resolve_reembed_profile(profile_id)
+    if opt is None:
+        return {"error": "unknown embedding profile"}, 400
+    if not opt.get("dimensions"):
+        return {"error": "embedding dimension unknown for this profile — "
+                         "probe it before rebuilding"}, 400
+    try:
+        active = (_retrieval_config.snapshot() or {}).get("active_embedding") or {}
+        if str(active.get("id")) == str(profile_id):
+            return {"error": "this profile is already active"}, 400
+    except Exception:
+        pass  # snapshot is best-effort; the rebuild itself is idempotent
+
+    provider = "openrouter" if opt.get("provider") == "openrouter" else "ollama"
+
+    with _reembed_lock:
+        if _reembed_state["in_progress"]:
+            return {
+                "status": "in_progress",
+                "profile_id": _reembed_state["profile_id"],
+                "progress": _reembed_state["progress"],
+            }, 409
+        _reembed_state["in_progress"] = True
+        _reembed_state["started_at"] = time.time()
+        _reembed_state["completed_at"] = 0.0
+        _reembed_state["profile_id"] = profile_id
+        _reembed_state["progress"] = "starting…"
+        _reembed_state["last_summary"] = None
+
+    cmd = [
+        sys.executable, _REEMBED_SCRIPT,
+        "--target-provider", provider,
+        "--target-embedder", str(opt.get("model") or profile_id),
+        "--target-dim", str(int(opt["dimensions"])),
+        "--target-profile-id", str(profile_id),
+        "--activate-on-success",
+    ]
+
+    def _run_in_background():
+        try:
+            proc = subprocess.Popen(
+                cmd, cwd=WORKSPACE,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                bufsize=1,
+            )
+            for line in proc.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                # Keep whichever line arrived last; progress lines get a
+                # normalized "N/M (P%)" prefix so the pane can render a
+                # stable counter.
+                m = _REEMBED_PROGRESS_RE.search(line)
+                with _reembed_lock:
+                    _reembed_state["progress"] = (
+                        f"{m.group(1)}/{m.group(2)} ({m.group(3)}%)"
+                        if m else line[:200]
+                    )
+            proc.wait()
+            ok = proc.returncode == 0
+            with _reembed_lock:
+                _reembed_state["in_progress"] = False
+                _reembed_state["completed_at"] = time.time()
+                _reembed_state["last_summary"] = {
+                    "ok": ok,
+                    "returncode": proc.returncode,
+                    # embedding.py freezes its config at import; the new
+                    # index only takes effect after a server restart.
+                    "requires_restart": ok,
+                }
+        except Exception as exc:
+            with _reembed_lock:
+                _reembed_state["in_progress"] = False
+                _reembed_state["completed_at"] = time.time()
+                _reembed_state["last_summary"] = {"ok": False, "error": str(exc)}
+
+    threading.Thread(target=_run_in_background, daemon=True).start()
+    return {"status": "started", "profile_id": profile_id}, 200
+
+
+@app.route("/api/retrieval/rebuild/start", methods=["POST"])
+def retrieval_rebuild_start():
+    """Kick off the background embedding rebuild + activate flow."""
+    payload = request.get_json(silent=True) or {}
+    profile_id = (payload.get("embedding_profile_id") or "").strip()
+    if not profile_id:
+        return _json_response({"error": "embedding_profile_id required"}, status=400)
+    body, status = _spawn_reembed(profile_id)
+    return _json_response(body, status=status)
+
+
+@app.route("/api/retrieval/rebuild/status", methods=["GET"])
+def retrieval_rebuild_status():
+    """Current rebuild progress / last result."""
+    with _reembed_lock:
+        return _json_response(dict(_reembed_state))
+
+
 @app.route("/api/settings/api-key", methods=["POST"])
 def settings_set_api_key():
     if not _HAS_USER_SETTINGS or _user_settings is None:

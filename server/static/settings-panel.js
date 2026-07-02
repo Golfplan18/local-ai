@@ -1407,14 +1407,105 @@
       + '. The embedding model turns every stored document into search '
       + 'vectors — it decides what Ora\'s memory can find. Switching '
       + 'means re-encoding the entire memory database (hundreds of '
-      + 'thousands of documents on a mature install). Selecting here '
-      + 'only STAGES the choice; nothing is rebuilt or activated yet.';
+      + 'thousands of documents on a mature install). Picking a '
+      + 'different model asks for confirmation, then rebuilds in the '
+      + 'background — the current index stays live until the new one '
+      + 'is verified.';
     container.appendChild(embeddingNote);
+
+    // Rebuild progress line (hidden until a rebuild runs).
+    var rebuildNote = document.createElement('p');
+    rebuildNote.className = 'ora-settings-note';
+    rebuildNote.style.display = 'none';
+    container.appendChild(rebuildNote);
+
+    function _revertEmbeddingSelect() {
+      embeddingSel.value = String(activeEmbedding.id || '');
+    }
+
+    // Render the job state into the progress line. Returns true when
+    // the job is finished (stop polling).
+    function _showRebuildProgress(state) {
+      rebuildNote.style.display = '';
+      if (state.in_progress) {
+        embeddingSel.disabled = true;
+        rebuildNote.textContent = 'Rebuilding memory index for '
+          + state.profile_id + ' — ' + (state.progress || 'starting…')
+          + ' (runs in the background; the current index stays live).';
+        return false;
+      }
+      embeddingSel.disabled = false;
+      var summary = state.last_summary || {};
+      if (summary.ok) {
+        rebuildNote.textContent = 'Rebuild complete — the new index is '
+          + 'verified and activated. Restart Ora to start using it (until '
+          + 'then this session keeps searching the old index, which is '
+          + 'still intact).';
+      } else if (summary.error || summary.returncode !== undefined) {
+        rebuildNote.textContent = 'Rebuild failed: '
+          + (summary.error || ('script exited with code ' + summary.returncode))
+          + ' — the previous index is untouched and still active.';
+        _revertEmbeddingSelect();
+      } else {
+        rebuildNote.style.display = 'none';
+      }
+      return true;
+    }
+
+    var _rebuildTimer = null;
+    function _pollRebuild() {
+      if (_rebuildTimer) return;
+      _rebuildTimer = setInterval(function () {
+        fetch('/api/retrieval/rebuild/status')
+          .then(function (r) { return r.json(); })
+          .then(function (state) {
+            if (_showRebuildProgress(state)) {
+              clearInterval(_rebuildTimer);
+              _rebuildTimer = null;
+            }
+          })
+          .catch(function () { /* transient poll failure — keep trying */ });
+      }, 3000);
+    }
+
+    // A rebuild may already be running (started earlier, pane
+    // reopened): reflect it instead of offering a second one.
+    fetch('/api/retrieval/rebuild/status')
+      .then(function (r) { return r.json(); })
+      .then(function (state) {
+        if (state.in_progress) { _showRebuildProgress(state); _pollRebuild(); }
+      })
+      .catch(function () { /* endpoint absent — ignore */ });
 
     embeddingSel.addEventListener('change', function () {
       var selected = embeddingSel.value;
-      _setStatus('Embedding selection staged. Rebuild required before activation.', 'success');
-      fetch('/api/retrieval/config', {
+      if (String(selected) === String(activeEmbedding.id)) return;
+      var opt = null;
+      for (var i = 0; i < embeddingOptions.length; i++) {
+        if (String(embeddingOptions[i].id) === String(selected)) {
+          opt = embeddingOptions[i];
+          break;
+        }
+      }
+      var label = (opt && opt.label) || selected;
+      var proceed = window.confirm(
+        'Switch the embedding model to "' + label + '"?\n\n'
+        + 'This re-encodes the ENTIRE memory database into a new index. '
+        + 'It runs in the background and can take a long time (minutes '
+        + 'to hours on a large database); cloud embedders bill the API '
+        + 'calls. The current index stays live and searchable the whole '
+        + 'time — the switch only happens after the new index is '
+        + 'verified complete, and a restart finishes it.\n\n'
+        + 'Project-managed collections (e.g. MSI news) are rebuilt '
+        + 'separately by their own tooling.\n\n'
+        + 'Start the rebuild now?'
+      );
+      if (!proceed) {
+        _revertEmbeddingSelect();
+        return;
+      }
+      _setStatus('Starting memory rebuild…');
+      fetch('/api/retrieval/rebuild/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ embedding_profile_id: selected }),
@@ -1423,14 +1514,18 @@
           return r.json().then(function (j) { return { ok: r.ok, data: j }; });
         })
         .then(function (res) {
-          if (!res.ok) throw new Error((res.data && res.data.error) || 'save failed');
-          var staged = res.data.embedding_staged || {};
-          var profile = staged.profile || {};
-          embeddingNote.textContent = 'Staged: ' + (profile.label || selected)
-            + '. Rebuild required before activation.';
+          if (!res.ok) {
+            throw new Error((res.data && res.data.error) || 'start failed');
+          }
+          _setStatus('');
+          _showRebuildProgress({ in_progress: true,
+                                 profile_id: selected,
+                                 progress: 'starting…' });
+          _pollRebuild();
         })
         .catch(function (err) {
-          _setStatus('Embedding selection failed: ' + err.message, 'error');
+          _setStatus('Could not start the rebuild: ' + err.message, 'error');
+          _revertEmbeddingSelect();
         });
     });
 
