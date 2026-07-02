@@ -63,11 +63,20 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, Callable, Iterable
 
 import yaml
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
+
+# Upper bound (chars) on BOTH the stored ChromaDB document and the text sent
+# to the embedder. Derived from the qwen3-embedding-8b input ceiling —
+# 32k tokens × ~4 chars/token ≈ 128k chars — with margin. This is a safety
+# guard against pathological files (multi-megabyte exports, log dumps), NOT
+# a tuning knob: normal notes and articles are far below it and index in
+# full. Smaller embedders (e.g. bge-m3, 8k tokens) truncate the input at
+# the model layer, which matches prior behavior.
+MAX_INDEX_CHARS = 120_000
 
 
 # Tag values that need fast where-filterable boolean extracts.
@@ -188,6 +197,39 @@ def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
         return {}, body
 
     return parsed, body
+
+
+# ---------------------------------------------------------------------------
+# Body filtering helpers
+# ---------------------------------------------------------------------------
+
+
+def strip_markdown_sections(body: str, section_titles: Iterable[str]) -> str:
+    """Remove whole level-2 markdown sections by heading title.
+
+    A section runs from its ``## `` heading line through the line before
+    the next ``## `` heading (or EOF). Nested ``###`` subsections inside a
+    stripped section are removed with it. Heading matching is
+    case-insensitive and whitespace-trimmed, so ``##  sources `` matches
+    the title ``"Sources"``.
+
+    Universal helper — callers compose corpus-specific body filters from
+    it (see orchestrator/tools/index_msi_news.py) and pass them to
+    ``index_file(body_filter=...)``.
+    """
+    wanted = {str(t).strip().lower() for t in section_titles}
+    out: list[str] = []
+    skipping = False
+    for line in body.split("\n"):
+        # "## " matches only level-2 headings: "### x" fails the
+        # startswith because its third char is "#", not a space.
+        if line.startswith("## "):
+            skipping = line[3:].strip().lower() in wanted
+            if skipping:
+                continue
+        if not skipping:
+            out.append(line)
+    return "\n".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +363,8 @@ def _build_embed_text(meta: dict[str, Any], body: str, filepath: str | None = No
 
     Includes filename-derived title, mental-model triggers (when
     present, since they're a strong retrieval signal), tags, and the
-    leading body. Schema §9 retired `domain` — no longer included.
+    full body (guarded by MAX_INDEX_CHARS — see the constant's comment).
+    Schema §9 retired `domain` — no longer included.
     """
     parts: list[str] = []
     if filepath:
@@ -334,7 +377,7 @@ def _build_embed_text(meta: dict[str, Any], body: str, filepath: str | None = No
     tags = _normalize_tags(meta.get("tags"))
     if tags:
         parts.append(f"Tags: {', '.join(tags)}")
-    parts.append(body[:1000])
+    parts.append(body[:MAX_INDEX_CHARS])
     return "\n".join(parts)
 
 
@@ -349,6 +392,8 @@ def index_file(
     stats: dict[str, int],
     meta_overrides: dict[str, Any] | None = None,
     force: bool = False,
+    body_filter: Callable[[str], str] | None = None,
+    verbose: bool = True,
 ) -> None:
     """Index a single .md file into the knowledge collection.
 
@@ -362,6 +407,19 @@ def index_file(
     force=True re-indexes even when the id already exists (delete-then-add),
     for refreshing a changed source file. Default False keeps the original
     skip-if-already-indexed behaviour.
+
+    body_filter, when given, is applied to the body immediately after
+    frontmatter stripping, before BOTH the stored document and the embed
+    text are built — so what gets retrieved is exactly what got embedded.
+    Use it to drop non-content apparatus (source lists, boilerplate).
+    If the filter consumes the ENTIRE body (apparatus-only files), the
+    unfiltered body is kept instead: an empty document is unretrievable
+    and injects nothing useful into a RAG package, while the raw
+    apparatus (quoted claims, source citations) still carries the
+    article's semantic content.
+
+    verbose=False suppresses the per-file "+ <title>" print, for bulk
+    callers that manage their own progress output.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -376,6 +434,12 @@ def index_file(
         return
 
     meta, body = _parse_frontmatter(content)
+    if body_filter is not None:
+        filtered = body_filter(body)
+        if filtered.strip():
+            body = filtered
+        # else: the filter emptied the body (apparatus-only file) — keep
+        # the unfiltered body rather than indexing an empty document.
     if meta_overrides:
         meta = {**meta, **meta_overrides}
     doc_id = os.path.abspath(filepath)
@@ -398,7 +462,7 @@ def index_file(
 
     chroma_meta = _compose_chroma_metadata(filepath, meta)
     embed_text = _build_embed_text(meta, body, filepath)
-    doc_text = body[:8000]
+    doc_text = body[:MAX_INDEX_CHARS]
     embedding = _nomic_embed(embed_text)
 
     add_kwargs: dict[str, Any] = dict(
@@ -411,7 +475,8 @@ def index_file(
 
     collection.add(**add_kwargs)
     stats["indexed"] += 1
-    print(f"  + {chroma_meta['title']}")
+    if verbose:
+        print(f"  + {chroma_meta['title']}")
 
 
 def index_path(path: str, reindex: bool = False) -> None:
