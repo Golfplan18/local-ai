@@ -153,10 +153,19 @@ def _lookup_framework_default_configuration(framework_name: str) -> Optional[str
 
 
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
-    """Persist a completed self MindSpec interview to ~/ora/mind.md so the engine
-    can load it (load_boot_md reads it when "custom values" is enabled). Gated to
-    the self mode so agent/character specs never clobber the user's values.
-    Best-effort: never raises. (Save dest == load_boot_md's MIND_MD source.)"""
+    """Persist a completed self MindSpec interview. Gated to the self mode
+    so agent/character specs never clobber the user's values. Best-effort:
+    never raises.
+
+    Since 2026-07-01 this is a two-file write: the full self-spec (the
+    4000-6000-word portrait) is archived to ~/ora/mindspec/self-spec.md,
+    and ~/ora/mind.md — the file load_boot_md injects into every prompt
+    when "custom values" is on — gets the assistant-directives PROJECTION
+    (guided-wizard base + second-person directives derived from the
+    portrait via one model call; see mind_projection.py). A portrait
+    describes the user; only directives move assistant behavior. On
+    projection failure, falls back to the pre-projection behavior: the
+    full spec is written to mind.md verbatim."""
     if framework_name != "mindspec-interview" or mode != "MSI-Self" or not final_output:
         return
     try:
@@ -168,7 +177,27 @@ def _maybe_persist_self_mindspec(framework_name, mode, final_output):
                 from tools.file_ops import file_write
             except ImportError:
                 from orchestrator.tools.file_ops import file_write
-        file_write(_os.path.join(_os.path.expanduser("~/ora"), "mind.md"), final_output)
+        ora = _os.path.expanduser("~/ora")
+        file_write(_os.path.join(ora, "mindspec", "self-spec.md"), final_output)
+        mind_path = _os.path.join(ora, "mind.md")
+        try:
+            try:
+                import mind_projection as _mp
+            except ImportError:
+                from orchestrator import mind_projection as _mp
+            directives = _mp.project_self_spec(final_output)
+            if directives:
+                try:
+                    with open(mind_path, encoding="utf-8") as _f:
+                        base = _f.read()
+                except OSError:
+                    base = None
+                file_write(mind_path, _mp.compose_projected_mind_md(
+                    directives, final_output, "mindspec/self-spec.md", base))
+                return
+        except Exception:
+            pass
+        file_write(mind_path, final_output)
     except Exception:
         pass
 

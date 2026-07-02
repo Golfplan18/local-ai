@@ -68,6 +68,43 @@ _CURRENT_STEP_CV: ContextVar[str | None] = ContextVar(
     "current_pipeline_step", default=None,
 )
 
+# Per-turn conversation tag ("" / "private" / "stealth"). Set by
+# ``server.py::_pipeline_stream`` at turn head (same spot as the oversight
+# stealth context) so ``load_boot_md`` can gate the mind.md
+# "## Private Context" section: personal material (dependents,
+# relationships, life context) is injected ONLY into private/stealth
+# conversations. Default "" → private section excluded — every path that
+# doesn't explicitly set the tag (CLI, daemon, framework runs outside a
+# tagged conversation) gets the safe behavior. Propagates into Gear-4
+# worker threads via ``_submit_with_context``.
+_CONVERSATION_TAG_CV: ContextVar[str] = ContextVar("conversation_tag", default="")
+
+# The mind.md heading whose section is private-conversation-only. Written
+# by the assistant-directives projection (mind_projection.py) and usable
+# in hand-authored files; stripped from the values injection unless the
+# current conversation is tagged private/stealth.
+PRIVATE_VALUES_HEADING = "## Private Context"
+
+
+def set_conversation_tag_context(tag: str) -> None:
+    """Stamp the current context with the conversation's privacy tag."""
+    _CONVERSATION_TAG_CV.set(tag if tag in ("private", "stealth") else "")
+
+
+def _filter_private_values(mind_content: str) -> str:
+    """Strip the ``## Private Context`` section from mind.md content unless
+    the current conversation is tagged private/stealth."""
+    if _CONVERSATION_TAG_CV.get() in ("private", "stealth"):
+        return mind_content
+    if PRIVATE_VALUES_HEADING not in mind_content:
+        return mind_content
+    return re.sub(
+        re.escape(PRIVATE_VALUES_HEADING) + r"\s*\n.*?(?=\n## |\Z)",
+        "",
+        mind_content,
+        flags=re.DOTALL,
+    ).rstrip()
+
 # Paths
 WORKSPACE = os.path.expanduser("~/ora/")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
@@ -1275,6 +1312,7 @@ def load_boot_md() -> str:
         if _us.get_setting("styles.use_custom_values") and os.path.isfile(MIND_MD):
             with open(MIND_MD, encoding="utf-8") as _mf:
                 _mind = _mf.read().strip()
+            _mind = _filter_private_values(_mind)
             if _mind:
                 boot_content += (
                     "\n\n---\n[YOUR VALUES — mind.md (authoritative; supersedes "

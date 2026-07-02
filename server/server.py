@@ -1175,10 +1175,14 @@ def settings_post():
 
 MIND_MD_PATH = os.path.join(WORKSPACE, "mind.md")
 MIND_TEMPLATE_PATH = os.path.join(WORKSPACE, "mindspec", "mind-template.md")
+SELF_SPEC_PATH = os.path.join(WORKSPACE, "mindspec", "self-spec.md")
 _MIND_DEFAULT_MARKER = "*Default configuration. Customize by running the"
-# Mirrors orchestrator/mind_guided.py::MARKER_PREFIX (kept as a literal so
-# GET /api/mind never depends on that import; a unit test pins the pair).
+# Mirror orchestrator/mind_guided.py::MARKER_PREFIX and
+# orchestrator/mind_projection.py::PROJECTED_MARKER_PREFIX (kept as
+# literals so GET /api/mind never depends on those imports; unit tests
+# pin both pairs).
 _MIND_GUIDED_MARKER = "<!-- ora-mind-guided:"
+_MIND_PROJECTED_MARKER = "<!-- ora-mind-projected:"
 _MIND_MAX_BYTES = 128 * 1024
 
 
@@ -1188,6 +1192,7 @@ def _mind_summary() -> dict:
         return {
             "exists": False,
             "template_available": os.path.isfile(MIND_TEMPLATE_PATH),
+            "self_spec_available": os.path.isfile(SELF_SPEC_PATH),
         }
     with open(MIND_MD_PATH, encoding="utf-8") as f:
         content = f.read()
@@ -1201,7 +1206,9 @@ def _mind_summary() -> dict:
         "sections": sections,
         "is_default_template": _MIND_DEFAULT_MARKER in content,
         "is_guided": _MIND_GUIDED_MARKER in content,
+        "is_projected": _MIND_PROJECTED_MARKER in content,
         "template_available": os.path.isfile(MIND_TEMPLATE_PATH),
+        "self_spec_available": os.path.isfile(SELF_SPEC_PATH),
     }
 
 
@@ -1261,6 +1268,14 @@ def _mind_guided_mod():
     return _mg
 
 
+def _mind_projection_mod():
+    try:
+        import mind_projection as _mp
+    except ImportError:
+        from orchestrator import mind_projection as _mp
+    return _mp
+
+
 @app.route("/api/mind/guided", methods=["GET"])
 def mind_guided_get():
     """The guided-setup wizard's bootstrap: the question registry plus any
@@ -1314,6 +1329,71 @@ def mind_guided_post():
                           "result) — pass confirm_overwrite to replace it",
                  "needs_confirm": True},
                 status=409)
+        # Preserve an existing assistant-directives projection across
+        # wizard re-runs: the projected block (marker + directives) sits
+        # after the guided sections and is regenerated only by
+        # /api/mind/project, never by the wizard.
+        try:
+            if current.get("is_projected"):
+                block = _mind_projection_mod().extract_projected_block(
+                    current.get("content", ""))
+                if block:
+                    content = content.rstrip() + "\n\n" + block + "\n"
+        except Exception:
+            pass
+        tmp = MIND_MD_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, MIND_MD_PATH)
+        return _json_response(_mind_summary())
+    except Exception as e:
+        return _json_response({"error": str(e)}, status=500)
+
+
+@app.route("/api/mind/project", methods=["POST"])
+def mind_project_post():
+    """Self-spec → assistant-directives projection (one model call,
+    breadth slot — seconds to minutes depending on the configured model).
+
+    Source resolution: ``mindspec/self-spec.md`` when present (written by
+    every completed MSI-Self interview since 2026-07-01); otherwise the
+    current mind.md when it looks like a raw interview output (exists,
+    customized, carries neither the guided nor the projected marker) —
+    that content is archived to ``mindspec/self-spec.md`` first, covering
+    users whose interview predates the projection. Writes the projected
+    mind.md (guided base + directives) atomically."""
+    try:
+        mp = _mind_projection_mod()
+        current = _mind_summary()
+        spec_text, source = None, None
+        if os.path.isfile(SELF_SPEC_PATH):
+            with open(SELF_SPEC_PATH, encoding="utf-8") as f:
+                spec_text = f.read()
+            source = "mindspec/self-spec.md"
+        elif (current.get("exists")
+                and not current.get("is_default_template")
+                and not current.get("is_guided")
+                and not current.get("is_projected")):
+            spec_text = current.get("content", "")
+            source = "mindspec/self-spec.md"
+            os.makedirs(os.path.dirname(SELF_SPEC_PATH), exist_ok=True)
+            tmp = SELF_SPEC_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(spec_text)
+            os.replace(tmp, SELF_SPEC_PATH)
+        if not spec_text or not spec_text.strip():
+            return _json_response(
+                {"error": "no self-spec found — run the MindSpec interview "
+                          "first (/framework mindspec-interview)"},
+                status=404)
+        directives = mp.project_self_spec(spec_text)
+        if not directives:
+            return _json_response(
+                {"error": "projection produced no usable directives — "
+                          "check the configured breadth model and try again"},
+                status=502)
+        content = mp.compose_projected_mind_md(
+            directives, spec_text, source, current.get("content"))
         tmp = MIND_MD_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(content)
@@ -2738,6 +2818,18 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         )
         _set_stealth(_conv_tag == "stealth")
         _set_cid(panel_id)
+    except Exception:
+        pass
+
+    # Conversation-tag context for the values layer: mind.md's
+    # "## Private Context" section is injected only when this turn's
+    # conversation is tagged private/stealth (load_boot_md gates on it;
+    # propagates into Gear-4 workers via _submit_with_context). Set every
+    # turn — including to "" — so a thread reused across requests never
+    # carries a stale private flag.
+    try:
+        from boot import set_conversation_tag_context as _set_conv_tag
+        _set_conv_tag(_conv_tag)
     except Exception:
         pass
 
