@@ -160,7 +160,7 @@ def _get_api_key() -> str:
     """Resolve the Gemini API key from env or keychain.
 
     Raises ``CapabilityError(model_unavailable)`` with a fix-path
-    pointer to the API Key Acquisition framework when no key is stored.
+    pointer to the API Key Setup framework when no key is stored.
     Matches the §11.13 acquisition flow used by the other integrations.
     """
     env_key = (os.environ.get(ENV_OVERRIDE) or "").strip()
@@ -220,7 +220,7 @@ def _translate_http_error(exc: urllib.error.HTTPError, slot: str | None):
         return _capability_error(
             "model_unavailable",
             f"Gemini rejected the API key (HTTP {status}). "
-            "Re-run the API Key Acquisition flow. "
+            "Re-run the API Key Setup flow. "
             f"Server detail: {detail}",
             slot=slot,
         )

@@ -4,7 +4,7 @@
 
 | File | Path | Description |
 |---|---|---|
-| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | API Key Acquisition |
+| api-key-setup.md | /Users/oracle/ora/frameworks/book/api-key-setup.md | API Key Setup |
 | argument-audit-analysis.md | /Users/oracle/ora/frameworks/book/argument-audit-analysis.md | *A Framework for Producing an Integrated Argument Audit That Combines Frame-Audit (Lakoff/Goffman/Entman Frame-Surfacing |
 | bayesian-hypothesis-network-analysis.md | /Users/oracle/ora/frameworks/book/bayesian-hypothesis-network-analysis.md | *A Framework for Producing a Probabilistic Posterior over Competing Hypotheses with Explicit Priors, Evidential Likeliho |
 | conversation-processing.md | /Users/oracle/ora/frameworks/book/conversation-processing.md | Conversation Processing |
