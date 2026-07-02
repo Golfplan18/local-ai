@@ -61,7 +61,10 @@ DEFAULTS: dict = {
         "default_directory": str(Path.home() / "ora" / "captures"),
         "frame_rate": 30,
         "default_audio_device": "",       # "" = system default
-        "default_system_audio": False,
+        # NOTE: no "default_system_audio" — the checkbox it backed was
+        # wired to nothing (FFmpeg's command builder has no system-audio
+        # path; system audio needs a loopback device, which then appears
+        # as an ordinary audio device above). Removed 2026-07-01.
         "default_webcam_device": "",
     },
     "whisper": {
@@ -75,7 +78,8 @@ DEFAULTS: dict = {
     },
     "external_apis": {
         "transcription_provider": "whisper_local",   # whisper_local | assemblyai | deepgram
-        "tts_provider": "openai",                    # openai | elevenlabs
+        # NOTE: no "tts_provider" — it had zero runtime consumers (the
+        # speech route reads speech.provider); removed 2026-07-01.
         # NOTE: deliberately no "aa_path" default. The Artificial
         # Analysis data path is auto-derived by the sync script from
         # key presence (keyring 'ora/aa-api-key' or AA_API_KEY env) —
@@ -221,11 +225,6 @@ def _validate_updates(updates: dict) -> None:
             raise SettingsError(
                 f"capture.frame_rate must be one of 24/25/30/50/60 (got {fr!r})"
             )
-    if "default_system_audio" in cap and not isinstance(
-        cap["default_system_audio"], bool
-    ):
-        raise SettingsError("capture.default_system_audio must be a boolean")
-
     wh = updates.get("whisper") or {}
     if "model_size" in wh and wh["model_size"] not in (
         "tiny", "base", "small", "medium", "large-v3"
@@ -258,12 +257,6 @@ def _validate_updates(updates: dict) -> None:
         raise SettingsError(
             "external_apis.transcription_provider must be one of "
             "whisper_local / assemblyai / deepgram"
-        )
-    if "tts_provider" in ap and ap["tts_provider"] not in (
-        "openai", "elevenlabs"
-    ):
-        raise SettingsError(
-            "external_apis.tts_provider must be one of openai / elevenlabs"
         )
     kb = updates.get("keyboard") or {}
     if "shortcuts" in kb and not isinstance(kb["shortcuts"], dict):

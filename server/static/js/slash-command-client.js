@@ -51,11 +51,21 @@
       projects: 'projects',
       keys: 'apis',
       visual: 'visual',
+      // Legacy pre-consolidation ids — the settings panel's TAB_ALIASES
+      // resolves each to its hosting tab + section (2026-07-01).
       interface: 'interface',
       capture: 'capture',
       export: 'export',
       transcription: 'transcription',
       speech: 'speech',
+      retrieval: 'retrieval',
+      // Consolidated-tab names
+      audio: 'avmedia',
+      video: 'avmedia',
+      av: 'avmedia',
+      media: 'avmedia',
+      avmedia: 'avmedia',
+      general: 'general',
     };
     return aliases[v] || v || 'models';
   };
