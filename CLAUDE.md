@@ -92,7 +92,7 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - **ChromaDB** vector store with `knowledge`, `conversations`, and `atomics` collections (plus project collections such as MSI's `msi_news_articles` / `msi_conversations`)
 - **Embeddings** via **bge-m3 (1024-dim)** through Ollama — migrated from `nomic-embed-text` (768-dim) on 2026-05-29. The embedder model and physical collection names are **machine-specific config** in `config/chromadb.json` (gitignored; schema + nomic defaults documented in `config/chromadb.json.template`). `orchestrator/embedding.py` loads it at import (falling back to nomic defaults if absent); all call sites use the `get_collection` / `get_or_create_collection` helpers, which resolve logical→physical collection names and bind the embedder so a collection can never silently fall through to a different model. MSI article IDs are portable slugs (not absolute paths) so collections survive a Mac↔server round-trip.
 - **Knowledge indexer**: `orchestrator/tools/knowledge_index.py` indexes markdown files with YAML frontmatter
-- **Mental models**: `knowledge/mental-models/` — 33 atomic notes indexed into ChromaDB, surface via Step 2 concept RAG
+- **Mental models**: `knowledge/mental-models/` — 240 atomic notes indexed into ChromaDB, surface via Step 2 concept RAG
 
 ### Visual Intelligence Subsystem (2026-04-17)
 - **Client compiler** at `server/static/ora-visual-compiler/`: 22 typed renderers covering QUANT (Vega-Lite), PROCESS (Mermaid), CAUSAL (CLD / stock-and-flow / DAGitty / fishbone), DECISION (tree + EV rollback, influence diagram, ACH, 2×2), RISK (bow-tie), ARGUMENT (IBIS, pro-con), RELATIONAL (concept map), SPATIAL (C4). Validates against 23 JSON Schema 2020-12 definitions, dispatches to type-specific renderer, runs accessibility layer (Lundgard-Satyanarayan 4-level descriptions + element-level ARIA + Olli keyboard nav), then artifact-level adversarial review (overlap / text truncation / WCAG 2.1 contrast). Critical findings force fallback to table or prose per Protocol §8.5.
@@ -172,7 +172,7 @@ server/static/visual-panel.js                — Konva dual-pane panel (canvas i
 server/static/canvas-serializer.js           — userInputLayer → spatial_representation JSON
 server/static/annotation-parser.js           — annotationLayer (user) → structured instructions
 frameworks/book/                             — Pipeline stage specifications (F-Analysis, F-Evaluate, etc.)
-modes/                                       — Mode files (22 modes incl. spatial-reasoning, benefits-analysis, consequences-and-sequel)
+modes/                                       — Mode files (64 modes + INDEX.md)
 modules/tools/                               — Thinking tools (Tier 1) and question banks (Tier 2)
 knowledge/mental-models/                     — Tier 3 mental model notes (gitignored, local-only)
 config/model-registry.json                   — Curated runtime registry (OpenRouter + LiteLLM + Arena + AA); written by scripts/sync_model_registry.py
@@ -198,7 +198,7 @@ mind.md                                      — Identity/personality layer
 
 ## Remaining Work
 
-1. **Tier 2 question bank modules** — 6 markdown files in `modules/tools/tier2/` (domain question banks for the front-end process)
+None currently tracked. (The Tier 2 question bank modules previously listed here shipped — all six files exist in `modules/tools/tier2/`.)
 
 ## Completed (recent sessions)
 
