@@ -378,6 +378,186 @@ class TestComposedMetadata(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Section-strip helper tests.
+# ---------------------------------------------------------------------------
+
+
+class TestStripMarkdownSections(unittest.TestCase):
+    """strip_markdown_sections removes whole H2 sections by title."""
+
+    BODY = (
+        "Intro paragraph.\n"
+        "\n"
+        "## Summary\n"
+        "\n"
+        "- bullet one\n"
+        "- bullet two\n"
+        "\n"
+        "## Sources\n"
+        "\n"
+        "### src_001 — Wire, Tier 1\n"
+        "**URL:** https://example.com\n"
+        "\n"
+        "## Analysis\n"
+        "\n"
+        "Analysis prose.\n"
+        "\n"
+        "## Atomic claims\n"
+        "\n"
+        "### c_001\n"
+        "> A claim sentence.\n"
+    )
+
+    def test_multiple_sections_removed(self):
+        out = knowledge_index.strip_markdown_sections(
+            self.BODY, ["Sources", "Atomic claims"])
+        self.assertNotIn("## Sources", out)
+        self.assertNotIn("src_001", out)
+        self.assertNotIn("## Atomic claims", out)
+        self.assertNotIn("c_001", out)
+        # Non-targeted content survives.
+        self.assertIn("Intro paragraph.", out)
+        self.assertIn("## Summary", out)
+        self.assertIn("- bullet one", out)
+        self.assertIn("## Analysis", out)
+        self.assertIn("Analysis prose.", out)
+
+    def test_case_insensitive_and_whitespace_trimmed(self):
+        body = "## SOURCES  \ncitation\n\n##   atomic Claims\nclaim\n\n## Keep\nkept\n"
+        out = knowledge_index.strip_markdown_sections(
+            body, ["sources", "Atomic claims"])
+        self.assertNotIn("citation", out)
+        self.assertNotIn("claim\n", out)
+        self.assertIn("kept", out)
+
+    def test_section_at_eof(self):
+        body = "## Keep\nkept prose\n\n## Sources\nlast section, no newline after"
+        out = knowledge_index.strip_markdown_sections(body, ["Sources"])
+        self.assertNotIn("last section", out)
+        self.assertIn("kept prose", out)
+
+    def test_nested_h3_removed_with_parent(self):
+        out = knowledge_index.strip_markdown_sections(self.BODY, ["Sources"])
+        # The ### subsection inside ## Sources goes with it...
+        self.assertNotIn("### src_001", out)
+        # ...but ### inside a kept section stays.
+        self.assertIn("### c_001", out)
+
+    def test_no_match_is_identity(self):
+        out = knowledge_index.strip_markdown_sections(self.BODY, ["Nonexistent"])
+        self.assertEqual(out, self.BODY)
+
+
+# ---------------------------------------------------------------------------
+# body_filter + cap tests — fake collection + recording embedder, so both
+# the stored document and the embed text are observable.
+# ---------------------------------------------------------------------------
+
+
+class _FakeCollection:
+    """Minimal stand-in for a chromadb collection (add/get/delete)."""
+
+    def __init__(self):
+        self.store = {}
+
+    def add(self, ids, documents, metadatas, embeddings=None):
+        for j, id_ in enumerate(ids):
+            self.store[id_] = {
+                "document": documents[j],
+                "metadata": metadatas[j],
+                "embedding": embeddings[j] if embeddings else None,
+            }
+
+    def get(self, ids=None, where=None):
+        found = [i for i in (ids or []) if i in self.store]
+        return {
+            "ids": found,
+            "documents": [self.store[i]["document"] for i in found],
+            "metadatas": [self.store[i]["metadata"] for i in found],
+        }
+
+    def delete(self, ids):
+        for i in ids:
+            self.store.pop(i, None)
+
+    def count(self):
+        return len(self.store)
+
+
+class TestBodyFilterAndCaps(unittest.TestCase):
+    """body_filter shapes BOTH the stored doc and the embed text; the only
+    length cap is MAX_INDEX_CHARS (the old 8000/1000 caps are gone)."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.col = _FakeCollection()
+        self.embed_texts = []
+        self._original_embed = knowledge_index._nomic_embed
+
+        def _recorder(text):
+            self.embed_texts.append(text)
+            return [0.1] * 8
+
+        knowledge_index._nomic_embed = _recorder
+
+    def tearDown(self):
+        knowledge_index._nomic_embed = self._original_embed
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _index(self, name, content, **kwargs):
+        path = os.path.join(self.tmpdir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        stats = {"indexed": 0, "skipped": 0, "errors": 0}
+        knowledge_index.index_file(self.col, path, stats,
+                                   verbose=False, **kwargs)
+        return os.path.abspath(path), stats
+
+    def test_body_filter_applied_to_doc_and_embed_text(self):
+        content = (
+            "---\nnexus:\ntype: resource\ntags:\n  - news\n---\n\n"
+            "Keep this paragraph.\n\n## Drop me\nsecret apparatus text\n"
+        )
+
+        def flt(body):
+            return knowledge_index.strip_markdown_sections(body, ["Drop me"])
+
+        doc_id, stats = self._index("filtered.md", content, body_filter=flt)
+        self.assertEqual(stats["indexed"], 1)
+        stored = self.col.store[doc_id]["document"]
+        self.assertIn("Keep this paragraph.", stored)
+        self.assertNotIn("secret apparatus text", stored)
+        # The embed text saw the same filtered body.
+        self.assertEqual(len(self.embed_texts), 1)
+        self.assertIn("Keep this paragraph.", self.embed_texts[0])
+        self.assertNotIn("secret apparatus text", self.embed_texts[0])
+
+    def test_20k_body_stored_in_full(self):
+        body = "paragraph of article prose. " * 715  # > 20,000 chars
+        body = body[:20_000]
+        content = "---\nnexus:\ntype: resource\ntags:\n---\n\n" + body
+        doc_id, _ = self._index("long.md", content)
+        stored = self.col.store[doc_id]["document"]
+        self.assertEqual(len(stored), 20_000)  # no 8000-char truncation
+        # Embed text carries the full body too (plus title header line).
+        self.assertGreater(len(self.embed_texts[0]), 20_000)
+        self.assertIn(body[-50:], self.embed_texts[0])
+
+    def test_max_index_chars_guards_both(self):
+        overshoot = knowledge_index.MAX_INDEX_CHARS + 5_000
+        content = "---\nnexus:\ntype: resource\ntags:\n---\n\n" + ("A" * overshoot)
+        doc_id, _ = self._index("pathological.md", content)
+        stored = self.col.store[doc_id]["document"]
+        self.assertEqual(len(stored), knowledge_index.MAX_INDEX_CHARS)
+        # Embed text body portion is capped at the same constant; the full
+        # composed text is body + short title line only.
+        self.assertLessEqual(
+            len(self.embed_texts[0]),
+            knowledge_index.MAX_INDEX_CHARS + 200,
+        )
+
+
+# ---------------------------------------------------------------------------
 # End-to-end indexing tests — write a file, run the indexer, query the
 # collection, verify roundtrip.
 # ---------------------------------------------------------------------------
@@ -458,6 +638,17 @@ class TestEndToEndIndexing(unittest.TestCase):
         self.assertEqual(len(framework_results["ids"]), 1)
         chat_results = col.get(where={"type": "chat"})
         self.assertEqual(len(chat_results["ids"]), 1)
+
+    def test_20k_body_roundtrips_in_full_through_chromadb(self):
+        body = ("Long article prose sentence number one of many. " * 500)[:20_000]
+        path = self._write_md(
+            "long_article.md",
+            "---\nnexus:\ntype: resource\ntags:\n  - news\n---\n\n" + body,
+        )
+        knowledge_index.index_path(path, reindex=False)
+        result = self._get_chunk(os.path.abspath(path))
+        self.assertTrue(result["ids"])
+        self.assertEqual(len(result["documents"][0]), 20_000)
 
     def test_filter_by_archived_flag(self):
         self._write_md(
