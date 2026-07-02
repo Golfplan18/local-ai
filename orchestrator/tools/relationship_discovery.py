@@ -85,11 +85,26 @@ TYPE_SIGNALS = {
 }
 
 
+# A frontmatter block ends at a line that is exactly '---' (optional trailing
+# whitespace), not at the first bare '---' substring: a quoted scalar may
+# legally contain a literal '---', and a substring search truncates the block
+# mid-value — breaking parse, and in update_note_relationships corrupting the
+# rewritten file. Line-anchor the terminator. See relationship_graph.py.
+_FRONTMATTER_TERMINATOR = re.compile(r"^---[ \t\r]*$", re.MULTILINE)
+
+
+def _frontmatter_end(content: str) -> int:
+    """Index of the closing frontmatter delimiter line for content that starts
+    with '---', or -1 when there is no closing delimiter line. Line-anchored."""
+    m = _FRONTMATTER_TERMINATOR.search(content, 3)
+    return m.start() if m else -1
+
+
 def parse_yaml_frontmatter(content: str) -> dict:
     """Extract YAML frontmatter from markdown content."""
     if not content.startswith("---"):
         return {}
-    end = content.find("---", 3)
+    end = _frontmatter_end(content)
     if end == -1:
         return {}
     try:
@@ -106,7 +121,7 @@ def extract_wikilinks(content: str) -> list[dict]:
     links = []
     # Strip YAML frontmatter before scanning
     if content.startswith("---"):
-        end = content.find("---", 3)
+        end = _frontmatter_end(content)
         if end != -1:
             body = content[end + 3:]
         else:
@@ -282,7 +297,7 @@ def update_note_relationships(note_path: str, relationships: list[dict]) -> bool
 
     # Reconstruct the file with updated frontmatter
     if content.startswith("---"):
-        end = content.find("---", 3)
+        end = _frontmatter_end(content)
         if end != -1:
             body = content[end + 3:]
         else:

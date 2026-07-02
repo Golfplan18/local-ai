@@ -41,6 +41,24 @@ STATEMENT_KEYED_DIRS = frozenset({"Engrams"})
 EXCLUDED_DIRS = frozenset({"Old AI Working Files", ".trash"})
 
 
+# YAML frontmatter is terminated by a line that is exactly '---' (optionally
+# trailing whitespace), NOT by the first bare '---' substring. A valid quoted
+# scalar may legally contain a literal '---' (e.g. a `supersedes` value that
+# quotes another note's delimiter); a substring search truncates the block
+# mid-value, yaml.safe_load then raises "found unexpected end of stream", and
+# the note silently drops out of the scan. Line-anchor the terminator.
+# (Incident 2026-07-02: "Framework — MSI Malcolm Little King Spinner".)
+_FRONTMATTER_TERMINATOR = re.compile(r"^---[ \t\r]*$", re.MULTILINE)
+
+
+def _frontmatter_end(content: str) -> int:
+    """Index of the closing frontmatter delimiter line for content that starts
+    with '---', or -1 when there is no closing delimiter line. Line-anchored so
+    a literal '---' inside a quoted scalar can't truncate the block early."""
+    m = _FRONTMATTER_TERMINATOR.search(content, 3)
+    return m.start() if m else -1
+
+
 # Inverse relationship lookup
 INVERSE_MAP = {
     "supports": "is-supported-by",
@@ -133,7 +151,7 @@ class RelationshipGraph:
         try:
             if not content.startswith("---"):
                 return rows
-            end = content.find("---", 3)
+            end = _frontmatter_end(content)
             if end == -1:
                 return rows
             fm = yaml.safe_load(content[3:end]) or {}
@@ -161,9 +179,9 @@ class RelationshipGraph:
         claim sentence — the key other engrams' relationships target."""
         body_start = 0
         if content.startswith("---"):
-            end = content.find("\n---", 3)
+            end = _frontmatter_end(content)
             if end != -1:
-                body_start = content.find("\n", end + 1)
+                body_start = content.find("\n", end)
                 if body_start == -1:
                     return None
         for line in content[body_start:].splitlines():
