@@ -216,6 +216,36 @@ class TestMsiBodyFilter(unittest.TestCase):
         self.assertEqual(index_msi_news.msi_body_filter(body),
                          body.strip())
 
+    def test_marker_match_is_case_insensitive(self):
+        # Real corpus variant: capital "Generated", rule joined into the
+        # same paragraph (no blank line between "---" and the notice).
+        body = (
+            "## Summary\n\nProse here.\n\n"
+            "---\n"
+            "Source: Associated Press. AI disclosure: Generated "
+            "algorithmically by Main Street Independent from the public "
+            "source(s) listed above. CC0 license applies.\n"
+        )
+        out = index_msi_news.msi_body_filter(body)
+        self.assertIn("Prose here.", out)
+        self.assertNotIn("algorithmically", out)
+        self.assertNotIn("---", out)
+
+    def test_crlf_body_keeps_content_strips_notice(self):
+        # CRLF line endings must not defeat the paragraph-boundary regex:
+        # before the fix, a CRLF file had NO boundaries, the whole body
+        # became the "final paragraph", and the notice wiped everything.
+        body = ("## Summary\r\n\r\nProse here.\r\n\r\n---\r\n\r\n"
+                + BOILERPLATE.replace("\n", "\r\n") + "\r\n")
+        out = index_msi_news.msi_body_filter(body)
+        self.assertIn("Prose here.", out)
+        self.assertNotIn("generated algorithmically", out)
+
+    def test_crlf_without_notice_is_untouched(self):
+        body = "## Summary\r\n\r\nJust an article.\r\n"
+        out = index_msi_news.msi_body_filter(body)
+        self.assertIn("Just an article.", out)
+
 
 # ---------------------------------------------------------------------------
 # index_msi_news integration — filter reaches storage + embedding,
@@ -292,6 +322,38 @@ class TestIndexMsiNews(unittest.TestCase):
         self.assertEqual(stats, {"indexed": 1, "skipped": 0, "errors": 0})
         self.assertEqual(len(self.embed_texts), 2)
         self.assertEqual(self.col.add_calls, 2)
+
+    def test_apparatus_only_article_indexes_unfiltered_body(self):
+        # Some corpus files are apparatus-only: after section-strip +
+        # boilerplate-strip the body is empty. index_file must fall back
+        # to the unfiltered body — never store an empty document.
+        body = (
+            "## Atomic claims\n"
+            "\n"
+            "### c_001\n"
+            "> Finland arrested two crew members over cable damage.\n"
+            "\n"
+            "## Sources\n"
+            "\n"
+            "### src_001 — Associated Press, wire, Tier 1, originating\n"
+            "**URL:** https://apnews.com/article/example\n"
+            "\n"
+            "---\n"
+            "\n"
+            + BOILERPLATE
+            + "\n"
+        )
+        self.assertEqual(index_msi_news.msi_body_filter(body), "")
+        path = self._write_article("2026-01-05-apparatus-only.md", body)
+        with contextlib.redirect_stdout(io.StringIO()):
+            stats = index_msi_news.index_msi_news([path], collection=self.col)
+        self.assertEqual(stats, {"indexed": 1, "skipped": 0, "errors": 0})
+        stored = self.col.store[os.path.abspath(path)]["document"]
+        self.assertNotEqual(stored.strip(), "")
+        # The quoted claim (real article content) is retrievable again.
+        self.assertIn("Finland arrested two crew members", stored)
+        self.assertIn("Finland arrested two crew members",
+                      self.embed_texts[0])
 
     def test_progress_printed_every_100_files(self):
         paths = [

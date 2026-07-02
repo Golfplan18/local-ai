@@ -412,6 +412,11 @@ def index_file(
     frontmatter stripping, before BOTH the stored document and the embed
     text are built — so what gets retrieved is exactly what got embedded.
     Use it to drop non-content apparatus (source lists, boilerplate).
+    If the filter consumes the ENTIRE body (apparatus-only files), the
+    unfiltered body is kept instead: an empty document is unretrievable
+    and injects nothing useful into a RAG package, while the raw
+    apparatus (quoted claims, source citations) still carries the
+    article's semantic content.
 
     verbose=False suppresses the per-file "+ <title>" print, for bulk
     callers that manage their own progress output.
@@ -430,7 +435,11 @@ def index_file(
 
     meta, body = _parse_frontmatter(content)
     if body_filter is not None:
-        body = body_filter(body)
+        filtered = body_filter(body)
+        if filtered.strip():
+            body = filtered
+        # else: the filter emptied the body (apparatus-only file) — keep
+        # the unfiltered body rather than indexing an empty document.
     if meta_overrides:
         meta = {**meta, **meta_overrides}
     doc_id = os.path.abspath(filepath)

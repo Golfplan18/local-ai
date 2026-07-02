@@ -74,7 +74,9 @@ MSI_STRIP_SECTIONS = (
 # "This story was generated algorithmically", "is licensed under CC0 and
 # was generated algorithmically", stacked double notices, and a rule line
 # AFTER the notice — so the match is on the core marker phrase appearing
-# anywhere in the FINAL paragraph, not on a literal prefix.
+# anywhere in the FINAL paragraph, not on a literal prefix. Matching is
+# case-insensitive: the corpus also carries "Generated algorithmically"
+# (capital G, e.g. "AI disclosure: Generated algorithmically by ...").
 _BOILERPLATE_MARKER = "generated algorithmically"
 
 # Horizontal-rule line: three or more dashes ("----" occurs in corpus).
@@ -93,9 +95,14 @@ _LICENSE_FOOTER_RE = re.compile(
 
 
 def _final_paragraph_start(text: str) -> int:
-    """Index just past the last blank-line boundary (0 if none)."""
+    """Index just past the last blank-line boundary (0 if none).
+
+    The boundary regex tolerates CRLF line endings (`\\r` in the blank
+    line): without it, a CRLF file has NO paragraph boundaries, the whole
+    text becomes the "final paragraph", and a trailing notice would wipe
+    the entire body."""
     last = None
-    for m in re.finditer(r"\n[ \t]*\n", text):
+    for m in re.finditer(r"\n[ \t\r]*\n", text):
         last = m
     return last.end() if last else 0
 
@@ -115,7 +122,7 @@ def _strip_trailing_boilerplate(body: str) -> str:
     while text:
         para_start = _final_paragraph_start(text)
         para = text[para_start:]
-        if _BOILERPLATE_MARKER in para:
+        if _BOILERPLATE_MARKER in para.lower():
             saw_marker = True
         elif _HR_RE.match(para):
             pass  # rule adjacent to the footer — collect

@@ -543,6 +543,38 @@ class TestBodyFilterAndCaps(unittest.TestCase):
         self.assertGreater(len(self.embed_texts[0]), 20_000)
         self.assertIn(body[-50:], self.embed_texts[0])
 
+    def test_empty_filter_output_falls_back_to_unfiltered_body(self):
+        # Apparatus-only files: the filter consumes the whole body. The
+        # unfiltered body must be indexed instead of an empty document.
+        content = (
+            "---\nnexus:\ntype: resource\ntags:\n  - news\n---\n\n"
+            "## Drop me\nquoted claim sentences live here\n"
+        )
+
+        def flt(body):
+            return knowledge_index.strip_markdown_sections(
+                body, ["Drop me"]).strip()
+
+        doc_id, stats = self._index("apparatus-only.md", content,
+                                    body_filter=flt)
+        self.assertEqual(stats["indexed"], 1)
+        stored = self.col.store[doc_id]["document"]
+        self.assertIn("quoted claim sentences live here", stored)
+        self.assertNotEqual(stored.strip(), "")
+        # The embed text also carries the fallback body, so the doc
+        # remains retrievable.
+        self.assertIn("quoted claim sentences live here",
+                      self.embed_texts[0])
+
+    def test_whitespace_only_filter_output_falls_back(self):
+        content = ("---\nnexus:\ntype: resource\ntags:\n---\n\n"
+                   "Real body text that must survive.\n")
+        doc_id, stats = self._index("blank-filter.md", content,
+                                    body_filter=lambda b: "  \n\t\n ")
+        self.assertEqual(stats["indexed"], 1)
+        self.assertIn("Real body text that must survive.",
+                      self.col.store[doc_id]["document"])
+
     def test_max_index_chars_guards_both(self):
         overshoot = knowledge_index.MAX_INDEX_CHARS + 5_000
         content = "---\nnexus:\ntype: resource\ntags:\n---\n\n" + ("A" * overshoot)
