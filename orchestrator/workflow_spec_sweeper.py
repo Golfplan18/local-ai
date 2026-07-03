@@ -25,12 +25,23 @@ from workflow_spec_parser import (
     check_reference_integrity,
     ReferenceIntegrityIssue,
 )
-from corpus_watcher import load_workflow_pointer, list_known_workflows
+from corpus_watcher import (
+    load_workflow_pointer,
+    list_known_workflows,
+    workflow_pointer_path,
+)
 
 
 WORKSPACE = os.path.expanduser("~/ora/")
 OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "workflow-spec-sweeper-heartbeat.json")
+
+# How many consecutive sweeps a workflow's spec file may be missing before the
+# watcher deregisters itself. Provisional value — 3 sweeps at the default
+# 5-minute interval gives a ~15-minute grace window so a vault mid-sync rewrite
+# doesn't drop a live registration, while a genuinely deleted spec (e.g. a
+# smoke test's temp directory) stops emitting within the same quarter hour.
+DEFAULT_MISSING_SPEC_DEREGISTER_SWEEPS = 3
 
 
 @dataclass
@@ -39,6 +50,10 @@ class WorkflowDriftReport:
     workflow_spec_path: str
     issues: list = field(default_factory=list)  # list[ReferenceIntegrityIssue]
     timestamp: str = ""
+    # True when the spec file itself is gone from disk (as opposed to existing
+    # but failing to parse, or referencing missing frameworks). This is the
+    # stale-registration signature that triggers log-once-then-deregister.
+    spec_file_missing: bool = False
 
     def is_severe(self) -> bool:
         """A report is severe if any issue is missing_file (which means routing
@@ -69,6 +84,7 @@ def sweep_workflow(workflow_id: str, pointer: dict) -> WorkflowDriftReport:
     )
 
     if not workflow_spec_path or not os.path.isfile(workflow_spec_path):
+        report.spec_file_missing = True
         report.issues.append(ReferenceIntegrityIssue(
             issue_type="missing_file",
             artifact="workflow_spec",
@@ -130,7 +146,18 @@ def sweep_workflow(workflow_id: str, pointer: dict) -> WorkflowDriftReport:
 
 
 def sweep(emit_event=None) -> list[WorkflowDriftReport]:
-    """Run a full sweep. Emits WorkflowSpecDriftEvents for severe drift."""
+    """Run a full sweep. Emits WorkflowSpecDriftEvents for severe drift.
+
+    A workflow whose spec file has vanished from disk is handled as a
+    stale-registration candidate rather than a perpetual drift emitter:
+    the drift event is emitted on the first missing sweep only, and after
+    the miss limit (default 3 consecutive sweeps) the watcher deregisters
+    itself — the pointer file is archived in place and a log-only
+    WorkflowWatcherDeregistered event records the drop. If the spec file
+    reappears (vault sync, restored file) the miss counter resets; the
+    daemon's vault auto-scan re-registers any deregistered workflow whose
+    spec comes back, so a false-positive drop self-heals.
+    """
     _write_heartbeat()
     reports: list[WorkflowDriftReport] = []
     for workflow_id in list_known_workflows():
@@ -140,24 +167,133 @@ def sweep(emit_event=None) -> list[WorkflowDriftReport]:
         report = sweep_workflow(workflow_id, pointer)
         reports.append(report)
 
+        if report.spec_file_missing:
+            _handle_missing_spec(workflow_id, pointer, report, emit_event)
+            continue
+        _clear_missing_spec_state(workflow_id)
+
         # Emit an event when issues exist (severity flag set on event)
         if report.issues and emit_event:
-            evt = WorkflowSpecDriftEvent(
-                event_type="WorkflowSpecDrift",
-                workflow_id=workflow_id,
-                project_nexus=pointer.get("project_nexus", ""),
-                issues_summary=[
-                    {"type": i.issue_type, "artifact": i.artifact, "id": i.identifier, "detail": i.detail}
-                    for i in report.issues
-                ],
-                severe=report.is_severe(),
-                timestamp=_now_iso(),
-            )
-            try:
-                emit_event(evt)
-            except Exception as e:
-                print(f"[workflow_spec_sweeper] emit_event raised: {e}")
+            _emit_drift_event(workflow_id, pointer, report, emit_event)
     return reports
+
+
+def _emit_drift_event(workflow_id: str, pointer: dict, report: WorkflowDriftReport, emit_event):
+    evt = WorkflowSpecDriftEvent(
+        event_type="WorkflowSpecDrift",
+        workflow_id=workflow_id,
+        project_nexus=pointer.get("project_nexus", ""),
+        issues_summary=[
+            {"type": i.issue_type, "artifact": i.artifact, "id": i.identifier, "detail": i.detail}
+            for i in report.issues
+        ],
+        severe=report.is_severe(),
+        timestamp=_now_iso(),
+    )
+    try:
+        emit_event(evt)
+    except Exception as e:
+        print(f"[workflow_spec_sweeper] emit_event raised: {e}")
+
+
+# ---------- stale-registration handling ----------
+
+def _missing_spec_limit() -> int:
+    raw = os.environ.get("ORA_WORKFLOW_SWEEPER_MISSING_SPEC_SWEEPS", "")
+    try:
+        limit = int(raw)
+        if limit > 0:
+            return limit
+    except ValueError:
+        pass
+    return DEFAULT_MISSING_SPEC_DEREGISTER_SWEEPS
+
+
+def _missing_spec_state_path(workflow_id: str) -> str:
+    return os.path.join(
+        os.path.dirname(workflow_pointer_path(workflow_id)),
+        "missing-spec-state.json",
+    )
+
+
+def _load_missing_spec_state(workflow_id: str) -> Optional[dict]:
+    path = _missing_spec_state_path(workflow_id)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _clear_missing_spec_state(workflow_id: str):
+    path = _missing_spec_state_path(workflow_id)
+    if os.path.isfile(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _handle_missing_spec(workflow_id: str, pointer: dict, report: WorkflowDriftReport, emit_event):
+    """Track consecutive missing-spec sweeps; emit once, then deregister at limit."""
+    state = _load_missing_spec_state(workflow_id) or {
+        "consecutive_misses": 0,
+        "first_missed_at": _now_iso(),
+    }
+    state["consecutive_misses"] = int(state.get("consecutive_misses", 0)) + 1
+    state["last_missed_at"] = _now_iso()
+    state["workflow_spec_path"] = pointer.get("workflow_spec_path", "")
+
+    if state["consecutive_misses"] >= _missing_spec_limit():
+        _deregister_workflow(workflow_id, pointer, state, emit_event)
+        return
+
+    try:
+        with open(_missing_spec_state_path(workflow_id), "w") as f:
+            json.dump(state, f, indent=2)
+    except OSError as e:
+        print(f"[workflow_spec_sweeper] failed to write missing-spec state for {workflow_id}: {e}")
+
+    # Emit the drift event on first detection only; repeats add no information.
+    if state["consecutive_misses"] == 1 and report.issues and emit_event:
+        _emit_drift_event(workflow_id, pointer, report, emit_event)
+
+
+def _deregister_workflow(workflow_id: str, pointer: dict, state: dict, emit_event):
+    """Archive the pointer file so list_known_workflows() stops returning this
+    workflow. The tombstone keeps the registration inspectable; the daemon's
+    vault auto-scan writes a fresh pointer if the spec ever reappears."""
+    pointer_path = workflow_pointer_path(workflow_id)
+    tombstone = pointer_path + ".deregistered"
+    try:
+        os.replace(pointer_path, tombstone)
+    except OSError as e:
+        print(f"[workflow_spec_sweeper] failed to deregister {workflow_id}: {e}")
+        return
+    _clear_missing_spec_state(workflow_id)
+
+    print(
+        f"[workflow_spec_sweeper] deregistered watcher for '{workflow_id}': "
+        f"spec missing for {state['consecutive_misses']} consecutive sweeps "
+        f"(pointer archived at {tombstone})"
+    )
+    if emit_event:
+        try:
+            emit_event({
+                "event_type": "WorkflowWatcherDeregistered",
+                "workflow_id": workflow_id,
+                "project_nexus": pointer.get("project_nexus", ""),
+                "workflow_spec_path": pointer.get("workflow_spec_path", ""),
+                "consecutive_misses": state["consecutive_misses"],
+                "first_missed_at": state.get("first_missed_at", ""),
+                "pointer_tombstone": tombstone,
+                "reason": "workflow spec file missing; watcher auto-deregistered",
+                "timestamp": _now_iso(),
+            })
+        except Exception as e:
+            print(f"[workflow_spec_sweeper] emit_event raised: {e}")
 
 
 def _write_heartbeat():
