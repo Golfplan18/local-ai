@@ -63,6 +63,7 @@ EVENT_TO_PC_MODE = {
 LOG_ONLY_EVENTS = {
     "FrameworkStarted",
     "CorpusInstanceCreated",
+    "WorkflowWatcherDeregistered",
 }
 
 
