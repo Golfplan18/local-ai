@@ -13,7 +13,6 @@ Author: meta-layer implementation per Reference — Meta-Layer Architecture §9.
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import json
 import os
 import time
@@ -23,9 +22,19 @@ from typing import Optional
 
 from oversight_context import OversightContextBundle
 
+# Cross-platform file lock (fcntl on POSIX, msvcrt on Windows) — replaces the
+# former top-level `import fcntl`, which crashed the whole oversight system on
+# Windows import.
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable) so gate-queued
+# Paused entries land under the same root as tool events and approvals.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HUMAN_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "human-queue.jsonl")
 ACTIONS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "actions.jsonl")
 
@@ -39,30 +48,12 @@ REVISE_LIMIT = 3  # per §10 O3
 def file_lock(path: str, timeout: float = DEFAULT_LOCK_TIMEOUT):
     """Acquire an exclusive advisory lock on a sidecar lockfile for `path`.
 
-    The actual file isn't locked (so the lock works for files that don't
-    exist yet); a sidecar `<path>.lock` file is created and locked. On
-    timeout, raises TimeoutError. Always releases on context exit.
+    Delegates to the cross-platform ``runtime_paths.locked_file`` (fcntl on
+    POSIX, msvcrt on Windows); the sidecar-lockfile semantics are preserved.
+    Kept as a thin wrapper so existing oversight callers are unchanged.
     """
-    lock_path = path + ".lock"
-    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
-    fp = open(lock_path, "w")
-    deadline = time.time() + timeout
-    try:
-        while True:
-            try:
-                fcntl.flock(fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.time() >= deadline:
-                    raise TimeoutError(f"Could not acquire lock on {lock_path} within {timeout}s")
-                time.sleep(0.1)
+    with _rp.locked_file(path, timeout=timeout):
         yield
-    finally:
-        try:
-            fcntl.flock(fp.fileno(), fcntl.LOCK_UN)
-        except Exception:
-            pass
-        fp.close()
 
 
 # ---------- Verdict tracking ----------

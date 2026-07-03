@@ -8,6 +8,7 @@ All behavioral decisions live in natural language specs. This file is mechanical
 from __future__ import annotations
 
 import os
+import time
 import sys
 import json
 import re
@@ -140,8 +141,11 @@ CROSS_ADJ_FILE = os.path.join(ARCHITECTURE_DIR, "cross-territory-adjacency.md")
 TEMPLATE_FILE = os.path.join(ARCHITECTURE_DIR, "mode-template.md")
 LENS_SPEC_FILE = os.path.join(ARCHITECTURE_DIR, "lens-library-specification.md")
 
-sys.path.insert(0, TOOLS_DIR)
-sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+# __file__-relative so a git worktree checkout imports its own modules
+# rather than the main ~/ora checkout (sys.modules then caches the wrong
+# copies for every later import in the process).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Tool imports with graceful fallback
 TOOLS_AVAILABLE = True
@@ -7200,6 +7204,24 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     else:
         _TURN_TRACE_DIR_CV.set(None)
 
+    # Execution Review Phase 1: seed the tool-event recorder's turn context
+    # (sink selection + stealth suppression + correlation). Propagates to
+    # Gear-4 workers via _submit_with_context like every other contextvar.
+    try:
+        try:
+            import tool_events as _tool_events
+        except ImportError:
+            from orchestrator import tool_events as _tool_events
+        _conv_id = None
+        if trace_dir:
+            # trace dirs are data/pipeline-traces/<conversation_id>/<turn>/
+            _conv_id = os.path.basename(os.path.dirname(trace_dir)) or None
+        _tool_events.set_turn_context(
+            trace_dir=trace_dir, conversation_id=_conv_id,
+            stealth=(conversation_tag == "stealth"), surface="chat")
+    except Exception:
+        pass
+
     # Per-profile configs (config/configurations/<name>.json) hold the flag;
     # routing-config.json (the ``config`` parameter) does not. Load the
     # per-profile config when ``config_name`` is provided so the production
@@ -7374,6 +7396,36 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                 pipeline_trace.record_rag_failure(
                     trace_dir, "rag-engine-init-or-relationship", cleaned_prompt, e
                 )
+
+    # Execution Review Phase 1: RAG retrieval is the pipeline's principal
+    # claim-grounding read channel (spec §6 signal 2) — record one raw read
+    # event per populated stream. Which of these reads grounded claims is
+    # classified post-hoc by the provenance lane; the observation happens
+    # here, mechanically, at read time.
+    try:
+        try:
+            import tool_events as _te_rag
+        except ImportError:
+            from orchestrator import tool_events as _te_rag
+        _rag_reads = []
+        if conv_rag:
+            _rag_reads.append({"what": "chromadb:conversations",
+                               "where": "local", "chars": len(conv_rag)})
+        if concept_rag:
+            _rag_reads.append({"what": "chromadb:knowledge",
+                               "where": "local", "chars": len(concept_rag)})
+        if relationship_rag:
+            _rag_reads.append({"what": "relationship-graph",
+                               "where": "local", "chars": len(relationship_rag)})
+        if _rag_reads:
+            _te_rag.record({"event": "tool", "action": "rag_read",
+                            **_te_rag.manifest_axes("rag_read"),
+                            "mutated": False, "reads": _rag_reads,
+                            "exit": {"ok": True},
+                            "gate": {"decision": "allowed", "why": "read"},
+                            "enforcement_model": "in_harness"})
+    except Exception:
+        pass
 
     # --- Step 2 — F-Consult Web Consultation (parallel CAG) ---
     # Runs ONLY when:
@@ -12816,6 +12868,7 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
 
     etype = endpoint.get("type", "")
     endpoint_id = endpoint.get("id") or endpoint.get("name") or f"unknown-{etype}"
+    _call_started = time.time()
 
     if etype == "api":
         with mlx_mutex.track_api_call(endpoint_id):
@@ -12838,16 +12891,50 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
     # registry layer catches catastrophic failures up-front; this
     # auto-cooldown catches the contextual / partial failures the
     # probe can't reproduce.
+    _call_ok = True
     if isinstance(response, str):
         stripped = response.lstrip()
         if stripped.startswith("[Error"):
             endpoint_health.record_failure(endpoint_id)
+            _call_ok = False
         elif not stripped:
             endpoint_health.record_failure(endpoint_id)
+            _call_ok = False
         else:
             endpoint_health.record_success(endpoint_id)
     else:
         endpoint_health.record_success(endpoint_id)
+
+    # Execution Review Phase 1: one model_call event per external model
+    # call — METADATA ONLY, never prompt content (this is what keeps a
+    # retrieved credential in model context out of the durable event log).
+    # Instrumented here (not in _record_model_usage) so local MLX/Ollama
+    # calls and headless calls are covered too; token detail remains the
+    # API-wrapper paths' separate usage.jsonl enrichment.
+    try:
+        try:
+            import tool_events as _te_model
+        except ImportError:
+            from orchestrator import tool_events as _te_model
+        _te_model.record({
+            "event": "model_call", "action": endpoint_id,
+            **{k: v for k, v in _te_model.manifest_axes("model_call").items()
+               if k in ("category", "mutability", "sensitivity", "egress")},
+            "mutated": False,
+            "exit": {"ok": _call_ok},
+            "duration_ms": int((time.time() - _call_started) * 1000),
+            "args_redacted": {"endpoint_type": etype,
+                              "step": _CURRENT_STEP_CV.get() or "",
+                              "messages": len(messages)},
+            "gate": {"decision": "allowed", "why": "model call"},
+            # The claude-code subscription transport is a CLI subprocess we
+            # cannot intercept per-call — label it honestly.
+            "enforcement_model": ("boundary_only"
+                                  if endpoint.get("service") == "claude-code"
+                                  else "in_harness"),
+        })
+    except Exception:
+        pass
     return response
 
 
@@ -13998,26 +14085,12 @@ def parse_tool_calls(text: str) -> list[dict]:
     return calls
 
 
-def _code_execute(code: str, timeout: int = 30) -> str:
-    """Sandboxed Python execution (no network)."""
-    if not code.strip():
-        return "[code_execute] No code provided."
-    import subprocess, sys
-    try:
-        result = subprocess.run(
-            [sys.executable, "-c", code],
-            capture_output=True, text=True, timeout=timeout,
-            env={**os.environ, "no_proxy": "*", "http_proxy": "", "https_proxy": ""},
-        )
-        out = result.stdout.strip()
-        err = result.stderr.strip()
-        if err:
-            return f"{out}\n[stderr] {err}".strip()
-        return out or "[code_execute] (no output)"
-    except subprocess.TimeoutExpired:
-        return f"[code_execute] Timeout after {timeout}s"
-    except Exception as e:
-        return f"[code_execute] {e}"
+# _code_execute removed (Execution Review Phase 1): the model-facing
+# code_execute tool now lives in tools/code_execute.py, dispatcher-registered
+# and running under a real sandbox-exec profile (network denied, writes
+# confined to scratch, no ambient credentials). The old version here ran
+# arbitrary Python with proxy-env-vars as its only "no network" protection
+# and bypassed the dispatcher entirely.
 
 
 def _continuity_save(session_summary: str) -> str:
@@ -14052,6 +14125,31 @@ def _queue_read() -> str:
         return "[queue_read] No pending tasks in queue."
     except Exception as e:
         return f"[queue_read] {e}"
+
+
+# Execution Review Phase 1: register the former legacy inline tools with
+# the dispatcher so they route through the gate + tool-event log. Their
+# handlers stay here (they are boot-owned conveniences); registration is
+# best-effort so a dispatcher import failure degrades to "[Unknown tool]"
+# rather than crashing boot.
+try:
+    try:
+        import dispatcher as _er_dispatcher
+    except ImportError:
+        from orchestrator import dispatcher as _er_dispatcher
+    _er_dispatcher.register_tool(
+        "continuity_save",
+        lambda p: _continuity_save(p.get("session_summary", "")),
+        permission="auto", category="write",
+        mutability="reversible_write", sensitivity="private", egress="none")
+    _er_dispatcher.register_tool(
+        "queue_read",
+        lambda p: _queue_read(),
+        permission="auto", category="read",
+        mutability="read", sensitivity="private", egress="none")
+except Exception as _er_reg_err:
+    print(f"[boot] legacy-tool dispatcher registration failed: {_er_reg_err}",
+          file=sys.stderr)
 
 
 _TOOL_ERROR_MARKERS = (
@@ -14123,15 +14221,11 @@ def execute_tool(name: str, params: dict) -> str:
             f"{(params.get('raw') or '')[:200]!r}]"
         )
 
-    # Legacy inline tools not in the dispatcher registry
-    if name == "code_execute":
-        return _code_execute(params.get("code", ""), params.get("timeout", 30))
-    elif name == "continuity_save":
-        return _continuity_save(params.get("session_summary", ""))
-    elif name == "queue_read":
-        return _queue_read()
-
-    # Route everything else through the dispatcher
+    # Execution Review Phase 1: the former legacy shortcuts (code_execute,
+    # continuity_save, queue_read) are dispatcher-registered tools now —
+    # they pass the gate and leave tool-event records like everything else.
+    # code_execute additionally runs under a real sandbox
+    # (tools/code_execute.py) instead of the old proxy-env-only version.
     try:
         return dispatcher_dispatch(name, params)
     except Exception as e:

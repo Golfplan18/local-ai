@@ -140,6 +140,34 @@ def check_health() -> list[dict]:
 
     warnings.extend(per_watcher)
 
+    # Execution Review Phase 1 — telemetry-incomplete banner. If the
+    # tool-event recorder has failed to write, the dispatch-signal
+    # substrate is blind and downstream routing/packets are untrustworthy.
+    # Surface it the same way as daemon_down/stale so the user sees it in
+    # the active conversation. (Gated actions still fail closed regardless;
+    # this is about observability, not enforcement.)
+    try:
+        try:
+            import tool_events as _te_h
+        except ImportError:
+            from orchestrator import tool_events as _te_h
+        _th = _te_h.get_telemetry_health()
+        if _th.get("incomplete"):
+            warnings.append({
+                "watcher": "tool_events",
+                "status": "telemetry_incomplete",
+                "age_seconds": None,
+                "threshold_seconds": None,
+                "message": (
+                    f"Tool-event recording has failed {_th['failures']} time(s) "
+                    f"this run (last: {_th.get('last_error', '')[:160]}). "
+                    "Execution-review telemetry is incomplete — reality-contact "
+                    "observation for this session may be partial."
+                ),
+            })
+    except Exception:
+        pass
+
     # S10 (2026-05-22) — simulated-mode banner. When oversight is active
     # (PEDs registered, watchers beating) but ORA_OVERSIGHT_LIVE is not
     # set in env, the router synthesises a "simulated" action for every

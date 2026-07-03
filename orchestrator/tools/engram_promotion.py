@@ -167,9 +167,37 @@ def _autocommit_promoted(results: list[dict], vault_engrams: str,
         return status
 
     status["attempted"] = True
+
+    # Execution Review Phase 1: this is a model-triggered external write
+    # (runtime notes promote → commit → PUSH leaves the machine). It stays
+    # env-gated by ORA_RUNTIME_ENGRAM_AUTOCOMMIT (standing user config) and
+    # is now observed: one mechanical event per attempt, whatever the outcome.
+    def _record_push_event(ok: bool, message: str):
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            axes = _te.manifest_axes("engram_git_push")
+            _te.record({
+                "event": "tool", "action": "engram_git_push",
+                "category": axes["category"], "mutability": axes["mutability"],
+                "sensitivity": axes["sensitivity"], "egress": axes["egress"],
+                "mutated": ok,
+                "args_redacted": {"repo": repo_root, "files": len(rels)},
+                "exit": {"ok": ok, "reason": message[:120]},
+                "gate": {"decision": "allowed",
+                         "why": "env-gated standing authorization "
+                                "(ORA_RUNTIME_ENGRAM_AUTOCOMMIT)"},
+                "enforcement_model": "in_harness",
+            })
+        except Exception:
+            pass
+
     add = _git(repo_root, ["add", "--", *rels])
     if add.returncode != 0:
         status["message"] = f"git add failed: {add.stderr.strip()}"
+        _record_push_event(False, status["message"])
         return status
 
     today = datetime.date.today().isoformat()
@@ -178,15 +206,18 @@ def _autocommit_promoted(results: list[dict], vault_engrams: str,
     if commit.returncode != 0:
         _git(repo_root, ["reset", "--quiet", "--", *rels])
         status["message"] = f"git commit failed: {(commit.stderr or commit.stdout).strip()}"
+        _record_push_event(False, status["message"])
         return status
     status["committed"] = True
 
     push = _git(repo_root, ["push"])
     if push.returncode != 0:
         status["message"] = f"git push failed: {(push.stderr or push.stdout).strip()}"
+        _record_push_event(False, status["message"])
         return status
     status["pushed"] = True
     status["message"] = "committed and pushed"
+    _record_push_event(True, status["message"])
     return status
 
 

@@ -3361,7 +3361,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             f"clar_question={(pre_routing.get('pending_clarification') or '')[:120]!r}",
             flush=True,
         )
-        yield from _direct_stream(user_input, history, images=images)
+        yield from _direct_stream(user_input, history, images=images,
+                                  panel_id=panel_id, conversation_tag=conversation_tag)
         return
 
     # --- Phase 9: pre-routing pipeline question gate ---
@@ -3487,7 +3488,8 @@ def _tool_status_label(tool_name, params):
         return f"[{tool_name}…]"
 
 
-def _direct_stream(user_input, history, images=None):
+def _direct_stream(user_input, history, images=None, panel_id="main",
+                   conversation_tag=""):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher."""
     config   = load_config()
@@ -3502,8 +3504,37 @@ def _direct_stream(user_input, history, images=None):
         messages.insert(0, {"role": "system", "content": load_boot_md()})
     messages.append({"role": "user", "content": user_input})
 
-    # Auto-approve in server mode (permission handled by UI later)
+    # Auto-approve in server mode (permission handled by UI later).
+    # Execution Review Phase 1: auto-approve now only covers the legacy
+    # approve tier — the execution gate in dispatcher.dispatch runs before
+    # and independently of this mode, so irreversible / unknown / secret /
+    # sensitive actions are blocked+queued here rather than sailing through.
     set_permission_mode("auto-approve")
+
+    # Direct mode runs no step-2 context assembly, so seed the tool-event
+    # recorder's turn context here (no trace dir → events go to the global
+    # sink, marked surface=chat).
+    try:
+        try:
+            import tool_events as _te_ds
+        except ImportError:
+            from orchestrator import tool_events as _te_ds
+        # Resolve the conversation tag here (direct mode runs no step 2) so a
+        # stealth turn's tool events are suppressed at write and its
+        # non-stealth events are purgeable by conversation id. Without this a
+        # stealth direct-mode turn would leak durable content to the global
+        # sink — the exact hole the stealth machinery exists to close.
+        _ds_tag = conversation_tag
+        if not _ds_tag:
+            try:
+                from orchestrator.conversation_memory import get_conversation_tag as _gct
+                _ds_tag = _gct(panel_id) or ""
+            except Exception:
+                _ds_tag = ""
+        _te_ds.set_turn_context(trace_dir=None, conversation_id=panel_id,
+                                stealth=(_ds_tag == "stealth"), surface="chat")
+    except Exception:
+        pass
 
     response = ""
     for iteration in range(MAX_ITERATIONS):
@@ -3591,7 +3622,8 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                                     config_name=config_name,
                                     conversation_tag=conversation_tag)
     else:
-        yield from _direct_stream(user_input, history, images=images)
+        yield from _direct_stream(user_input, history, images=images,
+                                  panel_id=panel_id, conversation_tag=conversation_tag)
 
 # ── routes ────────────────────────────────────────────────────────────────────
 

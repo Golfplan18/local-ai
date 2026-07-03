@@ -328,14 +328,15 @@ class TestPurgeStealthLayer9ScrubsOversightLogs(unittest.TestCase):
             self._write_jsonl(actions_path, actions)
             self._write_jsonl(queue_path, queue)
 
-            # Map ~/ora/data/oversight/... onto our tempdir.
-            def _fake_expand(p: str) -> str:
-                if "/ora/data/oversight" in p:
-                    rest = p.split("/ora/data/oversight", 1)[1]
-                    return str(oversight_dir) + rest
-                return p
-
-            with mock.patch("os.path.expanduser", side_effect=_fake_expand):
+            # Layer 9 derives its targets from runtime_paths at call time
+            # (DATA_DIR_STR/oversight); map that onto our tempdir. Also
+            # point the Layer 6a tool-event sink into the tempdir so the
+            # test never touches the real global sink.
+            from orchestrator import runtime_paths as _rt
+            with mock.patch.object(_rt, "DATA_DIR_STR", str(tmp_path)), \
+                 mock.patch.dict(os.environ, {
+                     "ORA_TOOL_EVENTS_PATH":
+                         str(tmp_path / "tool-events.jsonl")}):
                 result = _purge_stealth(
                     stealth_id,
                     sessions_root=tmp_path / "sessions",
@@ -382,6 +383,44 @@ class TestPurgeStealthLayer9ScrubsOversightLogs(unittest.TestCase):
             self.assertEqual(len(remaining_queue), 1)
             self.assertEqual(remaining_queue[0]["conversation_id"], other_id)
 
+    def test_layer_6a_purges_relocated_global_sink(self):
+        # Revision 7 fold: the purge must rewrite the SAME sink
+        # tool_events.record() writes (env override / runtime_paths), not
+        # a hardcoded ~/ora path — otherwise stealth gate-decision records
+        # persist forever under ORA_HOME / ORA_TOOL_EVENTS_PATH relocation.
+        from orchestrator.conversation_closeout import _purge_stealth
+        from orchestrator import runtime_paths as _rt
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            sink = tmp_path / "relocated-tool-events.jsonl"
+            self._write_jsonl(sink, [
+                {"conversation_id": "conv-stealth-reloc",
+                 "action": "bash_execute", "what": "cat plan.md"},
+                {"conversation_id": "conv-keep", "action": "file_read"},
+            ])
+
+            with mock.patch.object(_rt, "DATA_DIR_STR", str(tmp_path)), \
+                 mock.patch.dict(os.environ, {
+                     "ORA_TOOL_EVENTS_PATH": str(sink)}):
+                result = _purge_stealth(
+                    "conv-stealth-reloc",
+                    sessions_root=tmp_path / "sessions",
+                    conversations_dir=tmp_path / "convs",
+                    conversations_raw=tmp_path / "raw",
+                    chromadb_path=tmp_path / "chroma",
+                    vault_sessions=tmp_path / "vault",
+                )
+
+            self.assertEqual(result["deleted"]["tool_event_entries"], 1)
+            remaining = [
+                json.loads(line)
+                for line in sink.read_text().splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(
+                [r["conversation_id"] for r in remaining], ["conv-keep"])
+
     def test_layer_9_handles_missing_logs_gracefully(self):
         from orchestrator.conversation_closeout import _purge_stealth
 
@@ -389,13 +428,11 @@ class TestPurgeStealthLayer9ScrubsOversightLogs(unittest.TestCase):
             tmp_path = Path(tmp)
             oversight_dir = tmp_path / "oversight"  # never created
 
-            def _fake_expand(p: str) -> str:
-                if "/ora/data/oversight" in p:
-                    rest = p.split("/ora/data/oversight", 1)[1]
-                    return str(oversight_dir) + rest
-                return p
-
-            with mock.patch("os.path.expanduser", side_effect=_fake_expand):
+            from orchestrator import runtime_paths as _rt
+            with mock.patch.object(_rt, "DATA_DIR_STR", str(tmp_path)), \
+                 mock.patch.dict(os.environ, {
+                     "ORA_TOOL_EVENTS_PATH":
+                         str(tmp_path / "tool-events.jsonl")}):
                 result = _purge_stealth(
                     "conv-stealth-x",
                     sessions_root=tmp_path / "sessions",

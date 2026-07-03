@@ -35,11 +35,17 @@ from typing import Optional
 
 from oversight_actions import file_lock, HUMAN_QUEUE_PATH
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+# Roots flow from runtime_paths (ORA_HOME-relocatable) so the gate's Paused
+# queue writes land under the same root as tool events and approvals.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 REEVAL_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "reeval-queue.jsonl")
-SESSIONS_ROOT = os.path.join(WORKSPACE, "sessions/")
+SESSIONS_ROOT = os.path.join(WORKSPACE, "sessions")
 
 NAMING_SLOT = "sidebar"  # small model — same slot as drift / mode / elicitation
 
@@ -60,6 +66,10 @@ class PausedEntry:
     discussion_conversation_id: Optional[str] = None
     redefinition: bool = False
     forced_reason: str = ""
+    # Entry type: "" = redefinition/escalation (legacy default);
+    # "execution_gate" = Execution Review gate block awaiting approval.
+    # Consumers (resolution_chain, /approve, /deny) dispatch on this.
+    kind: str = ""
     event: dict = field(default_factory=dict)
     verdict: dict = field(default_factory=dict)
     context_summary: dict = field(default_factory=dict)
@@ -74,6 +84,7 @@ class PausedEntry:
             "discussion_conversation_id": self.discussion_conversation_id,
             "redefinition": self.redefinition,
             "forced_reason": self.forced_reason,
+            "kind": self.kind,
             "event": self.event,
             "verdict": self.verdict,
             "context_summary": self.context_summary,
@@ -268,6 +279,7 @@ def _record_to_paused(data: dict, raw_index: int) -> PausedEntry:
         discussion_conversation_id=data.get("discussion_conversation_id"),
         redefinition=bool(data.get("redefinition")),
         forced_reason=data.get("forced_reason", ""),
+        kind=data.get("kind", ""),
         event=data.get("event") or {},
         verdict=data.get("verdict") or {},
         context_summary=data.get("context_summary") or {},

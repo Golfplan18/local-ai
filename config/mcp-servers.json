@@ -7,29 +7,56 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/Users/oracle/Documents/vault/"
+        "${ORA_VAULT}"
       ],
-      "_purpose": "Structured filesystem operations (read, write, list, search) scoped to the Wisdom Nexus vault. Adds tool-calling-friendly file primitives over the dispatcher's existing file_read/file_write surface."
+      "_purpose": "Structured filesystem operations (read, write, list, search) scoped to the Wisdom Nexus vault. Adds tool-calling-friendly file primitives over the dispatcher's existing file_read/file_write surface.",
+      "mutability": "reversible_write",
+      "sensitivity": "private",
+      "egress": "none"
     },
     {
       "name": "playwright",
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
-      "_purpose": "Browser automation — navigate, click, fill, screenshot, console. Complements the existing internal Playwright path used by web_fetch's channel=local tier."
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "_purpose": "Browser automation \u2014 navigate, click, fill, screenshot, console. Complements the existing internal Playwright path used by web_fetch's channel=local tier.",
+      "mutability": "external_write",
+      "sensitivity": "private",
+      "egress": "external"
     },
     {
       "name": "github",
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "_purpose": "GitHub repo / issue / PR operations. Requires GITHUB_PERSONAL_ACCESS_TOKEN in the orchestrator's environment (inherited from the shell that started Ora). Fails-soft if the token is absent — the github server reports startup failure and the dispatcher routes the other two servers normally.",
-      "_env_required": "GITHUB_PERSONAL_ACCESS_TOKEN"
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "_purpose": "GitHub repo / issue / PR operations. Requires GITHUB_PERSONAL_ACCESS_TOKEN in the orchestrator's environment (inherited from the shell that started Ora). Fails-soft if the token is absent \u2014 the github server reports startup failure and the dispatcher routes the other two servers normally.",
+      "_env_required": "GITHUB_PERSONAL_ACCESS_TOKEN",
+      "mutability": "external_write",
+      "sensitivity": "private",
+      "egress": "external"
     }
   ],
-  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Servers that fail to start are logged but do not block the orchestrator. The _purpose / _env_required fields are documentation only — the MCP client ignores underscore-prefixed keys.",
+  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Servers that fail to start are logged but do not block the orchestrator. The _purpose / _env_required fields are documentation only \u2014 the MCP client ignores underscore-prefixed keys. Path values in command/args/env/url may use ${ORA_HOME} / ${ORA_VAULT} / ${ORA_CONVERSATIONS} / ${ORA_SCRATCH} placeholders \u2014 resolved at launch time from the same-named env var when set, else from orchestrator/runtime_paths.py defaults \u2014 so the checked-in config carries no machine- or platform-specific absolute paths.",
   "examples": [
-    {"name": "playwright", "transport": "stdio", "command": "npx", "args": ["@playwright/mcp@latest"]},
-    {"name": "custom-server", "transport": "http", "url": "http://localhost:8080/mcp"}
-  ]
+    {
+      "name": "playwright",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    {
+      "name": "custom-server",
+      "transport": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  ],
+  "_execution_review": "Per-server mutability/sensitivity/egress axes are read by tool_events.mcp_axes for the gate. A server without declared axes fails closed (gated). All MCP calls record enforcement_model=boundary_only regardless \u2014 the server subprocess is opaque to per-call interception."
 }

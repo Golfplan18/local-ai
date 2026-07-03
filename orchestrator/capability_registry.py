@@ -505,6 +505,7 @@ class CapabilityRegistry:
                     "error_code": None,
                     "error_message": None,
                 })
+                self._record_tool_event(slot_name, candidate, attempts, True)
                 return InvocationResult(
                     slot=slot_name,
                     provider_id=candidate,
@@ -519,7 +520,42 @@ class CapabilityRegistry:
         # so the caller can render "tried X, then Y, then Z" telemetry.
         assert last_exc is not None  # the loop only exits via break
         last_exc.attempts = attempts
+        self._record_tool_event(slot_name, None, attempts, False)
         raise last_exc
+
+    @staticmethod
+    def _record_tool_event(slot_name: str, provider_id: str | None,
+                           attempts: list[dict], ok: bool) -> None:
+        """Execution Review Phase 1: one tool-event per slot invocation —
+        the seam where external image/video APIs actually execute. Slots
+        are declared, contract-validated actions; their classification is
+        CAPABILITY_SLOT_AXES (external egress, recoverable local artifact),
+        with per-slot overrides possible in the manifest. Unregistered slot
+        names never reach here (get_contract raises)."""
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            axes = _te.CAPABILITY_SLOT_AXES
+            _te.record({
+                "event": "capability_slot",
+                "action": f"capability_slot:{slot_name}",
+                "category": axes["category"], "mutability": axes["mutability"],
+                "sensitivity": axes["sensitivity"], "egress": axes["egress"],
+                "mutated": ok,
+                "args_redacted": {"provider": provider_id or "",
+                                  "attempts": [a.get("provider_id")
+                                               for a in attempts]},
+                "exit": {"ok": ok,
+                         "reason": "" if ok else
+                         (attempts[-1].get("error_code") or "")[:120]},
+                "gate": {"decision": "allowed",
+                         "why": "declared capability slot"},
+                "enforcement_model": axes["enforcement"],
+            })
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

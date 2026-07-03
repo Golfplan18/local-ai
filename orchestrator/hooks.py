@@ -63,16 +63,56 @@ def fire_hooks(event: str, context: dict = None) -> list[str]:
         timeout = hook.get("timeout", 10)
         inject = hook.get("inject_output", False)
 
+        import time as _time
+        _t0 = _time.time()
+        _ok, _reason = True, ""
         try:
             result = subprocess.run(
                 command, shell=True, capture_output=True, text=True,
                 timeout=timeout, cwd=WORKSPACE,
             )
+            _ok = result.returncode == 0
+            _reason = f"exit {result.returncode}" if not _ok else ""
             if inject and result.stdout.strip():
                 injected.append(result.stdout.strip())
         except subprocess.TimeoutExpired:
+            _ok, _reason = False, "timeout"
             print(f"[hooks] Hook timed out: {hook.get('_source', 'unknown')}")
         except Exception as e:
+            _ok, _reason = False, str(e)[:120]
             print(f"[hooks] Hook failed: {hook.get('_source', 'unknown')}: {e}")
+
+        # Execution Review Phase 1: every hook execution is recorded. Hooks
+        # are user-installed configuration and run un-gated (installing the
+        # hook is the authorization — and writes into config/hooks/ are a
+        # protected-config path, so a model cannot install its own), but
+        # they are shell=True subprocesses Ora cannot see inside, hence
+        # enforcement boundary_only and honest axes (declared in the hook
+        # JSON when present, unknown-but-authorized when not).
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            declared = {k: hook[k] for k in
+                        ("mutability", "sensitivity", "egress") if k in hook}
+            _te.record({
+                "event": "hook",
+                "action": f"hook:{hook.get('_source', 'unknown')}",
+                "category": "execute",
+                "mutability": declared.get("mutability", "irreversible"),
+                "sensitivity": declared.get("sensitivity", "private"),
+                "egress": declared.get("egress", "external"),
+                "mutated": _ok and declared.get("mutability", "") != "read",
+                "args_redacted": {"event": event, "command": command[:200],
+                                  "declared_axes": bool(declared)},
+                "exit": {"ok": _ok, "reason": _reason},
+                "duration_ms": int((_time.time() - _t0) * 1000),
+                "gate": {"decision": "allowed",
+                         "why": "user-installed hook (pre-authorized)"},
+                "enforcement_model": "boundary_only",
+            })
+        except Exception:
+            pass
 
     return injected

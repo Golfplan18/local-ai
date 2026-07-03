@@ -915,6 +915,23 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
     env.setdefault("ORA_VAULT", os.path.expanduser("~/Documents/vault"))
     env["ORA_PROJECT_NEXUS"] = project.nexus
     env["ORA_PROJECT_ROOT"] = str(project.root)
+    # Execution Review Phase 1: children that import Ora (a minority — most
+    # project tools are self-contained) append their tool events to the
+    # parent's sink and inherit the stealth flag; the parent's boundary
+    # events (below) cover children that never load the recorder.
+    try:
+        try:
+            import tool_events as _te
+        except ImportError:
+            from orchestrator import tool_events as _te
+        _ctx = _te.get_turn_context()
+        env["ORA_TOOL_EVENTS_PATH"] = _te._sink_path(_ctx)
+        if _ctx.get("stealth"):
+            env["ORA_STEALTH_CONTEXT"] = "1"
+        if _ctx.get("conversation_id"):
+            env["ORA_CONVERSATION_ID"] = str(_ctx["conversation_id"])
+    except Exception:
+        pass
     if extra_env:
         env.update(extra_env)
     return env
@@ -964,6 +981,36 @@ def invoke_project_tool(
 
     env = _build_subprocess_env(project, extra_env=extra_env)
 
+    # Execution Review Phase 1: boundary events. The tool body is an opaque
+    # subprocess (enforcement boundary_only); the parent records invocation
+    # and exit mechanically regardless of what the child does or whether it
+    # emitted any in-child events of its own.
+    def _record_boundary(ok: bool, reason: str, duration_ms: int):
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            axes = _te.manifest_axes("project_tool")
+            _te.record({
+                "event": "project_tool",
+                "action": f"project_tool:{nexus}:{tool_name}",
+                "category": axes["category"], "mutability": axes["mutability"],
+                "sensitivity": axes["sensitivity"], "egress": axes["egress"],
+                "mutated": ok,
+                "args_redacted": {"argv": " ".join(cmd)[:200],
+                                  "interface": tool.interface},
+                "exit": {"ok": ok, "reason": reason[:120]},
+                "duration_ms": duration_ms,
+                "gate": {"decision": "allowed",
+                         "why": "user-initiated project tool"},
+                "enforcement_model": "boundary_only",
+            })
+        except Exception:
+            pass
+
+    import time as _time
+    _t0 = _time.time()
     try:
         result = subprocess.run(
             cmd,
@@ -974,14 +1021,20 @@ def invoke_project_tool(
             env=env,
         )
     except subprocess.TimeoutExpired as e:
+        _record_boundary(False, f"timeout {timeout}s",
+                         int((_time.time() - _t0) * 1000))
         raise ToolInvocationError(
             f"Tool {nexus}:{tool_name} timed out after {timeout}s",
             stderr=(e.stderr or b"").decode("utf-8", errors="replace"),
         ) from e
     except FileNotFoundError as e:
+        _record_boundary(False, "executable not found",
+                         int((_time.time() - _t0) * 1000))
         raise ToolInvocationError(
             f"Tool {nexus}:{tool_name}: command executable not found ({e})"
         ) from e
+    _record_boundary(result.returncode == 0, f"exit {result.returncode}",
+                     int((_time.time() - _t0) * 1000))
 
     stdout = result.stdout.decode("utf-8", errors="replace")
     stderr = result.stderr.decode("utf-8", errors="replace")
