@@ -19,9 +19,16 @@ from typing import Optional
 from ped_parser import parse_ped_file, ParsedPED
 from ped_watcher import load_ped_path, list_known_projects
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
+# the watcher/heartbeat family.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "revisit-sweeper-heartbeat.json")
 
 

@@ -23,9 +23,16 @@ from typing import Optional
 from corpus_parser import parse_corpus_file, section_state_summary, ParsedCorpus
 from workflow_spec_parser import parse_workflow_spec_file, ParsedWorkflowSpec
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
+# the watcher/heartbeat family.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "corpus-watcher-heartbeat.json")
 
 

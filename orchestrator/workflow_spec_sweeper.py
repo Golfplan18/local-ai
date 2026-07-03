@@ -49,9 +49,16 @@ from corpus_watcher import (
     workflow_pointer_path,
 )
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
+# the watcher/heartbeat family.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "workflow-spec-sweeper-heartbeat.json")
 
 # Deregistration requires BOTH gates: at least this many consecutive

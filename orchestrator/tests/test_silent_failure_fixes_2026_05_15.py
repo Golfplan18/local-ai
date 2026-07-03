@@ -153,8 +153,11 @@ class TestStealthManifestSidecar(unittest.TestCase):
             chroma = tmp_path / "chromadb"
             vault = tmp_path / "vault"
 
-            # Override the manifest path via patching the expanduser call
-            manifest = tmp_path / "manifest.jsonl"
+            # Override the manifest root by patching runtime_paths at the
+            # attribute Layer 8 reads at call time (the path flows from
+            # runtime_paths since Execution Review Phase 2, so patching
+            # os.path.expanduser no longer redirects it).
+            manifest = tmp_path / "conversation-manifest.jsonl"
             target_chunk = conv_dir / "target_chunk.md"
             target_raw = raw_dir / "target_raw.md"
             other_chunk = conv_dir / "other_chunk.md"
@@ -182,9 +185,8 @@ class TestStealthManifestSidecar(unittest.TestCase):
                 }) + "\n"
             )
 
-            with mock.patch("os.path.expanduser",
-                            side_effect=lambda p: str(manifest)
-                            if "conversation-manifest" in p else p):
+            from orchestrator import runtime_paths as _orp
+            with mock.patch.object(_orp, "DATA_DIR_STR", str(tmp_path)):
                 result = _purge_stealth(
                     "stealth-target",
                     sessions_root=sessions_root,

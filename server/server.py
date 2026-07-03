@@ -5546,8 +5546,10 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     # Layer 2 has empty chunk_paths, the files persist. The manifest is the
     # authoritative purge list; ChromaDB-based discovery is a fallback.
     try:
-        manifest_path = os.path.expanduser(
-            "~/ora/data/conversation-manifest.jsonl"
+        # Root flows from runtime_paths so the writer and the stealth
+        # purge (conversation_closeout Layer 8) agree under relocation.
+        manifest_path = os.path.join(
+            rp.DATA_DIR_STR, "conversation-manifest.jsonl"
         )
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
         import json as _json_mf
@@ -5707,8 +5709,8 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
         else:
             try:
                 import json as _json
-                failures_log = os.path.expanduser(
-                    "~/ora/data/conversation-indexing-failures.jsonl"
+                failures_log = os.path.join(
+                    rp.DATA_DIR_STR, "conversation-indexing-failures.jsonl"
                 )
                 os.makedirs(os.path.dirname(failures_log), exist_ok=True)
                 with open(failures_log, "a") as _fh:

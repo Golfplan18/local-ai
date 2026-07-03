@@ -79,6 +79,11 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Optional
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 # visual_validator lives in the same orchestrator package. Import lazily so
 # tests that stub the validator don't need to boot the jsonschema layer.
 _HERE = Path(__file__).resolve().parent
@@ -116,15 +121,15 @@ class ExportResult:
 # ---------------------------------------------------------------------------
 
 # Node CLI used to render envelope → SVG.
-_DEFAULT_RENDER_CLI = Path.home() / "ora" / "server" / "static" / "ora-visual-compiler" / "tools" / "render-envelope.js"
+_DEFAULT_RENDER_CLI = _rp.ORA_HOME / "server" / "static" / "ora-visual-compiler" / "tools" / "render-envelope.js"
 
 # Where the chat server writes raw conversation logs.
-_DEFAULT_RAW_CONVERSATIONS = Path.home() / "Documents" / "conversations" / "raw"
+_DEFAULT_RAW_CONVERSATIONS = _rp.CONVERSATIONS / "raw"
 
 # Per-session auxiliary root (uploads, vision retry queue, future
 # conversation.json). When a ``conversation.json`` shows up here the export
 # path prefers it.
-_DEFAULT_SESSIONS_ROOT = Path.home() / "ora" / "sessions"
+_DEFAULT_SESSIONS_ROOT = _rp.ORA_HOME / "sessions"
 
 # The sidecar-gitignore pattern: everything we emit is ``*.fig-*.svg``.
 _SIDECAR_GITIGNORE_PATTERN = "*.fig-*.svg"
@@ -560,8 +565,8 @@ def _format_vault_date(value: str | None) -> str | None:
 # nexus derivation — the prior hard-coded Engrams/ path no longer existed, so
 # every export fell through to an empty nexus regardless of topic.
 _MASTER_MATRIX_CANDIDATES = (
-    Path.home() / "Documents" / "vault" / "Administration" / "Reference — Master Matrix.md",
-    Path.home() / "Documents" / "vault" / "Engrams" / "Reference — Master Matrix.md",
+    _rp.VAULT / "Administration" / "Reference — Master Matrix.md",
+    _rp.VAULT / "Engrams" / "Reference — Master Matrix.md",
 )
 
 
@@ -770,7 +775,7 @@ def export_session_to_vault(
     (``visual_validator.validate_envelope`` is the default). Tests pass a
     stub to bypass the jsonschema dependency.
     """
-    vault_root = Path(vault_root) if vault_root else Path.home() / "Documents" / "vault"
+    vault_root = Path(vault_root) if vault_root else _rp.VAULT
     sessions_root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     raw_conversations_dir = Path(raw_conversations_dir) if raw_conversations_dir else _DEFAULT_RAW_CONVERSATIONS
     node_cli = Path(node_cli) if node_cli else _DEFAULT_RENDER_CLI

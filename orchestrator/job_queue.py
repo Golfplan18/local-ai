@@ -113,11 +113,18 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
-DEFAULT_SESSIONS_ROOT = Path(os.path.expanduser("~/ora/sessions"))
+# Flows from runtime_paths (ORA_HOME-relocatable) so job files land in the
+# same sessions root the envelope writer and stealth purge use.
+DEFAULT_SESSIONS_ROOT = _rp.ORA_HOME / "sessions"
 JOBS_FILENAME = "jobs.json"
 
 

@@ -42,14 +42,20 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from . import runtime_paths as _rp
 from .conversation_memory import get_conversation_tag, set_conversation_closed
 
 
-_DEFAULT_SESSIONS_ROOT = Path.home() / "ora" / "sessions"
-_DEFAULT_CONVERSATIONS_DIR = Path.home() / "Documents" / "conversations"
-_DEFAULT_CONVERSATIONS_RAW = Path.home() / "Documents" / "conversations" / "raw"
-_DEFAULT_CHROMADB_PATH = Path.home() / "ora" / "chromadb"
-_DEFAULT_VAULT_SESSIONS = Path.home() / "Documents" / "vault" / "Sessions"
+# Purge-target roots flow from runtime_paths (ORA_HOME / ORA_VAULT /
+# ORA_CONVERSATIONS relocatable) so the purge always looks where the
+# writers actually wrote. Peer writers: conversation_memory (envelope),
+# server.py (chunks / raw / manifest / failures log), vault_export
+# (vault Sessions dir). test_portability asserts the roots agree.
+_DEFAULT_SESSIONS_ROOT = _rp.ORA_HOME / "sessions"
+_DEFAULT_CONVERSATIONS_DIR = _rp.CONVERSATIONS
+_DEFAULT_CONVERSATIONS_RAW = _rp.CONVERSATIONS / "raw"
+_DEFAULT_CHROMADB_PATH = _rp.ORA_HOME / "chromadb"
+_DEFAULT_VAULT_SESSIONS = _rp.VAULT / "Sessions"
 
 
 def close_conversation(
@@ -324,8 +330,10 @@ def _purge_stealth(
     deleted["manifest_orphans_removed"] = 0
     try:
         import json as _json_mf
-        manifest_path = Path(os.path.expanduser(
-            "~/ora/data/conversation-manifest.jsonl"
+        # Read at call time from runtime_paths so the purge follows an
+        # ORA_HOME relocation (same pattern as Layers 6a/9 below).
+        manifest_path = Path(os.path.join(
+            _rp.DATA_DIR_STR, "conversation-manifest.jsonl"
         ))
         if manifest_path.exists():
             kept_lines: list[str] = []
@@ -489,8 +497,8 @@ def _purge_stealth(
     deleted["indexing_failures_log_entries"] = 0
     try:
         import json as _json
-        log_path = Path(os.path.expanduser(
-            "~/ora/data/conversation-indexing-failures.jsonl"
+        log_path = Path(os.path.join(
+            _rp.DATA_DIR_STR, "conversation-indexing-failures.jsonl"
         ))
         if log_path.exists():
             kept_lines: list[str] = []

@@ -23,9 +23,17 @@ from typing import Optional
 
 from ped_parser import parse_ped_file, get_active_milestone_states
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable); the whole
+# watcher/heartbeat family moves together so pointer/state writers and
+# readers can never split under relocation.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "ped-watcher-heartbeat.json")
 
 # Debounce window — see Reference — Meta-Layer Architecture §10 O6
