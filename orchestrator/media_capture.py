@@ -429,7 +429,47 @@ class CaptureManager:
             "tag": tag,
             "capture_dir": str(capture_dir),
         })
+        self._record_capture_event("start", capture_id, conversation_id, tag)
         return capture_id
+
+    @staticmethod
+    def _record_capture_event(phase: str, capture_id: str,
+                              conversation_id: str, tag: str) -> None:
+        """Execution Review Phase 1: screen+mic capture is a sensitive,
+        user-initiated surface — instrumented, not gated (clicking record
+        in the UI is its own approval). The tag is resolved HERE, not from
+        request-thread context: capture endpoints run on non-pipeline Flask
+        threads where no turn context exists, and stealth captures must
+        never leave a durable content event."""
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            axes = _te.manifest_axes("media_capture")
+            event = {
+                "event": "media_capture",
+                "action": f"media_capture:{phase}",
+                "category": axes["category"], "mutability": axes["mutability"],
+                "sensitivity": axes["sensitivity"], "egress": axes["egress"],
+                "mutated": True,
+                "correlation": {"conversation_id": conversation_id},
+                "args_redacted": {"capture_id": capture_id},
+                "exit": {"ok": True},
+                "gate": {"decision": "allowed",
+                         "why": "user-initiated UI capture"},
+                "enforcement_model": axes["enforcement"],
+            }
+            if tag == "stealth":
+                # Existence-only, no correlation — a stealth capture event
+                # in the durable global sink must not link to the
+                # conversation the purge will later erase.
+                event["sensitivity"] = "secret"
+                event.pop("correlation", None)
+                event["args_redacted"] = {}
+            _te.record(event)
+        except Exception:
+            pass
 
     def pause_capture(self, capture_id: str) -> None:
         capture = self._require(capture_id)
@@ -470,6 +510,8 @@ class CaptureManager:
                 "file_path": str(final_path),
                 "duration_ms": capture.last_duration_ms,
             })
+            self._record_capture_event("stop", capture_id,
+                                       capture.conversation_id, capture.tag)
             return {
                 "file_path": str(final_path),
                 "duration_ms": capture.last_duration_ms,

@@ -293,8 +293,35 @@ def continue_resolution(
     return _generate_discussion_turn(ctx, history, user_text, config)
 
 
+def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
+                             approve: bool, reason: str = "") -> str | None:
+    """Kind-dispatch for Execution Review gate entries. Returns the commit
+    message when the entry is an execution_gate (handled here), else None
+    (fall through to redefinition semantics)."""
+    from oversight_queue import find_paused_by_id, remove_by_id
+
+    entry = find_paused_by_id(queue_id)
+    if entry is None or entry.kind != "execution_gate":
+        return None
+    try:
+        import tool_events
+    except ImportError:
+        from orchestrator import tool_events
+    record = {"kind": entry.kind, "event": entry.event,
+              "conversation_id": (entry.event or {}).get("conversation_id")}
+    message = tool_events.resolve_gate_entry(record, approve=approve,
+                                             reason=reason)
+    remove_by_id(entry.id)
+    _mark_conversation_resolved(conversation_id)
+    return message
+
+
 def _commit_approve_as_proposed(ctx: ContinuationContext, conversation_id: str) -> str:
     """User typed 1 — apply redefinition as the system originally proposed."""
+    gate_msg = _maybe_commit_gate_entry(ctx.queue_id, conversation_id,
+                                        approve=True)
+    if gate_msg is not None:
+        return gate_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import approve_redefinition
 
@@ -317,6 +344,11 @@ def _commit_approve_as_proposed(ctx: ContinuationContext, conversation_id: str) 
 
 def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) -> str:
     """User typed 3 — apply the alternative content from the marker."""
+    from oversight_queue import find_paused_by_id as _fpbi
+    _entry = _fpbi(ctx.queue_id)
+    if _entry is not None and _entry.kind == "execution_gate":
+        return ("[Execution-gate entries have no alternative to apply — "
+                "type 1 to approve or 2 to deny.]")
     if not (ctx.last_alternative or "").strip():
         return (
             "[Option 3 has no alternative content yet — keep discussing until "
@@ -351,6 +383,11 @@ def _commit_deny(
     ctx: ContinuationContext, history: list, conversation_id: str,
 ) -> str:
     """User typed 2 — deny the redefinition with a reason from recent context."""
+    gate_msg = _maybe_commit_gate_entry(ctx.queue_id, conversation_id,
+                                        approve=False,
+                                        reason=_extract_deny_reason(history))
+    if gate_msg is not None:
+        return gate_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import deny_redefinition
 

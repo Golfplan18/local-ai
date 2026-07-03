@@ -9,7 +9,8 @@ import sys
 import time
 
 WORKSPACE = os.path.expanduser("~/ora/")
-sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+# __file__-relative so worktree checkouts import their own boot.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def spawn_subagent(system_prompt: str, user_prompt: str,
@@ -53,6 +54,7 @@ def spawn_subagent(system_prompt: str, user_prompt: str,
     ]
 
     try:
+        import contextvars
         import threading
         result = [None]
         error = [None]
@@ -63,7 +65,13 @@ def spawn_subagent(system_prompt: str, user_prompt: str,
             except Exception as e:
                 error[0] = str(e)
 
-        thread = threading.Thread(target=_call)
+        # Snapshot contextvars into the bare thread so the tool-event
+        # recorder's turn context (sink, conversation, STEALTH flag)
+        # reaches the model_call event this thread will emit. Without
+        # this, a stealth turn's subagent call would leak a durable
+        # global-sink event.
+        _ctx = contextvars.copy_context()
+        thread = threading.Thread(target=lambda: _ctx.run(_call))
         thread.start()
         thread.join(timeout=timeout)
 

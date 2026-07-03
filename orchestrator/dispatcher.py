@@ -3,6 +3,7 @@ command classification, audit logging, and consecutive call limiting."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
@@ -33,14 +34,22 @@ def set_rag_isolation(value: str | None) -> None:
 def _get_rag_isolation() -> str | None:
     return _RAG_ISOLATION_CTX.get()
 
-WORKSPACE = os.path.expanduser("~/ora/")
-VAULT = os.path.expanduser("~/Documents/vault/")
-CONVERSATIONS = os.path.expanduser("~/Documents/conversations/")
-LOG_DIR = os.path.join(WORKSPACE, "logs")
+# Ora roots come from the single cross-platform source (runtime_paths),
+# env-overridable, no hardcoded ~/ora or ~/Documents.
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
+WORKSPACE = _rp.WORKSPACE
+VAULT = _rp.VAULT_STR
+CONVERSATIONS = _rp.CONVERSATIONS_STR
+LOG_DIR = str(_rp.LOGS_DIR)
 
 # ── Tool imports ───────────────────────────────────────────────────────────
 import sys
-sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
+# Resolve tools/ relative to THIS file, not the ~/ora constant, so a git
+# worktree checkout imports its own tools rather than the main checkout's.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
 
 try:
     from web_search import web_search
@@ -49,14 +58,22 @@ try:
     from knowledge_search import knowledge_search
     from credential_store import credential_store
     from bash_execute import (execute_command, classify_command,
-                              stop_process, cleanup_all)
+                              resolve_shell_profile, stop_process,
+                              cleanup_all)
     from file_edit import edit_file
     from search_files import grep_files, list_directory
     from subagent import spawn_subagent
+    from code_execute import code_execute as _code_execute_run, code_execute_axes
     _TOOLS_LOADED = True
 except ImportError as e:
     print(f"[dispatcher] Tool import warning: {e}")
     _TOOLS_LOADED = False
+
+# Execution Review instrumentation layer (recorder + capability gate).
+try:
+    import tool_events
+except ImportError:
+    from orchestrator import tool_events
 
 # Non-critical imports (hooks, MCP)
 try:
@@ -270,25 +287,77 @@ def _wrap_remove_scheduled_task(params):
     return f"No scheduled task found with id {task_id}"
 
 
+# Each entry carries the existing function axis ("category" — untouched)
+# plus the Execution Review capability axes: "mutability" / "sensitivity" /
+# "egress" (tool_events.py vocabularies). "sensitivity" is the tool default;
+# path-taking tools get per-call resolution in dispatch(). This registry is
+# the runtime source of truth for model-facing tools.
 TOOL_REGISTRY = {
-    "web_search":       {"handler": _wrap_web_search,       "permission": "auto",    "category": "read"},
-    "web_fetch":        {"handler": _wrap_web_fetch,        "permission": "auto",    "category": "read"},
-    "file_read":        {"handler": _wrap_file_read,        "permission": "auto",    "category": "read"},
-    "file_write":       {"handler": _wrap_file_write,       "permission": "approve", "category": "write"},
-    "file_edit":        {"handler": _wrap_file_edit,        "permission": "approve", "category": "write"},
-    "bash_execute":     {"handler": _wrap_bash_execute,     "permission": "approve", "category": "execute"},
-    "search_files":     {"handler": _wrap_search_files,     "permission": "auto",    "category": "read"},
-    "list_directory":   {"handler": _wrap_list_directory,   "permission": "auto",    "category": "read"},
-    "knowledge_search": {"handler": _wrap_knowledge_search, "permission": "auto",    "category": "read"},
-    "credential_store": {"handler": _wrap_credential_store, "permission": "approve", "category": "write"},
-    "stop_process":     {"handler": _wrap_stop_process,     "permission": "approve", "category": "execute"},
-    "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute"},
-    "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write"},
-    "list_scheduled_tasks":  {"handler": _wrap_list_scheduled_tasks,  "permission": "auto",    "category": "read"},
-    "pause_scheduled_task":  {"handler": _wrap_pause_scheduled_task,  "permission": "approve", "category": "write"},
-    "resume_scheduled_task": {"handler": _wrap_resume_scheduled_task, "permission": "approve", "category": "write"},
-    "remove_scheduled_task": {"handler": _wrap_remove_scheduled_task, "permission": "approve", "category": "write"},
+    "web_search":       {"handler": _wrap_web_search,       "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "public", "egress": "external"},
+    "web_fetch":        {"handler": _wrap_web_fetch,        "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "public", "egress": "external"},
+    "file_read":        {"handler": _wrap_file_read,        "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "private", "egress": "none"},
+    "file_write":       {"handler": _wrap_file_write,       "permission": "approve", "category": "write",
+                         "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "file_edit":        {"handler": _wrap_file_edit,        "permission": "approve", "category": "write",
+                         "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "bash_execute":     {"handler": _wrap_bash_execute,     "permission": "approve", "category": "execute",
+                         "mutability": "irreversible", "sensitivity": "private", "egress": "external",
+                         "enforcement": "boundary_only"},
+    "search_files":     {"handler": _wrap_search_files,     "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "private", "egress": "none"},
+    "list_directory":   {"handler": _wrap_list_directory,   "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "private", "egress": "none"},
+    "knowledge_search": {"handler": _wrap_knowledge_search, "permission": "auto",    "category": "read",
+                         "mutability": "read", "sensitivity": "private", "egress": "none"},
+    "credential_store": {"handler": _wrap_credential_store, "permission": "approve", "category": "write",
+                         "mutability": "reversible_write", "sensitivity": "secret", "egress": "none"},
+    "stop_process":     {"handler": _wrap_stop_process,     "permission": "approve", "category": "execute",
+                         "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute",
+                         "mutability": "read", "sensitivity": "private", "egress": "external",
+                         "enforcement": "boundary_only"},
+    "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write",
+                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "list_scheduled_tasks":  {"handler": _wrap_list_scheduled_tasks,  "permission": "auto",    "category": "read",
+                              "mutability": "read", "sensitivity": "private", "egress": "none"},
+    "pause_scheduled_task":  {"handler": _wrap_pause_scheduled_task,  "permission": "approve", "category": "write",
+                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "resume_scheduled_task": {"handler": _wrap_resume_scheduled_task, "permission": "approve", "category": "write",
+                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
+    "remove_scheduled_task": {"handler": _wrap_remove_scheduled_task, "permission": "approve", "category": "write",
+                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
 }
+
+
+if _TOOLS_LOADED:
+    # Sandboxed compute (replaces boot.py's legacy _code_execute bypass).
+    # Axes are dynamic: orchestrated when sandbox-exec is available, else
+    # fail-closed so the gate blocks rather than running unsandboxed.
+    TOOL_REGISTRY["code_execute"] = {
+        "handler": lambda p: _code_execute_run(p.get("code", ""),
+                                               p.get("timeout", 30)),
+        "permission": "auto", "category": "execute",
+        "mutability": "reversible_write", "sensitivity": "private",
+        "egress": "none", "axes_fn": code_execute_axes,
+    }
+
+
+def register_tool(name: str, handler, *, permission: str, category: str,
+                  mutability: str, sensitivity: str, egress: str,
+                  axes_fn=None) -> None:
+    """Register a tool at runtime (used by boot.py for the former legacy
+    inline tools, so they route through the gate + event log instead of
+    bypassing the dispatcher). ``axes_fn`` may return dynamic axes (e.g.
+    code_execute's sandbox-availability-dependent classification)."""
+    entry = {"handler": handler, "permission": permission,
+             "category": category, "mutability": mutability,
+             "sensitivity": sensitivity, "egress": egress}
+    if axes_fn is not None:
+        entry["axes_fn"] = axes_fn
+    TOOL_REGISTRY[name] = entry
 
 # ── Permission modes ──────────────────────────────────────────────────────
 
@@ -475,9 +544,110 @@ def set_mcp_client(client):
 
 # ── Main dispatch function ────────────────────────────────────────────────
 
+def _resolve_call_axes(tool_name: str, entry: dict | None,
+                       parameters: dict) -> tuple[dict, dict | None, dict | None]:
+    """Resolve the capability axes for THIS call.
+
+    Returns (axes, classification, shell_profile). Order of resolution:
+    registry defaults → dynamic axes_fn → shell profile (bash) → per-path
+    sensitivity → protected-config escalation. Unknown anywhere → fail
+    closed ({irreversible, secret, unknown: True})."""
+    classification = None
+    shell_profile = None
+
+    if tool_name.startswith("mcp_"):
+        return tool_events.mcp_axes(tool_name), None, None
+
+    axes = {"category": entry.get("category", "execute"),
+            "mutability": entry.get("mutability", "irreversible"),
+            "sensitivity": entry.get("sensitivity", "secret"),
+            "egress": entry.get("egress", "external")}
+    axes_fn = entry.get("axes_fn")
+    if callable(axes_fn):
+        try:
+            axes.update(axes_fn())
+        except Exception:
+            axes.update(tool_events.FAIL_CLOSED)
+
+    if tool_name == "bash_execute":
+        cmd = parameters.get("command", "")
+        classification = classify_command(cmd)
+        # resolve_shell_profile returns ABSOLUTE target paths, resolved against
+        # the effective cwd (it tracks in-command cd/pushd/popd), so a
+        # 'cd ~/.aws && cat config' gates config as ~/.aws/config.
+        _cwd = parameters.get("cwd") or WORKSPACE
+        shell_profile = resolve_shell_profile(cmd, cwd=_cwd)
+        axes["mutability"] = shell_profile["mutability"]
+        axes["sensitivity"] = shell_profile["sensitivity"]
+        axes["egress"] = shell_profile["egress"]
+        # The shell interior is opaque (shell=True subprocess) — Ora observes
+        # the command, not what it does. Never in_harness.
+        axes["enforcement"] = "boundary_only"
+        if shell_profile.get("unknown"):
+            axes["unknown"] = True
+        # Per-path escalation: a shell read of a secret path gates like
+        # file_read; a shell write into protected config gates like
+        # file_write. Without this, 'cat ~/.ssh/id_rsa' or
+        # 'echo x > config/hooks/y' would slip past the file-tool gates. The
+        # cwd itself is checked too (cd into a secret dir is a red flag).
+        def _abs_target(_t):
+            _e = os.path.expanduser(_t)
+            return _e if os.path.isabs(_e) else os.path.join(_cwd, _e)
+
+        for _p in (shell_profile.get("read_paths", []) +
+                   shell_profile.get("write_paths", []) + [_cwd]):
+            axes["sensitivity"] = tool_events.max_sensitivity(
+                axes.get("sensitivity", "private"),
+                tool_events.resolve_path_sensitivity(_abs_target(_p)))
+        for _wp in shell_profile.get("write_paths", []):
+            if tool_events.is_protected_config_path(_abs_target(_wp)):
+                axes["mutability"] = "irreversible"
+                axes["protected_config"] = True
+        # A cwd inside protected config is itself a red flag.
+        if tool_events.is_protected_config_path(_cwd):
+            axes["mutability"] = tool_events.max_mutability(
+                axes.get("mutability", "read"), "irreversible")
+            axes["protected_config"] = True
+
+    # Read-only tools that take an arbitrary directory/path argument reach
+    # the filesystem just like file_read — a grep or listing of ~/.ssh
+    # exposes the same content, so resolve sensitivity on their target too.
+    if tool_name in ("search_files", "list_directory"):
+        _target = (parameters.get("directory") if tool_name == "search_files"
+                   else parameters.get("path", ""))
+        if _target:
+            axes["sensitivity"] = tool_events.max_sensitivity(
+                axes.get("sensitivity", "private"),
+                tool_events.resolve_path_sensitivity(_target))
+
+    if tool_name in ("file_read", "file_write", "file_edit"):
+        file_path = parameters.get("path", parameters.get("file_path", ""))
+        if file_path:
+            axes["sensitivity"] = tool_events.max_sensitivity(
+                axes.get("sensitivity", "private"),
+                tool_events.resolve_path_sensitivity(file_path))
+            # A write into enforcement-relevant config (hooks, MCP config,
+            # manifests, orchestrator code) is gated regardless of the
+            # tool's own axes — one allowed reversible write must not be
+            # able to install un-gated execution for later.
+            if tool_name in ("file_write", "file_edit") and \
+                    tool_events.is_protected_config_path(file_path):
+                axes["mutability"] = "irreversible"
+                axes["protected_config"] = True
+
+    return axes, classification, shell_profile
+
+
 def dispatch(tool_name: str, parameters: dict,
              permission_callback=None) -> str:
     """Dispatch a tool call through the unified permission and safety pipeline.
+
+    Execution Review Phase 1: every call resolves capability axes, passes
+    the execution gate (which runs BEFORE and independently of the
+    permission mode — auto-approve cannot carry irreversible / unknown /
+    secret / sensitive actions), and leaves one machine-readable record in
+    the tool-event log. MCP calls now go through the same gate, consecutive
+    limiter, and logging instead of returning early.
 
     Args:
         tool_name: Name of the tool to call.
@@ -491,22 +661,20 @@ def dispatch(tool_name: str, parameters: dict,
         return "[Tools unavailable — import failed at startup]"
 
     start = time.time()
-    classification = None
-
-    # MCP routing
-    if tool_name.startswith("mcp_") and _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
-        try:
-            result = _mcp_client.call_mcp_tool(tool_name, parameters)
-            return json.dumps(result) if isinstance(result, dict) else str(result)
-        except Exception as e:
-            return f"[MCP error — {tool_name}: {e}]"
-
-    # Check registry
+    is_mcp = tool_name.startswith("mcp_")
     entry = TOOL_REGISTRY.get(tool_name)
-    if entry is None:
+
+    if entry is None and not is_mcp:
+        tool_events.record({
+            "event": "tool", "action": tool_name, "category": "execute",
+            **tool_events.FAIL_CLOSED,
+            "gate": {"decision": "blocked", "why": "unregistered tool"},
+            "exit": {"ok": False, "reason": "unknown tool"},
+            "enforcement_model": "in_harness",
+        })
         return f"[Unknown tool: {tool_name}]"
 
-    # Consecutive call check
+    # Consecutive call check (includes MCP tools now)
     warning = _check_consecutive(tool_name)
     if warning and _consecutive_count >= 8:
         duration = int((time.time() - start) * 1000)
@@ -514,18 +682,72 @@ def dispatch(tool_name: str, parameters: dict,
                       warning, duration)
         return warning
 
-    # Command classification for bash_execute
-    if tool_name == "bash_execute":
-        cmd = parameters.get("command", "")
-        classification = classify_command(cmd)
-        if classification["level"] == "blocked":
-            duration = int((time.time() - start) * 1000)
-            _log_dispatch(tool_name, parameters, classification, "blocked",
-                          classification["reason"], duration)
-            return f"[BLOCKED] {classification['reason']}"
+    axes, classification, shell_profile = _resolve_call_axes(
+        tool_name, entry, parameters)
 
-    # Permission gate
-    if entry["permission"] == "approve":
+    # BLOCKED bash patterns short-circuit exactly as before.
+    if classification and classification["level"] == "blocked":
+        duration = int((time.time() - start) * 1000)
+        _log_dispatch(tool_name, parameters, classification, "blocked",
+                      classification["reason"], duration)
+        tool_events.record({
+            "event": "shell", "action": "bash:blocked",
+            "category": "execute", "mutability": axes["mutability"],
+            "sensitivity": axes["sensitivity"], "egress": axes["egress"],
+            "args_redacted": {"command": parameters.get("command", "")[:200]},
+            "gate": {"decision": "blocked", "why": classification["reason"]},
+            "exit": {"ok": False, "reason": "blocked pattern"},
+            "duration_ms": duration, "enforcement_model": "in_harness",
+        })
+        return f"[BLOCKED] {classification['reason']}"
+
+    # The sanctioned secret channel: credential_store retrieves for a
+    # service with a standing allow pass with existence-only logging (the
+    # event keeps sensitivity=secret, which redacts to existence-only).
+    # Everything else with secret sensitivity hits the gate below.
+    queue_extra = None
+    gate_axes = dict(axes)
+    if tool_name == "credential_store":
+        service = parameters.get("service", "")
+        scope = f"credential_store:{service}"
+        queue_extra = {"standing_scope": scope}
+        if service and tool_events.has_standing_allow(scope):
+            gate_axes["sensitivity"] = "private"  # standing allow → pass gate
+
+    # A live human prompt is the gate's approval channel when one exists
+    # (terminal approve-each / browser callback). Under auto-approve there
+    # is no human present, so blocked actions queue instead.
+    interactive = None
+    if _permission_mode != "auto-approve":
+        def interactive(action, params, gate_classification):
+            if permission_callback:
+                return permission_callback(action, params, gate_classification)
+            print(f"\n🔐 GATE — approval required: {action}")
+            print(f"   Reason: {gate_classification.get('reason', '')}")
+            print(f"   Parameters: {json.dumps(params, default=str)[:300]}")
+            resp = input("   Approve this action once? (y/n): ").strip().lower()
+            return resp in ("y", "yes")
+
+    description = parameters.get("command") or \
+        parameters.get("path", parameters.get("file_path")) or \
+        parameters.get("url") or parameters.get("query") or \
+        parameters.get("service", "")
+    decision = tool_events.gate(
+        tool_name, gate_axes, params=parameters,
+        description=str(description or "")[:200],
+        model_facing=True, interactive_approver=interactive,
+        queue_extra=queue_extra,
+    )
+    if not decision.allowed:
+        duration = int((time.time() - start) * 1000)
+        _log_dispatch(tool_name, parameters, classification,
+                      f"gate-{decision.decision}", decision.why, duration)
+        return decision.message or f"[GATED — {decision.why}]"
+
+    # Permission gate (existing approve tier). Skipped when the gate
+    # already collected a live human approval — one prompt, not two.
+    if entry and entry["permission"] == "approve" and \
+            decision.decision != "approved":
         approved = request_permission(tool_name, parameters, classification,
                                       callback=permission_callback)
         if not approved:
@@ -534,6 +756,8 @@ def dispatch(tool_name: str, parameters: dict,
                           "Permission denied by user", duration)
             return f"[Permission denied for {tool_name}]"
         permission_status = "user-approved"
+    elif decision.decision == "approved":
+        permission_status = "gate-approved"
     else:
         permission_status = "auto-approved"
 
@@ -560,10 +784,14 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Execute
     try:
-        result = entry["handler"](parameters)
-        if isinstance(result, dict):
-            result_str = json.dumps(result)
-        elif isinstance(result, list):
+        if is_mcp:
+            if _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
+                result = _mcp_client.call_mcp_tool(tool_name, parameters)
+            else:
+                result = f"[MCP unavailable — no client for {tool_name}]"
+        else:
+            result = entry["handler"](parameters)
+        if isinstance(result, (dict, list)):
             result_str = json.dumps(result)
         else:
             result_str = str(result)
@@ -578,6 +806,58 @@ def dispatch(tool_name: str, parameters: dict,
     duration = int((time.time() - start) * 1000)
     _log_dispatch(tool_name, parameters, classification, permission_status,
                   result_str[:200], duration)
+
+    # Machine-readable tool event (the dispatch-signal substrate).
+    try:
+        error = result_str.startswith(("[Tool error", "[MCP error",
+                                       "[MCP unavailable", "[Permission",
+                                       "[Path validation"))
+        # Shell results are dicts with a returncode — string matching on
+        # the serialized JSON would misreport a failed command as ok.
+        if tool_name == "bash_execute" and isinstance(result, dict):
+            error = error or (result.get("returncode", 0) != 0) or \
+                bool(result.get("timed_out"))
+        reads = None
+        if tool_name == "file_read":
+            p = parameters.get("path", "")
+            reads = [{"what": p, "where": "local",
+                      "content_hash": hashlib.sha256(
+                          result_str.encode("utf-8", "replace")).hexdigest()[:16]}]
+        elif tool_name == "web_fetch":
+            reads = [{"what": parameters.get("url", ""), "where": "network",
+                      "content_hash": hashlib.sha256(
+                          result_str.encode("utf-8", "replace")).hexdigest()[:16]}]
+        elif tool_name == "web_search":
+            reads = [{"what": f"query:{parameters.get('query', '')}",
+                      "where": "network"}]
+        elif tool_name == "knowledge_search":
+            reads = [{"what": f"chromadb:{parameters.get('collection', 'knowledge')}"
+                              f":{parameters.get('query', '')[:80]}",
+                      "where": "local"}]
+        event_kind = "mcp" if is_mcp else (
+            "shell" if tool_name == "bash_execute" else "tool")
+        action = tool_name
+        if shell_profile:
+            action = f"bash:{shell_profile.get('profile', 'unknown')}"
+        tool_events.record({
+            "event": event_kind, "action": action,
+            "category": axes.get("category", "execute"),
+            "mutability": axes["mutability"],
+            "sensitivity": axes["sensitivity"],
+            "egress": axes["egress"],
+            "mutated": (axes["mutability"] != "read") and not error,
+            "reads": reads,
+            "args_redacted": {k: str(v)[:200] for k, v in
+                              (parameters or {}).items()},
+            "exit": {"ok": not error,
+                     "reason": result_str[:120] if error else ""},
+            "duration_ms": duration,
+            "gate": {"decision": decision.decision, "why": decision.why,
+                     "approval_id": decision.approval_id},
+            "enforcement_model": axes.get("enforcement", "in_harness"),
+        })
+    except Exception:
+        pass  # recorder is best-effort; its own failure path sets health
 
     # Inject consecutive call warning as prefix
     if warning and _consecutive_count >= 5:

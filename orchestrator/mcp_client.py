@@ -5,12 +5,53 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import subprocess
+import sys
 import threading
 import time
 
-WORKSPACE = os.path.expanduser("~/ora/")
-MCP_REGISTRY = os.path.join(WORKSPACE, "config/mcp-servers.json")
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
+
+WORKSPACE = _rp.WORKSPACE
+MCP_REGISTRY = os.path.join(WORKSPACE, "config", "mcp-servers.json")
+
+# Placeholders resolvable in server config values (command / args / env /
+# url). Resolved at launch time — env var of the same name wins, else the
+# runtime_paths default — so the checked-in registry never carries a
+# machine- or platform-specific absolute path (e.g. the vault-fs server's
+# root is ${ORA_VAULT}, which resolves to %USERPROFILE%\Documents\vault on
+# Windows and ~/Documents/vault on POSIX unless overridden).
+_PLACEHOLDER_ATTRS = {
+    "ORA_HOME": "WORKSPACE",
+    "ORA_VAULT": "VAULT_STR",
+    "ORA_CONVERSATIONS": "CONVERSATIONS_STR",
+    "ORA_SCRATCH": "SCRATCH_DIR_STR",
+}
+
+# Cap on buffered stdout lines per connection (see MCPConnection.__init__).
+_RECV_QUEUE_MAXLINES = 10_000
+
+
+def _expand_placeholders(value):
+    """Recursively expand ${ORA_*} placeholders in a config value.
+    Unknown placeholders are left verbatim (the server fails to start with
+    a visible bad path rather than silently pointing somewhere else)."""
+    if isinstance(value, str):
+        for name, attr in _PLACEHOLDER_ATTRS.items():
+            token = "${" + name + "}"
+            if token in value:
+                value = value.replace(
+                    token, os.environ.get(name) or getattr(_rp, attr))
+        return value
+    if isinstance(value, list):
+        return [_expand_placeholders(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _expand_placeholders(v) for k, v in value.items()}
+    return value
 
 
 class MCPConnection:
@@ -25,6 +66,47 @@ class MCPConnection:
         self.tools = []
         self._request_id = 0
         self._lock = threading.Lock()
+        # Bounded so a notification-chatty server cannot grow parent memory
+        # without limit: when the queue fills, the reader blocks, the OS
+        # pipe fills, and the server write-blocks — the same backpressure
+        # the pipe itself provided before the reader thread existed. The
+        # cap is a PROVISIONAL tuning constant (worst case ~a few MB per
+        # connection at typical line sizes), not empirically calibrated.
+        self._recv_queue: queue.Queue = queue.Queue(
+            maxsize=_RECV_QUEUE_MAXLINES)
+        self._reader_thread: threading.Thread | None = None
+        self._reader_eof = False
+
+    def _start_reader(self):
+        """Pump the server's stdout onto a queue from a daemon thread.
+
+        This is the cross-platform replacement for waiting on the pipe with
+        ``select.select()``: on Windows, select supports only sockets — it
+        cannot wait on a subprocess pipe handle — so a select-based receive
+        would fail every stdio MCP initialization there. A blocking
+        ``readline`` on a daemon thread plus ``Queue.get(timeout=...)``
+        works identically on every platform. When the stream ends (EOF or a
+        read error, which is logged, never swallowed silently) the pump
+        sets ``_reader_eof`` and pushes a ``None`` sentinel so ``_recv``
+        can distinguish a closed server from a quiet one — and, via the
+        flag, answer immediately (not after a full timeout) on every call
+        after the stream is gone, matching the old select-on-EOF behavior."""
+        def _pump():
+            try:
+                for line in iter(self.process.stdout.readline, ""):
+                    self._recv_queue.put(line)
+            except Exception as e:
+                try:
+                    print(f"[MCP] {self.name}: stdout reader error: {e}",
+                          file=sys.stderr)
+                except Exception:
+                    pass
+            self._reader_eof = True   # set BEFORE the sentinel: a consumer
+            self._recv_queue.put(None)  # that sees the flag never blocks
+
+        self._reader_thread = threading.Thread(
+            target=_pump, daemon=True, name=f"mcp-{self.name}-stdout")
+        self._reader_thread.start()
 
     def connect(self) -> bool:
         """Start the MCP server subprocess and initialize."""
@@ -34,10 +116,20 @@ class MCPConnection:
             if self.env:
                 proc_env.update(self.env)
 
+            # encoding is pinned: MCP stdio is UTF-8 by spec, but bare
+            # text=True decodes with the locale's preferred encoding — on
+            # Windows Python <= 3.14 that is the ANSI codepage (cp1252 et
+            # al.), so the first non-ASCII response would corrupt or kill
+            # the stream. errors="replace" keeps one malformed line from
+            # ending the reader: the line decodes with U+FFFD and at worst
+            # fails json.loads and is skipped, instead of raising in the
+            # pump and permanently deadening a healthy connection.
             self.process = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, env=proc_env, text=True,
+                encoding="utf-8", errors="replace",
             )
+            self._start_reader()
 
             # Send initialize request
             self._send({"jsonrpc": "2.0", "id": self._next_id(),
@@ -111,31 +203,38 @@ class MCPConnection:
             self.process.stdin.write(data + "\n")
             self.process.stdin.flush()
 
-    def _recv(self, timeout: int = 10) -> dict | None:
+    def _recv(self, timeout: float = 10) -> dict | None:
         """Read one newline-delimited JSON-RPC response, with a real timeout.
 
-        Uses select() on the stdout fd so a server that never answers times
-        out cleanly (returning None) instead of blocking the whole startup on
-        a bare read(). Server-initiated notifications (lines with no id/result/
+        Lines arrive via the daemon reader thread + queue started in
+        ``connect()`` (see ``_start_reader`` — ``select.select`` cannot wait
+        on subprocess pipes on Windows, so this receive must not touch the
+        pipe directly). A server that never answers times out cleanly
+        (returning None); a server that closed stdout yields the EOF
+        sentinel. Server-initiated notifications (lines with no id/result/
         error) are skipped so they don't get mistaken for the response.
         """
-        import select
         deadline = time.time() + timeout
-        stream = self.process.stdout
-        while time.time() < deadline:
-            remaining = max(0.0, deadline - time.time())
-            try:
-                ready, _, _ = select.select([stream], [], [], remaining)
-            except Exception:
-                return None
-            if not ready:
-                return None  # timed out — server did not respond
-            try:
-                line = stream.readline()
-            except Exception:
-                return None
-            if not line:
-                return None  # EOF — server closed its stdout
+        while True:
+            if self._reader_eof:
+                # Stream is gone: only already-queued lines remain. Drain
+                # without blocking so a dead server answers immediately on
+                # every call (the old select-on-EOF behavior), not after a
+                # full timeout each time.
+                try:
+                    line = self._recv_queue.get_nowait()
+                except queue.Empty:
+                    return None  # EOF — server closed its stdout
+            else:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    return None  # timed out — server did not respond
+                try:
+                    line = self._recv_queue.get(timeout=remaining)
+                except queue.Empty:
+                    return None  # timed out — server did not respond
+            if line is None:
+                continue  # EOF sentinel — flag is set; drain any leftovers
             line = line.strip()
             if not line:
                 continue
@@ -146,7 +245,6 @@ class MCPConnection:
             if isinstance(msg, dict) and ("result" in msg or "error" in msg or "id" in msg):
                 return msg
             # otherwise it's a notification — keep waiting for the real response
-        return None
 
 
 class MCPClientManager:
@@ -176,9 +274,9 @@ class MCPClientManager:
             if transport == "stdio":
                 conn = MCPConnection(
                     name=name,
-                    command=server_cfg.get("command", ""),
-                    args=server_cfg.get("args", []),
-                    env=server_cfg.get("env"),
+                    command=_expand_placeholders(server_cfg.get("command", "")),
+                    args=_expand_placeholders(server_cfg.get("args", [])),
+                    env=_expand_placeholders(server_cfg.get("env")),
                 )
                 if conn.connect():
                     self.connections[name] = conn

@@ -394,12 +394,55 @@ def _purge_stealth(
     # conversation_id. Records are stamped with ``conversation_id`` by
     # ``oversight_events.emit`` and the two write helpers in
     # ``oversight_actions`` when the per-thread context is set.
-    OVERSIGHT_DIR = Path(os.path.expanduser("~/ora/data/oversight"))
+    # The scrub targets must be the files the writers actually write:
+    # both flow from runtime_paths (ORA_HOME-relocatable), read at call
+    # time so a purge can never silently miss a relocated sink.
+    from . import runtime_paths as _rp_purge
+    OVERSIGHT_DIR = Path(os.path.join(_rp_purge.DATA_DIR_STR, "oversight"))
     deleted["oversight_log_entries"] = {
         "events.jsonl": 0,
         "actions.jsonl": 0,
         "human-queue.jsonl": 0,
     }
+
+    # --- Layer 6a: global tool-event sink (Execution Review Phase 1) ------
+    # Turn-scoped tool events live in the pipeline-trace turn dirs (removed
+    # wholesale by the trace purge above); events that landed in the global
+    # sink (direct-mode turns, daemons) are stamped with a top-level
+    # conversation_id by tool_events.record precisely so this rewrite can
+    # reach them. Suppression-at-write is the primary stealth control; this
+    # is defence-in-depth for anything correlated that slipped through.
+    try:
+        import json as _json_te
+        from . import tool_events as _te_mod
+        _te_path = Path(_te_mod.global_sink_path())
+        deleted["tool_event_entries"] = 0
+        if _te_path.exists():
+            kept: list[str] = []
+            removed = 0
+            with open(_te_path) as f:
+                for line in f:
+                    line = line.rstrip("\n")
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = _json_te.loads(line)
+                    except Exception:
+                        kept.append(line)
+                        continue
+                    if rec.get("conversation_id") == conversation_id:
+                        removed += 1
+                        continue
+                    kept.append(line)
+            if removed:
+                tmp = _te_path.with_suffix(_te_path.suffix + ".tmp")
+                with open(tmp, "w") as f:
+                    for line in kept:
+                        f.write(line + "\n")
+                tmp.replace(_te_path)
+                deleted["tool_event_entries"] = removed
+    except Exception as e:
+        errors.append(f"tool_events purge: {e}")
     try:
         import json as _json_ov
         for log_name in ("events.jsonl", "actions.jsonl", "human-queue.jsonl"):

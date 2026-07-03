@@ -6,7 +6,9 @@ derived from outside provider catalogs, so the server writes them under
 """
 from __future__ import annotations
 
+import contextlib
 import os
+import time
 from pathlib import Path
 
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
@@ -16,6 +18,99 @@ RUNTIME_ROOT = Path(os.environ.get("ORA_RUNTIME_ROOT") or (DATA_DIR / "runtime")
 RUNTIME_CONFIG_DIR = RUNTIME_ROOT / "config"
 RUNTIME_DATA_DIR = RUNTIME_ROOT / "data"
 RUNTIME_CONFIGURATIONS_DIR = RUNTIME_CONFIG_DIR / "configurations"
+
+# ── Ora roots (the single cross-platform source; env-overridable) ──────────
+# Every Ora root Phase 1 needs is resolved here so no module hardcodes
+# ~/ora or ~/Documents. Defaults are POSIX-shaped but built from
+# expanduser("~"), so they resolve correctly on Windows (%USERPROFILE%);
+# each is overridable by an env var for non-default layouts.
+_HOME = os.path.expanduser("~")
+
+
+def _env_dir(env_name: str, *default_parts: str) -> Path:
+    value = os.environ.get(env_name)
+    return Path(value) if value else Path(os.path.join(*default_parts))
+
+
+LOGS_DIR = ORA_HOME / "logs"
+SCRATCH_DIR = _env_dir("ORA_SCRATCH", str(ORA_HOME), "scratch")
+VAULT = _env_dir("ORA_VAULT", _HOME, "Documents", "vault")
+CONVERSATIONS = _env_dir("ORA_CONVERSATIONS", _HOME, "Documents", "conversations")
+
+# String forms for the many os.path-based consumers (dispatcher, tool_events).
+WORKSPACE = str(ORA_HOME)
+VAULT_STR = str(VAULT)
+CONVERSATIONS_STR = str(CONVERSATIONS)
+DATA_DIR_STR = str(DATA_DIR)
+CONFIG_DIR_STR = str(CONFIG_DIR)
+SCRATCH_DIR_STR = str(SCRATCH_DIR)
+
+
+def norm_key(path) -> str:
+    """Canonical comparison key for a filesystem path: case- and
+    separator-normalized per platform via ``os.path.normcase`` over the
+    real (expanded) path. Use this for startswith / equality checks so
+    protected-prefix and private-root comparisons hold on Windows (where
+    raw ``startswith`` on `\\`-separated, case-insensitive paths is wrong)."""
+    try:
+        return os.path.normcase(os.path.realpath(os.path.expanduser(str(path))))
+    except Exception:
+        return os.path.normcase(str(path))
+
+
+# ── Cross-platform advisory file lock ──────────────────────────────────────
+# fcntl (POSIX) / msvcrt (Windows); guarded imports so neither platform
+# crashes at import. Shared by tool_events (approval grant/consume) and
+# oversight_actions (queue writes) so read-modify-write flows keep their
+# lock on every platform.
+try:  # POSIX
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover - Windows
+    _fcntl = None
+try:  # Windows
+    import msvcrt as _msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    _msvcrt = None
+
+DEFAULT_LOCK_TIMEOUT = 30.0
+
+
+@contextlib.contextmanager
+def locked_file(path, timeout: float = DEFAULT_LOCK_TIMEOUT):
+    """Exclusive advisory lock on a sidecar ``<path>.lock`` (so it works for
+    files that don't exist yet). POSIX uses ``fcntl.flock``; Windows uses
+    ``msvcrt.locking``. Raises ``TimeoutError`` if not acquired in ``timeout``
+    seconds. Always releases on exit."""
+    lock_path = str(path) + ".lock"
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    fp = open(lock_path, "a+")
+    deadline = time.time() + timeout
+    try:
+        while True:
+            try:
+                if _fcntl is not None:
+                    _fcntl.flock(fp.fileno(), _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+                elif _msvcrt is not None:
+                    fp.seek(0)
+                    _msvcrt.locking(fp.fileno(), _msvcrt.LK_NBLCK, 1)
+                # else: no primitive available → best-effort (single-process)
+                break
+            except (BlockingIOError, OSError):
+                if time.time() >= deadline:
+                    raise TimeoutError(
+                        f"Could not acquire lock on {lock_path} within {timeout}s")
+                time.sleep(0.1)
+        yield
+    finally:
+        try:
+            if _fcntl is not None:
+                _fcntl.flock(fp.fileno(), _fcntl.LOCK_UN)
+            elif _msvcrt is not None:
+                fp.seek(0)
+                _msvcrt.locking(fp.fileno(), _msvcrt.LK_UNLCK, 1)
+        except Exception:
+            pass
+        fp.close()
 
 PRESET_NAMES = ("free", "budget", "speed", "premium")
 RUNTIME_OVERLAY_CONFIGURATION_NAMES = PRESET_NAMES + ("user-pipeline",)

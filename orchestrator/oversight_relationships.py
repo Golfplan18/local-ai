@@ -48,9 +48,17 @@ from ped_parser import parse_ped_file
 from ped_watcher import load_ped_path
 from oversight_actions import file_lock, _insert_into_decision_log
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+# Roots flow from runtime_paths so fan-out writes land in the SAME
+# events.jsonl / actions.jsonl the oversight_events / oversight_actions
+# writers use under ORA_HOME relocation (a split here would hide fan-out
+# events from every new-root reader).
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 EVENTS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "events.jsonl")
 ACTIONS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "actions.jsonl")
 

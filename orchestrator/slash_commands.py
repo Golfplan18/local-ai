@@ -598,6 +598,47 @@ def _cmd_queue(args: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
+                                 reason: str = "") -> str | None:
+    """Kind-dispatch for /approve and /deny: Execution Review gate entries
+    (kind=execution_gate) resolve through tool_events, never through
+    redefinition_handler. Returns None for non-gate entries."""
+    try:
+        import json as _json
+        # Read the SAME file constant the legacy path (redefinition_handler
+        # -> oversight_actions.HUMAN_QUEUE_PATH) indexes, so /approve and
+        # /deny address one consistent view of the queue.
+        from oversight_actions import HUMAN_QUEUE_PATH, file_lock
+        if not os.path.isfile(HUMAN_QUEUE_PATH):
+            return None
+        with open(HUMAN_QUEUE_PATH) as f:
+            lines = [l for l in f if l.strip()]
+        if idx < 0 or idx >= len(lines):
+            return None
+        rec = _json.loads(lines[idx])
+        if rec.get("kind") != "execution_gate":
+            return None
+        try:
+            import tool_events
+        except ImportError:
+            from orchestrator import tool_events
+        message = tool_events.resolve_gate_entry(rec, approve=approve,
+                                                 reason=reason)
+        with file_lock(HUMAN_QUEUE_PATH):
+            with open(HUMAN_QUEUE_PATH) as f:
+                current = [l for l in f if l.strip()]
+            if idx < len(current) and current[idx] == lines[idx]:
+                del current[idx]
+                with open(HUMAN_QUEUE_PATH, "w") as f:
+                    f.writelines(current)
+        return message
+    except Exception:
+        # Any failure inspecting the entry falls through to the legacy
+        # redefinition path — this helper must never hijack a normal
+        # /approve//deny on a non-gate entry.
+        return None
+
+
 def _cmd_approve(args: list[str]) -> str:
     if not args:
         return (
@@ -611,6 +652,10 @@ def _cmd_approve(args: list[str]) -> str:
     except ValueError:
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     proposed = " ".join(args[1:]) if len(args) > 1 else None
+
+    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=True)
+    if gate_msg is not None:
+        return gate_msg
 
     from redefinition_handler import approve_redefinition
     result = approve_redefinition(idx, proposed)
@@ -634,8 +679,22 @@ def _cmd_deny(args: list[str]) -> str:
     try:
         idx = int(args[0])
     except ValueError:
+        # `/deny credential_store:<service>` revokes a standing allow
+        # granted through an execution-gate approval.
+        if ":" in args[0]:
+            try:
+                import tool_events
+            except ImportError:
+                from orchestrator import tool_events
+            if tool_events.revoke_standing_allow(args[0]):
+                return f"**Standing allow revoked** for `{args[0]}`."
+            return f"[No active standing allow found for `{args[0]}`.]"
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     reason = " ".join(args[1:]) if len(args) > 1 else ""
+
+    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=False, reason=reason)
+    if gate_msg is not None:
+        return gate_msg
 
     from redefinition_handler import deny_redefinition
     result = deny_redefinition(idx, reason)

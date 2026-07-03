@@ -59,7 +59,12 @@ def _log_compaction(event: str, **fields) -> None:
         pass
     try:
         import json as _json
-        log_path = os.path.expanduser("~/ora/data/compaction-events.jsonl")
+        try:
+            import runtime_paths as _rp_c
+        except ImportError:  # pragma: no cover
+            from orchestrator import runtime_paths as _rp_c
+        # Same root the retention sweeper rotates (ORA_HOME-relocatable).
+        log_path = os.path.join(_rp_c.DATA_DIR_STR, "compaction-events.jsonl")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         with open(log_path, "a") as f:
             payload = {"timestamp_utc": datetime.utcnow().isoformat() + "Z",

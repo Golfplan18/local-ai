@@ -26,9 +26,16 @@ from typing import Optional
 
 from oversight_actions import file_lock, HUMAN_QUEUE_PATH
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+# Roots flow from runtime_paths so re-eval entries queue into the SAME
+# reeval-queue.jsonl that oversight_queue's Operating aggregator reads
+# under ORA_HOME relocation.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 REEVAL_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "reeval-queue.jsonl")
 ARCHIVED_PEDS_LOG = os.path.join(OVERSIGHT_DATA_DIR, "archived-peds.jsonl")
 

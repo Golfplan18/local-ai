@@ -27,9 +27,16 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+# Roots flow from runtime_paths (ORA_HOME-relocatable): the execution gate's
+# failure telemetry rides this bus, so its durable log must live under the
+# same root as tool events and the gate queue.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 EVENT_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "events.jsonl")
 
 _handlers: list[Callable[[dict], None]] = []

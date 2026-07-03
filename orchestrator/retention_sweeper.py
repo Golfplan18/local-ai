@@ -63,14 +63,23 @@ import shutil
 import time
 from datetime import datetime, timezone
 
-ORA_DIR = os.path.expanduser("~/ora")
-DATA_DIR = os.path.join(ORA_DIR, "data")
+try:
+    import runtime_paths as _rp
+    import tool_events as _te
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
+    from orchestrator import tool_events as _te
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable) so the sweeper
+# always rotates the files the writers actually write.
+ORA_DIR = _rp.WORKSPACE
+DATA_DIR = _rp.DATA_DIR_STR
 TRACES_DIR = os.path.join(DATA_DIR, "pipeline-traces")
 LOGS_DIR = os.path.join(ORA_DIR, "logs")
 LOG_ARCHIVE_DIR = os.path.join(LOGS_DIR, "archive")
 DATA_ARCHIVE_DIR = os.path.join(DATA_DIR, "archive")
 SERVER_LOG = os.path.join(ORA_DIR, "server.log")
-SESSIONS_DIR = os.path.expanduser("~/ora/sessions")
+SESSIONS_DIR = os.path.join(ORA_DIR, "sessions")
 SESSIONS_ARCHIVE_DIR = os.path.join(SESSIONS_DIR, "archived")
 OVERSIGHT_DATA_DIR = os.path.join(DATA_DIR, "oversight")
 HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "retention-sweeper-heartbeat.json")
@@ -78,6 +87,15 @@ HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "retention-sweeper-heartbeat.j
 ROTATABLE_JSONL = [
     os.path.join(DATA_DIR, "model-catalog-changes.jsonl"),
     os.path.join(DATA_DIR, "compaction-events.jsonl"),
+    # Execution Review Phase 1: the global (non-turn) tool-event sink —
+    # resolved through tool_events.global_sink_path() (env override or
+    # runtime_paths default) so rotation targets the file record() writes.
+    # Turn-scoped events live in pipeline-trace turn dirs and follow trace
+    # retention; this file rotates on size and its rotated archives age out
+    # below (telemetry must be sweepable — never persist-forever). Stealth
+    # events are suppressed at write time; the stealth purge additionally
+    # rewrites the live file (conversation_closeout Layer 6a).
+    _te.global_sink_path(),
 ]
 
 
@@ -156,6 +174,20 @@ def _sweep_logs(cutoff_days: int, archive_days: int, now: float,
             if not name.endswith(".gz"):
                 continue
             path = os.path.join(LOG_ARCHIVE_DIR, name)
+            try:
+                if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                    if not dry_run:
+                        os.unlink(path)
+                    summary["archives_deleted"] += 1
+            except OSError:
+                continue
+    # Execution Review Phase 1: rotated tool-event archives age out too.
+    if archive_days > 0 and os.path.isdir(DATA_ARCHIVE_DIR):
+        cutoff = now - archive_days * 86400
+        for name in sorted(os.listdir(DATA_ARCHIVE_DIR)):
+            if not (name.startswith("tool-events") and name.endswith(".gz")):
+                continue
+            path = os.path.join(DATA_ARCHIVE_DIR, name)
             try:
                 if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
                     if not dry_run:
