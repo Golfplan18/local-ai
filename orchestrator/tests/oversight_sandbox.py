@@ -1,4 +1,4 @@
-"""Shared test fixture: redirect the oversight durable logs to a tempdir.
+"""Shared test fixture: redirect the oversight durable writes to a tempdir.
 
 Several oversight suites exercise code that emits through
 ``oversight_events.emit()`` — corpus_runtime / output_runtime (runtime
@@ -10,7 +10,16 @@ fixture every suite run appends its test events to the LIVE log at
 ~/ora/data/oversight/events.jsonl. Same story for ``oversight_router``'s
 router.jsonl.
 
-Usage — call from setUp; cleanup is registered via addCleanup, so no
+The watcher / sweeper / scheduler modules carry the same trap for their
+heartbeat files: each derives ``HEARTBEAT_FILE`` from its own
+OVERSIGHT_DATA_DIR at import time, so a test that patches the data dir
+(or nothing at all) and then triggers a sweep still overwrites the LIVE
+heartbeat — which can mask a stalled daemon from oversight_health. The
+fixture therefore redirects every heartbeat path as well.
+
+Usage — call FIRST in setUp, before starting any of the test's own
+path patches (mock.patch restores in reverse start order, so the
+fixture must be outermost). Cleanup is registered via addCleanup, so no
 tearDown counterpart is needed:
 
     from oversight_sandbox import redirect_oversight_logs
@@ -36,11 +45,17 @@ if ORCH not in sys.path:
 import oversight_events  # noqa: E402
 import oversight_router  # noqa: E402
 
+# Modules whose HEARTBEAT_FILE is derived from OVERSIGHT_DATA_DIR at
+# import time — the single source of truth is the daemon's startup list.
+from oversight_daemon import WATCHER_HEARTBEAT_MODULES as _HEARTBEAT_MODULES  # noqa: E402
+
 
 def redirect_oversight_logs(test_case: unittest.TestCase) -> str:
-    """Point the oversight event log and router log at a fresh tempdir for
-    the duration of the test. Returns the tempdir path so a test can
-    inspect what was written durably."""
+    """Point the oversight event log, router log, and every watcher
+    heartbeat (plus each watcher module's OVERSIGHT_DATA_DIR, so
+    _write_heartbeat's makedirs never touches the live tree either) at a
+    fresh tempdir for the duration of the test. Returns the tempdir path
+    so a test can inspect what was written durably."""
     tmpdir = tempfile.mkdtemp(prefix="ora-oversight-logs-")
     test_case.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
     patches = [
@@ -54,6 +69,13 @@ def redirect_oversight_logs(test_case: unittest.TestCase) -> str:
             os.path.join(tmpdir, "router.jsonl"),
         ),
     ]
+    for mod_name in _HEARTBEAT_MODULES:
+        module = __import__(mod_name)
+        patches.append(mock.patch.object(module, "OVERSIGHT_DATA_DIR", tmpdir))
+        patches.append(mock.patch.object(
+            module, "HEARTBEAT_FILE",
+            os.path.join(tmpdir, os.path.basename(module.HEARTBEAT_FILE)),
+        ))
     for p in patches:
         p.start()
         test_case.addCleanup(p.stop)

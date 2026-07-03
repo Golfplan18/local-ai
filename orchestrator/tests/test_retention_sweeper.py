@@ -22,14 +22,18 @@ from unittest import mock
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
 
 import retention_sweeper  # noqa: E402
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 DAY = 86400
 
 
 class RetentionSweeperBase(unittest.TestCase):
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
         self.traces = root / "data" / "pipeline-traces"

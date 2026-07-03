@@ -39,6 +39,19 @@ DEFAULT_SLOW_STALL_SEC = int(os.environ.get("ORA_DAEMON_SLOW_STALL_SEC", "7200")
 # Vault path — the canonical location for PEDs and other oversight artifacts.
 VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
 
+# Every module whose _write_heartbeat the daemon drives. The fast lane
+# writes each one at startup, and the tests' oversight_sandbox fixture
+# redirects each one's HEARTBEAT_FILE — importing this tuple keeps the
+# two lists mechanically in sync.
+WATCHER_HEARTBEAT_MODULES = (
+    "ped_watcher",
+    "corpus_watcher",
+    "workflow_spec_sweeper",
+    "revisit_sweeper",
+    "retention_sweeper",
+    "maintenance_scheduler",
+)
+
 
 def scan_vault_and_register_peds() -> list[tuple[str, str]]:
     """Walk the vault, identify PED files, and register any that aren't yet
@@ -429,9 +442,7 @@ class OversightDaemon:
         # Write an immediate heartbeat for each watcher so the health
         # check sees a fresh signal as soon as the daemon starts, rather
         # than stale heartbeats from a prior run ("daemon down").
-        for watcher_mod_name in ("ped_watcher", "corpus_watcher",
-                                 "workflow_spec_sweeper", "revisit_sweeper",
-                                 "retention_sweeper", "maintenance_scheduler"):
+        for watcher_mod_name in WATCHER_HEARTBEAT_MODULES:
             try:
                 _mod = __import__(watcher_mod_name)
                 _mod._write_heartbeat()

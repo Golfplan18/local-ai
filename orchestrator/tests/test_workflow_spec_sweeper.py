@@ -17,9 +17,12 @@ from textwrap import dedent
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+if os.path.dirname(__file__) not in sys.path:
+    sys.path.insert(0, os.path.dirname(__file__))
 
 import corpus_watcher  # noqa: E402
 import workflow_spec_sweeper  # noqa: E402
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 
 MINIMAL_SPEC = dedent("""\
@@ -38,6 +41,7 @@ MINIMAL_SPEC = dedent("""\
 
 class SweeperTestBase(unittest.TestCase):
     def setUp(self):
+        redirect_oversight_logs(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.data_dir = os.path.join(self._tmp.name, "oversight")
         os.makedirs(self.data_dir)
