@@ -50,13 +50,51 @@ import base64
 import json
 import os
 import re
+import signal
 import sys
+import threading
 import time
 import urllib.error
 from typing import Any, Callable
 
 _OPENROUTER_CATALOG_PATH = os.path.expanduser("~/ora/config/openrouter-catalog.json")
 _API_BASE                = "https://openrouter.ai/api/v1"
+_OPENROUTER_IMAGE_TIMEOUT_SECONDS = float(
+    os.environ.get("OPENROUTER_IMAGE_TIMEOUT_SECONDS", "120"))
+
+_ASPECT_HINTS = {
+    "1:1": (
+        "Compose as a square image (1:1 aspect ratio). Fill the square canvas "
+        "edge to edge; no letterboxing, no empty margins."
+    ),
+    "16:9": "Compose as a wide landscape image (16:9 aspect ratio).",
+    "9:16": "Compose as a tall portrait image (9:16 aspect ratio).",
+    "4:3": "Compose as a landscape image (4:3 aspect ratio).",
+    "3:4": "Compose as a portrait image (3:4 aspect ratio).",
+}
+
+
+def _with_image_deadline(callable_):
+    timeout = _OPENROUTER_IMAGE_TIMEOUT_SECONDS
+    if (
+        timeout <= 0
+        or not hasattr(signal, "setitimer")
+        or threading.current_thread() is not threading.main_thread()
+    ):
+        return callable_()
+
+    def _raise_timeout(_signum, _frame):
+        raise TimeoutError(
+            f"OpenRouter image request timed out after {timeout:.0f}s")
+
+    old_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout)
+    try:
+        return callable_()
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def _capability_error(code: str, message: str, *, slot: str | None = None):
@@ -249,9 +287,17 @@ def _image_ref_to_data_url(ref: Any) -> str:
     raise ValueError(f"unsupported image ref type: {type(ref).__name__}")
 
 
+def _append_aspect_hint(prompt: str, aspect_ratio: str | None) -> str:
+    hint = _ASPECT_HINTS.get(aspect_ratio or "")
+    if not hint or hint in prompt:
+        return prompt
+    return f"{prompt}. {hint}"
+
+
 def _call_image_model(model_id: str, prompt: str,
                       slot: str = "image_generates",
-                      source_image: Any = None) -> bytes:
+                      source_image: Any = None,
+                      aspect_ratio: str | None = None) -> bytes:
     """Invoke a chosen OpenRouter image-output model and return raw bytes.
 
     Returns raw image bytes (PNG/JPEG/WebP) ready for vectorization or
@@ -284,6 +330,7 @@ def _call_image_model(model_id: str, prompt: str,
             "OpenRouter image generation requires a non-empty prompt.",
             slot=slot,
         )
+    prompt = _append_aspect_hint(prompt, aspect_ratio)
 
     # Build the messages payload. Plain text-only for generation; multi-part
     # text+image for edit/style/varies operations.
@@ -317,13 +364,14 @@ def _call_image_model(model_id: str, prompt: str,
                 model=model_id,
                 messages=messages,
                 modalities=modalities,
+                timeout=_OPENROUTER_IMAGE_TIMEOUT_SECONDS,
                 extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
             )
         try:
-            resp = _do(["image", "text"])
+            resp = _with_image_deadline(lambda: _do(["image", "text"]))
         except Exception as e:
             if "No endpoints found that support the requested output modalities" in str(e):
-                resp = _do(["image"])
+                resp = _with_image_deadline(lambda: _do(["image"]))
             else:
                 raise
     except Exception as exc:
@@ -497,7 +545,9 @@ def _video_handler_factory(model_id: str) -> Callable[[dict], Any]:
 def _image_handler_factory(model_id: str, slot: str) -> Callable[[dict], Any]:
     def _handler(params: dict) -> Any:
         prompt = params.get("prompt") or params.get("text") or params.get("input") or ""
-        return _call_image_model(model_id, prompt, slot=slot)
+        aspect_ratio = params.get("aspect_ratio") or "1:1"
+        return _call_image_model(
+            model_id, prompt, slot=slot, aspect_ratio=aspect_ratio)
     return _handler
 
 
