@@ -81,6 +81,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 
 # ---------------------------------------------------------------------------
 # Per-conversation write locks
@@ -108,7 +113,9 @@ def _conversation_write_lock(conversation_id: str) -> threading.Lock:
 
 # Default sessions root. Tests override via ``sessions_root=`` kwarg on
 # :func:`save_turn_spatial_state` / :func:`load_conversation_json`.
-_DEFAULT_SESSIONS_ROOT = Path.home() / "ora" / "sessions"
+# Flows from runtime_paths (ORA_HOME-relocatable) so the envelope writer
+# and the stealth purge (conversation_closeout) agree on location.
+_DEFAULT_SESSIONS_ROOT = _rp.ORA_HOME / "sessions"
 
 # The three optional turn fields WP-5.3 persists. Kept as a module-level
 # tuple so :func:`save_turn_spatial_state` and tests can enumerate them.

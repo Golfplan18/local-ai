@@ -34,11 +34,17 @@ from oversight_context import (
     WORKFLOW_LEVEL_EVENTS,
 )
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-VAULT = os.path.expanduser("~/Documents/vault/")
+# Roots flow from runtime_paths (ORA_HOME / ORA_VAULT relocatable) so the
+# router log lands beside the other oversight sinks under relocation.
+WORKSPACE = _rp.WORKSPACE
+VAULT = _rp.VAULT_STR
 PROCESS_COHERENCE_PATH = os.path.join(VAULT, "Framework — Process Coherence.md")
-ROUTER_LOG_PATH = os.path.join(WORKSPACE, "data/oversight/router.jsonl")
+ROUTER_LOG_PATH = os.path.join(_rp.DATA_DIR_STR, "oversight", "router.jsonl")
 
 
 # Mapping from event type to PC mode

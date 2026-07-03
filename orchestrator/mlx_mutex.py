@@ -29,6 +29,11 @@ import threading
 from contextlib import contextmanager
 from typing import Iterator
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 _registry_lock = threading.Lock()
 
 _machine_mutex: dict[str, threading.Lock] = {}
@@ -211,7 +216,7 @@ def configure_api_pool_from_install_state(
     import os
 
     env = env if env is not None else dict(os.environ)
-    state_path = state_path or os.path.expanduser("~/ora/install-state.json")
+    state_path = state_path or os.path.join(_rp.WORKSPACE, "install-state.json")
 
     env_cap = env.get("ORA_API_POOL_SIZE", "").strip()
     if env_cap.isdigit() and int(env_cap) > 0:
@@ -269,8 +274,10 @@ def in_flight_count(endpoint_id: str) -> int:
         return _api_in_flight.get(endpoint_id, 0)
 
 
-_DEFAULT_HEARTBEAT_PATH = os.path.expanduser(
-    "~/ora/data/oversight/mlx-worker-heartbeat.json"
+# Flows from runtime_paths so the writer and oversight_health's reader
+# resolve the same file under ORA_HOME relocation.
+_DEFAULT_HEARTBEAT_PATH = os.path.join(
+    _rp.DATA_DIR_STR, "oversight", "mlx-worker-heartbeat.json"
 )
 
 

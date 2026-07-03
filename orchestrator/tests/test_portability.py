@@ -19,6 +19,11 @@ if str(_ORCH) not in sys.path:
 _TOOLS = _ORCH / "tools"
 if str(_TOOLS) not in sys.path:
     sys.path.append(str(_TOOLS))
+# Repo root, so package-qualified imports (orchestrator.conversation_closeout,
+# which uses intra-package relative imports) resolve regardless of cwd.
+_REPO = _ORCH.parent
+if str(_REPO) not in sys.path:
+    sys.path.append(str(_REPO))
 
 import runtime_paths  # noqa: E402
 import tool_events  # noqa: E402
@@ -625,6 +630,93 @@ class TestCentralPathLayer(unittest.TestCase):
         # runtime_paths derives ORA_HOME from the env var.
         self.assertTrue(str(runtime_paths.ORA_HOME).endswith("ora")
                         or os.environ.get("ORA_HOME"))
+
+    def test_watcher_family_roots_come_from_runtime_paths(self):
+        # Phase 2: the watcher/heartbeat family moved onto runtime_paths
+        # TOGETHER — a partial move would split pointer/state writers from
+        # readers under an ORA_HOME relocation (the Revision 7 bug class).
+        import corpus_watcher
+        import oversight_health
+        import oversight_router
+        import ped_watcher
+        import revisit_sweeper
+        import workflow_spec_sweeper
+        oversight_root = os.path.join(runtime_paths.DATA_DIR_STR, "oversight")
+        for mod in (ped_watcher, corpus_watcher, workflow_spec_sweeper,
+                    revisit_sweeper, oversight_health):
+            self.assertEqual(mod.WORKSPACE, runtime_paths.WORKSPACE,
+                             f"{mod.__name__}.WORKSPACE off runtime_paths")
+            self.assertEqual(mod.OVERSIGHT_DATA_DIR, oversight_root,
+                             f"{mod.__name__}.OVERSIGHT_DATA_DIR off root")
+        self.assertEqual(oversight_router.WORKSPACE, runtime_paths.WORKSPACE)
+        self.assertEqual(oversight_router.VAULT, runtime_paths.VAULT_STR)
+        self.assertEqual(
+            oversight_router.ROUTER_LOG_PATH,
+            os.path.join(oversight_root, "router.jsonl"))
+
+    def test_heartbeat_writers_agree_with_health_reader(self):
+        # Every heartbeat producer must write exactly the file
+        # oversight_health reads for it (the reader derives dash-separated
+        # filenames from the underscore module keys in HEARTBEAT_INTERVALS).
+        import corpus_watcher
+        import maintenance_scheduler
+        import mlx_mutex
+        import oversight_health
+        import ped_watcher
+        import retention_sweeper
+        import revisit_sweeper
+        import workflow_spec_sweeper
+        for mod, key in (
+            (ped_watcher, "ped_watcher"),
+            (corpus_watcher, "corpus_watcher"),
+            (workflow_spec_sweeper, "workflow_spec_sweeper"),
+            (revisit_sweeper, "revisit_sweeper"),
+            (retention_sweeper, "retention_sweeper"),
+            (maintenance_scheduler, "maintenance_scheduler"),
+        ):
+            self.assertEqual(mod.HEARTBEAT_FILE,
+                             oversight_health.heartbeat_path(key),
+                             f"{key} heartbeat writer/reader split")
+        self.assertEqual(mlx_mutex._DEFAULT_HEARTBEAT_PATH,
+                         oversight_health.heartbeat_path("mlx_worker"))
+
+    def test_conversation_purge_roots_agree_with_writers(self):
+        # Phase 2: the stealth purge's default roots and every writer that
+        # produces the artifacts it deletes must flow from the same source
+        # (envelope writer, job files, stealth doc uploads, vault export).
+        from orchestrator import conversation_closeout as cc
+        import conversation_memory
+        import document_input
+        import job_queue
+        import vault_export
+        sessions_root = runtime_paths.ORA_HOME / "sessions"
+        self.assertEqual(cc._DEFAULT_SESSIONS_ROOT, sessions_root)
+        self.assertEqual(conversation_memory._DEFAULT_SESSIONS_ROOT,
+                         sessions_root)
+        self.assertEqual(vault_export._DEFAULT_SESSIONS_ROOT, sessions_root)
+        self.assertEqual(job_queue.DEFAULT_SESSIONS_ROOT, sessions_root)
+        self.assertEqual(document_input.STEALTH_TEMP_ROOT, str(sessions_root))
+        self.assertEqual(cc._DEFAULT_CONVERSATIONS_DIR,
+                         runtime_paths.CONVERSATIONS)
+        self.assertEqual(cc._DEFAULT_CONVERSATIONS_RAW,
+                         vault_export._DEFAULT_RAW_CONVERSATIONS)
+        self.assertEqual(cc._DEFAULT_VAULT_SESSIONS,
+                         runtime_paths.VAULT / "Sessions")
+        self.assertEqual(cc._DEFAULT_CHROMADB_PATH,
+                         runtime_paths.ORA_HOME / "chromadb")
+
+    def test_daily_note_roots_come_from_runtime_paths(self):
+        # Phase 2: daily_note reconciled onto runtime_paths (ORA_VAULT);
+        # ORA_VAULT_PATH remains a call-time override for backward compat.
+        import daily_note
+        self.assertEqual(daily_note.DATA_DIR, runtime_paths.DATA_DIR_STR)
+        self.assertEqual(daily_note.CONVERSATIONS_DIR,
+                         runtime_paths.CONVERSATIONS_STR)
+        self.assertEqual(daily_note.SESSIONS_DIR,
+                         os.path.join(runtime_paths.WORKSPACE, "sessions"))
+        if not os.environ.get("ORA_VAULT_PATH"):
+            self.assertEqual(daily_note.VAULT_PATH,
+                             os.path.expanduser(runtime_paths.VAULT_STR))
 
 
 if __name__ == "__main__":

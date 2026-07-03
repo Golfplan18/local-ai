@@ -48,11 +48,19 @@ from typing import Any, Callable
 
 from tools.format_convert import convert_to_markdown  # type: ignore
 
-# ── Paths ───────────────────────────────────────────────────────────────
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-STAGING_DIR = os.path.expanduser("~/ora/staging/documents/")
-VAULT_INCUBATOR_DIR = os.path.expanduser("~/Documents/vault/Incubator/")
-STEALTH_TEMP_ROOT = os.path.expanduser("~/ora/sessions/")
+# ── Paths ───────────────────────────────────────────────────────────────
+# Roots flow from runtime_paths (ORA_HOME / ORA_VAULT relocatable); the
+# stealth temp root in particular must match the sessions root the purge
+# (conversation_closeout Layer 4) deletes.
+
+STAGING_DIR = os.path.join(_rp.WORKSPACE, "staging", "documents")
+VAULT_INCUBATOR_DIR = os.path.join(_rp.VAULT_STR, "Incubator")
+STEALTH_TEMP_ROOT = os.path.join(_rp.WORKSPACE, "sessions")
 
 os.makedirs(STAGING_DIR, exist_ok=True)
 # Vault Incubator dir is created lazily on first write so the framework

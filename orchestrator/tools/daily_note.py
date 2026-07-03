@@ -44,11 +44,20 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
+# Roots flow from runtime_paths (ORA_HOME / ORA_VAULT / ORA_CONVERSATIONS
+# relocatable). ORA_VAULT_PATH is kept as a call-time override for
+# backward compatibility (tests and the pre-runtime_paths convention);
+# when unset, the vault resolves through runtime_paths (ORA_VAULT).
+VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH") or _rp.VAULT_STR)
 DAILY_DIR_NAME = "Daily Notes"
-CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
-SESSIONS_DIR = os.path.expanduser(os.environ.get("ORA_HOME", "~/ora") + "/sessions")
-DATA_DIR = os.path.join(os.path.expanduser(os.environ.get("ORA_HOME", "~/ora")), "data")
+CONVERSATIONS_DIR = _rp.CONVERSATIONS_STR
+SESSIONS_DIR = os.path.join(_rp.WORKSPACE, "sessions")
+DATA_DIR = _rp.DATA_DIR_STR
 
 # Vault dirs that never belong in the activity lists. "MSI News" is the
 # rsync'd cloud-pipeline mirror — machine-synced articles, not the user's

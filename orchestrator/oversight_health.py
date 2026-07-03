@@ -20,9 +20,17 @@ import time
 from datetime import datetime
 from typing import Optional
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-OVERSIGHT_DATA_DIR = os.path.join(WORKSPACE, "data/oversight/")
+
+# Roots flow from runtime_paths (ORA_HOME-relocatable). The health reader
+# must resolve the same heartbeat files the watcher writers produce —
+# test_portability asserts the pairing module by module.
+WORKSPACE = _rp.WORKSPACE
+OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 
 # Expected intervals — must match oversight_daemon defaults
 HEARTBEAT_INTERVALS = {
