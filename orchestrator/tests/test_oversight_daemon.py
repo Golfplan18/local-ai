@@ -25,8 +25,11 @@ from unittest import mock
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
 
 import oversight_daemon as od  # noqa: E402
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 
 class MaybeRunTests(unittest.TestCase):
@@ -129,37 +132,25 @@ class WatchdogLaneTests(unittest.TestCase):
 
 
 class LaneGenerationTests(unittest.TestCase):
-    def _patch_heartbeats(self):
-        """Stub every watcher module's _write_heartbeat so lane startup
-        doesn't touch the real ~/ora/data/oversight directory."""
-        patches = []
-        for name in ("ped_watcher", "corpus_watcher", "workflow_spec_sweeper",
-                     "revisit_sweeper", "retention_sweeper", "maintenance_scheduler"):
-            mod = __import__(name)
-            patches.append(mock.patch.object(mod, "_write_heartbeat", mock.MagicMock()))
-        return patches
+    def setUp(self):
+        # Redirects every watcher heartbeat (written by lane startup) plus
+        # the event/router logs away from the real ~/ora/data/oversight.
+        redirect_oversight_logs(self)
 
     def test_stale_generation_fast_loop_exits_immediately(self):
         d = od.OversightDaemon()
         d._running = True
         d._fast_gen = 2  # loop below carries gen=1 → stale
-        patches = self._patch_heartbeats()
-        for p in patches:
-            p.start()
-        try:
-            done = threading.Event()
+        done = threading.Event()
 
-            def _run():
-                d._fast_loop(1)
-                done.set()
+        def _run():
+            d._fast_loop(1)
+            done.set()
 
-            t = threading.Thread(target=_run, daemon=True)
-            t.start()
-            self.assertTrue(done.wait(timeout=5), "stale-generation fast loop did not exit")
-            self.assertEqual(d._last_run, {}, "stale loop must not dispatch sweeps")
-        finally:
-            for p in patches:
-                p.stop()
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        self.assertTrue(done.wait(timeout=5), "stale-generation fast loop did not exit")
+        self.assertEqual(d._last_run, {}, "stale loop must not dispatch sweeps")
 
     def test_stale_generation_slow_loop_exits_but_completes_vault_scan(self):
         d = od.OversightDaemon()
@@ -181,25 +172,26 @@ class LaneGenerationTests(unittest.TestCase):
     def test_lane_restart_bumps_generation(self):
         d = od.OversightDaemon()
         d._running = True
-        patches = self._patch_heartbeats()
-        for p in patches:
+        # Stub the fast-lane sweep runners: a live fast loop dispatches all
+        # four watchers on its first iteration, and this test is about
+        # generation mechanics, not sweeping real vault/pointer state.
+        for runner in ("_run_ped_watcher", "_run_corpus_watcher",
+                       "_run_workflow_spec_sweeper", "_run_revisit_sweeper"):
+            p = mock.patch.object(d, runner, mock.MagicMock())
             p.start()
-        try:
-            with mock.patch.object(d, "_initial_vault_scan", mock.MagicMock()):
-                d._start_fast_lane()
-                first_gen = d._fast_gen
-                first_thread = d._fast_thread
-                d._start_fast_lane()
-                self.assertEqual(d._fast_gen, first_gen + 1)
-                self.assertIsNot(d._fast_thread, first_thread)
-            d._running = False
-            d._fast_thread.join(timeout=10)
-            first_thread.join(timeout=10)
-            self.assertFalse(first_thread.is_alive(),
-                             "superseded lane thread should exit after generation bump")
-        finally:
-            for p in patches:
-                p.stop()
+            self.addCleanup(p.stop)
+        with mock.patch.object(d, "_initial_vault_scan", mock.MagicMock()):
+            d._start_fast_lane()
+            first_gen = d._fast_gen
+            first_thread = d._fast_thread
+            d._start_fast_lane()
+            self.assertEqual(d._fast_gen, first_gen + 1)
+            self.assertIsNot(d._fast_thread, first_thread)
+        d._running = False
+        d._fast_thread.join(timeout=10)
+        first_thread.join(timeout=10)
+        self.assertFalse(first_thread.is_alive(),
+                         "superseded lane thread should exit after generation bump")
 
 
 if __name__ == "__main__":
