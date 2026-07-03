@@ -20,6 +20,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ORCH = os.path.dirname(HERE)
 if ORCH not in sys.path:
     sys.path.insert(0, ORCH)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 from framework_parser import parse_framework_text  # noqa: E402
 from milestone_executor import (  # noqa: E402
@@ -309,6 +313,7 @@ class TestFormatExecutionResultMode(unittest.TestCase):
 class TestExecuteFrameworkMultiMode(unittest.TestCase):
 
     def setUp(self):
+        redirect_oversight_logs(self)
         # Write the synthetic framework to a temp path so parse_framework_file
         # can load it from disk
         import tempfile

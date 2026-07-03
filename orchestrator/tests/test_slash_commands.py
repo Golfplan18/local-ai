@@ -24,6 +24,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ORCH = os.path.dirname(HERE)
 if ORCH not in sys.path:
     sys.path.insert(0, ORCH)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 import slash_commands  # noqa: E402
 from slash_commands import (  # noqa: E402
@@ -237,6 +241,7 @@ class TestQueueCommand(unittest.TestCase):
 class TestInstanceCommand(unittest.TestCase):
 
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.mkdtemp(prefix="ora-instance-test-")
         self.template = os.path.join(self.tmp, "template.md")
         with open(self.template, "w") as f:
@@ -276,6 +281,7 @@ class TestInstanceCommand(unittest.TestCase):
 class TestValidateCommand(unittest.TestCase):
 
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.mkdtemp(prefix="ora-validate-test-")
         self.template = os.path.join(self.tmp, "template.md")
         with open(self.template, "w") as f:
@@ -312,6 +318,7 @@ class TestValidateCommand(unittest.TestCase):
 class TestRenderCommand(unittest.TestCase):
 
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.mkdtemp(prefix="ora-render-test-")
         self.template = os.path.join(self.tmp, "template.md")
         self.off_spec = os.path.join(self.tmp, "off.md")
@@ -350,6 +357,7 @@ class TestRenderCommand(unittest.TestCase):
 class TestApproveDenyCommand(unittest.TestCase):
 
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.mkdtemp(prefix="ora-approve-test-")
         self.queue_path = os.path.join(self.tmp, "human-queue.jsonl")
         import oversight_actions
