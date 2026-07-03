@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -321,19 +322,28 @@ def _load_sweeper_state(workflow_id: str, pointer: dict) -> dict:
         return {}
     if state.get("pointer_registered_at") != pointer.get("registered_at", ""):
         return {}
-    try:
-        state["consecutive_misses"] = int(state.get("consecutive_misses", 0))
-    except (TypeError, ValueError):
-        return {}
+    # Validate the miss count only when present — do NOT inject it into a
+    # drift-only record, or the _MISSING_SPEC_KEYS presence check in
+    # _handle_persistent_drift would always fire and defeat the dedup
+    # early-return (and rewrite the sidecar every sweep).
+    if "consecutive_misses" in state:
+        try:
+            state["consecutive_misses"] = int(state["consecutive_misses"])
+        except (TypeError, ValueError):
+            return {}
     return state
 
 
 def _save_sweeper_state(workflow_id: str, state: dict) -> bool:
     # Atomic write: a torn read by a concurrent reader (or a crash mid-write)
     # would otherwise be seen as corrupt/empty and reset the episode. Write to
-    # a temp file in the same dir, then os.replace (atomic on the same fs).
+    # a PER-WRITER temp file in the same dir, then os.replace (atomic on the
+    # same fs). The temp name is unique per process+thread so two concurrent
+    # writers (e.g. a watchdog-restarted fast lane running alongside a wedged
+    # one) can't interleave into a shared temp and publish a torn file; the
+    # worst residue is a last-writer-wins lost update, self-corrected next sweep.
     path = _sweeper_state_path(workflow_id)
-    tmp = path + ".tmp"
+    tmp = f"{path}.tmp.{os.getpid()}.{threading.get_ident()}"
     try:
         with open(tmp, "w") as f:
             json.dump(state, f, indent=2)
@@ -453,6 +463,16 @@ def _handle_missing_spec(workflow_id: str, pointer: dict, report: WorkflowDriftR
         "last_missed_at": now,
         "drift_emitted": bool(state.get("drift_emitted")),
     }
+    # Carry a prior persistent-drift signature THROUGH the missing episode, so a
+    # flapping spec that returns still carrying the same drift is deduplicated
+    # by _handle_persistent_drift instead of re-emitting the identical drift on
+    # every reappearance. Only the miss COUNTERS are dangerous to carry into a
+    # drift record (they can bypass the deregistration gates); the signature is
+    # harmless, and _handle_persistent_drift scrubs the counters on return.
+    if "last_issue_signature" in state:
+        new_state["last_issue_signature"] = state["last_issue_signature"]
+        if "last_issue_emitted_at" in state:
+            new_state["last_issue_emitted_at"] = state["last_issue_emitted_at"]
 
     if (new_state["consecutive_misses"] >= _missing_spec_limit()
             and elapsed >= _missing_spec_min_elapsed()):
@@ -545,16 +565,32 @@ def _recheck_one_tombstone(base: str, name: str, emit_event):
     spec_path = pointer.get("workflow_spec_path", "")
     if not isinstance(spec_path, str) or not spec_path or not os.path.isfile(spec_path):
         return
-    # Restore atomically: os.link fails if pointer_path already exists, so a
-    # fresh registration written by the daemon's vault scan between the isfile
-    # check above and here is never clobbered by this older archived pointer.
+    # Restore by writing a FRESH pointer via exclusive create (O_EXCL), then
+    # dropping the tombstone. O_EXCL fails if a pointer already exists, so a
+    # concurrent vault-scan registration written between the isfile check above
+    # and here is never clobbered. Writing a fresh inode (rather than hardlinking
+    # the tombstone into place) means that if the tombstone removal below fails,
+    # the two files are independent — a later _deregister_workflow os.replace
+    # still archives correctly, and an in-place re-registration can't corrupt
+    # the tombstone through a shared inode.
     try:
-        os.link(tombstone, pointer_path)
+        fd = os.open(pointer_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     except FileExistsError:
         # Lost the race to a concurrent re-registration; leave the tombstone.
         return
     except OSError as e:
         print(f"[workflow_spec_sweeper] failed to restore pointer for {name}: {e}")
+        return
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(pointer, f, indent=2)
+    except OSError as e:
+        print(f"[workflow_spec_sweeper] failed to write restored pointer for {name}: {e}")
+        # Don't leave a partial/corrupt pointer behind.
+        try:
+            os.remove(pointer_path)
+        except OSError:
+            pass
         return
     try:
         os.remove(tombstone)

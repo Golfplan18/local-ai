@@ -349,6 +349,32 @@ class TestPersistentDriftDedup(SweeperTestBase):
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         self.assertEqual(self.event_types(), ["WorkflowSpecDrift", "WorkflowSpecDrift"])
 
+    def test_flapping_spec_does_not_reemit_same_drift_on_return(self):
+        """A spec that flaps present/absent while carrying the SAME persistent
+        drift must not re-emit the identical drift on every reappearance —
+        the signature is carried through the missing episode and deduped."""
+        spec_path = self.write_spec()
+        template_path = os.path.join(self._tmp.name, "missing-template.md")
+        self.register(spec_path=spec_path, template_path=template_path)
+        # Present with drift S → emits once.
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
+        # Flap: absent for one sweep, then present again with the SAME drift S.
+        for _ in range(3):
+            os.remove(spec_path)
+            workflow_spec_sweeper.sweep(emit_event=self.emit)   # missing episode
+            self.write_spec()
+            workflow_spec_sweeper.sweep(emit_event=self.emit)   # drift S returns
+        # Each flap contributes at most the missing first-detection event; the
+        # returning drift S is deduped every time (never re-emitted).
+        drift_events = self.event_types()
+        # No back-to-back duplicate "drift S returned" emissions.
+        self.assertLessEqual(drift_events.count("WorkflowSpecDrift"), 4)
+        # Final state is drift-only (spec present) — no miss counters left.
+        state = self.read_state()
+        for k in ("consecutive_misses", "first_missed_at", "drift_emitted"):
+            self.assertNotIn(k, state)
+
     def test_corpus_only_registration_emits_nothing_and_never_deregisters(self):
         """A deliberately blank spec path is a tolerated configuration
         (corpus_watcher treats the spec as optional) — the spec sweeper has no
