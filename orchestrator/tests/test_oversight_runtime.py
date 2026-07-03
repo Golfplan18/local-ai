@@ -17,10 +17,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ORCH = os.path.dirname(HERE)
 if ORCH not in sys.path:
     sys.path.insert(0, ORCH)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 from corpus_runtime import c_instance, c_validate  # noqa: E402
 from output_runtime import o_render, parse_off_spec  # noqa: E402
 from oversight_events import register_handler, clear_handlers  # noqa: E402
+from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 
 SAMPLE_TEMPLATE = dedent("""\
@@ -64,6 +67,7 @@ class _TempWorkspace(unittest.TestCase):
     """Base class providing a clean tempdir per test."""
 
     def setUp(self):
+        redirect_oversight_logs(self)
         self.tmp = tempfile.mkdtemp(prefix="ora-runtime-test-")
         self.template_path = os.path.join(self.tmp, "template.md")
         self.off_path = os.path.join(self.tmp, "off.md")
