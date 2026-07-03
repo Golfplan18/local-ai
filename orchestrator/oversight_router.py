@@ -64,6 +64,7 @@ LOG_ONLY_EVENTS = {
     "FrameworkStarted",
     "CorpusInstanceCreated",
     "WorkflowWatcherDeregistered",
+    "WorkflowWatcherReregistered",
 }
 
 

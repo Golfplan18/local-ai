@@ -1,18 +1,18 @@
-"""Tests for workflow_spec_sweeper — stale-registration handling.
+"""Tests for workflow_spec_sweeper — stale-registration handling + drift dedup.
 
 Covers the log-once-then-deregister behavior for workflows whose spec file
-has vanished from disk (e.g. a smoke test registered a temp directory that
-was later deleted): the drift event fires on the first missing sweep only,
-subsequent misses are silent, and after the miss limit the watcher
-deregisters itself by archiving the pointer file. A spec that reappears
-resets the counter. Real drift on an existing spec (missing corpus
-template, missing frameworks) is unaffected and still emits every sweep.
+has vanished from disk, the two deregistration gates (consecutive-miss count
+AND minimum elapsed time), the tombstone-restore self-heal, signature-deduped
+emission for persistent drift on an existing spec, observation-only sweeps
+(no emitter → no persistence), episode binding to the pointer's registered_at,
+and resilience to corrupt sidecar state.
 """
 import json
 import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from textwrap import dedent
 from unittest import mock
 
@@ -50,6 +50,13 @@ class SweeperTestBase(unittest.TestCase):
             mock.patch.object(corpus_watcher, "OVERSIGHT_DATA_DIR", self.data_dir),
             mock.patch.object(workflow_spec_sweeper, "OVERSIGHT_DATA_DIR", self.data_dir),
             mock.patch.object(workflow_spec_sweeper, "HEARTBEAT_FILE", self.heartbeat),
+            # Pin the user-facing tunables so suite results don't depend on
+            # ambient shell exports. MIN_SEC=0 keeps the count gate testable
+            # without time travel; the gate itself has dedicated tests.
+            mock.patch.dict(os.environ, {
+                "ORA_WORKFLOW_SWEEPER_MISSING_SPEC_SWEEPS": "3",
+                "ORA_WORKFLOW_SWEEPER_MISSING_SPEC_MIN_SEC": "0",
+            }),
         ]
         for p in self._patches:
             p.start()
@@ -61,12 +68,13 @@ class SweeperTestBase(unittest.TestCase):
     def emit(self, event):
         self.events.append(event)
 
-    def register(self, workflow_id="test-workflow", spec_path=None):
+    def register(self, workflow_id="test-workflow", spec_path=None, template_path=""):
         corpus_watcher.write_workflow_pointer(
             workflow_id=workflow_id,
             project_nexus="test_project",
-            workflow_spec_path=spec_path or os.path.join(self._tmp.name, "gone", "workflow-spec.md"),
-            corpus_template_path="",
+            workflow_spec_path=spec_path if spec_path is not None
+            else os.path.join(self._tmp.name, "gone", "workflow-spec.md"),
+            corpus_template_path=template_path,
             corpus_instance_directory="",
         )
 
@@ -78,6 +86,13 @@ class SweeperTestBase(unittest.TestCase):
 
     def event_types(self):
         return [e["event_type"] if isinstance(e, dict) else e.event_type for e in self.events]
+
+    def read_state(self, workflow_id="test-workflow"):
+        path = workflow_spec_sweeper._sweeper_state_path(workflow_id)
+        if not os.path.isfile(path):
+            return None
+        with open(path) as f:
+            return json.load(f)
 
 
 class TestMissingSpecLogOnce(SweeperTestBase):
@@ -93,8 +108,9 @@ class TestMissingSpecLogOnce(SweeperTestBase):
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
-        state = workflow_spec_sweeper._load_missing_spec_state("test-workflow")
+        state = self.read_state()
         self.assertEqual(state["consecutive_misses"], 2)
+        self.assertTrue(state["drift_emitted"])
 
     def test_third_missing_sweep_deregisters(self):
         self.register()
@@ -104,12 +120,11 @@ class TestMissingSpecLogOnce(SweeperTestBase):
             self.event_types(),
             ["WorkflowSpecDrift", "WorkflowWatcherDeregistered"],
         )
-        # Pointer archived, workflow no longer listed, state cleaned up
         pointer = corpus_watcher.workflow_pointer_path("test-workflow")
         self.assertFalse(os.path.isfile(pointer))
         self.assertTrue(os.path.isfile(pointer + ".deregistered"))
         self.assertEqual(corpus_watcher.list_known_workflows(), [])
-        self.assertIsNone(workflow_spec_sweeper._load_missing_spec_state("test-workflow"))
+        self.assertIsNone(self.read_state())
 
     def test_deregistration_event_carries_forensics(self):
         self.register()
@@ -120,6 +135,7 @@ class TestMissingSpecLogOnce(SweeperTestBase):
         self.assertEqual(evt["workflow_id"], "test-workflow")
         self.assertEqual(evt["project_nexus"], "test_project")
         self.assertEqual(evt["consecutive_misses"], 3)
+        self.assertTrue(evt["first_missed_at"])
         self.assertIn("workflow-pointer.json.deregistered", evt["pointer_tombstone"])
 
     def test_fourth_sweep_after_deregistration_does_nothing(self):
@@ -140,21 +156,49 @@ class TestMissingSpecLogOnce(SweeperTestBase):
             ["WorkflowSpecDrift", "WorkflowWatcherDeregistered"],
         )
 
+    def test_elapsed_time_gate_blocks_rapid_deregistration(self):
+        """Back-to-back sweeps (CLI runs, concurrent sessions) can satisfy the
+        count gate in seconds but must not deregister before the elapsed-time
+        gate — the wall-clock grace window — is met."""
+        self.register()
+        with mock.patch.dict(os.environ, {"ORA_WORKFLOW_SWEEPER_MISSING_SPEC_MIN_SEC": "3600"}):
+            for _ in range(5):
+                workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+        self.assertEqual(self.read_state()["consecutive_misses"], 5)
 
-class TestSpecReappears(SweeperTestBase):
+    def test_elapsed_time_gate_allows_deregistration_once_window_passed(self):
+        self.register()
+        with mock.patch.dict(os.environ, {"ORA_WORKFLOW_SWEEPER_MISSING_SPEC_MIN_SEC": "600"}):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+            # Backdate the episode start past the window.
+            state = self.read_state()
+            state["first_missed_at"] = (
+                datetime.now(timezone.utc) - timedelta(seconds=700)
+            ).isoformat()
+            workflow_spec_sweeper._save_sweeper_state("test-workflow", state)
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(
+            self.event_types(),
+            ["WorkflowSpecDrift", "WorkflowWatcherDeregistered"],
+        )
+
+
+class TestSelfHeal(SweeperTestBase):
     def test_reappearing_spec_resets_miss_counter(self):
         spec_path = os.path.join(self._tmp.name, "workflow-spec.md")
         self.register(spec_path=spec_path)
-        # Two missing sweeps — one event, counter at 2
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         workflow_spec_sweeper.sweep(emit_event=self.emit)
-        # Spec comes back (vault sync restored it)
+        # Spec comes back (vault sync restored it) → healthy sweep clears state
         with open(spec_path, "w") as f:
             f.write(MINIMAL_SPEC)
         workflow_spec_sweeper.sweep(emit_event=self.emit)
-        self.assertIsNone(workflow_spec_sweeper._load_missing_spec_state("test-workflow"))
+        self.assertIsNone(self.read_state())
         self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
-        # Goes missing again — the drift event fires afresh
+        # Goes missing again — a fresh episode emits afresh
         os.remove(spec_path)
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         self.assertEqual(
@@ -162,26 +206,193 @@ class TestSpecReappears(SweeperTestBase):
             ["WorkflowSpecDrift", "WorkflowSpecDrift"],
         )
 
-
-class TestRealDriftUnaffected(SweeperTestBase):
-    def test_existing_spec_with_missing_template_emits_every_sweep(self):
-        spec_path = self.write_spec()
-        corpus_watcher.write_workflow_pointer(
-            workflow_id="test-workflow",
-            project_nexus="test_project",
-            workflow_spec_path=spec_path,
-            corpus_template_path=os.path.join(self._tmp.name, "missing-template.md"),
-            corpus_instance_directory="",
-        )
+    def test_tombstone_restored_when_spec_reappears(self):
+        """The self-heal for a false-positive drop lives in the sweeper: the
+        next sweep after the spec reappears restores the archived pointer —
+        no daemon restart, no dependency on the vault scan roots."""
+        spec_path = os.path.join(self._tmp.name, "workflow-spec.md")
+        self.register(spec_path=spec_path)
+        for _ in range(3):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(corpus_watcher.list_known_workflows(), [])
+        with open(spec_path, "w") as f:
+            f.write(MINIMAL_SPEC)
         workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(
+            self.event_types(),
+            ["WorkflowSpecDrift", "WorkflowWatcherDeregistered", "WorkflowWatcherReregistered"],
+        )
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+        pointer = corpus_watcher.load_workflow_pointer("test-workflow")
+        self.assertEqual(pointer["workflow_spec_path"], spec_path)
+        self.assertFalse(os.path.isfile(
+            corpus_watcher.workflow_pointer_path("test-workflow") + ".deregistered"))
+        # Healthy from then on — no further events
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(len(self.events), 3)
+
+    def test_tombstone_not_restored_while_spec_still_missing(self):
+        self.register()
+        for _ in range(4):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(corpus_watcher.list_known_workflows(), [])
+        self.assertTrue(os.path.isfile(
+            corpus_watcher.workflow_pointer_path("test-workflow") + ".deregistered"))
+
+    def test_tombstone_left_alone_when_workflow_reregistered_independently(self):
+        spec_path = os.path.join(self._tmp.name, "workflow-spec.md")
+        self.register(spec_path=spec_path)
+        for _ in range(3):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        # Manual/programmatic re-registration writes a fresh pointer
+        with open(spec_path, "w") as f:
+            f.write(MINIMAL_SPEC)
+        self.register(spec_path=spec_path)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertNotIn("WorkflowWatcherReregistered", self.event_types())
+        self.assertTrue(os.path.isfile(
+            corpus_watcher.workflow_pointer_path("test-workflow") + ".deregistered"))
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+
+
+class TestEpisodeBinding(SweeperTestBase):
+    def test_stale_state_discarded_on_reregistration(self):
+        """Sidecar state recorded against an older registration must not be
+        inherited — a re-registered workflow starts a fresh episode with the
+        full grace window and its own first-detection drift event."""
+        self.register()
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.read_state()["consecutive_misses"], 2)
+        # Re-register (new registered_at), spec still missing
+        self.register()
         workflow_spec_sweeper.sweep(emit_event=self.emit)
         self.assertEqual(
             self.event_types(),
             ["WorkflowSpecDrift", "WorkflowSpecDrift"],
         )
+        self.assertEqual(self.read_state()["consecutive_misses"], 1)
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+
+
+class TestObservationOnlyMode(SweeperTestBase):
+    def test_no_emitter_sweep_is_read_only(self):
+        """sweep(None) must never consume the grace window, mark emission
+        state, or deregister — an emitter-less run only reports."""
+        self.register()
+        workflow_spec_sweeper.sweep()
+        workflow_spec_sweeper.sweep()
+        self.assertIsNone(self.read_state())
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+        # The first emitter-bearing sweep is still the first detection
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
+        self.assertEqual(self.read_state()["consecutive_misses"], 1)
+
+
+class TestPersistentDriftDedup(SweeperTestBase):
+    def test_existing_spec_with_missing_template_emits_once(self):
+        spec_path = self.write_spec()
+        self.register(
+            spec_path=spec_path,
+            template_path=os.path.join(self._tmp.name, "missing-template.md"),
+        )
+        for _ in range(3):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
         # Never deregistered — the spec itself is present
         self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
-        self.assertIsNone(workflow_spec_sweeper._load_missing_spec_state("test-workflow"))
+        self.assertTrue(self.read_state()["last_issue_signature"])
+
+    def test_changed_issue_set_emits_again(self):
+        spec_path = self.write_spec()
+        self.register(
+            spec_path=spec_path,
+            template_path=os.path.join(self._tmp.name, "missing-template.md"),
+        )
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(len(self.events), 1)
+        # The drift changes shape: different missing template path, same
+        # registration (preserve registered_at so the episode binding holds).
+        pointer_path = corpus_watcher.workflow_pointer_path("test-workflow")
+        with open(pointer_path) as f:
+            pointer = json.load(f)
+        pointer["corpus_template_path"] = os.path.join(self._tmp.name, "other-template.md")
+        with open(pointer_path, "w") as f:
+            json.dump(pointer, f, indent=2)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift", "WorkflowSpecDrift"])
+
+    def test_resolved_drift_clears_state_and_reemits_on_recurrence(self):
+        spec_path = self.write_spec()
+        template_path = os.path.join(self._tmp.name, "template.md")
+        self.register(spec_path=spec_path, template_path=template_path)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(len(self.events), 1)
+        # Template appears → healthy → state cleared
+        with open(template_path, "w") as f:
+            f.write("# Template\n")
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertIsNone(self.read_state())
+        # Template vanishes again → same signature, but it's a new episode
+        os.remove(template_path)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift", "WorkflowSpecDrift"])
+
+    def test_corpus_only_registration_logs_once_and_never_deregisters(self):
+        """A deliberately blank spec path is a tolerated configuration
+        (corpus_watcher treats the spec as optional) — it must log once and
+        must never be auto-deregistered."""
+        self.register(spec_path="")
+        for _ in range(4):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+
+
+class TestResilience(SweeperTestBase):
+    def test_corrupt_state_file_does_not_abort_sweep(self):
+        """Wrong-shape (but valid) JSON in one workflow's sidecar must not
+        crash the sweep or starve the workflows sorted after it."""
+        self.register(workflow_id="a-workflow")
+        self.register(workflow_id="b-workflow")
+        with open(workflow_spec_sweeper._sweeper_state_path("a-workflow"), "w") as f:
+            f.write('[1, 2, 3]')
+        reports = workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(len(reports), 2)
+        # Both emitted: corrupt state discards to a fresh episode for a-workflow
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift", "WorkflowSpecDrift"])
+        self.assertEqual(self.read_state("a-workflow")["consecutive_misses"], 1)
+        self.assertEqual(self.read_state("b-workflow")["consecutive_misses"], 1)
+
+    def test_non_numeric_miss_count_resets_episode(self):
+        self.register()
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        state = self.read_state()
+        state["consecutive_misses"] = "two"
+        workflow_spec_sweeper._save_sweeper_state("test-workflow", state)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.read_state()["consecutive_misses"], 1)
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+
+    def test_state_write_failure_degrades_to_silence(self):
+        """If the sidecar can't be persisted, the sweeper stays silent (no
+        per-sweep flood, no deregistration) until persistence recovers."""
+        self.register()
+        workflow_dir = os.path.dirname(
+            corpus_watcher.workflow_pointer_path("test-workflow"))
+        os.chmod(workflow_dir, 0o555)
+        self.addCleanup(os.chmod, workflow_dir, 0o755)
+        for _ in range(3):
+            workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.events, [])
+        self.assertEqual(corpus_watcher.list_known_workflows(), ["test-workflow"])
+        # Persistence recovers → normal first-detection emission
+        os.chmod(workflow_dir, 0o755)
+        workflow_spec_sweeper.sweep(emit_event=self.emit)
+        self.assertEqual(self.event_types(), ["WorkflowSpecDrift"])
 
 
 if __name__ == "__main__":
