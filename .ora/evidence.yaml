@@ -1,0 +1,32 @@
+# .ora/evidence.yaml — Ora's own evidence catalog (Execution Review Phase 5).
+#
+# The repo-level, write-PROTECTED declaration of what checks EXIST for this repo
+# and how they must run (spec §7/§10). This file is version-controlled repo data;
+# `evidence.yaml` is in tool_events._PROTECTED_BASENAMES and `.ora` is a protected
+# prefix, so an executor cannot silently rewrite it to skip a check.
+#
+# Checks are shell-free `argv` (subprocess shell=False) so they are platform-
+# neutral; `python` resolves to the running interpreter (sys.executable), so the
+# python-vs-python3 split never bites. Both checks declare `network: deny`, so the
+# evidence runner runs them only under a backend that ENFORCES denial (macOS
+# sandbox-exec / a declared ORA_EVIDENCE_SANDBOX wrapper / native Linux
+# `unshare -rn`) and otherwise refuses cleanly — a check is never run unenforced.
+
+checks:
+  test:
+    argv: [python, -m, unittest, discover, -s, orchestrator/tests]
+    mutates: false
+    timeout: 1200          # provisional — the full suite is large
+    network: deny
+  js-test:
+    argv: [node, server/static/ora-visual-compiler/tests/run.js]
+    mutates: false
+    timeout: 300           # provisional
+    network: deny
+
+runner:
+  working_dir: <repo-root> # fixed; checks do not roam
+  env: isolated            # credential-stripping clean env, no ambient secrets
+  network: deny            # deny | local | allow (per-check `network` overrides)
+  redact: by-sensitivity   # §7 axis: secret never emitted, sensitive scrubbed
+  on_unknown: gated        # a check not declared here is not auto-run
