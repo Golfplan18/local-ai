@@ -554,7 +554,8 @@ def record(event: dict) -> None:
                      "exit", "duration_ms", "gate", "enforcement_model",
                      "correlation", "conversation_id", "truncated",
                      "telemetry_incomplete", "risk_tier", "divergence",
-                     "source_read_suspected") if k in event}
+                     "source_read_suspected", "output_type",
+                     "consistency") if k in event}
             encoded = json.dumps(keep, default=str).encode("utf-8",
                                                            errors="replace")
         path = _sink_path(ctx)
