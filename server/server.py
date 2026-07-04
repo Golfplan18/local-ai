@@ -2868,6 +2868,17 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 return
         elif _crit and _crit.startswith("WARN:"):
             _risk_warn = _crit[5:]
+        # Execution Review Phase 5: the Evidence Contract (planning-stage sibling
+        # to apply_criteria, spec §15/§16-2), produced IN THE LIVE PLANNING PATH
+        # (standard+). Writes context_pkg['evidence_contract'] + records a
+        # tool-event. Additive + never-raises (response text unchanged; the Phase-6
+        # loop acts on the directive).
+        try:
+            from evidence_runner import apply_evidence_contract as _aec
+        except ImportError:  # pragma: no cover
+            from orchestrator.evidence_runner import apply_evidence_contract as _aec
+        _aec(context_pkg, _enriched, _tier,
+             invoker=_make_server_criteria_invoker(config, config_name))
     except Exception as _rge_srv:
         print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
 

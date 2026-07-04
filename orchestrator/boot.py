@@ -9317,6 +9317,19 @@ def run_pipeline(user_input: str, history: list = None,
             _risk_warn = _crit[5:]
         else:
             _risk_warn = ""
+        # Execution Review Phase 5: the Evidence Contract — the planning-stage
+        # sibling to apply_criteria (spec §15/§16-2), produced BEFORE + SEPARATE
+        # FROM execution, IN THE LIVE PLANNING PATH (standard+). Writes
+        # context_pkg['evidence_contract'] (a repo-less contract when no
+        # .ora/evidence.yaml is discoverable) + records a tool-event. Additive and
+        # never-raises: the response text is unchanged (the Phase-6 loop acts on the
+        # directive); a no-invoker/offline turn is a graceful no-op.
+        try:
+            from evidence_runner import apply_evidence_contract as _aec
+        except ImportError:  # pragma: no cover
+            from orchestrator.evidence_runner import apply_evidence_contract as _aec
+        _aec(context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
+             invoker=_make_criteria_invoker(config, config_name))
     except Exception as _rge2:
         print(f"[risk-gate] tier/hold skipped: {_rge2}")
         _risk_warn = ""

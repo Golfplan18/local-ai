@@ -90,7 +90,10 @@ FUNCTION_CATEGORIES = frozenset({"read", "write", "execute"})
 MUTABILITY = ("read", "reversible_write", "external_write", "irreversible")
 SENSITIVITY = ("public", "private", "sensitive", "secret")
 EGRESS = ("none", "local", "external")
-ENFORCEMENT = frozenset({"in_harness", "boundary_only", "orchestrated"})
+# "declared-sandbox" (Phase 5): a check ran under an operator-DECLARED sandbox
+# wrapper (ORA_EVIDENCE_SANDBOX) that the runner trusts but cannot itself verify —
+# honestly weaker than the runner-VERIFIED "orchestrated" (§7/§17 no-overclaim).
+ENFORCEMENT = frozenset({"in_harness", "boundary_only", "orchestrated", "declared-sandbox"})
 
 _MUT_RANK = {v: i for i, v in enumerate(MUTABILITY)}
 _SENS_RANK = {v: i for i, v in enumerate(SENSITIVITY)}
