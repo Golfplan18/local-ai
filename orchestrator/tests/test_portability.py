@@ -719,5 +719,242 @@ class TestCentralPathLayer(unittest.TestCase):
                              os.path.expanduser(runtime_paths.VAULT_STR))
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# Phase 2-4 portability (this pass): write-containment boundary, root sourcing,
+# server ORA_HOME bootstrap, slash-command repo root, _clean_env Windows vars,
+# packet trace-path + risk_gate event-log encoding. These surfaces landed AFTER
+# the Phase-1 portability hardening and were reviewed for correctness, not for
+# Windows behavior.
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestWithinBaseBoundary(unittest.TestCase):
+    """runtime_paths.within_base / within_any_base: boundary-anchored +
+    case-normalized containment. A raw ``resolved.startswith(base)`` treats a
+    mere-prefix SIBLING as inside (``ora-project`` next to ``ora``) and ignores
+    Windows case-insensitivity — both closed here."""
+
+    def test_posix_self_descendant_and_sibling(self):
+        home = os.path.expanduser("~")
+        base = os.path.join(home, "ora")
+        self.assertTrue(runtime_paths.within_base(base, base))                       # self
+        self.assertTrue(runtime_paths.within_base(os.path.join(base, "config", "x"), base))  # descendant
+        self.assertFalse(runtime_paths.within_base(os.path.join(home, "ora-worktrees", "x"), base))  # sibling-prefix
+        self.assertFalse(runtime_paths.within_base(os.path.join(home, "orang", "x"), base))          # prefix
+        self.assertFalse(runtime_paths.within_base(os.path.join(home, "elsewhere"), base))           # unrelated
+
+    def test_within_any_base(self):
+        home = os.path.expanduser("~")
+        bases = [os.path.join(home, "ora"), os.path.join(home, "Documents", "vault")]
+        self.assertTrue(runtime_paths.within_any_base(os.path.join(home, "Documents", "vault", "n.md"), bases))
+        self.assertFalse(runtime_paths.within_any_base(os.path.join(home, "ora-x", "n.md"), bases))
+
+    def test_windows_case_insensitive_and_sibling(self):
+        # Simulate Windows normalization: norm_key becomes ntpath.normcase
+        # (case-fold + backslashes), which within_base then '/'-normalizes.
+        with mock.patch.object(runtime_paths, "norm_key",
+                               side_effect=lambda p: ntpath.normcase(str(p))):
+            base = r"C:\Users\bob\ora"
+            self.assertTrue(runtime_paths.within_base(r"C:\Users\Bob\ORA\config\x.json", base))  # case
+            self.assertTrue(runtime_paths.within_base(base, base))
+            self.assertFalse(runtime_paths.within_base(r"C:\Users\bob\ora-project\x", base))      # sibling
+            self.assertFalse(runtime_paths.within_base(r"D:\Users\bob\ora\x", base))              # other drive
+
+
+class TestValidatePathContainment(unittest.TestCase):
+    """dispatcher.validate_path + file_ops._validate_path: the write-containment
+    boundary and the separator-normalized deny-list, on both platforms."""
+
+    def test_dispatcher_blocks_posix_sibling_write(self):
+        import dispatcher
+        home = os.path.expanduser("~")
+        ok, _ = dispatcher.validate_path(os.path.join(home, "ora", "config", "models.json"), "write")
+        self.assertTrue(ok)
+        ok, reason = dispatcher.validate_path(os.path.join(home, "ora-worktrees", "evil.txt"), "write")
+        self.assertFalse(ok, reason)   # sibling of WORKSPACE must NOT be writable
+
+    def test_fileops_blocks_posix_sibling_write(self):
+        import file_ops
+        home = os.path.expanduser("~")
+        ok, _ = file_ops._validate_path(os.path.join(home, "ora", "notes.md"))
+        self.assertTrue(ok)
+        ok, reason = file_ops._validate_path(os.path.join(home, "ora-project", "evil.md"))
+        self.assertFalse(ok, reason)
+
+    def test_deny_list_matches_backslash_paths(self):
+        # A Windows-shaped secret path must hit the '/'-shaped DENY_LIST patterns
+        # once separators are normalized — a raw resolved.lower() substring test
+        # would miss `.aws/credentials` on a backslash path.
+        import dispatcher, file_ops
+        for p in (r"C:\Users\alice\.aws\credentials",
+                  r"C:\Users\alice\.ssh\id_rsa",
+                  r"C:\Users\alice\.gnupg\secring"):
+            ok, _ = dispatcher.validate_path(p, "read")
+            self.assertFalse(ok, p)
+            ok, _ = file_ops._validate_path(p)
+            self.assertFalse(ok, p)
+
+    def test_path_with_spaces_within_base_allowed(self):
+        import dispatcher
+        home = os.path.expanduser("~")
+        ok, reason = dispatcher.validate_path(
+            os.path.join(home, "ora", "my notes", "a file.md"), "write")
+        self.assertTrue(ok, reason)
+
+
+class TestFileOpsRootsFromRuntimePaths(unittest.TestCase):
+    """file_ops core roots come from runtime_paths (honor ORA_HOME / a
+    relocation), not the old hardcoded ~/ora, ~/Documents defaults."""
+
+    def test_roots_agree_with_runtime_paths(self):
+        import file_ops
+        self.assertEqual(file_ops.WORKSPACE, runtime_paths.WORKSPACE)
+        self.assertEqual(file_ops.VAULT, runtime_paths.VAULT_STR)
+        self.assertEqual(file_ops.CONVERSATIONS, runtime_paths.CONVERSATIONS_STR)
+
+    def test_no_hardcoded_user_path_in_source(self):
+        src = (_ORCH / "tools" / "file_ops.py").read_text()
+        self.assertNotIn("/Users/", src)
+        self.assertNotIn('expanduser("~/ora', src)
+
+
+class TestCleanEnvWindowsVars(unittest.TestCase):
+    """bash_execute._clean_env must propagate the Windows-essential system
+    variables (SystemRoot etc.) — without %SystemRoot% even a declared POSIX
+    shell fails to spawn on Windows (DLL load) — while leaving POSIX identical."""
+
+    def test_windows_propagates_system_vars(self):
+        import bash_execute
+        fake = {"PATH": r"C:\Windows;C:\Windows\System32",
+                "SystemRoot": r"C:\Windows", "SystemDrive": "C:",
+                "windir": r"C:\Windows", "COMSPEC": r"C:\Windows\System32\cmd.exe",
+                "PATHEXT": ".COM;.EXE;.BAT", "TEMP": r"C:\Users\a\AppData\Local\Temp",
+                "USERPROFILE": r"C:\Users\a"}
+        with mock.patch.object(os, "name", "nt"), \
+             mock.patch.dict(os.environ, fake, clear=True):
+            env = bash_execute._clean_env()
+        for k in ("SystemRoot", "SystemDrive", "windir", "COMSPEC", "PATHEXT",
+                  "TEMP", "USERPROFILE"):
+            self.assertEqual(env.get(k), fake[k], k)
+
+    def test_posix_env_unchanged(self):
+        import bash_execute
+        with mock.patch.object(os, "name", "posix"), \
+             mock.patch.dict(os.environ, {"PATH": "/usr/bin", "HOME": "/home/a"},
+                             clear=True):
+            env = bash_execute._clean_env()
+        # No Windows keys leak into a POSIX environment.
+        for k in ("SystemRoot", "COMSPEC", "PATHEXT", "windir"):
+            self.assertNotIn(k, env)
+        self.assertEqual(env.get("PATH"), "/usr/bin")
+
+
+class TestServerRootHonorsOraHome(unittest.TestCase):
+    """server.py's WORKSPACE / CONVERSATIONS_DIR must derive from ORA_HOME /
+    ORA_CONVERSATIONS (Windows installs + relocations), not a hardcoded ~/ora.
+    Run in a subprocess so the module-level bootstrap is exercised fresh with
+    the env set — independent of whether another test already imported server."""
+
+    def test_workspace_and_conversations_relocate(self):
+        import json
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="ora home ") as ora_home, \
+             tempfile.TemporaryDirectory(prefix="ora conv ") as ora_conv:
+            boot = (
+                "import sys, os, json\n"
+                f"REPO = {str(_REPO)!r}\n"
+                "for p in (os.path.join(REPO,'orchestrator','tools'), "
+                "os.path.join(REPO,'orchestrator'), os.path.join(REPO,'server'), REPO):\n"
+                "    sys.path.insert(0, p)\n"
+                "import server\n"
+                "print('RESULT ' + json.dumps({'ws': server.WORKSPACE, "
+                "'conv': server.CONVERSATIONS_DIR}))\n"
+            )
+            env = dict(os.environ)
+            env.update({"ORA_HOME": ora_home, "ORA_CONVERSATIONS": ora_conv,
+                        "ORA_TOOL_EVENTS": "off", "ORA_PIPELINE_TRACE": "off"})
+            proc = subprocess.run([sys.executable, "-c", boot], env=env,
+                                  capture_output=True, text=True, timeout=180)
+            marker = [l for l in proc.stdout.splitlines() if l.startswith("RESULT ")]
+            self.assertTrue(marker, f"server import failed:\nSTDOUT{proc.stdout}\nSTDERR{proc.stderr}")
+            data = json.loads(marker[0][len("RESULT "):])
+        # Both roots honor the relocated env (path with a space, too).
+        self.assertEqual(os.path.realpath(data["ws"]), os.path.realpath(ora_home))
+        self.assertEqual(os.path.realpath(data["conv"]), os.path.realpath(ora_conv))
+
+
+class TestSlashCommandRepoRoot(unittest.TestCase):
+    """slash_commands historical-tool import fallbacks must use a __file__-derived
+    repo root, never a hardcoded /Users/<name>/ora path."""
+
+    def test_ora_root_is_file_derived(self):
+        import slash_commands
+        expected = os.path.dirname(os.path.dirname(os.path.abspath(slash_commands.__file__)))
+        self.assertEqual(slash_commands._ORA_ROOT, expected)
+
+    def test_no_hardcoded_user_path_in_source(self):
+        src = (_ORCH / "slash_commands.py").read_text()
+        self.assertNotIn("/Users/oracle/ora", src)
+
+
+class TestExecutionPacketTracePathPortable(unittest.TestCase):
+    """execution_packet.write_packet builds its path with os.path.join and
+    writes UTF-8 — a trace dir with spaces / nested segments and a non-ASCII
+    deliverable must round-trip."""
+
+    def test_write_and_read_back_with_spaces_and_unicode(self):
+        import json
+        import tempfile
+        import execution_packet as ep
+        with tempfile.TemporaryDirectory(prefix="ora trace ") as td:
+            trace = os.path.join(td, "conv 1", "ts 2")   # spaces + nesting
+            signals = {"any_mutation": True, "max_mutability": "reversible_write",
+                       "source_read_suspected": False, "source_candidate_reads": []}
+            ref = ep.construct_and_write(
+                signals=signals, context_pkg={"conversation_id": "c1"},
+                output_text="a real deliverable body — café / 例文",
+                risk_tier="standard", trace_dir=trace)
+            self.assertTrue(ref and os.path.exists(ref), ref)
+            with open(ref, encoding="utf-8") as f:
+                data = json.load(f)
+        self.assertEqual(data["risk_tier"], "standard")
+        self.assertEqual(data["execution"]["delta"]["max_mutability"], "reversible_write")
+
+
+class TestRiskGateEventLogEncoding(unittest.TestCase):
+    """risk_gate reads the tool-event log and the sticky store as UTF-8, so a
+    non-ASCII path/URL in the log (or a relocated DATA_DIR) never crashes the
+    fold on a non-UTF-8 default-locale host (Windows)."""
+
+    def test_fold_reads_utf8_event_log(self):
+        import json
+        import tempfile
+        import risk_gate as rgate
+        with tempfile.TemporaryDirectory() as td:
+            ev = os.path.join(td, "tool-events.jsonl")
+            with open(ev, "w", encoding="utf-8") as f:
+                # ensure_ascii=False → real multibyte UTF-8 bytes on disk.
+                f.write(json.dumps({
+                    "action": "web_fetch", "mutability": "read",
+                    "reads": [{"what": "https://例え.jp/café", "where": "network"}],
+                    "exit": {"ok": True}, "sensitivity": "public", "mutated": False,
+                }, ensure_ascii=False) + "\n")
+            sig = rgate.fold_route_observed(ev, output_text="a substantive grounded answer body")
+        self.assertTrue(sig["source_read_suspected"])
+        self.assertIn("web_fetch", sig["source_read_channels"])
+
+    def test_sticky_round_trip_relocated_data_dir(self):
+        import tempfile
+        import risk_gate as rgate
+        with tempfile.TemporaryDirectory(prefix="ora data ") as td:
+            sticky = os.path.join(td, "risk-sticky.json")
+            with mock.patch.object(rgate, "_sticky_path", lambda: sticky):
+                rgate.set_sticky("conv-1", "high-risk")
+                self.assertEqual(rgate.get_sticky("conv-1"), "high-risk")
+                rgate.set_sticky("conv-1", "auto")            # clear
+                self.assertIsNone(rgate.get_sticky("conv-1"))
+
+
 if __name__ == "__main__":
     unittest.main()

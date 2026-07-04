@@ -576,7 +576,7 @@ def fold_route_observed(events_path: str | None, *,
     _src_channels: set[str] = set()
     _src_candidates: list[dict] = []
     try:
-        with open(events_path) as f:
+        with open(events_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -657,7 +657,7 @@ def _sticky_path() -> str:
 
 def _load_sticky() -> dict:
     try:
-        with open(_sticky_path()) as f:
+        with open(_sticky_path(), encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -682,7 +682,7 @@ def set_sticky(conversation_id: str | None, tier: str | None) -> None:
             data[conversation_id] = tier
         os.makedirs(os.path.dirname(_sticky_path()), exist_ok=True)
         tmp = _sticky_path() + ".tmp"
-        with open(tmp, "w") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f)
         os.replace(tmp, _sticky_path())
     except Exception:

@@ -48,6 +48,11 @@ import re
 import shlex
 from typing import Optional
 
+# Repo root (…/ora), derived from THIS file's location so the historical-tool
+# import fallbacks below resolve wherever Ora is installed — never a hardcoded
+# /Users/<name>/ora path, which is neither cross-platform nor a safe default.
+_ORA_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 from slash_command_registry import (
     categories as registry_categories,
     find_command,
@@ -57,8 +62,20 @@ from slash_command_registry import (
 )
 
 
-VAULT_DIR = os.path.expanduser("~/Documents/vault/")
-ORA_DIR = os.path.expanduser("~/ora/")
+# Search roots for path resolution + default output dirs come from the single
+# cross-platform source (honor ORA_HOME / ORA_VAULT), not hardcoded ~/ paths.
+# Guarded import mirrors the other orchestrator modules; falls back to the
+# __file__-derived root + expanduser only if runtime_paths can't be imported.
+try:
+    try:
+        import runtime_paths as _rp
+    except ImportError:
+        from orchestrator import runtime_paths as _rp
+    ORA_DIR = os.path.join(_rp.WORKSPACE, "")
+    VAULT_DIR = os.path.join(_rp.VAULT_STR, "")
+except Exception:  # pragma: no cover - defensive
+    ORA_DIR = os.path.join(_ORA_ROOT, "")
+    VAULT_DIR = os.path.expanduser("~/Documents/vault/")
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
 
@@ -795,7 +812,7 @@ def _cmd_cleaning(args: list[str]) -> str:
         except ImportError:
             # Fall back: try via orchestrator package path
             import sys as _sys
-            _sys.path.insert(0, "/Users/oracle/ora")
+            _sys.path.insert(0, _ORA_ROOT)
             from orchestrator.historical.run_engram_cleaning_detection import run_detection
 
         result = run_detection(
@@ -829,7 +846,7 @@ def _cmd_cleaning(args: list[str]) -> str:
             from historical.run_engram_cleaning_resolver import run_resolver
         except ImportError:
             import sys as _sys
-            _sys.path.insert(0, "/Users/oracle/ora")
+            _sys.path.insert(0, _ORA_ROOT)
             from orchestrator.historical.run_engram_cleaning_resolver import run_resolver
 
         try:
@@ -966,7 +983,7 @@ def _cmd_news(args: list[str]) -> str:
             from historical.run_news_supersession_detection import run_detection
         except ImportError:
             import sys as _sys
-            _sys.path.insert(0, "/Users/oracle/ora")
+            _sys.path.insert(0, _ORA_ROOT)
             from orchestrator.historical.run_news_supersession_detection import (
                 run_detection,
             )
@@ -1006,7 +1023,7 @@ def _cmd_news(args: list[str]) -> str:
             from historical.run_news_supersession_resolver import run_resolver
         except ImportError:
             import sys as _sys
-            _sys.path.insert(0, "/Users/oracle/ora")
+            _sys.path.insert(0, _ORA_ROOT)
             from orchestrator.historical.run_news_supersession_resolver import (
                 run_resolver,
             )

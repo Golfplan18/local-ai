@@ -425,7 +425,7 @@ def write_packet(packet: ExecutionPacket | None, trace_dir: str | None) -> str |
     try:
         os.makedirs(str(trace_dir), exist_ok=True)
         path = os.path.join(str(trace_dir), _PACKET_FILENAME)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(packet.to_dict(), f, default=str, indent=2)
         return path
     except Exception as e:

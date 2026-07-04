@@ -58,6 +58,27 @@ def norm_key(path) -> str:
         return os.path.normcase(str(path))
 
 
+def within_base(path, base) -> bool:
+    """True iff ``path`` IS ``base`` or a descendant of it, compared through the
+    case- and separator-normalized key (:func:`norm_key`) with a **directory
+    boundary**. Boundary-anchoring is what makes this safe: a raw
+    ``resolved.startswith(base)`` treats a mere-prefix SIBLING as inside — e.g.
+    ``~/ora-project/x`` starts with ``~/ora`` (POSIX), and
+    ``C:\\Users\\a\\ora-project`` starts with ``C:\\Users\\a\\ora`` (Windows).
+    Requiring the next character after ``base`` to be a separator closes that.
+    Correct on Windows (backslash + case-insensitive) and POSIX alike."""
+    pk = norm_key(path).replace("\\", "/").rstrip("/")
+    bk = norm_key(base).replace("\\", "/").rstrip("/")
+    if not bk:
+        return False
+    return pk == bk or pk.startswith(bk + "/")
+
+
+def within_any_base(path, bases) -> bool:
+    """True iff ``path`` is inside ANY of ``bases`` (see :func:`within_base`)."""
+    return any(within_base(path, b) for b in bases)
+
+
 # ── Cross-platform advisory file lock ──────────────────────────────────────
 # fcntl (POSIX) / msvcrt (Windows); guarded imports so neither platform
 # crashes at import. Shared by tool_events (approval grant/consume) and

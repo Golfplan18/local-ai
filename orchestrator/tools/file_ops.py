@@ -2,9 +2,17 @@
 
 import os
 
-WORKSPACE = os.path.expanduser("~/ora/")
-VAULT = os.path.expanduser("~/Documents/vault/")
-CONVERSATIONS = os.path.expanduser("~/Documents/conversations/")
+# Roots come from the single cross-platform source (runtime_paths), so a Windows
+# install or an ORA_HOME/ORA_VAULT relocation is honored — not the old hardcoded
+# ~/ora, ~/Documents/vault defaults. Guarded import mirrors dispatcher.py.
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified fallback
+    from orchestrator import runtime_paths as _rp
+
+WORKSPACE = _rp.WORKSPACE
+VAULT = _rp.VAULT_STR
+CONVERSATIONS = _rp.CONVERSATIONS_STR
 
 DENY_LIST = [".ssh", ".gnupg", ".env", "id_rsa", "id_ed25519", ".netrc",
              "credentials", "secrets", "token", ".aws/credentials"]
@@ -20,16 +28,17 @@ def _validate_path(path: str) -> tuple[bool, str]:
     if ".." in path:
         return False, f"Path traversal not allowed: {path}"
 
-    # Block deny-listed patterns
-    path_lower = path.lower()
+    # Block deny-listed patterns — separator-normalized + case-folded so Windows
+    # backslash paths still match the '/'-shaped patterns (W1 class, §7).
+    path_match = path.replace("\\", "/").lower()
     for pattern in DENY_LIST:
-        if pattern in path_lower:
+        if pattern in path_match:
             return False, f"Access denied to sensitive path: {pattern}"
 
-    # Must be within an allowed base
-    for base in ALLOWED_BASES:
-        if path.startswith(os.path.realpath(base)):
-            return True, "allowed"
+    # Must be within an allowed base — boundary-anchored + case-normalized, so a
+    # mere-prefix sibling can't slip through (runtime_paths.within_any_base).
+    if _rp.within_any_base(path, ALLOWED_BASES):
+        return True, "allowed"
 
     return False, f"Path outside allowed locations: {path}"
 
