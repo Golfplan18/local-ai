@@ -203,6 +203,45 @@ class TestGear3QualityGate(unittest.TestCase):
         self.assertNotIn("QGFIX", result)
 
 
+class TestGear3VerdictThreadForPacket(unittest.TestCase):
+    """Execution Review Phase 4 (Rev 1): the gate verdict threaded onto
+    context_pkg['execution_review'] for the terminal packet builder must describe
+    the SHIPPED text. A FAIL fires a redo that produces a NEW unreviewed
+    deliverable, so the stale FAIL must not be carried onto the final producer
+    claim — the exact path the judge flagged."""
+
+    def test_fail_redo_records_unreviewed_status_not_stale_verdict(self):
+        ctx = _ctx()
+        h = _Harness(["## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL"])
+        with _patched(h):
+            result = boot.run_gear3(ctx, {}, config_name=None)
+        self.assertIn("QGFIX", result)                      # the redo output ships
+        er = ctx.get("execution_review")
+        self.assertIsNotNone(er)
+        # the shipped (redone) text was NOT reviewed by the gate → no stale FAIL
+        self.assertIsNone(er["verdict"])
+        self.assertEqual(er["status"], "failed-then-redone-unreviewed")
+        self.assertEqual(er["scope"], "text_review")
+
+    def test_pass_records_pass_verdict(self):
+        ctx = _ctx()
+        h = _Harness(["## QUALITY GATE\nall good\nVERDICT: PASS"])
+        with _patched(h):
+            boot.run_gear3(ctx, {}, config_name=None)
+        er = ctx.get("execution_review")
+        self.assertEqual(er["verdict"], "PASS")
+        self.assertIsNone(er.get("status"))
+
+    def test_broken_records_broken_verdict(self):
+        ctx = _ctx()
+        h = _Harness(["Cannot reach a verdict.\nVERDICT: BROKEN"])
+        with _patched(h):
+            boot.run_gear3(ctx, {}, config_name=None)
+        er = ctx.get("execution_review")
+        self.assertEqual(er["verdict"], "BROKEN")           # BROKEN ships as-reviewed
+        self.assertIsNone(er.get("status"))
+
+
 # ─────────────────────────── Gear 4 behavior ────────────────────────────────
 
 

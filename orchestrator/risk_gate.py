@@ -981,12 +981,21 @@ def apply_criteria(context_pkg: dict, instruction: str, risk_tier: str, *,
 
 
 def record_route_observed(turn_key, risk_tier: str | None = None, *,
-                          output_text: str | None = None) -> dict:
+                          output_text: str | None = None,
+                          declared_output_type: str = "unknown") -> dict:
     """Best-effort after-clock record on ANY terminal path (condition 7).
     ``turn_key`` is either a trace-dir path (str) or a (conversation_id,
     turn_ts) tuple for global-sink turns. ``output_text`` (Phase 3, optional)
     is the produced deliverable; it drives the source-read "makes claims"
-    over-approximation. Never raises."""
+    over-approximation. Never raises.
+
+    Phase 4 (condition 1): this folds ONCE and records ``route_observed`` first;
+    it does NOT build the packet or carry a packet ref — the terminal caller
+    builds the packet SEPARATELY from the returned ``signals`` dict, so there is
+    no double-fold and no packet ref smuggled onto the event.
+    Phase 4 (condition 3): ``declared_output_type`` is the RAW declared §9 hint
+    (default 'unknown'); it is recorded verbatim and NEVER rewritten from the
+    observed signals, and it drives the record-only §6 consistency note below."""
     try:
         if isinstance(turn_key, (tuple, list)) and len(turn_key) == 2:
             conv, ts = turn_key
@@ -1005,6 +1014,21 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
         if risk_tier in ("light", "standard") and signals["any_mutation"] \
                 and signals["max_mutability"] in ("external_write", "irreversible"):
             divergence = f"{risk_tier}-tier turn observed {signals['max_mutability']}"
+        # Phase 4 §6 consistency assertion — declared_output_type vs observed
+        # reality contact. RECORD ONLY (never enforced): a "text" task that
+        # touched reality is under-review; an "execution" task with no delta and
+        # no source read is over-heavy. Dormant on live P4 turns (output_type is
+        # 'unknown' until a mode declares it) — exercised in tests. Never raises;
+        # a missing helper degrades to no note.
+        consistency = None
+        try:
+            try:
+                from execution_packet import consistency_note as _cnote
+            except ImportError:  # pragma: no cover
+                from orchestrator.execution_packet import consistency_note as _cnote
+            consistency = _cnote(declared_output_type, signals)
+        except Exception:
+            consistency = None
         # Judge condition 2: the event's sensitivity/egress reflect the folded
         # max (honest classification) rather than a hardcoded public — and
         # source_candidate_reads is already public-safe by construction (a
@@ -1022,6 +1046,9 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
         # Promote the routing verdict to a TOP-LEVEL field (also in the
         # truncation keep-set) so it survives even if a pathological turn's
         # route_signals block is byte-truncated at write (finding [5]).
+        # `output_type` (RAW declared hint) + `consistency` ride TOP-LEVEL (and in
+        # the truncation keep-set) so they survive a byte-truncated route_signals
+        # block. No packet ref here (condition 1).
         _te.record({"event": "route_observed", "action": "route_observed",
                     "category": "execute", "mutability": "read",
                     "sensitivity": _stamp_sens,
@@ -1030,7 +1057,11 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
                     "risk_tier": risk_tier,
                     "source_read_suspected": signals.get("source_read_suspected",
                                                          False),
+                    "output_type": declared_output_type,
+                    "consistency": consistency,
                     "route_signals": signals, "divergence": divergence})
-        return {"signals": signals, "divergence": divergence}
+        return {"signals": signals, "divergence": divergence,
+                "consistency": consistency, "output_type": declared_output_type}
     except Exception:
-        return {"signals": None, "divergence": None}
+        return {"signals": None, "divergence": None,
+                "consistency": None, "output_type": declared_output_type}

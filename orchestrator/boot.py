@@ -9413,11 +9413,26 @@ def run_pipeline(user_input: str, history: list = None,
     # (condition 7, best-effort on the terminal terminal path). Scoped by the
     # exact trace dir when present, else (conversation_id, turn window).
     try:
-        _rgate.record_route_observed(
+        _ro = _rgate.record_route_observed(
             trace_dir or (conversation_id,
                           context_pkg.get("_route_turn_ts") or ""),
             risk_tier=context_pkg.get("risk_tier"),
-            output_text=response)  # Phase 3: drives the source-read signal
+            output_text=response,  # Phase 3: drives the source-read signal
+            declared_output_type=context_pkg.get("output_type", "unknown"))
+        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket
+        # SEPARATELY from the already-folded signals (single fold; no packet ref on
+        # route_observed) and write it TRACE-LOCAL only. Guarded to a real
+        # deliverable + a trace dir + non-stealth turns (stealth inherits the
+        # no-packet model). Never raises.
+        if not stealth:
+            try:
+                from execution_packet import construct_and_write as _cw
+            except ImportError:  # pragma: no cover
+                from orchestrator.execution_packet import construct_and_write as _cw
+            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
+                output_text=response, risk_tier=context_pkg.get("risk_tier"),
+                declared_output_type=context_pkg.get("output_type", "unknown"),
+                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
     except Exception:
         pass
 
@@ -11547,6 +11562,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     gate_broken = _verifier_broken(gate_out) or not gate_call_ok
     gate_verdict_label = (
         "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
+    # Execution Review Phase 4 (condition 4): thread the scoped text-review verdict
+    # LABEL ONLY (never raw verifier text) onto a namespaced context_pkg subdict for
+    # the terminal packet builder. Not read by any prompt assembly — no leak.
+    context_pkg["execution_review"] = {"verdict": gate_verdict_label,
+                                       "scope": "text_review"}
     gate_redo_fired = False
     if not gate_passed and not gate_broken:
         # Real FAIL -> one final re-revise carrying the gate's REQUIRED FIXES.
@@ -11571,6 +11591,14 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         )
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
+        # Execution Review Phase 4 (Rev 1): the FAIL redo produced a NEW deliverable
+        # the gate never re-reviewed — so the prior FAIL no longer describes the
+        # shipped text. Overwrite the stale verdict with a scoped unreviewed status
+        # (verdict=None; no raw verifier text) rather than mislabel the final
+        # producer claim with a verdict that reviewed a different candidate.
+        context_pkg["execution_review"] = {
+            "verdict": None, "scope": "text_review",
+            "status": "failed-then-redone-unreviewed"}
     else:
         contingencies_fired.append(
             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
@@ -12835,6 +12863,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         problem = _parse_quality_gate_problem(gate_out)
         gate_verdict_label = (
             "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
+        # Execution Review Phase 4 (condition 4): thread the scoped text-review
+        # verdict LABEL ONLY (never raw verifier text) onto a namespaced
+        # context_pkg subdict for the terminal packet builder; last gate pass wins.
+        # Not read by any prompt assembly — no leak.
+        context_pkg["execution_review"] = {"verdict": gate_verdict_label,
+                                           "scope": "text_review"}
         _record(f"step8_6-quality-gate-pass{_qg_pass + 1}", gate_call_ok,
                 f"verdict={gate_verdict_label} problem={problem}")
         _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {

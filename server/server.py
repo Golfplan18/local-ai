@@ -2954,11 +2954,25 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     # Execution Review Phase 2: after-clock — record route_observed on this
     # terminal path (condition 7). Best-effort, never raises.
     try:
-        _rgate.record_route_observed(
+        _ro = _rgate.record_route_observed(
             trace_dir or ((_te_srv.get_turn_context() or {}).get("conversation_id"),
                           context_pkg.get("_route_turn_ts") or ""),
             risk_tier=context_pkg.get("risk_tier"),
-            output_text=response)  # Phase 3: drives the source-read signal
+            output_text=response,  # Phase 3: drives the source-read signal
+            declared_output_type=context_pkg.get("output_type", "unknown"))
+        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket from
+        # the already-folded signals (single fold; no packet ref on route_observed)
+        # and write it TRACE-LOCAL only. Guarded to a real deliverable + trace dir +
+        # non-stealth. Never raises.
+        if conversation_tag != "stealth":
+            try:
+                from execution_packet import construct_and_write as _cw
+            except ImportError:  # pragma: no cover
+                from orchestrator.execution_packet import construct_and_write as _cw
+            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
+                output_text=response, risk_tier=context_pkg.get("risk_tier"),
+                declared_output_type=context_pkg.get("output_type", "unknown"),
+                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
     except Exception:
         pass
 
