@@ -56,6 +56,10 @@ MARKER_PATTERN = re.compile(
 MARKER_TEMPLATE = "<!-- ora-framework: {framework_id}/{mode}/{state} -->"
 ELICITING_STATE = "eliciting"
 
+# Execution Review Phase 2: a hold reply carries this marker; such a turn is
+# risk-gate scaffolding, not elicited content, so the summarizer skips it.
+_TASK_GATE_MARKER_RE = re.compile(r"<!--\s*ora-task-gate:.*?-->", re.DOTALL)
+
 
 @dataclass
 class ContinuationContext:
@@ -137,11 +141,16 @@ def continue_elicitation(
     history: list,
     config: dict,
     latest_user_text: str = "",
+    conversation_id: str | None = None,
 ) -> str:
     """Advance an in-progress framework execution by one turn.
 
     Reads the conversation, summarizes what's been elicited, and either asks
     the next question or produces the final deliverable.
+
+    ``conversation_id`` (Execution Review Phase 2): binds the irreversible-
+    deliverable approval token to THIS conversation, so an approval in one
+    conversation can't admit the same framework/mode deliverable in another.
     """
     fw_filename = (
         ctx.framework_id if ctx.framework_id.endswith(".md") else ctx.framework_id + ".md"
@@ -163,6 +172,7 @@ def continue_elicitation(
     return _run_elicitation_turn(
         fw, ctx.mode, milestone, history, config,
         latest_user_text=latest_user_text,
+        conversation_id=conversation_id,
     )
 
 
@@ -175,6 +185,7 @@ def _run_elicitation_turn(
     history: list,
     config: dict,
     latest_user_text: str,
+    conversation_id: str | None = None,
 ) -> str:
     """One elicitation turn: summarize state, decide next step, emit response."""
     summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
@@ -191,7 +202,9 @@ def _run_elicitation_turn(
         return _wrap_with_marker(question, fw.name, mode)
 
     if summary.action == "PRODUCE_DELIVERABLE":
-        return _produce_deliverable(fw, mode, milestone, summary, history, latest_user_text, config)
+        return _produce_deliverable(fw, mode, milestone, summary, history,
+                                    latest_user_text, config,
+                                    conversation_id=conversation_id)
 
     # ASK_NEXT path
     question = summary.next_question or (
@@ -216,6 +229,7 @@ def _produce_deliverable(
     history: list,
     latest_user_text: str,
     config: dict,
+    conversation_id: str | None = None,
 ) -> str:
     """Hand control to the existing milestone executor with the elicited facts
     as the user input. The result is rendered with format_execution_result.
@@ -233,10 +247,84 @@ def _produce_deliverable(
     )
 
     fw_filename = fw.name if fw.name.endswith(".md") else fw.name + ".md"
+
+    # Execution Review Phase 2 (judge condition 4): the interactive
+    # final-deliverable path calls execute_framework() DIRECTLY, bypassing
+    # the server/boot framework branches — so the irreversible-tier hold must
+    # fire here too, before the executor runs. Fail-safe: a risk-gate error
+    # never blocks a legitimate deliverable.
+    try:
+        import risk_gate as _rgate
+    except ImportError:
+        from orchestrator import risk_gate as _rgate
+    try:
+        # Classify the tier from the ACTUAL deliverable content (a "publish
+        # to all subscribers" deliverable is irreversible). The fingerprint
+        # binds: conversation (conversation_id), framework+mode, AND a CONTENT
+        # NONCE identifying THIS held instance. The nonce is a hash of the
+        # normalized WORD MULTISET of the deliverable content (all word tokens,
+        # lowercased, sorted) — recomputed every turn, NOT carried:
+        #   * summarizer drift that only REORDERS bullets or words (the common
+        #     nondeterminism) → identical nonce, so an approved deliverable
+        #     still produces on resume (no re-hold);
+        #   * a MATERIALLY different later deliverable (different words) → a
+        #     distinct nonce → a distinct token → it CANNOT reuse an earlier
+        #     hold's approval, even a still-live one (no carried nonce to
+        #     inherit — this closes the approve-then-pivot reuse). Genuine
+        #     word-substitution drift falls to a SAFE re-hold (re-approve), not
+        #     reuse. Hashing the whole deliverable text (not just the bullets)
+        #     means an empty-fact deliverable is not a constant nonce — it
+        #     still carries the mode + boilerplate words, so two empty-fact
+        #     deliverables collide only when they are genuinely identical.
+        import hashlib as _hl
+        import re as _re
+        _facts = " ".join(sorted(
+            _re.findall(r"\w+", (deliverable_input or "").lower())))
+        _hnonce = _hl.sha1(_facts.encode("utf-8", "replace")).hexdigest()[:12]
+        _stable_id = f"framework-deliverable::{fw.name}::{mode or ''}::{_hnonce}"
+        _r = _rgate.assign_tier(deliverable_input, conversation_id,
+                                surface="framework")
+        _hold, _ = _rgate.evaluate_hold(
+            _r["risk_tier"], conversation_id=conversation_id, prompt=_stable_id,
+            surface="framework", mode_id=(fw.name + "/" + (mode or "")),
+            description=f"Framework deliverable: {fw.name} {mode}".strip(),
+            # Keep the elicitation flow alive across the hold: the approval
+            # re-attaches the framework marker so the next turn re-produces
+            # the deliverable (now with a valid token).
+            resume={"fw": fw.name, "mode": mode or ""})
+        if _hold is not None:
+            return _hold
+    except Exception as _rge:
+        print(f"[risk-gate] framework-deliverable hold skipped: {_rge}")
+
+    # Execution Review Phase 2 (judge finding 3): record route_observed on
+    # this framework terminal path too — turn_ts captured BEFORE execution so
+    # the fold counts this run's events; in a finally so a failed execution
+    # still records what it did before dying.
+    try:
+        _dl_turn_ts = _rgate.now_ts()
+        _dl_tier = _r.get("risk_tier") if isinstance(_r, dict) else None
+    except Exception:
+        _dl_turn_ts, _dl_tier = None, None
+    # Seed the turn context so the deliverable's tool events carry this
+    # conversation_id (the elicitation path bypasses step-2 seeding); without
+    # it the route_observed fold below finds zero events on the server surface.
+    try:
+        import tool_events as _te_dl
+        _te_dl.set_turn_context(conversation_id=conversation_id,
+                                surface="framework", risk_tier=_dl_tier)
+    except Exception:
+        pass
     try:
         result = execute_framework(fw_filename, deliverable_input, config=config)
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"
+    finally:
+        try:
+            _rgate.record_route_observed((conversation_id, _dl_turn_ts or ""),
+                                         risk_tier=_dl_tier)
+        except Exception:
+            pass
 
     return format_execution_result(result)
 
@@ -451,10 +539,20 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
         if role not in ("user", "assistant"):
             continue
         content = msg.get("content", "") or ""
-        # Strip any embedded markers from prior assistant turns so the
-        # summarizer doesn't see its own scaffolding
+        # A risk-gate hold reply is pure scaffolding (the ⚠️ approve/cancel
+        # prose + the ora-task-gate marker), NOT elicited facts — skip it
+        # wholesale so it can't pollute the summarizer's fact extraction.
+        if _TASK_GATE_MARKER_RE.search(content):
+            continue
+        # Strip any embedded framework markers from prior assistant turns so
+        # the summarizer doesn't see its own scaffolding
         content = MARKER_PATTERN.sub("", content).strip()
         if not content:
+            continue
+        # Risk-gate approval / cancellation / resume replies are also
+        # scaffolding (not facts) — skip them so they don't accumulate in the
+        # summarizer's context across re-hold cycles.
+        if role == "assistant" and content[:1] in ("✅", "❌"):
             continue
         if len(content) > 1500:
             content = content[:1500] + "…"
@@ -466,7 +564,13 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
 
 def _wrap_with_marker(body: str, framework_id: str, mode: str) -> str:
     """Append the eliciting marker on its own line at the end of the message."""
-    marker = MARKER_TEMPLATE.format(
-        framework_id=framework_id, mode=mode, state=ELICITING_STATE,
-    )
-    return f"{body.rstrip()}\n\n{marker}"
+    return f"{body.rstrip()}\n\n{elicitation_marker(framework_id, mode)}"
+
+
+def elicitation_marker(framework_id: str, mode: str) -> str:
+    """The eliciting-state marker for a framework/mode. Public so the Phase 2
+    task gate can re-attach it to an approval reply and keep the elicitation
+    flow alive across an irreversible-deliverable hold."""
+    fw_id = framework_id[:-3] if framework_id.endswith(".md") else framework_id
+    return MARKER_TEMPLATE.format(
+        framework_id=fw_id, mode=mode or "", state=ELICITING_STATE)

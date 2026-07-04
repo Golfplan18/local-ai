@@ -301,16 +301,25 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
     from oversight_queue import find_paused_by_id, remove_by_id
 
     entry = find_paused_by_id(queue_id)
-    if entry is None or entry.kind != "execution_gate":
+    if entry is None or entry.kind not in ("execution_gate", "task_gate"):
         return None
-    try:
-        import tool_events
-    except ImportError:
-        from orchestrator import tool_events
     record = {"kind": entry.kind, "event": entry.event,
               "conversation_id": (entry.event or {}).get("conversation_id")}
-    message = tool_events.resolve_gate_entry(record, approve=approve,
-                                             reason=reason)
+    if entry.kind == "task_gate":
+        # Execution Review Phase 2: an irreversible-tier task hold.
+        try:
+            import risk_gate
+        except ImportError:
+            from orchestrator import risk_gate
+        message = risk_gate.resolve_task_gate_entry(record, approve=approve,
+                                                    reason=reason)
+    else:
+        try:
+            import tool_events
+        except ImportError:
+            from orchestrator import tool_events
+        message = tool_events.resolve_gate_entry(record, approve=approve,
+                                                 reason=reason)
     remove_by_id(entry.id)
     _mark_conversation_resolved(conversation_id)
     return message
@@ -346,8 +355,8 @@ def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) ->
     """User typed 3 — apply the alternative content from the marker."""
     from oversight_queue import find_paused_by_id as _fpbi
     _entry = _fpbi(ctx.queue_id)
-    if _entry is not None and _entry.kind == "execution_gate":
-        return ("[Execution-gate entries have no alternative to apply — "
+    if _entry is not None and _entry.kind in ("execution_gate", "task_gate"):
+        return ("[Gate entries have no alternative to apply — "
                 "type 1 to approve or 2 to deny.]")
     if not (ctx.last_alternative or "").strip():
         return (

@@ -616,14 +616,24 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
         if idx < 0 or idx >= len(lines):
             return None
         rec = _json.loads(lines[idx])
-        if rec.get("kind") != "execution_gate":
+        _kind = rec.get("kind")
+        if _kind not in ("execution_gate", "task_gate"):
             return None
-        try:
-            import tool_events
-        except ImportError:
-            from orchestrator import tool_events
-        message = tool_events.resolve_gate_entry(rec, approve=approve,
-                                                 reason=reason)
+        if _kind == "task_gate":
+            # Execution Review Phase 2: irreversible-tier task hold.
+            try:
+                import risk_gate
+            except ImportError:
+                from orchestrator import risk_gate
+            message = risk_gate.resolve_task_gate_entry(rec, approve=approve,
+                                                        reason=reason)
+        else:
+            try:
+                import tool_events
+            except ImportError:
+                from orchestrator import tool_events
+            message = tool_events.resolve_gate_entry(rec, approve=approve,
+                                                     reason=reason)
         with file_lock(HUMAN_QUEUE_PATH):
             with open(HUMAN_QUEUE_PATH) as f:
                 current = [l for l in f if l.strip()]
