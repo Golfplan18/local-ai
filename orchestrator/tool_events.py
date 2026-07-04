@@ -80,6 +80,7 @@ def _cmp_key(path) -> str:
 _ENV_SINK = os.environ.get("ORA_TOOL_EVENTS_PATH") or None
 _ENV_STEALTH = os.environ.get("ORA_STEALTH_CONTEXT", "") == "1"
 _ENV_CONVERSATION = os.environ.get("ORA_CONVERSATION_ID") or None
+_ENV_RISK_TIER = os.environ.get("ORA_RISK_TIER") or None
 
 MAX_LINE_BYTES = 8000
 
@@ -374,12 +375,34 @@ _TURN_CTX: ContextVar[dict | None] = ContextVar("tool_events_turn_ctx",
 def set_turn_context(trace_dir: str | None = None,
                      conversation_id: str | None = None,
                      stealth: bool = False,
-                     surface: str = "unknown") -> None:
+                     surface: str = "unknown",
+                     risk_tier: str | None = None) -> None:
     """Set by the pipeline (step 2), the server (_direct_stream head), and
     daemons at their entry seams. Propagates to Gear-4 workers via
-    boot._submit_with_context (contextvars.copy_context)."""
+    boot._submit_with_context (contextvars.copy_context).
+
+    ``risk_tier`` (Execution Review Phase 2) rides here so the per-call gate
+    and every recorded event can see the turn's upfront risk tier with no
+    dispatcher signature change; child processes inherit it via the
+    ORA_RISK_TIER env var (get_turn_context fallback)."""
     _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
-                   "stealth": bool(stealth), "surface": surface})
+                   "stealth": bool(stealth), "surface": surface,
+                   "risk_tier": risk_tier})
+
+
+def update_turn_risk_tier(risk_tier: str | None) -> None:
+    """Attach/replace the risk tier on the CURRENT turn context without
+    re-deriving its other fields (Execution Review Phase 2). The tier is
+    known only after mode dispatch, which runs after set_turn_context seeds
+    the context at step 2; this lets the before-clock stamp it in place so
+    the per-call gate and event records see it."""
+    ctx = _TURN_CTX.get()
+    if ctx is None:
+        set_turn_context(risk_tier=risk_tier)
+    else:
+        ctx = dict(ctx)
+        ctx["risk_tier"] = risk_tier
+        _TURN_CTX.set(ctx)
 
 
 def get_turn_context() -> dict:
@@ -388,7 +411,8 @@ def get_turn_context() -> dict:
         return {"trace_dir": None,
                 "conversation_id": _ENV_CONVERSATION,
                 "stealth": _ENV_STEALTH,
-                "surface": "project" if _ENV_SINK else "unknown"}
+                "surface": "project" if _ENV_SINK else "unknown",
+                "risk_tier": _ENV_RISK_TIER}
     return dict(ctx)
 
 
@@ -501,6 +525,11 @@ def record(event: dict) -> None:
             return  # suppressed at write — the primary stealth control
         event.setdefault("ts", _now_iso())
         event.setdefault("surface", ctx.get("surface", "unknown"))
+        # Execution Review Phase 2: stamp the turn's risk tier onto every
+        # event so the after-clock and audits can read it (only when the
+        # ctx carries one; None when unset).
+        if ctx.get("risk_tier") is not None:
+            event.setdefault("risk_tier", ctx.get("risk_tier"))
         event.setdefault("correlation", {})
         event["correlation"].setdefault("conversation_id",
                                         ctx.get("conversation_id"))
@@ -645,6 +674,63 @@ def has_standing_allow(scope: str) -> bool:
     data = _load_approvals()
     return any(e.get("scope") == scope and not e.get("revoked")
                for e in data.get("standing", []))
+
+
+def consume_token_by_fingerprint(action: str, args_hash: str) -> str | None:
+    """Consume a matching unexpired one-shot token by (action, args_hash)
+    ONLY — ignoring the token's conversation_id. Used by the Phase 2 task
+    gate, whose scoping is the FINGERPRINT (which itself binds the
+    conversation); the token still STORES its conversation_id for the
+    stealth-purge matcher, but consumption must not require a conversation
+    match (the mint and the resume can legitimately differ, e.g. the
+    framework-deliverable path)."""
+    consumed = [None]
+
+    def _do():
+        data = _load_approvals()
+        now = time.time()
+        for entry in data.get("tokens", []):
+            if entry.get("used") or entry.get("action") != action:
+                continue
+            if entry.get("args_hash") != args_hash:
+                continue
+            try:
+                granted = datetime.fromisoformat(entry["granted_at"]).timestamp()
+            except Exception:
+                granted = 0
+            if now - granted > entry.get("ttl_s", DEFAULT_TOKEN_TTL_S):
+                continue
+            entry["used"] = True
+            entry["used_at"] = _now_iso()
+            consumed[0] = entry["id"]
+            break
+        if consumed[0]:
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+    return consumed[0]
+
+
+def remove_unused_tokens(action: str, args_hash: str) -> int:
+    """Delete any UNUSED tokens matching (action, args_hash). Returns the
+    count removed. Used so a re-approval of the same task cannot accumulate
+    multiple live one-shot tokens (Execution Review Phase 2 — keeps the
+    task-approval one-shot: at most one live token per fingerprint)."""
+    removed = [0]
+
+    def _do():
+        data = _load_approvals()
+        kept = []
+        for t in data.get("tokens", []):
+            if (not t.get("used") and t.get("action") == action
+                    and t.get("args_hash") == args_hash):
+                removed[0] += 1
+                continue
+            kept.append(t)
+        if removed[0]:
+            data["tokens"] = kept
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+    return removed[0]
 
 
 def check_and_consume_approval(action: str, args_hash: str,

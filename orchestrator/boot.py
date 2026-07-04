@@ -8918,6 +8918,18 @@ def build_system_prompt_for_gear(
         if annot_text:
             parts.append(f"\n{annot_text}")
 
+    # Execution Review Phase 2: acceptance criteria set by the criteria pass
+    # BEFORE execution (spec §16-1) ride read-only into the executor prompt
+    # so the executor implements against criteria it did not author. Analyst
+    # step only (the executing stream); other steps ignore them.
+    _criteria = context_package.get("acceptance_criteria")
+    if _criteria and step == "analyst":
+        parts.append(
+            "\n## PRE-SET ACCEPTANCE CRITERIA (do not renegotiate)\n"
+            "These were set before execution, separate from you. Treat them "
+            "as fixed requirements for a correct result:\n"
+            f"{_criteria}\n")
+
     return "\n".join(parts)
 
 
@@ -9019,6 +9031,25 @@ def route_output(response: str, output_target: str = "screen",
     return response
 
 
+def _make_criteria_invoker(config: dict, config_name: str | None):
+    """Return a sidebar-slot model-call callback for the Phase 2 criteria
+    pass, or None when no endpoint is available (offline / tests) — in which
+    case the criteria pass records absence rather than failing (condition 6
+    distinguishes 'no model' from 'model failed')."""
+    try:
+        endpoint = (get_slot_endpoint(config, "sidebar", config_name=config_name)
+                    or get_active_endpoint(config))
+    except Exception:
+        endpoint = None
+    if endpoint is None:
+        return None
+
+    def _invoke(system: str, user: str) -> str:
+        return call_model([{"role": "system", "content": system},
+                           {"role": "user", "content": user}], endpoint)
+    return _invoke
+
+
 def run_pipeline(user_input: str, history: list = None,
                  output_target: str = "screen",
                  execution_context: str = "interactive",
@@ -9076,6 +9107,27 @@ def run_pipeline(user_input: str, history: list = None,
             stealth=stealth,
         )
 
+    # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
+    # Handled BEFORE any slash dispatch (condition 5): a bare `/risk <tier>`
+    # / `/risk auto` sets the per-conversation sticky and short-circuits; a
+    # "1"/"2" reply to a prior irreversible-tier hold approves/cancels it;
+    # an inline `/risk <tier> <task>` override is lifted off the input.
+    _risk_override = None
+    try:
+        import risk_gate as _rgate
+        _sticky_reply = _rgate.handle_risk_command(user_input, conversation_id)
+        if _sticky_reply is not None:
+            return _sticky_reply
+        _tg_marker = _rgate.is_task_gate_continuation(history or [])
+        if _tg_marker is not None:
+            _tg_reply = _rgate.handle_task_gate_reply(
+                _tg_marker, user_input, conversation_id)
+            if _tg_reply is not None:
+                return _tg_reply
+        user_input, _risk_override = _rgate.strip_risk_prefix(user_input)
+    except Exception as _rge:
+        print(f"[risk-gate] turn-head skipped: {_rge}")
+
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
     # meta-layer runtime operations. No model endpoint or pipeline state
@@ -9095,6 +9147,7 @@ def run_pipeline(user_input: str, history: list = None,
         return framework_elicitation.continue_elicitation(
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
+            conversation_id=conversation_id,
         )
 
     # --- Framework slash-command short-circuit ---
@@ -9106,7 +9159,43 @@ def run_pipeline(user_input: str, history: list = None,
     )
     if is_framework_command(user_input):
         if framework_command_has_query(user_input):
-            return run_framework_command(user_input, config)
+            # Execution Review Phase 2 (condition 4): the /framework one-shot
+            # runs the gear pipeline with tools — hold before it if the query
+            # classifies irreversible. Fail-safe.
+            _fw_tier, _fw_ts = None, None
+            try:
+                _fw_ts = _rgate.now_ts()
+                _fr = _rgate.assign_tier(user_input, conversation_id,
+                                         surface="framework")
+                _fw_tier = _fr["risk_tier"]
+                _fhold, _ = _rgate.evaluate_hold(
+                    _fw_tier, conversation_id=conversation_id,
+                    prompt=user_input, surface="framework",
+                    description=user_input)
+                if _fhold is not None:
+                    return _fhold
+            except Exception as _frge:
+                print(f"[risk-gate] framework one-shot hold skipped: {_frge}")
+            # Seed the turn context so the framework's tool events carry this
+            # conversation_id (framework path bypasses step-2 seeding) + tier.
+            try:
+                import tool_events as _te_fw
+                _te_fw.set_turn_context(conversation_id=conversation_id,
+                                        trace_dir=trace_dir, stealth=stealth,
+                                        surface="terminal", risk_tier=_fw_tier)
+            except Exception:
+                pass
+            # Finding 3: record route_observed on this framework terminal
+            # path (try/finally so a failed run still records).
+            try:
+                return run_framework_command(user_input, config)
+            finally:
+                try:
+                    _rgate.record_route_observed(
+                        trace_dir or (conversation_id, _fw_ts or ""),
+                        risk_tier=_fw_tier)
+                except Exception:
+                    pass
         try:
             framework_name, _, _ = parse_framework_command(user_input)
         except ValueError as exc:
@@ -9172,6 +9261,61 @@ def run_pipeline(user_input: str, history: list = None,
             gear = deg_state.fallback_gear
             context_pkg["gear"] = gear
         degradation_signal = format_degradation_signal(deg_state)
+
+    # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
+    # The before-clock's final step: Stage-B mode floor + sticky, tier stamped
+    # into the turn context so the per-call gate sees it, an irreversible-tier
+    # hold BEFORE the executor (spec §6 hard boundary), and the criteria pass
+    # for standard+ (condition 6 — failure never silently runs as light).
+    # All fail-safe: a risk-gate error must never break a normal turn.
+    _route_turn_ts = None
+    try:
+        _route_turn_ts = _rgate.now_ts()
+        context_pkg["_route_turn_ts"] = _route_turn_ts
+        _risk = _rgate.assign_tier(
+            context_pkg.get("raw_prompt", user_input), conversation_id,
+            mode_text=context_pkg.get("mode_text"),
+            is_trivial_text=(gear <= 2), override=_risk_override,
+            surface="terminal")
+        _tier = _risk["risk_tier"]
+        context_pkg["risk_tier"] = _tier
+        # The hold is evaluated FIRST (before any other fallible step) and
+        # evaluate_hold itself never raises + fails closed — so an
+        # irreversible task can never slip past it via an exception below.
+        _hold_reply, _fp = _rgate.evaluate_hold(
+            _tier, conversation_id=conversation_id,
+            prompt=context_pkg.get("raw_prompt", user_input), surface="terminal",
+            mode_id=context_pkg.get("mode_name", ""), output_target=output_target,
+            config_name=config_name or "", stealth=stealth,
+            description=context_pkg.get("raw_prompt", user_input))
+        if _hold_reply is not None:
+            _rgate.record_route_observed(
+                trace_dir or (conversation_id, _route_turn_ts), risk_tier=_tier)
+            return _hold_reply
+        try:
+            import tool_events as _te_tier
+        except ImportError:
+            from orchestrator import tool_events as _te_tier
+        _te_tier.update_turn_risk_tier(_tier)
+        _crit = _rgate.apply_criteria(
+            context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
+            invoker=_make_criteria_invoker(config, config_name))
+        if _crit and _crit.startswith("HOLD:"):
+            _hr, _ = _rgate.evaluate_hold(
+                "irreversible", conversation_id=conversation_id,
+                prompt=context_pkg.get("raw_prompt", user_input),
+                surface="terminal", mode_id=context_pkg.get("mode_name", ""),
+                output_target=output_target, config_name=config_name or "",
+                stealth=stealth, description=_crit[5:])
+            if _hr is not None:
+                return _hr
+        elif _crit and _crit.startswith("WARN:"):
+            _risk_warn = _crit[5:]
+        else:
+            _risk_warn = ""
+    except Exception as _rge2:
+        print(f"[risk-gate] tier/hold skipped: {_rge2}")
+        _risk_warn = ""
 
     # --- Gear-appropriate execution ---
     # 2026-05-24 gear-architecture redesign:
@@ -9249,12 +9393,28 @@ def run_pipeline(user_input: str, history: list = None,
     if degradation_signal:
         response = f"{degradation_signal}\n\n---\n\n{response}"
 
+    # Execution Review Phase 2: surface a criteria-pass warning (condition 6 —
+    # never a silent light execution) ahead of the response.
+    if locals().get("_risk_warn"):
+        response = f"⚠️ {_risk_warn}\n\n---\n\n{response}"
+
     # WP-1.6 — server-side validation + adversarial review of ora-visual
     # fenced blocks. No-op when no such blocks are present; blocks with
     # Critical findings are suppressed (replaced with a marker) while prose
     # still flows. Diagnostics are attached to context_pkg for the server
     # SSE layer to surface.
     response = _run_visual_hook(response, context_pkg)
+
+    # Execution Review Phase 2: after-clock — record what the turn observed
+    # (condition 7, best-effort on the terminal terminal path). Scoped by the
+    # exact trace dir when present, else (conversation_id, turn window).
+    try:
+        _rgate.record_route_observed(
+            trace_dir or (conversation_id,
+                          context_pkg.get("_route_turn_ts") or ""),
+            risk_tier=context_pkg.get("risk_tier"))
+    except Exception:
+        pass
 
     return route_output(response, output_target, context_pkg)
 

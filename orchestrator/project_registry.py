@@ -930,6 +930,10 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
             env["ORA_STEALTH_CONTEXT"] = "1"
         if _ctx.get("conversation_id"):
             env["ORA_CONVERSATION_ID"] = str(_ctx["conversation_id"])
+        # Execution Review Phase 2: children inherit the turn's risk tier so
+        # a project tool's gate sees the same tier the parent assigned.
+        if _ctx.get("risk_tier"):
+            env["ORA_RISK_TIER"] = str(_ctx["risk_tier"])
     except Exception:
         pass
     if extra_env:

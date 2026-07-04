@@ -451,6 +451,34 @@ def _purge_stealth(
                 deleted["tool_event_entries"] = removed
     except Exception as e:
         errors.append(f"tool_events purge: {e}")
+
+    # --- Layer 6b: task-approval tokens (Execution Review Phase 2) ---------
+    # A stealth conversation's tier=irreversible hold mints a task_execute
+    # token in data/execution-approvals.json carrying the conversation_id.
+    # Scrub any token bound to the purged conversation so the stealth
+    # zero-residue promise covers the approval store too (condition 9).
+    try:
+        import json as _json_tok
+        from . import tool_events as _te_tok
+        _appr = Path(_te_tok.APPROVALS_PATH)
+        deleted["task_tokens"] = 0
+        if _appr.exists():
+            with open(_appr) as f:
+                data = _json_tok.load(f)
+            toks = data.get("tokens", [])
+            kept_toks = [t for t in toks
+                         if t.get("conversation_id") != conversation_id]
+            dropped = len(toks) - len(kept_toks)
+            if dropped:
+                data["tokens"] = kept_toks
+                tmp = _appr.with_suffix(_appr.suffix + ".tmp")
+                with open(tmp, "w") as f:
+                    _json_tok.dump(data, f)
+                tmp.replace(_appr)
+                deleted["task_tokens"] = dropped
+    except Exception as e:
+        errors.append(f"task_tokens purge: {e}")
+
     try:
         import json as _json_ov
         for log_name in ("events.jsonl", "actions.jsonl", "human-queue.jsonl"):

@@ -2694,6 +2694,16 @@ def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> No
         print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
 
 
+def _make_server_criteria_invoker(config, config_name):
+    """Sidebar-slot criteria invoker for the server path (delegates to the
+    boot helper). None when no endpoint is available."""
+    try:
+        from boot import _make_criteria_invoker
+        return _make_criteria_invoker(config, config_name)
+    except Exception:
+        return None
+
+
 def _run_pipeline_from_step2(step1, config, history, user_input,
                              clarification_text="", images=None,
                              execution_context="interactive",
@@ -2796,6 +2806,60 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
 
     gear = context_pkg["gear"]
 
+    # --- Execution Review Phase 2: assign risk tier + pre-executor hold ----
+    # This funnel is the single entry for every pipeline executor path
+    # (direct dispatch + all clarification resumes), so the irreversible-tier
+    # hold sits here, reading the tier as data (not the ContextVar, which was
+    # seeded upstream). Enrichment recheck: clarification answers were folded
+    # into cleaned_prompt above, so re-run Stage A over the enriched prompt.
+    # All fail-safe. ``_risk_warn`` surfaces a criteria-pass warning below.
+    _risk_warn = ""
+    _route_turn_ts = None
+    try:
+        import risk_gate as _rgate
+        import tool_events as _te_srv
+        _route_turn_ts = _rgate.now_ts()
+        context_pkg["_route_turn_ts"] = _route_turn_ts
+        _conv_id = (_te_srv.get_turn_context() or {}).get("conversation_id")
+        _enriched = context_pkg.get("cleaned_prompt", user_input)
+        _override = (extra_context or {}).get("risk_override")
+        _r = _rgate.assign_tier(
+            _enriched, _conv_id, mode_text=context_pkg.get("mode_text"),
+            is_trivial_text=(gear <= 2), override=_override, surface="chat")
+        _tier = _rgate.tier_max(_r["risk_tier"],
+                                step1.get("risk_tier") or "")
+        context_pkg["risk_tier"] = _tier
+        # Hold FIRST (evaluate_hold never raises + fails closed) so no
+        # exception in a later step can leak an irreversible task past it.
+        _hold_reply, _ = _rgate.evaluate_hold(
+            _tier, conversation_id=_conv_id, prompt=_enriched, surface="chat",
+            mode_id=context_pkg.get("mode_name", ""),
+            output_target=(extra_context or {}).get("output_target", ""),
+            config_name=config_name or "", stealth=(conversation_tag == "stealth"),
+            description=_enriched)
+        if _hold_reply is not None:
+            _rgate.record_route_observed(
+                trace_dir or (_conv_id, _route_turn_ts), risk_tier=_tier)
+            yield _sse("response", text=_hold_reply)
+            return
+        _te_srv.update_turn_risk_tier(_tier)
+        _crit = _rgate.apply_criteria(
+            context_pkg, _enriched, _tier,
+            invoker=_make_server_criteria_invoker(config, config_name))
+        if _crit and _crit.startswith("HOLD:"):
+            _hr, _ = _rgate.evaluate_hold(
+                "irreversible", conversation_id=_conv_id, prompt=_enriched,
+                surface="chat", mode_id=context_pkg.get("mode_name", ""),
+                config_name=config_name or "",
+                stealth=(conversation_tag == "stealth"), description=_crit[5:])
+            if _hr is not None:
+                yield _sse("response", text=_hr)
+                return
+        elif _crit and _crit.startswith("WARN:"):
+            _risk_warn = _crit[5:]
+    except Exception as _rge_srv:
+        print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
+
     yield _sse("pipeline_stage", stage="step2_done", gear=gear,
                label=f"Gear {gear} selected")
 
@@ -2867,6 +2931,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     if degradation_signal:
         response = f"{degradation_signal}\n\n---\n\n{response}"
 
+    # Execution Review Phase 2: surface a criteria-pass warning (condition 6).
+    if _risk_warn:
+        response = f"⚠️ {_risk_warn}\n\n---\n\n{response}"
+
     # Server-side visual hook (parity with run_pipeline's tail-of-function
     # invocation). Without this, model-emitted ora-visual blocks with schema
     # violations or critical Tufte / adversarial findings flowed through to
@@ -2882,6 +2950,16 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
+
+    # Execution Review Phase 2: after-clock — record route_observed on this
+    # terminal path (condition 7). Best-effort, never raises.
+    try:
+        _rgate.record_route_observed(
+            trace_dir or ((_te_srv.get_turn_context() or {}).get("conversation_id"),
+                          context_pkg.get("_route_turn_ts") or ""),
+            risk_tier=context_pkg.get("risk_tier"))
+    except Exception:
+        pass
 
     # Phase 0 — make suppressed visuals loud + actionable. The hook above
     # stashed per-visual diagnostics on context_pkg; surface the reason so the
@@ -2993,6 +3071,32 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     except Exception:
         pass
 
+    # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
+    # Before any slash dispatch (condition 5): a bare `/risk <tier>` sets the
+    # conversation sticky; a "1"/"2" reply to a prior irreversible hold
+    # approves/cancels it; an inline `/risk <tier> <task>` override is lifted
+    # off the input and threaded to the executor funnel via extra_context.
+    try:
+        import risk_gate as _rgate_srv
+        _sticky_reply = _rgate_srv.handle_risk_command(user_input, panel_id)
+        if _sticky_reply is not None:
+            yield _sse("response", text=_sticky_reply)
+            return
+        _tg_marker = _rgate_srv.is_task_gate_continuation(history or [])
+        if _tg_marker is not None:
+            _tg_reply = _rgate_srv.handle_task_gate_reply(
+                _tg_marker, user_input, panel_id)
+            if _tg_reply is not None:
+                yield _sse("response", text=_tg_reply)
+                return
+        _clean_ui, _risk_ovr = _rgate_srv.strip_risk_prefix(user_input)
+        if _risk_ovr is not None:
+            user_input = _clean_ui
+            extra_context = dict(extra_context or {})
+            extra_context["risk_override"] = _risk_ovr
+    except Exception as _rge_head:
+        print(f"[risk-gate] server turn-head skipped: {_rge_head}")
+
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
     # meta-layer runtime operations that don't need a model endpoint or
@@ -3054,6 +3158,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             text = framework_elicitation.continue_elicitation(
                 continuation_ctx, history or [], config,
                 latest_user_text=user_input,
+                conversation_id=panel_id,
             )
         except Exception as exc:
             yield _sse("error", text=f"Framework elicitation error: {exc}")
@@ -3123,14 +3228,56 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     )
     if is_framework_command(user_input):
         if framework_command_has_query(user_input):
+            # Execution Review Phase 2 (condition 4): the /framework one-shot
+            # runs the gear pipeline with tools — hold before it if the query
+            # classifies irreversible. Fail-safe.
+            _fw_tier_srv, _fw_ts_srv = None, None
+            try:
+                import risk_gate as _rgate_fw
+                _fw_ts_srv = _rgate_fw.now_ts()
+                _fr = _rgate_fw.assign_tier(user_input, panel_id,
+                                            surface="framework")
+                _fw_tier_srv = _fr["risk_tier"]
+                _fhold, _ = _rgate_fw.evaluate_hold(
+                    _fw_tier_srv, conversation_id=panel_id,
+                    prompt=user_input, surface="framework",
+                    stealth=(_conv_tag == "stealth"), description=user_input)
+                if _fhold is not None:
+                    yield _sse("response", text=_fhold)
+                    return
+            except Exception as _rge_fw:
+                print(f"[risk-gate] server framework hold skipped: {_rge_fw}")
+            # Seed the turn context so the framework's tool events carry this
+            # conversation_id (the framework path bypasses step-2 seeding);
+            # without it route_observed folds zero events (they'd land under
+            # conversation_id=None). Also stamps the tier for the per-call gate.
+            try:
+                import tool_events as _te_fw2
+                _te_fw2.set_turn_context(conversation_id=panel_id, surface="chat",
+                                         stealth=(_conv_tag == "stealth"),
+                                         risk_tier=_fw_tier_srv)
+            except Exception:
+                pass
             yield _sse("pipeline_stage", stage="framework_execution",
                        label="Running framework via layered milestone executor…")
             try:
                 result_text = run_framework_command(user_input, config)
             except Exception as exc:
                 yield _sse("error", text=f"Framework execution error: {exc}")
+                # Finding 3: record what the failed framework run observed.
+                try:
+                    _rgate_fw.record_route_observed(
+                        (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
+                except Exception:
+                    pass
                 return
             yield _sse("response", text=result_text)
+            # Finding 3: record route_observed on the framework terminal path.
+            try:
+                _rgate_fw.record_route_observed(
+                    (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
+            except Exception:
+                pass
             return
         # Empty-query form → start an interactive elicitation session.
         try:
@@ -3362,7 +3509,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             flush=True,
         )
         yield from _direct_stream(user_input, history, images=images,
-                                  panel_id=panel_id, conversation_tag=conversation_tag)
+                                  panel_id=panel_id, conversation_tag=conversation_tag,
+                                  risk_override=(extra_context or {}).get("risk_override"))
         return
 
     # --- Phase 9: pre-routing pipeline question gate ---
@@ -3489,9 +3637,14 @@ def _tool_status_label(tool_name, params):
 
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
-                   conversation_tag=""):
+                   conversation_tag="", risk_override=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
-    Routes all tool calls through the unified dispatcher."""
+    Routes all tool calls through the unified dispatcher.
+
+    ``risk_override`` (Execution Review Phase 2): an inline ``/risk`` tier
+    threaded from the pipeline turn head when a turn falls back to direct
+    mode — so ``/risk irreversible <trivial prompt>`` still holds here
+    instead of silently classifying light."""
     config   = load_config()
     endpoint = get_endpoint(config)
 
@@ -3536,6 +3689,40 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
     except Exception:
         pass
 
+    # --- Execution Review Phase 2: risk gate on the direct/bypass path -----
+    # The bypass guard routes trivial/self-contained prompts here, but an
+    # irreversible-intent prompt (e.g. "send an email to the list") can land
+    # here too — so the Stage-A floor + irreversible hold must fire before the
+    # auto-approve agentic loop runs. Default light (this IS the trivial path);
+    # floors raise it. Fail-safe.
+    _route_turn_ts_ds = None
+    try:
+        import risk_gate as _rgate_ds
+        _route_turn_ts_ds = _rgate_ds.now_ts()
+        # Strip an inline /risk arriving straight on the direct route (the
+        # pipeline turn head never ran for a /direct turn); a threaded
+        # risk_override (pipeline fallback) takes precedence.
+        _clean_ds, _ovr_ds = _rgate_ds.strip_risk_prefix(user_input)
+        if _ovr_ds is not None:
+            user_input = _clean_ds
+            messages[-1]["content"] = user_input
+        _eff_override = risk_override or _ovr_ds
+        _r_ds = _rgate_ds.assign_tier(user_input, panel_id,
+                                      is_trivial_text=True, override=_eff_override,
+                                      surface="direct")
+        _hold_ds, _ = _rgate_ds.evaluate_hold(
+            _r_ds["risk_tier"], conversation_id=panel_id, prompt=user_input,
+            surface="direct", stealth=(_ds_tag == "stealth"),
+            description=user_input)
+        if _hold_ds is not None:
+            _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
+                                            risk_tier=_r_ds["risk_tier"])
+            yield _sse("response", text=_hold_ds)
+            return
+        _te_ds.update_turn_risk_tier(_r_ds["risk_tier"])
+    except Exception as _rge_ds:
+        print(f"[risk-gate] direct-stream hold skipped: {_rge_ds}")
+
     response = ""
     for iteration in range(MAX_ITERATIONS):
         # Pass images only on the first call (they accompany the user's original message)
@@ -3546,6 +3733,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
             reset_consecutive()
             clean = strip_tool_calls(response)
             yield _sse("response", text=clean)
+            try:
+                _rgate_ds.record_route_observed(
+                    (panel_id, _route_turn_ts_ds),
+                    risk_tier=_r_ds.get("risk_tier"))
+            except Exception:
+                pass
             return
 
         for tc in tool_calls:
@@ -3594,6 +3787,13 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
                stripped_response_chars=len(clean),
                final_response_was_empty_after_strip=(not clean.strip()))
     yield _sse("response", text=clean)
+    # A MAX_ITERATIONS overrun is the highest-mutation direct exit (many tool
+    # calls ran); record route_observed here too so this path isn't missed.
+    try:
+        _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
+                                        risk_tier=_r_ds.get("risk_tier"))
+    except Exception:
+        pass
 
 
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
