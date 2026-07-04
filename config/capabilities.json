@@ -575,6 +575,71 @@
         }
       ]
     },
+    "image_generates_barb_cartoon": {
+      "name": "image_generates_barb_cartoon",
+      "summary": "Generate a Barb McGowan editorial-cartoon image from a text description. Split from image_generates_cartoon on 2026-07-03 so Barb's Google-family image chain (Gemini 3 Pro Image preferred, Gemini 3.1 Flash Image fallback) never burns time or budget on GPT image-model refusals or stalls.",
+      "required_inputs": [
+        {
+          "name": "prompt",
+          "type": "text",
+          "description": "Natural-language description of the image to generate."
+        }
+      ],
+      "optional_inputs": [
+        {
+          "name": "style",
+          "type": "text",
+          "description": "Style hint appended to the prompt (e.g., 'watercolor', 'photorealistic').",
+          "default": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "enum",
+          "description": "Output aspect ratio.",
+          "default": "1:1",
+          "enum_values": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4"
+          ]
+        },
+        {
+          "name": "provider_override",
+          "type": "enum",
+          "description": "Force a specific provider for this call instead of routing-config preferred.",
+          "default": null,
+          "enum_values": [
+            "openai",
+            "stability",
+            "replicate"
+          ]
+        }
+      ],
+      "output": {
+        "type": "image-bytes",
+        "description": "Image bytes; inserted into canvas at default location or selected anchor."
+      },
+      "execution_pattern": "sync",
+      "common_errors": [
+        {
+          "code": "model_unavailable",
+          "description": "No provider configured for this slot.",
+          "fix_path": "Configure a provider via Framework — API Key Setup.md"
+        },
+        {
+          "code": "prompt_rejected",
+          "description": "Provider's content policy blocked the prompt.",
+          "fix_path": "Rephrase, switch provider, or cancel."
+        },
+        {
+          "code": "quota_exceeded",
+          "description": "Provider rate limit hit.",
+          "fix_path": "Wait or switch provider."
+        }
+      ]
+    },
     "column_authoring_paid": {
       "name": "column_authoring_paid",
       "summary": "Paid-tier chat slot for column authoring. Routed to openai/gpt-5.4-nano (or whatever is in routing-config) for richer voice fidelity than the free-chain default. Use for column-pass tasks that warrant the paid spend.",
