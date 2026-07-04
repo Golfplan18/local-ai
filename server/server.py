@@ -13,9 +13,13 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 import requests
 
-WORKSPACE         = os.path.expanduser("~/ora/")
-CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
-CONVERSATIONS_RAW = os.path.expanduser("~/Documents/conversations/raw/")
+# WORKSPACE must honor ORA_HOME (Windows installs / relocations) BEFORE
+# runtime_paths can be imported — runtime_paths lives under orchestrator/, which
+# the sys.path bootstrap below has to add first (chicken-and-egg). Mirror
+# runtime_paths.ORA_HOME's own derivation so the two never disagree.
+# os.path.join(root, "") appends the platform separator, preserving the
+# trailing-separator semantics the rest of this module relies on.
+WORKSPACE         = os.path.join(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"), "")
 MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
 LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
@@ -25,12 +29,19 @@ MAX_ITERATIONS = 10
 
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-# Also expose ~/ora itself so package-qualified imports
+# Also expose the repo root itself so package-qualified imports
 # (`from orchestrator.<module>`) resolve regardless of cwd / PYTHONPATH —
-# the launch.json invocation doesn't set either.
-sys.path.insert(0, WORKSPACE.rstrip("/"))
+# the launch.json invocation doesn't set either. Strip either separator so a
+# Windows trailing backslash is handled too.
+sys.path.insert(0, WORKSPACE.rstrip("/\\") or WORKSPACE)
 
 import runtime_paths as rp
+
+# Conversation roots come from the single cross-platform source (honors
+# ORA_CONVERSATIONS / a relocation), not a hardcoded ~/Documents path. They are
+# used only below this point, so sourcing them post-import is safe.
+CONVERSATIONS_DIR = os.path.join(rp.CONVERSATIONS_STR, "")
+CONVERSATIONS_RAW = os.path.join(rp.CONVERSATIONS_STR, "raw", "")
 
 
 def _routing_config_path() -> str:

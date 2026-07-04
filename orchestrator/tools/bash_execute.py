@@ -687,6 +687,18 @@ def _clean_env() -> dict:
                 "TMPDIR", "SSH_AUTH_SOCK"):
         if key in parent:
             env[key] = parent[key]
+    # On Windows, spawning ANY process (even a declared Git Bash / WSL sh via
+    # ORA_POSIX_SHELL) needs the core system variables — most critically
+    # %SystemRoot%, without which winsock/crypto DLLs fail to load and
+    # CreateProcess errors out. COMSPEC/PATHEXT/SystemDrive/windir + the temp
+    # and profile roots are required for realistic command resolution. Adding
+    # them only under os.name=='nt' leaves the POSIX environment byte-identical.
+    if os.name == "nt":
+        for key in ("SystemRoot", "SystemDrive", "windir", "COMSPEC", "PATHEXT",
+                    "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA",
+                    "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE"):
+            if key in parent:
+                env[key] = parent[key]
     env["WORKSPACE"] = WORKSPACE
     return env
 

@@ -428,11 +428,7 @@ def request_permission(tool_name: str, parameters: dict,
 
 # ── Path validation ───────────────────────────────────────────────────────
 
-ALLOWED_BASES = [
-    os.path.realpath(WORKSPACE),
-    os.path.realpath(VAULT),
-    os.path.realpath(CONVERSATIONS),
-]
+ALLOWED_BASES = [WORKSPACE, VAULT, CONVERSATIONS]
 
 DENY_LIST = [".ssh", ".gnupg", ".env", "id_rsa", "id_ed25519", ".netrc",
              "credentials", "secrets", "token", ".aws/credentials"]
@@ -446,20 +442,24 @@ def validate_path(file_path: str, operation: str = "read") -> tuple[bool, str]:
     if ".." in file_path:
         return False, f"Path traversal not allowed: {file_path}"
 
-    # Block deny-listed patterns
-    path_lower = resolved.lower()
+    # Block deny-listed patterns. Normalize separators to '/' and case-fold so a
+    # Windows backslash path (``C:\\Users\\a\\.aws\\credentials``) still matches
+    # the '/'-shaped patterns (``.aws/credentials``) — a raw ``resolved.lower()``
+    # substring test misses them (the W1 separator-anchoring class, §7).
+    path_match = resolved.replace("\\", "/").lower()
     for pattern in DENY_LIST:
-        if pattern in path_lower:
+        if pattern in path_match:
             return False, f"Access denied to sensitive path: {pattern}"
 
     if operation == "read":
         # Reads are allowed more broadly
         return True, "allowed"
 
-    # Writes must be within allowed bases
-    for base in ALLOWED_BASES:
-        if resolved.startswith(base):
-            return True, "allowed"
+    # Writes must be within allowed bases — boundary-anchored + case-normalized
+    # (runtime_paths.within_any_base), so a mere-prefix SIBLING (``ora-project``
+    # next to ``ora``) can't be treated as inside, on Windows or POSIX.
+    if _rp.within_any_base(resolved, ALLOWED_BASES):
+        return True, "allowed"
 
     return False, f"Path outside allowed locations: {resolved}"
 
