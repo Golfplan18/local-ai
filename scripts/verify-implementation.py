@@ -102,15 +102,14 @@ REQUIRED_PIPELINE_SUBSECTIONS = {
     "VERIFICATION CRITERIA",
 }
 
-# 9 vault canonical → ora runtime file pairs (Decision K)
+# 8 vault canonical → ora runtime file pairs (Decision K)
 ARCHITECTURE_PAIRS = [
     ("Reference — Analytical Territories.md", "territories.md"),
     ("Reference — Mode Specification Template.md", "mode-template.md"),
     ("Reference — Disambiguation Style Guide.md", "disambiguation-style-guide.md"),
     ("Reference — Lens Library Specification.md", "lens-library-specification.md"),
     ("Reference — Pre-Routing Pipeline Architecture.md", "pre-routing-pipeline.md"),
-    ("Reference — Signal Vocabulary Registry.md", "signal-vocabulary-registry.md"),
-    ("Reference — Mode Runtime Configuration.md", "runtime-configuration.md"),
+    ("Registry — Signal Vocabulary Registry.md", "signal-vocabulary-registry.md"),
     ("Reference — Within-Territory Disambiguation Trees.md", "within-territory-trees.md"),
     ("Reference — Cross-Territory Adjacency.md", "cross-territory-adjacency.md"),
 ]
@@ -413,7 +412,7 @@ def check_runtime_config(verbose: bool = False) -> CheckResult:
 
 
 def check_drift_parity(verbose: bool = False) -> CheckResult:
-    """Verify the 9 architecture file pairs match (modulo YAML)."""
+    """Verify the 8 architecture file pairs match (modulo YAML)."""
     result = CheckResult(name="drift", passed=True)
 
     for vault_name, ora_name in ARCHITECTURE_PAIRS:
