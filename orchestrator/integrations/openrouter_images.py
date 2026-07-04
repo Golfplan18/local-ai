@@ -634,7 +634,7 @@ def _call_image_model_two_images(model_id: str, prompt: str,
 
 
 # Image slots OpenRouter providers can serve.
-#   ``image_generates`` + ``image_generates_cartoon``   — text → image
+#   ``image_generates`` + cartoon image slots           — text → image
 #   ``image_styles`` / ``image_varies``                  — image + text → image
 # Skipped:
 #   ``image_edits``    — slot contract requires a ``mask`` (DALL-E-style
@@ -643,7 +643,11 @@ def _call_image_model_two_images(model_id: str, prompt: str,
 #                        semantics — would need its own slot.
 #   ``image_outpaints``/``image_upscales`` — not OpenRouter-native
 #                        operations; remain on Replicate / Stability.
-_IMAGE_GENERATE_SLOTS = ("image_generates", "image_generates_cartoon")
+_IMAGE_GENERATE_SLOTS = (
+    "image_generates",
+    "image_generates_cartoon",
+    "image_generates_barb_cartoon",
+)
 _IMAGE_EDIT_SLOTS     = ("image_styles", "image_varies")
 
 

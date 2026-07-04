@@ -37,23 +37,27 @@
   "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) \u2014 so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity). Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
   "slots": {
     "image_generates": {
-      "preferred": "local-diffusers",
+      "preferred": "openrouter:openai/gpt-5.4-image-2",
       "fallback": [
-        "openrouter:google/gemini-2.5-flash-image",
-        "openrouter:openai/gpt-5-image-mini",
-        "openrouter:openai/gpt-5.4-image-2",
-        "openrouter:google/gemini-3.1-flash-image"
+        "openrouter:openai/gpt-5-image",
+        "openrouter:google/gemini-3-pro-image"
       ],
-      "_note": "General-purpose image generation slot. Serves news photos, illustration filler, and the eventual data-viz illustration fallback. Chain revised 2026-07-01 to free-first: preferred = local-diffusers (zero marginal cost, offline; on machines without diffusers installed the id never registers and resolution falls through to the cloud entries automatically); first cloud fallback = gemini-2.5-flash-image (Nano Banana \u2014 the cheapest cloud image model with real published pricing, ~$0.003-0.01/image), then gpt-5-image-mini (low-cost), then gpt-5.4-image-2 / gemini-3.1-flash-image (GA id \u2014 the -preview id was deprecated) as the quality tier. There is no free cloud image model: OpenRouter reports media-model token pricing as literal 0 because billing is per image with unpublished rates \u2014 do not read $0.0 as free. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded \u2014 see capability_registry.fallback_triggering_codes. Editorial cartoons go through a separate slot (`image_generates_cartoon`) so style-locked LoRA fallbacks are only invoked on the cartoon path. DALL-E references removed 2026-05-12 per OpenAI's same-day shutdown announcement."
+      "_note": "General-purpose image generation slot. Serves website article images, news photos, illustration filler, and the eventual data-viz illustration fallback. Chain revised 2026-07-03 per publisher direction: GPT-5.4 Image 2 first, GPT-5 Image fallback, then Google Nano Banana Pro (Gemini 3 Pro Image). The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded — see capability_registry.fallback_triggering_codes. Editorial cartoons use `image_generates_cartoon`, now intentionally aligned to this same cloud chain."
     },
     "image_generates_cartoon": {
       "preferred": "openrouter:openai/gpt-5.4-image-2",
       "fallback": [
-        "openrouter:google/gemini-3.1-flash-image-preview",
-        "openrouter:google/gemini-3-pro-image-preview",
-        "openrouter:openai/gpt-5-image"
+        "openrouter:openai/gpt-5-image",
+        "openrouter:google/gemini-3-pro-image"
       ],
-      "_note": "Editorial-cartoon image slot. Cloud-only chain since the 2026-06-01 decommission of the civitai-hector-lora-v1 LoRA (moral-disgust pivot): preferred cloud model first, Google image models catch OpenAI moderation refusals, gpt-5-image variants as deeper fallback. This publisher entry overrides MSI manifest routing. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded."
+      "_note": "Editorial-cartoon image slot for MSI cartoonists. Chain revised 2026-07-03 per publisher direction to match website article images: GPT-5.4 Image 2 first, GPT-5 Image fallback, then Google Nano Banana Pro (Gemini 3 Pro Image). This publisher entry overrides MSI manifest routing. The registry's invoke() walks the chain on prompt_rejected / model_unavailable / quota_exceeded."
+    },
+    "image_generates_barb_cartoon": {
+      "preferred": "openrouter:google/gemini-3-pro-image",
+      "fallback": [
+        "openrouter:google/gemini-3.1-flash-image"
+      ],
+      "_note": "Barb McGowan cartoon image slot. Google Nano Banana Pro (Gemini 3 Pro Image) is the default visual register; Gemini 3.1 Flash Image is the Google-family fallback. Split from image_generates_cartoon on 2026-07-03 so Barb does not burn time or budget on GPT image-model refusals/stalls."
     },
     "image_edits": {
       "preferred": "local-diffusers",
