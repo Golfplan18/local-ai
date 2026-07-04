@@ -242,6 +242,23 @@ class TestRecorder(ToolEventsBase):
         self.assertTrue(ev.get("truncated"))
         self.assertNotIn("reads", ev)  # dropped to fit the line cap
 
+    def test_route_observed_routing_verdict_survives_truncation(self):
+        # Execution Review Phase 3 (finding [5]): the routing verdict rides at
+        # top level and is in the truncation keep-set, so even a byte-truncated
+        # route_observed record retains source_read_suspected / risk_tier.
+        big_signals = {"source_candidate_reads": [
+            {"action": "web_fetch", "where": "network",
+             "what": "https://x/" + "u" * 200} for _ in range(80)]}
+        tool_events.record(self._event(
+            event="route_observed", action="route_observed",
+            source_read_suspected=True, risk_tier="standard",
+            divergence=None, route_signals=big_signals))
+        ev = _read_events(self.sink)[0]
+        self.assertTrue(ev.get("truncated"))
+        self.assertNotIn("route_signals", ev)          # bulky payload dropped
+        self.assertTrue(ev.get("source_read_suspected"))  # verdict survives
+        self.assertEqual(ev.get("risk_tier"), "standard")
+
     def test_recorder_failure_sets_health_and_stamps_later_events(self):
         # Point the sink somewhere unwritable: a path UNDER a regular file.
         blocker = os.path.join(self.tmp.name, "blocker")

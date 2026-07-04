@@ -72,6 +72,125 @@ TASK_TOKEN_TTL_S = 900
 TASK_ACTION = "task_execute"
 
 
+# ── Source-read signal (Execution Review Phase 3, spec §6 signal 2 / §15) ────
+# The coarse over-approximation "did the output make claims about material it
+# read?" — the §6 second dispatch signal, folded from the Phase 1 tool-event
+# log after the run, EXCLUDING local_context_read (§7). This is deliberately
+# distinct from the Phase 2 raw `reads_present` (any read at all).
+#
+# Judge design-gate conditions honored here:
+#   (1) an explicit source-action ALLOWLIST, and only reads that ACTUALLY RAN
+#       count — exit.ok truthy and gate decision allowed/approved — never
+#       internal telemetry (task_tier / acceptance_criteria / route_observed /
+#       task_execute / model_call) or blocked/queued gate attempts.
+#   (2) the recorded route_observed event's sensitivity reflects the folded max,
+#       AND source_candidate_reads is a public-safe shape (a read's `what`
+#       descriptor rides in only when that read's own sensitivity is public),
+#       because _redact_for_record does NOT recurse into route_signals.
+# Precise per-read source_read labelling + the claim-to-source map (§4) are
+# deferred to the provenance lane (Phase 8); this is the coarse routing signal.
+
+# Strong channels: contact reality outside the returned artifact. A successful
+# read here + substantive output ⇒ source read (over-route is safe, §6). Never
+# subject to any local read-vs-context tie-break.
+_ALWAYS_SOURCE_ACTIONS = frozenset({
+    "web_fetch", "web_search", "knowledge_search", "rag_read"})
+# Ambiguous local reads: read-to-edit (context) vs read-to-describe (source)
+# can't be split without the output. Judge answer Q1 = A: over-approximate to
+# source (no per-target read/write tie-break in Phase 3). Shell reads are folded
+# via their bash:<profile> action + mutability==read (judge Q2: no dispatcher
+# reads[] change now).
+_AMBIGUOUS_LOCAL_ACTIONS = frozenset({
+    "file_read", "search_files", "list_directory"})
+# Internal telemetry / gate bookkeeping — these carry mutability==read but are
+# NOT reads of source material. Excluded explicitly (belt; the allowlist above
+# already excludes them by omission).
+_NON_SOURCE_ACTIONS = frozenset({
+    "task_tier", "acceptance_criteria", "route_observed", TASK_ACTION,
+    "model_call", "credential_store"})
+
+# Below this many characters the output is treated as a non-deliverable (empty /
+# bare acknowledgement / status echo) and does NOT count as "making claims".
+# PROVISIONAL (flagged, not empirically calibrated): biased low so the safe
+# (over-route) direction dominates — a short grounded answer should still route
+# out of pure text review. Calibrate against real turns.
+_MIN_SUBSTANTIVE_OUTPUT_CHARS = 24
+
+# Bound the provenance-detail list carried in the route_observed event so a
+# very heavy turn (100+ successful source reads) can't push the event past
+# tool_events.MAX_LINE_BYTES (8 KB) — which would drop the WHOLE route_signals
+# block (incl. the load-bearing source_read_suspected boolean) via the
+# truncation keep-set. The boolean/channels are computed from booleans, not
+# this list, so capping never affects routing; it only bounds the Phase-8
+# provenance pointer, and a capped fold is FLAGGED (source_candidate_reads_
+# truncated), never silent — Phase 8 rebuilds the full map from the per-event
+# log anyway. PROVISIONAL.
+_MAX_SOURCE_CANDIDATES = 64
+
+
+def _source_read_kind(ev: dict) -> str | None:
+    """Classify one tool-event as a source-eligible read (judge condition 1).
+    Returns 'always' | 'ambiguous' | None. A read must have ACTUALLY RUN
+    (exit.ok truthy) and been ALLOWED (gate decision not blocked/queued);
+    internal telemetry and gate bookkeeping never qualify."""
+    action = ev.get("action", "") or ""
+    if action in _NON_SOURCE_ACTIONS:
+        return None
+    if ev.get("mutability") != "read":
+        return None
+    if not (ev.get("exit") or {}).get("ok"):
+        return None  # never ran, or errored → not a source read
+    dec = (ev.get("gate") or {}).get("decision")
+    if dec is not None and dec not in ("allowed", "approved"):
+        return None  # blocked / queued gate attempt → never ran
+    if action in _ALWAYS_SOURCE_ACTIONS:
+        return "always"
+    if action in _AMBIGUOUS_LOCAL_ACTIONS or action.startswith("bash:"):
+        return "ambiguous"
+    # Instrumented MCP reads (event=='mcp' + a server-declared mutability:read):
+    # opaque external source contact (boundary_only — Ora can't see WHAT was
+    # read, and MCP events carry no reads[]). Classified STRONG (like web /
+    # knowledge / rag) because a read-only connector (docs / database / search
+    # server) reaches external reality — so a terse grounded answer after it
+    # ("Yes.") must still suspect, not be dropped by the substantive-output
+    # floor (the unsafe under-route direction, §6).
+    if ev.get("event") == "mcp":
+        return "always"
+    return None
+
+
+def _public_safe_candidates(ev: dict) -> list[dict]:
+    """Public-safe source-read descriptors from an event's reads[] (judge
+    condition 2). A read's `what` (a path / URL / query) is included ONLY when
+    the event's own sensitivity is public — deferring to the existing per-event
+    classification — so a private/sensitive path never rides into the
+    public-shaped route_observed summary. action / where / content_hash / chars
+    are tool-name / enum / truncated-hash / count values and are always safe."""
+    action = ev.get("action", "") or ""
+    sens = ev.get("sensitivity", "private")
+    out = []
+    for r in (ev.get("reads") or []):
+        if not isinstance(r, dict):
+            continue
+        cand = {"action": action, "where": r.get("where")}
+        if r.get("content_hash"):
+            cand["content_hash"] = r["content_hash"]
+        if r.get("chars") is not None:
+            cand["chars"] = r["chars"]
+        if sens == "public" and r.get("what"):
+            cand["what"] = r["what"]  # already scrubbed at write for public
+        out.append(cand)
+    return out
+
+
+def _output_is_substantive(output_text: str | None) -> bool:
+    """Coarse 'makes claims' proxy: a real deliverable, not empty / bare ack /
+    status echo. PROVISIONAL threshold (_MIN_SUBSTANTIVE_OUTPUT_CHARS)."""
+    if not output_text:
+        return False
+    return len(output_text.strip()) >= _MIN_SUBSTANTIVE_OUTPUT_CHARS
+
+
 def tier_max(*tiers: str) -> str:
     """Highest (most conservative) tier among the arguments; unknowns and
     None are ignored. Empty → DEFAULT_TIER."""
@@ -428,17 +547,34 @@ def build_task_gate_prompt(risk_tier: str, fingerprint: str,
 # ── The after-clock: route_observed fold (judge condition 7) ────────────────
 def fold_route_observed(events_path: str | None, *,
                         conversation_id: str | None = None,
-                        turn_ts: str | None = None) -> dict:
+                        turn_ts: str | None = None,
+                        output_text: str | None = None) -> dict:
     """Fold a turn's tool-events into route signals. When ``events_path`` is
     a per-turn trace file the whole file is the unit; when it is the global
     sink, filter by conversation_id (+ optional turn_ts window) so a sibling
-    turn's events can't contaminate the fold. Never raises."""
+    turn's events can't contaminate the fold. Never raises.
+
+    Phase 2 shipped signal 1 (``any_mutation`` / ``max_mutability``) and a raw
+    ``reads_present`` boolean. Phase 3 adds §6 signal 2 — the SOURCE-READ
+    over-approximation: ``source_read_suspected`` (did the output make claims
+    about material it read?), the ``source_read_channels`` that fired, and the
+    public-safe ``source_candidate_reads`` handed to the Phase 8 provenance
+    lane. ``output_text`` (the produced deliverable) drives the "makes claims"
+    test; when it is None the signal falls back to the strong channels only
+    (over-route safe). ``reads_present`` is unchanged (back-compat)."""
     signals = {"any_mutation": False, "max_mutability": "read",
                "reads_present": False, "max_sensitivity": "public",
-               "max_egress": "none", "gate_outcomes": {}, "events_scanned": 0}
+               "max_egress": "none", "gate_outcomes": {}, "events_scanned": 0,
+               "source_read_suspected": False, "source_read_channels": [],
+               "source_candidate_reads": [],
+               "source_candidate_reads_truncated": False}
     if not events_path or not os.path.exists(events_path):
         return signals
     scoped_to_file = bool(turn_ts is None and conversation_id is None)
+    _src_any = False           # any source-eligible read fired
+    _src_always = False        # a STRONG (always-source) channel fired
+    _src_channels: set[str] = set()
+    _src_candidates: list[dict] = []
     try:
         with open(events_path) as f:
             for line in f:
@@ -474,6 +610,14 @@ def fold_route_observed(events_path: str | None, *,
                         signals["max_egress"], egr)
                 if ev.get("reads"):
                     signals["reads_present"] = True
+                # Phase 3 source-read fold (allowlist + actually-ran, §6/§7).
+                kind = _source_read_kind(ev)
+                if kind:
+                    _src_any = True
+                    if kind == "always":
+                        _src_always = True
+                    _src_channels.add(ev.get("action", "") or "")
+                    _src_candidates.extend(_public_safe_candidates(ev))
                 gate = ev.get("gate") or {}
                 dec = gate.get("decision")
                 if dec:
@@ -481,6 +625,25 @@ def fold_route_observed(events_path: str | None, *,
                         signals["gate_outcomes"].get(dec, 0) + 1
     except Exception:
         pass
+    # Combine the read fact with the "makes claims" test (§6, over-route safe).
+    # A STRONG channel (external / knowledge contact) + ANY non-empty output
+    # suspects regardless of length — a terse grounded answer ("4.1%") must not
+    # be under-routed (the unsafe direction); with no output available (rare) a
+    # strong channel still over-routes. Ambiguous local-only reads require a
+    # substantive deliverable, to avoid firing on a read-to-edit turn whose
+    # output is a trivial acknowledgement.
+    if _src_any:
+        if _src_always:
+            signals["source_read_suspected"] = (
+                output_text is None or bool(output_text.strip()))
+        else:
+            signals["source_read_suspected"] = _output_is_substantive(output_text)
+    signals["source_read_channels"] = sorted(c for c in _src_channels if c)
+    if len(_src_candidates) > _MAX_SOURCE_CANDIDATES:
+        signals["source_candidate_reads"] = _src_candidates[:_MAX_SOURCE_CANDIDATES]
+        signals["source_candidate_reads_truncated"] = True
+    else:
+        signals["source_candidate_reads"] = _src_candidates
     return signals
 
 
@@ -817,20 +980,24 @@ def apply_criteria(context_pkg: dict, instruction: str, risk_tier: str, *,
     return "WARN:" + msg + " Proceeding without pre-set criteria."
 
 
-def record_route_observed(turn_key, risk_tier: str | None = None) -> dict:
+def record_route_observed(turn_key, risk_tier: str | None = None, *,
+                          output_text: str | None = None) -> dict:
     """Best-effort after-clock record on ANY terminal path (condition 7).
     ``turn_key`` is either a trace-dir path (str) or a (conversation_id,
-    turn_ts) tuple for global-sink turns. Never raises."""
+    turn_ts) tuple for global-sink turns. ``output_text`` (Phase 3, optional)
+    is the produced deliverable; it drives the source-read "makes claims"
+    over-approximation. Never raises."""
     try:
         if isinstance(turn_key, (tuple, list)) and len(turn_key) == 2:
             conv, ts = turn_key
             signals = fold_route_observed(_te.global_sink_path(),
-                                          conversation_id=conv, turn_ts=ts)
+                                          conversation_id=conv, turn_ts=ts,
+                                          output_text=output_text)
         elif turn_key:
             path = os.path.join(str(turn_key), "tool-events.jsonl")
-            signals = fold_route_observed(path)
+            signals = fold_route_observed(path, output_text=output_text)
         else:
-            signals = fold_route_observed(None)
+            signals = fold_route_observed(None, output_text=output_text)
         divergence = None
         # The one divergence check well-defined in Phase 2 (no output_type
         # until Phase 4): a standard-or-lower turn that mutated beyond its
@@ -838,11 +1005,31 @@ def record_route_observed(turn_key, risk_tier: str | None = None) -> dict:
         if risk_tier in ("light", "standard") and signals["any_mutation"] \
                 and signals["max_mutability"] in ("external_write", "irreversible"):
             divergence = f"{risk_tier}-tier turn observed {signals['max_mutability']}"
+        # Judge condition 2: the event's sensitivity/egress reflect the folded
+        # max (honest classification) rather than a hardcoded public — and
+        # source_candidate_reads is already public-safe by construction (a
+        # read's `what` rides in only from a public read), so the nested payload
+        # is safe even though _redact_for_record does not recurse into
+        # route_signals. CAP the stamped sensitivity below 'secret': the payload
+        # is public-safe and deliberately persists, so it must not claim the
+        # secret "existence-only / never-in-a-packet" contract (which the
+        # redactor half-applies without recursing); 'sensitive' is the honest
+        # ceiling, and the secret fact itself is still recorded inside
+        # route_signals.max_sensitivity.
+        _stamp_sens = signals.get("max_sensitivity", "public")
+        if _stamp_sens == "secret":
+            _stamp_sens = "sensitive"
+        # Promote the routing verdict to a TOP-LEVEL field (also in the
+        # truncation keep-set) so it survives even if a pathological turn's
+        # route_signals block is byte-truncated at write (finding [5]).
         _te.record({"event": "route_observed", "action": "route_observed",
                     "category": "execute", "mutability": "read",
-                    "sensitivity": "public", "egress": "none",
+                    "sensitivity": _stamp_sens,
+                    "egress": signals.get("max_egress", "none"),
                     "enforcement_model": "in_harness",
                     "risk_tier": risk_tier,
+                    "source_read_suspected": signals.get("source_read_suspected",
+                                                         False),
                     "route_signals": signals, "divergence": divergence})
         return {"signals": signals, "divergence": divergence}
     except Exception:

@@ -2957,7 +2957,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         _rgate.record_route_observed(
             trace_dir or ((_te_srv.get_turn_context() or {}).get("conversation_id"),
                           context_pkg.get("_route_turn_ts") or ""),
-            risk_tier=context_pkg.get("risk_tier"))
+            risk_tier=context_pkg.get("risk_tier"),
+            output_text=response)  # Phase 3: drives the source-read signal
     except Exception:
         pass
 
@@ -3275,7 +3276,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             # Finding 3: record route_observed on the framework terminal path.
             try:
                 _rgate_fw.record_route_observed(
-                    (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
+                    (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv,
+                    output_text=result_text)  # Phase 3: source-read signal
             except Exception:
                 pass
             return
@@ -3736,7 +3738,8 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
             try:
                 _rgate_ds.record_route_observed(
                     (panel_id, _route_turn_ts_ds),
-                    risk_tier=_r_ds.get("risk_tier"))
+                    risk_tier=_r_ds.get("risk_tier"),
+                    output_text=clean)  # Phase 3: source-read signal
             except Exception:
                 pass
             return
@@ -3791,7 +3794,8 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
     # calls ran); record route_observed here too so this path isn't missed.
     try:
         _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
-                                        risk_tier=_r_ds.get("risk_tier"))
+                                        risk_tier=_r_ds.get("risk_tier"),
+                                        output_text=clean)  # Phase 3
     except Exception:
         pass
 

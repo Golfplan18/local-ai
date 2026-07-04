@@ -9186,14 +9186,18 @@ def run_pipeline(user_input: str, history: list = None,
             except Exception:
                 pass
             # Finding 3: record route_observed on this framework terminal
-            # path (try/finally so a failed run still records).
+            # path (try/finally so a failed run still records). Phase 3 (judge
+            # Q4): capture the output var so the source-read "makes claims"
+            # test runs here too — removes the lone output-unavailable path.
+            _fw_out = None
             try:
-                return run_framework_command(user_input, config)
+                _fw_out = run_framework_command(user_input, config)
+                return _fw_out
             finally:
                 try:
                     _rgate.record_route_observed(
                         trace_dir or (conversation_id, _fw_ts or ""),
-                        risk_tier=_fw_tier)
+                        risk_tier=_fw_tier, output_text=_fw_out)
                 except Exception:
                     pass
         try:
@@ -9412,7 +9416,8 @@ def run_pipeline(user_input: str, history: list = None,
         _rgate.record_route_observed(
             trace_dir or (conversation_id,
                           context_pkg.get("_route_turn_ts") or ""),
-            risk_tier=context_pkg.get("risk_tier"))
+            risk_tier=context_pkg.get("risk_tier"),
+            output_text=response)  # Phase 3: drives the source-read signal
     except Exception:
         pass
 
