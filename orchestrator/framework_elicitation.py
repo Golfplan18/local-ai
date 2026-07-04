@@ -315,14 +315,18 @@ def _produce_deliverable(
                                 surface="framework", risk_tier=_dl_tier)
     except Exception:
         pass
+    result = None
     try:
         result = execute_framework(fw_filename, deliverable_input, config=config)
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"
     finally:
         try:
+            # Phase 3: pass the produced deliverable so the source-read "makes
+            # claims" test runs; None when execution failed (no grounded output).
+            _dl_out = format_execution_result(result) if result is not None else None
             _rgate.record_route_observed((conversation_id, _dl_turn_ts or ""),
-                                         risk_tier=_dl_tier)
+                                         risk_tier=_dl_tier, output_text=_dl_out)
         except Exception:
             pass
 

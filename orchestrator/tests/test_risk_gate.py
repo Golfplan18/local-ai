@@ -588,6 +588,318 @@ class TestRouteObserved(unittest.TestCase):
         self.assertIn("signals", out)
 
 
+class TestSourceReadSignal(unittest.TestCase):
+    """Execution Review Phase 3 — the §6 signal-2 source-read
+    over-approximation folded from the tool-event log (judge conditions 1+2)."""
+
+    def _write(self, events):
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "tool-events.jsonl")
+        with open(p, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+        return p
+
+    @staticmethod
+    def _read_ev(action, *, sensitivity="private", reads=None, ok=True,
+                 decision="allowed", mutability="read"):
+        ev = {"action": action, "mutability": mutability,
+              "sensitivity": sensitivity,
+              "exit": {"ok": ok}, "gate": {"decision": decision}}
+        if reads is not None:
+            ev["reads"] = reads
+        return ev
+
+    _SUBSTANTIVE = "This is a substantive grounded answer well over the floor."
+    _TRIVIAL = "ok"
+
+    # ── the core over-approximation ─────────────────────────────────────────
+    def test_strong_channel_substantive_output_suspected(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x.example/a", "where": "network",
+                    "content_hash": "abc123"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])
+        self.assertEqual(s["source_read_channels"], ["web_fetch"])
+
+    def test_ambiguous_local_substantive_suspected(self):
+        # Q1=A: over-approximate local reads to source.
+        p = self._write([self._read_ev(
+            "file_read", reads=[{"what": "/w/note.md", "where": "local",
+                                 "content_hash": "d00d"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])
+
+    def test_ambiguous_local_trivial_output_not_suspected(self):
+        # An ambiguous local read whose output is a trivial ack (read-to-edit)
+        # does NOT suspect — the substantive floor applies to local-only turns.
+        p = self._write([self._read_ev(
+            "file_read", reads=[{"what": "/w/x", "where": "local"}])])
+        s = rg.fold_route_observed(p, output_text=self._TRIVIAL)
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_strong_channel_short_output_suspected(self):
+        # §6 asymmetry: a strong channel + a terse grounded answer must NOT be
+        # under-routed by the length floor (finding [4]).
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text="4.1%")
+        self.assertTrue(s["source_read_suspected"])
+
+    def test_strong_channel_empty_output_not_suspected(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text="   ")
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_mcp_read_counts_as_source(self):
+        # Finding [0]/[3]: an instrumented read-only MCP call is opaque external
+        # source contact and must trip signal 2 (event=='mcp' + mutability read).
+        p = self._write([{"event": "mcp", "action": "mcp_docs_search",
+                          "mutability": "read", "sensitivity": "private",
+                          "exit": {"ok": True}, "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])
+        self.assertIn("mcp_docs_search", s["source_read_channels"])
+
+    def test_mcp_read_short_output_suspected(self):
+        # Judge code-review condition: MCP is a STRONG channel, so a terse
+        # grounded answer after a successful MCP read must still suspect (not be
+        # dropped by the 24-char substantive floor).
+        p = self._write([{"event": "mcp", "action": "mcp_db_query",
+                          "mutability": "read", "sensitivity": "private",
+                          "exit": {"ok": True}, "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text="Yes.")
+        self.assertTrue(s["source_read_suspected"])
+
+    def test_mcp_read_empty_output_not_suspected(self):
+        # Strong-channel semantics: an empty output still does not suspect.
+        p = self._write([{"event": "mcp", "action": "mcp_db_query",
+                          "mutability": "read", "sensitivity": "private",
+                          "exit": {"ok": True}, "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text="   ")
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_mcp_write_not_source(self):
+        p = self._write([{"event": "mcp", "action": "mcp_github_create_issue",
+                          "mutability": "external_write", "mutated": True,
+                          "sensitivity": "private", "exit": {"ok": True},
+                          "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_rag_read_substantive_suspected(self):
+        # Judge Q3: rag_read trips signal 2 on substantive RAG-grounded output.
+        p = self._write([self._read_ev(
+            "rag_read", reads=[{"what": "chromadb:knowledge", "where": "local",
+                                "chars": 900}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])
+        self.assertIn("rag_read", s["source_read_channels"])
+
+    def test_no_source_read_not_suspected(self):
+        # A pure mutation turn (file_write) with substantive output.
+        p = self._write([{"action": "file_write", "mutability": "reversible_write",
+                          "mutated": True, "sensitivity": "private",
+                          "exit": {"ok": True}, "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertFalse(s["source_read_suspected"])
+        self.assertEqual(s["source_candidate_reads"], [])
+
+    # ── output-unavailable fallback ─────────────────────────────────────────
+    def test_output_none_strong_channel_suspected(self):
+        p = self._write([self._read_ev(
+            "knowledge_search",
+            reads=[{"what": "chromadb:knowledge:q", "where": "local"}])])
+        s = rg.fold_route_observed(p, output_text=None)
+        self.assertTrue(s["source_read_suspected"])  # strong → over-route
+
+    def test_output_none_ambiguous_only_not_suspected(self):
+        p = self._write([self._read_ev(
+            "file_read", reads=[{"what": "/w/x", "where": "local"}])])
+        s = rg.fold_route_observed(p, output_text=None)
+        self.assertFalse(s["source_read_suspected"])
+
+    # ── judge condition 1: actually-ran + allowlist ─────────────────────────
+    def test_blocked_read_is_not_a_source_read(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public", decision="blocked",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertFalse(s["source_read_suspected"])
+        self.assertEqual(s["source_read_channels"], [])
+
+    def test_queued_read_is_not_a_source_read(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public", decision="queued",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_failed_read_exit_not_ok_excluded(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public", ok=False,
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertFalse(s["source_read_suspected"])
+
+    def test_telemetry_actions_excluded(self):
+        # task_tier / acceptance_criteria / route_observed carry mutability
+        # read but must never count as source reads.
+        for action in ("task_tier", "acceptance_criteria", "route_observed"):
+            p = self._write([{"action": action, "mutability": "read",
+                              "sensitivity": "public", "exit": {"ok": True},
+                              "gate": {"decision": "allowed"}}])
+            s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+            self.assertFalse(s["source_read_suspected"], action)
+
+    def test_shell_read_counts_as_ambiguous(self):
+        p = self._write([{"action": "bash:read", "mutability": "read",
+                          "sensitivity": "private", "exit": {"ok": True},
+                          "gate": {"decision": "allowed"}}])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])
+        self.assertIn("bash:read", s["source_read_channels"])
+
+    # ── judge condition 2: public-safe candidate shape ──────────────────────
+    def test_public_read_keeps_what(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x.example/a", "where": "network",
+                    "content_hash": "abc123"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        cand = s["source_candidate_reads"][0]
+        self.assertEqual(cand["what"], "https://x.example/a")
+        self.assertEqual(cand["content_hash"], "abc123")
+        self.assertEqual(cand["action"], "web_fetch")
+
+    def test_private_read_drops_what(self):
+        p = self._write([self._read_ev(
+            "file_read", sensitivity="private",
+            reads=[{"what": "/w/secret_plan.md", "where": "local",
+                    "content_hash": "d00d"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        cand = s["source_candidate_reads"][0]
+        self.assertNotIn("what", cand)          # path never rides into summary
+        self.assertEqual(cand["content_hash"], "d00d")  # hash is safe
+        self.assertEqual(cand["where"], "local")
+
+    def test_sensitive_read_drops_what(self):
+        p = self._write([self._read_ev(
+            "file_read", sensitivity="sensitive",
+            reads=[{"what": "[SENSITIVE PATH]", "where": "local"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        cand = s["source_candidate_reads"][0]
+        self.assertNotIn("what", cand)
+
+    def test_fold_max_sensitivity_reflects_read(self):
+        # Condition 2 basis: the fold's max_sensitivity rises with a sensitive
+        # read, and record_route_observed stamps that onto the event (below).
+        p = self._write([self._read_ev(
+            "file_read", sensitivity="sensitive",
+            reads=[{"what": "[SENSITIVE PATH]", "where": "local"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertEqual(s["max_sensitivity"], "sensitive")
+
+    def test_record_route_observed_stamps_folded_sensitivity(self):
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "tool-events.jsonl")
+        with open(p, "w") as f:
+            f.write(json.dumps(self._read_ev(
+                "file_read", sensitivity="sensitive",
+                reads=[{"what": "[SENSITIVE PATH]", "where": "local"}])) + "\n")
+        with mock.patch.object(te, "record") as m_rec:
+            rg.record_route_observed(d, risk_tier="standard",
+                                     output_text=self._SUBSTANTIVE)
+        self.assertTrue(m_rec.called)
+        rec = m_rec.call_args[0][0]
+        self.assertEqual(rec["sensitivity"], "sensitive")  # not hardcoded public
+        # nested payload is public-safe regardless.
+        for cand in rec["route_signals"]["source_candidate_reads"]:
+            self.assertNotIn("what", cand)
+
+    def test_secret_fold_caps_event_at_sensitive(self):
+        # Finding [1]: a secret event in the window must NOT stamp the
+        # route_observed record 'secret' (that would half-apply the
+        # existence-only contract to a persisting public-safe payload) — cap at
+        # 'sensitive'.
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "tool-events.jsonl")
+        with open(p, "w") as f:
+            # a secret op in the same window (e.g. credential_store) + a real
+            # web read that grounds the output.
+            f.write(json.dumps({"action": "credential_store",
+                                "mutability": "reversible_write",
+                                "sensitivity": "secret", "exit": {"ok": True},
+                                "gate": {"decision": "allowed"}}) + "\n")
+            f.write(json.dumps(self._read_ev(
+                "web_fetch", sensitivity="public",
+                reads=[{"what": "https://x", "where": "network"}])) + "\n")
+        with mock.patch.object(te, "record") as m_rec:
+            rg.record_route_observed(d, risk_tier="standard",
+                                     output_text=self._SUBSTANTIVE)
+        rec = m_rec.call_args[0][0]
+        self.assertEqual(rec["route_signals"]["max_sensitivity"], "secret")
+        self.assertEqual(rec["sensitivity"], "sensitive")  # capped, not secret
+
+    def test_record_promotes_suspected_to_top_level(self):
+        # Finding [5]: the routing verdict rides at top level (and the
+        # truncation keep-set) so it survives a byte-truncated record.
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "tool-events.jsonl")
+        with open(p, "w") as f:
+            f.write(json.dumps(self._read_ev(
+                "web_fetch", sensitivity="public",
+                reads=[{"what": "https://x", "where": "network"}])) + "\n")
+        with mock.patch.object(te, "record") as m_rec:
+            rg.record_route_observed(d, risk_tier="standard",
+                                     output_text=self._SUBSTANTIVE)
+        rec = m_rec.call_args[0][0]
+        self.assertTrue(rec["source_read_suspected"])  # top-level, not only nested
+        self.assertTrue(rec["route_signals"]["source_read_suspected"])
+
+    # ── additive shape / never-raises ───────────────────────────────────────
+    def test_additive_shape_preserves_phase2_keys(self):
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        for k in ("any_mutation", "max_mutability", "reads_present",
+                  "max_sensitivity", "max_egress", "gate_outcomes",
+                  "events_scanned", "source_read_suspected",
+                  "source_read_channels", "source_candidate_reads",
+                  "source_candidate_reads_truncated"):
+            self.assertIn(k, s)
+        self.assertTrue(s["reads_present"])  # Phase-2 boolean still fires
+
+    def test_candidates_capped_and_flagged(self):
+        # A very heavy turn's candidate list is bounded + flagged so the whole
+        # route_signals block can't be truncated away past MAX_LINE_BYTES; the
+        # routing boolean is unaffected by the cap.
+        many = [self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": f"https://x/{i}", "where": "network",
+                    "content_hash": f"h{i}"}])
+            for i in range(rg._MAX_SOURCE_CANDIDATES + 20)]
+        p = self._write(many)
+        s = rg.fold_route_observed(p, output_text=self._SUBSTANTIVE)
+        self.assertTrue(s["source_read_suspected"])           # signal intact
+        self.assertTrue(s["source_candidate_reads_truncated"])  # flagged, not silent
+        self.assertEqual(len(s["source_candidate_reads"]),
+                         rg._MAX_SOURCE_CANDIDATES)
+
+    def test_output_text_default_none_back_compat(self):
+        # Existing positional callers (no output_text) still work.
+        p = self._write([self._read_ev(
+            "web_fetch", sensitivity="public",
+            reads=[{"what": "https://x", "where": "network"}])])
+        s = rg.fold_route_observed(p)  # no output_text
+        self.assertTrue(s["source_read_suspected"])  # strong-channel fallback
+
+
 class TestSticky(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
