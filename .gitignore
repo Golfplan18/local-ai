@@ -139,3 +139,18 @@ data/claude-code-runs/
 
 # Generated preview artifact (PR-A vendor-authoritative registry build)
 config/model-registry.vendor-authoritative.json
+
+# Execution Review runtime state (per-machine, regenerable). The tool-event log
+# is the Phase-1 global sink (orchestrator/tool_events.py global_sink_path); the
+# approval store + its lock are the Phase-2 task-approval tokens (risk_gate.py).
+data/tool-events.jsonl
+data/execution-approvals.json
+data/execution-approvals.json.lock
+
+# Per-machine runtime pointers + user stores (like data/active-configuration.json).
+data/active-project.json
+data/custom-styles.json
+
+# Retention-sweeper archive of rotated runtime logs (regenerable; see
+# orchestrator/retention_sweeper.py — data/*.jsonl rotated here when oversized).
+data/archive/
