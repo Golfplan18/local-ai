@@ -309,14 +309,16 @@ class TestConstruction(unittest.TestCase):
                           output_text="   ", risk_tier="light", trace_dir=d))
         self.assertFalse(os.path.exists(os.path.join(d, ep._PACKET_FILENAME)))
 
-    def test_construct_and_write_writes_trace_local(self):
+    def test_construct_and_write_writes_git_only_tier(self):
         d = tempfile.mkdtemp()
         ref = ep.construct_and_write(signals=_sig(any_mutation=True), context_pkg={"raw_prompt": "p"},
                                      output_text="deliverable", risk_tier="standard", trace_dir=d)
         self.assertEqual(ref, os.path.join(d, ep._PACKET_FILENAME))
         self.assertTrue(os.path.exists(ref))
         pkt = json.load(open(ref))
-        self.assertEqual(pkt["persistence"]["tier"], "trace_local")
+        # Phase 7: the build-time default §14 tier is git_only (was the "trace_local" placeholder);
+        # the common self-evidencing path never promotes above git_only. Nothing reads this value.
+        self.assertEqual(pkt["persistence"]["tier"], "git_only")
 
     def test_write_failure_is_observable(self):
         # a caught write failure stamps EXACTLY ONE marker (never silently vanishes).

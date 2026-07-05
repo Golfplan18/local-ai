@@ -403,7 +403,11 @@ def build_execution_packet(*, signals: dict | None, context_pkg: dict | None = N
             judgment_lanes=judgment_lanes,
             verification=verification,
             loop=None,
-            persistence={"tier": "trace_local", "redacted": "phase3-public-safe-source-reads"},
+            # §14 default is the CHEAPEST tier ("do not default to durable"); Phase-7
+            # execution_persistence.persist_packet recomputes/promotes at the loop terminal
+            # (before write_packet, so the trace JSON records the final tier). "trace_local" was
+            # the Phase-4 placeholder — not one of the three §14 tiers.
+            persistence={"tier": "git_only", "redacted": None},
             observed=observed,
         )
     except Exception as e:
