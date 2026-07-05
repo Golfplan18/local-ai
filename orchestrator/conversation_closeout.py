@@ -557,6 +557,28 @@ def _purge_stealth(
     except Exception as e:
         errors.append(f"indexing_failures_log: {e}")
 
+    # --- Layer 10: Execution-review durable store (Phase 7) ------------------
+    # The non-git operational store data/execution-records/ holds the tiered-
+    # persistence ledger + per-conversation durable notes. Write-time stealth
+    # gating (execution_persistence.persist_packet) is primary; this is the
+    # post-hoc backstop for a conversation marked stealth AFTER a durable record
+    # was written for a normal turn. execution_persistence.purge_conversation
+    # reads its own roots at call time (the Layers 6a/8/9 idiom): it rmtree's the
+    # per-conversation note subdir (the store is git-ignored → no history residue)
+    # and scrubs the ledger jsonl by conversation_id (Layer-9 style).
+    deleted["execution_records"] = {}
+    try:
+        try:
+            import execution_persistence as _epersist
+        except ImportError:  # pragma: no cover
+            from orchestrator import execution_persistence as _epersist
+        _er_res = _epersist.purge_conversation(conversation_id)
+        deleted["execution_records"] = _er_res
+        for _e in (_er_res.get("errors") or []):
+            errors.append(f"execution_records: {_e}")
+    except Exception as e:
+        errors.append(f"execution_records: {e}")
+
     return {
         "conversation_id": conversation_id,
         "tag": "stealth",

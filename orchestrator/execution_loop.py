@@ -63,6 +63,11 @@ try:
 except ImportError:  # pragma: no cover
     from orchestrator import evidence_runner as _er
 
+try:  # Phase 7 — tiered persistence at the terminal (§14)
+    import execution_persistence as _epersist
+except ImportError:  # pragma: no cover
+    from orchestrator import execution_persistence as _epersist
+
 
 # ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
 MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
@@ -850,6 +855,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
         sig = signals if signals is not None else engage_signals(ro)
         any_mut = bool(sig.get("any_mutation"))
         src_read = bool(sig.get("source_read_suspected"))
+        # The FULL folded signals (carries max_sensitivity — the redaction driver, §7). engage_signals
+        # returns only the two §6 booleans, so source max_sensitivity from the full ro/signals dict.
+        full_signals = (signals if signals is not None else (ro or {}).get("signals")) or {}
 
         # Thread the planning-stage acceptance criteria + contract into the packet so
         # the renderer shows them (or fires its LOUD absence fence). At light there is
@@ -876,6 +884,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
             _mark_failure(RuntimeError(
                 "provenance evidence owed — the claim-to-source map is Phase 8"),
                 "execution_loop_owed_provenance")
+            # Phase 7: set the §14 tier (source-read-only owed → git_only) BEFORE write_packet.
+            _epersist.persist_packet(packet, sig=full_signals, context_pkg=context_pkg,
+                                     trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
             _ep.write_packet(packet, trace_dir)
             return None
 
@@ -1027,6 +1038,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                 # The packet is recorded trace-local (never silently discarded).
                 loop_state["stop_condition"] = None
                 loop_state["escalation"] = None
+                # Phase-7 promotion signal: a hard non-convergence (tried to escalate, no §13 branch)
+                # is genuinely informative → durable_note. A structural flag, not a note-substring match.
+                loop_state["escalation_withheld"] = True
                 loop_state["note"] = (
                     "escalation WITHHELD — evidence escalation but no inspectable §13 "
                     "abandoned-attempt branch could be created (base-unknown / no repo / "
@@ -1057,6 +1071,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
         }
         _ep.populate_loop_fields(packet, planning=planning, verification=verification,
                                  execution=execution, loop=loop_state, now_iso=now_iso)
+        # Phase 7 (§14): decide the durable-memory tier + do the durable write (ledger / note) BEFORE
+        # write_packet, so the trace JSON records the final tier. Never raises; stealth-gated; a
+        # git_only turn writes nothing durable (parity). Reads max_sensitivity off full_signals.
+        _epersist.persist_packet(packet, sig=full_signals, context_pkg=context_pkg,
+                                 trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
         packet_path = _ep.write_packet(packet, trace_dir)
 
         if escalation is not None:

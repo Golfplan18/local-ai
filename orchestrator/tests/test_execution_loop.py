@@ -20,6 +20,33 @@ if str(_ORCH) not in sys.path:
 import execution_loop as el  # noqa: E402
 import execution_packet as ep  # noqa: E402
 import evidence_runner as er  # noqa: E402
+import execution_persistence as epx  # noqa: E402
+
+
+_STORE_ENV: dict = {}
+
+
+def setUpModule():
+    # Phase 7: run_loop's terminal now calls execution_persistence.persist_packet, which writes to
+    # the operational store data/execution-records/. Redirect it to a tempdir for the whole module so
+    # the suite never touches the real ~/ora store (or the live server's store).
+    d = tempfile.mkdtemp(prefix="er-loop-store-")
+    _STORE_ENV["dir"] = d
+    for k, v in (("ORA_EXECUTION_RECORDS_DIR", d),
+                 ("ORA_EXECUTION_LEDGER_PATH", os.path.join(d, "execution-ledger.jsonl"))):
+        _STORE_ENV[k] = os.environ.get(k)
+        os.environ[k] = v
+
+
+def tearDownModule():
+    import shutil
+    for k in ("ORA_EXECUTION_RECORDS_DIR", "ORA_EXECUTION_LEDGER_PATH"):
+        prev = _STORE_ENV.get(k)
+        if prev is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = prev
+    shutil.rmtree(_STORE_ENV.get("dir", ""), ignore_errors=True)
 
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -512,6 +539,28 @@ class TestRunLoop(unittest.TestCase):
         self.assertEqual(pkt.verification["reviewer_a"]["family"], "gpt")
         self.assertIsNone(revised)
         self.assertEqual(pushes, [])
+
+    def test_converged_turn_is_git_only(self):
+        # Phase 7 parity: a clean converge earns the cheapest tier — no durable record.
+        pkt, _, _ = self._run({"any_mutation": True}, V_PASS, FakeRunner(sufficient=True))
+        self.assertEqual(pkt.status, "converged")
+        self.assertEqual(epx.decide_tier(pkt), epx.TIER_GIT_ONLY)
+
+    def test_escalation_persists_durable_note_and_ledger(self):
+        # Phase 7 end-to-end wiring: an escalated turn drives persist_packet at the run_loop
+        # terminal, writing a durable_note markdown record + its ledger index (into the redirected
+        # store). Proves the terminal actually reaches the persistence layer.
+        import json as _json
+        pkt, _, _ = self._run({"any_mutation": True}, V_FAIL_HIGH, FakeRunner(sufficient=False))
+        self.assertEqual(pkt.status, "escalated")
+        self.assertEqual(pkt.persistence["tier"], epx.TIER_DURABLE_NOTE)
+        lp = epx.ledger_sink_path()
+        self.assertTrue(os.path.exists(lp), "run_loop terminal did not write the ledger")
+        with open(lp) as _f:
+            durable = [_json.loads(l) for l in _f
+                       if l.strip() and _json.loads(l).get("tier") == "durable_note"]
+        self.assertTrue(durable, "no durable_note ledger line for the escalated turn")
+        self.assertTrue(os.path.exists(durable[-1]["note_ref"]))
 
     def test_escalate_on_high_severity(self):
         pkt, revised, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
