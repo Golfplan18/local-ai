@@ -9050,6 +9050,70 @@ def _make_criteria_invoker(config: dict, config_name: str | None):
     return _invoke
 
 
+def _make_execution_verify_invoker(config: dict, config_name: str | None):
+    """Execution Review Phase 6: the verify-slot model-call callback
+    ``(system, user, endpoint) -> str`` for the different-family execution-review
+    verify. Calls the SELECTED endpoint (chosen by the loop's family selector), never
+    a fixed slot — so the diversity requirement is honoured. None-safe: returns "" on
+    a missing endpoint / failed call so the verify degrades rather than raising."""
+    def _invoke(system: str, user: str, endpoint: dict | None) -> str:
+        try:
+            if endpoint is None:
+                return ""
+            return call_model([{"role": "system", "content": system},
+                               {"role": "user", "content": user}], endpoint)
+        except Exception:
+            return ""
+    return _invoke
+
+
+def _execution_review_terminal(ro: dict | None, response: str, context_pkg: dict,
+                               trace_dir: str | None, stealth: bool,
+                               config: dict, config_name: str | None) -> str:
+    """Execution Review terminal dispatch (shared by ``run_pipeline`` +
+    ``server._run_pipeline_from_step2``). When the Phase-6 loop is enabled
+    (``ORA_EXECUTION_LOOP``) AND the turn is non-self-evidencing (a §6 signal fired),
+    build the packet and run the loop (Capture → dual-family verify → stop/escalate),
+    returning the (possibly revised) response. Otherwise build the Phase-4 record
+    packet exactly as before — byte-identical, zero regression. NEVER raises."""
+    try:
+        try:
+            import execution_loop as _el
+        except ImportError:  # pragma: no cover
+            from orchestrator import execution_loop as _el
+        if _el.loop_enabled() and _el.should_engage(ro):
+            try:
+                from execution_packet import build_execution_packet as _bep
+            except ImportError:  # pragma: no cover
+                from orchestrator.execution_packet import build_execution_packet as _bep
+            pkt = _bep(
+                signals=(ro or {}).get("signals"), context_pkg=context_pkg,
+                output_text=response, risk_tier=context_pkg.get("risk_tier"),
+                declared_output_type=context_pkg.get("output_type", "unknown"),
+                consistency=(ro or {}).get("consistency"),
+                trace_ref=str(trace_dir) if trace_dir else None)
+            revised = _el.run_loop(
+                packet=pkt, context_pkg=context_pkg, response=response, ro=ro,
+                risk_tier=context_pkg.get("risk_tier"), trace_dir=trace_dir,
+                stealth=stealth, config=config, config_name=config_name,
+                verify_invoker=_make_execution_verify_invoker(config, config_name),
+                actuator=None)   # first landing: no live gear re-invocation (OQ1)
+            return revised if revised is not None else response
+        # Phase-4 record path — unchanged (byte-identical on every turn when the loop
+        # is disabled OR the turn is self-evidencing).
+        try:
+            from execution_packet import construct_and_write as _cw
+        except ImportError:  # pragma: no cover
+            from orchestrator.execution_packet import construct_and_write as _cw
+        _cw(signals=(ro or {}).get("signals"), context_pkg=context_pkg,
+            output_text=response, risk_tier=context_pkg.get("risk_tier"),
+            declared_output_type=context_pkg.get("output_type", "unknown"),
+            consistency=(ro or {}).get("consistency"), trace_dir=trace_dir)
+        return response
+    except Exception:
+        return response
+
+
 def run_pipeline(user_input: str, history: list = None,
                  output_target: str = "screen",
                  execution_context: str = "interactive",
@@ -9330,6 +9394,19 @@ def run_pipeline(user_input: str, history: list = None,
             from orchestrator.evidence_runner import apply_evidence_contract as _aec
         _aec(context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
              invoker=_make_criteria_invoker(config, config_name))
+        # Execution Review Phase 6: PLANNING-STAGE pre-execution state seam (⚖ Rev-1
+        # judge P0). Capture the TRUE pre-execution git state BEFORE the gear/actuator
+        # runs (a terminal-time read would be POST-execution) — the exact base for
+        # execution.state_before AND the escalation-branch base. TIER-INDEPENDENT
+        # (⚖ Rev-2 P2: light included, decoupled from the standard+ Contract seam).
+        # Cheap git read, additive, never-raises; only fires when the loop is enabled
+        # (flag OFF → zero new runtime behaviour, parity preserved).
+        try:
+            import execution_loop as _el6
+        except ImportError:  # pragma: no cover
+            from orchestrator import execution_loop as _el6
+        if not stealth and _el6.loop_enabled():
+            _el6.snapshot_pre_execution(context_pkg)
     except Exception as _rge2:
         print(f"[risk-gate] tier/hold skipped: {_rge2}")
         _risk_warn = ""
@@ -9432,20 +9509,16 @@ def run_pipeline(user_input: str, history: list = None,
             risk_tier=context_pkg.get("risk_tier"),
             output_text=response,  # Phase 3: drives the source-read signal
             declared_output_type=context_pkg.get("output_type", "unknown"))
-        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket
-        # SEPARATELY from the already-folded signals (single fold; no packet ref on
-        # route_observed) and write it TRACE-LOCAL only. Guarded to a real
-        # deliverable + a trace dir + non-stealth turns (stealth inherits the
+        # Execution Review Phase 4/6: build the ExecutionPacket SEPARATELY from the
+        # already-folded signals (single fold; no packet ref on route_observed). On a
+        # self-evidencing turn (or when the loop is disabled) this is the Phase-4
+        # trace-local record, byte-identical. On a non-self-evidencing turn with the
+        # loop enabled it runs the Phase-6 Capture→verify→stop/escalate loop and may
+        # return a revised deliverable. Guarded to non-stealth (stealth inherits the
         # no-packet model). Never raises.
         if not stealth:
-            try:
-                from execution_packet import construct_and_write as _cw
-            except ImportError:  # pragma: no cover
-                from orchestrator.execution_packet import construct_and_write as _cw
-            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
-                output_text=response, risk_tier=context_pkg.get("risk_tier"),
-                declared_output_type=context_pkg.get("output_type", "unknown"),
-                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
+            response = _execution_review_terminal(
+                _ro, response, context_pkg, trace_dir, stealth, config, config_name)
     except Exception:
         pass
 

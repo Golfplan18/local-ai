@@ -2879,6 +2879,17 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             from orchestrator.evidence_runner import apply_evidence_contract as _aec
         _aec(context_pkg, _enriched, _tier,
              invoker=_make_server_criteria_invoker(config, config_name))
+        # Execution Review Phase 6: PLANNING-STAGE pre-execution state seam (⚖ Rev-1
+        # judge P0) — the server twin of run_pipeline's. Capture the TRUE pre-execution
+        # git state BEFORE the gear runs (a terminal-time read would be POST-execution).
+        # TIER-INDEPENDENT (⚖ Rev-2 P2). Additive + never-raises; only when the loop is
+        # enabled + non-stealth (flag OFF → zero new runtime behaviour).
+        try:
+            import execution_loop as _el6
+        except ImportError:  # pragma: no cover
+            from orchestrator import execution_loop as _el6
+        if conversation_tag != "stealth" and _el6.loop_enabled():
+            _el6.snapshot_pre_execution(context_pkg)
     except Exception as _rge_srv:
         print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
 
@@ -2982,19 +2993,21 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             risk_tier=context_pkg.get("risk_tier"),
             output_text=response,  # Phase 3: drives the source-read signal
             declared_output_type=context_pkg.get("output_type", "unknown"))
-        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket from
-        # the already-folded signals (single fold; no packet ref on route_observed)
-        # and write it TRACE-LOCAL only. Guarded to a real deliverable + trace dir +
-        # non-stealth. Never raises.
+        # Execution Review Phase 4/6: build the ExecutionPacket from the already-folded
+        # signals (single fold; no packet ref on route_observed). Self-evidencing turn
+        # (or loop disabled) → the Phase-4 trace-local record, byte-identical. Non-self-
+        # evidencing turn with the loop enabled → the Phase-6 Capture→verify→stop/
+        # escalate loop (records the packet + escalates). The response was already
+        # streamed on this path, so a revised deliverable cannot replace it; with
+        # actuator=None (first landing) the loop never revises anyway, so the return is
+        # ignored. Guarded to non-stealth. Never raises.
         if conversation_tag != "stealth":
             try:
-                from execution_packet import construct_and_write as _cw
+                from boot import _execution_review_terminal as _ert
             except ImportError:  # pragma: no cover
-                from orchestrator.execution_packet import construct_and_write as _cw
-            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
-                output_text=response, risk_tier=context_pkg.get("risk_tier"),
-                declared_output_type=context_pkg.get("output_type", "unknown"),
-                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
+                from orchestrator.boot import _execution_review_terminal as _ert
+            _ert(_ro, response, context_pkg, trace_dir,
+                 conversation_tag == "stealth", config, config_name)
     except Exception:
         pass
 
