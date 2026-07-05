@@ -56,6 +56,18 @@ export ORA_DELIVERABLE_SCRUB=1
 # See sync_model_registry.py::layer_openrouter_stats. Enabled 2026-06-29.
 export ORA_OR_STATS=1
 
+# Execution Review loop + tiered persistence (spec §15 Phases 6-7): on turns
+# that touch reality (a file mutation or a source-grounding read), the terminal
+# builds the ExecutionPacket, runs the evidence Capture + different-family
+# verify loop, converges or escalates to the Paused queue, and persists per the
+# §14 tier rule (git_only default; durable records only for escalated /
+# non-converged / plan-level-finding turns, in data/execution-records/).
+# Ordinary self-evidencing chat turns are unaffected (no extra model calls).
+# The revision actuator is not yet wired (actuator=None): a failed verify
+# escalates rather than self-revising. See orchestrator/execution_loop.py +
+# execution_persistence.py. Enabled 2026-07-05.
+export ORA_EXECUTION_LOOP=1
+
 # Kill any stale server process
 pkill -f "server/server.py" 2>/dev/null
 sleep 1
