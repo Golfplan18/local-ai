@@ -395,7 +395,7 @@ Four concrete failure modes follow if you do not solve this:
 
 A fifth, subtler failure sits underneath all of these: capability metadata drifts. A model's `vision_capable` flag, hand-entered into a config file, goes stale when a provider changes the model. The proof case was `kimi-k2.6`: a wrong `vision_capable: true` in `routing-config.json` routed image turns to a model that silently dropped the image, and the analyst ran blind with no error. Whatever fills each slot, something authoritative has to decide what that model can actually do.
 
-This chapter describes the subsystem that decides which concrete endpoint fills each named pipeline slot — for a given gear, execution context, and user-selected configuration — and dispatches the call while surviving all five failure modes. The eight-step pipeline that consumes these resolved endpoints is covered in [[Reference — Ora Pipeline Architecture]]; the concurrency primitives are canonicalized in [[Reference — Ora Concurrency Architecture]]; the per-slot Models pane UI is described in [[Reference — Ora Model Configuration]].
+This chapter describes the subsystem that decides which concrete endpoint fills each named pipeline slot — for a given gear, execution context, and user-selected configuration — and dispatches the call while surviving all five failure modes. The eight-step pipeline that consumes these resolved endpoints is covered in the Gear Pipeline & Mode Dispatch chapter; the concurrency primitives are canonicalized in [[Reference — Ora Concurrency Architecture]]; the per-slot Models pane UI is described in [[Reference — Ora Runtime Configuration]].
 
 ### Design Decision & Tradeoffs
 
@@ -1143,7 +1143,7 @@ Note a drift risk here that a reader must internalize: the script list inside `_
 
 **JS harness**: `server/static/ora-visual-compiler/tests/` with 39 case directories (verified: `ls tests/cases/` = 39), run via `node run.js`; plus a V3-dispatch case (`tests/cases/test-v3-visual-dispatch.js`, cited at 12 assertions in the module's audit note). Exact aggregate pass counts were not re-run in this pass — CLAUDE.md cites figures at various dates; treat those as stale until re-run.
 
-**Live-fire**: a Tier A run across the visual-bearing modes is recorded in the vault at [[Visual Intelligence Live-Fire Results 2026-04-18]].
+**Live-fire**: a Tier A run across the visual-bearing modes was executed during development on 2026-04-18.
 
 **How to confirm it works.** Emit an `ora-visual` block in an interactive turn and check `step-visual-hook.json` in the per-turn trace for `visuals_seen`/`visuals_suppressed`/`synthesized`. To confirm server render, call `_render_visual_svg(env)` on a known-good envelope and verify the SVG opens; a `browser render failed … cli fallback failed` string tells you which tier broke. To confirm recovery, feed a raw Mermaid block through a mode configured for a matching kind and check for `recovered: true` in the diagnostics.
 
@@ -1181,7 +1181,7 @@ The client compiler and Konva canvas are pure browser JavaScript with vendored, 
 | `WORKSPACE` / path form (`~/ora`, vault `~/Documents/vault`) | works | needs-porting | untested | untested | `os.path.expanduser("~/ora")` — tilde expands cross-platform, but a `%USERPROFILE%\ora` layout is untested and the vault path is Mac-specific. |
 | JS test harness (`tests/run.js`, jsdom) | works | untested | untested | untested | `cd tests && node run.js`; node/jsdom are cross-platform but run only on macOS. |
 
-No non-macOS server surface is claimed to work without evidence. The one surface with a *definite* off-Mac status is `media_capture.py`: its Windows path is coded-but-stubbed (raises `NotImplementedError`) and Linux is absent, so it is "not-implemented," not merely "untested." Cross-reference the media pipeline in [[Media & Capture]] and the render/export path in [[Vault Export]] for the adjacent Mac-bound tooling.
+No non-macOS server surface is claimed to work without evidence. The one surface with a *definite* off-Mac status is `media_capture.py`: its Windows path is coded-but-stubbed (raises `NotImplementedError`) and Linux is absent, so it is "not-implemented," not merely "untested." Cross-reference the Audio/Video Media & Timeline Editing chapter for the adjacent Mac-bound media-capture and render/export tooling.
 
 ## 11. Audio/Video Media & Timeline Editing
 
@@ -1189,7 +1189,7 @@ No non-macOS server surface is claimed to work without evidence. The one surface
 
 A user drops a screen recording into a conversation, wants to trim the dead air off the front, stack a title card over the first three seconds, watermark the corner, and export an MP4 — without opening a non-linear editor and without ever mutating the original file. Separately, they want the clip transcribed, the transcript filed as a searchable vault note, and the system to propose where the cuts should go.
 
-Without a dedicated subsystem, two failure modes dominate. The first is destructive editing: any pipeline that trims or re-encodes the source in place makes every edit irreversible and every "undo" a re-import. The second is the wrong tool. Ora already ships the Visual Intelligence diagram pipeline (see [[Reference — Visual Intelligence Architecture]]), which compiles typed JSON envelopes into SVG. Media editing is a categorically different problem — the artifacts are real audio/video files that only FFmpeg can produce, not vector graphics — and forcing it through the diagram compiler would produce nothing playable. This subsystem exists to give the conversation a non-destructive A/V editing layer that terminates in a real rendered file.
+Without a dedicated subsystem, two failure modes dominate. The first is destructive editing: any pipeline that trims or re-encodes the source in place makes every edit irreversible and every "undo" a re-import. The second is the wrong tool. Ora already ships the Visual Intelligence diagram pipeline (see the Visual Intelligence chapter), which compiles typed JSON envelopes into SVG. Media editing is a categorically different problem — the artifacts are real audio/video files that only FFmpeg can produce, not vector graphics — and forcing it through the diagram compiler would produce nothing playable. This subsystem exists to give the conversation a non-destructive A/V editing layer that terminates in a real rendered file.
 
 ### Design Decision & Tradeoffs
 
