@@ -924,12 +924,15 @@ def _rgate_tier_at_least(tier: str, floor: str) -> bool:
 
 
 # ── Dirty-state modes + git state snapshots (§9/§11) ──────────────────────────
-def _git(repo: str, args: list[str]) -> tuple[int, str]:
+def _git(repo: str, args: list[str], *, env: dict | None = None) -> tuple[int, str]:
     """``git -C <repo> <args>`` (mirrors ``engram_promotion._git``). Returns
-    (exit, stdout). Never raises."""
+    (exit, stdout). Never raises. Optional ``env`` overrides the child environment
+    (``None`` = inherit, identical to before) — the Phase-6 escalation-branch
+    primitive uses it to redirect ``GIT_INDEX_FILE`` so a tree snapshot is committed
+    onto an isolated branch WITHOUT touching the user's real index or HEAD."""
     try:
         r = subprocess.run(["git", "-C", repo, *args],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30, env=env)
         return r.returncode, (r.stdout or "").strip()
     except Exception as e:
         return 1, str(e)

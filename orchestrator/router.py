@@ -612,6 +612,70 @@ class Router:
 
         return None
 
+    def _post_analysis_candidate_ids(self, slot: str, context: str = "interactive",
+                                     config_name: str | None = None,
+                                     gear: int = 4) -> list:
+        """Ordered endpoint-id candidates for a post-analysis slot, WITHOUT
+        resolving (no mutex / circuit-breaker side effects): the cell's primary +
+        fallback[] for a named configuration, else the legacy bucket-walk order.
+        The family selector filters these; a pure config read."""
+        effective_config = self._resolve_config_name(config_name, context)
+        if effective_config is not None:
+            return self.get_slot_chain(slot, gear, config_name=effective_config)
+        pipeline = self.config.get("pipelines", {}).get(context, {})
+        post = pipeline.get("post_analysis", {})
+        cells = post.get("cells", {})
+        cell_config = cells.get(slot) if cells else None
+        bucket_order = (cell_config.get("buckets", [])
+                        if isinstance(cell_config, dict) else post.get("buckets", []))
+        ids: list = []
+        for bucket_name in bucket_order:
+            if bucket_name == "STOP":
+                break
+            for ep_id in self._buckets.get(bucket_name, []):
+                ids.append(ep_id)
+        return ids
+
+    def resolve_different_family(self, slot: str, exclude_family: str | None,
+                                 context: str = "interactive",
+                                 config_name: str | None = None,
+                                 gear: int = 4) -> dict | None:
+        """§12 different-family verify SELECTOR (Execution Review Phase 6).
+
+        Resolve a post-analysis slot (typically ``verification``) to an endpoint
+        whose ``training_family`` DIFFERS from ``exclude_family`` (the executor's
+        family) — the model-diversity governance rule: the lift comes from
+        *uncorrelated blind spots*, so a verifier that shares the executor's family
+        rubber-stamps it. Walks the slot's configured candidate chain (primary +
+        fallbacks for a named config; the bucket-walk order otherwise), skipping
+        ineligible (disabled / non-active) endpoints AND every candidate that is NOT
+        a CONFIRMED different family.
+
+        Returns a v1 endpoint dict, or ``None`` when no cross-family endpoint is
+        configured/available — ``None`` is the signal for the caller's single-family
+        graceful-degrade path (§12), never a silent breadth fallback (that fallback
+        would defeat the requirement). An UNKNOWN executor family (empty) or an
+        UNKNOWN candidate family yields ``None`` too: an unconfirmed difference must
+        not be presented as cross-family assurance. Pure config read; never raises."""
+        try:
+            exclude = (exclude_family or "").strip().lower()
+            for ep_id in self._post_analysis_candidate_ids(slot, context, config_name, gear):
+                if not ep_id:
+                    continue
+                resolved = self._resolve_endpoint_id(ep_id)
+                ep = self._endpoints.get(resolved)
+                if not ep or not ep.get("enabled", False) or ep.get("status") != "active":
+                    continue
+                fam = (ep.get("training_family") or "").strip().lower()
+                # Only a KNOWN family that differs from a KNOWN executor family
+                # counts as confirmed cross-family (§12 uncorrelated blind spots).
+                if not exclude or not fam or fam == exclude:
+                    continue
+                return self._to_v1_endpoint(ep)
+            return None
+        except Exception:
+            return None
+
     def resolve_full_pipeline(self, requested_gear: int,
                               context: str = "interactive",
                               config_name: str | None = None) -> dict:

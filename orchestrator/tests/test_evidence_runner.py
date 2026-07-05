@@ -658,5 +658,48 @@ class TestNoHardcodedPaths(unittest.TestCase):
         self.assertIn("right problem", src)
 
 
+# ── Phase 6: _git gained an optional env= (the escalation-branch GIT_INDEX_FILE) ──
+class TestGitEnvParam(unittest.TestCase):
+    def _repo(self):
+        d = tempfile.mkdtemp(prefix="er-gitenv-")
+        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
+        subprocess.run(["git", "-C", d, "config", "user.email", "t@t"], check=True)
+        subprocess.run(["git", "-C", d, "config", "user.name", "t"], check=True)
+        (Path(d) / "a.txt").write_text("x\n")
+        subprocess.run(["git", "-C", d, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", d, "commit", "-qm", "base"], check=True)
+        return d
+
+    def test_git_env_none_is_inherit(self):
+        d = self._repo()
+        rc, out = er._git(d, ["rev-parse", "--is-inside-work-tree"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "true")
+
+    def test_git_index_file_redirect_leaves_real_index_untouched(self):
+        d = self._repo()
+        # Stage a change into a THROWAWAY index; the real .git/index must stay clean —
+        # this is the isolation the Phase-6 escalation-branch primitive relies on.
+        (Path(d) / "b.txt").write_text("new\n")
+        fd, idx = tempfile.mkstemp(prefix="er-idx-")
+        os.close(fd)
+        os.unlink(idx)
+        env = dict(os.environ)
+        env["GIT_INDEX_FILE"] = idx
+        er._git(d, ["read-tree", "HEAD"], env=env)
+        er._git(d, ["add", "-A"], env=env)
+        rc, tree = er._git(d, ["write-tree"], env=env)
+        self.assertEqual(rc, 0)
+        try:
+            os.unlink(idx)
+        except OSError:
+            pass
+        # The user's REAL index is unaffected: b.txt still shows as untracked
+        # (never staged into .git/index), proving the redirect isolated it.
+        status = subprocess.run(["git", "-C", d, "status", "--porcelain"],
+                                capture_output=True, text=True).stdout
+        self.assertIn("?? b.txt", status)
+
+
 if __name__ == "__main__":
     unittest.main()

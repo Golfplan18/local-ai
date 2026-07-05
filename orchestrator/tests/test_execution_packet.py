@@ -436,5 +436,104 @@ class TestKeepSetSurvival(unittest.TestCase):
         self.assertIn('"consistency"', src)
 
 
+# ── Phase 6: populate_loop_fields fills the reserved §9 blocks (fill, not retrofit) ──
+class TestPopulateLoopFields(unittest.TestCase):
+    def _pkt(self, tier="standard"):
+        return ep.build_execution_packet(
+            signals=_sig(any_mutation=True), output_text="the deliverable",
+            context_pkg={"raw_prompt": "do x", "acceptance_criteria": "AC-1",
+                         "evidence_contract": {"required_standard_checks": ["build"]}},
+            risk_tier=tier)
+
+    def test_planning_block_from_context_threads_criteria_and_contract(self):
+        plan = ep.planning_block_from_context(
+            {"acceptance_criteria": "AC-1", "evidence_contract": {"x": 1}})
+        self.assertEqual(plan["converged_brief"]["acceptance_criteria"], "AC-1")
+        self.assertEqual(plan["evidence_contract"], {"x": 1})
+
+    def test_fills_each_reserved_block(self):
+        p = self._pkt()
+        self.assertIsNone(p.planning)          # reserved-empty before Phase 6
+        ep.populate_loop_fields(
+            p,
+            planning=ep.planning_block_from_context(
+                {"acceptance_criteria": "AC-1", "evidence_contract": {"required_standard_checks": ["build"]}}),
+            verification={"reviewer_a": {"endpoint": "v", "family": "gpt"},
+                          "confidence": 0.6,
+                          "findings": [{"severity": "low", "class": "execution_level", "description": "n"}],
+                          "invented_tests": [{"kind": "acceptance", "name": "t"}]},
+            execution={"mode": "review_dirty_diff", "state_before": {"head": "abc"},
+                       "state_after": {"head": "def"}, "enforcement_model": "orchestrated"},
+            loop={"iteration": 0, "stop_condition": "criteria_met"})
+        self.assertEqual(p.planning["converged_brief"]["acceptance_criteria"], "AC-1")
+        self.assertEqual(p.verification["reviewer_a"]["family"], "gpt")
+        self.assertEqual(p.verification["confidence"], 0.6)
+        self.assertEqual(p.execution["mode"], "review_dirty_diff")
+        self.assertEqual(p.execution["enforcement_model"], "orchestrated")
+        self.assertEqual(p.loop["stop_condition"], "criteria_met")
+        self.assertEqual(p.status, "converged")
+
+    def test_preserves_phase4_verification_and_execution_fields(self):
+        # Thread a text-review verdict via context_pkg['execution_review'] (Phase 4).
+        p = ep.build_execution_packet(
+            signals=_sig(any_mutation=True), output_text="deliverable",
+            context_pkg={"raw_prompt": "x",
+                         "execution_review": {"verdict": "PASS", "scope": "text_review"}},
+            risk_tier="standard")
+        pre_claim = p.execution["producer_claim"]["summary"]
+        ep.populate_loop_fields(p, verification={"reviewer_a": {"endpoint": "v"}, "confidence": 0.5},
+                                execution={"mode": "review_dirty_diff",
+                                           "enforcement_model": "orchestrated"})
+        # Phase-4 text-review verdict/scope preserved (the judgment-lane review, §5).
+        self.assertEqual(p.verification["text_review_verdict"], "PASS")
+        self.assertTrue(p.verification["scope"].startswith("text_review"))
+        # Phase-6 fields layered on top.
+        self.assertEqual(p.verification["reviewer_a"]["endpoint"], "v")
+        # Phase-4 producer_claim + delta preserved (Phase 6 owns only mode/state_*/enforcement).
+        self.assertEqual(p.execution["producer_claim"]["summary"], pre_claim)
+        self.assertIn("delta", p.execution)
+        self.assertEqual(p.execution["enforcement_model"], "orchestrated")
+
+    def test_reversible_flag_is_not_recomputed(self):
+        # high-risk == reversible:true is the §6 tier-boundary gate — NOT recomputed.
+        p = ep.build_execution_packet(signals=_sig(any_mutation=True), output_text="x",
+                                      context_pkg={"raw_prompt": "x"}, risk_tier="high-risk")
+        self.assertTrue(p.reversible)
+        ep.populate_loop_fields(p, loop={"iteration": 0, "stop_condition": "criteria_met"})
+        self.assertTrue(p.reversible)   # untouched
+
+    def test_light_planning_stays_none(self):
+        p = self._pkt(tier="light")
+        ep.populate_loop_fields(p, planning=None,
+                                loop={"iteration": 0, "stop_condition": None})
+        self.assertIsNone(p.planning)   # §9 tier-optional — correct, not incomplete
+        # renderer then fires the LOUD absence fence.
+        self.assertIn("NO ACCEPTANCE CRITERIA DECLARED", ep.render_for_review(p))
+
+    def test_render_shows_populated_criteria(self):
+        p = self._pkt()
+        ep.populate_loop_fields(p, planning=ep.planning_block_from_context(
+            {"acceptance_criteria": "AC-1"}))
+        r = ep.render_for_review(p)
+        self.assertIn("ACCEPTANCE CRITERIA", r)
+        self.assertIn("AC-1", r)
+        self.assertNotIn("NO ACCEPTANCE CRITERIA DECLARED", r)
+
+    def test_escalated_status_from_loop(self):
+        p = self._pkt()
+        ep.populate_loop_fields(p, loop={"iteration": 2,
+                                         "stop_condition": "max_iterations_escalated"})
+        self.assertEqual(p.status, "escalated")
+
+    def test_owed_evidence_lane_is_not_sufficient(self):
+        # an unfilled (owed) diff_validate lane must never read as sufficient (§16-2).
+        p = self._pkt()
+        self.assertTrue(any(l.lane == "diff_validate" for l in p.evidence_lanes))
+        self.assertFalse(ep.all_evidence_sufficient(p.evidence_lanes))
+
+    def test_none_packet_is_safe(self):
+        self.assertIsNone(ep.populate_loop_fields(None, loop={"iteration": 0}))
+
+
 if __name__ == "__main__":
     unittest.main()

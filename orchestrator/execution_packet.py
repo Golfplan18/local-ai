@@ -433,6 +433,88 @@ def write_packet(packet: ExecutionPacket | None, trace_dir: str | None) -> str |
         return None
 
 
+# ── Phase 6: fill the reserved §9 loop / verification / execution blocks ───────
+def planning_block_from_context(context_pkg: dict | None, *,
+                                planner_a: Any = None, planner_b: Any = None,
+                                approach: str | None = None) -> dict:
+    """Thread the planning-stage acceptance criteria + Evidence Contract from
+    ``context_pkg`` (set by ``risk_gate.apply_criteria`` +
+    ``evidence_runner.apply_evidence_contract`` at the live planning seam) into the
+    §9 ``planning`` block the renderer reads (``converged_brief.acceptance_criteria``,
+    ``evidence_contract``). ``planner_a``/``planner_b`` are references (dual at
+    high-risk/irreversible — §8). Returns a dict; NEVER None — at ``light`` the
+    caller passes ``planning=None`` to ``populate_loop_fields`` instead (§9 tier-
+    optional: a light packet legitimately has no planning block)."""
+    context_pkg = context_pkg or {}
+    return {
+        "planner_a": planner_a,
+        "planner_b": planner_b,
+        "converged_brief": {
+            "approach": approach,
+            "acceptance_criteria": context_pkg.get("acceptance_criteria"),
+            "known_risks": None,
+            "review_questions": None,
+        },
+        "evidence_contract": context_pkg.get("evidence_contract"),
+    }
+
+
+def populate_loop_fields(packet: ExecutionPacket | None, *,
+                         planning: dict | None = None,
+                         verification: dict | None = None,
+                         execution: dict | None = None,
+                         loop: dict | None = None,
+                         now_iso: str | None = None) -> ExecutionPacket | None:
+    """Phase 6: FILL (not retrofit) the §9 blocks Phase 4 reserved on a packet
+    already built by ``build_execution_packet`` — ``planning``,
+    ``verification.reviewer_a``/``reviewer_b``/``findings``/``invented_tests``/
+    ``confidence``, ``execution.mode``/``state_before``/``state_after``/
+    ``enforcement_model``, and ``loop.*``. It runs ONLY on the non-self-evidencing
+    loop path, so ``build_execution_packet`` stays byte-compatible for the common
+    self-evidencing turn. Additive + merge-in-place; NEVER raises; returns the packet.
+
+    Invariants held here (do NOT weaken):
+    - The ``reversible`` frontmatter flag is NOT recomputed — it is the §6 tier-
+      boundary gate set at build time (high-risk == ``reversible: true`` is spec-
+      correct; §8 gives high-risk a rollback check, not irreversibility).
+    - The Phase-4 scoped ``text_review_verdict``/``scope``/``status`` on
+      ``verification`` are PRESERVED (the judgment-lane review, §5) — the Phase-6
+      execution-review verify fields layer ON TOP, never clobber them.
+    - The Phase-4 ``execution.delta``/``source_reads``/``producer_claim`` are
+      PRESERVED — Phase 6 owns only ``mode``/``state_*``/``enforcement_model`` (§11/§7).
+    - ``planning`` stays ``None`` at ``light`` (§9 tier-optional — correct, not
+      incomplete); the renderer then fires its LOUD absence fence."""
+    if packet is None:
+        return None
+    try:
+        if planning is not None:
+            packet.planning = planning
+        if verification:
+            merged_v = dict(packet.verification or {})
+            merged_v.update(verification)   # layer P6 fields over the P4 text-review scope
+            packet.verification = merged_v
+        if execution:
+            merged_e = dict(packet.execution or {})
+            # ONLY the §11/§7 fields Phase 6 owns — never touch the Phase-4
+            # delta / source_reads / producer_claim built from the observed signals.
+            for k in ("mode", "state_before", "state_after", "enforcement_model"):
+                if k in execution:
+                    merged_e[k] = execution[k]
+            packet.execution = merged_e
+        if loop is not None:
+            packet.loop = loop
+            sc = (loop or {}).get("stop_condition")
+            if sc == "criteria_met":
+                packet.status = "converged"
+            elif sc == "max_iterations_escalated":
+                packet.status = "escalated"
+        packet.modified = now_iso or _now_iso()
+        return packet
+    except Exception as e:
+        _mark_failure(e, "execution_packet_populate_loop")
+        return packet
+
+
 def construct_and_write(*, signals: dict | None, context_pkg: dict | None,
                         output_text: str | None, risk_tier: str | None,
                         declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
