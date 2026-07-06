@@ -54,15 +54,24 @@ import sys
 import urllib.parse
 import urllib.request
 
+# Single cross-platform source for Ora roots (ORA_HOME-relocatable). Same
+# two-way import as tool_events: bare when orchestrator/ is on sys.path,
+# package-qualified when only the repo root is.
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _rp
+
 
 BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
 TAVILY_ENDPOINT = "https://api.tavily.com/search"
 EXA_ENDPOINT = "https://api.exa.ai/search"
 
 _DEFAULT_CASCADE_ORDER = ("tavily", "brave", "ddg")
-_ROUTING_CONFIG_PATH = os.path.expanduser(
-    "~/ora/config/routing-config.json"
-)
+# Same resolution boot.py uses for this file (ORA_ROUTING_CONFIG_PATH env
+# override → runtime overlay copy → seed under ORA_HOME). Kept as a module
+# attribute so tests can patch it.
+_ROUTING_CONFIG_PATH = str(_rp.routing_config_path())
 
 
 # ── Providers ────────────────────────────────────────────────────────
