@@ -924,18 +924,278 @@ def _rgate_tier_at_least(tier: str, floor: str) -> bool:
 
 
 # ── Dirty-state modes + git state snapshots (§9/§11) ──────────────────────────
-def _git(repo: str, args: list[str], *, env: dict | None = None) -> tuple[int, str]:
+def _git(repo: str, args: list[str], *, env: dict | None = None,
+         timeout: int = 30) -> tuple[int, str]:
     """``git -C <repo> <args>`` (mirrors ``engram_promotion._git``). Returns
     (exit, stdout). Never raises. Optional ``env`` overrides the child environment
     (``None`` = inherit, identical to before) — the Phase-6 escalation-branch
     primitive uses it to redirect ``GIT_INDEX_FILE`` so a tree snapshot is committed
-    onto an isolated branch WITHOUT touching the user's real index or HEAD."""
+    onto an isolated branch WITHOUT touching the user's real index or HEAD.
+    ``timeout`` (Phase 8): the 30s default holds for plumbing reads; the
+    worktree/temp-commit lifecycle passes a larger bound (vault-scale
+    ``add -A`` / ``worktree add`` outgrow 30s)."""
     try:
         r = subprocess.run(["git", "-C", repo, *args],
-                           capture_output=True, text=True, timeout=30, env=env)
+                           capture_output=True, text=True, timeout=timeout, env=env)
         return r.returncode, (r.stdout or "").strip()
     except Exception as e:
         return 1, str(e)
+
+
+# ── Phase 8 Chunk B — the isolated mutating-check actuator substrate (§3) ─────
+# `git worktree add` a disposable checkout of the turn's FULL delta (a ref-less
+# temp commit of the CURRENT tree parented at the pre-exec base — captures
+# untracked files, which the delta_ref patch does not), run declared checks in
+# it under mode="clean_worktree" (the only mode the runner permits mutating
+# checks under), remove it. The user's HEAD/index/working tree are NEVER
+# touched: the only repo-side writes are the throwaway-index temp commit (the
+# proven Phase-6 escalation idiom — object-store only, ref-less) and git's
+# .git/worktrees/ METADATA for the lifetime of the disposable checkout.
+
+_WT_ROOT_SUBDIR = "exec-review-worktrees"
+_WT_GIT_TIMEOUT = 300   # worktree add / add -A on large repos outgrows the 30s
+                        # default (PROVISIONAL — vault-scale measured slow)
+
+
+def _worktree_root() -> str:
+    """Scratch root for disposable worktrees — runtime-paths-derived
+    (portability amendment), same base the runner already uses for its
+    per-run homes, so SBPL-safety and SEC-2 posture are the proven ones."""
+    return os.path.join(_rp.SCRATCH_DIR_STR, _WT_ROOT_SUBDIR)
+
+
+def inplace_checks_refused(repo_root: str) -> str | None:
+    """The §3.3 routing predicate: would ``run_check``'s own pre-flight
+    refuse checks run IN PLACE against this repo? Keyed on where that
+    refusal ACTUALLY happens — the macOS sandbox-exec backend's SEC-1/SEC-2
+    pre-flight. Other backends (unshare, declared wrapper) never
+    path-preflight, so in-place behavior is unchanged there. **Windows
+    regression guard (pre-check blocker fold): every Windows path contains
+    a backslash and is SBPL-unsafe BY CHARACTER SET — keying this predicate
+    on the raw ``sandbox_worktree_unsafe`` would have misrouted EVERY repo
+    into the worktree path off-mac and then deferred every check when the
+    worktree path was refused too.** Returns the refusal reason or None."""
+    try:
+        if not _macos_sandbox_available():
+            return None
+        return sandbox_worktree_unsafe(str(repo_root), str(repo_root))
+    except Exception:
+        return None
+
+
+def _worktree_containment_refusal(wt: str) -> str | None:
+    """Platform-universal share of the worktree pre-flight: SEC-2 ancestry
+    (never a worktree equal to / an ancestor of a private root). The SBPL
+    character check is macOS-only — on Windows every path carries ``\\``
+    and would spuriously refuse (pre-check blocker fold)."""
+    real_wt = os.path.realpath(wt)
+    for sensitive in (os.path.realpath(os.path.expanduser("~")),
+                      os.path.realpath(_rp.VAULT_STR),
+                      os.path.realpath(_rp.CONVERSATIONS_STR)):
+        if _is_within(sensitive, real_wt):
+            return (f"worktree is equal to or an ancestor of a sensitive root "
+                    f"({sensitive})")
+    return None
+
+
+def tree_commit_at(repo_root: str, base_sha: str,
+                   *, timeout: int = _WT_GIT_TIMEOUT) -> str | None:
+    """Create a REF-LESS commit of the repo's CURRENT tree parented at
+    ``base_sha`` via a throwaway index (read-tree base → add -A → write-tree →
+    commit-tree). Captures untracked files; never touches the user's index,
+    HEAD, or working tree. REF-LESS is deliberate (design ⚖ Rev 3): a crash
+    leaves only an unreachable object that git GC collects — a ref would pin
+    a full snapshot of the user's tree (possibly-sensitive uncommitted
+    content) in their repo forever. Returns the commit sha or None."""
+    idx_path = None
+    try:
+        fd, idx_path = tempfile.mkstemp(prefix="er-wt-idx-")
+        os.close(fd)
+        try:
+            os.unlink(idx_path)   # git wants to create the index fresh
+        except OSError:
+            pass
+        env = dict(os.environ)
+        env["GIT_INDEX_FILE"] = idx_path
+        rc, _ = _git(repo_root, ["read-tree", base_sha], env=env,
+                     timeout=timeout)
+        if rc != 0:
+            return None
+        rc, _ = _git(repo_root, ["add", "-A"], env=env, timeout=timeout)
+        if rc != 0:
+            return None
+        rc, tree = _git(repo_root, ["write-tree"], env=env, timeout=timeout)
+        if rc != 0 or not tree:
+            return None
+        rc, commit = _git(
+            repo_root,
+            ["commit-tree", tree, "-p", base_sha, "-m",
+             "execution-review: isolated-check snapshot (ref-less, disposable)"],
+            env=env, timeout=timeout)
+        if rc != 0 or not commit:
+            return None
+        return commit.strip()
+    except Exception as e:
+        _mark_failure(e, "evidence_runner_tree_commit")
+        return None
+    finally:
+        if idx_path:
+            try:
+                os.unlink(idx_path)
+            except OSError:
+                pass
+
+
+def create_isolated_worktree(repo_root: str, commit_sha: str,
+                             *, sparse: list | None = None,
+                             timeout: int = _WT_GIT_TIMEOUT) -> str | None:
+    """``git worktree add --detach`` a disposable checkout of ``commit_sha``
+    under the scratch root. Pre-flights the SAME containment the sandbox
+    demands (``sandbox_worktree_unsafe`` — SBPL-unsafe chars + never an
+    ancestor of a private root) and refuses honestly on any failure (the
+    caller falls back to the deferred marker; a half-built worktree is
+    removed before returning None). ``sparse`` materializes only the given
+    paths (``--no-checkout`` + ``sparse-checkout set`` + ``checkout``) for
+    vault-scale repos. Returns the worktree path or None."""
+    wt = None
+    try:
+        root = _worktree_root()
+        os.makedirs(root, exist_ok=True)
+        wt = tempfile.mkdtemp(prefix="wt-", dir=root)
+        # Containment first (house helper, case-normalized — never a bare
+        # startswith), then the pre-flight the ACTIVE backend will apply:
+        # the full SBPL check only where sandbox-exec runs (its character
+        # set spuriously refuses every backslashed Windows path — pre-check
+        # blocker fold); the SEC-2 ancestry share everywhere.
+        if not _rp.within_base(wt, _rp.SCRATCH_DIR_STR):
+            raise RuntimeError("worktree escaped the scratch root")
+        bad = (sandbox_worktree_unsafe(wt, wt)
+               if _macos_sandbox_available()
+               else _worktree_containment_refusal(wt))
+        if bad:
+            raise RuntimeError(f"worktree path refused: {bad}")
+        if sparse:
+            # DISCLOSED side effect (pre-check fold, empirically pinned): git's
+            # sparse-checkout builtin, invoked from a linked worktree, durably
+            # writes `[extensions] worktreeConfig = true` into the MAIN repo's
+            # shared .git/config — permanent metadata that survives
+            # remove+prune. Benign on modern git, but it is user-repo residue:
+            # the Chunk-C addendum decides the vault-family opt-in posture
+            # BEFORE any caller passes sparse= (none does in Chunk B).
+            rc, out = _git(repo_root, ["worktree", "add", "--detach",
+                                       "--no-checkout", wt, commit_sha],
+                           timeout=timeout)
+            if rc != 0:
+                raise RuntimeError(f"worktree add failed: {out[:200]}")
+            rc, out = _git(wt, ["sparse-checkout", "set", "--no-cone",
+                                *[str(p) for p in sparse]], timeout=timeout)
+            if rc != 0:
+                raise RuntimeError(f"sparse-checkout failed: {out[:200]}")
+            rc, out = _git(wt, ["checkout", "--detach", commit_sha],
+                           timeout=timeout)
+            if rc != 0:
+                raise RuntimeError(f"sparse checkout failed: {out[:200]}")
+        else:
+            rc, out = _git(repo_root, ["worktree", "add", "--detach", wt,
+                                       commit_sha], timeout=timeout)
+            if rc != 0:
+                raise RuntimeError(f"worktree add failed: {out[:200]}")
+        return wt
+    except Exception as e:
+        _mark_failure(e, "evidence_runner_worktree_add")
+        if wt:
+            remove_isolated_worktree(repo_root, wt)
+        return None
+
+
+def remove_isolated_worktree(repo_root: str, wt_path: str) -> bool:
+    """Remove a disposable worktree: ``git worktree remove --force`` (retry
+    once — Windows can hold handles briefly), then an ``rmtree`` fallback,
+    then ``git worktree prune`` so no ``.git/worktrees`` metadata lingers.
+    CONTAINMENT-GUARDED: refuses to touch any path outside the scratch
+    worktree root — this function can never be aimed at user content."""
+    try:
+        if not _rp.within_base(wt_path, _worktree_root()):
+            _mark_failure(RuntimeError(
+                f"refused to remove non-scratch path: {wt_path!r}"),
+                "evidence_runner_worktree_remove_containment")
+            return False
+        rc, _ = _git(repo_root, ["worktree", "remove", "--force", wt_path])
+        if rc != 0 and os.path.exists(wt_path):
+            rc, _ = _git(repo_root, ["worktree", "remove", "--force", wt_path])
+        if os.path.exists(wt_path):
+            shutil.rmtree(wt_path, ignore_errors=True)
+        _git(repo_root, ["worktree", "prune"])
+        return not os.path.exists(wt_path)
+    except Exception as e:
+        _mark_failure(e, "evidence_runner_worktree_remove")
+        return False
+
+
+def _worktree_owner_repo(wt_path: str) -> str | None:
+    """Resolve the OWNING repo of a linked worktree from its ``.git`` file
+    (a one-line ``gitdir: <repo>/.git/worktrees/<id>`` pointer). Never
+    raises; None when unreadable/not a linked worktree."""
+    try:
+        gitfile = os.path.join(wt_path, ".git")
+        if not os.path.isfile(gitfile):
+            return None
+        with open(gitfile, "r", encoding="utf-8", errors="replace") as f:
+            line = f.read().strip()
+        if not line.lower().startswith("gitdir:"):
+            return None
+        gitdir = line.split(":", 1)[1].strip()
+        # <repo>/.git/worktrees/<id> → <repo>
+        marker = os.sep + "worktrees" + os.sep
+        norm = gitdir.replace("/", os.sep).replace("\\", os.sep)
+        idx = norm.rfind(marker)
+        if idx == -1:
+            return None
+        dotgit = norm[:idx]
+        return os.path.dirname(dotgit) if dotgit.endswith(".git") else None
+    except Exception:
+        return None
+
+
+def prune_orphan_worktrees(repo_root: str, *, max_age_seconds: int = 86_400) -> None:
+    """Best-effort crash-residue cleanup, run at actuator start: rmtree of
+    scratch worktree dirs older than ``max_age_seconds`` (a live actuator run
+    never approaches that age; a crashed one's disposable checkout — which
+    can contain private repo content — should not outlive the day), with
+    ``git worktree prune`` fired against each swept dir's OWNING repo and,
+    afterwards, against ``repo_root``.
+
+    The per-owner prune is LOAD-BEARING (pre-check major fold, empirically
+    pinned): a linked worktree's detached HEAD in ``.git/worktrees/<id>`` is
+    a GC reachability ROOT — deleting the scratch dir WITHOUT pruning the
+    owner leaves the ref-less snapshot commit (a full capture of that repo's
+    uncommitted tree) retrievable in the OWNER's object store indefinitely,
+    silently defeating the ref-less design's crash story. The scratch root is
+    shared across repos, so the owner may not be ``repo_root``. Never raises."""
+    try:
+        root = _worktree_root()
+        if os.path.isdir(root):
+            import time as _time
+            now = _time.time()
+            for name in os.listdir(root):
+                p = os.path.join(root, name)
+                try:
+                    if not (os.path.isdir(p)
+                            and now - os.path.getmtime(p) > max_age_seconds
+                            and _rp.within_base(p, root)):
+                        continue
+                    owner = _worktree_owner_repo(p)
+                    shutil.rmtree(p, ignore_errors=True)
+                    if owner and os.path.isdir(owner):
+                        _git(owner, ["worktree", "prune"])
+                except OSError:
+                    continue
+        # Trailing prune on the CURRENT repo (after the sweep, so a same-repo
+        # dir deleted this pass is released even when this lifecycle aborts
+        # before remove_isolated_worktree's own prune — pre-check fold).
+        _git(repo_root, ["worktree", "prune"])
+    except Exception as e:
+        _mark_failure(e, "evidence_runner_worktree_prune")
 
 
 def _git_state(repo_root: str) -> dict:

@@ -138,12 +138,14 @@ class CaptureResult:
     state_after: dict | None = None
     delta_ref: str | None = None
     results: list = field(default_factory=list)      # list[CheckResult]
-    deferred_mutating: list = field(default_factory=list)   # check names deferred to Phase 8
+    deferred_mutating: list = field(default_factory=list)   # names still deferred (fallback)
     sufficient: bool = False
     no_repo: bool = False            # no discoverable repo → diff+validate lane owed
     no_checks: bool = False          # repo-less / no declared checks → owed, degrade
     base_unknown: bool = False       # no pre-execution snapshot → base-unknown, lane owed
     enforcement_model: str = "in_harness"
+    isolated: dict | None = None     # Phase 8 Chunk B — {ran, delta_commit, checks,
+                                     #   worktree_removed, fallback_reason} observability
 
     def ran_and_failed(self) -> bool:
         """A check that RAN and returned a negative verdict (evidence exists and is
@@ -164,12 +166,18 @@ class CaptureResult:
 
 
 def _capture_mode(context_pkg: dict | None) -> str:
-    """Phase 6 runs Capture NON-MUTATINGLY over the live repo — ``review_dirty_diff``
-    by default, or ``continue_user_changes`` when the caller declares the user owns
-    the tree. It NEVER passes ``clean_worktree`` against the user's live checkout
-    (⚖ Rev-2 P1): a ``clean_worktree``-isolated mutating run is the Phase-8 actuator."""
+    """Capture mode: ``review_dirty_diff`` by default, ``continue_user_changes``
+    when the caller declares the user owns the tree. ``clean_worktree`` is
+    accepted ONLY as a CALLER DECLARATION (Phase 8, design §3.4/OQ-9): the
+    caller attests the checkout it points Capture at IS an isolated worktree
+    (a programmatic/recipe executor that ran in isolation from the start) —
+    that declaration is the caller's responsibility and is what earns the
+    FULL §13 unmerged guarantee. The core chat pipeline never declares it
+    (⚖ Rev-2 P1 still holds: never against the user's live checkout); the
+    ISOLATED-CHECK actuator does not use this mode either — it builds its own
+    disposable worktree and passes mode="clean_worktree" per-call."""
     m = (context_pkg or {}).get("exec_review_mode")
-    if m in ("review_dirty_diff", "continue_user_changes"):
+    if m in ("review_dirty_diff", "continue_user_changes", "clean_worktree"):
         return m
     return _DEFAULT_MODE
 
@@ -261,21 +269,184 @@ def _required_check_names(contract: dict | None, catalog: Any) -> list:
     return sorted((getattr(catalog, "checks", None) or {}).keys())
 
 
-def _record_deferred_mutating(name: str, runner: Any) -> Any:
-    """Record a ``mutates:true`` required check as DEFERRED to the Phase-8 isolated
-    actuator — a LOUD owed marker + an OBSERVED ``evidence_check`` event with a
-    skip_reason (never a silent skip, §16-3). NOT escalate-forcing (P4). Returns the
-    CheckResult so it rides the packet's lane."""
-    reason = ("mutating check deferred — the isolated actuator (git worktree add → "
-              "apply delta → run → remove) is Phase 8; never run against the live checkout")
+_MUTATING_FLAG = "ORA_EXEC_REVIEW_MUTATING"   # kill-switch (OQ-7): default ON
+                                              # when the loop is on; "off"
+                                              # restores the deferred marker
+
+
+def mutating_actuator_enabled() -> bool:
+    """The isolated-check actuator runs whenever the loop runs, unless the
+    kill-switch says off (OQ-7, judge-approved: the loop flag is the master
+    gate; a second default-OFF flag would leave the DEFERRED marker in place
+    after the phase that exists to close it)."""
+    return str(os.environ.get(_MUTATING_FLAG, "")).strip().lower() not in (
+        "0", "off", "false", "no")
+
+
+def requires_isolated_worktree(repo_root: str | None, runner: Any = None) -> bool:
+    """True when in-place checks against this repo would ACTUALLY be refused
+    by the runner's own pre-flight (SEC-2: the repo IS / is an ancestor of a
+    private root — the vault case). Such a repo's checks — mutating OR not —
+    can only ever run inside the disposable worktree (design ⚖ Rev 3: the
+    vault family was structurally unrunnable without this routing).
+
+    Delegates to ``runner.inplace_checks_refused`` — keyed on the backend
+    that really pre-flights (macOS sandbox-exec). ⚠ Pre-check BLOCKER fold:
+    keying on the raw ``sandbox_worktree_unsafe`` misrouted EVERY repo on
+    Windows (all backslashed paths are SBPL-unsafe by character set) into
+    the worktree path, then deferred every check when the worktree path was
+    refused too — a silent off-mac regression of the Phase-5 posture."""
+    runner = runner or _er
+    try:
+        if not repo_root:
+            return False
+        fn = getattr(runner, "inplace_checks_refused", None)
+        if fn is None:
+            return False
+        return bool(fn(str(repo_root)))
+    except Exception:
+        return False
+
+
+def _record_deferred_mutating(name: str, runner: Any,
+                              reason: str | None = None,
+                              mutates: bool = True) -> Any:
+    """Record a required check as DEFERRED — a LOUD owed marker + an OBSERVED
+    ``evidence_check`` event with a skip_reason (never a silent skip, §16-3).
+    NOT escalate-forcing (P4). Phase 8: this is now the FALLBACK path
+    (actuator disabled / base-unknown / lifecycle failure) and the reason
+    names the actual cause. ``mutates`` carries the check's REAL flag — the
+    SEC-2 fallback defers NON-mutating checks too, and stamping those events
+    ``mutates: true`` would be dishonest event metadata (pre-check fold).
+    Returns the CheckResult so it rides the packet's lane."""
+    reason = reason or (
+        "check deferred — the isolated-check actuator did not run "
+        "(unspecified); never run against the live checkout")
     res = _er.CheckResult(name=name, skipped=True, skip_reason=reason)
     try:
-        _er._record_check_event(_er.Check(name=name, mutates=True), res)
+        _er._record_check_event(_er.Check(name=name, mutates=bool(mutates)), res)
     except Exception:
         pass
-    _mark_failure(RuntimeError(f"deferred mutating check '{name}': {reason}"),
+    _mark_failure(RuntimeError(f"deferred check '{name}': {reason}"),
                   "execution_loop_deferred_mutating")
     return res
+
+
+def _batch_has_enforcing_backend(runner: Any, catalog: Any,
+                                 check_names: list) -> bool:
+    """True when AT LEAST ONE named check has an enforcing backend for its
+    network policy right now (macOS sandbox-exec / native Linux unshare /
+    declared ``ORA_EVIDENCE_SANDBOX`` wrapper). When none do, the runner
+    would refuse every check unrun (§7) and the worktree would be pointless —
+    the actuator defers honestly instead (judge P2 fold). Uses the SAME
+    ``enforcement_backend`` decision the runner itself makes, so it can never
+    disagree with the runner. Fails toward True (attempt) on any error — a
+    predicate bug must never silently disable the actuator where a backend
+    genuinely exists; a wrong 'attempt' is still safe (the runner refuses)."""
+    try:
+        fn = getattr(runner, "enforcement_backend", None)
+        if fn is None:
+            return True
+        checks = getattr(catalog, "checks", None) or {}
+        for n in check_names:
+            c = checks.get(n)
+            net = getattr(c, "network", "deny") if c is not None else "deny"
+            if fn(net) is not None:
+                return True
+        return False
+    except Exception:
+        return True
+
+
+def run_isolated_checks(runner: Any, catalog: Any, check_names: list,
+                        repo_root: str, base_sha: str,
+                        cr: CaptureResult) -> list | None:
+    """The Phase-8 isolated-check actuator (§3.1): ref-less temp commit of the
+    CURRENT tree parented at the pre-exec base (captures untracked files —
+    higher fidelity than applying the delta_ref patch, which omits them) →
+    ``git worktree add --detach`` under scratch → run the named checks there
+    with ``mode="clean_worktree"`` (the only mode the runner permits mutating
+    checks under; the sandbox grants write ONLY inside that worktree) →
+    remove + prune, finally-guaranteed. The user's HEAD/index/tree are never
+    touched. Returns the CheckResults, or None on ANY lifecycle failure (the
+    caller falls back to the honest deferred marker — the actuator never
+    turns a working degrade path into a crash)."""
+    wt = None
+    try:
+        # An injected runner without the Chunk-B lifecycle (test doubles,
+        # stripped deployments) falls back cleanly — never an AttributeError
+        # dressed up as a lifecycle failure (pre-check regression-lens fold).
+        if not all(hasattr(runner, a) for a in
+                   ("prune_orphan_worktrees", "tree_commit_at",
+                    "create_isolated_worktree", "remove_isolated_worktree")):
+            cr.isolated = {"ran": False,
+                           "fallback_reason": "runner lacks worktree lifecycle support"}
+            return None
+        # Crash-residue sweep FIRST, UNCONDITIONALLY — ⚖ fold-recheck (real
+        # minor): this must run BEFORE the no-backend gate below. The sweep is
+        # backend-INDEPENDENT (needs only repo_root + the lifecycle methods,
+        # both confirmed present by the hasattr guard above) and is the sole
+        # mechanism that unpins a PRIOR crashed run's ref-less snapshot from
+        # its owner repo's object store. Gating it behind an enforcing backend
+        # silently narrowed that load-bearing crash-residue guarantee on
+        # all-no-enforcing-policy turns.
+        runner.prune_orphan_worktrees(repo_root)
+        # ⚖ Code-review fold (judge P2): if NO enforcing backend exists for
+        # these checks' network policy on this platform, the runner would
+        # REFUSE every one unrun (§7 enforce-or-refuse) — so DEFER honestly
+        # WITHOUT building a pointless worktree that would then stamp a
+        # misleading isolated.ran=True. This is the "defer honestly where no
+        # enforcing backend exists" behavior (the common no-backend Windows
+        # case). Fails toward attempting on a predicate error (the runner
+        # still refuses safely).
+        if not _batch_has_enforcing_backend(runner, catalog, check_names):
+            cr.isolated = {"ran": False, "fallback_reason": (
+                "no enforcing backend for the checks' network policy on this "
+                "platform — refused, not run unenforced (§7)")}
+            return None
+        delta_commit = runner.tree_commit_at(repo_root, base_sha)
+        if not delta_commit:
+            cr.isolated = {"ran": False, "fallback_reason": "temp-commit failed"}
+            return None
+        wt = runner.create_isolated_worktree(repo_root, delta_commit)
+        if not wt:
+            cr.isolated = {"ran": False, "delta_commit": delta_commit,
+                           "fallback_reason": "worktree add failed/refused"}
+            return None
+        results = runner.run_contract(
+            catalog, {"required_standard_checks": list(check_names)},
+            repo_root, worktree=wt, mode="clean_worktree")
+        # Belt (judge P2): isolated.ran=True must mean a check GENUINELY RAN,
+        # not merely that the lifecycle completed. If every result came back
+        # skipped/refused (a mixed-policy batch the up-front gate could not
+        # rule out, or an unexpected in-runner refusal), record the honest
+        # fallback and let the caller defer — never a false isolated run.
+        genuinely_ran = [r for r in (results or [])
+                         if not getattr(r, "skipped", False)]
+        if not genuinely_ran:
+            cr.isolated = {"ran": False, "delta_commit": delta_commit,
+                           "fallback_reason": (
+                               "every isolated check was refused/skipped by "
+                               "the runner (no genuine execution)")}
+            return None
+        cr.isolated = {"ran": True, "delta_commit": delta_commit,
+                       "checks": list(check_names),
+                       "checks_ran": len(genuinely_ran)}
+        return results
+    except Exception as e:
+        _mark_failure(e, "execution_loop_isolated_checks")
+        cr.isolated = {"ran": False,
+                       "fallback_reason": f"lifecycle error: {str(e)[:160]}"}
+        return None
+    finally:
+        if wt:
+            removed = runner.remove_isolated_worktree(repo_root, wt)
+            if isinstance(cr.isolated, dict):
+                cr.isolated["worktree_removed"] = bool(removed)
+            if not removed:
+                _mark_failure(RuntimeError(
+                    f"disposable worktree not fully removed: {wt}"),
+                    "execution_loop_worktree_residue")
 
 
 def run_capture(packet: Any, *, context_pkg: dict | None = None,
@@ -322,20 +493,96 @@ def run_capture(packet: Any, *, context_pkg: dict | None = None,
             # (never a false "sufficient", never escalate-churn — ⚖ Rev-1 OQ6).
             cr.no_checks = True
 
-        # Split mutating (deferred to Phase 8) from the non-mutating live checks.
+        # Split mutating from non-mutating checks. Phase 8 Chunk B: mutating
+        # checks RUN in the isolated actuator (disposable worktree at the
+        # turn's delta) instead of being recorded deferred — the deferred
+        # marker survives only as the honest FALLBACK (kill-switch off /
+        # base-unknown / lifecycle failure). SEC-2 repos (the vault class:
+        # in-place checks refused by the sandbox pre-flight) route ALL their
+        # checks through the worktree — without that they were structurally
+        # unrunnable (⚖ Rev 3). A caller-DECLARED clean_worktree checkout
+        # (§3.4) runs everything in place — the tree is already isolated.
         results: list = []
         runnable: list = []
+        mutating: list = []
         for name in required:
             chk = (getattr(catalog, "checks", None) or {}).get(name)
             if chk is not None and getattr(chk, "mutates", False):
-                cr.deferred_mutating.append(name)
-                results.append(_record_deferred_mutating(name, runner))
+                mutating.append(name)
             else:
                 runnable.append(name)
 
-        if runnable and catalog is not None:
-            filtered = {"required_standard_checks": runnable}
-            results.extend(runner.run_contract(catalog, filtered, rr, mode=mode))
+        actuator_on = mutating_actuator_enabled()
+        iso_all = (mode != "clean_worktree"
+                   and requires_isolated_worktree(rr, runner))
+        before_head = (before or {}).get("head") if isinstance(before, dict) else None
+
+        def _defer_all(names: list, why: str) -> None:
+            for n in names:
+                chk_n = (getattr(catalog, "checks", None) or {}).get(n)
+                cr.deferred_mutating.append(n)
+                results.append(_record_deferred_mutating(
+                    n, runner, reason=why,
+                    mutates=bool(getattr(chk_n, "mutates", False))))
+
+        if mode == "clean_worktree":
+            # Caller-attested isolated checkout: the runner permits mutating
+            # checks in place; no actuator worktree needed.
+            if required and catalog is not None:
+                results.extend(runner.run_contract(
+                    catalog, {"required_standard_checks": required}, rr,
+                    mode=mode))
+        elif iso_all and required and catalog is not None:
+            # SEC-2 repo: EVERY check must run isolated (in-place would be
+            # refused check-by-check). Requires the actuator + a real base.
+            if not actuator_on:
+                _defer_all(required,
+                           "checks deferred — SEC-2 repo requires the isolated "
+                           "worktree and ORA_EXEC_REVIEW_MUTATING is off")
+            elif cr.base_unknown or not before_head:
+                _defer_all(required,
+                           "checks deferred — SEC-2 repo requires the isolated "
+                           "worktree and no pre-execution base was stashed "
+                           "(base-unknown)")
+            else:
+                iso = run_isolated_checks(runner, catalog, required, rr,
+                                          before_head, cr)
+                if iso is not None:
+                    results.extend(iso)
+                else:
+                    _defer_all(required,
+                               "checks deferred — isolated run did not execute ("
+                               + str((cr.isolated or {}).get(
+                                   "fallback_reason", "unknown")) + ")")
+        else:
+            # Normal repo: non-mutating checks run in place (unchanged);
+            # mutating checks run in the isolated worktree.
+            if mutating and catalog is not None:
+                if not actuator_on:
+                    _defer_all(mutating,
+                               "mutating check deferred — "
+                               "ORA_EXEC_REVIEW_MUTATING is off; never run "
+                               "against the live checkout")
+                elif cr.base_unknown or not before_head:
+                    _defer_all(mutating,
+                               "mutating check deferred — no pre-execution "
+                               "base was stashed (base-unknown); the isolated "
+                               "worktree needs the pre-exec base as parent")
+                else:
+                    iso = run_isolated_checks(runner, catalog, mutating, rr,
+                                              before_head, cr)
+                    if iso is not None:
+                        results.extend(iso)
+                    else:
+                        _defer_all(mutating,
+                                   "mutating check deferred — isolated run did "
+                                   "not execute ("
+                                   + str((cr.isolated or {}).get(
+                                       "fallback_reason", "unknown")) + ")")
+            if runnable and catalog is not None:
+                filtered = {"required_standard_checks": runnable}
+                results.extend(runner.run_contract(catalog, filtered, rr,
+                                                   mode=mode))
         cr.results = results
 
         # state_after + a delta REFERENCE (diff written trace-local, never inlined).
@@ -1097,18 +1344,22 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                         "no inspectable abandoned-attempt branch — base-unknown / no repo; "
                         "this is a §12 verification-gap human-review escalation, not a §13 "
                         "abandoned-attempt escalation")
-                # ⚖ Rev-1 P4 / OQ4 honesty: if the executor COMMITTED in place (HEAD
-                # advanced past the pre-execution base), the branch isolates the
-                # working-tree delta but the committed work stays on the user's branch —
-                # the FULL §13 unmerged guarantee requires clean_worktree isolation from
-                # the start (Phase 8). Record that honestly rather than resetting the
-                # user's branch to fake an unmerged branch (Phase 6 never does that).
+                # ⚖ Rev-1 P4 / OQ4 honesty, NARROWED by Phase 8 (§3.4/OQ-9): if the
+                # executor COMMITTED in place (HEAD advanced past the pre-execution
+                # base), the branch isolates the working-tree delta but the committed
+                # work stays on the user's branch. Full §13 isolation is now AVAILABLE
+                # — a caller that declares exec_review_mode="clean_worktree" and runs
+                # its executor in an isolated checkout from the start earns it — but
+                # THIS run executed in place, and Phase 8 never rewrites the user's
+                # branch to fake an unmerged branch.
                 after_head = (capture.state_after or {}).get("head")
                 if branch_ref and base_sha and after_head and after_head != base_sha:
                     escalation["unmerged_guarantee"] = (
-                        "PARTIAL — executor committed in place (HEAD advanced); the branch "
-                        "isolates the working-tree delta only. Full §13 isolation of a "
-                        "committing run requires clean_worktree from the start (Phase 8).")
+                        "PARTIAL — executor committed in place (HEAD advanced); the "
+                        "branch isolates the working-tree delta only. Full §13 "
+                        "isolation is available via clean_worktree execution from the "
+                        "start (exec_review_mode declaration, Phase 8); this run "
+                        "executed in place.")
                 loop_state["escalation"] = escalation
             else:
                 # Evidence escalation with NO creatable branch → base-unknown stays owed
@@ -1147,6 +1398,17 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
             "state_after": capture.state_after,
             "enforcement_model": capture.enforcement_model,
         }
+        # Phase 8 Chunk B observability: the isolated-run record (delta commit,
+        # checks, worktree_removed / fallback_reason) + the honest delta-
+        # attribution caveat — in review_dirty_diff mode the temp commit
+        # snapshots the LIVE tree, so foreign churn (vault autocommit,
+        # editor-side linters) can ride the delta (§3.2, no new exactness claim).
+        if capture.isolated is not None:
+            execution["isolated_checks"] = capture.isolated
+            if capture.mode == "review_dirty_diff":
+                execution["delta_attribution"] = (
+                    "approximate — dirty-tree capture; concurrent mutators may "
+                    "ride the delta (dirty_hash recorded in state_before)")
         _ep.populate_loop_fields(packet, planning=planning, verification=verification,
                                  execution=execution, loop=loop_state, now_iso=now_iso)
         # Phase 7 (§14): decide the durable-memory tier + do the durable write (ledger / note) BEFORE
