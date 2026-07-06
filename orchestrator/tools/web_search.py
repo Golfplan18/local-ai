@@ -470,6 +470,36 @@ def _search_text(
 # ── Public entry points ─────────────────────────────────────────────
 
 
+def _record_search_reads(query: str, results: list) -> None:
+    """Execution Review Phase 8 (Chunk A §2.3) LIBRARY GUARD: record this
+    search as a ``web_search`` tool-event — the query plus one read entry
+    per RESULT URL (richer than the dispatcher's query-only shape; result
+    URLs were previously never captured anywhere) — unless a dispatcher-
+    recording context is already active (double-record kill). Import-
+    guarded + never-raises: search behavior is never affected."""
+    try:
+        try:
+            import tool_events as _te
+        except ImportError:  # pragma: no cover
+            from orchestrator import tool_events as _te
+        if _te.library_recording_suppressed():
+            return
+        reads = [{"what": f"query:{str(query)[:300]}", "where": "network"}]
+        for r in results or []:
+            if not isinstance(r, dict):
+                continue
+            url = r.get("url") or r.get("href") or ""
+            if not url:
+                continue
+            body = r.get("snippet") or r.get("body") or ""
+            reads.append({"what": _te.sanitize_url(url), "where": "network",
+                          "chars": len(body)})
+        _te.record_web_reads("web_search", reads,
+                             args_redacted={"query": query})
+    except Exception:
+        pass
+
+
 def web_search(query: str, max_results: int = 5, *, semantic_augment: bool = False) -> str:
     """Markdown-formatted search results for tool-calling models.
 
@@ -482,6 +512,7 @@ def web_search(query: str, max_results: int = 5, *, semantic_augment: bool = Fal
     try:
         results = _gather_raw(query, max_results, semantic_augment=semantic_augment)
         if not results:
+            _record_search_reads(query, [])
             return f"No results found for: {query}"
         output = []
         for i, r in enumerate(results, 1):
@@ -489,6 +520,7 @@ def web_search(query: str, max_results: int = 5, *, semantic_augment: bool = Fal
             output.append(f"   URL: {r.get('href', 'No URL')}")
             output.append(f"   {r.get('body', 'No snippet')}")
             output.append("")
+        _record_search_reads(query, results)
         return "\n".join(output)
     except Exception as e:
         return f"Search error: {str(e)}"
@@ -522,6 +554,22 @@ def web_search_structured(
             f"[web_search_structured] cascade error for query {query!r}: {e}",
             file=sys.stderr, flush=True,
         )
+        # Guard contract: EVERY invocation records — a failed cascade still
+        # egressed (or tried to); exit.ok False keeps risk_gate's source
+        # signal honest while the observation survives.
+        try:
+            try:
+                import tool_events as _te
+            except ImportError:  # pragma: no cover
+                from orchestrator import tool_events as _te
+            if not _te.library_recording_suppressed():
+                _te.record_web_reads(
+                    "web_search",
+                    [{"what": f"query:{str(query)[:300]}", "where": "network"}],
+                    args_redacted={"query": query},
+                    exit_ok=False, exit_reason=str(e)[:120])
+        except Exception:
+            pass
         return []
 
     out: list[dict] = []
@@ -534,4 +582,5 @@ def web_search_structured(
             "url":     url,
             "snippet": r.get("body") or r.get("snippet") or "",
         })
+    _record_search_reads(query, out)
     return out

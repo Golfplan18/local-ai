@@ -170,17 +170,46 @@ def decide_tier(packet: Any) -> str:
             return TIER_DURABLE_NOTE
 
         # ledger_line — a MUTATION turn that degraded without converging (the loop ran, mutated, but
-        # couldn't converge/verify and didn't escalate). A source-read-only owed-provenance turn
-        # (any_mutation False) is NOT this — it stays git_only (routine research; the Phase-8 provenance
-        # deferral is systemic, not per-turn signal).
+        # couldn't converge/verify and didn't escalate).
         if any_mutation and stop is None:
             return TIER_LEDGER_LINE
 
-        # git_only — the default cheapest tier (self-evidencing, converged-clean, source-read-only-owed).
+        # ledger_line — Phase 8 (OQ-3, judge-approved, SOURCE-READ-ONLY scope):
+        # a non-mutation turn whose FILLED provenance lane carries ≥1
+        # explicitly-UNSUPPORTED claim (evidence retrieved and it fails to
+        # support / contradicts). A real negative verdict is §14-"genuinely
+        # informative" — one ledger line. `unassessed` / partial maps NEVER
+        # promote (retrieval-without-judgment is not a negative verdict);
+        # routine research stays cheap. Mutation turns keep their existing
+        # tier rules untouched (the approved predicate does not extend the
+        # promotion surface to mixed turns).
+        if not any_mutation and _provenance_unsupported_count(packet) > 0:
+            return TIER_LEDGER_LINE
+
+        # git_only — the default cheapest tier (self-evidencing, converged-clean,
+        # source-read-only with a clean/partial/unavailable provenance lane).
         return TIER_GIT_ONLY
     except Exception as e:
         _note_failure(e, "execution_persistence_decide_tier")
         return TIER_GIT_ONLY
+
+
+def _provenance_unsupported_count(packet: Any) -> int:
+    """Count explicitly-UNSUPPORTED claims on a FILLED collect_provenance
+    lane (Phase 8 OQ-3 promotion signal). Defensive; 0 on any shape issue."""
+    try:
+        for lane in getattr(packet, "evidence_lanes", None) or []:
+            if getattr(lane, "lane", None) != "collect_provenance":
+                continue
+            res = getattr(lane, "result", None)
+            if not isinstance(res, dict):
+                return 0
+            cov = ((res.get("provenance") or {}).get("coverage") or {})
+            n = cov.get("claims_unsupported", 0)
+            return int(n) if isinstance(n, (int, float)) else 0
+        return 0
+    except Exception:
+        return 0
 
 
 # ── Sensitivity-driven redaction (three-layer, keyed on the TRUE max sensitivity) ──
@@ -289,15 +318,85 @@ def redact_for_durable(packet: Any, *, max_sensitivity: str | None) -> Any | Non
                         cb[_k] = _scrub_free_value(cb.get(_k), level, cap=_DURABLE_SUMMARY_CAP)
                 planning["converged_brief"] = cb
 
+        # Phase 8 (Chunk A §2.6): EVIDENCE LANES now carry content (the
+        # provenance lane's map rows + excerpts; diff_validate's check
+        # payloads always did — the old "no lane carries content" premise was
+        # false) and the durable NOTE renders the provenance block, so the
+        # lanes must pass the SAME three-layer scrub as every other block and
+        # be wired into replace() (a scrub not in replace() is a no-op on the
+        # returned copy — Rev-1 precision). generated_by is scrubbed for
+        # EVERY lane (by-construction safety for one lane is not a rule).
+        lanes_src = getattr(packet, "evidence_lanes", None) or []
+        lanes_out = []
+        for _lane in lanes_src:
+            gen = [_scrub_free_text(g, level, cap=200)
+                   for g in (getattr(_lane, "generated_by", None) or [])]
+            res = _scrub_lane_result(
+                copy.deepcopy(getattr(_lane, "result", None)), level)
+            lanes_out.append(dataclasses.replace(
+                _lane, generated_by=gen, result=res))
+
         persistence = dict(getattr(packet, "persistence", None) or {})
         persistence["redacted"] = _redaction_descriptor(level)
 
         return dataclasses.replace(
             packet, execution=execu, task=task, verification=verif,
-            planning=planning, persistence=persistence)
+            planning=planning, evidence_lanes=lanes_out,
+            persistence=persistence)
     except Exception as e:
         _note_failure(e, "execution_persistence_redact")
         return None   # FAIL CLOSED — the caller skips every durable write (judge P1)
+
+
+def _scrub_lane_result(res: Any, level: str) -> Any:
+    """Three-layer scrub over an EvidenceLane.result payload: every STRING
+    leaf passes ``_scrub_free_text`` at the turn's true max sensitivity;
+    provenance ``map_ref``/path-like refs are withheld when the path resolves
+    sensitive (same rule as ``delta.ref``). Raises propagate to
+    ``redact_for_durable``'s except → None → fail-closed."""
+    if res is None:
+        return None
+    if isinstance(res, str):
+        return _scrub_free_text(res, level, cap=_DURABLE_SUMMARY_CAP)
+    if isinstance(res, list):
+        return [_scrub_lane_result(v, level) for v in res]
+    if isinstance(res, dict):
+        out = {}
+        for k, v in res.items():
+            if k in ("map_ref", "ref", "delta_ref") and isinstance(v, str) and v:
+                # Pre-check fold: resolve_path_sensitivity is a FILESYSTEM
+                # classifier — every URL falls through to "sensitive", which
+                # blanked all web source refs out of durable notes. URLs are
+                # already sanitize_url'd at build; scrub them as free text at
+                # the turn level instead of the path-withhold rule.
+                if v.startswith(("http://", "https://")):
+                    out[k] = _scrub_free_text(v, level, cap=300)
+                    continue
+                try:
+                    path_level = _te.resolve_path_sensitivity(v)
+                except Exception:
+                    path_level = "sensitive"
+                out[k] = (f"[{path_level} PATH withheld]"
+                          if _rank(path_level) >= _rank("sensitive") else v)
+                continue
+            if (k in _LANE_STRUCTURAL_KEYS and isinstance(v, str)
+                    and len(v) <= 40):
+                # Fixed-vocabulary structural tokens (support_status, ids,
+                # kinds) carry no turn content — preserving them keeps the
+                # durable note legible on sensitive turns without weakening
+                # the free-text scrub.
+                out[k] = v
+                continue
+            out[k] = _scrub_lane_result(v, level)
+        return out
+    return res
+
+
+# Fixed-vocabulary / generated-token lane keys exempt from the free-text scrub
+# (never user/model free text). Everything else scrubs at the turn level.
+_LANE_STRUCTURAL_KEYS = frozenset({
+    "support_status", "claim_id", "source_id", "kind", "origin",
+    "batch_part", "mapper_family"})
 
 
 # ── The durable note (self-contained markdown; renders the ALREADY-REDACTED packet) ──
@@ -504,6 +603,16 @@ def persist_packet(packet: Any, *, sig: dict | None = None, context_pkg: dict | 
         note_ref = None
         if tier == TIER_DURABLE_NOTE:
             note_ref = write_durable_note(redacted, conversation_id=conversation_id, stealth=stealth)
+            # Phase 8 (OQ6 rewire): stamp the durable note ref on the LIVE
+            # packet's persistence block — visible in the trace JSON (written
+            # AFTER this call, ordering preserved) and read by the escalation
+            # handback so the Paused-queue entry stops dangling when the 30d
+            # trace sweep removes packet_ref's target.
+            if note_ref:
+                try:
+                    packet.persistence["note_ref"] = note_ref
+                except Exception:
+                    pass
 
         line = _ledger_line_from(packet, redacted, tier=tier, trace_dir=trace_dir,
                                  note_ref=note_ref, now_iso=now_iso)

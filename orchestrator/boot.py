@@ -7440,6 +7440,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     # retrieved BEFORE the analyst runs, plus optional prompt-sanity
     # advisory flags. See Specification — F-Consult.md for the contract.
     web_rag = ""
+    web_source_chunks: list = []
     prompt_sanity_flags: list = []
     consultation_trace: dict = {"status": "skipped", "reason": "not_attempted"}
     if WEB_CONSULTATION_AVAILABLE and gear >= 2:
@@ -7494,6 +7495,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                         extraction_channel=_wx["channel"],
                     )
                     web_rag = wc_result.get("web_rag") or ""
+                    # Phase 8 (Chunk A §2.2): retain the structured chunks
+                    # (url/title/document/retrieved_at/weight/classification
+                    # + the formatter's `injected` stamp) for the provenance
+                    # registry — previously discarded at this boundary.
+                    web_source_chunks = wc_result.get("chunks") or []
                     prompt_sanity_flags = wc_result.get(
                         "prompt_sanity_flags", []
                     ) or []
@@ -7774,6 +7780,11 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
         # Injected by build_system_prompt_for_gear as the ## WEB CONTEXT
         # block when non-empty.
         "web_rag": web_rag,
+        # Phase 8 (Chunk A §2.2): the consultation's STRUCTURED chunks
+        # (url/title/document/retrieved_at/weight/classification + the
+        # `injected` stamp) — the provenance registry's web substrate.
+        # Empty list when the consultation didn't run.
+        "web_source_chunks": web_source_chunks,
         # Advisory flags from the prompt-sanity check (empty list when
         # sanity check was disabled or found nothing). Downstream prompt
         # assembly may surface these to the analyst as a soft warning.
@@ -10994,11 +11005,14 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
 def _run_claim_verification_preflight(
     evaluator_output: str,
     label: str = "",
-) -> tuple[str, list[dict], dict]:
+) -> tuple[str, list[dict], dict, list]:
     """Parse FLAGGED CLAIMS from evaluator output and assemble per-claim
     web-verification evidence in parallel.
 
-    Returns ``(evidence_text, flagged_claims, trace)``.
+    Returns ``(evidence_text, flagged_claims, trace, per_claim_evidence)``
+    — a 4-tuple since Execution Review Phase 8 Chunk A (shape pinned by
+    the design gate; the previously-discarded ``per_claim_evidence`` is
+    the provenance lane's Level-1 substrate).
 
       - ``evidence_text`` is a formatted ``## FLAGGED CLAIM EVIDENCE``
         body suitable for direct injection into a reviser or verifier
@@ -11013,6 +11027,10 @@ def _run_claim_verification_preflight(
         ``assemble_claim_verification_evidence``, or a minimal dict with
         ``status`` and ``reason`` when the pre-flight skipped or errored.
 
+      - ``per_claim_evidence`` is the structured claim→sources list
+        (``{claim, query, results, chunks}`` per claim); ``[]`` on every
+        skip/error path.
+
     ``label`` is a free-form string folded into the trace for cross-step
     disambiguation (e.g. ``"gear4-eval-of-depth"`` vs
     ``"gear4-eval-of-breadth"``) so downstream pipeline-trace dumps stay
@@ -11026,7 +11044,7 @@ def _run_claim_verification_preflight(
             "status": "skipped",
             "reason": "module_unavailable",
             "label": label,
-        }
+        }, []
     try:
         claims = parse_flagged_claims(evaluator_output or "")
     except Exception as exc:
@@ -11034,14 +11052,14 @@ def _run_claim_verification_preflight(
             "status": "errored",
             "reason": f"parse_failed: {str(exc)[:200]}",
             "label": label,
-        }
+        }, []
     if not claims:
         return "", [], {
             "status": "skipped",
             "reason": "no_flagged_claims",
             "claims_total": 0,
             "label": label,
-        }
+        }, []
     try:
         result = assemble_claim_verification_evidence(claims)
     except Exception as exc:
@@ -11050,10 +11068,16 @@ def _run_claim_verification_preflight(
             "reason": f"assemble_failed: {str(exc)[:200]}",
             "claims_total": len(claims),
             "label": label,
-        }
+        }, []
     trace = dict(result.get("trace", {}))
     trace["label"] = label
-    return result.get("evidence_text", ""), claims, trace
+    # Execution Review Phase 8 (Chunk A §2.2, shape PINNED as a 4-tuple):
+    # per_claim_evidence — the structured claim→sources package (url/title/
+    # document/claim_ref/retrieved_at/tier/weight per chunk) — was
+    # historically discarded here, leaving only formatted text. The
+    # provenance lane's Level-1 map is verbatim reuse of this structure.
+    return (result.get("evidence_text", ""), claims, trace,
+            result.get("per_claim_evidence") or [])
 
 
 def _run_unflagged_claim_scan(
@@ -11062,7 +11086,7 @@ def _run_unflagged_claim_scan(
     config: dict,
     label: str = "",
     config_name: str | None = None,
-) -> tuple[str, dict]:
+) -> tuple[str, dict, list]:
     """V8 unflagged-claim scan (F-Verify §V8.3).
 
     Extracts high-risk factual claims from the reviser's ``## REVISED
@@ -11072,7 +11096,10 @@ def _run_unflagged_claim_scan(
     ``## UNFLAGGED CLAIM EVIDENCE`` block (distinct from the FLAGGED
     CLAIM EVIDENCE block the verifier already sees).
 
-    Returns ``(evidence_text, trace)``.
+    Returns ``(evidence_text, trace, per_claim_evidence)`` — widened to a
+    3-tuple by Execution Review Phase 8 Chunk A: the structured
+    claim→sources package rides to the provenance lane; ``[]`` on every
+    skip/error path.
 
     Fail-soft: any unexpected error returns empty evidence_text + an
     errored trace; never raises.
@@ -11082,7 +11109,7 @@ def _run_unflagged_claim_scan(
             "status": "skipped",
             "reason": "module_unavailable",
             "label": label,
-        }
+        }, []
 
     # Extract the REVISED DRAFT body — the extractor scans this, not the
     # reviser's full output with ADDRESSED / CLAIM RESOLUTIONS / etc.
@@ -11093,13 +11120,13 @@ def _run_unflagged_claim_scan(
             "status": "errored",
             "reason": f"draft_extract_failed: {str(exc)[:200]}",
             "label": label,
-        }
+        }, []
     if not revised_draft:
         return "", {
             "status": "skipped",
             "reason": "revised_draft_section_missing",
             "label": label,
-        }
+        }, []
 
     # Resolve the fast endpoint (same slot as F-Consult).
     fast_ep = get_slot_endpoint(config, _WEB_CONSULT_DEFAULT_SLOT,
@@ -11109,7 +11136,7 @@ def _run_unflagged_claim_scan(
             "status": "skipped",
             "reason": "no_fast_endpoint",
             "label": label,
-        }
+        }, []
 
     try:
         result = extract_and_verify_unflagged_claims(
@@ -11122,11 +11149,12 @@ def _run_unflagged_claim_scan(
             "status": "errored",
             "reason": f"scan_failed: {str(exc)[:200]}",
             "label": label,
-        }
+        }, []
 
     trace = dict(result.get("trace", {}))
     trace["label"] = label
-    return result.get("evidence_text", ""), trace
+    return (result.get("evidence_text", ""), trace,
+            result.get("per_claim_evidence") or [])
 
 
 def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None,
@@ -11360,14 +11388,24 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # text is injected into both the reviser's (Step 5) and verifier's
     # (Step 6) user messages so they ground their decisions in the same
     # web evidence. See claim_verification.py.
-    claim_evidence_text, flagged_claims_g3, claim_evidence_trace = (
+    (claim_evidence_text, flagged_claims_g3, claim_evidence_trace,
+     claim_per_evidence_g3) = (
         _run_claim_verification_preflight(
             breadth_evaluation, label="gear3-eval",
         )
     )
+    # Phase 8 (Chunk A §2.2): stash the structured claim→sources package on
+    # the context so the provenance lane can build its Level-1 map at the
+    # terminal from content this turn ALREADY fetched (no re-fetches).
+    if claim_per_evidence_g3:
+        context_pkg.setdefault("claim_evidence", []).extend(claim_per_evidence_g3)
     _trace_step_g3("step4.5-claim-verification", {
         "evidence_text": claim_evidence_text,
         "trace": claim_evidence_trace,
+        # Phase 8: gear-3 now persists the parsed claims + structured evidence
+        # too (closing the gear-3/gear-4 trace asymmetry).
+        "flagged_claims_parsed": flagged_claims_g3,
+        "per_claim_evidence": claim_per_evidence_g3,
     }, markdown=(
         "# Step 4.5 — Claim verification pre-flight (Gear 3)\n\n"
         f"**Status:** `{claim_evidence_trace.get('status')}`  \n"
@@ -11448,15 +11486,23 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # evaluator did NOT flag, then run verification queries on them in
     # parallel. The evidence is injected into the verifier's user message
     # as a distinct ## UNFLAGGED CLAIM EVIDENCE block.
-    unflagged_evidence_text, unflagged_evidence_trace = (
+    (unflagged_evidence_text, unflagged_evidence_trace,
+     unflagged_per_evidence_g3) = (
         _run_unflagged_claim_scan(
             revised_analysis, flagged_claims_g3, config,
             label="gear3", config_name=config_name,
         )
     )
+    if unflagged_per_evidence_g3:
+        for _p in unflagged_per_evidence_g3:
+            if isinstance(_p, dict):
+                _p.setdefault("origin", "unflagged")
+        context_pkg.setdefault("claim_evidence", []).extend(
+            unflagged_per_evidence_g3)
     _trace_step_g3("step5.5-unflagged-scan", {
         "evidence_text": unflagged_evidence_text,
         "trace": unflagged_evidence_trace,
+        "per_claim_evidence": unflagged_per_evidence_g3,
     }, markdown=(
         "# Step 5.5 — V8 unflagged-claim scan (Gear 3)\n\n"
         f"**Status:** `{unflagged_evidence_trace.get('status')}`  \n"
@@ -12091,13 +12137,20 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # in that critique. The same per-stream evidence flows through to the
     # corresponding verifier at Step 6 for V9 audit.
     (depth_claim_evidence_text, depth_flagged_claims,
-     depth_claim_evidence_trace) = _run_claim_verification_preflight(
+     depth_claim_evidence_trace,
+     depth_per_claim_evidence) = _run_claim_verification_preflight(
         breadth_eval_of_depth, label="gear4-eval-of-depth",
     )
     (breadth_claim_evidence_text, breadth_flagged_claims,
-     breadth_claim_evidence_trace) = _run_claim_verification_preflight(
+     breadth_claim_evidence_trace,
+     breadth_per_claim_evidence) = _run_claim_verification_preflight(
         depth_eval_of_breadth, label="gear4-eval-of-breadth",
     )
+    # Phase 8 (Chunk A §2.2): stash the structured claim→sources packages on
+    # the context for the terminal provenance lane (Level-1 map substrate).
+    for _pce in (depth_per_claim_evidence, breadth_per_claim_evidence):
+        if _pce:
+            context_pkg.setdefault("claim_evidence", []).extend(_pce)
     # Persist per-stream pre-flight traces. Gear 3 already has
     # step4.5-claim-verification.md via _trace_step_g3; Gear 4 needs
     # its own two files so the per-stream evidence + trace are
@@ -12107,6 +12160,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "evidence_text": depth_claim_evidence_text,
         "trace": depth_claim_evidence_trace,
         "flagged_claims_parsed": depth_flagged_claims,
+        "per_claim_evidence": depth_per_claim_evidence,
     }, markdown=(
         "# Step 4.5 — Claim verification pre-flight (Gear 4 — depth stream)\n\n"
         f"**Status:** `{depth_claim_evidence_trace.get('status')}`  \n"
@@ -12123,6 +12177,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         "evidence_text": breadth_claim_evidence_text,
         "trace": breadth_claim_evidence_trace,
         "flagged_claims_parsed": breadth_flagged_claims,
+        "per_claim_evidence": breadth_per_claim_evidence,
     }, markdown=(
         "# Step 4.5 — Claim verification pre-flight (Gear 4 — breadth stream)\n\n"
         f"**Status:** `{breadth_claim_evidence_trace.get('status')}`  \n"
@@ -12284,17 +12339,26 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # claims the breadth evaluator missed in depth's draft; the breadth
     # verifier gets evidence on claims the depth evaluator missed in
     # breadth's draft. See F-Verify §V8.3.
-    depth_unflagged_text, depth_unflagged_trace = _run_unflagged_claim_scan(
+    (depth_unflagged_text, depth_unflagged_trace,
+     depth_unflagged_evidence) = _run_unflagged_claim_scan(
         revised_depth, depth_flagged_claims, config, label="gear4-depth",
         config_name=config_name,
     )
-    breadth_unflagged_text, breadth_unflagged_trace = _run_unflagged_claim_scan(
+    (breadth_unflagged_text, breadth_unflagged_trace,
+     breadth_unflagged_evidence) = _run_unflagged_claim_scan(
         revised_breadth, breadth_flagged_claims, config, label="gear4-breadth",
         config_name=config_name,
     )
+    for _pce in (depth_unflagged_evidence, breadth_unflagged_evidence):
+        if _pce:
+            for _p in _pce:
+                if isinstance(_p, dict):
+                    _p.setdefault("origin", "unflagged")
+            context_pkg.setdefault("claim_evidence", []).extend(_pce)
     _trace_step("step5.5-unflagged-scan-depth", {
         "evidence_text": depth_unflagged_text,
         "trace": depth_unflagged_trace,
+        "per_claim_evidence": depth_unflagged_evidence,
     }, markdown=(
         "# Step 5.5 — V8 unflagged-claim scan (Gear 4 — depth stream)\n\n"
         f"**Status:** `{depth_unflagged_trace.get('status')}`  \n"
@@ -12306,6 +12370,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     _trace_step("step5.5-unflagged-scan-breadth", {
         "evidence_text": breadth_unflagged_text,
         "trace": breadth_unflagged_trace,
+        "per_claim_evidence": breadth_unflagged_evidence,
     }, markdown=(
         "# Step 5.5 — V8 unflagged-claim scan (Gear 4 — breadth stream)\n\n"
         f"**Status:** `{breadth_unflagged_trace.get('status')}`  \n"

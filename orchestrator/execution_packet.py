@@ -200,7 +200,63 @@ def _fence(label: str, body: str) -> str:
     return f"=== {label} ===\n{str(body).strip()}\n=== END {label} ==="
 
 
-def _render_evidence(packet: ExecutionPacket) -> str:
+def _render_provenance_lane(l: EvidenceLane, *, durable_summary: bool) -> list[str]:
+    """Phase 8 (Chunk A §2.5): render a FILLED collect_provenance lane — the
+    only lane whose ``result`` content reaches the review text. Two framing
+    rules, both load-bearing:
+
+    - On a MIXED mutation+source-read turn the header is explicitly
+      INFORMATIONAL and the bare ``INSUFFICIENT`` token is never emitted —
+      otherwise a Level-1 ``sufficient=False`` lane would enter the
+      different-family verifier's prompt as a failing check and change
+      mutation-turn loop behavior through the prompt, defeating the OQ-4
+      stop-rule deferral (judge-approved Rev 4).
+    - ``durable_summary=True`` (the escalation-handback render) emits the
+      coverage line ONLY — never map rows or excerpts — so lane content
+      cannot reach the durable Paused queue through ``render_for_review``
+      (the Rev-3 handback-leak blocker fold)."""
+    summary = (l.result or {}).get("provenance") if isinstance(l.result, dict) else None
+    if not isinstance(summary, dict):
+        return []
+    cov = summary.get("coverage") or {}
+    total = cov.get("claims_total")
+    total_str = (str(total) if isinstance(total, int)
+                 else f"unknown (Level 1 — {cov.get('claims_examined', 0)} examined)")
+    header = ("PROVENANCE (informational — not a convergence input in this phase)"
+              if summary.get("mixed_turn") else
+              f"PROVENANCE [{'sufficient' if lane_is_sufficient(l) else 'not sufficient'}]")
+    lines = [f"{header}: claims_total={total_str}, "
+             f"mapped={cov.get('claims_mapped', 0)}, "
+             f"supported={cov.get('claims_supported', 0)}, "
+             f"unsupported={cov.get('claims_unsupported', 0)}, "
+             f"sources={cov.get('sources_total', 0)} "
+             f"(used {cov.get('sources_used', 0)}), "
+             f"opaque_channels={cov.get('opaque_channels', 0)}, "
+             f"missing_timestamps={cov.get('missing_timestamps', 0)}"]
+    # §12 honesty: a same-family Level-2 mapper must SAY so wherever its
+    # judgments are weighed (pre-check fold — the note was recorded on the
+    # lane but never rendered).
+    if summary.get("mapper_family"):
+        lines.append(f"  mapper family: {summary['mapper_family']}")
+    if durable_summary:
+        return lines
+    for row in summary.get("rows") or []:
+        refs = ", ".join(str((r or {}).get("ref") or (r or {}).get("source_id"))
+                         for r in (row.get("sources") or [])) or "no source"
+        line = (f"  claim {row.get('claim_id')} [{row.get('support_status')}]: "
+                f"{row.get('claim_text') or ''} -> {refs}")
+        if row.get("excerpt"):
+            line += f" | excerpt: {row['excerpt']}"
+        lines.append(line)
+    if summary.get("rows_truncated"):
+        lines.append("  …map rows truncated (full map: provenance-map.json)")
+    if cov.get("opaque_channels", 0):
+        lines.append("  NOTE: opaque channel(s) contributed — consulted-vs-used "
+                     "cannot be verified through an opaque boundary (§17)")
+    return lines
+
+
+def _render_evidence(packet: ExecutionPacket, *, durable_summary: bool = False) -> str:
     obs = packet.observed or {}
     lines: list[str] = []
     if obs.get("any_mutation"):
@@ -216,6 +272,16 @@ def _render_evidence(packet: ExecutionPacket) -> str:
         lines.append("WHAT WAS READ AS A SOURCE: none suspected")
     if packet.evidence_lanes:
         for l in packet.evidence_lanes:
+            # Phase 8: a FILLED provenance lane renders its own block — the
+            # generic template's bare INSUFFICIENT token must never speak
+            # for it (see _render_provenance_lane). An UNFILLED provenance
+            # lane (sufficient None) falls through to the owed template.
+            if (getattr(l, "lane", None) == "collect_provenance"
+                    and getattr(l, "sufficient", None) is not None):
+                prov = _render_provenance_lane(l, durable_summary=durable_summary)
+                if prov:
+                    lines.extend(prov)
+                    continue
             if not lane_is_sufficient(l):
                 # Covers the tri-state unfilled (None) AND an explicit False.
                 state = ("evidence not yet generated (owed, not sufficient)"
@@ -233,14 +299,16 @@ def _render_evidence(packet: ExecutionPacket) -> str:
     return "\n".join(lines)
 
 
-def render_for_review(packet: ExecutionPacket) -> str:
+def render_for_review(packet: ExecutionPacket, *, durable_summary: bool = False) -> str:
     """§12 packet-to-review renderer: mechanical evidence FIRST, producer claim
     LAST (labeled an unverified claim). Physically enforces "evidence over claims"
     — a fluent claim can't out-argue a failing check because the reviewer meets the
     evidence first and the claim explicitly framed as unverified.
 
-    TESTED-BUT-UNWIRED in P4: no live verifier consumes this. It is proven by a
-    test that feeds its output into the real evaluator/verifier user-prompt shape."""
+    ``durable_summary=True`` (Phase 8, the escalation-handback render): lane
+    RESULT content is suppressed — the provenance block emits its coverage
+    line only, never map rows or excerpts — because the handback rides a
+    durable queue and bypasses ``redact_for_durable`` (Rev-3 blocker fold)."""
     parts: list[str] = []
 
     # 1. Task + acceptance criteria — or a LOUD absence (never a silent omission).
@@ -259,7 +327,8 @@ def render_for_review(packet: ExecutionPacket) -> str:
             "producer claim below as validated against a standard."))
 
     # 2. Mechanical evidence FIRST.
-    parts.append(_fence("OBSERVED EVIDENCE", _render_evidence(packet)))
+    parts.append(_fence("OBSERVED EVIDENCE",
+                        _render_evidence(packet, durable_summary=durable_summary)))
     # The in-gear verdict renders as a SCOPED text-review line — never an
     # unqualified green check that could be read as covering the mechanical
     # evidence it never saw.

@@ -180,6 +180,18 @@ ACTION_MANIFEST: dict[str, dict] = {
     "engram_git_push": {"category": "write", "mutability": "external_write",
                         "sensitivity": "private", "egress": "external",
                         "enforcement": "in_harness"},
+    # Execution Review Phase 8 (Chunk A): the pipeline's own web reads are
+    # recorded by the library guard in tools/web_search.py / tools/web_fetch.py
+    # (design §2.3, judge OQ-5 condition). Axes MATCH dispatcher.TOOL_REGISTRY's
+    # entries for the model-facing twins — without these manifest entries,
+    # manifest_axes() fails closed to secret and _redact_for_record strips the
+    # very reads[] URLs the provenance lane exists to capture.
+    "web_search": {"category": "read", "mutability": "read",
+                   "sensitivity": "public", "egress": "external",
+                   "enforcement": "in_harness"},
+    "web_fetch": {"category": "read", "mutability": "read",
+                  "sensitivity": "public", "egress": "external",
+                  "enforcement": "in_harness"},
 }
 
 # Core capability slots (config/capabilities.json). All are external paid
@@ -506,6 +518,147 @@ def _sink_path(ctx: dict) -> str:
     if ctx.get("trace_dir"):
         return os.path.join(ctx["trace_dir"], "tool-events.jsonl")
     return global_sink_path()
+
+
+# ── Pipeline web-read library guard (Execution Review Phase 8 Chunk A, §2.3) ──
+# The pipeline's own web reads (step-2 F-Consult, step-4.5 claim verification,
+# deep extraction) call tools/web_search.py / tools/web_fetch.py as library
+# functions and historically emitted NO tool events — the §16-3 dispatcher-
+# blindness the provenance lane exposed. The guard records at the LIBRARY
+# boundary on every call UNLESS the dispatcher is already recording this call
+# (dispatcher.execute_tool sets the suppression flag around its SYNCHRONOUS
+# handler invocation — same-thread, exact; executor worker threads correctly
+# do not inherit it and DO record). Turn context is a ContextVar: callers that
+# fan out to threads must contextvars.copy_context() into the executor (see
+# web_consultation._ctx_submit / claim_verification) or worker events would
+# misfile to the global sink without conversation_id or stealth suppression.
+
+_LIB_RECORD_SUPPRESS = threading.local()
+
+
+class suppress_library_recording:
+    """Context manager the dispatcher wraps around its web_fetch / web_search
+    handler calls so the library guard does not double-record them. Reentrant
+    (counted) so nesting is safe."""
+
+    def __enter__(self):
+        _LIB_RECORD_SUPPRESS.active = getattr(_LIB_RECORD_SUPPRESS, "active", 0) + 1
+        return self
+
+    def __exit__(self, *exc):
+        _LIB_RECORD_SUPPRESS.active = max(
+            0, getattr(_LIB_RECORD_SUPPRESS, "active", 1) - 1)
+        return False
+
+
+def library_recording_suppressed() -> bool:
+    return bool(getattr(_LIB_RECORD_SUPPRESS, "active", 0))
+
+
+# Signed-URL / credential QUERY parameters the body-token patterns in
+# scrub_content do not cover (they are URL-query-space, not token-shaped):
+# Azure SAS `sig`, AWS SigV4, GCS signatures, generic key/token/auth params.
+_URL_CRED_PARAM_RE = re.compile(
+    r"(?i)([?&])("
+    r"sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token"
+    r"|x-goog-signature|x-goog-credential|key|api[-_]?key|apikey|token"
+    r"|access[-_]?token|auth|password|passwd|secret|credentials?"
+    r")=[^&#\s]*")
+
+_WHAT_CAP = 512            # per-read `what` char cap (belt under the byte budget)
+_EVENT_SOFT_BUDGET = 6000  # projected encoded-line soft budget (< MAX_LINE_BYTES)
+
+
+def sanitize_url(url) -> str:
+    """Strip credential/signature query parameters from a URL before it rides
+    a read record or a provenance registry ref (design §2.3). The stripped
+    original never persists anywhere."""
+    try:
+        s = str(url)
+    except Exception:
+        return ""
+    s = _URL_CRED_PARAM_RE.sub(r"\1\2=…[stripped]", s)
+    try:
+        s, _found = scrub_content(s)
+    except Exception:
+        # Fail CLOSED for a sanitizer: never return possibly-raw input.
+        return "[URL withheld — sanitizer unavailable]"
+    return s
+
+
+def _capped_what(what) -> str:
+    """Cap a read's `what` so one pathological URL can never blow an event
+    line; identity survives via a 16-hex tail hash of the FULL capped-input
+    value (already sanitized by the caller)."""
+    w = str(what)
+    if len(w) <= _WHAT_CAP:
+        return w
+    tail = hashlib.sha256(w.encode("utf-8", "replace")).hexdigest()[:16]
+    return w[:_WHAT_CAP] + f"…[capped sha256:{tail}]"
+
+
+def record_web_reads(action: str, reads: list,
+                     *, args_redacted: dict | None = None,
+                     exit_ok: bool = True, exit_reason: str = "") -> None:
+    """Record library-boundary web reads as one or more ``action`` events,
+    BYTE-budgeted so no emitted line ever approaches MAX_LINE_BYTES (whose
+    truncation keep-set drops ``reads[]`` wholesale): reads accumulate while
+    the projected encoded size stays under the soft budget; overflow starts a
+    new ``batch_part``-marked event. Nothing is silently dropped. Suppressed
+    inside a dispatcher-recording context. ``exit_ok=False`` records a FAILED
+    read attempt (egress happened; the read yielded nothing) — risk_gate's
+    source-read fold correctly ignores non-ok events, but the observation
+    layer never pretends the contact didn't happen (§16-3; pre-check fold:
+    'every invocation' includes the failed ones). Never raises."""
+    try:
+        if not reads or library_recording_suppressed():
+            return
+        axes = manifest_axes(action)
+        base = {"event": "tool", "action": action,
+                "category": axes.get("category", "read"),
+                "mutability": axes.get("mutability", "read"),
+                "sensitivity": axes.get("sensitivity", "public"),
+                "egress": axes.get("egress", "external"),
+                "mutated": False,
+                "exit": {"ok": bool(exit_ok),
+                         "reason": str(exit_reason)[:120] if exit_reason else ""},
+                "gate": {"decision": "allowed", "why": "library read"},
+                "enforcement_model": axes.get("enforcement", "in_harness")}
+        if args_redacted:
+            base["args_redacted"] = {k: str(v)[:200]
+                                     for k, v in args_redacted.items()}
+        clean: list[dict] = []
+        for r in reads:
+            if not isinstance(r, dict):
+                continue
+            c = dict(r)
+            if c.get("what") is not None:
+                c["what"] = _capped_what(c["what"])
+            clean.append(c)
+        if not clean:
+            return
+        overhead = len(json.dumps(base, ensure_ascii=True).encode("utf-8")) + 200
+        batches: list[list[dict]] = []
+        cur: list[dict] = []
+        cur_bytes = overhead
+        for c in clean:
+            r_bytes = len(json.dumps(c, ensure_ascii=True).encode("utf-8")) + 2
+            if cur and cur_bytes + r_bytes > _EVENT_SOFT_BUDGET:
+                batches.append(cur)
+                cur, cur_bytes = [], overhead
+            cur.append(c)
+            cur_bytes += r_bytes
+        if cur:
+            batches.append(cur)
+        total = len(batches)
+        for i, batch in enumerate(batches):
+            ev = dict(base)
+            ev["reads"] = batch
+            if total > 1:
+                ev["batch_part"] = f"{i + 1}/{total}"
+            record(ev)
+    except Exception as e:
+        _note_failure(e, "tool_events_record_web_reads")
 
 
 def record(event: dict) -> None:

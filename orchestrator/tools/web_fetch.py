@@ -75,21 +75,62 @@ def web_fetch(
         return _error_result(url, "auto", f"Invalid URL scheme: {url}")
 
     if channel == "httpx":
-        return _fetch_httpx(url)
+        return _record_fetch_read(_fetch_httpx(url))
     if channel == "local":
-        return _fetch_playwright(url)
+        return _record_fetch_read(_fetch_playwright(url))
     if channel == "api":
-        return _fetch_jina(url)
+        return _record_fetch_read(_fetch_jina(url))
     if channel != "auto":
         return _error_result(url, channel, f"Unknown channel: {channel}")
 
     result = _fetch_httpx(url)
     if _is_acceptable(result):
-        return result
+        return _record_fetch_read(result)
     result = _fetch_playwright(url)
     if _is_acceptable(result):
-        return result
-    return _fetch_jina(url)
+        return _record_fetch_read(result)
+    return _record_fetch_read(_fetch_jina(url))
+
+
+def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
+    """Execution Review Phase 8 (Chunk A §2.3) LIBRARY GUARD: record EVERY
+    fetch as a ``web_fetch`` tool-event — successful ones with the sanitized
+    URL, content length, and a CONTENT-ONLY hash (sha256 of the markdown
+    body — stable across identical fetches, unlike hashing a serialized dict
+    with a timestamp in it); FAILED ones with ``exit.ok: false`` (egress
+    happened even when every tier errored — the observation layer never
+    pretends the contact didn't happen; risk_gate ignores non-ok reads for
+    the source signal). Suppressed inside a dispatcher-recording context.
+    Import-guarded + never-raises; always returns ``result`` unchanged."""
+    try:
+        if not isinstance(result, dict):
+            return result
+        try:
+            import tool_events as _te
+        except ImportError:  # pragma: no cover
+            from orchestrator import tool_events as _te
+        if _te.library_recording_suppressed():
+            return result
+        safe_url = _te.sanitize_url(result.get("url", ""))
+        if result.get("error"):
+            _te.record_web_reads(
+                "web_fetch",
+                [{"what": safe_url, "where": "network"}],
+                args_redacted={"url": safe_url,
+                               "channel": result.get("channel", "")},
+                exit_ok=False, exit_reason=str(result.get("error", ""))[:120])
+            return result
+        import hashlib
+        markdown = result.get("markdown") or ""
+        _te.record_web_reads("web_fetch", [{
+            "what": safe_url, "where": "network", "chars": len(markdown),
+            "content_hash": hashlib.sha256(
+                markdown.encode("utf-8", "replace")).hexdigest()[:16],
+        }], args_redacted={"url": safe_url,
+                           "channel": result.get("channel", "")})
+    except Exception:
+        pass
+    return result
 
 
 # ── Tier implementations ─────────────────────────────────────────────

@@ -443,6 +443,13 @@ def _format_web_consultation_body(
             break
         parts.append(block)
         total += len(block)
+        # Execution Review Phase 8 (Chunk A §2.4): mark the chunks that
+        # actually entered the prompt body — the char-budget break means
+        # all_chunks can be a SUPERSET of what any model saw, and the
+        # provenance registry must never let an un-injected chunk support
+        # a claim (that would be fabricated provenance). In-place stamp;
+        # chunks the loop never reached stay unstamped (falsy).
+        chunk["injected"] = True
     return "".join(parts).rstrip()
 
 
@@ -686,6 +693,7 @@ def assemble_consultation_package(
     def _empty_package(status: str, reason: str) -> dict:
         return {
             "web_rag": "",
+            "chunks": [],
             "prompt_sanity_flags": [],
             "consultation_trace": {
                 "status": status,
@@ -1026,6 +1034,13 @@ def assemble_consultation_package(
 
     return {
         "web_rag": web_rag_text,
+        # Execution Review Phase 8 (Chunk A §2.2): the structured chunks were
+        # historically DISCARDED at this return boundary (only the formatted
+        # string survived). Retained additively for the provenance registry —
+        # url/title/document/retrieved_at/weight/classification per chunk,
+        # plus the `injected` stamp from the formatter (§2.4: only injected
+        # chunks may support a claim). Zero new fetches.
+        "chunks": all_chunks,
         "prompt_sanity_flags": sanity_flags,
         "consultation_trace": {
             "status": "ran",
