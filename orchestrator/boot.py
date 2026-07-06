@@ -106,8 +106,16 @@ def _filter_private_values(mind_content: str) -> str:
         flags=re.DOTALL,
     ).rstrip()
 
-# Paths
-WORKSPACE = os.path.expanduser("~/ora/")
+# Paths — the workspace root derives from runtime_paths (ORA_HOME-relocatable,
+# correct on Windows); the fallback mirrors runtime_paths.ORA_HOME's own
+# derivation so the two can never disagree. os.path.join(root, "") appends the
+# platform separator, preserving this constant's trailing-separator shape.
+if _runtime_paths is not None:
+    WORKSPACE = os.path.join(_runtime_paths.WORKSPACE, "")
+else:  # pragma: no cover — runtime_paths import failed (degraded context)
+    WORKSPACE = os.path.join(
+        os.environ.get("ORA_HOME")
+        or os.path.expanduser(os.path.join("~", "ora")), "")
 BOOT_MD = os.path.join(WORKSPACE, "boot/boot.md")
 MIND_MD = os.path.join(WORKSPACE, "mind.md")  # user values; save dest == load source
 ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
@@ -4473,7 +4481,7 @@ def _parse_input_contract(mode_text: str) -> dict:
 
     Returns a dict with expert_mode + accessible_mode + detection +
     graceful_degradation sub-dicts. Naive YAML parser sized for the
-    template structure used in /Users/oracle/ora/modes/*.md.
+    template structure used in the mode files under ``modes/``.
     """
     # Locate the input_contract: line and capture the indented block.
     # The block runs until the next non-indented, non-blank line (e.g., a
@@ -4578,7 +4586,7 @@ def _parse_graceful_degradation(degradation_text: str) -> dict:
 #   2. SUBJECT_NAMED_FIELDS — satisfied by a concrete noun phrase in the prompt
 #   3. SITUATION_FIELDS — satisfied by any substantive prompt content (>=5 words)
 #   4. anything else — fall back to generic substring detection
-# These sets cover the 50+ mode files in /Users/oracle/ora/modes/.
+# These sets cover the 50+ mode files under modes/.
 
 _ARTIFACT_TEXT_FIELDS = {
     "argument_or_artifact_to_steelman", "argument_text", "artifact_text",
@@ -6863,8 +6871,8 @@ def _load_profile_config(config_name: str | None) -> dict | None:
         return None
     import json as _json
     import os as _os
-    path = _os.path.expanduser(
-        f"~/ora/config/configurations/{config_name}.json"
+    path = _os.path.join(
+        WORKSPACE, "config", "configurations", f"{config_name}.json"
     )
     try:
         with open(path) as f:
@@ -10921,7 +10929,7 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
 
     # Diagnostic: when the first attempt fails, dump its endpoint + failure
     # reason + a short signature of the response to the server log. Lets
-    # ``grep [retry-diag] /tmp/ora_server.log`` reveal systematic failure
+    # ``grep [retry-diag] server.log`` reveal systematic failure
     # patterns (e.g., one model consistently producing unhealthy first
     # attempts) without instrumenting every call site. Added 2026-05-20
     # during the post-Chunk-J root-cause audit.
@@ -13712,7 +13720,7 @@ def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
     prompt_text = "\n\n".join(parts)
 
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
-    workdir = os.path.expanduser("~/ora/data/claude-code-runs")
+    workdir = os.path.join(WORKSPACE, "data", "claude-code-runs")
     os.makedirs(workdir, exist_ok=True)
     # Scrub ANTHROPIC_API_KEY (so the CLI can never silently bill the metered
     # API) AND the inherited Claude Code session / SDK-OAuth-refresh context.
@@ -14444,12 +14452,18 @@ def parse_tool_calls(text: str) -> list[dict]:
 
 
 def _continuity_save(session_summary: str) -> str:
-    """Write a session continuity file to ~/Documents/conversations/."""
+    """Write a session continuity file to the conversations root
+    (``runtime_paths.CONVERSATIONS`` — env-overridable via ORA_CONVERSATIONS)."""
     if not session_summary.strip():
         return "[continuity_save] No summary provided."
     from datetime import datetime
     ts = datetime.now().strftime("%Y-%m-%d_%H%M")
-    path = os.path.expanduser(f"~/Documents/conversations/continuity_{ts}.md")
+    if _runtime_paths is not None:
+        conv_dir = _runtime_paths.CONVERSATIONS_STR
+    else:  # pragma: no cover — mirror runtime_paths' default derivation
+        conv_dir = os.path.join(
+            os.path.expanduser("~"), "Documents", "conversations")
+    path = os.path.join(conv_dir, f"continuity_{ts}.md")
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
