@@ -98,6 +98,37 @@ class Check:
     mutates: bool = False
     timeout: int = _DEFAULT_TIMEOUT
     network: str = "deny"          # deny | local | allow
+    # Phase 8 Chunk C (§4.1/§2.2): declared, harness-built check INPUTS +
+    # delta scoping. ``inputs`` names artifacts the actuator precomputes OUTSIDE
+    # the sandbox (git works there) and hands the check via the read-only
+    # ``ORA_CHECK_INPUTS`` directory — the check runs NO git and reads NO ora
+    # code in the sandbox. ``scope`` drives sparse checkout (changed-files-only
+    # vault checks stay O(delta), not O(137k)).
+    inputs: list | None = None     # subset of {"changed_files", "title_universe"}
+    scope: str = "repo"            # "repo" | "changed_files"
+
+
+_VALID_CHECK_INPUTS = {"changed_files", "title_universe"}
+_VALID_CHECK_SCOPE = {"repo", "changed_files"}
+_CHECK_INPUTS_ENV = "ORA_CHECK_INPUTS"     # read-only inputs dir handed to a check
+# Filenames the actuator writes into the inputs dir, one per declared input.
+_INPUTS_FILENAMES = {"changed_files": "changed-files.txt",
+                     "title_universe": "title-universe.txt"}
+
+
+@dataclass
+class Recipe:
+    """A named, repo-declared, write-protected standing/probe recipe (§4.1). Lives
+    in the catalog's ``recipes:`` block so a model can never inject a probe URL or
+    weaken a check — the recipe body always comes from the §6-protected file."""
+
+    name: str
+    lane: str                      # deploy_probe | render_inspect | run_observe
+    target: str
+    standing: bool = False
+    probes: list | None = None     # deploy_probe recipes
+    rollback: str | None = None    # MANDATORY for deploy_probe
+    check: str | None = None       # render_inspect recipes — a catalog check name
 
 
 @dataclass
@@ -116,6 +147,7 @@ class Catalog:
     checks: dict[str, Check] = field(default_factory=dict)
     runner: Runner = field(default_factory=Runner)
     path: str | None = None
+    recipes: dict[str, Recipe] = field(default_factory=dict)
 
 
 @dataclass
@@ -216,6 +248,56 @@ def validate_check(name: str, check: dict) -> list[str]:
         errors.append(f"check {name!r}: mutates must be boolean")
     if check.get("network", "deny") not in _te._EVIDENCE_NETWORK:
         errors.append(f"check {name!r}: invalid network {check.get('network')!r}")
+    # Phase 8 Chunk C: declared inputs + delta scope (fixed vocabularies so a
+    # typo is a LOUD parse error, never a silently-ignored input).
+    if "inputs" in check:
+        inp = check["inputs"]
+        if not isinstance(inp, list):
+            errors.append(f"check {name!r}: 'inputs' must be a list")
+        else:
+            bad = [x for x in inp if x not in _VALID_CHECK_INPUTS]
+            if bad:
+                errors.append(f"check {name!r}: unknown inputs {bad} "
+                              f"(valid: {sorted(_VALID_CHECK_INPUTS)})")
+    if "scope" in check and check["scope"] not in _VALID_CHECK_SCOPE:
+        errors.append(f"check {name!r}: invalid scope {check.get('scope')!r} "
+                      f"(valid: {sorted(_VALID_CHECK_SCOPE)})")
+    return errors
+
+
+_VALID_RECIPE_LANES = {"deploy_probe", "render_inspect", "run_observe"}
+
+
+def validate_recipe(name: str, recipe: dict, check_names: set) -> list[str]:
+    """Validate one ``recipes:`` entry (§4.1). A ``deploy_probe`` recipe REQUIRES a
+    ``rollback`` field (⚖ design Rev 3 — a reviewer of a deploy delta must always
+    see the recovery posture); a ``render_inspect`` recipe REQUIRES a ``check`` that
+    exists in the catalog. The recipe body is repo-declared + §6-protected, so a
+    model can never inject a probe URL through it."""
+    errors: list[str] = []
+    lane = recipe.get("lane")
+    if lane not in _VALID_RECIPE_LANES:
+        errors.append(f"recipe {name!r}: invalid lane {lane!r} "
+                      f"(valid: {sorted(_VALID_RECIPE_LANES)})")
+    if not recipe.get("target"):
+        errors.append(f"recipe {name!r}: missing required 'target'")
+    if "standing" in recipe and not isinstance(recipe["standing"], bool):
+        errors.append(f"recipe {name!r}: 'standing' must be boolean")
+    if lane == "deploy_probe":
+        probes = recipe.get("probes")
+        if not isinstance(probes, list) or not probes:
+            errors.append(f"recipe {name!r}: deploy_probe needs a non-empty 'probes' list")
+        # Mandatory rollback — absence is an ERROR, never a silent default.
+        rb = recipe.get("rollback")
+        if not (isinstance(rb, str) and rb.strip()):
+            errors.append(f"recipe {name!r}: deploy_probe requires a 'rollback' string "
+                          "(a recovery ref, or the explicit literal 'none: <recovery contract>')")
+    if lane == "render_inspect":
+        chk = recipe.get("check")
+        if not chk:
+            errors.append(f"recipe {name!r}: render_inspect needs a 'check' (a catalog check name)")
+        elif chk not in check_names:
+            errors.append(f"recipe {name!r}: render_inspect 'check' {chk!r} not in the catalog checks")
     return errors
 
 
@@ -257,7 +339,27 @@ def parse_catalog(path: str) -> Catalog:
             cmd_windows=c.get("cmd_windows"), cmd_posix=c.get("cmd_posix"),
             mutates=bool(c.get("mutates", False)),
             timeout=int(c.get("timeout", _DEFAULT_TIMEOUT)),
-            network=c.get("network", runner_raw.get("network", "deny")))
+            network=c.get("network", runner_raw.get("network", "deny")),
+            inputs=c.get("inputs"), scope=c.get("scope", "repo"))
+
+    # Phase 8 Chunk C: the optional recipes: block (declared lanes). Unknown keys
+    # inside a recipe would be silently ignored by dataclass construction, so we
+    # validate the shape LOUDLY; the recipe body is write-protected (§6).
+    recipes_raw = raw.get("recipes") or {}
+    if not isinstance(recipes_raw, dict):
+        raise ValueError(f"evidence catalog {path}: 'recipes' must be a mapping")
+    check_names = set(checks.keys())
+    recipes: dict[str, Recipe] = {}
+    for rname, r in recipes_raw.items():
+        if not isinstance(r, dict):
+            errs.append(f"recipe {rname!r} must be a mapping")
+            continue
+        errs.extend(validate_recipe(rname, r, check_names))
+        recipes[rname] = Recipe(
+            name=rname, lane=r.get("lane"), target=r.get("target"),
+            standing=bool(r.get("standing", False)), probes=r.get("probes"),
+            rollback=r.get("rollback"), check=r.get("check"))
+
     if errs:
         raise ValueError(f"invalid evidence catalog {path}: " + "; ".join(errs))
     runner = Runner(
@@ -266,7 +368,7 @@ def parse_catalog(path: str) -> Catalog:
         network=runner_raw.get("network", "deny"),
         redact=runner_raw.get("redact", "by-sensitivity"),
         on_unknown=runner_raw.get("on_unknown", "gated"))
-    return Catalog(checks=checks, runner=runner, path=path)
+    return Catalog(checks=checks, runner=runner, path=path, recipes=recipes)
 
 
 def discover_catalog(repo_root: str | None = None) -> str | None:
@@ -300,13 +402,16 @@ def discover_catalog(repo_root: str | None = None) -> str | None:
 
 
 # ── Platform: clean env, argv resolution, enforcement backend ─────────────────
-def _clean_env(work_home: str, tmpdir: str) -> dict:
+def _clean_env(work_home: str, tmpdir: str, inputs_dir: str | None = None) -> dict:
     """Credential-stripping clean env the runner BUILDS ITSELF (defense in depth on
     every backend). Platform-aware: POSIX ``HOME``/``TMPDIR``; Windows
     ``USERPROFILE``/``TEMP``/``TMP`` + ``SystemRoot``/``COMSPEC``/``PATHEXT`` (a
     spawned Windows process needs these to start). Deliberately does NOT reuse
     ``bash_execute._clean_env`` — that one is a leaky allowlist preserving
-    ``HOME``/``USER``/``SSH_AUTH_SOCK`` (an agent socket is a live credential)."""
+    ``HOME``/``USER``/``SSH_AUTH_SOCK`` (an agent socket is a live credential).
+    Phase 8 Chunk C: when the check declares ``inputs``, the read-only inputs dir
+    is announced via ``ORA_CHECK_INPUTS`` (env, not argv — argv is exec'd
+    shell-free and cannot expand a variable)."""
     env: dict[str, str] = {}
     for key in ("PATH", "LANG", "LC_ALL"):
         if key in os.environ:
@@ -322,6 +427,8 @@ def _clean_env(work_home: str, tmpdir: str) -> dict:
     else:
         env["HOME"] = work_home
         env["TMPDIR"] = tmpdir
+    if inputs_dir:
+        env[_CHECK_INPUTS_ENV] = inputs_dir
     return env
 
 
@@ -542,13 +649,16 @@ def sandbox_worktree_unsafe(worktree: str, tmpdir: str) -> str | None:
     return None
 
 
-def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
+def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
+                   inputs_dir: str | None = None) -> str:
     """Deny reads under $HOME + every Ora private root, RE-ALLOW reads (and, for a
     mutating check, writes) under the SPECIFIC worktree, then RE-DENY any private
     root nested under the worktree (belt-and-suspenders for SEC-2 — the runner also
     refuses an ancestor worktree pre-flight). ``(deny network*)`` enforces
     ``network: deny``. Callers pass only SBPL-safe paths (``sandbox_worktree_unsafe``
-    is checked first)."""
+    is checked first). Phase 8 Chunk C: ``inputs_dir`` (under SCRATCH_DIR, i.e.
+    under a denied private root) gets an explicit read-ONLY re-allow so the check
+    can read the harness-precomputed inputs — never a write-allow."""
     real_wt = os.path.realpath(worktree)
     real_tmp = os.path.realpath(tmpdir)
     deny_roots = _private_deny_roots()
@@ -562,6 +672,10 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
         "(version 1)", "(allow default)", "(deny network*)", denies,
         f'(allow file-read* (subpath "{real_wt}"))',
         f'(allow file-read* (subpath "{real_tmp}"))',
+    ]
+    if inputs_dir:
+        parts.append(f'(allow file-read* (subpath "{os.path.realpath(inputs_dir)}"))')
+    parts += [
         re_denies,                       # nested private roots stay denied
         "(deny file-write*)",
         f'(allow file-write* (subpath "{real_tmp}"))',
@@ -573,10 +687,10 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
 
 
 def _wrap_argv(backend: str, argv: list[str], worktree: str, tmpdir: str,
-               allow_write_repo: bool) -> list[str]:
+               allow_write_repo: bool, inputs_dir: str | None = None) -> list[str]:
     """Build the OS argv that runs ``argv`` UNDER the enforcing backend."""
     if backend == "sandbox-exec":
-        profile = _macos_profile(worktree, tmpdir, allow_write_repo)
+        profile = _macos_profile(worktree, tmpdir, allow_write_repo, inputs_dir)
         return [shutil.which("sandbox-exec") or "sandbox-exec", "-p", profile, *argv]
     if backend == "unshare":
         # Unprivileged user+net namespace: no network interfaces → deny enforced.
@@ -652,7 +766,7 @@ def _record_check_event(check: Check, result: CheckResult) -> None:
     event. Never raises."""
     try:
         ran = not result.skipped
-        _te.record({
+        evt = {
             "event": "evidence_check",
             "action": f"evidence_check:{check.name}",
             "category": "execute",
@@ -667,27 +781,45 @@ def _record_check_event(check: Check, result: CheckResult) -> None:
             "gate": {"decision": ("allowed" if ran else "blocked"),
                      "why": (result.skip_reason or "ran under "
                              + str(result.backend or "?"))},
-        })
+        }
+        # Phase 8 Chunk C: which harness-built inputs the check declared (observed,
+        # not narrated — the reviewer sees the check's delta scope in the log).
+        if getattr(check, "inputs", None):
+            evt["inputs"] = list(check.inputs)
+        _te.record(evt)
     except Exception as e:
         _mark_failure(e, "evidence_runner_record")
 
 
 def run_check(check: Check, runner: Runner, repo_root: str, *,
-              worktree: str | None = None, mode: str | None = None) -> CheckResult:
+              worktree: str | None = None, mode: str | None = None,
+              inputs_dir: str | None = None) -> CheckResult:
     """Run ONE check ENFORCE-OR-REFUSE, and RECORD a tool-event for the outcome
-    (observed, not narrated — §16-3). Returns a CheckResult; never raises."""
-    result = _run_check_impl(check, runner, repo_root, worktree=worktree, mode=mode)
+    (observed, not narrated — §16-3). Returns a CheckResult; never raises.
+    ``inputs_dir`` (Phase 8 Chunk C) is a read-only directory of harness-built
+    check inputs, announced to the check via ``ORA_CHECK_INPUTS``."""
+    result = _run_check_impl(check, runner, repo_root, worktree=worktree, mode=mode,
+                             inputs_dir=inputs_dir)
     _record_check_event(check, result)
     return result
 
 
 def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
-                    worktree: str | None = None, mode: str | None = None) -> CheckResult:
+                    worktree: str | None = None, mode: str | None = None,
+                    inputs_dir: str | None = None) -> CheckResult:
     """The enforce-or-refuse body. A check runs only under a backend that enforces
     its declared network policy; else it refuses cleanly. ``mutates: true`` runs
     only under an explicit ``clean_worktree``."""
     try:
         argv, cmd, shell = resolve_command(check)
+
+        # 0. A check that DECLARED inputs but got no inputs dir (base-unknown, or
+        # the builder failed) REFUSES cleanly — never runs against a missing input
+        # file and reports a false FAIL, and never a GUESSED input (§2.2).
+        if getattr(check, "inputs", None) and not inputs_dir:
+            return _refused(check, argv or cmd,
+                            "declared inputs unavailable (no base / not built); "
+                            "the check is not run against a missing input")
 
         # 1. mutates:true only under clean_worktree (never mutate a tree the user
         # owns). Absence of an explicit mode FAILS SAFE — a missing mode context
@@ -748,6 +880,11 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
         # subverted profile could otherwise record a FALSE `orchestrated` claim.
         if backend == "sandbox-exec":
             _bad = sandbox_worktree_unsafe(wt, run_tmp)
+            # SEC-1: the inputs dir also lands in the SBPL profile, so an
+            # unsafe-char inputs path could inject the profile — refuse it too.
+            if not _bad and inputs_dir and not _sbpl_path_safe(os.path.realpath(inputs_dir)):
+                _bad = ("inputs dir contains a character unsafe for the sandbox "
+                        "profile; refusing rather than risk profile injection")
             if _bad:
                 shutil.rmtree(run_home, ignore_errors=True)
                 shutil.rmtree(run_tmp, ignore_errors=True)
@@ -756,8 +893,9 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
         # is not offered in P5 (it would pass SSH_AUTH_SOCK / API keys through); a
         # future dedicated-HOME variant can add a SAFE inherit that still strips
         # credentials.
-        env = _clean_env(run_home, run_tmp)
-        os_argv = _wrap_argv(backend, argv, wt, run_tmp, allow_write_repo=check.mutates)
+        env = _clean_env(run_home, run_tmp, inputs_dir)
+        os_argv = _wrap_argv(backend, argv, wt, run_tmp,
+                             allow_write_repo=check.mutates, inputs_dir=inputs_dir)
 
         # 6. Run, capture, redact. enforcement_model is the HONEST level of the
         # backend that ran it (orchestrated for verified kernel isolation;
@@ -859,6 +997,20 @@ def _parse_contract(text: str, available: list[str]) -> tuple[list[str], list[st
     return required, probe, suff
 
 
+def lanes_from_catalog(catalog: Any) -> list:
+    """The declared-lane block for the Evidence Contract, sourced from the catalog's
+    write-protected ``recipes:`` (§16-2 — the model never invents a lane; the recipe
+    body is the §6-protected file). ``[{lane, target, recipe}]``; empty when the
+    catalog declares no recipes (all live ora turns)."""
+    out: list = []
+    for name, r in (getattr(catalog, "recipes", None) or {}).items():
+        lane = getattr(r, "lane", None)
+        target = getattr(r, "target", None)
+        if lane and target:
+            out.append({"lane": lane, "target": target, "recipe": name})
+    return out
+
+
 def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str, *,
                             invoker=None, repo_root: str | None = None) -> str | None:
     """The sibling to ``risk_gate.apply_criteria`` — run at the SAME planning point,
@@ -877,10 +1029,15 @@ def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str,
             except Exception as e:
                 _mark_failure(e, "evidence_runner_apply_contract_parse")
                 catalog = None
+        # Phase 8 Chunk C: the declared-lane block comes from the catalog's
+        # write-protected recipes (deterministic, model-independent — §16-2).
+        _lanes = lanes_from_catalog(catalog)
         criteria = context_pkg.get("acceptance_criteria")
         contract, err = run_evidence_contract_pass(
             instruction, catalog, criteria, invoker=invoker)
         if contract and not err:
+            if _lanes:
+                contract["lanes"] = _lanes
             context_pkg["evidence_contract"] = contract
             try:
                 _te.record({"event": "evidence_contract", "action": "evidence_contract",
@@ -889,6 +1046,16 @@ def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str,
                             "enforcement_model": "in_harness", "risk_tier": risk_tier})
             except Exception:
                 pass
+            return None
+        # No model contract, but the repo declares recipes → still emit the
+        # declared lanes (a repo's deploy_probe/render_inspect lane is a catalog
+        # fact, not a task-specific model choice). Zero existing catalogs declare
+        # recipes, so this path is inert for every pre-Chunk-C repo (parity).
+        if _lanes:
+            context_pkg["evidence_contract"] = {
+                "required_standard_checks": [], "bespoke_probes": [],
+                "sufficiency": "", "repo_less": not (catalog and catalog.checks),
+                "lanes": _lanes}
             return None
         if err == "no-invoker":
             return None
@@ -1283,11 +1450,14 @@ def fill_evidence_lanes(packet: Any, results: list[CheckResult],
 
 # ── Terminal convenience: run a Contract's required checks over a repo ─────────
 def run_contract(catalog: Catalog, contract: dict, repo_root: str, *,
-                 worktree: str | None = None, mode: str | None = None
+                 worktree: str | None = None, mode: str | None = None,
+                 inputs_dir: str | None = None
                  ) -> list[CheckResult]:
     """Run the Contract's ``required_standard_checks`` (a subset of the catalog).
     A required check missing from the catalog is recorded as refused (the executor
-    cannot invent checks). Never raises."""
+    cannot invent checks). Never raises. ``inputs_dir`` (Phase 8 Chunk C) is the
+    shared read-only directory of harness-built check inputs — each check reads
+    only the files it declared in its ``inputs`` list, via ``ORA_CHECK_INPUTS``."""
     results: list[CheckResult] = []
     for name in (contract.get("required_standard_checks") or []):
         check = (catalog.checks or {}).get(name)
@@ -1300,6 +1470,134 @@ def run_contract(catalog: Catalog, contract: dict, repo_root: str, *,
             _record_check_event(Check(name=name), missing)
             results.append(missing)
             continue
+        # A check gets an inputs dir only if it DECLARED inputs (else None keeps
+        # the pre-Chunk-C behavior byte-identical — no env var, no read-allow).
+        chk_inputs = inputs_dir if getattr(check, "inputs", None) else None
         results.append(run_check(check, catalog.runner, repo_root,
-                                 worktree=worktree, mode=mode))
+                                 worktree=worktree, mode=mode,
+                                 inputs_dir=chk_inputs))
     return results
+
+
+# ── Phase 8 Chunk C — harness-built check INPUTS (§2.2) ───────────────────────
+# Every git-derived check input is precomputed IN-HARNESS (outside the sandbox,
+# where git works), written into a read-only inputs dir, and read by the
+# self-contained check via ORA_CHECK_INPUTS. The check runs NO git and reads NO
+# ora code inside the sandbox (design ⚖ Rev 3; addendum §2.2/§3).
+
+def changed_files_at(repo_root: str, base_sha: str,
+                     delta_commit: str | None = None,
+                     *, timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
+    """The turn's changed files, EXCLUDING deletions (``--diff-filter=d`` lowercase
+    = exclude deleted) so a deleted/renamed-away path never reaches a check that
+    would then open a missing file (⚖ Rev-4/C2 false-FAIL fix). Isolated path
+    (``delta_commit`` given): ``git diff base..delta``. In-place path: ``git diff
+    base`` ∪ current untracked. Returns repo-relative forward-slash paths."""
+    paths: list[str] = []
+    if delta_commit:
+        rc, out = _git(repo_root, ["diff", "--name-only", "--diff-filter=d",
+                                   base_sha, delta_commit], timeout=timeout)
+        if rc == 0:
+            paths = [p for p in out.splitlines() if p.strip()]
+    else:
+        rc, out = _git(repo_root, ["diff", "--name-only", "--diff-filter=d",
+                                   base_sha], timeout=timeout)
+        if rc == 0:
+            paths = [p for p in out.splitlines() if p.strip()]
+        rc2, out2 = _git(repo_root, ["ls-files", "--others", "--exclude-standard"],
+                         timeout=timeout)
+        if rc2 == 0:
+            paths += [p for p in out2.splitlines() if p.strip()]
+    # De-dup, stable order.
+    seen: set = set()
+    uniq = []
+    for p in paths:
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq
+
+
+def _title_universe_at(repo_root: str, base_sha: str,
+                       delta_commit: str | None = None,
+                       *, timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
+    """The note-title universe as it exists AT CHECK TIME, including this turn's
+    NEW notes. Isolated: ``git ls-tree -r <delta_commit>`` (the delta commit's
+    ``add -A`` already captured untracked new files). In-place: ``git ls-files
+    --cached --others --exclude-standard`` (current tracked + untracked) — NOT the
+    base tree, which omits the turn's new notes and would false-dangle a
+    new-note→new-note link (⚖ Rev-4/C3)."""
+    if delta_commit:
+        rc, out = _git(repo_root, ["ls-tree", "-r", "--name-only", delta_commit],
+                       timeout=timeout)
+    else:
+        rc, out = _git(repo_root, ["ls-files", "--cached", "--others",
+                                   "--exclude-standard"], timeout=timeout)
+    if rc != 0:
+        return []
+    return [p for p in out.splitlines() if p.strip()]
+
+
+def build_check_inputs(repo_root: str, dest_dir: str, needed: set, base_sha: str,
+                       delta_commit: str | None = None,
+                       *, changed: list | None = None,
+                       timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
+    """Write each declared input into ``dest_dir`` (one file per input, UTF-8). All
+    git runs OUTSIDE the sandbox. Returns the input names actually written (recorded
+    on the check event — observed, not narrated). ``changed`` may be passed to
+    reuse an already-computed changed-file list (avoids a second ``git diff``)."""
+    written: list[str] = []
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        if "changed_files" in needed:
+            cf = changed if changed is not None else changed_files_at(
+                repo_root, base_sha, delta_commit, timeout=timeout)
+            with open(os.path.join(dest_dir, _INPUTS_FILENAMES["changed_files"]),
+                      "w", encoding="utf-8") as f:
+                f.write("\n".join(cf) + ("\n" if cf else ""))
+            written.append("changed_files")
+        if "title_universe" in needed:
+            tu = _title_universe_at(repo_root, base_sha, delta_commit, timeout=timeout)
+            with open(os.path.join(dest_dir, _INPUTS_FILENAMES["title_universe"]),
+                      "w", encoding="utf-8") as f:
+                f.write("\n".join(tu) + ("\n" if tu else ""))
+            written.append("title_universe")
+    except Exception as e:
+        _mark_failure(e, "evidence_runner_build_inputs")
+    return written
+
+
+def make_inputs_dir() -> str:
+    """A fresh read-only-destined inputs directory under the runner's scratch base
+    (runtime-paths-derived — portability amendment). Caller removes it
+    finally-guaranteed."""
+    base = os.path.join(_rp.SCRATCH_DIR_STR, "evidence-runner")
+    os.makedirs(base, exist_ok=True)
+    return tempfile.mkdtemp(prefix="inputs-", dir=base)
+
+
+def collect_declared_inputs(catalog: Any, check_names: list) -> set:
+    """Union of declared ``inputs`` across the named checks (what the inputs dir
+    must contain for this batch)."""
+    needed: set = set()
+    checks = getattr(catalog, "checks", None) or {}
+    for n in check_names:
+        c = checks.get(n)
+        for i in (getattr(c, "inputs", None) or []):
+            needed.add(i)
+    return needed
+
+
+def batch_all_changed_scope(catalog: Any, check_names: list) -> bool:
+    """True iff EVERY named check declares ``scope: changed_files`` — the condition
+    for a sparse worktree (a ``scope: repo`` check in the batch would silently miss
+    files in a sparse tree, so any such check forces a full checkout)."""
+    checks = getattr(catalog, "checks", None) or {}
+    names = list(check_names)
+    if not names:
+        return False
+    for n in names:
+        c = checks.get(n)
+        if getattr(c, "scope", "repo") != "changed_files":
+            return False
+    return True

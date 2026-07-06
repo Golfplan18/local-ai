@@ -387,6 +387,20 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
     return reads, writes
 
 
+def _arg_touches_dot_ora(args: list) -> bool:
+    """True if any non-flag token names a ``.ora`` PATH SEGMENT (Phase 8 Chunk C
+    §6). Segment match (not substring) so ``.orained`` is not a false hit;
+    separator-agnostic + case-folded so a Windows / macOS-case-variant pathspec
+    can't slip the git-route protection."""
+    for a in args:
+        if not a or a.startswith("-"):
+            continue
+        low = a.replace("\\", "/").lower()
+        if ".ora" in low.split("/"):
+            return True
+    return False
+
+
 def _segment_axes(segment: str) -> dict:
     """Axes for ONE simple command segment, or _UNKNOWN."""
     import shlex
@@ -436,6 +450,20 @@ def _segment_axes(segment: str) -> dict:
 
     if base == "git":
         sub = next((t for t in args if not t.startswith("-")), "")
+        # Execution Review Phase 8 Chunk C (§6): a git WRITE subcommand whose
+        # pathspec touches a `.ora/` directory (checkout/restore/mv/add/rm/…
+        # <ref> -- .ora/tools/x.py) surfaces NO write_path to
+        # is_protected_config_path, so it would run ungated and the Chunk-B
+        # delta commit would then materialize the tampered check for that turn's
+        # OWN review. Escalate to irreversible so the gate fires (the write-gate
+        # raises the bar; the §12 verify stage is the architectural closure).
+        # `git apply <patch>` naming `.ora` inside the patch is NOT arg-visible —
+        # a disclosed residual, not a claim of complete closure.
+        if sub not in _GIT_READ_SUBCOMMANDS and _arg_touches_dot_ora(args):
+            egress = "external" if (sub in _GIT_EGRESS_SUBCOMMANDS
+                                    or sub == "push") else "none"
+            return {"mutability": "irreversible", "sensitivity": "private",
+                    "egress": egress, "protected_config": True}
         if sub == "push":
             if any(f in _GIT_IRREVERSIBLE_PUSH_FLAGS for f in flags):
                 return {"mutability": "irreversible", "sensitivity": "private",

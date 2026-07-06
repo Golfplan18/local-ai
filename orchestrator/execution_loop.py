@@ -73,6 +73,14 @@ try:  # Phase 8 Chunk A — the collect_provenance lane filler (§4/§7)
 except ImportError:  # pragma: no cover
     from orchestrator import execution_provenance as _eprov
 
+try:  # Phase 8 Chunk C — deploy_probe + render_inspect declared-lane fillers (§4)
+    import execution_families as _efam
+except ImportError:  # pragma: no cover
+    try:
+        from orchestrator import execution_families as _efam
+    except ImportError:
+        _efam = None
+
 
 # ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
 MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
@@ -358,6 +366,71 @@ def _batch_has_enforcing_backend(runner: Any, catalog: Any,
         return True
 
 
+# ── Phase 8 Chunk C — check-inputs orchestration (§2.2) ───────────────────────
+# Thin wrappers over evidence_runner's git-mechanics so a minimal injected runner
+# (test double) degrades gracefully instead of raising: a runner without the
+# builder returns "no inputs", and a check declaring inputs then refuses cleanly.
+
+def _collect_inputs(runner: Any, catalog: Any, check_names: list) -> set:
+    fn = getattr(runner, "collect_declared_inputs", None) or getattr(
+        _er, "collect_declared_inputs", None)
+    try:
+        return fn(catalog, check_names) if fn else set()
+    except Exception:
+        return set()
+
+
+def _batch_all_changed_scope(runner: Any, catalog: Any, check_names: list) -> bool:
+    fn = getattr(runner, "batch_all_changed_scope", None) or getattr(
+        _er, "batch_all_changed_scope", None)
+    try:
+        return bool(fn(catalog, check_names)) if fn else False
+    except Exception:
+        return False
+
+
+def _changed_files(runner: Any, repo_root: str, base_sha: str,
+                   delta_commit: str | None) -> list:
+    fn = getattr(runner, "changed_files_at", None) or getattr(
+        _er, "changed_files_at", None)
+    try:
+        return fn(repo_root, base_sha, delta_commit) if fn else []
+    except Exception:
+        return []
+
+
+def _build_inputs(runner: Any, repo_root: str, needed: set, base_sha: str,
+                  delta_commit: str | None, changed: list | None,
+                  cr: CaptureResult | None = None) -> str | None:
+    """Build the read-only inputs dir; returns its path (or None on any failure —
+    the checks then refuse cleanly rather than run against a missing input). The
+    inputs each check actually consumed are recorded on its own evidence_check
+    event (``inputs: [...]``), the observed-not-narrated record that matters."""
+    mk = getattr(runner, "make_inputs_dir", None) or getattr(
+        _er, "make_inputs_dir", None)
+    build = getattr(runner, "build_check_inputs", None) or getattr(
+        _er, "build_check_inputs", None)
+    if not (mk and build):
+        return None
+    try:
+        d = mk()
+        build(repo_root, d, needed, base_sha, delta_commit, changed=changed)
+        return d
+    except Exception as e:
+        _mark_failure(e, "execution_loop_build_inputs")
+        return None
+
+
+def _cleanup_inputs(inputs_dir: str | None) -> None:
+    if not inputs_dir:
+        return
+    try:
+        import shutil as _sh
+        _sh.rmtree(inputs_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+
 def run_isolated_checks(runner: Any, catalog: Any, check_names: list,
                         repo_root: str, base_sha: str,
                         cr: CaptureResult) -> list | None:
@@ -408,14 +481,39 @@ def run_isolated_checks(runner: Any, catalog: Any, check_names: list,
         if not delta_commit:
             cr.isolated = {"ran": False, "fallback_reason": "temp-commit failed"}
             return None
-        wt = runner.create_isolated_worktree(repo_root, delta_commit)
+        # Phase 8 Chunk C (§2.2): sparse opt-in + harness-built check INPUTS.
+        # Only when EVERY check in the batch is scope:changed_files may the
+        # worktree be sparse (a scope:repo check in a sparse tree would silently
+        # miss files). The changed-file list is computed ONCE (from the delta
+        # commit) and reused for both the sparse set and changed-files.txt.
+        needed = _collect_inputs(runner, catalog, check_names)
+        sparse = None
+        changed = None
+        if _batch_all_changed_scope(runner, catalog, check_names):
+            changed = _changed_files(runner, repo_root, base_sha, delta_commit)
+            # sparse = the changed paths ∪ .ora (so the check scripts + catalog
+            # materialize in the worktree). Empty changed → just .ora.
+            sparse = list(dict.fromkeys((changed or []) + [".ora"]))
+        wt = (runner.create_isolated_worktree(repo_root, delta_commit, sparse=sparse)
+              if sparse is not None
+              else runner.create_isolated_worktree(repo_root, delta_commit))
         if not wt:
             cr.isolated = {"ran": False, "delta_commit": delta_commit,
                            "fallback_reason": "worktree add failed/refused"}
             return None
-        results = runner.run_contract(
-            catalog, {"required_standard_checks": list(check_names)},
-            repo_root, worktree=wt, mode="clean_worktree")
+        inputs_dir = _build_inputs(runner, repo_root, needed, base_sha,
+                                   delta_commit, changed, cr) if needed else None
+        # Pass inputs_dir ONLY when built (byte-identical to the pre-Chunk-C call
+        # for a no-declared-inputs batch — preserves the Chunk-B test doubles).
+        kw = {"worktree": wt, "mode": "clean_worktree"}
+        if inputs_dir is not None:
+            kw["inputs_dir"] = inputs_dir
+        try:
+            results = runner.run_contract(
+                catalog, {"required_standard_checks": list(check_names)},
+                repo_root, **kw)
+        finally:
+            _cleanup_inputs(inputs_dir)
         # Belt (judge P2): isolated.ran=True must mean a check GENUINELY RAN,
         # not merely that the lifecycle completed. If every result came back
         # skipped/refused (a mixed-policy batch the up-front gate could not
@@ -525,13 +623,33 @@ def run_capture(packet: Any, *, context_pkg: dict | None = None,
                     n, runner, reason=why,
                     mutates=bool(getattr(chk_n, "mutates", False))))
 
+        def _run_in_place(names: list) -> list:
+            """Run a batch of checks IN PLACE, building any declared inputs from the
+            CURRENT tree (in-place derivation: changed = diff base + untracked;
+            title universe = current tracked+untracked — §2.2). No pre-exec base
+            (base_unknown) → no inputs dir → a declared-inputs check refuses
+            cleanly, never runs against a missing input."""
+            needed = _collect_inputs(runner, catalog, names)
+            inputs_dir = None
+            if needed and before_head:
+                inputs_dir = _build_inputs(runner, rr, needed, before_head,
+                                           None, None, cr)
+            # Pass inputs_dir ONLY when built — a batch with no declared inputs is
+            # byte-identical to the pre-Chunk-C call (no new kwarg).
+            kw = {"mode": mode}
+            if inputs_dir is not None:
+                kw["inputs_dir"] = inputs_dir
+            try:
+                return runner.run_contract(
+                    catalog, {"required_standard_checks": names}, rr, **kw)
+            finally:
+                _cleanup_inputs(inputs_dir)
+
         if mode == "clean_worktree":
             # Caller-attested isolated checkout: the runner permits mutating
             # checks in place; no actuator worktree needed.
             if required and catalog is not None:
-                results.extend(runner.run_contract(
-                    catalog, {"required_standard_checks": required}, rr,
-                    mode=mode))
+                results.extend(_run_in_place(required))
         elif iso_all and required and catalog is not None:
             # SEC-2 repo: EVERY check must run isolated (in-place would be
             # refused check-by-check). Requires the actuator + a real base.
@@ -580,9 +698,7 @@ def run_capture(packet: Any, *, context_pkg: dict | None = None,
                                    + str((cr.isolated or {}).get(
                                        "fallback_reason", "unknown")) + ")")
             if runnable and catalog is not None:
-                filtered = {"required_standard_checks": runnable}
-                results.extend(runner.run_contract(catalog, filtered, rr,
-                                                   mode=mode))
+                results.extend(_run_in_place(runnable))
         cr.results = results
 
         # state_after + a delta REFERENCE (diff written trace-local, never inlined).
@@ -1114,6 +1230,91 @@ def _now_iso() -> str:
     return _ep._now_iso()
 
 
+# ── Phase 8 Chunk C — declared-lane filler registry (§2.3/§4.1) ───────────────
+# The two OBSERVED lanes (diff_validate, collect_provenance) are filled by their
+# own signal-keyed paths (run_capture / fill_provenance_lane) and are NOT in this
+# map. This registry dispatches only the DECLARED lanes. A None entry means "no
+# filler shipped in Phase 8" (run_observe) — the lane stays honestly owed.
+
+def _deploy_probe_filler(packet, lane, *, fill_ctx):
+    if _efam is None:
+        return None
+    return _efam.fill_deploy_probe_lane(packet, lane, fill_ctx=fill_ctx)
+
+
+def _render_inspect_filler(packet, lane, *, fill_ctx):
+    if _efam is None:
+        return None
+    return _efam.fill_render_inspect_lane(packet, lane, fill_ctx=fill_ctx)
+
+
+LANE_FILLERS = {
+    "deploy_probe": _deploy_probe_filler,
+    "render_inspect": _render_inspect_filler,
+    "run_observe": None,          # DECLARED-ONLY in Phase 8 — no filler shipped
+}
+
+
+def _match_recipe(recipes: dict, lane: str, target: str | None):
+    """Find the declared recipe for a (lane, target) pair — the recipe body is the
+    §6-protected catalog file, never model output (§16-2)."""
+    for r in (recipes or {}).values():
+        if getattr(r, "lane", None) == lane and (
+                target is None or getattr(r, "target", None) == target):
+            return r
+    return None
+
+
+def fill_declared_lanes(packet: Any, *, context_pkg: dict | None = None,
+                        capture: Any = None, trace_dir: str | None = None,
+                        stealth: bool = False, runner: Any = None) -> None:
+    """Fill every DECLARED lane (deploy_probe / render_inspect) that is still owed,
+    has a registered filler, AND a matching recipe in the target repo's catalog.
+    No filler / no recipe → today's exact owed semantics. Called on BOTH engaged
+    branches — mutation (capture set) and source-read-only (capture=None). The
+    catalog is re-discovered + re-parsed here (the landed re-parse-per-seam idiom);
+    on a live turn ``repo_root`` resolves to ~/ora (§3.0) whose catalog declares no
+    recipes, so live turns get no declared-lane fill — reachable only via explicit
+    repo_root (programmatic runs / tests). Never raises."""
+    runner = runner or _er
+    try:
+        lanes = getattr(packet, "evidence_lanes", None) or []
+        # Any owed declared lane to consider before paying for catalog discovery?
+        pending = [l for l in lanes
+                   if getattr(l, "sufficient", None) is None
+                   and LANE_FILLERS.get(getattr(l, "lane", None)) is not None]
+        if not pending:
+            return
+        rr = (getattr(capture, "repo_root", None)
+              or discover_repo_root(context_pkg, runner=runner))
+        catalog = None
+        if rr:
+            try:
+                cat_path = runner.discover_catalog(rr)
+                if cat_path:
+                    catalog = runner.parse_catalog(cat_path)
+            except Exception as e:
+                _mark_failure(e, "execution_loop_declared_catalog")
+                catalog = None
+        recipes = getattr(catalog, "recipes", None) or {}
+        for lane in pending:
+            lname = getattr(lane, "lane", None)
+            recipe = _match_recipe(recipes, lname, getattr(lane, "target", None))
+            if recipe is None:
+                continue          # no recipe → stays owed (unchanged semantics)
+            fill_ctx = {"context_pkg": context_pkg, "recipe": recipe,
+                        "catalog": catalog, "repo_root": rr, "capture": capture,
+                        "trace_dir": trace_dir, "stealth": stealth,
+                        "runner": runner}
+            filler = LANE_FILLERS.get(lname)
+            try:
+                filler(packet, lane, fill_ctx=fill_ctx)
+            except Exception as e:
+                _mark_failure(e, "execution_loop_fill_declared")
+    except Exception as e:
+        _mark_failure(e, "execution_loop_fill_declared_lanes")
+
+
 # ── The controller (§3/§4) — assemble the loop from the parts above ────────────
 def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
              ro: dict | None = None, signals: dict | None = None,
@@ -1190,6 +1391,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                         f"examined={cov.get('claims_examined', 0)}, "
                         f"unsupported={cov.get('claims_unsupported', 0)}); "
                         "not entered into the converge/escalate cycle")
+            # Phase 8 Chunk C: fill any DECLARED lanes on this engaged branch too
+            # (deploy_probe / render_inspect) — capture=None here (this branch runs
+            # no diff capture). Record + render only; never a convergence input.
+            fill_declared_lanes(packet, context_pkg=context_pkg, capture=None,
+                                trace_dir=trace_dir, stealth=stealth, runner=runner)
             _ep.populate_loop_fields(
                 packet, planning=planning,
                 loop={"iteration": 0, "stop_condition": None, "note": note},
@@ -1230,6 +1436,12 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
                 packet, context_pkg=context_pkg, response=response,
                 trace_dir=trace_dir, stealth=stealth, mixed_turn=True,
                 level2_invoker=_l2_inv, level2_family_note=_l2_note)
+
+        # Phase 8 Chunk C: fill any DECLARED lanes (deploy_probe / render_inspect)
+        # on the mutation branch too — informational, never a convergence input
+        # (converged() reads only capture.sufficient + findings).
+        fill_declared_lanes(packet, context_pkg=context_pkg, capture=capture,
+                            trace_dir=trace_dir, stealth=stealth, runner=runner)
 
         while True:
             review_text = _ep.render_for_review(packet)

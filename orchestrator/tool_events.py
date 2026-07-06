@@ -192,6 +192,29 @@ ACTION_MANIFEST: dict[str, dict] = {
     "web_fetch": {"category": "read", "mutability": "read",
                   "sensitivity": "public", "egress": "external",
                   "enforcement": "in_harness"},
+    # Execution Review Phase 8 (Chunk C §4): deploy_probe events are named
+    # ``deploy_probe:<kind>``. manifest_axes() is EXACT-MATCH (a single
+    # ``deploy_probe`` entry would NOT resolve ``deploy_probe:page`` → fail-closed
+    # to secret → the gate blocks the probe), so every kind gets its own entry.
+    # (The event ALSO carries an explicit ``sensitivity: public`` field because
+    # _redact_for_record keys off the event, not the manifest — belt + braces.)
+    "deploy_probe:page": {"category": "read", "mutability": "read",
+                          "sensitivity": "public", "egress": "external",
+                          "enforcement": "in_harness"},
+    "deploy_probe:sitemap": {"category": "read", "mutability": "read",
+                             "sensitivity": "public", "egress": "external",
+                             "enforcement": "in_harness"},
+    "deploy_probe:feed": {"category": "read", "mutability": "read",
+                          "sensitivity": "public", "egress": "external",
+                          "enforcement": "in_harness"},
+    "deploy_probe:headers": {"category": "read", "mutability": "read",
+                             "sensitivity": "public", "egress": "external",
+                             "enforcement": "in_harness"},
+    # git_heartbeat inspects a LOCAL remote-tracking ref (no network egress —
+    # no fetch in Chunk C, ⚖ C2), so egress:none.
+    "deploy_probe:git_heartbeat": {"category": "read", "mutability": "read",
+                                   "sensitivity": "public", "egress": "none",
+                                   "enforcement": "in_harness"},
 }
 
 # Core capability slots (config/capabilities.json). All are external paid
@@ -277,8 +300,8 @@ _PROTECTED_FILES = {
         "config/routing-config.json",
     )
 }
-# Basenames are lowercase; a Windows key is already lowercased by normcase,
-# a POSIX key preserves case (correct — POSIX filesystems are case-sensitive).
+# Basenames are lowercase; the protected-path check case-folds both sides
+# (below), so a macOS case-variant (``EVIDENCE.YAML``) can't evade the match.
 _PROTECTED_BASENAMES = {"ora-project.json", "evidence.yaml"}
 
 
@@ -287,13 +310,32 @@ def is_protected_config_path(path: str) -> bool:
         key = _cmp_key(path)
     except Exception:
         return True  # unresolvable → treat as protected (fail closed)
-    if key.rsplit("/", 1)[-1] in _PROTECTED_BASENAMES:
+    # Execution Review Phase 8 Chunk C (§6): case-fold BOTH sides for the
+    # protected-path match. ``_cmp_key`` uses ``os.path.normcase`` which
+    # case-folds on Windows only — a NO-OP on darwin, whose default APFS is
+    # case-INSENSITIVE, so a case-variant path (``.ORA/`` / ``EVIDENCE.YAML``)
+    # opens the SAME file yet would evade a case-sensitive match. Compare against
+    # the LIVE sets (lowercased inline) so a runtime-appended prefix still works;
+    # over-gating a genuine case-variant on a case-sensitive FS fails SAFE.
+    lk = key.lower()
+    if lk.rsplit("/", 1)[-1] in {b.lower() for b in _PROTECTED_BASENAMES}:
         return True
-    if key in _PROTECTED_FILES:
+    if lk in {p.lower() for p in _PROTECTED_FILES}:
         return True
     for prefix in _PROTECTED_PREFIXES:
-        if key == prefix or key.startswith(prefix + "/"):
+        lp = prefix.lower()
+        if lk == lp or lk.startswith(lp + "/"):
             return True
+    # Phase 8 Chunk C (§6): a `.ora/` config directory ANYWHERE in ANY repo is
+    # write-protected (not just ~/ora/.ora). A check script is as load-bearing as
+    # the catalog that names it — the Chunk-B delta commit materializes a
+    # same-turn edit to `.ora/tools/*` for that turn's OWN isolated review, so an
+    # executor weakening its own check is the grading-your-own-homework loop §12
+    # names the load-bearing integrity risk. The write-gate raises the bar; the
+    # verify stage + planning-set acceptance criteria are the architectural
+    # closure (disclosed residual, addendum §6).
+    if "/.ora/" in lk or lk.endswith("/.ora"):
+        return True
     return False
 
 

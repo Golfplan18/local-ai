@@ -396,7 +396,11 @@ def _scrub_lane_result(res: Any, level: str) -> Any:
 # (never user/model free text). Everything else scrubs at the turn level.
 _LANE_STRUCTURAL_KEYS = frozenset({
     "support_status", "claim_id", "source_id", "kind", "origin",
-    "batch_part", "mapper_family"})
+    "batch_part", "mapper_family",
+    # Phase 8 Chunk C: deploy_probe / render_inspect fixed-vocabulary tokens that
+    # must stay legible on a sensitive-turn durable note (PASS/FAIL/INDETERMINATE
+    # + the probe kind), so they survive verbatim rather than length-descriptored.
+    "verdict"})
 
 
 # ── The durable note (self-contained markdown; renders the ALREADY-REDACTED packet) ──
