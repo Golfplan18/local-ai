@@ -41,11 +41,21 @@ _HTTPX_TIMEOUT_SECONDS = 15
 _PLAYWRIGHT_TIMEOUT_MS = 30_000
 _JINA_TIMEOUT_SECONDS = 20
 
+# Execution Review Phase 8 Chunk C (§4): the response headers a deploy_probe may
+# inspect (staleness / cache state). Whitelisted so an event never carries an
+# arbitrary header set.
+_RESP_HEADER_WHITELIST = ("last-modified", "age", "cache-control",
+                          "cf-cache-status", "etag", "content-type",
+                          "content-length")
+
 
 def web_fetch(
     url: str,
     channel: str = "auto",
     persist: bool = False,
+    *,
+    raw: bool = False,
+    timeout_s: float | None = None,
 ) -> dict[str, Any]:
     """Retrieve ``url`` as clean markdown.
 
@@ -60,6 +70,14 @@ def web_fetch(
         ``False`` returns the markdown ephemerally. ``True`` is reserved
         for the Long-Form Document Processing path (G3.25) and currently
         raises ``NotImplementedError``.
+    raw : bool
+        Execution Review Phase 8 Chunk C: httpx tier ONLY. Skip Trafilatura
+        extraction (so an XML sitemap/feed body survives instead of extracting
+        to nothing and cascading), and return the origin ``status_code`` even on
+        a ≥400 response (so a probe can distinguish FAIL from INDETERMINATE).
+        Not a bypass of any safety — extraction is a readability transform.
+    timeout_s : float | None
+        Per-call timeout override for the httpx tier (default 15s).
     """
     if persist:
         raise NotImplementedError(
@@ -75,7 +93,7 @@ def web_fetch(
         return _error_result(url, "auto", f"Invalid URL scheme: {url}")
 
     if channel == "httpx":
-        return _record_fetch_read(_fetch_httpx(url))
+        return _record_fetch_read(_fetch_httpx(url, raw=raw, timeout_s=timeout_s))
     if channel == "local":
         return _record_fetch_read(_fetch_playwright(url))
     if channel == "api":
@@ -83,13 +101,27 @@ def web_fetch(
     if channel != "auto":
         return _error_result(url, channel, f"Unknown channel: {channel}")
 
-    result = _fetch_httpx(url)
+    # auto cascade: extraction wanted (raw is a pinned-httpx affordance).
+    result = _fetch_httpx(url, timeout_s=timeout_s)
     if _is_acceptable(result):
         return _record_fetch_read(result)
     result = _fetch_playwright(url)
     if _is_acceptable(result):
         return _record_fetch_read(result)
     return _record_fetch_read(_fetch_jina(url))
+
+
+def _filter_headers(resp_headers) -> dict:
+    """Whitelisted response headers only (never an arbitrary set on an event)."""
+    out: dict = {}
+    try:
+        for h in _RESP_HEADER_WHITELIST:
+            v = resp_headers.get(h)
+            if v is not None:
+                out[h] = str(v)
+    except Exception:
+        pass
+    return out
 
 
 def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
@@ -136,26 +168,44 @@ def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
 # ── Tier implementations ─────────────────────────────────────────────
 
 
-def _fetch_httpx(url: str) -> dict[str, Any]:
+def _fetch_httpx(url: str, *, raw: bool = False,
+                 timeout_s: float | None = None) -> dict[str, Any]:
     try:
         import httpx
     except ImportError:
         return _error_result(url, "httpx", "httpx not installed")
-    try:
-        import trafilatura
-    except ImportError:
-        return _error_result(url, "httpx", "trafilatura not installed")
+    if not raw:
+        try:
+            import trafilatura  # noqa: F401
+        except ImportError:
+            return _error_result(url, "httpx", "trafilatura not installed")
 
+    timeout = timeout_s if timeout_s is not None else _HTTPX_TIMEOUT_SECONDS
     try:
         with httpx.Client(
-            timeout=_HTTPX_TIMEOUT_SECONDS,
+            timeout=timeout,
             follow_redirects=True,
             headers={"User-Agent": _USER_AGENT},
         ) as client:
             resp = client.get(url)
-        if resp.status_code >= 400:
-            return _error_result(url, "httpx", f"HTTP {resp.status_code}")
-        return _trafilatura_to_result(resp.text, url, "httpx")
+        status = resp.status_code
+        headers = _filter_headers(resp.headers)
+        if raw:
+            # RAW mode (Phase 8 Chunk C): never collapse ≥400 into an error that
+            # loses the status — a probe needs to SEE 403/404 to decide
+            # FAIL-vs-INDETERMINATE. Return the body + status + headers as-is.
+            return {
+                "url": url, "markdown": resp.text or "", "title": None,
+                "channel": "httpx", "fetched_at": _now(),
+                "status_code": status, "headers": headers,
+            }
+        if status >= 400:
+            r = _error_result(url, "httpx", f"HTTP {status}")
+            r["status_code"] = status
+            r["headers"] = headers
+            return r
+        return _trafilatura_to_result(resp.text, url, "httpx",
+                                      status_code=status, headers=headers)
     except Exception as e:
         return _error_result(url, "httpx", str(e))
 
@@ -215,6 +265,8 @@ def _fetch_jina(url: str) -> dict[str, Any]:
             "title": title,
             "channel": "api",
             "fetched_at": _now(),
+            "status_code": None,
+            "headers": None,
         }
     except Exception as e:
         return _error_result(url, "api", str(e))
@@ -225,12 +277,14 @@ def _fetch_jina(url: str) -> dict[str, Any]:
 
 def _trafilatura_to_result(
     html: str, url: str, channel: str,
+    *, status_code: int | None = None, headers: dict | None = None,
 ) -> dict[str, Any]:
     """Run Trafilatura on raw HTML and build a result dict.
 
     Reuses Trafilatura's markdown extraction + metadata pass. A
     metadata-extraction failure is non-fatal: the result still carries
-    the markdown body with ``title=None``.
+    the markdown body with ``title=None``. ``status_code``/``headers`` are
+    populated on the httpx tier (Phase 8 Chunk C), ``None`` elsewhere.
     """
     import trafilatura
 
@@ -249,6 +303,8 @@ def _trafilatura_to_result(
         "title": title,
         "channel": channel,
         "fetched_at": _now(),
+        "status_code": status_code,
+        "headers": headers,
     }
 
 
@@ -280,6 +336,8 @@ def _error_result(
         "channel": channel,
         "fetched_at": _now(),
         "error": message,
+        "status_code": None,
+        "headers": None,
     }
 
 

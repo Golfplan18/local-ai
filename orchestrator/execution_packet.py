@@ -173,18 +173,38 @@ def consistency_note(declared_output_type: str | None, signals: dict | None) -> 
 # ── The evaluation-lane router (§5) — route by evaluation unit, not whole task ─
 def route_lanes(signals: dict | None,
                 declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
-                mode_meta: dict | None = None) -> tuple[list[EvidenceLane], list[JudgmentLane]]:
+                mode_meta: dict | None = None,
+                declared: list | None = None
+                ) -> tuple[list[EvidenceLane], list[JudgmentLane]]:
     """Map the two folded §6 signals onto evidence lanes. Judgment lanes come from
     a mode's declared interpretive targets (``mode_meta['judgment_targets']``) —
     most modes declare none in P4, so ``judgment_lanes`` is normally empty. Evidence
     lanes are DECLARED-EMPTY here (Phase 5 fills the result); an empty result must
-    never read as sufficient."""
+    never read as sufficient.
+
+    Phase 8 Chunk C (§4.1): ``declared`` is the Evidence Contract's ``lanes`` block
+    (``[{lane, target, recipe}]`` — repo-declared, NOT signal-inferred; deploys are
+    declared, spec-aligned). Declared lanes are appended DECLARED-EMPTY, deduped by
+    ``(lane, target)`` against the observed lanes and each other."""
     signals = signals or {}
     evidence: list[EvidenceLane] = []
     if signals.get("any_mutation"):
         evidence.append(EvidenceLane(target="state_change", lane="diff_validate"))
     if signals.get("source_read_suspected"):
         evidence.append(EvidenceLane(target="grounded_claims", lane="collect_provenance"))
+    seen = {(l.lane, l.target) for l in evidence}
+    for d in (declared or []):
+        try:
+            lane = (d.get("lane") if isinstance(d, dict) else None)
+            target = (d.get("target") if isinstance(d, dict) else None)
+        except Exception:
+            lane, target = None, None
+        if not lane or not target:
+            continue
+        if (lane, target) in seen:
+            continue
+        seen.add((lane, target))
+        evidence.append(EvidenceLane(target=str(target), lane=str(lane)))
     judgment: list[JudgmentLane] = []
     for t in (mode_meta or {}).get("judgment_targets", []) or []:
         if isinstance(t, str) and t.strip():
@@ -256,6 +276,55 @@ def _render_provenance_lane(l: EvidenceLane, *, durable_summary: bool) -> list[s
     return lines
 
 
+# Phase 8 Chunk C (§4): render branches for the two DECLARED lanes. Both mirror
+# the provenance branch's two framing rules — an explicitly INFORMATIONAL header
+# (never the bare ``INSUFFICIENT`` token that the generic template emits, which
+# would drive the different-family verifier on a mixed turn, defeating OQ-4), and
+# ``durable_summary=True`` (the escalation-handback render) emits ONLY the verdict
+# counts — no refs, reasons, stdout, or rollback free-text (the Rev-3 handback-leak
+# rule, generalized to every new lane).
+_MAX_PROBE_RENDER_ROWS = 12
+
+
+def _render_deploy_probe_lane(l: EvidenceLane, *, durable_summary: bool) -> list[str]:
+    dp = (l.result or {}).get("deploy_probe")
+    if not isinstance(dp, dict):
+        return []
+    counts = dp.get("verdict_counts") or {}
+    state = "sufficient" if getattr(l, "sufficient", None) else "not sufficient"
+    lines = [f"DEPLOY PROBE (informational — not a convergence input in this "
+             f"phase) [{state}]",
+             f"  probes: PASS={counts.get('PASS', 0)} FAIL={counts.get('FAIL', 0)}"
+             f" INDETERMINATE={counts.get('INDETERMINATE', 0)}"]
+    if durable_summary:
+        return lines                      # counts only — no refs/reasons/rollback
+    for r in (dp.get("probes") or [])[:_MAX_PROBE_RENDER_ROWS]:
+        lines.append(f"  - {r.get('kind')} [{r.get('verdict')}] "
+                     f"{r.get('ref') or ''} — {r.get('reason') or ''}")
+    if dp.get("probes_truncated"):
+        lines.append("  …probes truncated")
+    lines.append(f"  rollback: {dp.get('rollback')}")
+    return lines
+
+
+def _render_render_inspect_lane(l: EvidenceLane, *, durable_summary: bool) -> list[str]:
+    ri = (l.result or {}).get("render_inspect")
+    if not isinstance(ri, dict):
+        return []
+    state = "sufficient" if getattr(l, "sufficient", None) else "not sufficient"
+    lines = [f"RENDER INSPECT (informational — not a convergence input in this "
+             f"phase) [{state}]",
+             f"  check: {ri.get('check')}"]
+    if durable_summary:
+        return lines
+    for c in (ri.get("checks") or []):
+        outcome = ("passed" if c.get("passed")
+                   else ("skipped" if c.get("skipped") else "failed"))
+        lines.append(f"  - {c.get('name')}: {outcome}"
+                     + (f" ({c.get('skip_reason')})" if c.get("skip_reason") else ""))
+    return lines
+
+
 def _render_evidence(packet: ExecutionPacket, *, durable_summary: bool = False) -> str:
     obs = packet.observed or {}
     lines: list[str] = []
@@ -272,15 +341,23 @@ def _render_evidence(packet: ExecutionPacket, *, durable_summary: bool = False) 
         lines.append("WHAT WAS READ AS A SOURCE: none suspected")
     if packet.evidence_lanes:
         for l in packet.evidence_lanes:
-            # Phase 8: a FILLED provenance lane renders its own block — the
-            # generic template's bare INSUFFICIENT token must never speak
-            # for it (see _render_provenance_lane). An UNFILLED provenance
-            # lane (sufficient None) falls through to the owed template.
-            if (getattr(l, "lane", None) == "collect_provenance"
-                    and getattr(l, "sufficient", None) is not None):
-                prov = _render_provenance_lane(l, durable_summary=durable_summary)
-                if prov:
-                    lines.extend(prov)
+            # Phase 8: a FILLED provenance / deploy_probe / render_inspect lane
+            # renders its own INFORMATIONAL block — the generic template's bare
+            # INSUFFICIENT token must never speak for it (it would drive the
+            # different-family verifier on a mixed turn, defeating OQ-4). An
+            # UNFILLED lane (sufficient None) falls through to the owed template.
+            lname = getattr(l, "lane", None)
+            filled = getattr(l, "sufficient", None) is not None
+            if filled:
+                branch = None
+                if lname == "collect_provenance":
+                    branch = _render_provenance_lane(l, durable_summary=durable_summary)
+                elif lname == "deploy_probe":
+                    branch = _render_deploy_probe_lane(l, durable_summary=durable_summary)
+                elif lname == "render_inspect":
+                    branch = _render_render_inspect_lane(l, durable_summary=durable_summary)
+                if branch:
+                    lines.extend(branch)
                     continue
             if not lane_is_sufficient(l):
                 # Covers the tri-state unfilled (None) AND an explicit False.
@@ -445,8 +522,15 @@ def build_execution_packet(*, signals: dict | None, context_pkg: dict | None = N
             "consistency": consistency,
         }
 
+        # Phase 8 Chunk C: DECLARED lanes come from the Evidence Contract's
+        # ``lanes`` block (repo-declared at planning; the model cannot invent one
+        # — the recipe body is the §6-protected catalog file). Absent/empty on
+        # every turn whose catalog declares no recipes (incl. all live ora turns).
+        _contract = context_pkg.get("evidence_contract") or {}
+        _declared = _contract.get("lanes") if isinstance(_contract, dict) else None
         evidence_lanes, judgment_lanes = route_lanes(
-            signals, declared_output_type, context_pkg.get("mode_meta"))
+            signals, declared_output_type, context_pkg.get("mode_meta"),
+            declared=_declared)
 
         instruction = (context_pkg.get("raw_prompt")
                        or context_pkg.get("cleaned_prompt") or "")
