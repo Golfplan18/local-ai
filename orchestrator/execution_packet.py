@@ -569,8 +569,12 @@ def populate_loop_fields(packet: ExecutionPacket | None, *,
         if execution:
             merged_e = dict(packet.execution or {})
             # ONLY the §11/§7 fields Phase 6 owns — never touch the Phase-4
-            # delta / source_reads / producer_claim built from the observed signals.
-            for k in ("mode", "state_before", "state_after", "enforcement_model"):
+            # delta / source_reads / producer_claim built from the observed
+            # signals. Phase 8 Chunk B adds its isolated-run observability
+            # fields to the whitelist (the Rev-3 critic flagged that a key
+            # not listed here is silently DROPPED by this merge).
+            for k in ("mode", "state_before", "state_after", "enforcement_model",
+                      "isolated_checks", "delta_attribution"):
                 if k in execution:
                     merged_e[k] = execution[k]
             packet.execution = merged_e
