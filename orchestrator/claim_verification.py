@@ -327,8 +327,22 @@ def assemble_claim_verification_evidence(
     executor = ThreadPoolExecutor(max_workers=max_workers)
     budget_exceeded = False
     try:
+        # Execution Review Phase 8 (Chunk A, judge P1): ContextVar propagation
+        # into the worker threads — the same idiom as web_consultation's
+        # _ctx_submit (2026-05-28) and boot._submit_with_context. Without it a
+        # worker's tool_events._TURN_CTX is EMPTY (the env fallback is import-
+        # time state, None in-server), so the web-read library guard would
+        # misfile events to the GLOBAL sink with conversation_id None — and a
+        # STEALTH turn's claim-verify web reads would be WRITTEN instead of
+        # suppressed. Turn context must ride into every worker.
+        import contextvars as _ctxvars
+
+        def _ctx_submit(fn, *args, **kwargs):
+            ctx = _ctxvars.copy_context()
+            return executor.submit(ctx.run, fn, *args, **kwargs)
+
         future_to_claim = {
-            executor.submit(
+            _ctx_submit(
                 _execute_claim_query,
                 claim,
                 max_results=max_results_per_query,

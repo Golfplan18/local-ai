@@ -68,6 +68,11 @@ try:  # Phase 7 — tiered persistence at the terminal (§14)
 except ImportError:  # pragma: no cover
     from orchestrator import execution_persistence as _epersist
 
+try:  # Phase 8 Chunk A — the collect_provenance lane filler (§4/§7)
+    import execution_provenance as _eprov
+except ImportError:  # pragma: no cover
+    from orchestrator import execution_provenance as _eprov
+
 
 # ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
 MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
@@ -739,12 +744,38 @@ def create_escalation_branch(repo_root: str | None, base_sha: str | None,
 
 
 # ── Handback (§7/§13) — a REFERENCE to the durable queue, never inlined content ─
+def _level2_invoker(config, config_name, router_obj, verify_invoker):
+    """Phase 8: build the Level-2 mapper invoker when ``ORA_PROVENANCE_CLAIM_MAP``
+    is on — different-family endpoint via the landed §12 selector (a same-family
+    mapper is recorded as lowered assurance on the lane, never presented as
+    cross-family). Returns ``(invoker|None, family_note|None)``. Never raises."""
+    try:
+        if not _eprov.level2_enabled() or verify_invoker is None:
+            return None, None
+        exec_fam = executor_family(config, config_name, router_obj)
+        ep, same_family = select_verify_endpoint(
+            executor_fam=exec_fam, config=config, config_name=config_name,
+            router_obj=router_obj)
+        if ep is None:
+            return None, None
+        note = ("same_family (lowered assurance)" if same_family
+                else "different_family")
+        return (lambda system, user: verify_invoker(system, user, ep)), note
+    except Exception as e:
+        _mark_failure(e, "execution_loop_level2_invoker")
+        return None, None
+
+
 def redacted_review_summary(packet: Any) -> str:
     """A REDACTED render_for_review for the durable handback: evidence + verdict, with
     the UNVERIFIED PRODUCER CLAIM fence DROPPED (the claim may be private/sensitive and
-    the durable queue is more durable than the trace-local packet — §7). Capped."""
+    the durable queue is more durable than the trace-local packet — §7), and lane
+    RESULT content suppressed (``durable_summary=True`` — Phase 8: provenance
+    excerpts must never reach the durable Paused queue through this render; the
+    Rev-3 handback-leak blocker fold). Fail-CLOSED: any render failure returns ""
+    and the handback ships reference-only. Capped."""
     try:
-        text = _ep.render_for_review(packet)
+        text = _ep.render_for_review(packet, durable_summary=True)
     except Exception:
         return ""
     marker = "=== UNVERIFIED PRODUCER CLAIM"
@@ -762,6 +793,15 @@ def handback_reference(*, packet: Any, packet_path: str | None, branch_ref: str 
     ``oversight_queue.PausedEntry.context_summary``."""
     ctx = context_pkg or {}
     cid = ctx.get("conversation_id", "")
+    # Phase 8 (OQ6 rewire): prefer the DURABLE note ref persist_packet stamped
+    # on the packet — an escalated turn always earns durable_note, while
+    # packet_ref points into data/pipeline-traces/ and dangles after the 30d
+    # sweep. Both are carried; packet_ref is labeled ephemeral.
+    note_ref = None
+    try:
+        note_ref = (getattr(packet, "persistence", None) or {}).get("note_ref")
+    except Exception:
+        note_ref = None
     return {
         "queued_at": _now_iso(),
         # Top-level conversation_id so the conversation_closeout stealth-purge backstop
@@ -774,7 +814,9 @@ def handback_reference(*, packet: Any, packet_path: str | None, branch_ref: str 
         "verdict": {"decision": "ESCALATE", "reasoning": reason},
         "context_summary": {
             "kind": "execution_review_escalation",
+            "note_ref": note_ref,
             "packet_ref": packet_path,
+            "packet_ref_note": "ephemeral — trace-local, swept after ~30d",
             "abandoned_attempt_branch": branch_ref,
             "reason": reason,
             "summary": redacted_review_summary(packet),
@@ -873,18 +915,40 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
             # and every verify judged against a false absence (judge P1 fold).
             packet.planning = planning
 
-        # ── Source-read-ONLY turn: record + owed provenance marker, NO loop (P1). ──
+        # ── Source-read-ONLY turn: FILL the collect_provenance lane (Phase 8
+        # Chunk A) — registry + Level-1 map from content the turn already
+        # fetched, flag-gated Level 2 for the extraction+support judgment.
+        # Still NO converge/escalate cycle (the landed P1/P4 rule: an
+        # insufficient provenance lane records + degrades, never escalates).
+        # The owed marker survives ONLY as the honest fallback when the fill
+        # itself is unavailable/failed.
         if src_read and not any_mut:
+            _l2_inv, _l2_note = _level2_invoker(config, config_name,
+                                                router_obj, verify_invoker)
+            prov = _eprov.fill_provenance_lane(
+                packet, context_pkg=context_pkg, response=response,
+                trace_dir=trace_dir, stealth=stealth, mixed_turn=False,
+                level2_invoker=_l2_inv, level2_family_note=_l2_note)
+            if prov is None:
+                note = ("source-read-only — collect_provenance owed "
+                        "(lane fill unavailable); not entered into the "
+                        "converge/escalate cycle")
+                _mark_failure(RuntimeError(
+                    "provenance evidence owed — lane fill unavailable"),
+                    "execution_loop_owed_provenance")
+            else:
+                cov = prov.get("coverage") or {}
+                note = ("source-read-only — collect_provenance lane FILLED "
+                        f"(level2={'ran' if cov.get('level2_ran') else 'off'}, "
+                        f"examined={cov.get('claims_examined', 0)}, "
+                        f"unsupported={cov.get('claims_unsupported', 0)}); "
+                        "not entered into the converge/escalate cycle")
             _ep.populate_loop_fields(
                 packet, planning=planning,
-                loop={"iteration": 0, "stop_condition": None,
-                      "note": "source-read-only — collect_provenance owed (Phase 8); "
-                              "not entered into the converge/escalate cycle (⚖ Rev-1)"},
+                loop={"iteration": 0, "stop_condition": None, "note": note},
                 now_iso=now_iso)
-            _mark_failure(RuntimeError(
-                "provenance evidence owed — the claim-to-source map is Phase 8"),
-                "execution_loop_owed_provenance")
-            # Phase 7: set the §14 tier (source-read-only owed → git_only) BEFORE write_packet.
+            # Phase 7: set the §14 tier BEFORE write_packet (Phase 8: a filled
+            # lane with unsupported claims may now earn ledger_line — OQ-3).
             _epersist.persist_packet(packet, sig=full_signals, context_pkg=context_pkg,
                                      trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
             _ep.write_packet(packet, trace_dir)
@@ -905,6 +969,20 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
         verify_rec: dict = {}
         capture = run_capture(packet, context_pkg=context_pkg, trace_dir=trace_dir,
                               runner=runner)
+
+        # Phase 8: MIXED mutation+source-read turns get the provenance fill the
+        # owed branch never gave them (scout-confirmed gap). The lane renders
+        # under an INFORMATIONAL header and is NOT a convergence input —
+        # converged() still reads only capture.sufficient + findings (OQ-4
+        # deferral, judge-approved). Filled once over the ORIGINAL response;
+        # actuator revisions do not re-map in this phase (recorded limitation).
+        if src_read:
+            _l2_inv, _l2_note = _level2_invoker(config, config_name,
+                                                router_obj, verify_invoker)
+            _eprov.fill_provenance_lane(
+                packet, context_pkg=context_pkg, response=response,
+                trace_dir=trace_dir, stealth=stealth, mixed_turn=True,
+                level2_invoker=_l2_inv, level2_family_note=_l2_note)
 
         while True:
             review_text = _ep.render_for_review(packet)

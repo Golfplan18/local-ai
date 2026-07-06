@@ -789,6 +789,13 @@ def dispatch(tool_name: str, parameters: dict,
                 result = _mcp_client.call_mcp_tool(tool_name, parameters)
             else:
                 result = f"[MCP unavailable — no client for {tool_name}]"
+        elif tool_name in ("web_fetch", "web_search"):
+            # Execution Review Phase 8 (§2.3): the dispatcher records these
+            # itself below, so suppress the tools-module LIBRARY GUARD for
+            # the duration of this SYNCHRONOUS handler call (thread-local,
+            # same-thread exact — the double-record kill, judge OQ-5).
+            with tool_events.suppress_library_recording():
+                result = entry["handler"](parameters)
         else:
             result = entry["handler"](parameters)
         if isinstance(result, (dict, list)):
@@ -824,9 +831,23 @@ def dispatch(tool_name: str, parameters: dict,
                       "content_hash": hashlib.sha256(
                           result_str.encode("utf-8", "replace")).hexdigest()[:16]}]
         elif tool_name == "web_fetch":
-            reads = [{"what": parameters.get("url", ""), "where": "network",
+            # Phase 8 (OQ-6): hash the CONTENT ONLY (markdown body) — hashing
+            # the serialized result dict included fetched_at, so two fetches
+            # of byte-identical content hashed differently, defeating the
+            # hash's one consumer (provenance content identity).
+            # Phase 8 (pre-check fold): sanitize the URL — the dispatcher path
+            # SUPPRESSES the library guard (the only other sanitize site), and
+            # web_fetch events are public-sensitivity, so a raw signed URL
+            # (sig= / X-Amz-Signature=) would ride reads[].what into the event
+            # log, the public-safe candidates, and the packet.
+            _wf_body = (result.get("markdown") or ""
+                        ) if isinstance(result, dict) else result_str
+            reads = [{"what": tool_events.sanitize_url(
+                          parameters.get("url", "")),
+                      "where": "network",
+                      "chars": len(_wf_body),
                       "content_hash": hashlib.sha256(
-                          result_str.encode("utf-8", "replace")).hexdigest()[:16]}]
+                          _wf_body.encode("utf-8", "replace")).hexdigest()[:16]}]
         elif tool_name == "web_search":
             reads = [{"what": f"query:{parameters.get('query', '')}",
                       "where": "network"}]
@@ -839,6 +860,15 @@ def dispatch(tool_name: str, parameters: dict,
         action = tool_name
         if shell_profile:
             action = f"bash:{shell_profile.get('profile', 'unknown')}"
+        # Phase 8 (pre-check fold): sanitize URL-bearing args for the two web
+        # tools before they enter a public-sensitivity event (mirror of the
+        # reads[].what sanitization above — args_redacted was the second
+        # unsanitized path for a signed URL).
+        _args_view = {k: str(v)[:200] for k, v in (parameters or {}).items()}
+        if tool_name in ("web_fetch", "web_search"):
+            _args_view = {k: (tool_events.sanitize_url(v)[:200]
+                              if k in ("url", "query") else v)
+                          for k, v in _args_view.items()}
         tool_events.record({
             "event": event_kind, "action": action,
             "category": axes.get("category", "execute"),
@@ -847,8 +877,7 @@ def dispatch(tool_name: str, parameters: dict,
             "egress": axes["egress"],
             "mutated": (axes["mutability"] != "read") and not error,
             "reads": reads,
-            "args_redacted": {k: str(v)[:200] for k, v in
-                              (parameters or {}).items()},
+            "args_redacted": _args_view,
             "exit": {"ok": not error,
                      "reason": result_str[:120] if error else ""},
             "duration_ms": duration,

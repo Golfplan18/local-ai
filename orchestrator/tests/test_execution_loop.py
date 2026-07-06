@@ -562,6 +562,21 @@ class TestRunLoop(unittest.TestCase):
         self.assertTrue(durable, "no durable_note ledger line for the escalated turn")
         self.assertTrue(os.path.exists(durable[-1]["note_ref"]))
 
+    def test_escalation_handback_carries_note_ref(self):
+        # Phase 8 (OQ6 rewire): the Paused-queue handback prefers the DURABLE
+        # note ref (persist_packet stamps packet.persistence["note_ref"]
+        # BEFORE the handback is built) — packet_ref alone dangles after the
+        # 30d trace sweep. And the handback summary is the durable-suppressed
+        # render (no lane excerpts).
+        pkt, _, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
+                                   FakeRunner(sufficient=False))
+        self.assertEqual(pkt.status, "escalated")
+        self.assertEqual(len(pushes), 1)
+        cs = pushes[0]["context_summary"]
+        self.assertEqual(cs["note_ref"], pkt.persistence.get("note_ref"))
+        self.assertTrue(cs["note_ref"] and os.path.exists(cs["note_ref"]))
+        self.assertIn("ephemeral", cs["packet_ref_note"])
+
     def test_escalate_on_high_severity(self):
         pkt, revised, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
                                          FakeRunner(sufficient=False))
@@ -586,12 +601,58 @@ class TestRunLoop(unittest.TestCase):
         self.assertIn("degraded to text review", pkt.loop["note"])
         self.assertEqual(pushes, [])
 
-    def test_source_read_only_records_owed_provenance(self):
+    def test_source_read_only_fills_provenance_lane(self):
+        # Phase 8 Chunk A: the owed stub is replaced by a REAL fill — the lane
+        # is no longer tri-state-None, the loop note says FILLED, and the turn
+        # still never enters the converge/escalate cycle.
         pkt, revised, pushes = self._run(
             {"source_read_suspected": True, "any_mutation": False}, V_FAIL_HIGH,
             FakeRunner(sufficient=False))
         self.assertIsNone(pkt.loop["stop_condition"])
+        self.assertIn("collect_provenance lane FILLED", pkt.loop["note"])
+        lane = next(l for l in pkt.evidence_lanes
+                    if l.lane == "collect_provenance")
+        self.assertIsNotNone(lane.sufficient)      # filled (tri-state resolved)
+        self.assertFalse(lane.sufficient)          # Level 1 never sufficient
+        self.assertIn("provenance", lane.result)
+        self.assertEqual(pushes, [])   # never escalates
+
+    def test_mixed_turn_fills_lane_informationally_and_still_converges(self):
+        # Phase 8 §9-required mixed-turn test: any_mutation + source_read →
+        # the provenance lane is FILLED (mixed_turn flagged) and renders
+        # under the informational header, while the mutation loop's
+        # convergence is UNCHANGED (OQ-4 deferral: provenance is not a
+        # convergence input; a Level-1 insufficient lane must not block
+        # criteria_met or leak an INSUFFICIENT token into the verify prompt).
+        pkt, revised, pushes = self._run(
+            {"any_mutation": True, "source_read_suspected": True}, V_PASS,
+            FakeRunner(sufficient=True))
+        self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
+        self.assertEqual(pkt.status, "converged")
+        lane = next(l for l in pkt.evidence_lanes
+                    if l.lane == "collect_provenance")
+        self.assertIsNotNone(lane.sufficient)
+        self.assertFalse(lane.sufficient)
+        self.assertTrue(lane.result["provenance"]["mixed_turn"])
+        text = ep.render_for_review(pkt)
+        self.assertIn("informational — not a convergence input", text)
+        self.assertNotIn("INSUFFICIENT", text)
+        self.assertEqual(pushes, [])
+
+    def test_source_read_only_owed_fallback_when_fill_unavailable(self):
+        # The honest owed marker survives as the FALLBACK when the filler
+        # fails: lane stays tri-state None, loud marker, still no escalation.
+        import unittest.mock as _mock
+        with _mock.patch.object(el._eprov, "fill_provenance_lane",
+                                return_value=None):
+            pkt, revised, pushes = self._run(
+                {"source_read_suspected": True, "any_mutation": False},
+                V_FAIL_HIGH, FakeRunner(sufficient=False))
+        self.assertIsNone(pkt.loop["stop_condition"])
         self.assertIn("collect_provenance owed", pkt.loop["note"])
+        lane = next(l for l in pkt.evidence_lanes
+                    if l.lane == "collect_provenance")
+        self.assertIsNone(lane.sufficient)         # still owed
         self.assertEqual(pushes, [])   # never escalates
 
     def test_stealth_is_dormant(self):
