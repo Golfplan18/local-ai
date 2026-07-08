@@ -21,6 +21,11 @@ stdout: JSON {"checked", "invalid":[{file,reason}], "skipped_ext", "skipped_miss
               "ok"}
 exit:   0 iff ok, 1 on findings, 2 usage error.
 """
+# `X | None` return annotations require Python 3.10+ at runtime UNLESS annotations
+# are deferred — this makes the self-contained script import on 3.9 too (the system
+# Python), matching its two sibling .ora/tools scripts' portability floor.
+from __future__ import annotations
+
 import json
 import os
 import sys

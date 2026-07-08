@@ -650,7 +650,8 @@ def sandbox_worktree_unsafe(worktree: str, tmpdir: str) -> str | None:
 
 
 def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
-                   inputs_dir: str | None = None) -> str:
+                   inputs_dir: str | None = None,
+                   home_dir: str | None = None) -> str:
     """Deny reads under $HOME + every Ora private root, RE-ALLOW reads (and, for a
     mutating check, writes) under the SPECIFIC worktree, then RE-DENY any private
     root nested under the worktree (belt-and-suspenders for SEC-2 — the runner also
@@ -658,9 +659,15 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
     ``network: deny``. Callers pass only SBPL-safe paths (``sandbox_worktree_unsafe``
     is checked first). Phase 8 Chunk C: ``inputs_dir`` (under SCRATCH_DIR, i.e.
     under a denied private root) gets an explicit read-ONLY re-allow so the check
-    can read the harness-precomputed inputs — never a write-allow."""
+    can read the harness-precomputed inputs — never a write-allow. ``home_dir`` (the
+    per-run scratch $HOME, a mkdtemp sibling of ``tmpdir`` under SCRATCH_DIR — so
+    nested under the denied WORKSPACE root) gets read+write re-allow: a check that
+    touches $HOME (``~/.npm``, ``~/.cache``, ``~/.gitconfig``) must not EPERM inside
+    the isolated home. Safe because it is disposable scratch, not the user's real
+    $HOME (which stays denied)."""
     real_wt = os.path.realpath(worktree)
     real_tmp = os.path.realpath(tmpdir)
+    real_home = os.path.realpath(home_dir) if home_dir else None
     deny_roots = _private_deny_roots()
     denies = "".join(f'(deny file-read* (subpath "{r}"))' for r in deny_roots)
     # Re-deny any private root nested UNDER the worktree, AFTER the worktree allow,
@@ -673,6 +680,8 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
         f'(allow file-read* (subpath "{real_wt}"))',
         f'(allow file-read* (subpath "{real_tmp}"))',
     ]
+    if real_home:
+        parts.append(f'(allow file-read* (subpath "{real_home}"))')
     if inputs_dir:
         parts.append(f'(allow file-read* (subpath "{os.path.realpath(inputs_dir)}"))')
     parts += [
@@ -681,16 +690,20 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
         f'(allow file-write* (subpath "{real_tmp}"))',
         '(allow file-write* (subpath "/dev"))',
     ]
+    if real_home:
+        parts.append(f'(allow file-write* (subpath "{real_home}"))')
     if allow_write_repo:
         parts.append(f'(allow file-write* (subpath "{real_wt}"))')
     return "".join(parts)
 
 
 def _wrap_argv(backend: str, argv: list[str], worktree: str, tmpdir: str,
-               allow_write_repo: bool, inputs_dir: str | None = None) -> list[str]:
+               allow_write_repo: bool, inputs_dir: str | None = None,
+               home_dir: str | None = None) -> list[str]:
     """Build the OS argv that runs ``argv`` UNDER the enforcing backend."""
     if backend == "sandbox-exec":
-        profile = _macos_profile(worktree, tmpdir, allow_write_repo, inputs_dir)
+        profile = _macos_profile(worktree, tmpdir, allow_write_repo, inputs_dir,
+                                 home_dir)
         return [shutil.which("sandbox-exec") or "sandbox-exec", "-p", profile, *argv]
     if backend == "unshare":
         # Unprivileged user+net namespace: no network interfaces → deny enforced.
@@ -895,7 +908,8 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
         # credentials.
         env = _clean_env(run_home, run_tmp, inputs_dir)
         os_argv = _wrap_argv(backend, argv, wt, run_tmp,
-                             allow_write_repo=check.mutates, inputs_dir=inputs_dir)
+                             allow_write_repo=check.mutates, inputs_dir=inputs_dir,
+                             home_dir=run_home)
 
         # 6. Run, capture, redact. enforcement_model is the HONEST level of the
         # backend that ran it (orchestrated for verified kernel isolation;
@@ -1242,13 +1256,18 @@ def create_isolated_worktree(repo_root: str, commit_sha: str,
         if bad:
             raise RuntimeError(f"worktree path refused: {bad}")
         if sparse:
-            # DISCLOSED side effect (pre-check fold, empirically pinned): git's
-            # sparse-checkout builtin, invoked from a linked worktree, durably
-            # writes `[extensions] worktreeConfig = true` into the MAIN repo's
-            # shared .git/config — permanent metadata that survives
-            # remove+prune. Benign on modern git, but it is user-repo residue:
-            # the Chunk-C addendum decides the vault-family opt-in posture
-            # BEFORE any caller passes sparse= (none does in Chunk B).
+            # DISCLOSED side effect (empirically pinned): git's sparse-checkout
+            # builtin, invoked from a linked worktree, durably writes
+            # `[extensions] worktreeConfig = true` into the MAIN repo's shared
+            # .git/config — permanent metadata that survives remove+prune. It is
+            # benign (idempotent; modern git sets it itself for linked worktrees)
+            # but IS user-repo config residue. This IS reached at HEAD: the
+            # Chunk-C caller `execution_loop.run_isolated_checks` passes sparse=
+            # whenever every check in the batch is scope:changed_files. We accept
+            # the flag rather than unset it on teardown, because unsetting it
+            # could break OTHER linked worktrees the user may have that rely on
+            # worktree-specific config. It does not touch HEAD, the index, refs,
+            # or git history — only this one config extension key.
             rc, out = _git(repo_root, ["worktree", "add", "--detach",
                                        "--no-checkout", wt, commit_sha],
                            timeout=timeout)

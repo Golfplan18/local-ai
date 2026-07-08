@@ -309,6 +309,22 @@ class TestEnforceOrRefuse(unittest.TestCase):
         self.assertIn("DENIED", res.stdout_tail)
         self.assertEqual(res.enforcement_model, "orchestrated")
 
+    @unittest.skipUnless(er._macos_sandbox_available(), "macOS sandbox-exec only")
+    def test_macos_sandbox_allows_write_under_scratch_home(self):
+        # A check that writes under $HOME (npm/pip/git-style ~/.cache) must NOT
+        # EPERM: $HOME is a per-run scratch dir (isolated, not the user's real
+        # home), so it gets a read+write re-allow. Regression: run_home was
+        # exported as $HOME but never write-allowed in the SBPL profile.
+        repo = tempfile.mkdtemp()
+        code = ("import os\n"
+                "p = os.path.join(os.path.expanduser('~'), '.cache', 'ora-probe')\n"
+                "os.makedirs(os.path.dirname(p), exist_ok=True)\n"
+                "open(p, 'w').write('ok'); print('WROTE_HOME')\n")
+        res = er.run_check(Check(name="home", argv=["python", "-c", code]),
+                           Runner(), repo)
+        self.assertFalse(res.skipped)
+        self.assertIn("WROTE_HOME", res.stdout_tail)
+
 
 # ── Gate integration ──────────────────────────────────────────────────────────
 class TestGateIntegration(unittest.TestCase):
