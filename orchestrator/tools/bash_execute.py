@@ -420,7 +420,11 @@ def _segment_axes(segment: str) -> dict:
     _redir_writes = _redirect_write_targets(tokens)
 
     # cd / export / pushd / popd as leading no-op prefixes: read-neutral.
-    if base in ("cd", "export", "pushd", "popd", "set", "unset", "source",
+    # NOTE: `source` (and its POSIX synonym `.`) are deliberately NOT here — they
+    # execute the CONTENTS of a file (arbitrary, model-editable code), so they are
+    # a shell side door and must fail closed like `bash x.sh` / `eval` (§7), never
+    # classify as a read. `.` already falls through to _UNKNOWN; `source` must too.
+    if base in ("cd", "export", "pushd", "popd", "set", "unset",
                 "ps", "hostname", "uptime", "id", "sleep", "true", "false"):
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
