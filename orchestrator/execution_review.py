@@ -16,9 +16,11 @@ The load-bearing invariants (spec §16, design §5, ⚖ Rev-3):
   the landed Chunk-C seam (`evidence_contract['lanes']` → `route_lanes` in
   `build_execution_packet`), then `execution_loop.fill_declared_lanes` runs them.
   Never accepts lane verdicts as caller data.
-- **`enforcement_model` is caller-MANDATORY, validated, no default** — the honest
-  exception the design names (the regime is the integrator's knowledge, not
-  derivable from the log); a missing/invalid value REFUSES rather than inheriting a
+- **`enforcement_model` is caller-MANDATORY, validated** — the honest exception the
+  design names (the regime is the integrator's knowledge, not derivable from the
+  log); a missing OR invalid value REFUSES CLEANLY (marks + returns None, never
+  raises — it is a None-default keyword, not a required kwarg, so it can't TypeError
+  at call binding and break the never-raises contract) rather than inheriting a
   false `in_harness` (the P6 TODO in `execution_packet.build_execution_packet`).
 - **Caller free-text → `producer_claim`**, rendered last, labeled unverified (§12).
 - **Trace-local packet is always written** (`persist_packet` decides the durable
@@ -84,7 +86,7 @@ def _standing_declared_lanes(repo_root: str | None, runner: Any) -> list:
 
 
 def record_program_run(*, trace_dir: str, output_text: str,
-                       enforcement_model: str,
+                       enforcement_model: str | None = None,
                        repo_root: str | None = None,
                        risk_tier: str | None = None,
                        output_type: str = "execution",
@@ -100,11 +102,18 @@ def record_program_run(*, trace_dir: str, output_text: str,
     try:
         if stealth or not trace_dir:
             return None
-        # enforcement_model caller-MANDATORY, no default — validated (§7/§5). A
-        # missing/invalid value REFUSES rather than inheriting a false in_harness.
+        # enforcement_model is caller-MANDATORY, validated (§7/§5) — but a missing
+        # OR invalid value REFUSES CLEANLY (marks the failure + returns None),
+        # never raises. It is a keyword with a None default rather than a required
+        # kwarg on purpose: a required kwarg would raise TypeError at call binding,
+        # BEFORE this try/except, breaking the "Never raises" contract this library
+        # entrypoint owes its callers (a live integration must not have its deliver
+        # flow interrupted). A missing/invalid value must never inherit the false
+        # in_harness that build_execution_packet stamps.
         if enforcement_model not in _te.ENFORCEMENT:
             _mark_failure(ValueError(
-                f"enforcement_model {enforcement_model!r} not in {sorted(_te.ENFORCEMENT)}"),
+                "enforcement_model is required (caller-mandatory) — "
+                f"{enforcement_model!r} not in {sorted(_te.ENFORCEMENT)}"),
                 "enforcement_model")
             return None
 
