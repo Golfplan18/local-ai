@@ -356,6 +356,7 @@ class TestRegistryAndLevel1(_EventEnvMixin):
         self.assertNotIn("excerpt", secrets[0])
         sens = by_ref.get("[sensitive PATH withheld]")
         self.assertIsNotNone(sens)
+        self.assertTrue(sens.get("content_withheld"))   # excerpt is only the withheld descriptor
         self.assertNotIn("records.db", json.dumps(reg))
         mcp = [s for s in reg if s["kind"] == "mcp"]
         self.assertEqual(len(mcp), 1)
@@ -530,6 +531,26 @@ class TestPrecheckFolds(_EventEnvMixin):
         self.assertTrue(out["ran"])
         self.assertEqual(out["rows"][0]["support_status"], "unassessed")
         self.assertEqual(out["rows"][0]["source_ids"], [])
+
+    def test_level2_content_withheld_source_not_citable(self):
+        # A sensitive source whose CONTENT is withheld (excerpt is only the
+        # [SENSITIVE… withheld] descriptor) proves the source was consulted but
+        # never that a claim used it correctly (§4). It must NOT be offered as
+        # citable support, so a claim mapped only to it is demoted to unassessed
+        # (never 'supported') and cannot flip sufficiency to True.
+        reg = [{"source_id": "s1", "kind": "file",
+                "ref": "[sensitive PATH withheld]", "injected": True,
+                "sensitivity": "sensitive", "content_withheld": True,
+                "excerpt": "[SENSITIVE: 0 chars — content withheld]"}]
+        raw = "CLAIM 1: X | SOURCES: s1 | SUPPORT: supported"
+        out = eprov.run_level2("d", reg, lambda s, u: raw)
+        self.assertTrue(out["ran"])
+        self.assertEqual(out["rows"][0]["support_status"], "unassessed")
+        self.assertEqual(out["rows"][0]["source_ids"], [])
+        cov = eprov.compute_coverage(out["rows"], reg,
+                                     {"opaque_channels": 0}, level2_ran=True)
+        self.assertFalse(eprov.decide_sufficiency(cov, out["rows"]),
+                         "a withheld-content source must not flip sufficiency")
 
     def test_level2_unparsed_lines_counted_and_block_sufficiency(self):
         reg = [{"source_id": "s1", "kind": "web", "ref": "r1",
