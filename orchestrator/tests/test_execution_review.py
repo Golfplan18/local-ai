@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -97,9 +98,22 @@ class TestEnforcementModelMandatory(_Base):
         self.assertIsNone(out)
         self.assertIsNone(_read_packet(self.trace))  # no packet on refusal
 
-    def test_missing_enforcement_refuses(self):
-        with self.assertRaises(TypeError):
-            erv.record_program_run(trace_dir=self.trace, output_text="p")  # no kwarg
+    def test_missing_enforcement_refuses_without_raising(self):
+        # Omitting enforcement_model must REFUSE CLEANLY (mark + return None), never
+        # raise — record_program_run owes its callers a "Never raises" contract, so a
+        # required kwarg (TypeError at call binding) would break it. Both the omitted
+        # and the explicit-None call take the same refusal path.
+        marks: list = []
+        with mock.patch.object(erv, "_mark_failure",
+                               side_effect=lambda e, w: marks.append(w)):
+            out_omitted = erv.record_program_run(
+                trace_dir=self.trace, output_text="p")            # no kwarg at all
+            out_none = erv.record_program_run(
+                trace_dir=self.trace, output_text="p", enforcement_model=None)
+        self.assertIsNone(out_omitted)
+        self.assertIsNone(out_none)
+        self.assertIsNone(_read_packet(self.trace))               # no packet on refusal
+        self.assertIn("enforcement_model", marks)                 # failure observably marked
 
 
 class TestProducerClaim(_Base):
