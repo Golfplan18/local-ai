@@ -433,7 +433,7 @@ def set_turn_context(trace_dir: str | None = None,
                      conversation_id: str | None = None,
                      stealth: bool = False,
                      surface: str = "unknown",
-                     risk_tier: str | None = None) -> None:
+                     risk_tier: str | None = None):
     """Set by the pipeline (step 2), the server (_direct_stream head), and
     daemons at their entry seams. Propagates to Gear-4 workers via
     boot._submit_with_context (contextvars.copy_context).
@@ -441,10 +441,29 @@ def set_turn_context(trace_dir: str | None = None,
     ``risk_tier`` (Execution Review Phase 2) rides here so the per-call gate
     and every recorded event can see the turn's upfront risk tier with no
     dispatcher signature change; child processes inherit it via the
-    ORA_RISK_TIER env var (get_turn_context fallback)."""
-    _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
-                   "stealth": bool(stealth), "surface": surface,
-                   "risk_tier": risk_tier})
+    ORA_RISK_TIER env var (get_turn_context fallback).
+
+    Execution Review Phase 8 Chunk D: RETURNS the ContextVar reset token (was
+    None). A caller that seeds a PER-RUN context (a programmatic MSI run) can
+    ``reset_turn_context(token)`` in a finally to RESTORE the prior context
+    exactly — including the "unset" state — so a later run's between-run events
+    can't leak into the prior run's per-run sink (`_sink_path` prefers the
+    context trace_dir). Existing callers that ignore the return are unaffected."""
+    return _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
+                          "stealth": bool(stealth), "surface": surface,
+                          "risk_tier": risk_tier})
+
+
+def reset_turn_context(token) -> None:
+    """Restore the turn context to the state captured by a ``set_turn_context``
+    token (Phase 8 Chunk D). Never raises — a bad/None token is a no-op (the
+    caller's finally must not become a new failure mode)."""
+    if token is None:
+        return
+    try:
+        _TURN_CTX.reset(token)
+    except Exception:
+        pass
 
 
 def update_turn_risk_tier(risk_tier: str | None) -> None:
