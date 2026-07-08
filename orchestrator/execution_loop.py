@@ -1066,7 +1066,16 @@ def create_escalation_branch(repo_root: str | None, base_sha: str | None,
     if not (repo_root and _looks_like_sha(base_sha)):
         return None
     try:
+        # The branch name carries a PER-TURN discriminator (the trace dir basename,
+        # unique per run) IN ADDITION to the conversation-stable task_id. Without it
+        # a SECOND escalation in the same conversation reused the same name and the
+        # `branch -f` below force-overwrote the FIRST abandoned attempt — silently
+        # discarding it and mis-linking its handback (§13: the abandoned work is
+        # never silently discarded). Falls back to task_id-only when no trace_dir.
+        disc = _safe_ref(os.path.basename(str(trace_dir).rstrip("/\\"))) if trace_dir else ""
         branch = _ESCALATION_BRANCH_PREFIX + _safe_ref(task_id)
+        if disc and disc != "task":
+            branch += "-" + disc
         # 1. Create/point the branch at the pre-execution base — does NOT touch the
         #    working tree, the index, or HEAD (a ref write only).
         rc, _ = git(repo_root, ["branch", "-f", branch, base_sha])

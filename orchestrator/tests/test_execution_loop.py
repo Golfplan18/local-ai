@@ -484,6 +484,24 @@ class TestEscalationBranch(unittest.TestCase):
         self.assertIn("ok.txt", tree)
         self.assertNotIn("secret.env", tree)   # secret file gated out by .gitignore
 
+    def test_second_escalation_same_conversation_does_not_overwrite_first(self):
+        # §13: the abandoned attempt is never silently discarded. Two escalations
+        # in the SAME conversation share task_id; the per-turn trace_dir basename
+        # discriminates them so the second does not `branch -f` over the first.
+        (Path(self.d) / "a.txt").write_text("ATTEMPT-ONE\n")
+        b1 = el.create_escalation_branch(self.d, self.base, "conv-42",
+                                         trace_dir="/traces/turn-aaa")
+        (Path(self.d) / "a.txt").write_text("ATTEMPT-TWO\n")
+        b2 = el.create_escalation_branch(self.d, self.base, "conv-42",
+                                         trace_dir="/traces/turn-bbb")
+        self.assertTrue(b1 and b2)
+        self.assertNotEqual(b1, b2)                       # distinct branches
+        self.assertEqual(self._git("rev-parse", "--verify", b1).returncode, 0)
+        self.assertEqual(self._git("rev-parse", "--verify", b2).returncode, 0)
+        # The first branch still holds the FIRST abandoned attempt, not the second.
+        self.assertEqual(self._git("show", f"{b1}:a.txt").stdout, "ATTEMPT-ONE\n")
+        self.assertEqual(self._git("show", f"{b2}:a.txt").stdout, "ATTEMPT-TWO\n")
+
 
 # ── snapshot_pre_execution (planning seam) — REAL temp git repo ────────────────
 class TestSnapshotBefore(unittest.TestCase):

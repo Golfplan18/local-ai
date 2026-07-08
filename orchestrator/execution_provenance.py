@@ -114,7 +114,8 @@ def _scrub_excerpt(text, sensitivity: str, cap: int = _REGISTRY_EXCERPT_CAP):
 # ── Source registry (design §2.4) ────────────────────────────────────────────
 def _add_source(registry: list, seen: dict, *, kind: str, ref, title=None,
                 retrieved_at=None, content_hash=None, sensitivity="private",
-                excerpt=None, injected=False, opaque=False) -> str | None:
+                excerpt=None, injected=False, opaque=False,
+                content_withheld=False) -> str | None:
     """Append a source (deduped on (kind, ref)); returns its source_id.
     Secret sources are EXISTENCE-ONLY: no ref, no title, no hash, no excerpt
     (mirrors ``_redact_for_record``'s secret rule)."""
@@ -144,6 +145,8 @@ def _add_source(registry: list, seen: dict, *, kind: str, ref, title=None,
         entry["excerpt"] = _scrub_excerpt(excerpt, sensitivity)
     if opaque:
         entry["opaque"] = True
+    if content_withheld:
+        entry["content_withheld"] = True
     registry.append(entry)
     seen[key] = entry
     return entry["source_id"]
@@ -325,7 +328,7 @@ def build_registry(context_pkg: dict | None, trace_dir: str | None) -> tuple[lis
                                 ref="[sensitive PATH withheld]",
                                 retrieved_at=ts, sensitivity="sensitive",
                                 excerpt=_SENSITIVE_DESCRIPTOR.format(n=0),
-                                injected=True)
+                                injected=True, content_withheld=True)
                     continue
                 content, changed, oversize = _reread_file_excerpt(
                     str(path), r.get("content_hash"))
@@ -402,6 +405,15 @@ def _level2_prompt(deliverable: str, registry: list) -> tuple[str, str, set]:
     offered: set = set()
     for s in registry[:_LEVEL2_SOURCE_CAP]:
         if not s.get("injected") or s.get("opaque") or not s.get("excerpt"):
+            continue
+        # A content-withheld source (sensitive path — the "excerpt" is only the
+        # [SENSITIVE: … content withheld] descriptor, never real content) proves
+        # the source was CONSULTED but never that a claim USED it correctly (§4).
+        # It must NOT be offered as citable support: a claim mapped only to it
+        # would otherwise be judged 'supported' against provenance the map cannot
+        # verify — flipping sufficiency to True on unverifiable grounding. It stays
+        # in the registry (its existence is real evidence + it renders in the note).
+        if s.get("content_withheld"):
             continue
         offered.add(s["source_id"])
         src_lines.append(f"[{s['source_id']}] ({s.get('kind')}) "
