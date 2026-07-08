@@ -77,6 +77,23 @@ class TestWriteProfiles(unittest.TestCase):
             self.assertTrue(r["unknown"], cmd)
             self.assertNotEqual(r["profile"], "unknown", cmd)  # verb kept
 
+    def test_source_and_dot_are_shell_side_doors(self):
+        # `source FILE` / `. FILE` execute the contents of a file (arbitrary,
+        # model-editable code) IN the shell — identical risk to `bash x.sh` /
+        # `eval`, so they must fail closed, NEVER classify as a read-neutral
+        # no-op prefix. Regression guard: `source` was previously on the
+        # no-op-prefix allowlist and passed the gate un-gated (§7 side door).
+        for cmd in ("source ./setup.sh", "source /tmp/x.sh",
+                    ". ./setup.sh", ". /tmp/x.sh"):
+            r = resolve_shell_profile(cmd)
+            self.assertTrue(r["unknown"], cmd)          # gated, not read-neutral
+            self.assertNotEqual(r["mutability"], "read", cmd)
+        # `source` must classify exactly like its POSIX synonym `.`.
+        s = resolve_shell_profile("source ./x.sh")
+        d = resolve_shell_profile(". ./x.sh")
+        self.assertEqual((s["unknown"], s["mutability"]),
+                         (d["unknown"], d["mutability"]))
+
     def test_read_only_package_commands_still_pass(self):
         for cmd in ("pip list", "npm ls", "brew list", "pip show requests"):
             self.assertFalse(resolve_shell_profile(cmd)["unknown"], cmd)
