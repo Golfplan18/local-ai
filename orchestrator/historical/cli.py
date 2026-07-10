@@ -41,7 +41,13 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from orchestrator.historical.api_client import AnthropicClient
+from orchestrator.historical.cleanup_backends import (
+    BACKEND_API,
+    BACKEND_CHOICES,
+    BACKEND_CLAUDE_CLI,
+    CLI_RECOMMENDED_MAX_WORKERS,
+    build_client,
+)
 from orchestrator.historical.file_orchestrator import (
     FileProcessingResult,
     ProgressEvent,
@@ -184,6 +190,14 @@ def passes_date_filter(raw_path: str,
     return True
 
 
+def _cap_cli_workers(max_workers: int, file_workers: int) -> tuple[int, int]:
+    """Cap TOTAL in-flight claude-cli calls (file_workers × max_workers)
+    at CLI_RECOMMENDED_MAX_WORKERS. Returns (file_workers, max_workers)."""
+    fw = max(1, min(file_workers, CLI_RECOMMENDED_MAX_WORKERS))
+    mw = max(1, min(max_workers, CLI_RECOMMENDED_MAX_WORKERS // fw))
+    return fw, mw
+
+
 # ---------------------------------------------------------------------------
 # Batch runner
 # ---------------------------------------------------------------------------
@@ -203,16 +217,35 @@ def run_batch(
     rebuild:          bool = False,
     config:           Optional[dict] = None,
     progress_to_stderr: bool = True,
+    backend:          str = BACKEND_API,
 ) -> dict:
     """Run cleanup batch. Returns aggregate stats.
 
     `file_workers` controls how many files are processed in parallel
-    through the shared AnthropicClient. Default 1 (sequential). Set to
-    e.g. 4 to spawn 4 file-level workers; total in-flight API calls
+    through the shared model client. Default 1 (sequential). Set to
+    e.g. 4 to spawn 4 file-level workers; total in-flight calls
     becomes file_workers × max_workers.
+
+    `backend` selects the model-call path: 'api' (Anthropic API key),
+    'claude-cli' (Claude subscription via the claude CLI), or
+    'ora-slots' (Ora's slot routing).
     """
 
     start = time.monotonic()
+
+    # The claude-cli backend spawns one CLI process per call and runs
+    # against subscription rate windows — high parallelism just thrashes.
+    # The cap applies to TOTAL in-flight calls (file_workers × max_workers).
+    if backend == BACKEND_CLAUDE_CLI:
+        capped_fw, capped_mw = _cap_cli_workers(max_workers, file_workers)
+        if (capped_fw, capped_mw) != (file_workers, max_workers):
+            if progress_to_stderr:
+                print(f"[batch] backend={backend}: capping workers "
+                      f"file={file_workers}→{capped_fw}, "
+                      f"pair={max_workers}→{capped_mw} "
+                      f"(total in-flight ≤ {CLI_RECOMMENDED_MAX_WORKERS})",
+                      file=sys.stderr)
+            file_workers, max_workers = capped_fw, capped_mw
 
     # Load manifest + vault index once.
     manifest = load_manifest(manifest_path) if not rebuild else _empty_manifest()
@@ -223,7 +256,7 @@ def run_batch(
               file=sys.stderr)
         vault_index = {"entries": []}
 
-    client = AnthropicClient()
+    client = build_client(backend)
 
     # Enumerate + filter
     all_files = enumerate_input_files(input_dir)
@@ -395,6 +428,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                                "Total in-flight = file-workers × max-workers.")
     parser.add_argument("--limit", type=int,
                           help="Max files to process this run")
+    parser.add_argument("--backend", choices=list(BACKEND_CHOICES),
+                          default=BACKEND_API,
+                          help="Model-call path: 'api' (Anthropic API key), "
+                               "'claude-cli' (Claude subscription via the "
+                               "claude CLI), 'ora-slots' (Ora slot routing). "
+                               "Default: api")
     parser.add_argument("--rebuild", action="store_true",
                           help="Ignore manifest, reprocess everything")
     parser.add_argument("--no-resume", action="store_true",
@@ -416,6 +455,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         resume=not args.no_resume,
         rebuild=args.rebuild,
         progress_to_stderr=not args.quiet,
+        backend=args.backend,
     )
     print(json.dumps(aggregate, indent=2))
     return 0

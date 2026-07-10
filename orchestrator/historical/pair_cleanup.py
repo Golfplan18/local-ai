@@ -21,10 +21,13 @@ and Phase 1.10 (cleaned-pair file writer).
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from orchestrator.historical import RawPair
@@ -57,7 +60,38 @@ from orchestrator.historical.prompts import (
     build_personal_segment_cleanup_call,
     build_user_cleanup_call_interleaved,
     extract_user_cleanup_result,
+    looks_like_cleanup_refusal,
+    strip_cleanup_preamble,
 )
+
+
+# Refusal-guard audit log (JSONL, one record per guarded fallback).
+# Resolved at call time so tests and sandboxed runs can redirect it.
+GUARD_LOG_ENV     = "ORA_CLEANUP_GUARD_LOG"
+GUARD_LOG_DEFAULT = "~/ora/data/cleanup-guard.log"
+
+
+def _log_guard_event(source_path: str, pair_num: int, side: str,
+                     signature: str, rejected_output: str) -> None:
+    """Append one JSONL record for a refusal-guard fallback. Best-effort —
+    a logging failure never blocks the cleanup itself."""
+    try:
+        log_path = Path(os.environ.get(GUARD_LOG_ENV,
+                                       GUARD_LOG_DEFAULT)).expanduser()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "ts":           datetime.now().isoformat(timespec="seconds"),
+            "source_path":  source_path,
+            "pair_num":     pair_num,
+            "side":         side,                     # "user" | "ai"
+            "signature":    signature,
+            "action":       "raw_preserved",
+            "output_prefix": rejected_output[:200],
+        }
+        with log_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 # Practical upper bound: Haiku/Sonnet 4.5 share a 200K token context
@@ -246,6 +280,7 @@ def _clean_user_input(
     config:            Optional[dict],
     max_tokens:        int,
     source_platform:   str = "unknown",
+    source_path:       str = "",
 ) -> tuple[list[Segment], str, list[str], bool, CleanupSideRecord]:
     """Run Phase 1.3 → 1.7 on the user's side.
 
@@ -336,14 +371,41 @@ def _clean_user_input(
                 any_dispatch_error = dispatch_result.error
                 continue
 
-            # Strip any wrapper tags the model might have leaked.
-            cleaned = dispatch_result.text.strip()
-            # Defense: some models echo the <input_to_clean> wrapper despite
-            # instructions — strip it.
+            # Normalize model output: framing preamble + leaked wrapper
+            # tags may appear in either order, so strip preamble on both
+            # sides of the tag strip. Preamble strip carries the same
+            # immunity rule as the refusal guard (a framing line present
+            # in the input is content, not framing).
+            cleaned = strip_cleanup_preamble(dispatch_result.text.strip(),
+                                             chunk)
             if cleaned.startswith("<input_to_clean>"):
                 cleaned = cleaned.removeprefix("<input_to_clean>").strip()
             if cleaned.endswith("</input_to_clean>"):
                 cleaned = cleaned.removesuffix("</input_to_clean>").strip()
+            cleaned = strip_cleanup_preamble(cleaned, chunk).strip()
+
+            # Empty-output guard: a successful call that returns nothing
+            # (or nothing but framing) must not erase the chunk.
+            if chunk.strip() and not cleaned:
+                warnings.append("cleanup returned empty output; raw preserved")
+                _log_guard_event(source_path, pair.pair_num, "user",
+                                 "empty-output", dispatch_result.text[:200])
+                seg_cleaned_parts.append(chunk)
+                continue
+
+            # Refusal guard: if the model commented on the input instead
+            # of returning it, keep the original text. Worst case is
+            # uncleaned-but-intact — never the model's commentary.
+            refusal_sig = looks_like_cleanup_refusal(cleaned, chunk)
+            if refusal_sig:
+                warnings.append(
+                    f"cleanup output looked like model commentary "
+                    f"(signature: {refusal_sig!r}); raw preserved"
+                )
+                _log_guard_event(source_path, pair.pair_num, "user",
+                                 refusal_sig, cleaned)
+                seg_cleaned_parts.append(chunk)
+                continue
             seg_cleaned_parts.append(cleaned)
 
         # Reassemble the segment from its cleaned chunks (one chunk in
@@ -373,6 +435,7 @@ def _clean_ai_response(
     anthropic_client:  AnthropicClient,
     config:            Optional[dict],
     max_tokens:        int,
+    source_path:       str = "",
 ) -> tuple[str, str, list[StripRecord], CleanupSideRecord]:
     """Run Phase 1.7 + 1.4 on the AI side.
 
@@ -411,7 +474,34 @@ def _clean_ai_response(
         cleaned, strips = strip_engagement(raw_ai)
         return raw_ai, cleaned, strips, record
 
-    pre_strip = dispatch_result.text
+    # Normalize model output (same order as the user side: preamble /
+    # tags / preamble, immunity against lines present in the input).
+    pre_strip = strip_cleanup_preamble(dispatch_result.text.strip(), raw_ai)
+    if pre_strip.startswith("<input_to_clean>"):
+        pre_strip = pre_strip.removeprefix("<input_to_clean>").strip()
+    if pre_strip.endswith("</input_to_clean>"):
+        pre_strip = pre_strip.removesuffix("</input_to_clean>").strip()
+    pre_strip = strip_cleanup_preamble(pre_strip, raw_ai)
+
+    # Empty-output guard: a successful call that returns nothing must
+    # not erase the response.
+    if raw_ai.strip() and not pre_strip.strip():
+        _log_guard_event(source_path, pair.pair_num, "ai",
+                         "empty-output", dispatch_result.text[:200])
+        record.retried_tier = record.retried_tier or "guard-raw-preserved"
+        cleaned, strips = strip_engagement(raw_ai)
+        return raw_ai, cleaned, strips, record
+
+    # Refusal guard: a cleanup model commenting on the response instead
+    # of returning it falls back to the raw response (post-strip).
+    refusal_sig = looks_like_cleanup_refusal(pre_strip, raw_ai)
+    if refusal_sig:
+        _log_guard_event(source_path, pair.pair_num, "ai",
+                         refusal_sig, pre_strip)
+        record.retried_tier = record.retried_tier or "guard-raw-preserved"
+        cleaned, strips = strip_engagement(raw_ai)
+        return raw_ai, cleaned, strips, record
+
     cleaned, strips = strip_engagement(pre_strip)
     return pre_strip, cleaned, strips, record
 
@@ -459,6 +549,7 @@ def clean_pair(
         anthropic_client=anthropic_client, config=config,
         max_tokens=max_tokens,
         source_platform=source_platform,
+        source_path=source_path,
     )
     out.user_segments         = segments
     out.cleaned_user_input    = cleaned_user
@@ -472,6 +563,7 @@ def clean_pair(
     (pre_strip, final_ai, strips, ai_rec) = _clean_ai_response(
         pair, anthropic_client=anthropic_client, config=config,
         max_tokens=max_tokens,
+        source_path=source_path,
     )
     out.cleaned_ai_pre_strip = pre_strip
     out.cleaned_ai_response  = final_ai
