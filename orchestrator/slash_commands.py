@@ -622,13 +622,15 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
     redefinition_handler. Returns None for non-gate entries."""
     try:
         import json as _json
-        # Read the SAME file constant the legacy path (redefinition_handler
-        # -> oversight_actions.HUMAN_QUEUE_PATH) indexes, so /approve and
-        # /deny address one consistent view of the queue.
-        from oversight_actions import HUMAN_QUEUE_PATH, file_lock
-        if not os.path.isfile(HUMAN_QUEUE_PATH):
+        # Resolve the SAME effective file the legacy path (redefinition_handler
+        # -> oversight_actions.human_queue_path()) indexes, so /approve and
+        # /deny address one consistent view of the queue under any
+        # monkeypatch or ORA_OVERSIGHT_SANDBOX redirection.
+        from oversight_actions import human_queue_path, file_lock
+        queue_path = human_queue_path()
+        if not os.path.isfile(queue_path):
             return None
-        with open(HUMAN_QUEUE_PATH) as f:
+        with open(queue_path) as f:
             lines = [l for l in f if l.strip()]
         if idx < 0 or idx >= len(lines):
             return None
@@ -651,12 +653,12 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
                 from orchestrator import tool_events
             message = tool_events.resolve_gate_entry(rec, approve=approve,
                                                      reason=reason)
-        with file_lock(HUMAN_QUEUE_PATH):
-            with open(HUMAN_QUEUE_PATH) as f:
+        with file_lock(queue_path):
+            with open(queue_path) as f:
                 current = [l for l in f if l.strip()]
             if idx < len(current) and current[idx] == lines[idx]:
                 del current[idx]
-                with open(HUMAN_QUEUE_PATH, "w") as f:
+                with open(queue_path, "w") as f:
                     f.writelines(current)
         return message
     except Exception:

@@ -215,6 +215,7 @@ mind.md                                      — Identity/personality layer
 - **No Gear 5**: The model switcher UI makes Gear 5 redundant (any model in any slot).
 - **Gear selection**: Deterministic from `## DEFAULT GEAR` heading in mode files, not an AI decision.
 - **Verification protocol**: Verifiers output `VERDICT: PASS` or `VERDICT: FAIL` — structured, not conversational.
+- **Test runs are quarantined from live oversight data**: importing any oversight/execution-review test module (or `orchestrator/tests/live_guard.py`) arms `ORA_OVERSIGHT_SANDBOX`, and every durable oversight/telemetry writer (events.jsonl, router.jsonl, human-queue.jsonl, actions.jsonl, reeval-queue.jsonl, archived-peds.jsonl, revise-counters.json, tool-events.jsonl, execution-approvals.json, risk-sticky.json) resolves its path at CALL time: an explicit per-test monkeypatch wins, then the sandbox, then live. Per-test isolation/inspection stays with `oversight_sandbox.redirect_oversight_logs`. **Ad-hoc smoke probes** of gate()/risk-gate/queue paths bypass all of that — `export ORA_OVERSIGHT_SANDBOX="$(mktemp -d)"` first, never probe escalation paths against the live tree (1,444 fake Paused entries landed that way during the Execution Review build; residue archived 2026-07-09).
 
 ## Remaining Work
 

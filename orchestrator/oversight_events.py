@@ -38,6 +38,17 @@ except ImportError:  # pragma: no cover
 WORKSPACE = _rp.WORKSPACE
 OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 EVENT_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "events.jsonl")
+_EVENT_LOG_DEFAULT = EVENT_LOG_PATH  # import-time value; patch-detection anchor
+
+
+def _log_path() -> str:
+    """Effective event-log path: an explicit monkeypatch of EVENT_LOG_PATH
+    wins; otherwise the ORA_OVERSIGHT_SANDBOX quarantine (test runs) applies;
+    otherwise the live log."""
+    if EVENT_LOG_PATH != _EVENT_LOG_DEFAULT:
+        return EVENT_LOG_PATH
+    return _rp.sandboxed_file(EVENT_LOG_PATH)
+
 
 _handlers: list[Callable[[dict], None]] = []
 _log_lock = threading.Lock()
@@ -177,13 +188,14 @@ def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[
     Returns (events, new_offset). Used by polling consumers to track progress
     through the durable log.
     """
-    if not os.path.isfile(EVENT_LOG_PATH):
+    log_path = _log_path()
+    if not os.path.isfile(log_path):
         return ([], since_offset)
 
     events: list[dict] = []
     new_offset = since_offset
     try:
-        with open(EVENT_LOG_PATH, "rb") as f:
+        with open(log_path, "rb") as f:
             f.seek(since_offset)
             for _ in range(max_events):
                 line = f.readline()
@@ -202,10 +214,11 @@ def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[
 
 def _append_to_log(event: dict):
     """Append a JSONL line to the event log. Thread-safe."""
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
+    log_path = _log_path()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
     line = json.dumps(event, default=str) + "\n"
     with _log_lock:
-        with open(EVENT_LOG_PATH, "a") as f:
+        with open(log_path, "a") as f:
             f.write(line)
 
 

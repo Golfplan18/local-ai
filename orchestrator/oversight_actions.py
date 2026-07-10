@@ -37,9 +37,28 @@ WORKSPACE = _rp.WORKSPACE
 OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 HUMAN_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "human-queue.jsonl")
 ACTIONS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "actions.jsonl")
+_HUMAN_QUEUE_DEFAULT = HUMAN_QUEUE_PATH   # import-time values; patch anchors
+_ACTIONS_LOG_DEFAULT = ACTIONS_LOG_PATH
 
 DEFAULT_LOCK_TIMEOUT = 30  # seconds, per §10 O4
 REVISE_LIMIT = 3  # per §10 O3
+
+
+def human_queue_path() -> str:
+    """Effective human-queue path: an explicit monkeypatch of
+    HUMAN_QUEUE_PATH wins; otherwise the ORA_OVERSIGHT_SANDBOX quarantine
+    (test runs) applies; otherwise the live queue. Shared with
+    slash_commands so /queue, /approve and /deny address the same file the
+    escalation writers append to."""
+    if HUMAN_QUEUE_PATH != _HUMAN_QUEUE_DEFAULT:
+        return HUMAN_QUEUE_PATH
+    return _rp.sandboxed_file(HUMAN_QUEUE_PATH)
+
+
+def _actions_log_path() -> str:
+    if ACTIONS_LOG_PATH != _ACTIONS_LOG_DEFAULT:
+        return ACTIONS_LOG_PATH
+    return _rp.sandboxed_file(ACTIONS_LOG_PATH)
 
 
 # ---------- File lock primitive ----------
@@ -59,21 +78,30 @@ def file_lock(path: str, timeout: float = DEFAULT_LOCK_TIMEOUT):
 # ---------- Verdict tracking ----------
 
 REVISE_COUNTERS_PATH = os.path.join(OVERSIGHT_DATA_DIR, "revise-counters.json")
+_REVISE_COUNTERS_DEFAULT = REVISE_COUNTERS_PATH
+
+
+def _revise_counters_path() -> str:
+    if REVISE_COUNTERS_PATH != _REVISE_COUNTERS_DEFAULT:
+        return REVISE_COUNTERS_PATH
+    return _rp.sandboxed_file(REVISE_COUNTERS_PATH)
 
 
 def _load_revise_counters() -> dict:
-    if not os.path.isfile(REVISE_COUNTERS_PATH):
+    counters_path = _revise_counters_path()
+    if not os.path.isfile(counters_path):
         return {}
     try:
-        with open(REVISE_COUNTERS_PATH) as f:
+        with open(counters_path) as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
         return {}
 
 
 def _save_revise_counters(counters: dict):
-    os.makedirs(os.path.dirname(REVISE_COUNTERS_PATH), exist_ok=True)
-    with open(REVISE_COUNTERS_PATH, "w") as f:
+    counters_path = _revise_counters_path()
+    os.makedirs(os.path.dirname(counters_path), exist_ok=True)
+    with open(counters_path, "w") as f:
         json.dump(counters, f, indent=2)
 
 
@@ -315,18 +343,20 @@ def _append_human_queue(entry: dict):
             entry["conversation_id"] = cid
     except Exception:
         pass
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
-    with open(HUMAN_QUEUE_PATH, "a") as f:
+    queue_path = human_queue_path()
+    os.makedirs(os.path.dirname(queue_path), exist_ok=True)
+    with open(queue_path, "a") as f:
         f.write(json.dumps(entry, default=str) + "\n")
 
 
 def read_human_queue() -> list[dict]:
     """Read pending human-queue entries. Used by UI to surface escalations."""
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = human_queue_path()
+    if not os.path.isfile(queue_path):
         return []
     out = []
     try:
-        with open(HUMAN_QUEUE_PATH) as f:
+        with open(queue_path) as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -374,8 +404,9 @@ def _append_actions_log(record: dict):
             record["conversation_id"] = cid
     except Exception:
         pass
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
-    with open(ACTIONS_LOG_PATH, "a") as f:
+    log_path = _actions_log_path()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
 

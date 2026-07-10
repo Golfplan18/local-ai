@@ -46,6 +46,25 @@ WORKSPACE = _rp.WORKSPACE
 OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 REEVAL_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "reeval-queue.jsonl")
 SESSIONS_ROOT = os.path.join(WORKSPACE, "sessions")
+_HUMAN_QUEUE_DEFAULT = HUMAN_QUEUE_PATH   # import-time values; patch anchors
+_REEVAL_QUEUE_DEFAULT = REEVAL_QUEUE_PATH
+
+
+def _queue_path() -> str:
+    """Effective human-queue path: an explicit monkeypatch of this module's
+    HUMAN_QUEUE_PATH wins; otherwise the ORA_OVERSIGHT_SANDBOX quarantine
+    (test runs) applies; otherwise the live queue. Every reader and writer
+    in this module goes through here so add-then-list stays consistent
+    under either redirection."""
+    if HUMAN_QUEUE_PATH != _HUMAN_QUEUE_DEFAULT:
+        return HUMAN_QUEUE_PATH
+    return _rp.sandboxed_file(HUMAN_QUEUE_PATH)
+
+
+def _reeval_path() -> str:
+    if REEVAL_QUEUE_PATH != _REEVAL_QUEUE_DEFAULT:
+        return REEVAL_QUEUE_PATH
+    return _rp.sandboxed_file(REEVAL_QUEUE_PATH)
 
 NAMING_SLOT = "sidebar"  # small model — same slot as drift / mode / elicitation
 
@@ -126,10 +145,11 @@ def list_paused() -> list:
     rewrite the file — synthesis is idempotent and stable, so the same
     legacy entry yields the same id every time.
     """
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return []
     try:
-        with open(HUMAN_QUEUE_PATH) as f:
+        with open(queue_path) as f:
             lines = f.readlines()
     except OSError:
         return []
@@ -179,12 +199,13 @@ def add_entry(record: dict, config: Optional[dict] = None) -> PausedEntry:
     record.setdefault("engagement", ENGAGEMENT_UNSEEN)
     record.setdefault("discussion_conversation_id", None)
 
-    os.makedirs(os.path.dirname(HUMAN_QUEUE_PATH), exist_ok=True)
-    with file_lock(HUMAN_QUEUE_PATH):
-        with open(HUMAN_QUEUE_PATH, "a") as f:
+    queue_path = _queue_path()
+    os.makedirs(os.path.dirname(queue_path), exist_ok=True)
+    with file_lock(queue_path):
+        with open(queue_path, "a") as f:
             f.write(json.dumps(record, default=str) + "\n")
 
-    raw_index = _count_lines(HUMAN_QUEUE_PATH) - 1
+    raw_index = _count_lines(queue_path) - 1
     return _record_to_paused(record, raw_index)
 
 
@@ -217,10 +238,11 @@ def link_discussion(entry_id: str, conversation_id: str) -> bool:
 
 def remove_by_id(entry_id: str) -> bool:
     """Remove an entry by id. Used after successful resolution."""
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return False
-    with file_lock(HUMAN_QUEUE_PATH):
-        with open(HUMAN_QUEUE_PATH) as f:
+    with file_lock(queue_path):
+        with open(queue_path) as f:
             lines = f.readlines()
         kept: list[str] = []
         removed = False
@@ -238,7 +260,7 @@ def remove_by_id(entry_id: str) -> bool:
                 removed = True
                 continue
             kept.append(line)
-        with open(HUMAN_QUEUE_PATH, "w") as f:
+        with open(queue_path, "w") as f:
             f.writelines(kept)
         return removed
 
@@ -373,10 +395,11 @@ def _generate_name(record: dict, config: dict) -> str:
 
 def _update_entry(entry_id: str, transform) -> bool:
     """Read-modify-write a single entry by id. Returns True on success."""
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return False
-    with file_lock(HUMAN_QUEUE_PATH):
-        with open(HUMAN_QUEUE_PATH) as f:
+    with file_lock(queue_path):
+        with open(queue_path) as f:
             lines = f.readlines()
         out: list[str] = []
         updated = False
@@ -400,7 +423,7 @@ def _update_entry(entry_id: str, transform) -> bool:
                 out.append(line)
         if not updated:
             return False
-        with open(HUMAN_QUEUE_PATH, "w") as f:
+        with open(queue_path, "w") as f:
             f.writelines(out)
         return True
 
@@ -415,10 +438,11 @@ def _count_lines(path: str) -> int:
 def _collect_reeval_items() -> list:
     """Read the re-eval queue and produce OperatingEntry rows."""
     items: list[OperatingEntry] = []
-    if not os.path.isfile(REEVAL_QUEUE_PATH):
+    reeval_path = _reeval_path()
+    if not os.path.isfile(reeval_path):
         return items
     try:
-        with open(REEVAL_QUEUE_PATH) as f:
+        with open(reeval_path) as f:
             for line in f:
                 stripped = line.strip()
                 if not stripped:

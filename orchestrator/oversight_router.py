@@ -45,6 +45,15 @@ WORKSPACE = _rp.WORKSPACE
 VAULT = _rp.VAULT_STR
 PROCESS_COHERENCE_PATH = os.path.join(VAULT, "Framework — Process Coherence.md")
 ROUTER_LOG_PATH = os.path.join(_rp.DATA_DIR_STR, "oversight", "router.jsonl")
+_ROUTER_LOG_DEFAULT = ROUTER_LOG_PATH  # import-time value; patch-detection anchor
+
+
+def _router_log_path() -> str:
+    """Effective router-log path: an explicit monkeypatch of ROUTER_LOG_PATH
+    wins; otherwise the ORA_OVERSIGHT_SANDBOX quarantine (test runs) applies."""
+    if ROUTER_LOG_PATH != _ROUTER_LOG_DEFAULT:
+        return ROUTER_LOG_PATH
+    return _rp.sandboxed_file(ROUTER_LOG_PATH)
 
 
 # Mapping from event type to PC mode
@@ -348,8 +357,9 @@ def _parse_pc_verdict(output: str) -> dict:
 
 
 def _append_router_log(entry: dict):
-    os.makedirs(os.path.dirname(ROUTER_LOG_PATH), exist_ok=True)
-    with open(ROUTER_LOG_PATH, "a") as f:
+    log_path = _router_log_path()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a") as f:
         f.write(json.dumps(entry, default=str) + "\n")
 
 

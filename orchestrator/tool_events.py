@@ -56,6 +56,17 @@ WORKSPACE = _rp.WORKSPACE
 DATA_DIR = _rp.DATA_DIR_STR
 GLOBAL_SINK_DEFAULT = os.path.join(DATA_DIR, "tool-events.jsonl")
 APPROVALS_PATH = os.path.join(DATA_DIR, "execution-approvals.json")
+_GLOBAL_SINK_BAKED = GLOBAL_SINK_DEFAULT  # import-time values; patch anchors
+_APPROVALS_BAKED = APPROVALS_PATH
+
+
+def _approvals_path() -> str:
+    """Effective approvals-store path: an explicit monkeypatch of
+    APPROVALS_PATH wins; otherwise the ORA_OVERSIGHT_SANDBOX quarantine
+    (test runs) applies; otherwise the live store."""
+    if APPROVALS_PATH != _APPROVALS_BAKED:
+        return APPROVALS_PATH
+    return _rp.sandboxed_file(APPROVALS_PATH)
 
 
 def _matchable(path: str) -> str:
@@ -571,8 +582,15 @@ def global_sink_path() -> str:
     Single source of truth shared by the writer (record), the stealth
     purge (conversation_closeout Layer 6a) and the retention sweeper, so
     the file that gets purged/rotated is always the file that gets
-    written, under any ORA_HOME / ORA_TOOL_EVENTS_PATH relocation."""
-    return os.environ.get("ORA_TOOL_EVENTS_PATH") or GLOBAL_SINK_DEFAULT
+    written, under any ORA_HOME / ORA_TOOL_EVENTS_PATH relocation.
+    Precedence: ORA_TOOL_EVENTS_PATH > explicit GLOBAL_SINK_DEFAULT
+    monkeypatch > ORA_OVERSIGHT_SANDBOX quarantine (test runs) > live."""
+    env = os.environ.get("ORA_TOOL_EVENTS_PATH")
+    if env:
+        return env
+    if GLOBAL_SINK_DEFAULT != _GLOBAL_SINK_BAKED:
+        return GLOBAL_SINK_DEFAULT
+    return _rp.sandboxed_file(GLOBAL_SINK_DEFAULT)
 
 
 def _sink_path(ctx: dict) -> str:
@@ -801,18 +819,19 @@ def normalize_args_hash(action: str, params: dict | None) -> str:
 
 def _load_approvals() -> dict:
     try:
-        with open(APPROVALS_PATH) as f:
+        with open(_approvals_path()) as f:
             return json.load(f)
     except Exception:
         return {"tokens": [], "standing": []}
 
 
 def _save_approvals(data: dict) -> None:
-    os.makedirs(os.path.dirname(APPROVALS_PATH), exist_ok=True)
-    tmp = APPROVALS_PATH + ".tmp"
+    approvals = _approvals_path()
+    os.makedirs(os.path.dirname(approvals), exist_ok=True)
+    tmp = approvals + ".tmp"
     with open(tmp, "w") as f:
         json.dump(data, f, indent=2)
-    os.replace(tmp, APPROVALS_PATH)
+    os.replace(tmp, approvals)
 
 
 def _with_approvals_lock(fn):
@@ -820,7 +839,7 @@ def _with_approvals_lock(fn):
     # The lock is retained (not replaced by atomic-write alone): grant and
     # consume both mutate the same file, and atomic replace does not prevent
     # a lost update between concurrent grant/consume.
-    with _rp.locked_file(APPROVALS_PATH):
+    with _rp.locked_file(_approvals_path()):
         return fn()
 
 

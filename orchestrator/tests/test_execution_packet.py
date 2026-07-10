@@ -16,6 +16,10 @@ from unittest import mock
 _ORCH = Path(__file__).resolve().parent.parent
 if str(_ORCH) not in sys.path:
     sys.path.insert(0, str(_ORCH))
+_TESTS_DIR = str(Path(__file__).resolve().parent)
+if _TESTS_DIR not in sys.path:
+    sys.path.insert(0, _TESTS_DIR)
+import live_guard  # noqa: E402,F401 — quarantines durable oversight/telemetry writes
 
 import execution_packet as ep  # noqa: E402
 import risk_gate as rg  # noqa: E402
