@@ -57,6 +57,11 @@ _DEFAULT_CONVERSATIONS_RAW = _rp.CONVERSATIONS / "raw"
 _DEFAULT_CHROMADB_PATH = _rp.ORA_HOME / "chromadb"
 _DEFAULT_VAULT_SESSIONS = _rp.VAULT / "Sessions"
 
+# Import-time value of the Layer 9 oversight-log root; patch-detection anchor
+# (a test that patches runtime_paths.DATA_DIR_STR must win over the
+# ORA_OVERSIGHT_SANDBOX quarantine, same precedence as every oversight writer).
+_LIVE_OVERSIGHT_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
+
 
 def close_conversation(
     conversation_id: str,
@@ -406,7 +411,16 @@ def _purge_stealth(
     # both flow from runtime_paths (ORA_HOME-relocatable), read at call
     # time so a purge can never silently miss a relocated sink.
     from . import runtime_paths as _rp_purge
-    OVERSIGHT_DIR = Path(os.path.join(_rp_purge.DATA_DIR_STR, "oversight"))
+    # Precedence (same rule as every oversight writer): an explicit
+    # DATA_DIR_STR patch wins; otherwise under ORA_OVERSIGHT_SANDBOX (test
+    # runs) the writers landed in the quarantine dir with a FLAT layout, so
+    # the scrub must target the sandbox root itself — never rewrite the
+    # live logs from a test process.
+    _candidate = os.path.join(_rp_purge.DATA_DIR_STR, "oversight")
+    if _candidate != _LIVE_OVERSIGHT_DIR:
+        OVERSIGHT_DIR = Path(_candidate)
+    else:
+        OVERSIGHT_DIR = Path(_rp_purge.oversight_sandbox_dir() or _candidate)
     deleted["oversight_log_entries"] = {
         "events.jsonl": 0,
         "actions.jsonl": 0,

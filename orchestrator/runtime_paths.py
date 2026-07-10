@@ -45,6 +45,38 @@ DATA_DIR_STR = str(DATA_DIR)
 CONFIG_DIR_STR = str(CONFIG_DIR)
 SCRATCH_DIR_STR = str(SCRATCH_DIR)
 
+# ── Oversight/telemetry write sandbox (test harness hook) ───────────────────
+# When ORA_OVERSIGHT_SANDBOX names a directory, every durable oversight and
+# execution-telemetry writer (events.jsonl, router.jsonl, human-queue.jsonl,
+# actions.jsonl, reeval-queue.jsonl, revise-counters.json, tool-events.jsonl,
+# execution-approvals.json, risk-sticky.json) rebases its file into that
+# directory INSTEAD of the live data tree. Resolution happens at CALL time,
+# not import time, so the guard holds no matter when the variable is set
+# relative to module imports — the trap that let unittest runs append 1,444
+# fake escalations to the live human queue (residue archived 2026-07-09).
+#
+# This is a quarantine for test runs and smoke probes, armed by
+# orchestrator/tests/live_guard.py — never set it for a production server.
+# An explicitly monkeypatched module path constant still wins over the
+# sandbox (each writer compares its global against the import-time default
+# before consulting this), so per-test path patches keep working unchanged.
+OVERSIGHT_SANDBOX_ENV = "ORA_OVERSIGHT_SANDBOX"
+
+
+def oversight_sandbox_dir() -> str | None:
+    """The armed sandbox directory, or None outside sandboxed runs."""
+    return os.environ.get(OVERSIGHT_SANDBOX_ENV) or None
+
+
+def sandboxed_file(live_path: str) -> str:
+    """Rebase a durable-telemetry file into the sandbox when armed (flat
+    layout: basename only — all sandboxed sinks have distinct basenames).
+    Returns ``live_path`` unchanged when no sandbox is set."""
+    box = oversight_sandbox_dir()
+    if not box:
+        return live_path
+    return os.path.join(box, os.path.basename(live_path))
+
 
 def norm_key(path) -> str:
     """Canonical comparison key for a filesystem path: case- and

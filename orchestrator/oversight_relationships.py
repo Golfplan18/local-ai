@@ -61,6 +61,22 @@ WORKSPACE = _rp.WORKSPACE
 OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 EVENTS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "events.jsonl")
 ACTIONS_LOG_PATH = os.path.join(OVERSIGHT_DATA_DIR, "actions.jsonl")
+_EVENTS_LOG_DEFAULT = EVENTS_LOG_PATH   # import-time values; patch anchors
+_ACTIONS_LOG_DEFAULT = ACTIONS_LOG_PATH
+
+
+def _events_log_path() -> str:
+    """Explicit monkeypatch wins; otherwise the ORA_OVERSIGHT_SANDBOX
+    quarantine (test runs) applies; otherwise the live log."""
+    if EVENTS_LOG_PATH != _EVENTS_LOG_DEFAULT:
+        return EVENTS_LOG_PATH
+    return _rp.sandboxed_file(EVENTS_LOG_PATH)
+
+
+def _actions_log_path() -> str:
+    if ACTIONS_LOG_PATH != _ACTIONS_LOG_DEFAULT:
+        return ACTIONS_LOG_PATH
+    return _rp.sandboxed_file(ACTIONS_LOG_PATH)
 
 # Events that are meaningful when echoed to a parent project.
 FAN_OUT_EVENT_TYPES = {
@@ -231,14 +247,16 @@ def _append_parent_decision_log(parent_ped_path: str, synthesized: dict):
 
 
 def _append_events_log(record: dict):
-    os.makedirs(os.path.dirname(EVENTS_LOG_PATH), exist_ok=True)
-    with open(EVENTS_LOG_PATH, "a") as f:
+    log_path = _events_log_path()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
 
 def _append_actions_log(record: dict):
-    os.makedirs(os.path.dirname(ACTIONS_LOG_PATH), exist_ok=True)
-    with open(ACTIONS_LOG_PATH, "a") as f:
+    log_path = _actions_log_path()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
 

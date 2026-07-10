@@ -24,6 +24,10 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+_TESTS_DIR = str(Path(__file__).resolve().parent)
+if _TESTS_DIR not in sys.path:
+    sys.path.insert(0, _TESTS_DIR)
+import live_guard  # noqa: E402,F401 — quarantines durable oversight/telemetry writes
 
 import tool_events as te                       # noqa: E402
 import execution_families as ef                # noqa: E402

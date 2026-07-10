@@ -38,6 +38,30 @@ WORKSPACE = _rp.WORKSPACE
 OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
 REEVAL_QUEUE_PATH = os.path.join(OVERSIGHT_DATA_DIR, "reeval-queue.jsonl")
 ARCHIVED_PEDS_LOG = os.path.join(OVERSIGHT_DATA_DIR, "archived-peds.jsonl")
+_HUMAN_QUEUE_DEFAULT = HUMAN_QUEUE_PATH   # import-time values; patch anchors
+_REEVAL_QUEUE_DEFAULT = REEVAL_QUEUE_PATH
+_ARCHIVED_PEDS_DEFAULT = ARCHIVED_PEDS_LOG
+
+
+def _queue_path() -> str:
+    """Effective human-queue path: an explicit monkeypatch of this module's
+    HUMAN_QUEUE_PATH binding wins; otherwise the ORA_OVERSIGHT_SANDBOX
+    quarantine (test runs) applies; otherwise the live queue."""
+    if HUMAN_QUEUE_PATH != _HUMAN_QUEUE_DEFAULT:
+        return HUMAN_QUEUE_PATH
+    return _rp.sandboxed_file(HUMAN_QUEUE_PATH)
+
+
+def _reeval_queue_path() -> str:
+    if REEVAL_QUEUE_PATH != _REEVAL_QUEUE_DEFAULT:
+        return REEVAL_QUEUE_PATH
+    return _rp.sandboxed_file(REEVAL_QUEUE_PATH)
+
+
+def _archived_peds_path() -> str:
+    if ARCHIVED_PEDS_LOG != _ARCHIVED_PEDS_DEFAULT:
+        return ARCHIVED_PEDS_LOG
+    return _rp.sandboxed_file(ARCHIVED_PEDS_LOG)
 
 
 @dataclass
@@ -64,10 +88,11 @@ class QueueEntry:
 def list_pending_redefinitions() -> list[QueueEntry]:
     """Read the human queue and return pending redefinition entries."""
     entries: list[QueueEntry] = []
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return entries
     try:
-        with open(HUMAN_QUEUE_PATH) as f:
+        with open(queue_path) as f:
             lines = f.readlines()
     except OSError:
         return entries
@@ -100,10 +125,11 @@ def list_pending_escalations(redefinition_only: bool = False) -> list[QueueEntry
     Used by `/queue` slash command to show what's awaiting human review.
     """
     entries: list[QueueEntry] = []
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return entries
     try:
-        with open(HUMAN_QUEUE_PATH) as f:
+        with open(queue_path) as f:
             lines = f.readlines()
     except OSError:
         return entries
@@ -258,8 +284,9 @@ def _archive_ped(ped_path: str) -> str:
         shutil.copy2(ped_path, archived_path)
 
     # Log the archival
-    os.makedirs(os.path.dirname(ARCHIVED_PEDS_LOG), exist_ok=True)
-    with open(ARCHIVED_PEDS_LOG, "a") as f:
+    archived_log = _archived_peds_path()
+    os.makedirs(os.path.dirname(archived_log), exist_ok=True)
+    with open(archived_log, "a") as f:
         f.write(json.dumps({
             "original": ped_path,
             "archived": archived_path,
@@ -391,21 +418,23 @@ def _queue_reeval(
             "Update the new PED's Active Milestones and Decision Log accordingly."
         ),
     }
-    os.makedirs(os.path.dirname(REEVAL_QUEUE_PATH), exist_ok=True)
-    with open(REEVAL_QUEUE_PATH, "a") as f:
+    reeval_path = _reeval_queue_path()
+    os.makedirs(os.path.dirname(reeval_path), exist_ok=True)
+    with open(reeval_path, "a") as f:
         f.write(json.dumps(task) + "\n")
     return task_id
 
 
 def _remove_queue_entry(queue_index: int):
     """Rewrite the human queue without the entry at queue_index."""
-    if not os.path.isfile(HUMAN_QUEUE_PATH):
+    queue_path = _queue_path()
+    if not os.path.isfile(queue_path):
         return
-    with file_lock(HUMAN_QUEUE_PATH):
-        with open(HUMAN_QUEUE_PATH) as f:
+    with file_lock(queue_path):
+        with open(queue_path) as f:
             lines = f.readlines()
         kept = [line for i, line in enumerate(lines) if i != queue_index]
-        with open(HUMAN_QUEUE_PATH, "w") as f:
+        with open(queue_path, "w") as f:
             f.writelines(kept)
 
 

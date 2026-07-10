@@ -652,7 +652,9 @@ def fold_route_observed(events_path: str | None, *,
 # schema change). A sticky sets a FLOOR that may raise but never lower a
 # deterministic floor (condition 2).
 def _sticky_path() -> str:
-    return os.path.join(_rp.DATA_DIR_STR, "risk-sticky.json")
+    # sandboxed_file: test runs (ORA_OVERSIGHT_SANDBOX armed) quarantine the
+    # sticky store instead of mutating the live data tree.
+    return _rp.sandboxed_file(os.path.join(_rp.DATA_DIR_STR, "risk-sticky.json"))
 
 
 def _load_sticky() -> dict:
