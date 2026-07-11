@@ -581,6 +581,7 @@ def run_phase5(
     progress_to_stderr: bool = True,
     rebuild_manifest:   bool = False,
     limit:              Optional[int] = None,
+    backend:            str = "api",
 ) -> dict:
     start = time.monotonic()
     chain_lookup = load_chain_index(chain_index_path)
@@ -609,7 +610,13 @@ def run_phase5(
                 "already_done": len(completed)}
 
     collection = _open_dedup_collection(chromadb_path, dedup_collection)
-    client = AnthropicClient(model=EXTRACTION_MODEL)
+    # Every extraction call passes model=EXTRACTION_MODEL explicitly, so
+    # non-api backends translate it themselves (tier alias / slot).
+    if backend and backend != "api":
+        from orchestrator.historical.cleanup_backends import build_client
+        client = build_client(backend)
+    else:
+        client = AnthropicClient(model=EXTRACTION_MODEL)
 
     aggregate = {
         "pairs_processed":     0,
@@ -718,6 +725,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--rebuild-manifest", action="store_true")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--backend", default="api",
+                        help="Model-call path: api | claude-cli | ora-slots")
     args = parser.parse_args(argv)
 
     stats = run_phase5(
@@ -731,6 +740,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         progress_to_stderr=not args.quiet,
         rebuild_manifest=args.rebuild_manifest,
         limit=args.limit,
+        backend=args.backend,
     )
     Path(args.report).parent.mkdir(parents=True, exist_ok=True)
     Path(args.report).write_text(json.dumps(stats, indent=2, ensure_ascii=False))

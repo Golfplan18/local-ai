@@ -8,6 +8,8 @@ Conversation Processing (CPP)
 
 Processes raw conversation exports (Claude, ChatGPT, Gemini) and live Ora exchanges into structured turn-pair chunks indexed in ChromaDB. Batch mode also produces a persistent cleaned-pair archive at ~/Documents/Commercial AI archives/ with per-pair semantic cleanup, pasted-segment classification, and engagement-wrapper stripping. Use for fresh chats from phone, web, or any commercial AI service.
 
+_v2.1 update (2026-07-10, second revision same day): Unified single-command batch entry — `python3 -m orchestrator.historical.ingest` chains cleanup → chunks → engrams with per-stage resume manifests and stage-skip flags; the three-CLI relay of the historical run is retired as the primary invocation (per-stage CLIs remain for repairs). Also: Refusal Leak remediation tooling (`repair_refusal_pairs.py`) and the modernized dedup-index rebuilder._
+
 _v2.1 update (2026-07-10): Model-agnostic execution + cleanup hardening. All model references removed from this framework — cleanup calls route by size to a "light" or "heavy" tier, and a pluggable backend (selected at invocation: `api`, `claude-cli`, or `ora-slots`) resolves tiers to whatever the routing configuration serves; this framework never names models. Cleanup prompts v2: a never-refuse rule (any input the model is unsure about is returned verbatim), dictation word-lock correction (similar-sounding wrong words fixed from context), and explicit pronoun-referent resolution. New deterministic Refusal Guard after every cleanup call: output that reads as model commentary about the input (rather than the cleaned input itself) is discarded, the original text is preserved, and the event is logged to `~/ora/data/cleanup-guard.log`. Closes the Refusal Leak failure mode discovered 2026-07-10 (~700 archive pairs corrupted by persisted refusals during the historical run). Historical raw exports now live at `~/Documents/Raw Chat Archive/raw/` (relocated after the one-time run); `~/Documents/conversations/raw/` remains the live input directory for new imports._
 
 _v2.0 update (2026-05-17): Batch mode overhauled to match the historical-reprocessing architectural pivot of 2026-04-30. Cleaned-pair layer is now the primary batch deliverable; chunk extraction is a downstream consumer. Adds per-pair semantic cleanup with model routing, pasted-segment 4-bucket classification with vault-index lookup, and the strict engagement-wrapper strip rule. New Layer 2.5 inserted between format normalization and chunking. Inline mode unchanged. Runnable implementation already exists in `~/ora/orchestrator/historical/` and was used for the one-time historical archive run (39,081 pairs, $510 cost, 99.9% success)._
@@ -122,7 +124,7 @@ Additional outputs (batch mode):
 
 **Inline mode:** Orchestrator. This pipeline executes as part of the orchestrator's output delivery step — after the model produces a response and before the system accepts the next user input. Processing a single exchange inline must complete in under two seconds to avoid perceptible delay. The inline path runs Layers 3 and 4 only (semantic chunking, header generation, write, and indexing) because the prompt-response pair is already normalized — it comes directly from the orchestrator, not from a file that needs format detection and parsing, and not from a commercial export that needs cleanup.
 
-**Batch mode:** Agent. This pipeline runs on demand for processing imported conversation files. The runnable implementation lives in `~/ora/orchestrator/historical/`, invoked via `python3 -m orchestrator.historical.cli`. Stage boundaries represent actual context window resets to prevent context debt accumulation across many files. Batch mode runs Layers 1 through 6 including the inserted Layer 2.5.
+**Batch mode:** Agent. This pipeline runs on demand for processing imported conversation files. The runnable implementation lives in `~/ora/orchestrator/historical/`. **The single-command entry point is `python3 -m orchestrator.historical.ingest`**, which chains all three batch stages — cleanup (Layers 1–2.5), chunk emission + indexing (Layers 3–4), and downstream engram extraction — behind one invocation with per-stage resume manifests; `--no-chunks` / `--no-engrams` skip stages, and `--backend` selects the model-call path for every stage. The per-stage CLIs (`orchestrator.historical.cli`, `path2_cli`, `phase5_atomic_extraction`) remain individually runnable for targeted re-runs and repairs. Stage boundaries represent actual context window resets to prevent context debt accumulation across many files.
 
 Available tools (batch mode):
 - file_read: Read raw conversation files, cleaned-pair files, and existing chunk files.
@@ -782,7 +784,10 @@ The batch-mode pipeline is implemented in the `~/ora/orchestrator/historical/` s
 
 | Module | Layer / Step |
 |---|---|
-| `cli.py` | Entry point: `python3 -m orchestrator.historical.cli` |
+| `ingest.py` | **Unified entry point**: `python3 -m orchestrator.historical.ingest` — chains cleanup → chunks → engrams with per-stage resume |
+| `cli.py` | Cleanup-stage entry point: `python3 -m orchestrator.historical.cli` |
+| `repair_refusal_pairs.py` | Refusal Leak remediation: `--scan` (detect damage with retroactive immunity), `--repair` (re-clean in place), `--fix-chunks` (regenerate downstream chunks + index) |
+| `rebuild_atomic_dedup.py` | Rebuild the atomic-dedup index from vault engrams under the canonical embedder (run after embedder migrations, engram deletions, or runtime-promotion catch-up) |
 | `parser.py` | Layer 2 — format detection + Web-Clipper / live-Ora / ChatGPT / Gemini parsing |
 | `paste_detection.py` | Layer 2.5 Steps 1 + 2 — segment + classify (with vault-index lookup) |
 | `llm_reclassify.py` | Post-hoc bucket reclassification (Layer 2.5 Step 2 retroactive fix) |
