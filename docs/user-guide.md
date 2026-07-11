@@ -4,6 +4,8 @@
 
 **Platform labels.** Every command is labeled. `[macOS]` is the tested path (Apple Silicon). `[Linux server]` is the supported headless path. `[Windows-native]` and `[WSL]` are labeled where they differ; **`[Windows-native]` is intended but untested** — treat it as best-effort until a clean-room Windows install has been verified. If a command carries no label, it applies everywhere Ora runs.
 
+**What things are called (nomenclature, 2026-07-11).** A working session with Ora is a **Dialogue**. You type into the **Inquiry** pane, read results in the **Findings** pane, and see diagrams in the **Exhibits** pane (the canvas beside the text). The small side-model chat panes in the upper right are the **Aside**, and the browse window for your Dialogues, engrams, and files — opened from the sidebar — is the **Library**. The running interface may still show older labels until its next update; where this guide names a control, the new names apply.
+
 ---
 
 ## Before you start
@@ -117,7 +119,7 @@ You need at least one working model endpoint before Ora can answer. The core ins
 3. Add a key. OpenRouter is the broadest single choice; direct provider keys (Anthropic, OpenAI, Google, and others) skip OpenRouter's gateway markup for those providers' own models.
 4. Save. On macOS desktop, keys go into the system keychain, not a plaintext file.
 
-You can also run the guided flow from the chat box:
+You can also run the guided flow from the Inquiry pane (the text-entry box):
 ```
 /framework api-key-setup
 ```
@@ -140,9 +142,9 @@ If you pick Free, expect the trade-off up front: free models are rate-limited an
 
 ## Do work
 
-1. Type your question or task in the chat box at <http://localhost:5000> and submit.
+1. Type your question or task in the Inquiry pane at <http://localhost:5000> and submit.
 2. Wait. Ora is async by design — for serious work it runs the full pipeline server-side and does not stream a live progress bar. Submit, leave, come back. The interface reconciles what finished while you were gone.
-3. Read the result in the conversation. When Ora produces a diagram, it appears on the canvas beside the chat.
+3. Read the result in the Findings pane — the response side of the Dialogue. When Ora produces a diagram, it appears in the Exhibits pane, the canvas beside the text.
 
 **Run a framework** (a whole procedure, not a single answer):
 ```
@@ -157,7 +159,7 @@ Invoke a framework with no input to have Ora walk you through it one question at
 ## Where your things live
 
 - **Vault** — `~/Documents/vault/`. Put files here that you want Ora to search: notes, documents, project files.
-- **Conversations** — `~/Documents/conversations/`. Session logs, saved automatically.
+- **Dialogues** — `~/Documents/conversations/`. Session logs of your Dialogues, saved automatically.
 - **System prompt** — `~/ora/boot/boot.md`. Ora reads this as its operating instructions.
 - **Your values/voice** — `~/ora/mind.md`. Customizable from **Settings → Output Styles**, or via `/framework mindspec-interview`.
 - **Model configuration** — `~/ora/config/routing-config.json` (routing and slots) and `~/ora/config/model-registry.json` (model inventory). Edit these through the Models pane, not by hand.
@@ -185,7 +187,7 @@ The installer keeps state, so you can retry without starting over. The commands 
    ```bash
    python3 scripts/install.py --resume
    ```
-4. Start the install state over (this clears installer state only — it does **not** delete your vault, conversations, or downloaded models):
+4. Start the install state over (this clears installer state only — it does **not** delete your vault, Dialogues, or downloaded models):
    ```bash
    python3 scripts/install.py --reset
    ```
@@ -202,7 +204,7 @@ For a script that is broken at the source level, `docs/install-manual.md` reprod
 | "No AI endpoints configured" | No working model key | Start the server (`./start.sh` `[macOS]`, `start.bat` `[Windows-native — untested]`), then add a key in **Settings → External APIs** |
 | `<tool_call>` tags in the response | You're connected to a commercial AI directly, not to localhost | Use <http://localhost:5000>, not claude.ai / ChatGPT |
 | Garbled output from a local model | The chat template needs a re-check | Switch models, or re-run the model setup |
-| Output repeats itself | The conversation has grown too long | Start a new conversation |
+| Output repeats itself | The Dialogue has grown too long | Start a new Dialogue |
 | Free model unavailable or rate-limited | Expected on the Free configuration | Add OpenRouter credits or a direct provider key |
 
 If a command in this guide fails on Windows or Linux, that is consistent with the platform status: macOS is the tested target. Check the platform label on the step before assuming a defect.
@@ -221,3 +223,10 @@ If a command in this guide fails on Windows or Linux, that is consistent with th
 - (For why Ora runs two models instead of one, and why it makes AI reliable, see [[Reference — Ora Accessible Overview]].)
 - (For how any of this works under the hood — the pipeline, the vault, the model routing, the platform matrix — see [[Reference — Ora Technical Documentation]].)
 - (For the full install matrix and recovery detail, see `~/ora/docs/install-guide.md`, `install-recovery.md`, and `install-manual.md`.)
+
+---
+
+## Changelog
+
+- **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Inquiry pane (text input), Findings pane (text output), Exhibits pane (visual canvas), Aside (side-model chat panes), Library (browse modal). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
+- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).

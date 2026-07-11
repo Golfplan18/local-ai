@@ -62,6 +62,8 @@ The chapters are grouped into five parts:
 
 Five appendices (A–E) follow the chapters. They are consolidated into this one document rather than split out, so that the source of truth stays in a single place.
 
+**User-facing nomenclature (2026-07-11).** The interface concepts this document describes carry new user-facing names, decided after the pin: a working session is a **Dialogue** (formerly a conversation); the text-input pane is the **Inquiry** pane; the text-output pane is the **Findings** pane; the visual/canvas pane, when discussed as part of a Dialogue, is the **Exhibits** pane (in pure image-rendering contexts "image pane" or "visual pane" remains acceptable); the small side-model chat panes in the upper right are the **Aside**; and the conversation/engram/file browse modal, with its sidebar access point, is the **Library**. This document is code-level and pinned to commit `7a5e8f40`, so it deliberately keeps the internal identifiers and the UI strings as they exist at that commit — `conversation.json`, the `conversations` ChromaDB collection, `conversation_memory.py`, the `sidebar` model slot, `sidebar.js`, `visual-panel.js`, endpoint names, and quoted UI labels are all unchanged and correct as written. Read "conversation" in code-adjacent prose as the mechanism behind a Dialogue; the user-facing documents ([[Guide — Using Ora]], [[Reference — Ora Accessible Overview]]) use the new names throughout.
+
 ## Platform-Support Statement
 
 The primary tested target is **macOS on Apple Silicon**. That is the platform the installed system at commit 7a5e8f40 was developed and run on, and it is the only platform for which I will say a surface "works" on the strength of evidence. Every other platform — Windows-native, WSL, generic Linux — is somewhere between untested and partial, and each chapter's Platform compatibility subsection labels the specific surfaces accordingly. I do not label a non-mac surface "works" without evidence; where a surface was not actually run off-Mac, it is labeled "untested."
@@ -2657,3 +2659,10 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/ora/server/server.py` — [implemented] HTTP surface: project inspection endpoints (list_projects at ~4375/4380), §13 theme routes (/api/v3-themes/list
 - `/Users/oracle/ora/orchestrator/tests/test_project_execution_binding.py` — [implemented] Tests that a conversation's active project binds into execution context.
 - `/Users/oracle/ora/orchestrator/tests/test_conversation_projects.py` — [implemented] Tests conversation project_ids membership stamping.
+
+---
+
+## Changelog
+
+- **2026-07-11** — User-facing nomenclature note added to "How To Read This Document" (Dialogues, Inquiry / Findings / Exhibits panes, Aside, Library). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run. Internal identifiers and quoted UI strings are unchanged by design.
+- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).
