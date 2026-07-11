@@ -3,36 +3,43 @@
 # input directory drains, sleeping between cycles so subscription
 # rate-window resets are absorbed (every stage resumes from its manifest).
 #
-# Usage: scripts/backlog_ingest_supervisor.sh [max_cycles] [sleep_secs]
+# Usage: scripts/backlog_ingest_supervisor.sh <input_dir> [max_cycles] [sleep_secs] [--no-chunks]
 #
-# The run uses --no-chunks: the current backlog is local-Ora session logs
-# whose chunks already exist via inline mode — batch chunk emission would
-# double-index them. After the cleanup stage converges, the new sessions
-# are marked completed-without-emission in the path2 manifest so future
-# full ingests don't sweep them in either.
+# Pass --no-chunks only for local-Ora session logs whose chunks already
+# exist via inline mode (batch emission would double-index them); those
+# sessions additionally get marked completed-without-emission in the
+# path2 manifest so future full ingests don't sweep them in. Commercial
+# exports run the full pipeline.
 
 set -u
 cd "$(dirname "$0")/.." || exit 1
 PY=/opt/homebrew/bin/python3
 LOG=~/ora/data/backlog-ingest.log
-MAX_CYCLES=${1:-12}
-SLEEP_SECS=${2:-1800}
 
-echo "[supervisor] start $(date '+%F %T') max_cycles=$MAX_CYCLES" >> "$LOG"
+INPUT_DIR=${1:?usage: backlog_ingest_supervisor.sh <input_dir> [max_cycles] [sleep_secs] [--no-chunks]}
+MAX_CYCLES=${2:-12}
+SLEEP_SECS=${3:-1800}
+CHUNK_FLAG=""
+if [ "${4:-}" = "--no-chunks" ]; then
+  CHUNK_FLAG="--no-chunks"
+fi
+
+echo "[supervisor] start $(date '+%F %T') input=$INPUT_DIR max_cycles=$MAX_CYCLES chunks=${CHUNK_FLAG:-on}" >> "$LOG"
 
 for i in $(seq 1 "$MAX_CYCLES"); do
   echo "[supervisor] cycle $i $(date '+%F %T')" >> "$LOG"
   "$PY" -m orchestrator.historical.ingest \
-      --backend claude-cli --no-chunks >> "$LOG" 2>&1
+      --backend claude-cli --input-dir "$INPUT_DIR" $CHUNK_FLAG >> "$LOG" 2>&1
 
-  PENDING=$("$PY" - <<'PYEOF'
+  PENDING=$(ORA_SUP_INPUT_DIR="$INPUT_DIR" "$PY" - <<'PYEOF'
+import os
 from orchestrator.historical.cli import (
-    DEFAULT_INPUT_DIR, DEFAULT_MANIFEST_PATH,
-    enumerate_input_files, load_manifest,
+    DEFAULT_MANIFEST_PATH, enumerate_input_files, load_manifest,
 )
+input_dir = os.environ["ORA_SUP_INPUT_DIR"]
 m = load_manifest(DEFAULT_MANIFEST_PATH)
 done = set(m.get("completed_files", {}))
-print(sum(1 for f in enumerate_input_files(DEFAULT_INPUT_DIR) if f not in done))
+print(sum(1 for f in enumerate_input_files(input_dir) if f not in done))
 PYEOF
 )
   echo "[supervisor] cycle $i done — cleanup pending: $PENDING" >> "$LOG"
@@ -42,10 +49,10 @@ PYEOF
   sleep "$SLEEP_SECS"
 done
 
-# Mark the newly ingested local-Ora sessions completed-without-emission in
-# the path2 manifest (their chunks exist via inline mode).
-"$PY" - <<'PYEOF' >> "$LOG" 2>&1
-import json
+if [ -n "$CHUNK_FLAG" ]; then
+  # Mark local-Ora sessions completed-without-emission in the path2
+  # manifest (their chunks exist via inline mode).
+  "$PY" - <<'PYEOF' >> "$LOG" 2>&1
 from datetime import datetime
 from pathlib import Path
 from orchestrator.historical.chain_detector import derive_session_id
@@ -78,5 +85,6 @@ for p in archive.glob("*.md"):
 save_manifest(manifest, DEFAULT_MANIFEST_PATH)
 print(f"[supervisor] suppressed chunk emission for {added} local-Ora sessions")
 PYEOF
+fi
 
 echo "[supervisor] finished $(date '+%F %T')" >> "$LOG"
