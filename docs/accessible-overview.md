@@ -62,7 +62,7 @@ Come back to a project after two weeks and you will have forgotten half of what 
 
 Except it won't, here. You sit down, ask a question, and Ora already knows your project, your earlier conclusions, where you left off, and what is still open. It feels like the system remembers you.
 
-It doesn't, exactly — and the difference is the whole trick. Ora keeps a **vault**: your notes, documents, and refined conclusions, held as durable files on your own machine. When you ask something, Ora pulls the relevant pieces back into view before the models start working. It even weighs them — a conclusion you confirmed and refined counts for more than a passing remark in an old chat. So the model isn't remembering. It is being handed exactly the right briefing, every time, assembled fresh. Picture a brilliant consultant with no memory at all, but a perfect set of briefing notes waiting on the desk each morning. That is the effect, and it is why a long project holds together across weeks instead of dissolving between sessions.
+It doesn't, exactly — and the difference is the whole trick. Ora keeps a **vault**: your notes, documents, and refined conclusions, held as durable files on your own machine. When you ask something, Ora pulls the relevant pieces back into view before the models start working. It even weighs them — a conclusion you confirmed and refined counts for more than a passing remark in an old Dialogue. So the model isn't remembering. It is being handed exactly the right briefing, every time, assembled fresh. Picture a brilliant consultant with no memory at all, but a perfect set of briefing notes waiting on the desk each morning. That is the effect, and it is why a long project holds together across weeks instead of dissolving between sessions.
 
 ---
 
@@ -90,7 +90,7 @@ A supervision layer whose only job is to watch the work against what it was supp
 
 Some things are clearer as a picture than a paragraph — a feedback loop, a decision tree, the structure of a risk. Ora can produce these, and it produces them honestly.
 
-That last word matters. Left alone, models draw charts that mislead — truncated axes, decoration that distorts the data. Ora runs every diagram it generates through a check for exactly that kind of dishonesty before you see it, and it builds in a spoken-word description of each figure so the picture is not the only way in. The result shows up beside the conversation, on a canvas you can also draw on and hand back to the system. The idea is simple: your mind has always worked partly in pictures, and the system finally meets you there.
+That last word matters. Left alone, models draw charts that mislead — truncated axes, decoration that distorts the data. Ora runs every diagram it generates through a check for exactly that kind of dishonesty before you see it, and it builds in a spoken-word description of each figure so the picture is not the only way in. The result shows up beside the Dialogue, in the Exhibits pane — a canvas you can also draw on and hand back to the system. The idea is simple: your mind has always worked partly in pictures, and the system finally meets you there.
 
 ---
 
@@ -121,3 +121,10 @@ In short: Ora is a working demonstration that reliability is a system problem, n
 ---
 
 *Companion documents: [[Reference — Ora Technical Documentation]] (the full mechanism, for engineers and evaluators) and [[Guide — Using Ora]] (how to install, run, and operate it).*
+
+---
+
+## Changelog
+
+- **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Exhibits pane (visual canvas). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
+- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).
