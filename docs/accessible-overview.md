@@ -126,5 +126,6 @@ In short: Ora is a working demonstration that reliability is a system problem, n
 
 ## Changelog
 
+- **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this overview — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
 - **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Exhibits pane (visual canvas). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
 - **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).
