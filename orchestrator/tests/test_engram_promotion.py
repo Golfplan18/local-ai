@@ -185,5 +185,59 @@ class TestPromoteStagingDir(unittest.TestCase):
         self.assertIn("Add runtime engram", latest)
 
 
+class _FakeCollection:
+    """Records add/delete calls; behaves like an empty knowledge collection."""
+
+    def __init__(self):
+        self.added_ids = []
+        self.deleted_ids = []
+
+    def get(self, ids):
+        return {"ids": []}
+
+    def delete(self, ids):
+        self.deleted_ids.extend(ids)
+
+    def add(self, ids, documents, metadatas, embeddings=None):
+        self.added_ids.extend(ids)
+
+
+class TestPromotionIndexing(unittest.TestCase):
+    """Regression for the one-argument index_file(dest) call: the TypeError
+    was caught and logged, so every promoted engram landed with
+    indexed=False and never entered the knowledge collection. The index=True
+    path must actually land a record, and must drop the transient
+    staging-path entry the session pipeline may have created."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.staging = os.path.join(self.tmp, "staging")
+        self.vault = os.path.join(self.tmp, "Engrams")
+        self.promoted = os.path.join(self.tmp, "promoted")
+        os.makedirs(self.staging)
+        self.note = os.path.join(self.staging, "A vetted claim about something.md")
+        with open(self.note, "w", encoding="utf-8") as f:
+            f.write(STAGED)
+
+    def test_promotion_lands_record_in_collection(self):
+        from unittest import mock
+
+        from orchestrator.tools import knowledge_index
+
+        fake = _FakeCollection()
+        with mock.patch.object(knowledge_index, "get_knowledge_collection",
+                               return_value=fake), \
+             mock.patch.object(knowledge_index, "_nomic_embed",
+                               return_value=None):
+            r = ep.staging_note_to_engram(
+                self.note, vault_engrams=self.vault,
+                promoted_dir=self.promoted, index=True)
+
+        self.assertTrue(r["indexed"])
+        self.assertIn(os.path.abspath(r["dest"]), fake.added_ids)
+        # Staging-path entry dropped so the moved file leaves no dangling id.
+        self.assertIn(os.path.abspath(self.note), fake.deleted_ids)
+
+
 if __name__ == "__main__":
     unittest.main()

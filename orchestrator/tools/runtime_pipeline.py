@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -351,7 +352,7 @@ class RuntimePipeline:
             return
 
         try:
-            from orchestrator.tools.knowledge_index import index_file
+            from orchestrator.tools.knowledge_index import index_single_file
         except ImportError:
             # Knowledge index not available — skip
             return
@@ -360,9 +361,13 @@ class RuntimePipeline:
             if f.endswith('.md'):
                 path = os.path.join(STAGING_DIR, f)
                 try:
-                    index_file(path)
-                except Exception:
-                    pass  # Log but don't fail
+                    index_single_file(path, verbose=False)
+                except Exception as exc:
+                    # Fail open: the session continues and the note stays in
+                    # staging, but the miss must be visible — a silent pass
+                    # here left staged notes unindexed for weeks.
+                    print(f"[runtime_pipeline] chromadb ingest failed for {f}: "
+                          f"{type(exc).__name__}: {exc}", file=sys.stderr)
 
     def _step8_relationship_extraction(self) -> int:
         """Run Pass 1 relationship discovery on newly staged notes."""

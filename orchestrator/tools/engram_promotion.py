@@ -243,9 +243,23 @@ def staging_note_to_engram(staging_path: str, *, vault_engrams: str = VAULT_ENGR
     indexed = False
     if index:
         try:
-            from orchestrator.tools.knowledge_index import index_file
-            index_file(dest)
-            indexed = True
+            from orchestrator.tools.knowledge_index import (
+                get_knowledge_collection, index_file)
+            collection = get_knowledge_collection()
+            # The session pipeline's chromadb step may have indexed this note
+            # under its staging path; that file is about to move, so drop the
+            # staging entry — the engram written above replaces it under its
+            # durable vault path.
+            try:
+                collection.delete(ids=[os.path.abspath(staging_path)])
+            except Exception:  # noqa: BLE001 — absent id is the common case
+                pass
+            stats = {"indexed": 0, "skipped": 0, "errors": 0}
+            index_file(collection, dest, stats, force=True, verbose=False)
+            indexed = stats["indexed"] > 0
+            if not indexed:
+                print(f"[engram_promotion] index did not land for "
+                      f"{os.path.basename(dest)}: {stats}", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001 — indexing is best-effort
             print(f"[engram_promotion] index failed for {os.path.basename(dest)}: "
                   f"{type(exc).__name__}: {exc}", file=sys.stderr)
