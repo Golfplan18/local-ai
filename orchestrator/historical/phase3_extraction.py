@@ -754,6 +754,7 @@ def run_phase3(
     rebuild_manifest:   bool = False,
     limit:              Optional[int] = None,
     index_to_knowledge: bool = True,
+    backend:            str = "api",
 ) -> dict:
     """Walk the archive, extract every news/opinion/resource segment,
     write vault notes, and index them into the knowledge collection."""
@@ -797,7 +798,14 @@ def run_phase3(
                 "already_done": len(completed)}
 
     # Step 3: extract via Sonnet, write vault notes.
-    client = AnthropicClient(model=EXTRACTION_MODEL)
+    # Every extraction call passes model=EXTRACTION_MODEL explicitly, so
+    # non-api backends translate it themselves (tier alias / slot) — see
+    # phase5_atomic_extraction.run_phase5 for the identical pattern.
+    if backend and backend != "api":
+        from orchestrator.historical.cleanup_backends import build_client
+        client = build_client(backend)
+    else:
+        client = AnthropicClient(model=EXTRACTION_MODEL)
     aggregate = {
         "targets_attempted":   0,
         "targets_extracted":   0,
@@ -937,6 +945,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--rebuild-manifest", action="store_true")
     parser.add_argument("--no-index", action="store_true",
                         help="Skip ChromaDB knowledge indexing of new notes")
+    parser.add_argument("--backend", default="api",
+                        help="Model-call path: 'api' (metered key), "
+                             "'claude-cli' (subscription), 'ora-slots' "
+                             "(Ora slot routing)")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 
@@ -950,6 +962,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         rebuild_manifest=args.rebuild_manifest,
         limit=args.limit,
         index_to_knowledge=not args.no_index,
+        backend=args.backend,
     )
     Path(args.report).parent.mkdir(parents=True, exist_ok=True)
     Path(args.report).write_text(json.dumps(stats, indent=2, ensure_ascii=False))

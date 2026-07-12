@@ -108,10 +108,17 @@ class TestRunIngest(unittest.TestCase):
 
     def test_backend_propagates_to_backend_aware_stages(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
-        with m_batch as b, m_detect, m_p3, m_emit, m_p5 as p:
+        with m_batch as b, m_detect, m_p3 as p3, m_emit, m_p5 as p:
             ingest.run_ingest(backend="claude-cli", progress=False)
         self.assertEqual(b.call_args[1]["backend"], "claude-cli")
+        self.assertEqual(p3.call_args[1]["backend"], "claude-cli")
         self.assertEqual(p.call_args[1]["backend"], "claude-cli")
+
+    def test_api_backend_is_default_for_extraction(self):
+        m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
+        with m_batch, m_detect, m_p3 as p3, m_emit, m_p5:
+            ingest.run_ingest(progress=False)
+        self.assertEqual(p3.call_args[1]["backend"], "api")
 
     def test_cli_backend_caps_phase5_workers(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
@@ -119,6 +126,19 @@ class TestRunIngest(unittest.TestCase):
             ingest.run_ingest(backend="claude-cli", max_workers=8,
                               progress=False)
         self.assertLessEqual(p.call_args[1]["max_workers"], 3)
+
+    def test_cli_backend_caps_extraction_workers(self):
+        m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
+        with m_batch, m_detect, m_p3 as p3, m_emit, m_p5:
+            ingest.run_ingest(backend="claude-cli", max_workers=8,
+                              progress=False)
+        self.assertLessEqual(p3.call_args[1]["max_workers"], 3)
+
+    def test_api_backend_does_not_cap_extraction_workers(self):
+        m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
+        with m_batch, m_detect, m_p3 as p3, m_emit, m_p5:
+            ingest.run_ingest(backend="api", max_workers=8, progress=False)
+        self.assertEqual(p3.call_args[1]["max_workers"], 8)
 
     def test_date_filters_reach_cleanup(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()

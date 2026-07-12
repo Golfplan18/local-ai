@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -19,6 +19,7 @@ if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
 from orchestrator.historical.phase3_extraction import (  # noqa: E402
+    EXTRACTION_MODEL,
     ExtractionTarget,
     _slugify,
     _vault_path_for,
@@ -28,6 +29,7 @@ from orchestrator.historical.phase3_extraction import (  # noqa: E402
     fiction_guard_reason,
     find_extraction_targets,
     index_notes_into_knowledge,
+    run_phase3,
     write_vault_note,
 )
 
@@ -446,6 +448,93 @@ class TestIndexNotesIntoKnowledge(unittest.TestCase):
         # No exception escapes; failure is recorded loudly in stats.
         self.assertGreaterEqual(stats["errors"], 1)
         self.assertIn("chromadb down", stats.get("fatal", ""))
+
+
+# ---------------------------------------------------------------------------
+# Backend selection — mirrors phase5_atomic_extraction.run_phase5's pattern
+# ---------------------------------------------------------------------------
+
+
+class TestRunPhase3Backend(unittest.TestCase):
+    """run_phase3 must route model calls through the selected backend
+    instead of always using the metered-API AnthropicClient."""
+
+    def setUp(self):
+        self.archive = tempfile.mkdtemp()
+        self.resources = tempfile.mkdtemp()
+        self.manifest_dir = tempfile.mkdtemp()
+        # run_phase3's file loop needs at least one archive file to walk.
+        Path(self.archive, "2025-07-14_test.md").write_text(
+            "placeholder", encoding="utf-8")
+
+    def tearDown(self):
+        for d in (self.archive, self.resources, self.manifest_dir):
+            shutil.rmtree(d, ignore_errors=True)
+
+    def _one_target(self):
+        return ExtractionTarget(
+            file_path=os.path.join(self.archive, "2025-07-14_test.md"),
+            pair_num=1, when=datetime(2025, 7, 14),
+            source_chat="x", source_platform="gemini",
+            chain_id="", chain_label="",
+            seg_index=0, seg_kind="news", content="body " * 100,
+            user_voice="",
+        )
+
+    def _run(self, backend, mock_build_client, mock_anthropic_client):
+        manifest_path = os.path.join(self.manifest_dir, "manifest.json")
+        with patch("orchestrator.historical.phase3_extraction."
+                   "find_extraction_targets",
+                   return_value=[self._one_target()]), \
+             patch("orchestrator.historical.phase3_extraction."
+                   "extract_segment",
+                   return_value=({"headline": "T", "lede": "L",
+                                  "key_facts": [], "key_quotes": [],
+                                  "context": ""}, 10, 5, 0.0, "")) as m_extract, \
+             patch("orchestrator.historical.phase3_extraction."
+                   "index_notes_into_knowledge",
+                   return_value={"indexed": 0}), \
+             patch("orchestrator.historical.phase3_extraction."
+                   "load_chain_index", return_value={}), \
+             patch("orchestrator.historical.phase3_extraction."
+                   "AnthropicClient", mock_anthropic_client), \
+             patch("orchestrator.historical.cleanup_backends.build_client",
+                   mock_build_client):
+            run_phase3(
+                archive_dir=self.archive, resources_root=self.resources,
+                manifest_path=manifest_path, progress_to_stderr=False,
+                backend=backend,
+            )
+        return m_extract
+
+    def test_api_backend_uses_anthropic_client_directly(self):
+        mock_anthropic_client = MagicMock(return_value="anthropic-sentinel")
+        mock_build_client = MagicMock(return_value="build-client-sentinel")
+        m_extract = self._run("api", mock_build_client, mock_anthropic_client)
+        mock_anthropic_client.assert_called_once_with(model=EXTRACTION_MODEL)
+        mock_build_client.assert_not_called()
+        self.assertEqual(m_extract.call_args.kwargs["client"],
+                         "anthropic-sentinel")
+
+    def test_claude_cli_backend_routes_through_build_client(self):
+        mock_anthropic_client = MagicMock(return_value="anthropic-sentinel")
+        mock_build_client = MagicMock(return_value="cli-client-sentinel")
+        m_extract = self._run("claude-cli", mock_build_client,
+                              mock_anthropic_client)
+        mock_build_client.assert_called_once_with("claude-cli")
+        mock_anthropic_client.assert_not_called()
+        self.assertEqual(m_extract.call_args.kwargs["client"],
+                         "cli-client-sentinel")
+
+    def test_ora_slots_backend_routes_through_build_client(self):
+        mock_anthropic_client = MagicMock(return_value="anthropic-sentinel")
+        mock_build_client = MagicMock(return_value="slot-client-sentinel")
+        m_extract = self._run("ora-slots", mock_build_client,
+                              mock_anthropic_client)
+        mock_build_client.assert_called_once_with("ora-slots")
+        mock_anthropic_client.assert_not_called()
+        self.assertEqual(m_extract.call_args.kwargs["client"],
+                         "slot-client-sentinel")
 
 
 if __name__ == "__main__":

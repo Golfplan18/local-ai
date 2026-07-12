@@ -27,13 +27,9 @@ into a single resumable run:
 
 Every stage is manifest-guarded, so re-running the command after an
 interruption (rate-window exhaustion, reboot, Ctrl-C) continues where
-it left off. Cleanup/engram model calls flow through the selected
+it left off. Every stage's model calls flow through the selected
 backend (`api` / `claude-cli` / `ora-slots`); this module never names
-models. KNOWN WIRING GAP: Stage 2's extraction calls do NOT honor the
-backend flag — phase3_extraction has its own metered-API client with a
-pinned extraction model, even when the rest of the run uses the
-subscription CLI. Rerouting phase3 through the backend layer is an
-open follow-up.
+models.
 
 CLI:
 
@@ -139,10 +135,15 @@ def run_ingest(
             print("[ingest] stage 2/4 — extraction (pasted news/opinion/"
                   "resource → vault Resources/ + knowledge index)",
                   file=sys.stderr, flush=True)
+        extraction_workers = max_workers
+        if backend == BACKEND_CLAUDE_CLI:
+            extraction_workers = min(extraction_workers,
+                                     CLI_RECOMMENDED_MAX_WORKERS)
         summary["extraction"] = run_phase3(
             archive_dir=output_dir,
-            max_workers=max_workers,
+            max_workers=extraction_workers,
             progress_to_stderr=progress,
+            backend=backend,
         )
     else:
         summary["extraction"] = {"skipped": True}
@@ -209,8 +210,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--limit", type=int,
                         help="Max raw files to clean this run")
     parser.add_argument("--no-extraction", action="store_true",
-                        help="Skip phase-3 source-note extraction "
-                             "(always metered-API Sonnet calls)")
+                        help="Skip phase-3 source-note extraction")
     parser.add_argument("--no-chunks", action="store_true",
                         help="Skip chunk emission + ChromaDB indexing")
     parser.add_argument("--no-engrams", action="store_true",
