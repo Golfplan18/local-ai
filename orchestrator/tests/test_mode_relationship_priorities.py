@@ -18,7 +18,10 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, os.path.expanduser("~/ora"))
+# Derived from __file__ (same pattern as test_stealth_short_circuit_purge_2026_05_17.py)
+# rather than hardcoded to ~/ora, so this resolves correctly from a worktree too.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, REPO_ROOT)
 
 from orchestrator.tools.relationship_traversal import (
     parse_mode_relationship_priorities,
@@ -26,7 +29,7 @@ from orchestrator.tools.relationship_traversal import (
 )
 
 
-MODES_DIR = Path(os.path.expanduser("~/ora/modes"))
+MODES_DIR = Path(REPO_ROOT) / "modes"
 
 # 13-type taxonomy from Schema §7
 VALID_TYPES = {
