@@ -63,7 +63,7 @@ DATA_DIR = _rp.DATA_DIR_STR
 # rsync'd cloud-pipeline mirror — machine-synced articles, not the user's
 # work; including it buries the day's real activity (first live run
 # surfaced 106 mirror articles and nothing else).
-SKIP_DIRS = {".git", ".obsidian", ".trash", "Old AI Working Files",
+SKIP_DIRS = {".git", ".obsidian", ".trash", "Archive",
              "MSI News", DAILY_DIR_NAME}
 
 _CONTEXT_RE = re.compile(

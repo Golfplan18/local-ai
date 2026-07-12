@@ -148,7 +148,7 @@ class TestBuildFromVault(RelationshipGraphTestBase):
     def test_excludes_trash_and_archived_dirs(self):
         write_note(self.vault, ".trash/Trashed.md",
                    [{"type": "supports", "target": "NoteB"}])
-        write_note(self.vault, "Old AI Working Files/Archived.md",
+        write_note(self.vault, "Archive/Archived.md",
                    [{"type": "supports", "target": "NoteB"}])
         self.graph.build_from_vault()
         sources = {r[0] for r in self.all_rows()}

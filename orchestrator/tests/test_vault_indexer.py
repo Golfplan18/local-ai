@@ -176,7 +176,7 @@ class TestMaturity(unittest.TestCase):
         self.assertFalse(classify_maturity(p, self.vault))
 
     def test_old_ai_working_files_is_working(self):
-        p = self.vault / "Old AI Working Files" / "x.md"
+        p = self.vault / "Archive" / "x.md"
         p.parent.mkdir()
         p.touch()
         self.assertFalse(classify_maturity(p, self.vault))

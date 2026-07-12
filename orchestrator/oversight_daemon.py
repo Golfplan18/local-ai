@@ -82,7 +82,7 @@ def scan_vault_and_register_peds() -> list[tuple[str, str]]:
 
     for root, dirs, files in os.walk(VAULT_PATH):
         # Skip archive and noise directories
-        if any(skip in root for skip in ("Old AI Working Files", "/.obsidian", "/Sessions")):
+        if any(skip in root for skip in ("/Archive", "/.obsidian", "/Sessions")):
             continue
         for filename in files:
             if not filename.endswith(".md"):
@@ -201,7 +201,7 @@ def scan_vault_and_register_workflows() -> list[tuple[str, str]]:
         if not os.path.isdir(root_path):
             continue
         for root, dirs, files in os.walk(root_path):
-            if any(skip in root for skip in ("Old AI Working Files", "/.obsidian", "/Sessions")):
+            if any(skip in root for skip in ("/Archive", "/.obsidian", "/Sessions")):
                 continue
             for filename in files:
                 if not filename.endswith(".md"):

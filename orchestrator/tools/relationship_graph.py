@@ -38,7 +38,7 @@ from pathlib import Path
 STATEMENT_KEYED_DIRS = frozenset({"Engrams"})
 
 # Directories excluded from every vault walk (sources, titles, orphan checks).
-EXCLUDED_DIRS = frozenset({"Old AI Working Files", ".trash"})
+EXCLUDED_DIRS = frozenset({"Archive", ".trash"})
 
 
 # YAML frontmatter is terminated by a line that is exactly '---' (optionally

@@ -189,7 +189,7 @@ def task_1_orphan_cleanup(graph=None) -> TaskResult:
         vault_titles_normalized = set()
         for root, dirs, files in os.walk(VAULT_PATH):
             dirs[:] = [d for d in dirs if not d.startswith(".")
-                       and d != "Old AI Working Files"]
+                       and d != "Archive"]
             for fname in files:
                 if fname.endswith(".md"):
                     title = fname.rsplit(".", 1)[0]

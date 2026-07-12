@@ -74,7 +74,7 @@ def read_note_content(title: str, vault_path: str = None) -> str | None:
     # Search for the file
     for root, dirs, files in os.walk(vault_path):
         dirs[:] = [d for d in dirs if not d.startswith(".")
-                   and d != "Old AI Working Files"]
+                   and d != "Archive"]
         for f in files:
             if f == f"{title}.md":
                 with open(os.path.join(root, f), "r") as fh:
