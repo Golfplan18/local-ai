@@ -133,6 +133,7 @@ class RuntimeResult:
     notes_approved: int = 0
     notes_review: int = 0
     notes_promoted: int = 0
+    notes_duplicates: int = 0
     engram_autocommit: dict = field(default_factory=dict)
     relationships_found: int = 0
     pass2_relationships: int = 0
@@ -286,6 +287,7 @@ class RuntimePipeline:
                     chromadb_path=self.chromadb_path,
                 )
                 result.notes_promoted = promo.get("promoted", 0)
+                result.notes_duplicates = promo.get("duplicates", 0)
                 result.engram_autocommit = promo.get("autocommit", {})
                 result.steps_completed.append("engram_promotion")
         except Exception as e:
@@ -944,6 +946,7 @@ class RuntimePipeline:
             "notes_approved": result.notes_approved,
             "notes_review": result.notes_review,
             "notes_promoted": result.notes_promoted,
+            "notes_duplicates": result.notes_duplicates,
             "engram_autocommit": result.engram_autocommit,
             "relationships_found": result.relationships_found,
             "pass2_relationships": result.pass2_relationships,
