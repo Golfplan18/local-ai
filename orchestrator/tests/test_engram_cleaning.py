@@ -1,17 +1,24 @@
-"""Tests for the Engram Cleaning Framework — resolver parsing and detection log filter.
+"""Tests for Engram Cleaning resolver parsing, log filtering, and metadata refresh.
 
-Covers two bugs surfaced 2026-05-09:
+Regression coverage includes:
 - Resolver was reading the resolution marker from the heading line instead of
   the canonical `**Resolution:** [marker]` line.
 - Detection wasn't filtering previously-resolved pairs from the log, causing
   the same pairs to resurface every run.
+- Metadata refresh assumed a source path was also its Chroma record id, so it
+  skipped HCP chunk records and overstated its update count.
 """
 
 from __future__ import annotations
 
+import contextlib
+import io
 import os
 import sys
+import tempfile
+import types
 import unittest
+import unittest.mock as mock
 
 # Make `orchestrator.historical.*` importable when run from the repo root.
 # Derived from __file__ (same pattern as test_stealth_short_circuit_purge_2026_05_17.py)
@@ -26,6 +33,78 @@ from orchestrator.historical.run_engram_cleaning_detection import (
     _parse_log_for_pair_keys,
     detect_bidirectional,
 )
+from orchestrator.historical import phase3_chromadb_refresh
+from orchestrator.historical import run_engram_cleaning_resolver
+
+
+class _FakeMetadataCollection:
+    """Small Chroma stand-in with metadata filtering and merge updates."""
+
+    def __init__(self, records: dict[str, dict] | None = None,
+                 fail_update_ids: set[str] | None = None):
+        self.records = records or {}
+        self.fail_update_ids = fail_update_ids or set()
+        self.get_calls: list[dict] = []
+
+    def count(self):
+        return len(self.records)
+
+    def get(self, ids=None, where=None, include=None):
+        self.get_calls.append({"ids": ids, "where": where, "include": include})
+        selected_ids = list(self.records)
+        if ids is not None:
+            wanted = set(ids)
+            selected_ids = [record_id for record_id in selected_ids
+                            if record_id in wanted]
+        if where is not None:
+            selected_ids = [
+                record_id for record_id in selected_ids
+                if all(self.records[record_id]["metadata"].get(key) == value
+                       for key, value in where.items())
+            ]
+        return {
+            "ids": selected_ids,
+            "metadatas": [self.records[record_id]["metadata"]
+                          for record_id in selected_ids],
+            "embeddings": [self.records[record_id].get("embedding")
+                           for record_id in selected_ids],
+        }
+
+    def update(self, ids, metadatas):
+        if any(record_id in self.fail_update_ids for record_id in ids):
+            raise RuntimeError("synthetic update failure")
+        for record_id, metadata in zip(ids, metadatas):
+            if record_id in self.records:
+                self.records[record_id]["metadata"].update(metadata)
+
+
+def _fake_chroma_modules(collection):
+    chromadb_module = types.ModuleType("chromadb")
+    chromadb_module.PersistentClient = lambda path: object()
+
+    embedding_module = types.ModuleType("orchestrator.embedding")
+    embedding_module.get_or_create_collection = (
+        lambda _client, _collection_name: collection)
+    return {
+        "chromadb": chromadb_module,
+        "orchestrator.embedding": embedding_module,
+    }
+
+
+def _write_engram(directory: str, slug: str, tag: str = "archived") -> str:
+    path = os.path.join(directory, f"{slug}.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(
+            "---\n"
+            "nexus:\n"
+            "  - ora\n"
+            "type: engram\n"
+            "tags:\n"
+            f"  - {tag}\n"
+            "---\n\n"
+            f"# {slug.title()}\n"
+        )
+    return os.path.abspath(path)
 
 
 def _queue_section(heading_marker: str, resolution_marker: str,
@@ -222,7 +301,6 @@ class TestDetectionFiltersResolved(unittest.TestCase):
         """When (alpha, beta) is in resolved_set, detection skips it."""
         # Stub the sqlite call by patching the module-level GRAPH_DB.
         # Easier path: mock the connection inline.
-        import unittest.mock as mock
         from orchestrator.historical import run_engram_cleaning_detection as det
 
         # Edges: alpha contradicts beta-claim AND beta contradicts alpha-claim
@@ -258,7 +336,6 @@ class TestDetectionFiltersResolved(unittest.TestCase):
 
     def test_resolved_set_default_is_empty(self):
         """Backward compatibility — old callers without resolved_set still work."""
-        import unittest.mock as mock
         from orchestrator.historical import run_engram_cleaning_detection as det
 
         edges = [("alpha", "Beta claim"), ("beta", "Alpha claim")]
@@ -280,6 +357,136 @@ class TestDetectionFiltersResolved(unittest.TestCase):
         with mock.patch.object(det.sqlite3, "connect", return_value=FakeConn()):
             pairs = detect_bidirectional(self.by_slug, self.by_h1, limit=10)
             self.assertEqual(len(pairs), 1)
+
+
+class TestResolverChromaRefresh(unittest.TestCase):
+    """Resolver refreshes all chunk records and reports file states exactly."""
+
+    def test_chunked_records_zero_missing_and_error_are_distinct(self):
+        with tempfile.TemporaryDirectory() as engrams_dir:
+            alpha_path = _write_engram(engrams_dir, "alpha")
+            _write_engram(engrams_dir, "beta")
+            gamma_path = _write_engram(engrams_dir, "gamma")
+
+            alpha_one = f"{alpha_path}#chunk-1"
+            alpha_two = f"{alpha_path}#chunk-2"
+            gamma_id = f"{gamma_path}#chunk-1"
+            collection = _FakeMetadataCollection(
+                records={
+                    alpha_one: {"metadata": {
+                        "path": alpha_path, "tags": ["old"],
+                        "chunk_index": 1, "total_chunks": 2,
+                    }},
+                    alpha_two: {"metadata": {
+                        "path": alpha_path, "tags": ["old"],
+                        "chunk_index": 2, "total_chunks": 2,
+                    }},
+                    gamma_id: {"metadata": {
+                        "path": gamma_path, "tags": ["old"],
+                        "chunk_index": 1, "total_chunks": 1,
+                    }},
+                },
+                fail_update_ids={gamma_id},
+            )
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(
+                    run_engram_cleaning_resolver, "ENGRAMS_DIR", engrams_dir),
+                mock.patch.dict(sys.modules, _fake_chroma_modules(collection)),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                summary = run_engram_cleaning_resolver.refresh_chromadb({
+                    "alpha", "beta", "gamma", "missing",
+                })
+
+            self.assertEqual(summary, {
+                "updated_records": 2,
+                "updated_files": 1,
+                "never_indexed_files": 1,
+                "missing_source_files": 1,
+                "errors": 1,
+            })
+            for record_id, expected_chunk in ((alpha_one, 1), (alpha_two, 2)):
+                metadata = collection.records[record_id]["metadata"]
+                self.assertEqual(metadata["tags"], ["archived"])
+                self.assertEqual(metadata["chunk_index"], expected_chunk)
+                self.assertEqual(metadata["total_chunks"], 2)
+            self.assertIn("2 records across 1 source files", stdout.getvalue())
+            self.assertIn(
+                "Existing source files with no ChromaDB records: 1",
+                stdout.getvalue(),
+            )
+            self.assertIn("Missing source files: 1", stdout.getvalue())
+            self.assertIn("ChromaDB metadata errors: 1", stderr.getvalue())
+
+
+class TestPhase3ChromaRefresh(unittest.TestCase):
+    """Phase 3 uses one bulk id index and counts records, not source paths."""
+
+    def test_bulk_index_chunk_updates_and_summary_units(self):
+        with tempfile.TemporaryDirectory() as engrams_dir:
+            alpha_path = _write_engram(engrams_dir, "alpha")
+            _write_engram(engrams_dir, "beta")
+            gamma_path = _write_engram(engrams_dir, "gamma")
+
+            alpha_one = f"{alpha_path}#chunk-1"
+            alpha_two = f"{alpha_path}#chunk-2"
+            gamma_id = f"{gamma_path}#chunk-1"
+            collection = _FakeMetadataCollection(
+                records={
+                    alpha_one: {"metadata": {
+                        "path": alpha_path, "tags": ["old"],
+                        "chunk_index": 1, "total_chunks": 2,
+                    }},
+                    alpha_two: {"metadata": {
+                        "path": alpha_path, "tags": ["old"],
+                        "chunk_index": 2, "total_chunks": 2,
+                    }},
+                    gamma_id: {"metadata": {
+                        "path": gamma_path, "tags": ["old"],
+                        "chunk_index": 1, "total_chunks": 1,
+                    }},
+                },
+                fail_update_ids={gamma_id},
+            )
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(phase3_chromadb_refresh, "ENGRAMS_DIR",
+                                  engrams_dir),
+                mock.patch.dict(sys.modules, _fake_chroma_modules(collection)),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                summary = phase3_chromadb_refresh.main()
+
+            self.assertEqual(summary, {
+                "source_files_scanned": 3,
+                "updated_files": 1,
+                "updated_records": 2,
+                "never_indexed_files": 1,
+                "errors": 1,
+            })
+            for record_id, expected_chunk in ((alpha_one, 1), (alpha_two, 2)):
+                metadata = collection.records[record_id]["metadata"]
+                self.assertEqual(metadata["tags"], ["archived"])
+                self.assertEqual(metadata["chunk_index"], expected_chunk)
+                self.assertEqual(metadata["total_chunks"], 2)
+
+            # build_path_id_index() is the only collection-wide get; the
+            # id_index fast path prevents one where-query per source file.
+            self.assertEqual(len(collection.get_calls), 1)
+            self.assertIsNone(collection.get_calls[0]["ids"])
+            self.assertIsNone(collection.get_calls[0]["where"])
+            output = stdout.getvalue()
+            self.assertIn("ChromaDB records updated:         2", output)
+            self.assertIn("source files never indexed:       1", output)
+            self.assertIn("source files with update errors:  1", output)
+            self.assertIn("synthetic update failure", stderr.getvalue())
 
 
 if __name__ == "__main__":

@@ -413,6 +413,124 @@ def _chunk_record_id(doc_id: str, n: int) -> str:
     return f"{doc_id}#chunk-{n}"
 
 
+def resolve_file_ids(collection, filepath: str) -> list[str]:
+    """Return every collection record id belonging to ``filepath``.
+
+    ``path`` metadata is the stable document identity across both storage
+    layouts: a short file has one record whose id is its absolute path, while
+    a chunked file has one or more suffixed record ids.  Resolve through that
+    metadata instead of encoding either id layout into callers.
+
+    Collection errors intentionally propagate.  Returning an empty list means
+    the lookup succeeded and the file genuinely has no indexed records; it
+    must not also mean that ChromaDB failed and the failure was swallowed.
+    """
+    abspath = os.path.abspath(filepath)
+    # IDs are returned unconditionally; omit documents/metadatas so resolving
+    # a long chunked work does not pull its full text into memory.
+    existing = collection.get(where={"path": abspath}, include=[])
+    return sorted({str(record_id)
+                   for record_id in (existing.get("ids") or [])})
+
+
+def build_path_id_index(collection) -> dict[str, list[str]]:
+    """Build ``{absolute source path: [record ids...]}`` in one bulk read.
+
+    Bulk metadata refreshes can pass this index to
+    :func:`update_file_metadata` and avoid one ChromaDB ``where`` query per
+    source file.  Records without usable ``path`` metadata are ignored because
+    they cannot be associated with a source document safely.
+    """
+    records = collection.get(include=["metadatas"])
+    ids = records.get("ids") or []
+    metadatas = records.get("metadatas") or []
+    if len(ids) != len(metadatas):
+        raise ValueError(
+            "ChromaDB returned mismatched ids/metadatas while building path index"
+        )
+
+    id_index: dict[str, list[str]] = {}
+    for record_id, metadata in zip(ids, metadatas):
+        if not isinstance(metadata, dict) or not metadata.get("path"):
+            continue
+        abspath = os.path.abspath(str(metadata["path"]))
+        id_index.setdefault(abspath, []).append(str(record_id))
+    for record_ids in id_index.values():
+        record_ids.sort()
+    return id_index
+
+
+def update_file_metadata(
+    collection,
+    filepath: str,
+    chroma_meta: dict[str, Any],
+    *,
+    id_index: dict[str, list[str]] | None = None,
+) -> int:
+    """Merge metadata into every indexed record belonging to ``filepath``.
+
+    When ``id_index`` is supplied, it must come from
+    :func:`build_path_id_index`; otherwise the ids are resolved live.  Returns
+    the number of records successfully updated.  A return value of zero means
+    the file was never indexed.  Collection update errors propagate so callers
+    can report them separately instead of misclassifying them as not-found.
+    """
+    abspath = os.path.abspath(filepath)
+    if id_index is None:
+        ids = resolve_file_ids(collection, abspath)
+    else:
+        ids = list(id_index.get(abspath, []))
+    if not ids:
+        return 0
+
+    collection.update(
+        ids=ids,
+        metadatas=[dict(chroma_meta) for _ in ids],
+    )
+    return len(ids)
+
+
+def get_document_embedding(collection, filepath: str) -> list[float] | None:
+    """Return one comparable embedding for a source document.
+
+    Single-record files return their stored embedding.  Multi-record files
+    return the mean-pooled centroid across every chunk/storage-part embedding.
+    ``None`` means the file has no records or a complete embedding set is not
+    stored.  Pure-Python pooling avoids a NumPy dependency and, importantly,
+    avoids ambiguous truth-testing of ChromaDB's NumPy arrays.
+    """
+    ids = resolve_file_ids(collection, filepath)
+    if not ids:
+        return None
+
+    record = collection.get(ids=ids, include=["embeddings"])
+    embeddings = record.get("embeddings")
+    if embeddings is None or len(embeddings) != len(ids):
+        return None
+
+    vectors: list[list[float]] = []
+    for embedding in embeddings:
+        if embedding is None:
+            return None
+        try:
+            vector = [float(value) for value in embedding]
+        except (TypeError, ValueError):
+            return None
+        if not vector:
+            return None
+        vectors.append(vector)
+
+    dimensions = len(vectors[0])
+    if any(len(vector) != dimensions for vector in vectors[1:]):
+        return None
+    if len(vectors) == 1:
+        return vectors[0]
+
+    count = len(vectors)
+    return [sum(vector[i] for vector in vectors) / count
+            for i in range(dimensions)]
+
+
 def delete_file_records(collection, filepath: str) -> int:
     """Delete EVERY record a file may have in the collection — the
     single-record id (= abspath) AND any chunked records (abspath#chunk-N).
@@ -426,8 +544,7 @@ def delete_file_records(collection, filepath: str) -> int:
     abspath = os.path.abspath(filepath)
     ids: set[str] = {abspath}
     try:
-        existing = collection.get(where={"path": abspath})
-        ids.update(existing.get("ids") or [])
+        ids.update(resolve_file_ids(collection, abspath))
     except Exception:
         pass  # where-lookup unsupported/failed — the abspath id still goes
     try:

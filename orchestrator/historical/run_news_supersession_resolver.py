@@ -340,13 +340,32 @@ def append_log(pair: dict, result: dict):
 # ---------------------------------------------------------------------------
 
 
-def refresh_chromadb(slugs: set[str]):
+def refresh_chromadb(slugs: set[str]) -> dict:
+    """Refresh metadata on every Chroma record belonging to ``slugs``.
+
+    Returns an explicit summary so callers can distinguish successfully
+    updated physical records from existing files that were never indexed,
+    missing source files, and actual update failures.  The return value is
+    additive/backward-compatible: existing slash-command and sweep callers
+    that ignore it continue to work.
+    """
+    summary = {
+        "updated_records": 0,
+        "updated_files": 0,
+        "never_indexed_files": 0,
+        "missing_source_files": 0,
+        "errors": 0,
+        "never_indexed_slugs": [],
+        "missing_source_slugs": [],
+        "error_messages": [],
+    }
     if not slugs:
-        return
+        return summary
     sys.path.insert(0, "/Users/oracle/ora")
     from orchestrator.tools.knowledge_index import (
         _parse_frontmatter,
         _compose_chroma_metadata,
+        update_file_metadata,
     )
     from orchestrator.embedding import get_or_create_collection
     import chromadb
@@ -354,28 +373,55 @@ def refresh_chromadb(slugs: set[str]):
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
     col = get_or_create_collection(client, COLLECTION_NAME)
 
-    ids = []
-    metas = []
-    for slug in slugs:
-        path = os.path.join(RESOURCES_DIR, f"{slug}.md")
+    for slug in sorted(slugs):
+        path = os.path.abspath(os.path.join(RESOURCES_DIR, f"{slug}.md"))
         if not os.path.exists(path):
+            summary["missing_source_files"] += 1
+            summary["missing_source_slugs"].append(slug)
+            print(f"  ChromaDB source file missing for {slug}: {path}",
+                  file=sys.stderr)
             continue
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
             meta, _body = _parse_frontmatter(content)
             chroma_meta = _compose_chroma_metadata(path, meta)
-            ids.append(path)
-            metas.append(chroma_meta)
+            updated = update_file_metadata(col, path, chroma_meta)
+            if updated == 0:
+                summary["never_indexed_files"] += 1
+                summary["never_indexed_slugs"].append(slug)
+            else:
+                summary["updated_files"] += 1
+                summary["updated_records"] += updated
         except Exception as e:
-            print(f"  chromadb meta error for {slug}: {e}", file=sys.stderr)
+            error = f"chromadb metadata refresh failed for {slug}: {e}"
+            summary["errors"] += 1
+            summary["error_messages"].append(error)
+            print(f"  {error}", file=sys.stderr)
 
-    if ids:
-        try:
-            col.update(ids=ids, metadatas=metas)
-            print(f"  Refreshed chromadb metadata for {len(ids)} entries")
-        except Exception as e:
-            print(f"  chromadb update error: {e}", file=sys.stderr)
+    print(
+        "  Refreshed ChromaDB metadata for "
+        f"{summary['updated_records']} records across "
+        f"{summary['updated_files']} source files"
+    )
+    if summary["never_indexed_files"]:
+        print(
+            "  Existing source files with no ChromaDB records: "
+            f"{summary['never_indexed_files']} "
+            f"({', '.join(summary['never_indexed_slugs'])})"
+        )
+    if summary["missing_source_files"]:
+        print(
+            "  Missing source files: "
+            f"{summary['missing_source_files']} "
+            f"({', '.join(summary['missing_source_slugs'])})"
+        )
+    if summary["errors"]:
+        print(
+            f"  ChromaDB metadata errors: {summary['errors']}",
+            file=sys.stderr,
+        )
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -454,8 +500,10 @@ def run_resolver(dry_run: bool = False) -> dict:
         if result.get("errors"):
             errors.extend(result["errors"])
 
+    refresh_result = None
     if not dry_run and affected_slugs:
-        refresh_chromadb(affected_slugs)
+        refresh_result = refresh_chromadb(affected_slugs)
+        errors.extend(refresh_result["error_messages"])
 
     if not dry_run and resolved_pair_indices:
         new_text = _rebuild_queue_keeping_pending(queue_text)
@@ -469,6 +517,7 @@ def run_resolver(dry_run: bool = False) -> dict:
         "errors": errors,
         "queue_remaining_count": stats.get("pending", 0),
         "dry_run": dry_run,
+        "chromadb_refresh": refresh_result,
     }
 
 
