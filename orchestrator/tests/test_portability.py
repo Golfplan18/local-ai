@@ -653,11 +653,12 @@ class TestCentralPathLayer(unittest.TestCase):
         import oversight_health
         import oversight_router
         import ped_watcher
+        import resources_watcher
         import revisit_sweeper
         import workflow_spec_sweeper
         oversight_root = os.path.join(runtime_paths.DATA_DIR_STR, "oversight")
         for mod in (ped_watcher, corpus_watcher, workflow_spec_sweeper,
-                    revisit_sweeper, oversight_health):
+                    revisit_sweeper, resources_watcher, oversight_health):
             self.assertEqual(mod.WORKSPACE, runtime_paths.WORKSPACE,
                              f"{mod.__name__}.WORKSPACE off runtime_paths")
             self.assertEqual(mod.OVERSIGHT_DATA_DIR, oversight_root,
@@ -679,6 +680,7 @@ class TestCentralPathLayer(unittest.TestCase):
         import ped_watcher
         import retention_sweeper
         import revisit_sweeper
+        import resources_watcher
         import workflow_spec_sweeper
         for mod, key in (
             (ped_watcher, "ped_watcher"),
@@ -687,6 +689,7 @@ class TestCentralPathLayer(unittest.TestCase):
             (revisit_sweeper, "revisit_sweeper"),
             (retention_sweeper, "retention_sweeper"),
             (maintenance_scheduler, "maintenance_scheduler"),
+            (resources_watcher, "resources_watcher"),
         ):
             self.assertEqual(mod.HEARTBEAT_FILE,
                              oversight_health.heartbeat_path(key),

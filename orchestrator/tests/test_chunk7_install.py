@@ -121,6 +121,19 @@ class TestPreflightStep(unittest.TestCase):
         ):
             self.assertFalse(install._runtime_path_preflight(dry_run=True))
 
+    def test_document_conversion_dependency_preflight_is_complete(self):
+        self.assertEqual(
+            set(install.DOCUMENT_CONVERSION_DEPENDENCIES.values()),
+            {"pdfplumber", "python-docx", "python-pptx", "openpyxl",
+             "markdownify", "beautifulsoup4", "striprtf"},
+        )
+
+    def test_missing_document_dependency_is_reported_by_distribution_name(self):
+        with mock.patch.object(install.importlib.util, "find_spec", return_value=None):
+            missing = install._missing_document_dependencies()
+        self.assertIn("python-docx", missing)
+        self.assertIn("beautifulsoup4", missing)
+
 
 class TestProfileStep(unittest.TestCase):
     def setUp(self):

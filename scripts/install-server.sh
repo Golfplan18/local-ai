@@ -148,6 +148,11 @@ DEPS=(
   chromadb
   python-pptx
   python-docx
+  pdfplumber
+  openpyxl
+  markdownify
+  beautifulsoup4
+  striprtf
   xlsxwriter
   anthropic
   openai
