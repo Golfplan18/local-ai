@@ -197,7 +197,7 @@ def get_vault_note_titles(vault_path: str) -> set[str]:
     titles = set()
     for root, dirs, files in os.walk(vault_path):
         # Skip hidden directories and known non-content directories
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "Old AI Working Files"]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "Archive"]
         for f in files:
             if f.endswith(".md"):
                 titles.add(f[:-3])  # Remove .md extension

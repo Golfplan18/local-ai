@@ -102,7 +102,7 @@ MATURE_SUBDIRS = frozenset({
 # Top-level subdirs containing working/draft material — indexed but
 # flagged mature=False so paste-detection can decide how aggressive to be.
 WORKING_SUBDIRS = frozenset({
-    "Workshop", "Old AI Working Files", "Clipper",
+    "Workshop", "Archive", "Clipper",
 })
 
 

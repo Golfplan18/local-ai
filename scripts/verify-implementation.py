@@ -472,7 +472,7 @@ def check_architectural_debt(verbose: bool = False) -> CheckResult:
 
     # Files to exclude (archival locations + this script + the implementation plan + by-design retire mentions)
     excluded_paths = {
-        "Old AI Working Files",
+        "Archive",
         "Working — Analytical Territories and Modes Implementation Plan.md",
         "verify-implementation.py",
         "verify-implementation.md",
@@ -536,7 +536,7 @@ def check_architectural_debt(verbose: bool = False) -> CheckResult:
                     continue
                 if f"Modes/{catch_all}.md" in line:
                     continue  # the file itself is allowed during transition
-                if f"Old AI Working Files" in line:
+                if f"Archive" in line:
                     continue
                 result.details.append(f"WARN: reference to catch-all '{catch_all}' in: {line}")
         except subprocess.TimeoutExpired:
