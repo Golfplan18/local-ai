@@ -9,7 +9,13 @@ classified as `news`, `opinion`, or `resource`:
   - Template the JSON into a Schema §12-compatible vault note
   - For opinion: also capture the user's reaction (the personal-voice
     portions of the same pair's `cleaned_user_input`)
-  - Write to `~/Documents/vault/Sources/{News,Opinion,Resources}/[YYYY]/`
+  - Write to the FLAT `~/Documents/vault/Resources/` folder (vault
+    convention since Schema rev 5, 2026-05-09: kind lives in YAML
+    `tags`, not in folder structure — no News/Opinion/Resources or
+    year subfolders)
+  - Index each written note into ChromaDB's `knowledge` collection so
+    it is immediately retrievable (type: resource → provenance weight
+    0.8 at query time)
 
 A manifest at `~/ora/data/phase3-manifest.json` tracks per-segment
 completion so re-runs skip already-extracted segments. Segment id is
@@ -19,6 +25,14 @@ pair.
 Output filename: `YYYY-MM-DD_<slug>.md` (slug derived from headline /
 title, sanitized to lowercase ASCII + hyphens). Collisions append
 `-seg<N>` to disambiguate.
+
+Own-fiction guard: phase 3 once swept the user's own fiction drafts
+(pasted manuscript chunks misclassified as opinion/news) into 97 junk
+source notes — see vault `Archive/Misfiled Fiction Extractions/`. Two
+cheap heuristics now skip the obvious cases (very large dialogue-heavy
+pastes pre-call; "unable to determine"-titled extractions post-call).
+Both fail OPEN with loud logging: a guard error never blocks
+extraction, and an uncertain segment is extracted rather than dropped.
 """
 
 from __future__ import annotations
@@ -84,7 +98,7 @@ def _read_classifications_from_annotation(file_text: str) -> dict[int, str]:
 # ---------------------------------------------------------------------------
 
 DEFAULT_ARCHIVE_DIR    = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_SOURCES_ROOT   = "/Users/oracle/Documents/vault/Sources"
+DEFAULT_RESOURCES_ROOT = "/Users/oracle/Documents/vault/Resources"
 DEFAULT_MANIFEST_PATH  = "/Users/oracle/ora/data/phase3-manifest.json"
 DEFAULT_REPORT_PATH    = "/Users/oracle/ora/data/phase3-report.json"
 
@@ -100,12 +114,17 @@ MIN_SEGMENT_CHARS = 300
 # the first ~6K chars.
 MAX_INPUT_CHARS_PER_SEGMENT = 6_000
 
-# Folders by type
-_FOLDER_BY_TYPE = {
-    "news":     "News",
-    "opinion":  "Opinion",
-    "resource": "Resources",
-}
+# --- Own-fiction guard thresholds (PROVISIONAL — uncalibrated) -------------
+# Set from inspection of the 97 misfiled fiction extractions (vault
+# Archive/Misfiled Fiction Extractions/, cleaned up 2026-07-12): those
+# pastes were manuscript-sized (up to ~750K chars) and dialogue-heavy,
+# while genuinely pasted articles run ~3-10K chars. Retune against real
+# skip logs if the guard proves too eager or too lax.
+FICTION_GUARD_MIN_CHARS = 20_000     # guard only engages above this size
+FICTION_DIALOGUE_LINE_FRACTION = 0.15  # fraction of lines carrying dialogue quotes
+
+_CHAPTER_HEADING_RE = re.compile(r"^\s*(?:#+\s*)?chapter\s+\d+", re.IGNORECASE | re.MULTILINE)
+_DIALOGUE_QUOTE_CHARS = ('"', '“', '”')
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +353,65 @@ def extract_segment(
 
 
 # ---------------------------------------------------------------------------
+# Own-fiction guard (fail-open: an error here never blocks extraction)
+# ---------------------------------------------------------------------------
+
+
+def fiction_guard_reason(content: str) -> str:
+    """Pre-call heuristic: return a reason string when a pasted segment
+    looks like the user's own fiction manuscript rather than a pasted
+    article, or "" to proceed with extraction.
+
+    Only engages on very large pastes (articles are ~3-10K chars;
+    manuscript pastes in the misfiled-fiction corpus ran to 750K), and
+    then needs a fiction signal on top: dialogue-heavy lines or chapter
+    headings. Long research papers pass — low dialogue density, no
+    chapter headings.
+    """
+    try:
+        if len(content) < FICTION_GUARD_MIN_CHARS:
+            return ""
+        lines = [ln for ln in content.split("\n") if ln.strip()]
+        if not lines:
+            return ""
+        dialogue_lines = sum(
+            1 for ln in lines
+            if any(q in ln for q in _DIALOGUE_QUOTE_CHARS)
+        )
+        dialogue_fraction = dialogue_lines / len(lines)
+        if dialogue_fraction >= FICTION_DIALOGUE_LINE_FRACTION:
+            return (f"large paste ({len(content):,} chars) with dialogue-heavy "
+                    f"lines ({dialogue_fraction:.0%} ≥ "
+                    f"{FICTION_DIALOGUE_LINE_FRACTION:.0%}) — likely own fiction")
+        chapter_hits = len(_CHAPTER_HEADING_RE.findall(content))
+        if chapter_hits >= 2:
+            return (f"large paste ({len(content):,} chars) with {chapter_hits} "
+                    f"chapter headings — likely own fiction")
+        return ""
+    except Exception as e:  # fail OPEN — proceed with extraction
+        print(f"[phase3] fiction guard errored ({e}); extracting anyway",
+              file=sys.stderr, flush=True)
+        return ""
+
+
+def extraction_self_reports_failure(extracted: dict) -> str:
+    """Post-call heuristic: return a reason string when the extraction
+    model itself signalled it found no article (the misfiled-fiction
+    corpus is full of notes titled \"Unable to determine — …\"), or ""
+    to write the note.
+    """
+    try:
+        title = str(extracted.get("headline") or extracted.get("title") or "")
+        if title.strip().lower().startswith("unable to determine"):
+            return f"extraction self-reported failure: {title[:120]!r}"
+        return ""
+    except Exception as e:  # fail OPEN — write the note
+        print(f"[phase3] self-report guard errored ({e}); writing anyway",
+              file=sys.stderr, flush=True)
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Vault note builder + writer
 # ---------------------------------------------------------------------------
 
@@ -535,29 +613,30 @@ def _build_resource_body(extracted: dict, target: ExtractionTarget) -> str:
 
 
 def _vault_path_for(target: ExtractionTarget, extracted: dict,
-                     sources_root: str) -> Path:
-    """Compute the vault output path for an extracted segment."""
+                     resources_root: str) -> Path:
+    """Compute the vault output path for an extracted segment.
+
+    FLAT Resources/ layout (Schema rev 5, 2026-05-09): every note lands
+    directly in the root — kind is encoded in YAML tags, never in
+    folder structure, and there are no year subfolders.
+    """
     when = target.when or datetime.now()
-    year = str(when.year)
-    folder = _FOLDER_BY_TYPE[target.seg_kind]
-    if target.seg_kind == "news":
-        slug_src = extracted.get("headline") or ""
-    elif target.seg_kind == "opinion":
+    if target.seg_kind in ("news", "opinion"):
         slug_src = extracted.get("headline") or ""
     else:
         slug_src = extracted.get("title") or ""
     slug = _slugify(slug_src) or "untitled"
     base = f"{when.strftime('%Y-%m-%d')}_{slug}.md"
-    return Path(sources_root) / folder / year / base
+    return Path(resources_root) / base
 
 
 def write_vault_note(
-    target:        ExtractionTarget,
-    extracted:     dict,
-    sources_root:  str = DEFAULT_SOURCES_ROOT,
+    target:          ExtractionTarget,
+    extracted:       dict,
+    resources_root:  str = DEFAULT_RESOURCES_ROOT,
 ) -> str:
     """Write the vault note. Returns the absolute path written."""
-    path = _vault_path_for(target, extracted, sources_root)
+    path = _vault_path_for(target, extracted, resources_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         # Collision — append seg index to disambiguate.
@@ -567,6 +646,59 @@ def write_vault_note(
     content = build_vault_note(target, extracted)
     path.write_text(content, encoding="utf-8")
     return str(path)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge indexing (ChromaDB `knowledge` collection)
+# ---------------------------------------------------------------------------
+
+
+def index_notes_into_knowledge(
+    paths: list[str],
+    *,
+    progress_to_stderr: bool = True,
+) -> dict:
+    """Index freshly written source notes into ChromaDB's `knowledge`
+    collection so they are retrievable immediately (the May 2026 backlog
+    needed a manual knowledge_index CLI run — this closes that gap).
+
+    Routes through knowledge_index.get_knowledge_collection(), which
+    binds the embedder via orchestrator.embedding's logical→physical
+    collection resolution — never a hardcoded physical name. The notes'
+    YAML `type: resource` lands in metadata, so the 0.8 provenance
+    weight applies at query time automatically.
+
+    Fail OPEN: if ChromaDB/Ollama are unreachable the failure is logged
+    loudly and extraction output stands — notes can be indexed later
+    with the knowledge_index CLI.
+    """
+    stats: dict = {"indexed": 0, "skipped": 0, "errors": 0}
+    if not paths:
+        return stats
+    try:
+        from orchestrator.tools.knowledge_index import (
+            get_knowledge_collection,
+            index_file,
+        )
+        collection = get_knowledge_collection()
+        for p in paths:
+            try:
+                index_file(collection, p, stats, verbose=False)
+            except Exception as e:
+                stats["errors"] += 1
+                print(f"[phase3] KNOWLEDGE-INDEX ERROR (continuing): {p} — {e}",
+                      file=sys.stderr, flush=True)
+        if progress_to_stderr:
+            print(f"[phase3] knowledge index: {stats['indexed']:,} indexed, "
+                  f"{stats['skipped']:,} skipped, {stats['errors']:,} errors",
+                  file=sys.stderr, flush=True)
+    except Exception as e:
+        stats["errors"] += 1
+        stats["fatal"] = str(e)
+        print(f"[phase3] KNOWLEDGE-INDEX UNAVAILABLE (notes written but NOT "
+              f"indexed — run knowledge_index.py over vault Resources/ to "
+              f"catch up): {e}", file=sys.stderr, flush=True)
+    return stats
 
 
 # ---------------------------------------------------------------------------
@@ -614,16 +746,17 @@ def _save_manifest(manifest: dict, path: str) -> None:
 def run_phase3(
     archive_dir:        str = DEFAULT_ARCHIVE_DIR,
     *,
-    sources_root:       str = DEFAULT_SOURCES_ROOT,
+    resources_root:     str = DEFAULT_RESOURCES_ROOT,
     chain_index_path:   str = CHAIN_INDEX_DEFAULT,
     manifest_path:      str = DEFAULT_MANIFEST_PATH,
     max_workers:        int = 6,
     progress_to_stderr: bool = True,
     rebuild_manifest:   bool = False,
     limit:              Optional[int] = None,
+    index_to_knowledge: bool = True,
 ) -> dict:
     """Walk the archive, extract every news/opinion/resource segment,
-    write vault notes."""
+    write vault notes, and index them into the knowledge collection."""
     start = time.monotonic()
 
     chain_lookup = load_chain_index(chain_index_path)
@@ -670,25 +803,41 @@ def run_phase3(
         "targets_extracted":   0,
         "targets_written":     0,
         "targets_errored":     0,
+        "targets_skipped_guard": 0,
         "input_tokens":        0,
         "output_tokens":       0,
         "cost_usd":            0.0,
         "by_kind":             {},
     }
     counter = {"done": 0}
+    written_paths: list[str] = []
     last_save = time.monotonic()
 
     def _process(t: ExtractionTarget) -> dict:
         out = {"target": t, "extracted": None, "path": "",
-               "in_tok": 0, "out_tok": 0, "cost": 0.0, "error": ""}
+               "in_tok": 0, "out_tok": 0, "cost": 0.0, "error": "",
+               "skipped": ""}
+        guard = fiction_guard_reason(t.content)
+        if guard:
+            out["skipped"] = guard
+            print(f"[phase3] SKIP (own-fiction guard): {_segment_uid(t)} — "
+                  f"{guard}", file=sys.stderr, flush=True)
+            return out
         parsed, ti, to, cost, err = extract_segment(t, client=client)
         out["in_tok"], out["out_tok"], out["cost"] = ti, to, cost
         if err:
             out["error"] = err
             return out
         out["extracted"] = parsed
+        self_report = extraction_self_reports_failure(parsed)
+        if self_report:
+            out["skipped"] = self_report
+            print(f"[phase3] SKIP (no article found): {_segment_uid(t)} — "
+                  f"{self_report}", file=sys.stderr, flush=True)
+            return out
         try:
-            out["path"] = write_vault_note(t, parsed, sources_root=sources_root)
+            out["path"] = write_vault_note(t, parsed,
+                                           resources_root=resources_root)
         except Exception as e:
             out["error"] = f"write: {e}"
         return out
@@ -700,9 +849,13 @@ def run_phase3(
         aggregate["output_tokens"]     += r["out_tok"]
         aggregate["cost_usd"]          += r["cost"]
         kind_stat = aggregate["by_kind"].setdefault(t.seg_kind,
-                        {"attempted": 0, "written": 0, "errored": 0})
+                        {"attempted": 0, "written": 0, "errored": 0,
+                         "skipped_guard": 0})
         kind_stat["attempted"] += 1
-        if r["error"]:
+        if r["skipped"]:
+            aggregate["targets_skipped_guard"] += 1
+            kind_stat["skipped_guard"] = kind_stat.get("skipped_guard", 0) + 1
+        elif r["error"]:
             aggregate["targets_errored"] += 1
             kind_stat["errored"] += 1
         elif r["extracted"]:
@@ -710,6 +863,7 @@ def run_phase3(
             if r["path"]:
                 aggregate["targets_written"] += 1
                 kind_stat["written"] += 1
+                written_paths.append(r["path"])
         manifest["completed_segments"][_segment_uid(t)] = {
             "kind":         t.seg_kind,
             "path":         r["path"],
@@ -717,6 +871,7 @@ def run_phase3(
             "output_tokens": r["out_tok"],
             "cost_usd":     r["cost"],
             "error":        r["error"],
+            "skipped":      r["skipped"],
         }
         m_totals = manifest["totals"]
         m_totals["segments_extracted"] += (1 if r["extracted"] else 0)
@@ -747,6 +902,17 @@ def run_phase3(
                       file=sys.stderr, flush=True)
 
     _save_manifest(manifest, manifest_path)
+
+    # Step 4: index the new notes into the knowledge collection so they
+    # are retrievable without a manual CLI run. Fail-open (logged) —
+    # never blocks the pipeline.
+    if index_to_knowledge:
+        aggregate["knowledge_index"] = index_notes_into_knowledge(
+            written_paths, progress_to_stderr=progress_to_stderr,
+        )
+    else:
+        aggregate["knowledge_index"] = {"skipped": True}
+
     aggregate["duration_secs"] = time.monotonic() - start
     return aggregate
 
@@ -761,25 +927,29 @@ def main(argv: Optional[list[str]] = None) -> int:
         description="Phase 3 — extract news/opinion/resource segments to vault notes.",
     )
     parser.add_argument("--archive-dir", default=DEFAULT_ARCHIVE_DIR)
-    parser.add_argument("--sources-root", default=DEFAULT_SOURCES_ROOT)
+    parser.add_argument("--resources-root", default=DEFAULT_RESOURCES_ROOT,
+                        help="Flat vault Resources/ folder notes land in")
     parser.add_argument("--chain-index", default=CHAIN_INDEX_DEFAULT)
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST_PATH)
     parser.add_argument("--report", default=DEFAULT_REPORT_PATH)
     parser.add_argument("--max-workers", type=int, default=6)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--rebuild-manifest", action="store_true")
+    parser.add_argument("--no-index", action="store_true",
+                        help="Skip ChromaDB knowledge indexing of new notes")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 
     stats = run_phase3(
         archive_dir=args.archive_dir,
-        sources_root=args.sources_root,
+        resources_root=args.resources_root,
         chain_index_path=args.chain_index,
         manifest_path=args.manifest,
         max_workers=args.max_workers,
         progress_to_stderr=not args.quiet,
         rebuild_manifest=args.rebuild_manifest,
         limit=args.limit,
+        index_to_knowledge=not args.no_index,
     )
     Path(args.report).parent.mkdir(parents=True, exist_ok=True)
     Path(args.report).write_text(json.dumps(stats, indent=2, ensure_ascii=False))
@@ -793,14 +963,17 @@ if __name__ == "__main__":
 
 __all__ = [
     "DEFAULT_ARCHIVE_DIR",
-    "DEFAULT_SOURCES_ROOT",
+    "DEFAULT_RESOURCES_ROOT",
     "DEFAULT_MANIFEST_PATH",
     "EXTRACTION_MODEL",
     "ExtractionTarget",
     "find_extraction_targets",
     "extract_segment",
+    "fiction_guard_reason",
+    "extraction_self_reports_failure",
     "build_vault_note",
     "write_vault_note",
+    "index_notes_into_knowledge",
     "run_phase3",
     "main",
 ]

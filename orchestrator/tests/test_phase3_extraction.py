@@ -24,7 +24,10 @@ from orchestrator.historical.phase3_extraction import (  # noqa: E402
     _vault_path_for,
     build_vault_note,
     extract_segment,
+    extraction_self_reports_failure,
+    fiction_guard_reason,
     find_extraction_targets,
+    index_notes_into_knowledge,
     write_vault_note,
 )
 
@@ -150,8 +153,10 @@ class TestBuildVaultNote(unittest.TestCase):
 
 
 class TestVaultPath(unittest.TestCase):
+    """Flat Resources/ layout (Schema rev 5): no kind subfolders, no
+    year subfolders — kind lives in YAML tags."""
 
-    def test_news_path_includes_year_subfolder(self):
+    def test_news_path_is_flat(self):
         target = ExtractionTarget(
             file_path="/x.md", pair_num=1,
             when=datetime(2025, 7, 14),
@@ -160,11 +165,11 @@ class TestVaultPath(unittest.TestCase):
             seg_index=0, seg_kind="news", content="x", user_voice="",
         )
         path = _vault_path_for(target, {"headline": "Climate Bill"},
-                                 sources_root="/vault/Sources")
+                                 resources_root="/vault/Resources")
         self.assertEqual(str(path),
-                         "/vault/Sources/News/2025/2025-07-14_climate-bill.md")
+                         "/vault/Resources/2025-07-14_climate-bill.md")
 
-    def test_opinion_path(self):
+    def test_opinion_path_is_flat(self):
         target = ExtractionTarget(
             file_path="/x.md", pair_num=1,
             when=datetime(2024, 12, 1),
@@ -173,9 +178,9 @@ class TestVaultPath(unittest.TestCase):
             seg_index=0, seg_kind="opinion", content="x", user_voice="",
         )
         path = _vault_path_for(target, {"headline": "Why X Matters"},
-                                 sources_root="/v/Sources")
+                                 resources_root="/v/Resources")
         self.assertEqual(str(path),
-                         "/v/Sources/Opinion/2024/2024-12-01_why-x-matters.md")
+                         "/v/Resources/2024-12-01_why-x-matters.md")
 
     def test_resource_path_uses_title(self):
         target = ExtractionTarget(
@@ -186,9 +191,22 @@ class TestVaultPath(unittest.TestCase):
             seg_index=3, seg_kind="resource", content="x", user_voice="",
         )
         path = _vault_path_for(target, {"title": "Quantum Mechanics Survey"},
-                                 sources_root="/v/Sources")
+                                 resources_root="/v/Resources")
         self.assertEqual(str(path),
-                         "/v/Sources/Resources/2026/2026-01-05_quantum-mechanics-survey.md")
+                         "/v/Resources/2026-01-05_quantum-mechanics-survey.md")
+
+    def test_no_kind_or_year_segments_ever(self):
+        for kind in ("news", "opinion", "resource"):
+            target = ExtractionTarget(
+                file_path="/x.md", pair_num=1,
+                when=datetime(2025, 7, 14),
+                source_chat="x", source_platform="gemini",
+                chain_id="", chain_label="",
+                seg_index=0, seg_kind=kind, content="x", user_voice="",
+            )
+            path = _vault_path_for(target, {"headline": "T", "title": "T"},
+                                     resources_root="/v/Resources")
+            self.assertEqual(path.parent, Path("/v/Resources"))
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +283,7 @@ class TestWriteVaultNote(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_writes_file_in_correct_year_folder(self):
+    def test_writes_file_flat_in_resources_root(self):
         target = ExtractionTarget(
             file_path="/x.md", pair_num=1,
             when=datetime(2025, 7, 14),
@@ -277,12 +295,14 @@ class TestWriteVaultNote(unittest.TestCase):
         extracted = {"headline": "Climate Bill Passes",
                      "lede": "It happened today.",
                      "key_facts": [], "key_quotes": [], "context": ""}
-        path = write_vault_note(target, extracted, sources_root=self.tmp)
+        path = write_vault_note(target, extracted, resources_root=self.tmp)
         self.assertTrue(os.path.exists(path))
-        self.assertIn("/News/2025/", path)
-        self.assertTrue(path.endswith(".md"))
-        body = open(path).read()
+        # Flat: written directly into the root, no kind/year subfolders.
+        self.assertEqual(os.path.dirname(path), self.tmp)
+        self.assertTrue(path.endswith("2025-07-14_climate-bill-passes.md"))
+        body = Path(path).read_text(encoding="utf-8")
         self.assertIn("# Climate Bill Passes", body)
+        self.assertIn("- news", body)  # kind encoded in tags
 
     def test_filename_collision_appends_seg_suffix(self):
         target1 = ExtractionTarget(
@@ -303,10 +323,129 @@ class TestWriteVaultNote(unittest.TestCase):
         )
         extracted = {"headline": "Same Title", "lede": "...",
                      "key_facts": [], "key_quotes": [], "context": ""}
-        p1 = write_vault_note(target1, extracted, sources_root=self.tmp)
-        p2 = write_vault_note(target2, extracted, sources_root=self.tmp)
+        p1 = write_vault_note(target1, extracted, resources_root=self.tmp)
+        p2 = write_vault_note(target2, extracted, resources_root=self.tmp)
         self.assertNotEqual(p1, p2)
         self.assertIn("seg05", p2)
+
+
+# ---------------------------------------------------------------------------
+# Own-fiction guard (fail-open)
+# ---------------------------------------------------------------------------
+
+
+class TestFictionGuard(unittest.TestCase):
+
+    def test_large_dialogue_heavy_paste_is_skipped(self):
+        # Manuscript-style: most lines carry dialogue quotes.
+        content = ('"Where are we going?" Thomas asked.\n'
+                   'Sarah looked away. "You know where."\n'
+                   "The rain kept falling on the empty street.\n") * 800
+        self.assertGreater(len(content), 20_000)
+        reason = fiction_guard_reason(content)
+        self.assertIn("own fiction", reason)
+        self.assertIn("dialogue", reason)
+
+    def test_large_chaptered_manuscript_is_skipped(self):
+        prose = "The morning light crept over the hills. " * 300
+        content = f"Chapter 1\n\n{prose}\n\nChapter 2\n\n{prose}\n\nChapter 3\n\n{prose}"
+        self.assertGreater(len(content), 20_000)
+        reason = fiction_guard_reason(content)
+        self.assertIn("own fiction", reason)
+        self.assertIn("chapter", reason.lower())
+
+    def test_small_dialogue_heavy_paste_passes(self):
+        # Below the size floor the guard never engages — a short news
+        # article full of quotes must still extract.
+        content = ('"This is a major step," Sen. Doe said.\n'
+                   "The bill passed 87-12 late Thursday.\n") * 20
+        self.assertLess(len(content), 20_000)
+        self.assertEqual(fiction_guard_reason(content), "")
+
+    def test_large_technical_document_passes(self):
+        # A long research paper: low dialogue density, no chapters.
+        content = ("The methodology follows a standard regression design. "
+                   "Results indicate a significant effect (p < 0.01). ") * 400
+        self.assertGreater(len(content), 20_000)
+        self.assertEqual(fiction_guard_reason(content), "")
+
+    def test_guard_fails_open_on_bad_input(self):
+        # None would raise inside the guard — it must swallow and pass.
+        self.assertEqual(fiction_guard_reason(None), "")
+
+
+class TestSelfReportGuard(unittest.TestCase):
+
+    def test_unable_to_determine_headline_is_skipped(self):
+        extracted = {"headline": "Unable to determine — text appears to be "
+                                 "navigation/footer content from CNN website"}
+        reason = extraction_self_reports_failure(extracted)
+        self.assertIn("self-reported failure", reason)
+
+    def test_unable_to_determine_title_is_skipped(self):
+        extracted = {"title": "Unable to determine document type"}
+        self.assertNotEqual(extraction_self_reports_failure(extracted), "")
+
+    def test_normal_headline_passes(self):
+        extracted = {"headline": "Senate Passes Climate Bill 87-12"}
+        self.assertEqual(extraction_self_reports_failure(extracted), "")
+
+    def test_guard_fails_open_on_bad_input(self):
+        self.assertEqual(extraction_self_reports_failure(None), "")
+
+
+# ---------------------------------------------------------------------------
+# Knowledge indexing (mocked collection; fail-open)
+# ---------------------------------------------------------------------------
+
+
+class TestIndexNotesIntoKnowledge(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.note = os.path.join(self.tmp, "2025-07-14_test-note.md")
+        Path(self.note).write_text(
+            "---\ntype: resource\ntags:\n  - news\n---\n\n# Test Note\n\n"
+            "Body long enough to index. " * 10,
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_indexes_written_notes(self):
+        from unittest.mock import patch
+        fake_collection = MagicMock()
+        fake_collection.get.return_value = {"ids": []}  # not yet indexed
+        with patch("orchestrator.tools.knowledge_index."
+                   "get_knowledge_collection",
+                   return_value=fake_collection), \
+             patch("orchestrator.tools.knowledge_index._nomic_embed",
+                   return_value=[0.0] * 8):
+            stats = index_notes_into_knowledge([self.note],
+                                               progress_to_stderr=False)
+        self.assertEqual(stats["indexed"], 1)
+        fake_collection.add.assert_called_once()
+        # type: resource must reach ChromaDB metadata (0.8 provenance
+        # weight keys off it at query time).
+        meta = fake_collection.add.call_args[1]["metadatas"][0]
+        self.assertEqual(meta["type"], "resource")
+
+    def test_empty_path_list_is_noop(self):
+        stats = index_notes_into_knowledge([], progress_to_stderr=False)
+        self.assertEqual(stats["indexed"], 0)
+        self.assertEqual(stats["errors"], 0)
+
+    def test_fails_open_when_collection_unavailable(self):
+        from unittest.mock import patch
+        with patch("orchestrator.tools.knowledge_index."
+                   "get_knowledge_collection",
+                   side_effect=RuntimeError("chromadb down")):
+            stats = index_notes_into_knowledge([self.note],
+                                               progress_to_stderr=False)
+        # No exception escapes; failure is recorded loudly in stats.
+        self.assertGreaterEqual(stats["errors"], 1)
+        self.assertIn("chromadb down", stats.get("fatal", ""))
 
 
 if __name__ == "__main__":

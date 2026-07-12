@@ -1,27 +1,39 @@
 """Unified conversation ingest — one command from raw exports to engrams.
 
-Chains the three batch stages of the Conversation Processing Pipeline
+Chains the four batch stages of the Conversation Processing Pipeline
 into a single resumable run:
 
   Stage 1 — Cleanup (Layers 1–2.5):   `cli.run_batch`
       Raw exports in the input directory → cleaned-pair archive.
       Resume: cleanup manifest skips completed files.
 
-  Stage 2 — Chunks (Layers 3–4):      `path2_cli.run_chain_detection`
+  Stage 2 — Extraction (Phase 3):     `phase3_extraction.run_phase3`
+      Pasted news/opinion/resource segments in the cleaned pairs →
+      structured source notes in the flat vault `Resources/` folder +
+      ChromaDB `knowledge` records. Chain detection runs first so the
+      notes carry chain_id/chain_label enrichment.
+      Resume: phase3 manifest skips completed segments.
+
+  Stage 3 — Chunks (Layers 3–4):      `path2_cli.run_chain_detection`
       + `path2_cli.run_chunk_emission`
       Cleaned pairs → chain index → chunk files + ChromaDB
       `conversations` records. Chain detection is deterministic and
       re-runs over the whole archive each time (no model calls);
       emission skips sessions already in the path2 manifest.
 
-  Stage 3 — Engrams (downstream):     `phase5_atomic_extraction.run_phase5`
+  Stage 4 — Engrams (downstream):     `phase5_atomic_extraction.run_phase5`
       Cleaned pairs → atomic engram notes in the vault + dedup index.
       Resume: phase5 manifest skips completed pairs.
 
 Every stage is manifest-guarded, so re-running the command after an
 interruption (rate-window exhaustion, reboot, Ctrl-C) continues where
-it left off. All model calls flow through the selected backend
-(`api` / `claude-cli` / `ora-slots`); this module never names models.
+it left off. Cleanup/engram model calls flow through the selected
+backend (`api` / `claude-cli` / `ora-slots`); this module never names
+models. KNOWN WIRING GAP: Stage 2's extraction calls do NOT honor the
+backend flag — phase3_extraction has its own metered-API client with a
+pinned extraction model, even when the rest of the run uses the
+subscription CLI. Rerouting phase3 through the backend layer is an
+open follow-up.
 
 CLI:
 
@@ -58,6 +70,7 @@ from orchestrator.historical.path2_cli import (
     run_chain_detection,
     run_chunk_emission,
 )
+from orchestrator.historical.phase3_extraction import run_phase3
 from orchestrator.historical.phase5_atomic_extraction import run_phase5
 from orchestrator.historical.writer import DEFAULT_OUTPUT_DIR
 
@@ -72,15 +85,18 @@ def run_ingest(
     max_workers:   int = 8,
     file_workers:  int = 1,
     limit:         Optional[int] = None,
+    extraction:    bool = True,
     chunks:        bool = True,
     engrams:       bool = True,
     progress:      bool = True,
 ) -> dict:
     """Run the full ingest chain. Returns a per-stage summary dict.
 
-    Stage boundaries are hard: chunks only start after cleanup
-    completes, engrams only after chunks (the chain index feeds both).
-    A stage that processes nothing is still recorded in the summary.
+    Stage boundaries are hard: extraction and chunks only start after
+    cleanup completes, engrams only after chunks. Chain detection runs
+    once ahead of extraction (its persisted chain-index.json enriches
+    the source notes) and its session map feeds chunk emission. A stage
+    that processes nothing is still recorded in the summary.
     """
     started = time.monotonic()
     summary: dict = {
@@ -91,7 +107,7 @@ def run_ingest(
 
     # ---- Stage 1: cleanup -------------------------------------------------
     if progress:
-        print("[ingest] stage 1/3 — cleanup (raw exports → cleaned pairs)",
+        print("[ingest] stage 1/4 — cleanup (raw exports → cleaned pairs)",
               file=sys.stderr, flush=True)
     summary["cleanup"] = run_batch(
         input_dir=input_dir,
@@ -105,11 +121,9 @@ def run_ingest(
         progress_to_stderr=progress,
     )
 
-    # ---- Stage 2: chain detection + chunk emission ------------------------
-    if chunks:
-        if progress:
-            print("[ingest] stage 2/3 — chunks (cleaned pairs → chunk files "
-                  "+ ChromaDB)", file=sys.stderr, flush=True)
+    # ---- Chain detection (feeds stage 2 enrichment + stage 3 emission) ----
+    detection: Optional[dict] = None
+    if extraction or chunks:
         detection = run_chain_detection(
             cleaned_pair_dir=output_dir,
             progress_to_stderr=progress,
@@ -118,6 +132,26 @@ def run_ingest(
             "sessions": detection.get("sessions", 0),
             "chains":   detection.get("chains", 0),
         }
+
+    # ---- Stage 2: phase-3 extraction (pasted sources → vault notes) -------
+    if extraction:
+        if progress:
+            print("[ingest] stage 2/4 — extraction (pasted news/opinion/"
+                  "resource → vault Resources/ + knowledge index)",
+                  file=sys.stderr, flush=True)
+        summary["extraction"] = run_phase3(
+            archive_dir=output_dir,
+            max_workers=max_workers,
+            progress_to_stderr=progress,
+        )
+    else:
+        summary["extraction"] = {"skipped": True}
+
+    # ---- Stage 3: chunk emission -------------------------------------------
+    if chunks:
+        if progress:
+            print("[ingest] stage 3/4 — chunks (cleaned pairs → chunk files "
+                  "+ ChromaDB)", file=sys.stderr, flush=True)
         summary["chunks"] = run_chunk_emission(
             detection["sessions_to_paths"],
             max_workers=4,
@@ -126,10 +160,10 @@ def run_ingest(
     else:
         summary["chunks"] = {"skipped": True}
 
-    # ---- Stage 3: engram extraction ---------------------------------------
+    # ---- Stage 4: engram extraction ---------------------------------------
     if engrams:
         if progress:
-            print("[ingest] stage 3/3 — engrams (cleaned pairs → atomic "
+            print("[ingest] stage 4/4 — engrams (cleaned pairs → atomic "
                   "notes)", file=sys.stderr, flush=True)
         phase5_workers = max_workers
         if backend == BACKEND_CLAUDE_CLI:
@@ -158,7 +192,8 @@ def _parse_iso_date(value: str) -> date:
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Unified conversation ingest: cleanup → chunks → engrams.",
+        description="Unified conversation ingest: cleanup → extraction "
+                    "→ chunks → engrams.",
     )
     parser.add_argument("--input-dir", default=DEFAULT_INPUT_DIR)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
@@ -173,6 +208,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--file-workers", type=int, default=1)
     parser.add_argument("--limit", type=int,
                         help="Max raw files to clean this run")
+    parser.add_argument("--no-extraction", action="store_true",
+                        help="Skip phase-3 source-note extraction "
+                             "(always metered-API Sonnet calls)")
     parser.add_argument("--no-chunks", action="store_true",
                         help="Skip chunk emission + ChromaDB indexing")
     parser.add_argument("--no-engrams", action="store_true",
@@ -189,6 +227,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         max_workers=args.max_workers,
         file_workers=args.file_workers,
         limit=args.limit,
+        extraction=not args.no_extraction,
         chunks=not args.no_chunks,
         engrams=not args.no_engrams,
         progress=not args.quiet,
