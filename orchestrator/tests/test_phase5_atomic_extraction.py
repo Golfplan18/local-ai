@@ -24,7 +24,10 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     DEDUP_SIM_THRESHOLD,
     PairResult,
     _atomic_uid,
+    _load_manifest,
+    _normalize_manifest,
     _slugify,
+    _successful_completed_paths,
     _vault_path_for,
     build_atomic_note,
     call_sonnet_extract,
@@ -33,6 +36,60 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
 
 
 install_test_stub()
+
+
+class TestManifestCompatibility(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_reconstructed_manifest_gets_complete_totals_schema(self):
+        path = os.path.join(self.tmp, "phase5.json")
+        Path(path).write_text(json.dumps({
+            "version": 1,
+            "reconstructed": True,
+            "completed_pairs": {
+                "/archive/a.md": {"note": "reconstructed"},
+                "/archive/b.md": {"note": "reconstructed"},
+            },
+        }))
+
+        manifest = _load_manifest(path)
+
+        self.assertEqual(manifest["totals"]["pairs_processed"], 2)
+        for key in (
+            "pairs_with_atomics", "candidates_total", "candidates_minted",
+            "candidates_dedup", "input_tokens", "output_tokens", "cost_usd",
+        ):
+            self.assertIn(key, manifest["totals"])
+
+    def test_partial_totals_are_healed_without_overwriting_values(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {"/archive/a.md": {}},
+            "totals": {"pairs_processed": 17, "candidates_total": 9},
+        })
+
+        self.assertEqual(manifest["totals"]["pairs_processed"], 17)
+        self.assertEqual(manifest["totals"]["candidates_total"], 9)
+        self.assertIn("cost_usd", manifest["totals"])
+
+    def test_errored_entries_are_retryable(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {
+                "/archive/good.md": {"error": ""},
+                "/archive/bad.md": {"error": "claude CLI timeout"},
+                "/archive/reconstructed.md": {"note": "legacy"},
+            },
+        })
+
+        completed = _successful_completed_paths(manifest)
+
+        self.assertEqual(completed, {
+            "/archive/good.md", "/archive/reconstructed.md",
+        })
 
 
 # ---------------------------------------------------------------------------
