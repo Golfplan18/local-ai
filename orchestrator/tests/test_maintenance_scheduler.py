@@ -162,12 +162,13 @@ class SweepTests(SchedulerBase):
         with patcher:
             summary = ms.sweep()
         self.assertEqual(set(summary["ran"]),
-                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note"})
+                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note",
+                          "news_supersession", "engram_cleaning"})
         self.assertNotIn("archive_cleanup", summary["ran"])  # off by default
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)
         results = (self.data / "maintenance-results.jsonl").read_text().strip().split("\n")
-        self.assertEqual(len(results), 4)
+        self.assertEqual(len(results), 6)
         self.assertTrue((self.oversight / "maintenance-scheduler-heartbeat.json").exists())
 
     def test_second_sweep_runs_nothing(self):
@@ -204,7 +205,8 @@ class SweepTests(SchedulerBase):
             summary = ms.sweep()
         self.assertEqual(summary["ran"], [])
         self.assertEqual(set(summary["failed"]),
-                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note"})
+                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note",
+                          "news_supersession", "engram_cleaning"})
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)  # no hourly retry-hammering
 
@@ -215,12 +217,13 @@ class SweepTests(SchedulerBase):
             summary = ms.sweep()
         self.assertIn("orphan_cleanup", summary["failed"])
         self.assertEqual(set(summary["ran"]),
-                         {"vault_health", "graph_density", "daily_note"})
+                         {"vault_health", "graph_density", "daily_note",
+                          "news_supersession", "engram_cleaning"})
 
     def test_control_doc_off_respected_in_sweep(self):
         self.doc.write_text(_doc(
             "  orphan_cleanup: off\n  vault_health: off\n  graph_density: off\n"
-            "  daily_note: off\n"))
+            "  daily_note: off\n  news_supersession: off\n  engram_cleaning: off\n"))
         patcher, fake_pm = self._mock_pm()
         with patcher:
             summary = ms.sweep()

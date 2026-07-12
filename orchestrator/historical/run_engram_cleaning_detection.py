@@ -12,6 +12,11 @@ Usage:
 Strategies:
     bidirectional (default) — pairs where both A→B and B→A contradicts edges
                               exist (strongest signal)
+    date-gap                — ONE-directional contradicts edge where the two
+                              engrams' dates are far enough apart that the
+                              newer plausibly supersedes the older (position
+                              evolved over time). Covers the 40k+
+                              one-directional edges bidirectional never sees.
     random                  — uniform random sample (unbiased corpus check)
 
 Output: ~/Documents/vault/Working — Engram Cleaning Queue.md
@@ -35,6 +40,21 @@ ENGRAMS_DIR = os.path.expanduser("~/Documents/vault/Engrams")
 GRAPH_DB = os.path.expanduser("~/ora/data/relationship-graph.db")
 QUEUE_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Queue.md")
 LOG_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Log.md")
+
+# PROVISIONAL tuning constant (uncalibrated first guess — retune freely).
+# Minimum days between two engrams' dates for a one-directional contradicts
+# edge to count as a date-gap supersession candidate. Rationale: genuine
+# changed-mind reversals play out over months (the motivating case is a
+# 2024-12 claim reversed 2025-09, ~270 days); same-period contrastive
+# writing — the dominant false-positive class from triage rounds 1+2 —
+# lands within days of itself. Override: ORA_ENGRAM_DATE_GAP_DAYS.
+DEFAULT_DATE_GAP_DAYS = int(os.environ.get("ORA_ENGRAM_DATE_GAP_DAYS", "90"))
+
+# date-gap includes medium-confidence edges: the motivating Chinese Room
+# reversal pair is a medium-confidence one-directional edge, and the date
+# gap + model judgment downstream carry the precision the confidence
+# filter was providing for the bidirectional strategy.
+DATE_GAP_CONFIDENCES = ("high", "medium")
 
 
 _LOG_PAIR_RE = re.compile(
@@ -121,6 +141,105 @@ def provenance_tag(meta: dict) -> str:
     if "source-derived" in tags:
         return "source-derived"
     return "user"
+
+
+def engram_date(meta: dict) -> Optional[str]:
+    """YYYY-MM-DD for an engram: frontmatter `date created`, else the
+    filename's date prefix, else None."""
+    fm = meta.get("frontmatter") or {}
+    val = fm.get("date created")
+    if val is not None:
+        if isinstance(val, str):
+            m = re.match(r"^(\d{4}-\d{2}-\d{2})", val)
+            if m:
+                return m.group(1)
+        else:
+            try:
+                return val.strftime("%Y-%m-%d")
+            except Exception:
+                pass
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})_", meta.get("slug") or "")
+    return m.group(1) if m else None
+
+
+def _resolve_endpoint(key: str, by_slug: dict, by_h1: dict) -> Optional[dict]:
+    """Resolve a relationship-graph edge endpoint to an engram entry.
+
+    Since the 2026-06-12 note-keying, edge endpoints are filename stems;
+    unresolved claims stay verbatim as claim sentences, so fall back to
+    the H1 index.
+    """
+    return by_slug.get(key) or by_h1.get(key)
+
+
+def detect_date_gap(
+    by_slug: dict, by_h1: dict, limit: int = 25,
+    resolved_set: Optional[set[tuple[str, str]]] = None,
+    min_gap_days: Optional[int] = None,
+) -> list[tuple[dict, dict]]:
+    """ONE-directional contradicts edge + date gap → supersession candidate.
+
+    A contradicts edge whose two engrams are dated ≥ ``min_gap_days`` apart
+    signals a position that may have evolved over time — the newer engram
+    plausibly supersedes the older. No reverse edge required; this is the
+    strategy that reaches the 40k+ one-directional edges the bidirectional
+    default never sees.
+
+    Returns (newer, older) tuples — newer is the candidate current position
+    (queue Source), older the candidate superseded note (queue Target) —
+    sorted by date gap descending (clearest reversals first).
+    """
+    if resolved_set is None:
+        resolved_set = set()
+    if min_gap_days is None:
+        min_gap_days = DEFAULT_DATE_GAP_DAYS
+
+    conn = sqlite3.connect(GRAPH_DB)
+    cur = conn.cursor()
+    placeholders = ",".join("?" for _ in DATE_GAP_CONFIDENCES)
+    cur.execute(
+        "SELECT source, target FROM relationships "
+        f"WHERE type='contradicts' AND confidence IN ({placeholders})",
+        DATE_GAP_CONFIDENCES,
+    )
+    edges = cur.fetchall()
+    conn.close()
+
+    candidates: list[tuple[int, dict, dict]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for source_key, target_key in edges:
+        a = _resolve_endpoint(source_key, by_slug, by_h1)
+        b = _resolve_endpoint(target_key, by_slug, by_h1)
+        if not a or not b or a["slug"] == b["slug"]:
+            continue
+        if is_archived(a) or is_archived(b):
+            continue
+
+        date_a = engram_date(a)
+        date_b = engram_date(b)
+        if not date_a or not date_b:
+            continue
+        try:
+            gap = abs(
+                (datetime.fromisoformat(date_a)
+                 - datetime.fromisoformat(date_b)).days
+            )
+        except ValueError:
+            continue
+        if gap < min_gap_days:
+            continue
+
+        canonical = tuple(sorted([a["slug"], b["slug"]]))
+        if canonical in seen or canonical in resolved_set:
+            continue
+        seen.add(canonical)
+
+        newer, older = (a, b) if date_a > date_b else (b, a)
+        candidates.append((gap, newer, older))
+
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    return [(newer, older) for _gap, newer, older in candidates[:limit]]
 
 
 def detect_bidirectional(
@@ -299,6 +418,10 @@ def run_detection(strategy: str = "bidirectional", limit: int = 25,
         pairs = detect_bidirectional(
             by_slug, by_h1, limit=limit, resolved_set=resolved_set
         )
+    elif strategy == "date-gap":
+        pairs = detect_date_gap(
+            by_slug, by_h1, limit=limit, resolved_set=resolved_set
+        )
     else:
         pairs = detect_random(
             by_slug, by_h1, limit=limit, resolved_set=resolved_set
@@ -329,7 +452,7 @@ def main():
     ap.add_argument(
         "--strategy",
         default="bidirectional",
-        choices=["bidirectional", "random"],
+        choices=["bidirectional", "date-gap", "random"],
         help="Prioritization strategy",
     )
     ap.add_argument(
