@@ -87,7 +87,11 @@ class RenameCascadeTests(unittest.TestCase):
         self.pdir = self.root / "projects"
         self.pdir.mkdir()
         (self.pdir / "book.json").write_text(
-            json.dumps({"nexus": "book", "name": "Book", "status": "active"}), encoding="utf-8")
+            json.dumps({
+                "nexus": "book", "name": "Book Folder",
+                "display_name": "Book", "folder_name": "Book Folder",
+                "status": "active",
+            }), encoding="utf-8")
 
         self.sess = self.root / "sessions"
         self.sess.mkdir()
@@ -124,6 +128,9 @@ class RenameCascadeTests(unittest.TestCase):
         self.assertTrue((self.pdir / "book.json").exists())
         self.assertFalse((self.pdir / "memoir.json").exists())
         self.assertEqual(self._conv_pids("c1"), ["book"])
+        self.assertTrue(rep["physical_identity_unchanged"])
+        self.assertEqual(rep["folder_name"], "Book Folder")
+        self.assertEqual(rep["legacy_name"], "Book Folder")
 
     def test_execute_cascades(self):
         rep = self._report(dry_run=False)
@@ -144,7 +151,11 @@ class RenameCascadeTests(unittest.TestCase):
         # 3) Pointer renamed with internal nexus updated.
         self.assertFalse((self.pdir / "book.json").exists())
         self.assertTrue((self.pdir / "memoir.json").exists())
-        self.assertEqual(json.loads((self.pdir / "memoir.json").read_text())["nexus"], "memoir")
+        pointer = json.loads((self.pdir / "memoir.json").read_text())
+        self.assertEqual(pointer["nexus"], "memoir")
+        self.assertEqual(pointer["name"], "Book Folder")
+        self.assertEqual(pointer["folder_name"], "Book Folder")
+        self.assertEqual(pointer["display_name"], "Book")
         self.assertTrue(rep["pointer_renamed"])
 
     def test_validation(self):
@@ -161,6 +172,30 @@ class RenameCascadeTests(unittest.TestCase):
         with self.assertRaises(nr.NexusRenameError):
             nr.rename_nexus("ghost", "x", vault=self.vault, pointer_dir=self.pdir,
                             sessions_root=self.sess, dry_run=True)
+        for invalid in ("con", "com1", "a" * 65):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(nr.NexusRenameError):
+                    nr.rename_nexus(
+                        "book", invalid, vault=self.vault, pointer_dir=self.pdir,
+                        sessions_root=self.sess, dry_run=True,
+                    )
+
+    def test_existing_windows_device_nexus_can_be_remediated(self):
+        legacy = self.pdir / "con.json"
+        legacy.write_text(json.dumps({
+            "nexus": "con", "name": "Legacy Folder",
+            "display_name": "Legacy", "folder_name": "Legacy Folder",
+        }), encoding="utf-8")
+
+        report = nr.rename_nexus(
+            "con", "safe-project", vault=self.vault, pointer_dir=self.pdir,
+            sessions_root=self.sess, dry_run=False,
+        )
+
+        self.assertTrue(report["pointer_renamed"])
+        data = json.loads((self.pdir / "safe-project.json").read_text())
+        self.assertEqual(data["folder_name"], "Legacy Folder")
+        self.assertEqual(data["name"], "Legacy Folder")
 
     def test_old_slug_traversal_rejected(self):
         # A malformed `old` (path traversal) is rejected before any path is built.

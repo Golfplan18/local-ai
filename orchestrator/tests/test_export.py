@@ -25,8 +25,16 @@ class ExportModuleTests(unittest.TestCase):
         self.root = pathlib.Path(self._tmp.name)
         self.vault = self.root / "vault"
         self.vault.mkdir()
+        from orchestrator import project_meta as pm
+        self.pm = pm
+        self._orig_pointer_dir = pm.POINTER_DIR
+        self._orig_projects_dir = pm.DEFAULT_VAULT_PROJECTS_DIR
+        pm.POINTER_DIR = self.root / "project-pointers"
+        pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
 
     def tearDown(self):
+        self.pm.POINTER_DIR = self._orig_pointer_dir
+        self.pm.DEFAULT_VAULT_PROJECTS_DIR = self._orig_projects_dir
         self._tmp.cleanup()
 
     def test_ensure_export_dirs(self):
@@ -50,19 +58,43 @@ class ExportModuleTests(unittest.TestCase):
         self.assertIn("# Hello", text)
 
     def test_save_project_goes_to_project_folder(self):
+        self.pm.create_project("My Book")
         path = ex.save_output_to_vault(
             "content", title="Draft", project_nexus="my-book",
-            project_name="My Book", vault=self.vault)
+            vault=self.vault)
         self.assertEqual(path.parent.name, "My Book")
         self.assertEqual(path.parent.parent.name, "Projects")
         self.assertIn("nexus:\n  - my-book", path.read_text(encoding="utf-8"))
 
-    def test_immutable_folder_name_takes_precedence_over_display_name(self):
+    def test_immutable_folder_name_is_loaded_from_record(self):
+        self.pm.create_project("My Book")
+        self.pm.update_project_meta("my-book", {"name": "Book of Law"})
         path = ex.save_output_to_vault(
-            "content", title="Draft", project_nexus="my-book",
-            project_name="Book of Law", project_folder_name="My Book",
-            vault=self.vault)
+            "content", title="Draft", project_nexus="my-book", vault=self.vault)
         self.assertEqual(path.parent, self.vault / "Projects" / "My Book")
+
+    def test_project_name_is_never_a_storage_fallback(self):
+        self.pm.create_project("My Book")
+        with self.assertRaises(ex.ProjectExportIdentityError):
+            ex.save_output_to_vault(
+                "content", project_nexus="my-book", project_name="My Book",
+                vault=self.vault,
+            )
+
+    def test_supplied_folder_must_match_persisted_identity(self):
+        self.pm.create_project("My Book")
+        with self.assertRaises(ex.ProjectExportIdentityError):
+            ex.save_output_to_vault(
+                "content", project_nexus="my-book",
+                project_folder_name="Different", vault=self.vault,
+            )
+
+    def test_missing_project_fails_typed_without_creating_folder(self):
+        with self.assertRaises(ex.ProjectExportNotFoundError):
+            ex.save_output_to_vault(
+                "content", project_nexus="ghost", vault=self.vault,
+            )
+        self.assertFalse((self.vault / "Projects" / "ghost").exists())
 
     def test_explicit_compatibility_subdir_is_honored(self):
         path = ex.save_output_to_vault(
@@ -72,14 +104,22 @@ class ExportModuleTests(unittest.TestCase):
 
     def test_exact_dot_folders_cannot_escape_intended_directory(self):
         for traversal in (".", ".."):
-            project_path = ex.save_output_to_vault(
-                "project", title="Project", vault=self.vault,
-                project_nexus="x", project_folder_name=traversal)
-            self.assertEqual(project_path.parent, self.vault / "Projects" / "Untitled")
             subdir_path = ex.save_output_to_vault(
                 "subdir", title="Subdir", vault=self.vault,
                 outputs_subdir=traversal)
             self.assertEqual(subdir_path.parent, self.vault / "Untitled")
+
+    def test_invalid_persisted_project_folder_requires_migration(self):
+        pointer = self.pm.POINTER_DIR / "legacy.json"
+        pointer.parent.mkdir(parents=True)
+        pointer.write_text(json.dumps({
+            "nexus": "legacy", "name": "CON.txt",
+            "display_name": "Legacy", "folder_name": "CON.txt",
+        }), encoding="utf-8")
+        with self.assertRaises(ex.ProjectExportMigrationRequiredError):
+            ex.save_output_to_vault(
+                "content", project_nexus="legacy", vault=self.vault,
+            )
 
     def test_filename_collision(self):
         p1 = ex.save_output_to_vault("a", title="Same", vault=self.vault)
@@ -87,15 +127,33 @@ class ExportModuleTests(unittest.TestCase):
         self.assertNotEqual(p1, p2)
         self.assertTrue(p2.name.endswith("-2.md"))
 
+    def test_project_output_filename_reserves_collision_and_temp_suffix(self):
+        self.pm.create_project("My Book")
+        title = " ".join(["astronomicallylongword" * 10] * 8)
+        p1 = ex.save_output_to_vault(
+            "a", title=title, project_nexus="my-book", vault=self.vault)
+        p2 = ex.save_output_to_vault(
+            "b", title=title, project_nexus="my-book", vault=self.vault)
+        self.assertNotEqual(p1, p2)
+        for path in (p1, p2):
+            simulated_temp = path.name + ".tmp"
+            self.assertLessEqual(
+                len(simulated_temp.encode("utf-16-le")) // 2,
+                ex.PROJECT_OUTPUT_CHILD_BUDGET_UNITS,
+            )
+            self.assertLessEqual(
+                len(str(path.resolve()).encode("utf-16-le")) // 2,
+                ex.WINDOWS_PORTABLE_PATH_LIMIT,
+            )
+
     def test_derives_title_when_absent(self):
         path = ex.save_output_to_vault("## First Heading\n\nrest", vault=self.vault)
         self.assertIn("First Heading", path.read_text(encoding="utf-8"))
 
     def test_missing_vault_returns_none(self):
-        # A vault path that can't be created (a file in the way) → None, no raise.
-        blocker = self.root / "blocker"
-        blocker.write_text("x")
-        self.assertIsNone(ex.save_output_to_vault("c", vault=blocker / "vault"))
+        missing = self.root / "missing" / "vault"
+        self.assertIsNone(ex.save_output_to_vault("c", vault=missing))
+        self.assertFalse(missing.exists())
 
     def test_export_capabilities_shape(self):
         caps = ex.export_capabilities()
@@ -134,6 +192,12 @@ class ExportEndpointTests(unittest.TestCase):
         self.vault.mkdir()
         self._orig_env = os.environ.get("ORA_VAULT_PATH")
         os.environ["ORA_VAULT_PATH"] = str(self.vault)
+        from orchestrator import project_meta as pm
+        self.pm = pm
+        self._orig_pointer_dir = pm.POINTER_DIR
+        self._orig_projects_dir = pm.DEFAULT_VAULT_PROJECTS_DIR
+        pm.POINTER_DIR = pathlib.Path(self._tmp.name) / "project-pointers"
+        pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
         from orchestrator.embedding import install_test_stub
         install_test_stub()
         import server
@@ -144,6 +208,8 @@ class ExportEndpointTests(unittest.TestCase):
             os.environ.pop("ORA_VAULT_PATH", None)
         else:
             os.environ["ORA_VAULT_PATH"] = self._orig_env
+        self.pm.POINTER_DIR = self._orig_pointer_dir
+        self.pm.DEFAULT_VAULT_PROJECTS_DIR = self._orig_projects_dir
         self._tmp.cleanup()
 
     def test_current_output_saves_markdown(self):
@@ -167,27 +233,41 @@ class ExportEndpointTests(unittest.TestCase):
         self.assertEqual(pathlib.Path(body["path"]).parent.resolve(), self.vault.resolve())
 
     def test_project_rename_keeps_export_in_original_folder(self):
-        from orchestrator import project_meta as pm
-        original_pointer_dir = pm.POINTER_DIR
-        pm.POINTER_DIR = pathlib.Path(self._tmp.name) / "projects"
-        try:
-            pm.create_project("My Book")
-            pm.update_project_meta("my-book", {"name": "Book of Law"})
-            r = self.client.post("/api/export", json={
-                "scope": "current_output",
-                "content": "# Renamed project output",
-                "title": "Renamed",
-                "project": "my-book",
-            })
-            self.assertEqual(r.status_code, 200)
-            path = pathlib.Path(json.loads(r.data)["path"])
-            self.assertEqual(
-                path.parent.resolve(),
-                (self.vault / "Projects" / "My Book").resolve(),
-            )
-            self.assertFalse((self.vault / "Projects" / "Book of Law").exists())
-        finally:
-            pm.POINTER_DIR = original_pointer_dir
+        self.pm.create_project("My Book")
+        self.pm.update_project_meta("my-book", {"name": "Book of Law"})
+        r = self.client.post("/api/export", json={
+            "scope": "current_output",
+            "content": "# Renamed project output",
+            "title": "Renamed",
+            "project": "my-book",
+        })
+        self.assertEqual(r.status_code, 200)
+        path = pathlib.Path(json.loads(r.data)["path"])
+        self.assertEqual(
+            path.parent.resolve(),
+            (self.vault / "Projects" / "My Book").resolve(),
+        )
+        self.assertFalse((self.vault / "Projects" / "Book of Law").exists())
+
+    def test_missing_project_returns_404_without_nexus_folder_fallback(self):
+        r = self.client.post("/api/export", json={
+            "scope": "current_output", "content": "x", "project": "ghost",
+        })
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse((self.vault / "Projects" / "ghost").exists())
+
+    def test_invalid_project_folder_returns_migration_409(self):
+        pointer = self.pm.POINTER_DIR / "legacy.json"
+        pointer.parent.mkdir(parents=True, exist_ok=True)
+        pointer.write_text(json.dumps({
+            "nexus": "legacy", "name": "CON.txt",
+            "display_name": "Legacy", "folder_name": "CON.txt",
+        }), encoding="utf-8")
+        r = self.client.post("/api/export", json={
+            "scope": "current_output", "content": "x", "project": "legacy",
+        })
+        self.assertEqual(r.status_code, 409)
+        self.assertTrue(json.loads(r.data)["migration_required"])
 
     def test_empty_content_400(self):
         r = self.client.post("/api/export", json={"scope": "current_output", "content": "  "})

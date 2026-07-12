@@ -553,7 +553,11 @@
         els.ovSave.disabled = false;
         return;
       }
-      current = { nexus: data.project.nexus, name: data.project.name };
+      current = {
+        nexus: data.project.nexus,
+        name: data.project.name,
+        storageAvailable: data.storage_available !== false,
+      };
       // Apply the private flag if the user set it at creation.
       if (els.priv.checked) {
         try {
@@ -572,14 +576,22 @@
       if (els.advanced) els.advanced.style.display = '';
       if (els.nexus) els.nexus.value = current.nexus;
       els.titleName.textContent = current.name;
-      setStatus(els.ovMsg, 'Project created' + (data.vault_folder ? ' — folder added to the vault.' : '.'), 'ok');
+      if (data.storage_available === false) {
+        setStatus(els.ovMsg, data.storage_warning
+          || 'Project created, but vault storage is unavailable. No project folder was created.', 'error');
+      } else {
+        setStatus(els.ovMsg, 'Project created — folder added to the vault.', 'ok');
+      }
       try { window.OraSidebar && window.OraSidebar.refreshProjects && window.OraSidebar.refreshProjects(); } catch (e) {}
       try { window.OraSidebar && window.OraSidebar.setActiveProject && window.OraSidebar.setActiveProject(current.nexus, current.name); } catch (e) {}
       // Guide (don't force) the user into MOM — the graceful creation flow.
       showTab('mom');
       momCache = null;
       await loadMom();
-      setStatus(els.momMsg, 'Optional: draft your Mission, Objectives & Milestones now — or just close. You can edit anytime.');
+      setStatus(els.momMsg, data.storage_available === false
+        ? 'Vault storage is unavailable. Restore or configure the vault before saving Mission & Goals.'
+        : 'Optional: draft your Mission, Objectives & Milestones now — or just close. You can edit anytime.',
+        data.storage_available === false ? 'error' : undefined);
     } catch (e) {
       setStatus(els.ovMsg, 'Could not create the project: ' + (e.message || e), 'error');
       els.ovSave.disabled = false;
@@ -739,21 +751,23 @@
     if (els.momAssist) els.momAssist.disabled = false;
     setStatus(els.momMsg, 'Loading…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
-        + '/mom?name=' + encodeURIComponent(current.name));
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/mom');
       const data = await r.json();
+      if (!(r.ok && data && data.ok)) {
+        throw new Error((data && data.error) || 'Could not load Mission/Objectives/Milestones.');
+      }
       const mom = (data && data.mom) || {};
       momCache = mom;
       els.mission.value = mom.mission || '';
       els.objectives.value = mom.objectives || '';
       renderMilestones(mom.milestones || []);
-      els.momNote.textContent = mom.exists
-        ? ''
-        : 'No Operation-Matrix file yet — saving creates Matrix/Project Matrix ' + current.name + '.md in the vault.';
+      els.momNote.textContent = mom.storage_available === false
+        ? 'Vault storage is unavailable. No Operation-Matrix can be created until the vault is restored or configured.'
+        : (mom.exists ? '' : 'No Operation-Matrix file yet — saving creates it in the vault Matrix folder.');
       setStatus(els.momMsg, '');
     } catch (e) {
       momCache = {};
-      setStatus(els.momMsg, 'Could not load Mission/Objectives/Milestones.', 'error');
+      setStatus(els.momMsg, 'Could not load Mission/Objectives/Milestones: ' + (e.message || e), 'error');
     }
   }
 
@@ -777,7 +791,6 @@
       const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/mom-assist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: current.name,
           intent: (els.momIntent.value || '').trim(),
           fields: {
             mission: els.mission.value,
@@ -811,7 +824,6 @@
   async function saveMom() {
     if (isCommons()) return;
     const body = {
-      name: current.name,
       mission: els.mission.value,
       objectives: els.objectives.value,
     };
@@ -825,7 +837,7 @@
         body: JSON.stringify(body),
       });
       const data = await r.json();
-      if (data && data.ok) {
+      if (r.ok && data && data.ok) {
         momCache = data.mom;
         // Re-render from the canonical re-read so checkbox/raw stay in sync.
         if (!momRawMode) renderMilestones(data.mom.milestones || []);
@@ -901,9 +913,11 @@
     els.fileList.innerHTML = '';
     els.filesNote.textContent = 'Loading…';
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
-        + '/files?name=' + encodeURIComponent(current.name));
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/files');
       const data = await r.json();
+      if (!(r.ok && data && data.ok)) {
+        throw new Error((data && data.error) || 'Could not load files.');
+      }
       filesCache = data;
       const frag = document.createDocumentFragment();
       if (data.matrix) frag.appendChild(fileRow(data.matrix, true));
@@ -918,7 +932,7 @@
         els.filesNote.textContent = (data.folder || '') + (data.truncated ? '  (showing the most recent files)' : '');
       }
     } catch (e) {
-      els.filesNote.textContent = 'Could not load files.';
+      els.filesNote.textContent = 'Could not load files: ' + (e.message || e);
     }
   }
 

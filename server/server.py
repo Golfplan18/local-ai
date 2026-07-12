@@ -5194,10 +5194,18 @@ def api_projects_create():
     except _pm.ProjectMetaError as exc:
         return _json_response({"ok": False, "error": str(exc)}, 400)
     folder = _pm.ensure_project_folder(meta["folder_name"])  # best-effort
+    storage_available = folder is not None
+    storage_warning = None if storage_available else (
+        "Project record created, but vault storage is unavailable. "
+        "No project folder was created; configure or restore the vault before "
+        "saving project files or an Operation-Matrix."
+    )
     return _json_response({
         "ok": True,
         "project": meta,
         "vault_folder": str(folder) if folder else None,
+        "storage_available": storage_available,
+        "storage_warning": storage_warning,
     })
 
 
@@ -5265,28 +5273,32 @@ def api_projects_rename_nexus(nexus):
 @app.route("/api/projects/<nexus>/mom", methods=["GET"])
 def api_projects_mom_get(nexus):
     """Read a project's Mission/Objectives/Milestones from its vault
-    Operation-Matrix file (G1.33 sub-step 5). ``?name=`` helps resolve the file
-    by the ``Project Matrix <Name>.md`` naming convention; otherwise resolution
-    falls back to a frontmatter-nexus scan. Returns ``exists: False`` (empty
-    fields) when no matrix file is found — never an error, so a missing vault
-    degrades gracefully."""
+    Operation-Matrix file (G1.33 sub-step 5). The Matrix filename comes only
+    from the record's persisted ``folder_name``; query parameters cannot choose
+    a physical file. Resolution verifies frontmatter nexus ownership."""
     try:
         from orchestrator import operation_matrix as _om
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
-    name = request.args.get("name") or None
-    if name is None:
-        try:
-            from orchestrator import project_meta as _pm
-            rec = _pm.read_project_meta(nexus)
-            if rec:
-                name = rec.get("name")
-        except Exception:
-            name = None
     try:
-        mom = _om.read_mom(nexus, name)
+        from orchestrator import project_meta as _pm
+        rec = _pm.read_project_meta(nexus)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    if rec is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    if rec.get("is_default"):
+        return _json_response({"ok": True, "mom": _om.read_mom("commons")})
+    folder_name = rec.get("folder_name")
+    try:
+        _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
+        mom = _om.read_mom(nexus, folder_name)
+    except (_pm.ProjectStorageError, _om.MatrixError) as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
+    mom["storage_available"] = _om.vault_root().is_dir()
     return _json_response({"ok": True, "mom": mom})
 
 
@@ -5294,37 +5306,45 @@ def api_projects_mom_get(nexus):
 def api_projects_mom_set(nexus):
     """Patch a project's MOM in its vault Operation-Matrix file. Body any of
     ``{"mission": str, "objectives": str, "milestones": [{text,done,indent}],
-    "milestones_raw": str, "name": str}``. Only provided sections are touched;
-    everything else in the matrix file is preserved. Creates the matrix file
-    from a template when missing (needs ``name``)."""
+    "milestones_raw": str}``. Only provided sections are touched; everything
+    else in the matrix file is preserved. Persisted project metadata supplies
+    both physical ``folder_name`` and the human-facing H1 label."""
     try:
         from orchestrator import operation_matrix as _om
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
     data = request.get_json(silent=True) or {}
-    name = data.get("name") or None
-    if name is None:
-        try:
-            from orchestrator import project_meta as _pm
-            rec = _pm.read_project_meta(nexus)
-            if rec:
-                name = rec.get("name")
-        except Exception:
-            name = None
     try:
+        from orchestrator import project_meta as _pm
+        rec = _pm.read_project_meta(nexus)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    if rec is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    if rec.get("is_default"):
+        return _json_response(
+            {"ok": False, "error": "Commons has no Operation-Matrix."}, 404)
+    folder_name = rec.get("folder_name")
+    try:
+        _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
         mom = _om.write_mom(
-            nexus, name,
+            nexus, folder_name,
+            display_name=rec.get("display_name") or rec.get("name") or nexus,
             mission=data.get("mission"),
             objectives=data.get("objectives"),
             milestones=data.get("milestones"),
             milestones_raw=data.get("milestones_raw"),
         )
+    except (_pm.ProjectStorageError, _om.MatrixError) as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
     if mom is None:
         return _json_response(
-            {"ok": False, "error": "no matrix file (and could not create one — "
-             "Commons has none, or no name to create from)"}, 404)
+            {"ok": False, "storage_available": False,
+             "error": "vault storage is unavailable; no Matrix file was created"}, 503)
+    mom["storage_available"] = True
     return _json_response({"ok": True, "mom": mom})
 
 
@@ -5443,7 +5463,7 @@ def api_projects_mom_assist(nexus):
 
     READ-ONLY: returns suggestions for the modal to fill into the editable
     fields; it never writes the matrix (the human reviews + saves). Body:
-    ``{"name": str?, "intent": str?, "fields": {"mission","objectives",
+    ``{"intent": str?, "fields": {"mission","objectives",
     "milestones_raw"}?}``. Returns ``{ok, suggestions:{mission, objectives,
     milestones:[{text,done,indent}], milestones_raw}}``. Degrades to ok:false
     (503 model unavailable / 502 unparseable / 400 Commons) — never a 500."""
@@ -5455,16 +5475,20 @@ def api_projects_mom_assist(nexus):
         return _json_response(
             {"ok": False, "error": "Commons has no Operation-Matrix."}, 400)
     data = request.get_json(silent=True) or {}
-    name = data.get("name") or None
-    if name is None:
-        try:
-            from orchestrator import project_meta as _pm
-            rec = _pm.read_project_meta(nexus)
-            if rec:
-                name = rec.get("name")
-        except Exception:
-            name = None
-    name = name or nexus
+    try:
+        from orchestrator import project_meta as _pm
+        rec = _pm.read_project_meta(nexus)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    if rec is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    name = rec.get("display_name") or rec.get("name") or nexus
+    folder_name = rec.get("folder_name")
+    try:
+        _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
+    except _pm.ProjectStorageError as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
     intent = (data.get("intent") or "").strip()
     fields = data.get("fields") or {}
     cur_mission = (fields.get("mission") or "").strip()
@@ -5473,11 +5497,14 @@ def api_projects_mom_assist(nexus):
     # If the user typed nothing, seed the refine context from the saved matrix.
     if not (cur_mission or cur_objectives or cur_milestones_raw):
         try:
-            mom = _om.read_mom(nexus, name)
+            mom = _om.read_mom(nexus, folder_name)
             if mom and mom.get("exists"):
                 cur_mission = mom.get("mission") or ""
                 cur_objectives = mom.get("objectives") or ""
                 cur_milestones_raw = mom.get("milestones_raw") or ""
+        except _om.MatrixError as exc:
+            return _json_response(
+                {"ok": False, "migration_required": True, "error": str(exc)}, 409)
         except Exception:
             pass
     user_prompt = MOM_ASSIST_USER_TEMPLATE.format(
@@ -5520,7 +5547,7 @@ def _obsidian_uri_for(abs_path: str):
         from orchestrator import operation_matrix as _om
         from urllib.parse import quote
         from pathlib import Path as _P
-        root = _om.vault_root()
+        root = _om.vault_root().resolve()
         rel = _P(abs_path).resolve().relative_to(root)
     except Exception:
         return None
@@ -5534,9 +5561,9 @@ def api_projects_files(nexus):
     File management defers to Obsidian (Q2 LOCKED) — each entry carries an
     ``obsidian_uri`` (open in Obsidian) and ``abs_path`` (reveal in Finder via
     POST /api/fs/reveal). The Operation-Matrix file is prepended as a pinned
-    entry. ``?name=`` supplies the current display name for Operation-Matrix
-    lookup; a real project's output folder always comes from the record's
-    immutable ``folder_name``. Commons is synthetic and saves at the vault
+    entry. A real project's output folder and Matrix filename always come from
+    the record's immutable ``folder_name``; client-supplied names are ignored.
+    Commons is synthetic and saves at the vault
     root, so its index is the vault root's direct files rather than a fictional
     ``Projects/Commons`` folder."""
     try:
@@ -5545,11 +5572,17 @@ def api_projects_files(nexus):
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
     rec = _pm.read_project_meta(nexus)
-    name = request.args.get("name") or (rec.get("name") if rec else nexus)
+    if rec is None:
+        return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
     is_commons = bool(rec and rec.get("is_default"))
-    folder_name = None if is_commons else (rec.get("folder_name") if rec else name)
+    folder_name = None if is_commons else rec.get("folder_name")
     try:
-        index = _pm.list_project_files(None if is_commons else (folder_name or name))
+        if not is_commons:
+            _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
+        index = _pm.list_project_files(None if is_commons else folder_name)
+    except _pm.ProjectStorageError as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
     for f in index.get("files", []):
@@ -5558,7 +5591,7 @@ def api_projects_files(nexus):
     matrix = None
     if not is_commons:
         try:
-            mpath = _om.resolve_matrix_path(nexus, name)
+            mpath = _om.resolve_matrix_path(nexus, folder_name)
             if mpath is not None:
                 st = mpath.stat()
                 from datetime import datetime as _dt
@@ -5571,8 +5604,11 @@ def api_projects_files(nexus):
                     "obsidian_uri": _obsidian_uri_for(str(mpath)),
                     "is_matrix": True,
                 }
-        except Exception:
-            matrix = None
+        except _om.MatrixError as exc:
+            return _json_response(
+                {"ok": False, "migration_required": True, "error": str(exc)}, 409)
+        except Exception as exc:
+            return _json_response({"ok": False, "error": str(exc)}, 500)
     return _json_response({"ok": True, "matrix": matrix, **index})
 
 
@@ -5661,7 +5697,7 @@ def api_fs_reveal():
         return _json_response({"ok": False, "error": "path is required"}, 400)
     try:
         target = _P(raw).resolve()
-        allowed_roots = [_om.vault_root()]
+        allowed_roots = [_om.vault_root().resolve()]
         try:
             allowed_roots += [_export.EXPORTS_DIR.resolve(), _export.RESOURCES_DIR.resolve()]
         except Exception:
@@ -16207,26 +16243,30 @@ def api_export():
         try:
             from orchestrator.active_project import get_active_project
             project_nexus = get_active_project()
-        except Exception:
-            project_nexus = "commons"
-    project_folder_name = None
-    if project_nexus and project_nexus.lower() not in ("commons", "general"):
-        try:
-            from orchestrator import project_meta as _pm
-            rec = _pm.read_project_meta(project_nexus)
-            project_folder_name = rec.get("folder_name") if rec else project_nexus
-        except Exception:
-            project_folder_name = project_nexus
+        except Exception as exc:
+            return _json_response(
+                {"ok": False, "error": f"active project resolution failed: {exc}"},
+                503,
+            )
     try:
         path = _export.save_output_to_vault(
             content, title=data.get("title"),
-            project_nexus=project_nexus,
-            project_folder_name=project_folder_name)
+            project_nexus=project_nexus)
+    except _export.ProjectExportNotFoundError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 404)
+    except _export.ProjectExportMigrationRequiredError as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
+    except _export.ProjectExportIdentityError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 409)
+    except _export.ExportPathError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 409)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
     if path is None:
         return _json_response(
-            {"ok": False, "error": "could not write to the vault (no vault / no access)"}, 500)
+            {"ok": False, "storage_available": False,
+             "error": "could not write to the vault (no vault / no access)"}, 503)
     return _json_response({"ok": True, "scope": "current_output", "path": str(path)})
 
 

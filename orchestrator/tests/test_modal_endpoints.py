@@ -27,8 +27,6 @@ class ModalEndpointTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self._tmp.name)
-        (self.vault / "Projects" / "My Book").mkdir(parents=True)
-        (self.vault / "Projects" / "My Book" / "draft.md").write_text("hi", encoding="utf-8")
         self._orig_env = os.environ.get("ORA_VAULT_PATH")
         os.environ["ORA_VAULT_PATH"] = str(self.vault)
 
@@ -39,7 +37,10 @@ class ModalEndpointTests(unittest.TestCase):
         self._orig_pointer_dir = pm.POINTER_DIR
         pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
         pm.POINTER_DIR = self.vault / "project-pointers"
-        pm.create_project("My Book")
+        meta = pm.create_project("My Book")
+        project_folder = self.vault / "Projects" / meta["folder_name"]
+        project_folder.mkdir(parents=True)
+        (project_folder / "draft.md").write_text("hi", encoding="utf-8")
 
         self.sess = pathlib.Path(self._tmp.name) / "sessions"
         self.sess.mkdir()
@@ -74,15 +75,15 @@ class ModalEndpointTests(unittest.TestCase):
         self.assertIsNotNone(uri)
         self.assertIn("obsidian://open", uri)
 
-    def test_files_missing_folder_ok(self):
+    def test_files_missing_project_is_404(self):
         r = self.client.get("/api/projects/ghost/files?name=Ghost")
         body = json.loads(r.data)
-        self.assertTrue(body["ok"])
-        self.assertFalse(body["exists"])
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse(body["ok"])
 
     def test_files_index_keeps_original_folder_after_display_rename(self):
         self._pm.update_project_meta("my-book", {"name": "Book of Law"})
-        r = self.client.get("/api/projects/my-book/files?name=Book of Law")
+        r = self.client.get("/api/projects/my-book/files?name=Attacker Supplied")
         self.assertEqual(r.status_code, 200)
         body = json.loads(r.data)
         self.assertTrue(body["exists"])
@@ -105,6 +106,48 @@ class ModalEndpointTests(unittest.TestCase):
         self.assertIn("commons-output.md", {f["name"] for f in body["files"]})
         self.assertNotIn("wrong.md", {f["name"] for f in body["files"]})
         self.assertIsNone(body["matrix"])
+
+    def test_files_invalid_persisted_identity_returns_migration_409(self):
+        pointer = self._pm.POINTER_DIR / "legacy.json"
+        pointer.parent.mkdir(parents=True, exist_ok=True)
+        pointer.write_text(json.dumps({
+            "nexus": "legacy",
+            "name": "CON.txt",
+            "display_name": "Legacy",
+            "folder_name": "CON.txt",
+        }), encoding="utf-8")
+        r = self.client.get("/api/projects/legacy/files?name=Anything")
+        self.assertEqual(r.status_code, 409)
+        self.assertTrue(json.loads(r.data)["migration_required"])
+
+    def test_create_reports_available_storage(self):
+        r = self.client.post("/api/projects/create", json={"name": "Second Project"})
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data)
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["storage_available"])
+        self.assertTrue(pathlib.Path(body["vault_folder"]).is_dir())
+
+    def test_create_without_vault_warns_and_does_not_manufacture_one(self):
+        missing_vault = self.vault / "missing-vault"
+        previous_projects = self._pm.DEFAULT_VAULT_PROJECTS_DIR
+        previous_env = os.environ.get("ORA_VAULT_PATH")
+        self._pm.DEFAULT_VAULT_PROJECTS_DIR = missing_vault / "Projects"
+        os.environ["ORA_VAULT_PATH"] = str(missing_vault)
+        try:
+            r = self.client.post("/api/projects/create", json={"name": "Cloud Project"})
+        finally:
+            self._pm.DEFAULT_VAULT_PROJECTS_DIR = previous_projects
+            if previous_env is None:
+                os.environ.pop("ORA_VAULT_PATH", None)
+            else:
+                os.environ["ORA_VAULT_PATH"] = previous_env
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data)
+        self.assertTrue(body["ok"])
+        self.assertFalse(body["storage_available"])
+        self.assertIn("vault storage is unavailable", body["storage_warning"])
+        self.assertFalse(missing_vault.exists())
 
     # ── conversations ──────────────────────────────────────────────────────
     def test_project_conversations_filter(self):

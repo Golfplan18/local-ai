@@ -153,6 +153,23 @@ class TestManifestParsing(unittest.TestCase):
         with self.assertRaises(pr.ManifestError):
             pr.load_project_at(self.root)
 
+    def test_manifest_nexus_uses_central_reserved_policy(self):
+        for nexus in ("commons", "general", "con", "com1", "lpt9"):
+            with self.subTest(nexus=nexus):
+                self._write_manifest({"nexus": nexus, "name": "Test"})
+                with self.assertRaises(pr.ManifestError) as ctx:
+                    pr.load_project_at(self.root)
+                self.assertIn(str(self.root / pr.MANIFEST_FILENAME), str(ctx.exception))
+
+    def test_manifest_nexus_length_boundary(self):
+        allowed = "a" * 64
+        self._write_manifest({"nexus": allowed, "name": "Test"})
+        self.assertEqual(pr.load_project_at(self.root).nexus, allowed)
+
+        self._write_manifest({"nexus": "a" * 65, "name": "Test"})
+        with self.assertRaises(pr.ManifestError):
+            pr.load_project_at(self.root)
+
     def test_missing_name(self):
         self._write_manifest({"nexus": "test"})
         with self.assertRaises(pr.ManifestError) as ctx:

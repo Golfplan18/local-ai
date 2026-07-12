@@ -42,10 +42,6 @@ TOOL_INTERFACE_ARGV_STDOUT = "argv-stdout-json"
 TOOL_INTERFACE_STDIN_STDOUT = "stdin-stdout-json"
 KNOWN_INTERFACES = frozenset({TOOL_INTERFACE_ARGV_STDOUT, TOOL_INTERFACE_STDIN_STDOUT})
 
-# Project nexus: lowercase kebab-case identifier (matches Ora's existing
-# `project_nexus` convention used by PEDs and the oversight router).
-_NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
-
 # Capability slot name (Plugin Convention §12): lowercase letters, digits,
 # underscores; matches the core slot-name convention in `capabilities.json`
 # (e.g., `image_generates_cartoon`).
@@ -285,14 +281,16 @@ class Project:
 
 
 def _validate_nexus(nexus: Any, manifest_path: Path) -> str:
-    if not isinstance(nexus, str) or not nexus:
-        raise ManifestError(f"{manifest_path}: 'nexus' is required and must be a non-empty string")
-    if not _NEXUS_RE.match(nexus):
+    try:
+        try:
+            from project_meta import validate_nexus
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator.project_meta import validate_nexus
+        return validate_nexus(nexus)
+    except (ValueError, TypeError) as exc:
         raise ManifestError(
-            f"{manifest_path}: 'nexus' must be lowercase kebab-case "
-            f"(letters/digits/hyphens/underscores, starting with a letter or digit); got {nexus!r}"
-        )
-    return nexus
+            f"{manifest_path}: invalid 'nexus' {nexus!r}: {exc}"
+        ) from exc
 
 
 def _validate_command(command: Any, context: str, manifest_path: Path) -> list[str]:

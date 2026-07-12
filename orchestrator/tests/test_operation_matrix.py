@@ -83,6 +83,19 @@ class OperationMatrixReadTests(unittest.TestCase):
         self.assertIsNotNone(p)
         self.assertEqual(p.name, "Project Matrix My Book.md")
 
+    def test_convention_candidate_must_belong_to_requested_nexus(self):
+        self.assertIsNone(
+            om.resolve_matrix_path("other", "My Book", vault=self.vault)
+        )
+
+    def test_duplicate_nexus_claims_raise_typed_ambiguity(self):
+        (self.mdir / "Project Matrix Duplicate.md").write_text(
+            _RICH_MATRIX.replace("# Project Matrix My Book", "# Duplicate"),
+            encoding="utf-8",
+        )
+        with self.assertRaises(om.MatrixAmbiguityError):
+            om.resolve_matrix_path("my-book", "My Book", vault=self.vault)
+
     def test_resolve_missing(self):
         self.assertIsNone(om.resolve_matrix_path("ghost", "Ghost", vault=self.vault))
         self.assertIsNone(om.resolve_matrix_path("commons", "Commons", vault=self.vault))
@@ -171,6 +184,7 @@ class OperationMatrixWriteTests(unittest.TestCase):
     def test_create_if_missing(self):
         mom = om.write_mom(
             "fresh-proj", "Fresh Proj",
+            display_name='Fresh: A "Project"?',
             mission="Begin.", objectives="Ship it.",
             milestones=[{"text": "step one", "done": False}],
             vault=self.vault,
@@ -181,9 +195,37 @@ class OperationMatrixWriteTests(unittest.TestCase):
         text = created.read_text(encoding="utf-8")
         self.assertIn("type: matrix", text)
         self.assertIn("nexus:\n  - fresh-proj", text)
+        self.assertIn('# Project Matrix Fresh: A "Project"?', text)
         self.assertIn("## Mission\n\nBegin.", text)
         self.assertIn("## Objectives\n\nShip it.", text)
         self.assertIn("- [ ] step one", text)
+
+    def test_create_refuses_convention_collision_owned_by_another_nexus(self):
+        collision = self.mdir / "Project Matrix Taken.md"
+        collision.write_text(
+            "---\nnexus:\n  - other\ntype: matrix\n---\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(om.MatrixMigrationRequiredError):
+            om.write_mom(
+                "taken", "Taken", display_name="Taken", mission="x",
+                vault=self.vault,
+            )
+        self.assertIn("  - other", collision.read_text(encoding="utf-8"))
+
+    def test_missing_vault_is_not_created(self):
+        missing = self.vault / "not-a-vault"
+        self.assertIsNone(om.write_mom(
+            "ghost", "Ghost", display_name="Ghost", mission="x", vault=missing,
+        ))
+        self.assertFalse(missing.exists())
+
+    def test_invalid_persisted_component_requires_migration(self):
+        with self.assertRaises(om.MatrixMigrationRequiredError):
+            om.write_mom(
+                "legacy", "CON.txt", display_name="Legacy", mission="x",
+                vault=self.vault,
+            )
 
     def test_commons_is_noop(self):
         self.assertIsNone(om.write_mom("commons", "Commons", mission="x", vault=self.vault))

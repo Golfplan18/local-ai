@@ -1296,6 +1296,10 @@
         if (data && data.ok && data.project) {
           await fetchProjects();
           setActiveProject(data.project.nexus, data.project.name);
+          if (data.storage_available === false) {
+            window.alert(data.storage_warning
+              || 'Project created, but vault storage is unavailable. No project folder was created.');
+          }
         } else {
           window.alert('Could not create project: ' + ((data && data.error) || 'unknown error'));
         }

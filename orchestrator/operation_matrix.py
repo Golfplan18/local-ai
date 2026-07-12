@@ -34,6 +34,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
+try:
     import yaml  # PyYAML 6.x is available in the runtime
 except ImportError:  # pragma: no cover - yaml ships with the runtime
     yaml = None
@@ -41,25 +46,60 @@ except ImportError:  # pragma: no cover - yaml ships with the runtime
 MOM_HEADINGS = ("Mission", "Objectives", "Milestones")
 
 
+class MatrixError(Exception):
+    """Base class for Matrix identity/resolution failures."""
+
+
+class MatrixAmbiguityError(MatrixError):
+    """More than one Matrix file claims the same project nexus."""
+
+
+class MatrixMigrationRequiredError(MatrixError):
+    """Persisted Matrix/folder identity cannot be used portably as-is."""
+
+
 def vault_root() -> Path:
     """Resolve the canonical vault root.
 
-    Honors ``ORA_VAULT_PATH`` / ``ORA_VAULT`` (same overrides the rest of the
-    engine reads), defaulting to ``~/Documents/vault``.
+    Delegates to the call-time runtime resolver so canonical/legacy override
+    conflicts fail loudly and Windows Known Folder redirection is honored.
     """
-    env = os.environ.get("ORA_VAULT_PATH") or os.environ.get("ORA_VAULT")
-    base = env if env else "~/Documents/vault"
-    return Path(os.path.expanduser(base)).resolve()
+    accessor = getattr(_rp, "vault_dir", None)
+    if callable(accessor):
+        return Path(accessor())
+    # D-01 remains independently usable on an older runtime_paths module;
+    # D-03 replaces this compatibility fallback with the shared accessor.
+    raw = os.environ.get("ORA_VAULT_PATH") or os.environ.get("ORA_VAULT")
+    return Path(os.path.expanduser(raw or "~/Documents/vault")).resolve()
 
 
 def _matrix_dir(vault: Path | None = None) -> Path:
     return (vault or vault_root()) / "Matrix"
 
 
-def _safe_name(name: str) -> str:
-    """Filesystem-safe display name for the matrix filename (drop separators)."""
-    cleaned = re.sub(r"[\\/]+", " ", (name or "").strip()).strip()
-    return cleaned or "Untitled"
+def _folder_component(folder_name: str, *, vault: Path) -> str:
+    """Validate, but never rewrite, a persisted physical folder identity.
+
+    ``folder_name`` is allocated and frozen by :mod:`project_meta`. Re-running
+    a sanitizer here would allow separate consumers to derive separate paths.
+    Legacy values that are not portable require the explicit folder migration
+    rather than being silently mapped to a new Matrix filename on read.
+    """
+    try:
+        try:
+            from project_meta import validate_folder_identity, ProjectStorageError
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator.project_meta import (
+                validate_folder_identity,
+                ProjectStorageError,
+            )
+        return validate_folder_identity(folder_name, vault_root=vault)
+    except ProjectStorageError as exc:
+        raise MatrixMigrationRequiredError(str(exc)) from exc
+
+
+def _matrix_filename(folder_name: str, *, vault: Path) -> str:
+    return f"Project Matrix {_folder_component(folder_name, vault=vault)}.md"
 
 
 # ---------------------------------------------------------------------------
@@ -106,30 +146,41 @@ def _frontmatter_nexus(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def resolve_matrix_path(
-    nexus: str, name: str | None = None, *, vault: Path | None = None
+    nexus: str, folder_name: str | None = None, *, vault: Path | None = None
 ) -> Path | None:
     """Find a project's Operation-Matrix file, or None.
 
-    Tries the ``Project Matrix <Name>.md`` naming convention first, then scans
-    ``Matrix/*.md`` for a file whose frontmatter ``nexus`` contains ``nexus``.
+    A convention-name candidate is accepted only when its frontmatter claims
+    ``nexus``. The full directory is always scanned so duplicate Matrix files
+    cannot be hidden by a preferred filename. Duplicate claims raise a typed
+    ambiguity error; callers must not guess which canonical file to edit.
     """
     mdir = _matrix_dir(vault)
     if not mdir.is_dir():
         return None
-    if name:
-        cand = mdir / f"Project Matrix {_safe_name(name)}.md"
-        if cand.is_file():
-            return cand
     nexus_l = (nexus or "").strip().lower()
     if not nexus_l or nexus_l in ("commons", "general"):
         return None
+    if folder_name:
+        _matrix_filename(folder_name, vault=mdir.parent)
+    matches: list[Path] = []
     for pf in sorted(mdir.glob("*.md")):
         try:
-            head = pf.read_text(encoding="utf-8")[:2048]
+            text = pf.read_text(encoding="utf-8")
         except OSError:
             continue
-        if nexus_l in _frontmatter_nexus(head):
-            return pf
+        if nexus_l in _frontmatter_nexus(text):
+            matches.append(pf)
+    if len(matches) > 1:
+        raise MatrixAmbiguityError(
+            f"multiple Matrix files claim nexus {nexus_l!r}: "
+            + ", ".join(str(path) for path in matches)
+        )
+    if matches:
+        return matches[0]
+    # A convention-name collision belonging to another nexus must not be
+    # overwritten during creation. Resolution still returns None so reads
+    # correctly report "not created"; _create_matrix raises on the collision.
     return None
 
 
@@ -272,14 +323,14 @@ def _empty_mom() -> dict[str, Any]:
 
 
 def read_mom(
-    nexus: str, name: str | None = None, *, vault: Path | None = None
+    nexus: str, folder_name: str | None = None, *, vault: Path | None = None
 ) -> dict[str, Any]:
     """Read a project's MOM from its Operation-Matrix file.
 
     Returns ``exists: False`` (with empty fields) when no matrix file is found —
     never raises, so a missing vault degrades gracefully.
     """
-    path = resolve_matrix_path(nexus, name, vault=vault)
+    path = resolve_matrix_path(nexus, folder_name, vault=vault)
     if path is None:
         return _empty_mom()
     try:
@@ -297,7 +348,7 @@ def read_mom(
     }
 
 
-def _new_matrix_text(nexus: str, name: str) -> str:
+def _new_matrix_text(nexus: str, display_name: str) -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     fm = (
         "---\n"
@@ -308,21 +359,57 @@ def _new_matrix_text(nexus: str, name: str) -> str:
         f"date modified: {today}\n"
         "---\n\n"
     )
-    title = f"# Project Matrix {_safe_name(name)}\n\n"
+    # The filename is a frozen portable storage identity; the H1 remains the
+    # current human-facing label, including punctuation that is not filename-
+    # safe. Display-only renames therefore never move the canonical file.
+    title = f"# Project Matrix {display_name}\n\n"
     sections = "".join(_format_section(h, "") for h in MOM_HEADINGS)
     return fm + title + sections
 
 
-def _create_matrix(nexus: str, name: str, *, vault: Path | None = None) -> Path | None:
+def _create_matrix(
+    nexus: str,
+    folder_name: str,
+    display_name: str,
+    *,
+    vault: Path | None = None,
+) -> Path | None:
     mdir = _matrix_dir(vault)
+    # A cloud/headless process with no configured vault must not manufacture a
+    # parallel Documents/vault tree merely because a user saved MOM fields.
+    vroot = mdir.parent
+    if not vroot.is_dir():
+        return None
     try:
-        mdir.mkdir(parents=True, exist_ok=True)
+        mdir.mkdir(exist_ok=True)
     except OSError:
         return None
-    path = mdir / f"Project Matrix {_safe_name(name)}.md"
+    path = mdir / _matrix_filename(folder_name, vault=vroot)
+    created = False
     try:
-        _atomic_write(path, _new_matrix_text(nexus, name))
+        # Exclusive creation prevents two projects or concurrent requests from
+        # replacing a Matrix file between resolution and creation.
+        with path.open("x", encoding="utf-8") as stream:
+            created = True
+            stream.write(_new_matrix_text(nexus, display_name))
+    except FileExistsError:
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise MatrixMigrationRequiredError(
+                f"Matrix path already exists and could not be verified: {path}"
+            ) from exc
+        if (nexus or "").strip().lower() in _frontmatter_nexus(existing):
+            return path
+        raise MatrixMigrationRequiredError(
+            f"Matrix path {path} already belongs to another project"
+        )
     except OSError:
+        if created:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
         return None
     return path
 
@@ -352,8 +439,9 @@ def _atomic_write(path: Path, text: str) -> None:
 
 def write_mom(
     nexus: str,
-    name: str | None = None,
+    folder_name: str | None = None,
     *,
+    display_name: str | None = None,
     mission: str | None = None,
     objectives: str | None = None,
     milestones: list[dict[str, Any]] | None = None,
@@ -372,11 +460,16 @@ def write_mom(
     """
     if (nexus or "").strip().lower() in ("", "commons", "general"):
         return None  # Commons is synthetic — no matrix file
-    path = resolve_matrix_path(nexus, name, vault=vault)
+    path = resolve_matrix_path(nexus, folder_name, vault=vault)
     if path is None:
-        if not create_if_missing or not name:
+        if not create_if_missing or not folder_name:
             return None
-        path = _create_matrix(nexus, name, vault=vault)
+        path = _create_matrix(
+            nexus,
+            folder_name,
+            display_name or folder_name,
+            vault=vault,
+        )
         if path is None:
             return None
     try:
@@ -398,11 +491,14 @@ def write_mom(
         _atomic_write(path, text)
     except OSError:
         return None
-    return read_mom(nexus, name, vault=vault)
+    return read_mom(nexus, folder_name, vault=vault)
 
 
 __all__ = [
     "MOM_HEADINGS",
+    "MatrixError",
+    "MatrixAmbiguityError",
+    "MatrixMigrationRequiredError",
     "vault_root",
     "resolve_matrix_path",
     "read_mom",
