@@ -78,14 +78,18 @@ class ClaudeCLIClient:
                  binary:       Optional[str] = None):
         self.timeout_secs = timeout_secs
         self.max_retries  = max_retries
-        self.binary       = binary or os.environ.get(ENV_CLI_BIN, "claude")
+        requested_binary = binary or os.environ.get(ENV_CLI_BIN, "claude")
         self._stats       = ClientStats()
         self._lock        = threading.Lock()
-        if shutil.which(self.binary) is None:
+        resolved_binary = shutil.which(requested_binary)
+        if resolved_binary is None:
             raise RuntimeError(
-                f"claude CLI not found ('{self.binary}'). Install Claude "
+                f"claude CLI not found ('{requested_binary}'). Install Claude "
                 f"Code or set {ENV_CLI_BIN} to the binary path."
             )
+        # Preserve the exact executable that passed validation. On Windows,
+        # PATHEXT may resolve an extensionless request to ``claude.cmd``.
+        self.binary = resolved_binary
         # Neutral, empty working directory: the CLI auto-discovers
         # project context (CLAUDE.md etc.) from its cwd, and cleanup
         # calls must run context-free.

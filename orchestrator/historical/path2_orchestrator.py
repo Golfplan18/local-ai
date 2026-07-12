@@ -42,6 +42,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.conversation_chunk import (
     _extract_keywords,
     append_chunk_manifest,
@@ -64,12 +65,12 @@ from orchestrator.historical.paste_detection import process_user_input
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_CLEANED_PAIR_DIR  = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_CONVERSATIONS_DIR = "/Users/oracle/Documents/conversations"
+DEFAULT_CLEANED_PAIR_DIR  = str(_rp.historical_archive_dir())
+DEFAULT_CONVERSATIONS_DIR = str(_rp.conversations_dir())
 # Live pipeline writes to ~/ora/chromadb/ — Phase 2 must match so
 # historical chunks land in the same `conversations` collection that
 # RAG queries hit.
-DEFAULT_CHROMADB_PATH     = "/Users/oracle/ora/chromadb"
+DEFAULT_CHROMADB_PATH     = str(_rp.chromadb_dir())
 
 # The tracked BGE-M3 install default has an 8,192-token context, and alternate
 # configured embedders may impose their own bound. Keep a conservative common

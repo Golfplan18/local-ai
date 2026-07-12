@@ -8,13 +8,353 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import ntpath
 import os
+import re
 import stat
 import tempfile
 import time
-from pathlib import Path
+import uuid
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Callable, Mapping
 
-ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
+
+class PathConfigurationError(ValueError):
+    """An explicit runtime-path override is ambiguous or unsafe."""
+
+
+@dataclass(frozen=True)
+class RuntimeRoots:
+    """One coherent snapshot of Ora's user-storage roots."""
+
+    ora_home: Path
+    documents: Path
+    vault: Path
+    conversations: Path
+    historical_archive: Path
+    chromadb: Path
+    sources: Mapping[str, str]
+    warnings: tuple[str, ...] = ()
+
+
+_FOLDERID_DOCUMENTS = "fdd39ad0-238f-46af-adb4-6c85480369c7"
+
+
+def _known_folder_text(out) -> str:
+    """Copy a shell-owned wide string before its COM buffer is released."""
+    try:
+        value = out.value
+    except (UnicodeError, ValueError, OSError) as exc:
+        raise OSError(f"Could not decode Windows Documents Known Folder: {exc}") from exc
+    if not value:
+        raise OSError("SHGetKnownFolderPath returned an empty Documents path")
+    return value
+
+
+def _windows_documents_dir() -> Path:
+    """Resolve Windows' Documents Known Folder and free the COM buffer."""
+    import ctypes
+    from ctypes import wintypes
+
+    class _GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    value = uuid.UUID(_FOLDERID_DOCUMENTS)
+    guid = _GUID(
+        value.time_low,
+        value.time_mid,
+        value.time_hi_version,
+        (ctypes.c_ubyte * 8)(*value.bytes[8:]),
+    )
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    ole32 = ctypes.WinDLL("ole32", use_last_error=True)
+    get_path = shell32.SHGetKnownFolderPath
+    get_path.argtypes = [
+        ctypes.POINTER(_GUID),
+        wintypes.DWORD,
+        wintypes.HANDLE,
+        ctypes.POINTER(ctypes.c_wchar_p),
+    ]
+    get_path.restype = ctypes.c_long
+    free_path = ole32.CoTaskMemFree
+    free_path.argtypes = [ctypes.c_void_p]
+    free_path.restype = None
+
+    out = ctypes.c_wchar_p()
+    try:
+        hr = int(get_path(ctypes.byref(guid), 0, None, ctypes.byref(out)))
+        if hr < 0:  # COM FAILED(hr)
+            raise OSError(
+                "SHGetKnownFolderPath(FOLDERID_Documents) failed with "
+                f"HRESULT 0x{hr & 0xFFFFFFFF:08X}"
+            )
+        return Path(_known_folder_text(out))
+    finally:
+        if out:
+            free_path(ctypes.cast(out, ctypes.c_void_p))
+
+
+def _windows_env_value(env: Mapping[str, str], name: str) -> str | None:
+    wanted = name.casefold()
+    for key, value in env.items():
+        if str(key).casefold() == wanted:
+            return str(value)
+    return None
+
+
+def _expand_configured_path(
+    raw: str, env: Mapping[str, str], os_name: str, home: Path
+) -> str:
+    if os_name != "nt":
+        return os.path.expandvars(os.path.expanduser(raw))
+
+    if raw == "~":
+        raw = str(home)
+    elif raw.startswith(("~/", "~\\")):
+        raw = str(home) + raw[1:]
+
+    def percent_var(match: re.Match) -> str:
+        return _windows_env_value(env, match.group(1)) or match.group(0)
+
+    def dollar_var(match: re.Match) -> str:
+        name = match.group(1) or match.group(2)
+        return _windows_env_value(env, name) or match.group(0)
+
+    raw = re.sub(r"%([^%]+)%", percent_var, raw)
+    return re.sub(r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)", dollar_var, raw)
+
+
+def _is_absolute(path: str, os_name: str) -> bool:
+    if os_name != "nt":
+        return os.path.isabs(path)
+    drive, tail = ntpath.splitdrive(path)
+    if drive.startswith(("\\\\", "//")):
+        return ntpath.isabs(path)
+    return bool(drive) and tail.startswith(("\\", "/"))
+
+
+def _path_value(path: str, os_name: str) -> Path:
+    normalized = ntpath.normpath(path) if os_name == "nt" else os.path.normpath(path)
+    return Path(normalized)
+
+
+def _join_path(root: Path, *parts: str, os_name: str) -> Path:
+    raw = str(root)
+    if os_name == "nt" and _is_absolute(raw, "nt"):
+        return Path(ntpath.join(raw, *parts))
+    return Path(root).joinpath(*parts)
+
+
+def _explicit_path(
+    env: Mapping[str, str], name: str, *, os_name: str, home: Path
+) -> Path | None:
+    configured = (
+        _windows_env_value(env, name) if os_name == "nt" else env.get(name, "")
+    )
+    raw = str(configured or "").strip()
+    if not raw:
+        return None
+    expanded = _expand_configured_path(raw, env, os_name, home)
+    if not _is_absolute(expanded, os_name):
+        raise PathConfigurationError(
+            f"{name} must be an absolute path after expansion; got {raw!r}"
+        )
+    return _path_value(expanded, os_name)
+
+
+def _comparison_key(path: Path, os_name: str) -> str:
+    if os_name == "nt":
+        raw = str(path)
+        normalized = os.path.realpath(raw) if os.name == "nt" else ntpath.normpath(raw)
+        return ntpath.normcase(normalized)
+    return os.path.normcase(os.path.realpath(str(path)))
+
+
+def resolve_runtime_roots(
+    env: Mapping[str, str] | None = None,
+    *,
+    os_name: str | None = None,
+    home: Path | None = None,
+    known_documents_resolver: Callable[[], Path] | None = None,
+    path_exists: Callable[[Path], bool] | None = None,
+) -> RuntimeRoots:
+    """Resolve Ora roots with explicit precedence and conflict detection."""
+    env = os.environ if env is None else env
+    os_name = os.name if os_name is None else os_name
+    home = Path.home() if home is None else Path(home)
+    path_exists = (lambda path: path.exists()) if path_exists is None else path_exists
+    warnings: list[str] = []
+    sources: dict[str, str] = {}
+
+    explicit_home = _explicit_path(env, "ORA_HOME", os_name=os_name, home=home)
+    ora_home = explicit_home or _join_path(home, "ora", os_name=os_name)
+    sources["ora_home"] = "ORA_HOME" if explicit_home else "home-default"
+
+    documents = _explicit_path(env, "ORA_DOCUMENTS", os_name=os_name, home=home)
+    if documents is not None:
+        sources["documents"] = "ORA_DOCUMENTS"
+    elif os_name == "nt":
+        resolver = known_documents_resolver or _windows_documents_dir
+        try:
+            raw_documents = str(resolver())
+            if not _is_absolute(raw_documents, os_name):
+                raise OSError(
+                    f"Documents Known Folder is not absolute: {raw_documents!r}"
+                )
+            documents = _path_value(raw_documents, os_name)
+            sources["documents"] = "windows-known-folder"
+        except Exception as exc:
+            documents = _join_path(home, "Documents", os_name=os_name)
+            sources["documents"] = "home-fallback"
+            warnings.append(
+                "Windows Documents Known Folder resolution failed; using "
+                f"{documents}. Set ORA_DOCUMENTS to override. Cause: {exc}"
+            )
+    else:
+        documents = _join_path(home, "Documents", os_name=os_name)
+        sources["documents"] = "home-default"
+
+    canonical_vault = _explicit_path(env, "ORA_VAULT", os_name=os_name, home=home)
+    legacy_vault = _explicit_path(env, "ORA_VAULT_PATH", os_name=os_name, home=home)
+    if canonical_vault is not None and legacy_vault is not None:
+        if _comparison_key(canonical_vault, os_name) != _comparison_key(legacy_vault, os_name):
+            raise PathConfigurationError(
+                "ORA_VAULT and legacy ORA_VAULT_PATH resolve to different "
+                f"locations: {canonical_vault} != {legacy_vault}"
+            )
+        vault = canonical_vault
+        sources["vault"] = "ORA_VAULT+ORA_VAULT_PATH"
+    elif canonical_vault is not None:
+        vault = canonical_vault
+        sources["vault"] = "ORA_VAULT"
+    elif legacy_vault is not None:
+        old_default = _join_path(home, "Documents", "vault", os_name=os_name)
+        redirected_default = _join_path(documents, "vault", os_name=os_name)
+        if (
+            _comparison_key(documents, os_name)
+            != _comparison_key(_join_path(home, "Documents", os_name=os_name), os_name)
+            and _comparison_key(legacy_vault, os_name)
+            == _comparison_key(old_default, os_name)
+            and _comparison_key(legacy_vault, os_name)
+            != _comparison_key(redirected_default, os_name)
+        ):
+            raise PathConfigurationError(
+                "legacy ORA_VAULT_PATH points at the pre-redirection default "
+                f"{legacy_vault}, but Documents resolves to {documents}. "
+                "Unset ORA_VAULT_PATH to use the redirected Documents vault, "
+                "or replace it with ORA_VAULT set to the intended vault."
+            )
+        vault = legacy_vault
+        sources["vault"] = "ORA_VAULT_PATH"
+    else:
+        vault = _join_path(documents, "vault", os_name=os_name)
+        legacy_default = _join_path(home, "Documents", "vault", os_name=os_name)
+        if (
+            os_name == "nt"
+            and sources["documents"] == "windows-known-folder"
+            and _comparison_key(vault, os_name)
+            != _comparison_key(legacy_default, os_name)
+            and path_exists(legacy_default)
+        ):
+            raise PathConfigurationError(
+                "Windows Documents is redirected, but a vault already exists at "
+                f"the pre-redirection default {legacy_default}. Set ORA_VAULT "
+                f"explicitly to either {legacy_default} or {vault} before Ora starts."
+            )
+        sources["vault"] = "documents-default"
+
+    conversations = _explicit_path(
+        env, "ORA_CONVERSATIONS", os_name=os_name, home=home
+    )
+    if conversations is None:
+        conversations = _join_path(documents, "conversations", os_name=os_name)
+        sources["conversations"] = "documents-default"
+    else:
+        sources["conversations"] = "ORA_CONVERSATIONS"
+
+    historical_archive = _explicit_path(
+        env, "ORA_HISTORICAL_ARCHIVE", os_name=os_name, home=home
+    )
+    if historical_archive is None:
+        historical_archive = _join_path(
+            documents, "Commercial AI archives", os_name=os_name
+        )
+        sources["historical_archive"] = "documents-default"
+    else:
+        sources["historical_archive"] = "ORA_HISTORICAL_ARCHIVE"
+
+    chromadb = _explicit_path(env, "ORA_CHROMADB_PATH", os_name=os_name, home=home)
+    if chromadb is None:
+        chromadb = _join_path(ora_home, "chromadb", os_name=os_name)
+        sources["chromadb"] = "ora-home-default"
+    else:
+        sources["chromadb"] = "ORA_CHROMADB_PATH"
+
+    return RuntimeRoots(
+        ora_home=ora_home,
+        documents=documents,
+        vault=vault,
+        conversations=conversations,
+        historical_archive=historical_archive,
+        chromadb=chromadb,
+        sources=sources,
+        warnings=tuple(warnings),
+    )
+
+
+def documents_dir() -> Path:
+    return resolve_runtime_roots().documents
+
+
+def vault_dir() -> Path:
+    return resolve_runtime_roots().vault
+
+
+def conversations_dir() -> Path:
+    return resolve_runtime_roots().conversations
+
+
+def historical_archive_dir() -> Path:
+    return resolve_runtime_roots().historical_archive
+
+
+def chromadb_dir() -> Path:
+    return resolve_runtime_roots().chromadb
+
+
+def home_relative_display(path, *, home=None) -> str:
+    """Render a path under the user's home as portable ``~/...`` metadata.
+
+    ``PureWindowsPath`` makes Windows drive, separator, and case semantics
+    testable on POSIX. Paths outside home (including another drive) pass
+    through unchanged rather than leaking a fabricated relative location.
+    """
+    raw = str(path)
+    home_raw = str(Path.home() if home is None else home)
+    is_windows = bool(ntpath.splitdrive(raw)[0] or ntpath.splitdrive(home_raw)[0])
+    path_type = PureWindowsPath if is_windows else PurePosixPath
+    base = path_type(home_raw)
+    if raw == "~":
+        candidate = base
+    elif raw.startswith(("~/", "~\\")):
+        candidate = base.joinpath(*raw[2:].replace("\\", "/").split("/"))
+    else:
+        candidate = path_type(raw)
+    try:
+        relative = candidate.relative_to(base)
+    except ValueError:
+        return raw
+    return "~" if not relative.parts else "~/" + relative.as_posix()
+
+
+_INITIAL_ROOTS = resolve_runtime_roots()
+ORA_HOME = _INITIAL_ROOTS.ora_home
 CONFIG_DIR = ORA_HOME / "config"
 DATA_DIR = ORA_HOME / "data"
 RUNTIME_ROOT = Path(os.environ.get("ORA_RUNTIME_ROOT") or (DATA_DIR / "runtime"))
@@ -24,9 +364,8 @@ RUNTIME_CONFIGURATIONS_DIR = RUNTIME_CONFIG_DIR / "configurations"
 
 # ── Ora roots (the single cross-platform source; env-overridable) ──────────
 # Every Ora root Phase 1 needs is resolved here so no module hardcodes
-# ~/ora or ~/Documents. Defaults are POSIX-shaped but built from
-# expanduser("~"), so they resolve correctly on Windows (%USERPROFILE%);
-# each is overridable by an env var for non-default layouts.
+# ~/ora or ~/Documents. Compatibility constants are import-time snapshots;
+# new user-storage decisions should use the call-time accessors above.
 _HOME = os.path.expanduser("~")
 
 
@@ -37,8 +376,11 @@ def _env_dir(env_name: str, *default_parts: str) -> Path:
 
 LOGS_DIR = ORA_HOME / "logs"
 SCRATCH_DIR = _env_dir("ORA_SCRATCH", str(ORA_HOME), "scratch")
-VAULT = _env_dir("ORA_VAULT", _HOME, "Documents", "vault")
-CONVERSATIONS = _env_dir("ORA_CONVERSATIONS", _HOME, "Documents", "conversations")
+DOCUMENTS = _INITIAL_ROOTS.documents
+VAULT = _INITIAL_ROOTS.vault
+CONVERSATIONS = _INITIAL_ROOTS.conversations
+HISTORICAL_ARCHIVE_DIR = _INITIAL_ROOTS.historical_archive
+CHROMADB_DIR = _INITIAL_ROOTS.chromadb
 
 # String forms for the many os.path-based consumers (dispatcher, tool_events).
 WORKSPACE = str(ORA_HOME)
@@ -47,6 +389,9 @@ CONVERSATIONS_STR = str(CONVERSATIONS)
 DATA_DIR_STR = str(DATA_DIR)
 CONFIG_DIR_STR = str(CONFIG_DIR)
 SCRATCH_DIR_STR = str(SCRATCH_DIR)
+DOCUMENTS_STR = str(DOCUMENTS)
+HISTORICAL_ARCHIVE_DIR_STR = str(HISTORICAL_ARCHIVE_DIR)
+CHROMADB_DIR_STR = str(CHROMADB_DIR)
 
 # ── Oversight/telemetry write sandbox (test harness hook) ───────────────────
 # When ORA_OVERSIGHT_SANDBOX names a directory, every durable oversight and

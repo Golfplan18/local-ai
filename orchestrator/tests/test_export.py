@@ -9,6 +9,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("ORA_HOME", _REPO)
@@ -45,6 +46,39 @@ class ExportModuleTests(unittest.TestCase):
         self.assertTrue(out["resources"]["exists"])
         self.assertTrue(ex_dir.is_dir())
         self.assertTrue(res_dir.is_dir())
+
+    def test_default_export_roots_follow_late_documents_override(self):
+        docs = self.root / "Redirected Documents"
+        with mock.patch.dict(os.environ, {"ORA_DOCUMENTS": str(docs)}, clear=False):
+            self.assertEqual(ex.current_exports_dir(), docs / "Ora Exports")
+            self.assertEqual(ex.current_resources_dir(), docs / "Ora Resources")
+
+    def test_windows_binary_search_dirs_cover_common_installers(self):
+        dirs = ex._binary_search_dirs("nt", {
+            "LOCALAPPDATA": r"C:\Users\ora\AppData\Local",
+            "ProgramFiles": r"C:\Program Files",
+            "ProgramFiles(x86)": r"C:\Program Files (x86)",
+            "ProgramData": r"C:\ProgramData",
+            "USERPROFILE": r"C:\Users\ora",
+        })
+        self.assertIn(r"C:\Users\ora\AppData\Local\Pandoc", dirs)
+        self.assertIn(r"C:\Program Files\Pandoc", dirs)
+        self.assertIn(r"C:\ProgramData\chocolatey\bin", dirs)
+        self.assertIn(r"C:\Users\ora\scoop\shims", dirs)
+        self.assertIn(r"C:\Users\ora\.cargo\bin", dirs)
+        self.assertIn(
+            r"C:\Users\ora\AppData\Local\Microsoft\WinGet\Links", dirs,
+        )
+
+    def test_binary_lookup_uses_which_for_pathext_fallback(self):
+        directory = r"C:\Program Files\Pandoc"
+        resolved = directory + r"\pandoc.exe"
+        with (
+            mock.patch.object(ex, "_binary_search_dirs", return_value=(directory,)),
+            mock.patch.object(ex.shutil, "which", side_effect=[None, resolved]) as which,
+        ):
+            self.assertEqual(ex._which("pandoc"), resolved)
+        self.assertEqual(which.call_args_list[1], mock.call("pandoc", path=directory))
 
     def test_save_commons_goes_to_vault_root(self):
         path = ex.save_output_to_vault("# Hello\n\nbody", title="My Note", vault=self.vault)

@@ -5699,7 +5699,10 @@ def api_fs_reveal():
         target = _P(raw).resolve()
         allowed_roots = [_om.vault_root().resolve()]
         try:
-            allowed_roots += [_export.EXPORTS_DIR.resolve(), _export.RESOURCES_DIR.resolve()]
+            allowed_roots += [
+                _export.current_exports_dir().resolve(),
+                _export.current_resources_dir().resolve(),
+            ]
         except Exception:
             pass
         if not any(target == r or r in target.parents for r in allowed_roots):

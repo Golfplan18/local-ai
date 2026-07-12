@@ -32,6 +32,18 @@ import oversight_daemon as od  # noqa: E402
 from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 
+class RuntimePathTests(unittest.TestCase):
+    def test_default_vault_path_delegates_to_shared_resolver(self):
+        target = Path("/tmp/redirected-oversight-vault")
+        with mock.patch.object(od._rp, "vault_dir", return_value=target):
+            self.assertEqual(od._vault_path(), str(target))
+
+    def test_scan_pruning_is_separator_independent(self):
+        dirs = ["Archive", ".obsidian", "Sessions", "Projects", "Notes"]
+        od._prune_scan_dirs(dirs)
+        self.assertEqual(dirs, ["Projects", "Notes"])
+
+
 class MaybeRunTests(unittest.TestCase):
     def test_runs_when_due_and_records_last_run(self):
         d = od.OversightDaemon()

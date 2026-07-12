@@ -27,9 +27,9 @@ guards in pair_cleanup). This module repairs the damage in place:
 
 CLI:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.repair_refusal_pairs \
+    python -m orchestrator.historical.repair_refusal_pairs \
         --scan
-    /opt/homebrew/bin/python3 -m orchestrator.historical.repair_refusal_pairs \
+    python -m orchestrator.historical.repair_refusal_pairs \
         --repair --backend claude-cli
 """
 
@@ -47,6 +47,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.cleanup_backends import (
     BACKEND_CHOICES,
     BACKEND_CLAUDE_CLI,
@@ -64,9 +65,9 @@ from orchestrator.historical.writer import (
 from orchestrator.tools.vault_indexer import INDEX_DEFAULT, load_index
 
 
-DEFAULT_ARCHIVE_DIR = os.path.expanduser("~/Documents/Commercial AI archives")
-DEFAULT_REPAIR_LIST = os.path.expanduser("~/ora/data/refusal-repair-list.json")
-DEFAULT_REPORT_PATH = os.path.expanduser("~/ora/data/refusal-repair-report.json")
+DEFAULT_ARCHIVE_DIR = str(_rp.historical_archive_dir())
+DEFAULT_REPAIR_LIST = str(_rp.DATA_DIR / "refusal-repair-list.json")
+DEFAULT_REPORT_PATH = str(_rp.DATA_DIR / "refusal-repair-report.json")
 
 # Raw-archive relocation: cleaned-pair frontmatter records the ORIGINAL
 # input path; the historical raw corpus has since moved.
@@ -499,8 +500,7 @@ def fix_chunks(report_path: str = DEFAULT_REPORT_PATH,
 
     # Delete stale chunk files for affected sessions (paths recovered
     # from ChromaDB metadata under deterministic ids).
-    client = chromadb.PersistentClient(
-        path="/Users/oracle/ora/chromadb")
+    client = chromadb.PersistentClient(path=str(_rp.chromadb_dir()))
     col = get_or_create_collection(client, "conversations")
     stale_deleted = 0
     ids_batch: list[str] = []

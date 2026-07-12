@@ -33,9 +33,9 @@ models.
 
 CLI:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.ingest \
+    python -m orchestrator.historical.ingest \
         --backend claude-cli
-    /opt/homebrew/bin/python3 -m orchestrator.historical.ingest \
+    python -m orchestrator.historical.ingest \
         --input-dir ~/Documents/conversations/raw --no-engrams
 
 This is the runnable entry point for the Conversation Processing

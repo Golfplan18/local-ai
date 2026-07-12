@@ -339,6 +339,21 @@ class TestClaudeCLIClient(unittest.TestCase):
         self.assertNotIn("user text", cmd)
         self.assertEqual(run.call_args[1]["input"], "user text")
 
+    def test_launches_the_pathext_resolved_binary(self):
+        resolved = r"C:\Users\Ora\bin\claude.cmd"
+        with patch(
+            "orchestrator.historical.cleanup_backends.shutil.which",
+            return_value=resolved,
+        ):
+            client = ClaudeCLIClient(binary="claude")
+        with patch(
+            "orchestrator.historical.cleanup_backends.subprocess.run",
+            return_value=_proc(),
+        ) as run:
+            client.call(system="s", user="u")
+        self.assertEqual(client.binary, resolved)
+        self.assertEqual(run.call_args[0][0][0], resolved)
+
     def test_call_is_locked_down(self):
         # The archive text is adversarial by construction; the CLI call
         # must be a pure text transform — no tools, no settings, no

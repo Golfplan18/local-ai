@@ -96,6 +96,23 @@ class ClassifyTimesTests(unittest.TestCase):
         self.assertIsNone(dn.classify_times(2500, 2500, start, end))
 
 
+class RuntimePathTests(unittest.TestCase):
+    def test_daily_dir_uses_shared_canonical_vault_resolver(self):
+        vault = Path(tempfile.gettempdir()) / "daily-note-canonical-vault"
+        with mock.patch.dict(os.environ, {"ORA_VAULT": str(vault)}, clear=True):
+            self.assertEqual(Path(dn.daily_dir()), vault / dn.DAILY_DIR_NAME)
+
+    def test_conflicting_vault_aliases_are_not_silently_preferred(self):
+        root = Path(tempfile.gettempdir()) / "daily-note-conflict"
+        with mock.patch.dict(
+            os.environ,
+            {"ORA_VAULT": str(root / "a"), "ORA_VAULT_PATH": str(root / "b")},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "ORA_VAULT"):
+                dn.daily_dir()
+
+
 class CollectConversationsTests(DailyNoteBase):
     def test_groups_chunks_by_panel(self):
         self._chunk("2026-06-10", "09:15", "proj-alpha", "First question?", slug="a1")

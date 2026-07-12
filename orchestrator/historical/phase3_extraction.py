@@ -49,6 +49,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
@@ -97,10 +98,10 @@ def _read_classifications_from_annotation(file_text: str) -> dict[int, str]:
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_ARCHIVE_DIR    = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_RESOURCES_ROOT = "/Users/oracle/Documents/vault/Resources"
-DEFAULT_MANIFEST_PATH  = "/Users/oracle/ora/data/phase3-manifest.json"
-DEFAULT_REPORT_PATH    = "/Users/oracle/ora/data/phase3-report.json"
+DEFAULT_ARCHIVE_DIR    = str(_rp.historical_archive_dir())
+DEFAULT_RESOURCES_ROOT = str(_rp.vault_dir() / "Resources")
+DEFAULT_MANIFEST_PATH  = str(_rp.DATA_DIR / "phase3-manifest.json")
+DEFAULT_REPORT_PATH    = str(_rp.DATA_DIR / "phase3-report.json")
 
 # Sonnet 4.5 — chosen for extraction quality per user direction.
 EXTRACTION_MODEL = "claude-sonnet-4-5"

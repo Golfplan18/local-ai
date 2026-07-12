@@ -20,6 +20,11 @@ if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
 from orchestrator.historical import ingest  # noqa: E402
+from orchestrator import runtime_paths as _rp  # noqa: E402
+from orchestrator.historical import path2_cli, path2_orchestrator  # noqa: E402
+from orchestrator.historical import phase3_extraction, phase5_atomic_extraction  # noqa: E402
+from orchestrator.historical import rebuild_atomic_dedup, repair_refusal_pairs  # noqa: E402
+from orchestrator.historical import writer  # noqa: E402
 
 
 def _mocks():
@@ -39,6 +44,32 @@ def _mocks():
 
 
 class TestRunIngest(unittest.TestCase):
+
+    def test_historical_defaults_share_runtime_roots(self):
+        self.assertEqual(path2_cli.DEFAULT_MANIFEST_PATH,
+                         str(_rp.DATA_DIR / "path2-manifest.json"))
+        self.assertEqual(path2_orchestrator.DEFAULT_CLEANED_PAIR_DIR,
+                         str(_rp.historical_archive_dir()))
+        self.assertEqual(path2_orchestrator.DEFAULT_CONVERSATIONS_DIR,
+                         str(_rp.conversations_dir()))
+        self.assertEqual(path2_orchestrator.DEFAULT_CHROMADB_PATH,
+                         str(_rp.chromadb_dir()))
+        self.assertEqual(phase3_extraction.DEFAULT_ARCHIVE_DIR,
+                         str(_rp.historical_archive_dir()))
+        self.assertEqual(phase3_extraction.DEFAULT_RESOURCES_ROOT,
+                         str(_rp.vault_dir() / "Resources"))
+        self.assertEqual(phase3_extraction.DEFAULT_MANIFEST_PATH,
+                         str(_rp.DATA_DIR / "phase3-manifest.json"))
+        self.assertEqual(phase5_atomic_extraction.DEFAULT_VAULT_ROOT,
+                         str(_rp.vault_dir() / "Engrams" / "Historical Atomics"))
+        self.assertEqual(rebuild_atomic_dedup.VAULT_ROOT,
+                         str(_rp.vault_dir() / "Engrams"))
+        self.assertEqual(rebuild_atomic_dedup.CHROMA_PATH,
+                         str(_rp.chromadb_dir()))
+        self.assertEqual(repair_refusal_pairs.DEFAULT_REPORT_PATH,
+                         str(_rp.DATA_DIR / "refusal-repair-report.json"))
+        self.assertEqual(writer.DEFAULT_OUTPUT_DIR,
+                         str(_rp.historical_archive_dir()))
 
     def test_all_stages_run_in_order(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()

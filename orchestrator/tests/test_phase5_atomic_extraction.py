@@ -23,6 +23,7 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     AtomicCandidate,
     DEDUP_SIM_THRESHOLD,
     PairResult,
+    _empty_manifest,
     _atomic_uid,
     _slugify,
     _vault_path_for,
@@ -106,6 +107,11 @@ class TestBuildAtomicNote(unittest.TestCase):
         self.assertIn("# Premature abstraction", body)
         self.assertIn("Abstractions designed before requirements stabilize", body)
         self.assertIn("## Source", body)
+
+    def test_empty_manifest_is_platform_neutral(self):
+        manifest = _empty_manifest()
+        self.assertEqual(manifest["completed_pairs"], {})
+        self.assertEqual(manifest["totals"]["pairs_processed"], 0)
 
 
 # ---------------------------------------------------------------------------

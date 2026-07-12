@@ -29,6 +29,7 @@ vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
 from __future__ import annotations
 
 import os
+import ntpath
 import re
 import shutil
 import subprocess
@@ -38,11 +39,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.operation_matrix import vault_root
 
 # §2.8 LOCKED locations — siblings of ~/Documents/vault, outside the vault.
-EXPORTS_DIR = Path.home() / "Documents" / "Ora Exports"
-RESOURCES_DIR = Path.home() / "Documents" / "Ora Resources"
+_INITIAL_EXPORTS_DIR = _rp.DOCUMENTS / "Ora Exports"
+_INITIAL_RESOURCES_DIR = _rp.DOCUMENTS / "Ora Resources"
+EXPORTS_DIR = _INITIAL_EXPORTS_DIR  # compatibility patch hook
+RESOURCES_DIR = _INITIAL_RESOURCES_DIR  # compatibility patch hook
 
 # Deprecated compatibility constant for out-of-tree callers that explicitly
 # request the former folder. It is intentionally no longer the function
@@ -72,6 +76,21 @@ class ProjectExportMigrationRequiredError(ProjectExportIdentityError):
 class ExportPathError(ExportError):
     """The destination leaves no safe Windows filename budget."""
 
+
+def current_exports_dir() -> Path:
+    """Configured generated-export root, resolved at call time."""
+    if Path(EXPORTS_DIR) != _INITIAL_EXPORTS_DIR:
+        return Path(EXPORTS_DIR)
+    return _rp.documents_dir() / "Ora Exports"
+
+
+def current_resources_dir() -> Path:
+    """Configured imported-resource root, resolved at call time."""
+    if Path(RESOURCES_DIR) != _INITIAL_RESOURCES_DIR:
+        return Path(RESOURCES_DIR)
+    return _rp.documents_dir() / "Ora Resources"
+
+
 def ensure_export_dirs(
     exports_dir: Path | None = None, resources_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -79,8 +98,8 @@ def ensure_export_dirs(
 
     Returns their paths and whether each exists, for the UI's quick-access
     links. Never raises (a sandboxed server may lack ~/Documents access)."""
-    ex = exports_dir or EXPORTS_DIR
-    res = resources_dir or RESOURCES_DIR
+    ex = Path(exports_dir) if exports_dir is not None else current_exports_dir()
+    res = Path(resources_dir) if resources_dir is not None else current_resources_dir()
     out: dict[str, Any] = {}
     for key, path in (("exports", ex), ("resources", res)):
         try:
@@ -291,22 +310,46 @@ NATIVE_FORMATS = ("markdown",)
 # are present; the installer bundles them.
 PANDOC_FORMATS = ("docx", "pdf")
 
-# Homebrew/user installs aren't always on a service's minimal PATH — resolve
-# against the common bin dirs too.
-_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
+# Package-manager/user installs aren't always on a service's minimal PATH.
+_POSIX_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
 # PDF engines Pandoc can drive, preferred order (Typst is the plan's choice).
 _PDF_ENGINES = ("typst", "weasyprint", "wkhtmltopdf", "tectonic", "xelatex", "pdflatex")
 
 
+def _binary_search_dirs(
+    platform_name: str | None = None,
+    env: dict[str, str] | None = None,
+) -> tuple[str, ...]:
+    """Extra service-PATH locations for the current operating system."""
+    platform_name = platform_name or os.name
+    if platform_name != "nt":
+        return _POSIX_BIN_DIRS
+    env = os.environ if env is None else env
+    out: list[str] = []
+
+    def add(root: str | None, *parts: str) -> None:
+        if root:
+            out.append(ntpath.join(root, *parts))
+
+    add(env.get("LOCALAPPDATA"), "Pandoc")
+    add(env.get("ProgramFiles"), "Pandoc")
+    add(env.get("ProgramFiles(x86)"), "Pandoc")
+    add(env.get("ProgramData"), "chocolatey", "bin")
+    add(env.get("USERPROFILE"), "scoop", "shims")
+    add(env.get("USERPROFILE"), ".cargo", "bin")
+    add(env.get("LOCALAPPDATA"), "Microsoft", "WinGet", "Links")
+    return tuple(dict.fromkeys(out))
+
+
 def _which(name: str) -> str | None:
-    """Absolute path to ``name``, checking PATH then the common bin dirs."""
+    """Absolute path to ``name``, honoring PATHEXT and common install dirs."""
     found = shutil.which(name)
     if found:
         return found
-    for d in _BIN_DIRS:
-        cand = os.path.join(d, name)
-        if os.path.isfile(cand) and os.access(cand, os.X_OK):
-            return cand
+    for directory in _binary_search_dirs():
+        found = shutil.which(name, path=directory)
+        if found:
+            return found
     return None
 
 
@@ -351,7 +394,7 @@ def export_to_file(
     pandoc = pandoc_path()
     if pandoc is None:
         return None
-    base = exports_dir or EXPORTS_DIR
+    base = Path(exports_dir) if exports_dir is not None else current_exports_dir()
     try:
         base.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -388,6 +431,8 @@ def export_to_file(
 __all__ = [
     "EXPORTS_DIR",
     "RESOURCES_DIR",
+    "current_exports_dir",
+    "current_resources_dir",
     "NATIVE_FORMATS",
     "PANDOC_FORMATS",
     "ensure_export_dirs",

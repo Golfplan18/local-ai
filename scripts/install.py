@@ -62,6 +62,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 import webbrowser
@@ -271,12 +272,72 @@ def reset_install(dry_run: bool) -> None:
     log("Install state cleared. Vault, conversations, and downloaded models untouched.")
 
 
+def _runtime_path_preflight(dry_run: bool) -> bool:
+    """Resolve and report every user-storage root before install work starts."""
+    try:
+        if str(REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT))
+        from orchestrator import runtime_paths as rp
+        roots = rp.resolve_runtime_roots()
+    except Exception as exc:
+        log(f"  ✗ Runtime path configuration is invalid: {exc}")
+        return False
+
+    log(f"  ✓ Documents: {roots.documents} ({roots.sources['documents']})")
+    for label, path, source_key in (
+        ("Vault", roots.vault, "vault"),
+        ("Conversations", roots.conversations, "conversations"),
+        ("Historical archive", roots.historical_archive, "historical_archive"),
+        ("ChromaDB", roots.chromadb, "chromadb"),
+    ):
+        log(f"    {label}: {path} ({roots.sources[source_key]})")
+    for warning in roots.warnings:
+        log(f"  ⚠ {warning}")
+
+    documents = roots.documents
+    if not documents.is_dir():
+        log(
+            f"  ✗ Resolved Documents directory does not exist: {documents}. "
+            "Set ORA_DOCUMENTS to the real location."
+        )
+        return False
+    if dry_run:
+        log(f"  [dry-run] would verify write permission at {documents}")
+    else:
+        probe_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                prefix=".ora-install-write-", dir=documents, delete=False
+            ) as probe:
+                probe_path = Path(probe.name)
+            probe_path.unlink()
+        except OSError as exc:
+            if probe_path is not None:
+                try:
+                    probe_path.unlink()
+                except OSError:
+                    pass
+            log(f"  ✗ Cannot write to resolved Documents directory {documents}: {exc}")
+            return False
+        log(f"  ✓ Write permission at resolved Documents directory {documents}")
+
+    if roots.vault.exists() and not roots.vault.is_dir():
+        log(f"  ✗ Resolved vault path exists but is not a directory: {roots.vault}")
+        return False
+    if not roots.vault.exists():
+        log(
+            f"  ⚠ Resolved vault does not yet exist: {roots.vault}. "
+            "Ora will not create or replace a canonical vault during install."
+        )
+    return True
+
+
 # ─── Steps ───────────────────────────────────────────────────────────────
 
 
 def step_preflight(state: dict, dry_run: bool) -> bool:
     log("Step 1/7: Pre-flight checks")
-    ok = True
+    ok = _runtime_path_preflight(dry_run)
 
     # Python version
     if sys.version_info < PREFLIGHT_MIN_PYTHON:
@@ -712,6 +773,22 @@ def _delegate_to_local_models(extra_argv: list[str]) -> int:
     return subprocess.call([sys.executable, str(script), *extra_argv])
 
 
+def _next_launch_instructions(
+    platform_name: str | None = None, os_name: str | None = None
+) -> list[str]:
+    platform_name = sys.platform if platform_name is None else platform_name
+    os_name = os.name if os_name is None else os_name
+    if platform_name == "darwin":
+        return [
+            "Next (recommended on macOS): install supervised auto-start with "
+            "`./scripts/ora-launchd.sh install`, then open the origin for its printed Health URL.",
+            "For one unsupervised session instead, run `./start.sh`.",
+        ]
+    if os_name == "nt":
+        return ["Next: run `start.bat` and open the exact localhost port it reports."]
+    return ["Next: run `./start.sh` and open the exact localhost port it reports."]
+
+
 def main():
     # Subcommand support — primary path is the full install; secondary
     # path is `install.py models` which re-enters the local-model
@@ -763,12 +840,8 @@ def main():
 
     log(COMPLETION_MARKER)
     log("")
-    if sys.platform == "darwin":
-        log("Next (recommended on macOS): install supervised auto-start with "
-            "`./scripts/ora-launchd.sh install`, then open the origin for its printed Health URL.")
-        log("For one unsupervised session instead, run `./start.sh`.")
-    else:
-        log("Next: run `./start.sh` and open the exact localhost port it reports.")
+    for line in _next_launch_instructions():
+        log(line)
     log("Then open Settings → External APIs to paste any keys you created during setup.")
 
 

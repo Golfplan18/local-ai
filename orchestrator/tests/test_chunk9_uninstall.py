@@ -24,6 +24,7 @@ SPEC = importlib.util.spec_from_file_location(
 )
 uninstall = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(uninstall)
+from orchestrator import runtime_paths as rp  # noqa: E402
 
 
 class TestHardPreserve(unittest.TestCase):
@@ -31,6 +32,11 @@ class TestHardPreserve(unittest.TestCase):
 
     def test_vault_is_hard_preserved(self):
         self.assertTrue(uninstall._is_hard_preserved(uninstall.VAULT))
+
+    def test_user_roots_match_shared_runtime_snapshot(self):
+        roots = rp.resolve_runtime_roots()
+        self.assertEqual(uninstall.VAULT, roots.vault)
+        self.assertEqual(uninstall.CONVERSATIONS, roots.conversations)
 
     def test_vault_subpath_is_hard_preserved(self):
         # Defense in depth — a subpath under the vault is also protected.

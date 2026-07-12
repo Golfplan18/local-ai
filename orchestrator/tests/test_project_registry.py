@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -752,6 +753,40 @@ class TestToolInvocation(unittest.TestCase):
             pointer_dir=self.pointer_dir,
         )
         self.assertEqual(result, {"val": "hello"})
+
+    def test_subprocess_env_inherits_one_canonical_root_snapshot(self):
+        base = Path(self.tmpdir) / "redirected"
+        project = pr.get_project("myproject", pointer_dir=self.pointer_dir)
+        with mock.patch.dict(os.environ, {}, clear=True):
+            env = pr._build_subprocess_env(project, extra_env={
+                "ORA_DOCUMENTS": str(base / "Documents"),
+                "ORA_VAULT": str(base / "Canonical Vault"),
+                "ORA_CONVERSATIONS": str(base / "Dialogues"),
+                "ORA_HISTORICAL_ARCHIVE": str(base / "History"),
+                "ORA_CHROMADB_PATH": str(base / "Chroma"),
+            })
+        self.assertEqual(env["ORA_DOCUMENTS"], str(base / "Documents"))
+        self.assertEqual(env["ORA_VAULT"], str(base / "Canonical Vault"))
+        self.assertEqual(env["ORA_VAULT_PATH"], env["ORA_VAULT"])
+        self.assertEqual(env["ORA_CONVERSATIONS"], str(base / "Dialogues"))
+        self.assertEqual(env["ORA_HISTORICAL_ARCHIVE"], str(base / "History"))
+        self.assertEqual(env["ORA_CHROMADB_PATH"], str(base / "Chroma"))
+
+    def test_conflicting_vault_aliases_fail_before_subprocess_launch(self):
+        base = Path(self.tmpdir)
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch.object(pr.subprocess, "run") as run,
+        ):
+            with self.assertRaises(pr._rp.PathConfigurationError):
+                pr.invoke_project_tool(
+                    "myproject", "echo-argv", pointer_dir=self.pointer_dir,
+                    extra_env={
+                        "ORA_VAULT": str(base / "one"),
+                        "ORA_VAULT_PATH": str(base / "two"),
+                    },
+                )
+        run.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

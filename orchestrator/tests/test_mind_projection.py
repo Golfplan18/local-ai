@@ -268,8 +268,11 @@ class PersistHook(unittest.TestCase):
 
         import milestone_executor
         self.me = milestone_executor
+        self._rp_home = mock.patch.object(self.me._rp, "ORA_HOME", Path(self.ora))
+        self._rp_home.start()
 
     def tearDown(self):
+        self._rp_home.stop()
         self._fw.stop()
         self._eu.stop()
         self._tmp.cleanup()

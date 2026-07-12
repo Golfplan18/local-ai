@@ -32,7 +32,7 @@ edited it). ``force=True`` (CLI ``--force``) regenerates.
 Scheduled as the ``daily_note`` task in maintenance_scheduler (cadence
 governed by ``Reference — Ora Periodic Maintenance.md``). Standalone:
 
-    /opt/homebrew/bin/python3 -m orchestrator.tools.daily_note [YYYY-MM-DD] [--force]
+    python -m orchestrator.tools.daily_note [YYYY-MM-DD] [--force]
 """
 from __future__ import annotations
 
@@ -52,13 +52,14 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
-# Roots flow from runtime_paths (ORA_HOME / ORA_VAULT / ORA_CONVERSATIONS
-# relocatable). ORA_VAULT_PATH is kept as a call-time override for
-# backward compatibility (tests and the pre-runtime_paths convention);
-# when unset, the vault resolves through runtime_paths (ORA_VAULT).
-VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH") or _rp.VAULT_STR)
+# Roots flow from runtime_paths. VAULT_PATH remains an import-time patch hook;
+# normal calls use the shared resolver so ORA_VAULT and its legacy alias cannot
+# silently select different trees.
+_DEFAULT_VAULT_PATH = _rp.VAULT_STR
+VAULT_PATH = _DEFAULT_VAULT_PATH
 DAILY_DIR_NAME = "Daily Notes"
-CONVERSATIONS_DIR = _rp.CONVERSATIONS_STR
+_DEFAULT_CONVERSATIONS_DIR = _rp.CONVERSATIONS_STR
+CONVERSATIONS_DIR = _DEFAULT_CONVERSATIONS_DIR
 SESSIONS_DIR = os.path.join(_rp.WORKSPACE, "sessions")
 DATA_DIR = _rp.DATA_DIR_STR
 
@@ -83,6 +84,18 @@ _CHUNK_OWNER_RE = re.compile(
 )
 
 
+def _vault_path() -> str:
+    if VAULT_PATH != _DEFAULT_VAULT_PATH:
+        return VAULT_PATH
+    return str(_rp.vault_dir())
+
+
+def _conversations_path() -> str:
+    if CONVERSATIONS_DIR != _DEFAULT_CONVERSATIONS_DIR:
+        return CONVERSATIONS_DIR
+    return str(_rp.conversations_dir())
+
+
 @dataclass
 class NoteResult:
     """Mirrors periodic_maintenance.TaskResult's surface so the
@@ -95,8 +108,7 @@ class NoteResult:
 
 
 def daily_dir() -> str:
-    return os.path.join(os.path.expanduser(
-        os.environ.get("ORA_VAULT_PATH", VAULT_PATH)), DAILY_DIR_NAME)
+    return os.path.join(_vault_path(), DAILY_DIR_NAME)
 
 
 def _validated_daily_root(value: str | Path, *, create: bool) -> Path:
@@ -174,7 +186,7 @@ def collect_conversations(date_str: str, *, include_private: bool = False) -> li
     """Group that day's chunk files by conversation panel. Returns
     [{id, name, exchanges, first, last, gist}] sorted by first time."""
     convs: dict[str, dict] = {}
-    pattern = os.path.join(CONVERSATIONS_DIR, f"{date_str}_*.md")
+    pattern = os.path.join(_conversations_path(), f"{date_str}_*.md")
     for path in sorted(glob.glob(pattern)):
         fname = os.path.basename(path)
         m = _FNAME_TIME_RE.match(fname)
@@ -260,7 +272,7 @@ def collect_vault_activity_git(date_str: str) -> tuple[list[str], list[str]] | N
     regardless of which writer landed it. Limitation: local edits only
     appear once committed."""
     import subprocess
-    vault = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", VAULT_PATH))
+    vault = _vault_path()
     day = datetime.strptime(date_str, "%Y-%m-%d")
     nxt = (day + timedelta(days=1)).strftime("%Y-%m-%d")
     try:
@@ -300,7 +312,7 @@ def collect_vault_activity(date_str: str) -> tuple[list[str], list[str]]:
     via_git = collect_vault_activity_git(date_str)
     if via_git is not None:
         return via_git
-    vault = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", VAULT_PATH))
+    vault = _vault_path()
     day = datetime.strptime(date_str, "%Y-%m-%d")
     day_start = day.timestamp()
     day_end = (day + timedelta(days=1)).timestamp()
