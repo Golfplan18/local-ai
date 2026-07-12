@@ -924,7 +924,7 @@ Output Summary:
   - Bespoke output framework file (O-Design, O-Modify) — written to ~/ora/frameworks/output/[genre-slug]/
   - Rendered artifact (O-Render) — written to user-specified location or returned for paste
   - Audit report (O-Audit) — returned to user, not written
-Proven Applications: v1.0 specification, no production runs yet. First-use validation expected on Word board memo, Excel rental parity model, and PowerPoint quarterly review as exemplar cases per the OFF overview.
+Proven Applications: v1.1 canonical specification, no production runs yet. First-use validation expected on Word board memo, Excel rental parity model, and PowerPoint quarterly review as exemplar cases per the OFF overview.
 Known Limitations:
   - Craft library infrastructure is not yet built; v1 frameworks rely on canonical references rather than populated craft libraries
   - Style Guide Module is referenced but not yet specified in its own canonical document
@@ -934,11 +934,13 @@ Known Limitations:
 File Location: ~/Documents/vault/Framework — Output Formalization.md (with mirror at ~/ora/frameworks/book/output-formalization.md)
 Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Archive/Working — Reference — OFF and Style Guide Overview.md.archived-2026-07-11 (2026-04-23)
 Confidence: medium — architecture is sound and traces from established meta-framework patterns (PFF, CFF); execution layer details may require refinement after first production runs of bespoke framework generation
-Version: 1.0
+Version: 1.1
 ```
 
 ---
 
 *Framework v1.0 completed 2026-04-23. Build collaborators: Larry (architect), Claude Opus 4.7 (structural).*
+
+*Framework v1.1 completed 2026-05-08. Added Operation-coordination awareness while preserving the v1.0 output architecture.*
 
 *This framework is the third sibling in the PFF / CFF / OFF triad. Its purpose is to formalize the expression side of knowledge work — to let users produce artifacts in their own voice at craft standard without re-doing design work for each artifact. The four-layer architecture (content / craft / style / render) is the structural innovation that makes bespoke output frameworks composable, modifiable, and faithful to the user's voice across many media.*

@@ -47,7 +47,7 @@ Secondary outputs:
 
 ## EXECUTION TIER
 
-Specification. This canonical document describes the intellectual content of the framework. Execution variants (single-pass, agent-mode, reasoning-model) are rendered from this specification per the Process Formalization Framework's Rendering Protocol (Section V of PFF v2.0). The primary deployment target for Ora is agent-mode with Level 1 subagent fan-out.
+Specification. This canonical document describes the intellectual content of the framework. Execution variants (single-pass, agent-mode, reasoning-model) are rendered from this specification per the Process Formalization Framework's Rendering Protocol (PFF v2.3). The primary deployment target for Ora is agent-mode with Level 1 subagent fan-out.
 
 ---
 
