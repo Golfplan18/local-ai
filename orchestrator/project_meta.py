@@ -12,9 +12,16 @@ views coexist over one set of files:
     the inert default slots. A project may be BOTH (a plugin that also holds
     conversations) or container-only (no ``root``).
 
-``General`` is synthetic — never a pointer file. An empty conversation
-``project_ids`` == General, and General is the all-inclusive view (a thread in
-project X is still visible under General).
+``Commons`` is synthetic — never a pointer file. An empty conversation
+``project_ids`` == Commons, and Commons is the all-inclusive view (a thread in
+project X is still visible under Commons).
+
+Nexus-id rename (2026-07-11): the internal sentinel used to be ``"general"``;
+it is now ``"commons"``, matching the display name set in the prior
+display-string-only pass (PR #211). ``LEGACY_DEFAULT_NEXUS`` keeps every
+comparison honoring the old value too, permanently — not a one-time
+migration — because it is already live in on-disk pointer files, browser
+``localStorage``, and any not-yet-redeployed cloud instance.
 """
 
 from __future__ import annotations
@@ -32,13 +39,12 @@ POINTER_DIR = Path(os.path.expanduser("~/ora/data/projects"))
 # Same rule the plugin registry enforces on a manifest nexus.
 _NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
-GENERAL_NEXUS = "general"
+DEFAULT_NEXUS = "commons"
+LEGACY_DEFAULT_NEXUS = "general"  # pre-2026-07-11 id; still recognized everywhere
 PROJECT_STATUSES = ("active", "inactive", "archived")
-# "commons" is reserved alongside the current sentinel: the default project
-# DISPLAYS as "Commons" (2026-07-11 nomenclature) while its internal nexus id
-# remains "general" until the planned id rename lands — a user-created
-# "Commons" project would collide with the default's displayed name.
-RESERVED_NEXUS = {GENERAL_NEXUS, "commons", ""}
+# Both the current and legacy sentinel are reserved so neither a fresh nor a
+# stale caller can ever create a real project that collides with the default.
+RESERVED_NEXUS = {DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS, ""}
 
 # Inert default slots added now (G1.33 decision 3): wired as the model-profile,
 # style, and persona sub-steps land. ``private`` and the profile are honored
@@ -68,10 +74,10 @@ def slugify_nexus(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (name or "").strip().lower()).strip("-")
 
 
-def general_meta() -> dict[str, Any]:
-    """The synthetic, all-inclusive default project."""
+def default_project_meta() -> dict[str, Any]:
+    """The synthetic, all-inclusive default project (Commons)."""
     return {
-        "nexus": GENERAL_NEXUS,
+        "nexus": DEFAULT_NEXUS,
         "name": "Commons",
         "status": "active",
         "is_default": True,
@@ -100,8 +106,8 @@ def _normalize_meta(nexus: str, data: dict) -> dict[str, Any]:
 
 
 def read_project_meta(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any] | None:
-    if nexus == GENERAL_NEXUS:
-        return general_meta()
+    if nexus in (DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS):
+        return default_project_meta()
     pf = _pointer_path(nexus, pointer_dir)
     if not pf.is_file():
         return None
@@ -128,7 +134,7 @@ def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
             if meta:
                 out.append(meta)
     out.sort(key=lambda m: (m.get("last_accessed_at") or ""), reverse=True)
-    return [general_meta()] + out
+    return [default_project_meta()] + out
 
 
 def _write_pointer(nexus: str, data: dict, pointer_dir: Path | None = None) -> Path:
@@ -170,8 +176,8 @@ def create_project(name: str, pointer_dir: Path | None = None) -> dict[str, Any]
 
 
 def _update_pointer(nexus: str, mutate, pointer_dir: Path | None = None) -> dict[str, Any] | None:
-    if nexus == GENERAL_NEXUS:
-        return general_meta()  # synthetic — nothing to persist
+    if nexus in (DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS):
+        return default_project_meta()  # synthetic — nothing to persist
     with _lock:
         pf = _pointer_path(nexus, pointer_dir)
         if not pf.is_file():
@@ -306,12 +312,13 @@ def list_project_files(
 
 __all__ = [
     "POINTER_DIR",
-    "GENERAL_NEXUS",
+    "DEFAULT_NEXUS",
+    "LEGACY_DEFAULT_NEXUS",
     "PROJECT_STATUSES",
     "DEFAULT_VAULT_PROJECTS_DIR",
     "ProjectMetaError",
     "slugify_nexus",
-    "general_meta",
+    "default_project_meta",
     "read_project_meta",
     "list_project_meta",
     "create_project",

@@ -85,7 +85,11 @@ class ProjectsMomEndpointTests(unittest.TestCase):
         self.assertEqual(mom["mission"], "Second.")
         self.assertEqual(mom["objectives"], "Obj.")
 
-    def test_general_post_404(self):
+    def test_commons_post_404(self):
+        r = self.client.post("/api/projects/commons/mom", json={"mission": "x"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_legacy_general_post_404(self):
         r = self.client.post("/api/projects/general/mom", json={"mission": "x"})
         self.assertEqual(r.status_code, 404)
 

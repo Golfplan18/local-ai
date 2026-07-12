@@ -82,7 +82,13 @@ class ModalEndpointTests(unittest.TestCase):
         self.assertIn("c-book", ids)
         self.assertNotIn("c-other", ids)
 
-    def test_project_conversations_general_all(self):
+    def test_project_conversations_commons_all(self):
+        r = self.client.get("/api/projects/commons/conversations")
+        ids = {c["conversation_id"] for c in json.loads(r.data)["conversations"]}
+        self.assertIn("c-book", ids)
+        self.assertIn("c-other", ids)
+
+    def test_project_conversations_legacy_general_all(self):
         r = self.client.get("/api/projects/general/conversations")
         ids = {c["conversation_id"] for c in json.loads(r.data)["conversations"]}
         self.assertIn("c-book", ids)
@@ -107,11 +113,15 @@ class ModalEndpointTests(unittest.TestCase):
         self.assertIn("c-other", ids)      # not in my-book → a candidate
         self.assertNotIn("c-book", ids)    # already a member → excluded
 
-    def test_candidates_query_filter_and_general(self):
+    def test_candidates_query_filter_and_commons(self):
         # q filters by title substring (titles derive from the first user msg "u").
         r = self.client.get("/api/projects/my-book/conversations?candidates=1&q=zzznope")
         self.assertEqual(json.loads(r.data)["conversations"], [])
-        # General contains everything → no candidates to add.
+        # Commons contains everything → no candidates to add.
+        r2 = self.client.get("/api/projects/commons/conversations?candidates=1")
+        self.assertEqual(json.loads(r2.data)["conversations"], [])
+
+    def test_candidates_query_filter_and_legacy_general(self):
         r2 = self.client.get("/api/projects/general/conversations?candidates=1")
         self.assertEqual(json.loads(r2.data)["conversations"], [])
 
@@ -125,11 +135,20 @@ class ModalEndpointTests(unittest.TestCase):
     def test_set_conversation_projects(self):
         r = self.client.post(
             "/api/conversation/c-book/projects",
+            json={"project_ids": ["my-book", "alpha", "commons"]},
+        )
+        self.assertEqual(r.status_code, 200)
+        stored = json.loads(r.data)["project_ids"]
+        # commons is dropped (implicit baseline); order + dedup preserved.
+        self.assertEqual(stored, ["my-book", "alpha"])
+
+    def test_set_conversation_projects_legacy_general(self):
+        r = self.client.post(
+            "/api/conversation/c-book/projects",
             json={"project_ids": ["my-book", "alpha", "general"]},
         )
         self.assertEqual(r.status_code, 200)
         stored = json.loads(r.data)["project_ids"]
-        # general is dropped (implicit baseline); order + dedup preserved.
         self.assertEqual(stored, ["my-book", "alpha"])
 
     def test_set_projects_bad_body(self):

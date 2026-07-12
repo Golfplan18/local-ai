@@ -124,6 +124,16 @@ class ExportEndpointTests(unittest.TestCase):
     def test_current_output_saves_markdown(self):
         r = self.client.post("/api/export", json={
             "scope": "current_output", "content": "# Out\n\nbody", "title": "T",
+            "project": "commons"})
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data)
+        self.assertTrue(body["ok"])
+        self.assertTrue(pathlib.Path(body["path"]).is_file())
+        self.assertIn("Outputs", body["path"])
+
+    def test_current_output_saves_markdown_legacy_general(self):
+        r = self.client.post("/api/export", json={
+            "scope": "current_output", "content": "# Out\n\nbody", "title": "T2",
             "project": "general"})
         self.assertEqual(r.status_code, 200)
         body = json.loads(r.data)

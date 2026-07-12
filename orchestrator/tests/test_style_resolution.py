@@ -49,7 +49,16 @@ def test_project_default_wins():
 
 
 def test_engine_default_when_no_project():
-    _patch("general", None)   # general/unregistered → get_project None
+    _patch("commons", None)   # commons/unregistered → get_project None
+    try:
+        assert boot._resolve_effective_style_id({"default_style_id": "technical"}) == "technical"
+        assert boot._resolve_effective_style_id({}) is None
+    finally:
+        _restore()
+
+
+def test_engine_default_when_no_project_legacy_general():
+    _patch("general", None)   # legacy id — still recognized permanently
     try:
         assert boot._resolve_effective_style_id({"default_style_id": "technical"}) == "technical"
         assert boot._resolve_effective_style_id({}) is None
@@ -93,7 +102,18 @@ def test_manifest_field_parses_and_rejects_bad():
 
 
 def test_settings_default_used_when_no_project():
-    _patch("general", None)   # no active project
+    _patch("commons", None)   # no active project
+    user_settings.get_setting = lambda path, default=None: (
+        "marketing" if path == "styles.default_id" else default)
+    try:
+        assert boot._resolve_effective_style_id({}) == "marketing"
+    finally:
+        user_settings.get_setting = lambda *a, **k: None
+        _restore()
+
+
+def test_settings_default_used_when_no_project_legacy_general():
+    _patch("general", None)   # legacy id — still recognized permanently
     user_settings.get_setting = lambda path, default=None: (
         "marketing" if path == "styles.default_id" else default)
     try:

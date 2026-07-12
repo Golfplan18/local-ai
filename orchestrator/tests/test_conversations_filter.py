@@ -50,13 +50,20 @@ class ConversationsProjectFilterTests(unittest.TestCase):
                 ids.add(r["conversation_id"])
         return ids
 
-    def test_general_shows_all(self):
-        for url in ("/api/conversations", "/api/conversations?project_id=general"):
+    def test_commons_shows_all(self):
+        for url in ("/api/conversations", "/api/conversations?project_id=commons"):
             payload = json.loads(self.client.get(url).data)
             ids = self._ids(payload)
             self.assertIn("c-general", ids)
             self.assertIn("c-book", ids)
             self.assertIn("c-law", ids)
+
+    def test_legacy_general_shows_all(self):
+        payload = json.loads(self.client.get("/api/conversations?project_id=general").data)
+        ids = self._ids(payload)
+        self.assertIn("c-general", ids)
+        self.assertIn("c-book", ids)
+        self.assertIn("c-law", ids)
 
     def test_project_filters_to_subset(self):
         payload = json.loads(self.client.get("/api/conversations?project_id=book").data)

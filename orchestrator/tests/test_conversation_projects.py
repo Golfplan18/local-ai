@@ -76,12 +76,22 @@ class ProjectMembershipTests(unittest.TestCase):
         cm.save_turn_spatial_state("c5", "u", "a", sessions_root=self.root)
         cm.set_conversation_projects(
             "c5",
+            ["book", "book", "commons", "", "  ", "other"],
+            sessions_root=self.root,
+        )
+        # Exact-duplicate "book" deduped; "commons"/empty stripped (Commons
+        # is the implicit baseline, never stored); order preserved.
+        self.assertEqual(self._read("c5")["project_ids"], ["book", "other"])
+
+    def test_set_conversation_projects_cleans_legacy_general(self):
+        cm.save_turn_spatial_state("c5b", "u", "a", sessions_root=self.root)
+        cm.set_conversation_projects(
+            "c5b",
             ["book", "book", "general", "", "  ", "other"],
             sessions_root=self.root,
         )
-        # Exact-duplicate "book" deduped; "general"/empty stripped (General
-        # is the implicit baseline, never stored); order preserved.
-        self.assertEqual(self._read("c5")["project_ids"], ["book", "other"])
+        # Legacy id "general" is stripped the same way, permanently.
+        self.assertEqual(self._read("c5b")["project_ids"], ["book", "other"])
 
     def test_set_conversation_projects_missing_returns_none(self):
         self.assertIsNone(

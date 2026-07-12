@@ -93,10 +93,10 @@ def _unique_path(folder: Path, base: str, suffix: str = ".md") -> Path:
 
 
 def _format_nexus(nexus: str | None) -> str:
-    """Canonical frontmatter nexus: empty (General) → bare ``nexus:``; else a
+    """Canonical frontmatter nexus: empty (Commons) → bare ``nexus:``; else a
     one-item block list (Schema §10)."""
     slug = (nexus or "").strip().lower()
-    if not slug or slug == "general":
+    if not slug or slug in ("commons", "general"):
         return "nexus:\n"
     return f"nexus:\n  - {slug}\n"
 
