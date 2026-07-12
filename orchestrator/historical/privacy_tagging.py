@@ -20,8 +20,8 @@ Tags are applied to FIVE layers per affected pair:
      `tag: "private"`, `tags: ["private"]`)
   4. Atomic engram notes with matching source_chat + source_pair_num
      (`tags` += "private")
-  5. Source notes (News/Opinion/Resources) with matching source —
-     same as 4
+  5. Source notes (flat vault `Resources/`; kind is in YAML tags) with
+     matching source — same as 4
 """
 
 from __future__ import annotations
@@ -574,11 +574,12 @@ def _build_pair_to_files_index(
     atomic_root = Path(vault_root) / "Engrams" / "Historical Atomics"
     for f in atomic_root.rglob("*.md"):
         _add(f, "atomic")
-    # Source notes
-    for sub in ("News", "Opinion", "Resources"):
-        src_root = Path(vault_root) / "Sources" / sub
-        for f in src_root.rglob("*.md"):
-            _add(f, "source")
+    # Source notes — flat Resources/ since Schema rev 5 (2026-05-09):
+    # kind (news/opinion/resource) lives in YAML tags, not subfolders.
+    # The retired Sources/{News,Opinion,Resources} tree no longer exists.
+    src_root = Path(vault_root) / "Resources"
+    for f in src_root.rglob("*.md"):
+        _add(f, "source")
 
     return idx
 
