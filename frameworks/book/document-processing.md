@@ -420,8 +420,8 @@ When processing a chunk from a long-form source, prepend these context levels:
 2. **Source-level thesis** — the document's overall argument
 3. **Part/section argument** — the argument of the part containing this chunk
 4. **Chapter-level claim** — the specific claim of the chapter containing this chunk
-5. **Local narrative continuity** — what the immediately preceding section established
-6. **Role declaration** — "You are extracting knowledge from a [document type]. The following chunk is from [location]."
+5. **Local narrative continuity** — the closing 1-2 sentences of the immediately preceding chunk plus the opening 1-2 sentences of the immediately following chunk (requires two-pass ingestion: chunks are cut before any prepend is written)
+6. **Role declaration** — one sentence stating the chunk's function in its parent section's argument (establishes a premise / provides evidence / introduces a counterargument / states a conclusion / draws an implication)
 
 ### Similarity-Scaling Rules
 
@@ -432,7 +432,7 @@ Context levels are included based on semantic similarity between the chunk and t
 | >= 0.90 | All six levels |
 | 0.75 - 0.89 | Levels 1-4 |
 | 0.60 - 0.74 | Levels 1-2 |
-| < 0.60 | Exclude chunk (too dissimilar from document's themes) |
+| < 0.60 | Levels 1-2 (compressed floor — the chunk is NEVER excluded; a tangential chunk stays retrievable with the breadcrumb+thesis prepend per Specification — Hierarchical Context Protocol) |
 
 ### Structural-Context Manifest
 

@@ -18,7 +18,12 @@ Already-indexed paths are skipped unless --reindex is used.
 ChromaDB metadata schema (Phase 5.2):
 
     Always present:
-        path           — absolute file path (also serves as ChromaDB id)
+        path           — absolute file path. Also the ChromaDB id for
+                         single-record files; a file whose body exceeds one
+                         HCP chunk is stored as multiple records with ids
+                         "<abspath>#chunk-N" (see the HCP chunked-indexing
+                         constants below). Delete/reindex flows must use
+                         delete_file_records(), which resolves by path.
         source         — basename
         title          — derived from filename (Schema §10 rule 8)
         nexus          — comma-joined string ("ora" / "ora,project_b" / "")
@@ -35,8 +40,9 @@ ChromaDB metadata schema (Phase 5.2):
         source_format
         source_path
         processed_date
-        chunk_index            — int
-        total_chunks           — int
+        chunk_index            — int (from frontmatter, or stamped by the
+                                 HCP chunked-indexing path: 1-based)
+        total_chunks           — int (ditto)
         source_document        — JSON-serialized list of source wikilinks
 
     Conditional fields (present per §8):
@@ -77,6 +83,22 @@ CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
 # full. Smaller embedders (e.g. bge-m3, 8k tokens) truncate the input at
 # the model layer, which matches prior behavior.
 MAX_INDEX_CHARS = 120_000
+
+# --- HCP chunked indexing (Hierarchical Context Protocol) -------------------
+# A file whose body exceeds one HCP chunk is indexed as MULTIPLE records —
+# one per chunk, ids "<abspath>#chunk-N" (1-based), each stamping the
+# chunk_index / total_chunks metadata fields and carrying its HCP context
+# prepend in the stored document. Files at or below one chunk keep the
+# original single-record layout (id = abspath). Before this, a long file
+# was ONE record hard-truncated at MAX_INDEX_CHARS — everything past
+# ~40 pages of a 100-page document was silently unretrievable.
+# Canonical spec: vault "Specification — Hierarchical Context Protocol.md".
+#
+# Both values are PROVISIONAL tuning constants (judgment-set, not
+# calibrated; retune freely). CHUNK_THRESHOLD_CHARS ≈ one chunk of text at
+# ~4 chars/token — "chunk only when the file exceeds one chunk".
+HCP_MAX_CHUNK_TOKENS = 2000                       # provisional — mirrors hcp.DEFAULT_MAX_CHUNK_TOKENS
+CHUNK_THRESHOLD_CHARS = HCP_MAX_CHUNK_TOKENS * 4  # provisional — chunking trigger
 
 
 # Tag values that need fast where-filterable boolean extracts.
@@ -386,6 +408,140 @@ def _build_embed_text(meta: dict[str, Any], body: str, filepath: str | None = No
 # ---------------------------------------------------------------------------
 
 
+def _chunk_record_id(doc_id: str, n: int) -> str:
+    """Record id for chunk N (1-based) of a chunked file."""
+    return f"{doc_id}#chunk-{n}"
+
+
+def delete_file_records(collection, filepath: str) -> int:
+    """Delete EVERY record a file may have in the collection — the
+    single-record id (= abspath) AND any chunked records (abspath#chunk-N).
+
+    Uses the always-present `path` metadata to find records instead of
+    assuming the id layout, so callers stay correct across the
+    single-record ↔ chunked transition (a file that shrank below the
+    chunking threshold must not leave orphan chunk records, and vice
+    versa). Returns the number of ids requested for deletion.
+    """
+    abspath = os.path.abspath(filepath)
+    ids: set[str] = {abspath}
+    try:
+        existing = collection.get(where={"path": abspath})
+        ids.update(existing.get("ids") or [])
+    except Exception:
+        pass  # where-lookup unsupported/failed — the abspath id still goes
+    try:
+        collection.delete(ids=sorted(ids))
+    except Exception:
+        return 0
+    return len(ids)
+
+
+def _split_for_storage(text: str, max_chars: int) -> list[str]:
+    """Split text exceeding max_chars into <=max_chars pieces for storage.
+
+    hcp.py deliberately never splits a single blank-line-delimited
+    paragraph/block even when it exceeds the token budget ("oversized
+    beats dropped") — the right call at the semantic-chunking layer, but
+    it means one HCP chunk can still exceed MAX_INDEX_CHARS (a huge
+    unbroken list/table/code fence with no blank lines). Truncating that
+    at the storage layer would silently reintroduce the exact loss HCP
+    exists to eliminate, just scoped to one record instead of the whole
+    document. This is the storage-layer backstop: prefer a paragraph
+    break, then a sentence break, falling back to a hard cut — no text is
+    ever dropped, only split across more records."""
+    if len(text) <= max_chars:
+        return [text]
+    parts: list[str] = []
+    remaining = text
+    while len(remaining) > max_chars:
+        window = remaining[:max_chars]
+        cut = window.rfind("\n\n")
+        if cut < max_chars // 2:
+            sentence_cut = window.rfind(". ")
+            cut = sentence_cut + 2 if sentence_cut >= max_chars // 2 else -1
+        if cut < max_chars // 2:
+            cut = max_chars  # no good boundary — hard cut; nothing is lost
+        parts.append(remaining[:cut])
+        remaining = remaining[cut:]
+    if remaining:
+        parts.append(remaining)
+    return parts
+
+
+def _index_chunked(collection, filepath: str, doc_id: str,
+                   meta: dict[str, Any], body: str, stats: dict[str, int],
+                   verbose: bool) -> bool:
+    """Index a long file as one record per HCP chunk (further split into
+    multiple storage records via _split_for_storage when a single chunk's
+    formatted text exceeds MAX_INDEX_CHARS).
+
+    Returns True when chunked records were written; False to signal the
+    caller to fall back to the single-record path — for fewer than two
+    HCP chunks, an HCP failure, or a collection.add() failure. Fail OPEN
+    toward the old behavior so content is never lost to an ingest error,
+    and so a force-reindex (which already deleted the file's prior
+    records before this runs) never leaves the file with zero records
+    just because one batched write failed.
+    """
+    try:
+        # Lazy import — hcp pulls in the embedding layer for its
+        # similarity scorer; keep module import light.
+        from orchestrator.tools.hcp import (
+            format_chunk_for_extraction, process_long_form)
+        chunks = process_long_form(body, max_chunk_tokens=HCP_MAX_CHUNK_TOKENS)
+    except Exception as e:
+        print(f"  HCP chunking failed for {filepath} ({type(e).__name__}: {e}) "
+              f"— falling back to single-record indexing.", file=sys.stderr)
+        return False
+    if len(chunks) < 2:
+        return False
+
+    total = len(chunks)
+    ids: list[str] = []
+    documents: list[str] = []
+    metadatas: list[dict[str, Any]] = []
+    embeddings: list[Any] = []
+    for n, chunk in enumerate(chunks, 1):
+        # The stored document is prepend + chunk, so what gets retrieved
+        # carries the HCP context block.
+        doc_text_full = format_chunk_for_extraction(chunk)
+        parts = _split_for_storage(doc_text_full, MAX_INDEX_CHARS)
+        base_id = _chunk_record_id(doc_id, n)
+        for p, part_text in enumerate(parts, 1):
+            record_id = base_id if len(parts) == 1 else f"{base_id}-part-{p}"
+            chunk_meta = _compose_chroma_metadata(filepath, meta)
+            chunk_meta["chunk_index"] = n
+            chunk_meta["total_chunks"] = total
+            ids.append(record_id)
+            documents.append(part_text)
+            metadatas.append(chunk_meta)
+            embeddings.append(
+                _nomic_embed(_build_embed_text(meta, part_text, filepath)))
+
+    add_kwargs: dict[str, Any] = dict(
+        ids=ids, documents=documents, metadatas=metadatas)
+    if all(e is not None for e in embeddings):
+        add_kwargs["embeddings"] = embeddings
+    # else: omit — the collection's bound embedding_function re-attempts,
+    # raising loudly if the embedder is genuinely down (same contract as
+    # the single-record path).
+
+    try:
+        collection.add(**add_kwargs)
+    except Exception as e:
+        print(f"  HCP chunked collection.add() failed for {filepath} "
+              f"({type(e).__name__}: {e}) — falling back to single-record "
+              f"indexing so the file isn't left with zero records.",
+              file=sys.stderr)
+        return False
+
+    stats["indexed"] += 1
+    if verbose:
+        print(f"  + {metadatas[0]['title']} ({total} chunks, {len(ids)} records)")
+    return True
+
+
 def index_file(
     collection,
     filepath: str,
@@ -404,9 +560,15 @@ def index_file(
     --delete copy of the cloud pipeline whose files can't be persistently
     stamped (see orchestrator/tools/index_msi_news.py).
 
-    force=True re-indexes even when the id already exists (delete-then-add),
-    for refreshing a changed source file. Default False keeps the original
-    skip-if-already-indexed behaviour.
+    force=True re-indexes even when the file already has records
+    (delete-by-path-then-add via delete_file_records, so chunked records
+    are cleaned up too), for refreshing a changed source file. Default
+    False keeps the original skip-if-already-indexed behaviour.
+
+    A file whose body exceeds CHUNK_THRESHOLD_CHARS is indexed as one
+    record per HCP chunk (ids "<abspath>#chunk-N", chunk_index /
+    total_chunks stamped, HCP context prepend included in the stored
+    document). Shorter files keep the original single-record layout.
 
     body_filter, when given, is applied to the body immediately after
     frontmatter stripping, before BOTH the stored document and the embed
@@ -446,19 +608,27 @@ def index_file(
 
     if force:
         # Drop any prior copy so the re-index reflects current content/meta.
-        try:
-            collection.delete(ids=[doc_id])
-        except Exception:
-            pass
+        # Delete-by-path, not delete-by-id: a chunked file's records live at
+        # <abspath>#chunk-N, and the file may have crossed the chunking
+        # threshold since it was last indexed.
+        delete_file_records(collection, filepath)
     else:
-        # Already-indexed check
+        # Already-indexed check — a chunked file has no record at the bare
+        # abspath id, so probe the first chunk id too.
         try:
-            existing = collection.get(ids=[doc_id])
+            existing = collection.get(ids=[doc_id, _chunk_record_id(doc_id, 1)])
             if existing and existing["ids"]:
                 stats["skipped"] += 1
                 return
         except Exception:
             pass
+
+    # Long file → multi-record HCP chunked indexing (falls back to the
+    # single-record path if HCP produced fewer than two chunks or errored).
+    if len(body) > CHUNK_THRESHOLD_CHARS:
+        if _index_chunked(collection, filepath, doc_id, meta, body, stats,
+                          verbose):
+            return
 
     chroma_meta = _compose_chroma_metadata(filepath, meta)
     embed_text = _build_embed_text(meta, body, filepath)
