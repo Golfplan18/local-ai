@@ -385,13 +385,26 @@ def append_log(pair: dict, result: dict):
 
 
 def refresh_chromadb(slugs: set[str]):
-    """Refresh chromadb metadata for the given slugs (no re-embedding)."""
+    """Refresh ChromaDB metadata for every record belonging to each slug.
+
+    Returns record/file counts for callers that want structured reporting.
+    Existing source files with no Chroma records, missing source files, and
+    errors are tracked separately so none can be mistaken for a successful
+    metadata update.
+    """
     if not slugs:
-        return
+        return {
+            "updated_records": 0,
+            "updated_files": 0,
+            "never_indexed_files": 0,
+            "missing_source_files": 0,
+            "errors": 0,
+        }
     sys.path.insert(0, "/Users/oracle/ora")
     from orchestrator.tools.knowledge_index import (
         _parse_frontmatter,
         _compose_chroma_metadata,
+        update_file_metadata,
     )
     from orchestrator.embedding import get_or_create_collection
     import chromadb
@@ -399,28 +412,53 @@ def refresh_chromadb(slugs: set[str]):
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
     col = get_or_create_collection(client, COLLECTION_NAME)
 
-    ids = []
-    metas = []
-    for slug in slugs:
+    updated_records = 0
+    updated_files = 0
+    never_indexed_files = 0
+    missing_source_files = 0
+    errors = 0
+
+    for slug in sorted(slugs):
         path = os.path.join(ENGRAMS_DIR, f"{slug}.md")
         if not os.path.exists(path):
+            missing_source_files += 1
+            print(f"  ChromaDB source file missing for {slug}: {path}",
+                  file=sys.stderr)
             continue
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
             meta, _body = _parse_frontmatter(content)
             chroma_meta = _compose_chroma_metadata(path, meta)
-            ids.append(path)
-            metas.append(chroma_meta)
+            record_count = update_file_metadata(col, path, chroma_meta)
         except Exception as e:
-            print(f"  chromadb meta error for {slug}: {e}", file=sys.stderr)
+            errors += 1
+            print(f"  ChromaDB metadata error for {slug}: {e}", file=sys.stderr)
+            continue
 
-    if ids:
-        try:
-            col.update(ids=ids, metadatas=metas)
-            print(f"  Refreshed chromadb metadata for {len(ids)} entries")
-        except Exception as e:
-            print(f"  chromadb update error: {e}", file=sys.stderr)
+        if record_count == 0:
+            never_indexed_files += 1
+        else:
+            updated_files += 1
+            updated_records += record_count
+
+    print(f"  Refreshed ChromaDB metadata for {updated_records} records "
+          f"across {updated_files} source files")
+    if never_indexed_files:
+        print(f"  Existing source files with no ChromaDB records: "
+              f"{never_indexed_files}")
+    if missing_source_files:
+        print(f"  Missing source files: {missing_source_files}")
+    if errors:
+        print(f"  ChromaDB metadata errors: {errors}", file=sys.stderr)
+
+    return {
+        "updated_records": updated_records,
+        "updated_files": updated_files,
+        "never_indexed_files": never_indexed_files,
+        "missing_source_files": missing_source_files,
+        "errors": errors,
+    }
 
 
 # ---------------------------------------------------------------------------

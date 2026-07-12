@@ -42,6 +42,7 @@ class _FakeCollection:
 
     def __init__(self):
         self.store = {}
+        self.get_calls = []
 
     def add(self, ids, documents, metadatas, embeddings=None):
         for j, id_ in enumerate(ids):
@@ -51,18 +52,33 @@ class _FakeCollection:
                 "embedding": embeddings[j] if embeddings else None,
             }
 
-    def get(self, ids=None, where=None):
+    def get(self, ids=None, where=None, include=None):
+        self.get_calls.append({
+            "ids": ids,
+            "where": where,
+            "include": include,
+        })
         if where:
             found = [i for i, rec in self.store.items()
                      if all(rec["metadata"].get(k) == v
                             for k, v in where.items())]
+        elif ids is None:
+            found = list(self.store)
         else:
             found = [i for i in (ids or []) if i in self.store]
-        return {
+        result = {
             "ids": found,
             "documents": [self.store[i]["document"] for i in found],
             "metadatas": [self.store[i]["metadata"] for i in found],
         }
+        if include and "embeddings" in include:
+            result["embeddings"] = [self.store[i]["embedding"] for i in found]
+        return result
+
+    def update(self, ids, metadatas):
+        for j, id_ in enumerate(ids):
+            if id_ in self.store:
+                self.store[id_]["metadata"].update(metadatas[j])
 
     def delete(self, ids):
         for i in ids:
@@ -113,6 +129,121 @@ class _Base(unittest.TestCase):
     def _chunk_ids(self, path):
         abspath = os.path.abspath(path)
         return sorted(i for i in self.col.store if i.startswith(f"{abspath}#chunk-"))
+
+
+class TestFileRecordPrimitives(_Base):
+    """Shared path-resolution helpers work across both record layouts."""
+
+    def _seed(self, path, ids, embeddings):
+        abspath = os.path.abspath(path)
+        self.col.add(
+            ids=ids,
+            documents=[f"document {i}" for i in range(len(ids))],
+            metadatas=[{
+                "path": abspath,
+                "title": os.path.basename(path),
+                "chunk_index": i + 1,
+                "total_chunks": len(ids),
+            } for i in range(len(ids))],
+            embeddings=embeddings,
+        )
+
+    def test_resolve_file_ids_single_chunked_and_never_indexed(self):
+        single = os.path.join(self.tmpdir, "single.md")
+        chunked = os.path.join(self.tmpdir, "chunked.md")
+        single_id = os.path.abspath(single)
+        chunk_ids = [f"{os.path.abspath(chunked)}#chunk-{i}" for i in (1, 2)]
+        self._seed(single, [single_id], [[9.0, 1.0]])
+        self._seed(chunked, chunk_ids, [[1.0, 0.0], [3.0, 0.0]])
+
+        self.assertEqual(
+            knowledge_index.resolve_file_ids(self.col, single), [single_id])
+        self.assertEqual(
+            knowledge_index.resolve_file_ids(self.col, chunked), chunk_ids)
+        self.assertEqual(
+            knowledge_index.resolve_file_ids(
+                self.col, os.path.join(self.tmpdir, "missing.md")),
+            [],
+        )
+
+    def test_build_path_id_index_groups_all_records_in_one_bulk_get(self):
+        single = os.path.join(self.tmpdir, "single.md")
+        chunked = os.path.join(self.tmpdir, "chunked.md")
+        single_id = os.path.abspath(single)
+        chunk_ids = [f"{os.path.abspath(chunked)}#chunk-{i}" for i in (1, 2)]
+        self._seed(single, [single_id], [[9.0, 1.0]])
+        self._seed(chunked, chunk_ids, [[1.0, 0.0], [3.0, 0.0]])
+        self.col.add(
+            ids=["orphan"], documents=["orphan"],
+            metadatas=[{"title": "no path"}], embeddings=[[0.0, 0.0]],
+        )
+        self.col.get_calls.clear()
+
+        id_index = knowledge_index.build_path_id_index(self.col)
+
+        self.assertEqual(id_index[os.path.abspath(single)], [single_id])
+        self.assertEqual(id_index[os.path.abspath(chunked)], chunk_ids)
+        self.assertNotIn("orphan", id_index)
+        self.assertEqual(len(self.col.get_calls), 1)
+        self.assertEqual(self.col.get_calls[0]["include"], ["metadatas"])
+        self.assertIsNone(self.col.get_calls[0]["ids"])
+        self.assertIsNone(self.col.get_calls[0]["where"])
+
+    def test_update_file_metadata_merges_single_chunked_and_counts_real_records(self):
+        single = os.path.join(self.tmpdir, "single.md")
+        chunked = os.path.join(self.tmpdir, "chunked.md")
+        single_id = os.path.abspath(single)
+        chunk_ids = [f"{os.path.abspath(chunked)}#chunk-{i}" for i in (1, 2)]
+        self._seed(single, [single_id], [[9.0, 1.0]])
+        self._seed(chunked, chunk_ids, [[1.0, 0.0], [3.0, 0.0]])
+
+        self.assertEqual(
+            knowledge_index.update_file_metadata(
+                self.col, single, {"tags": ["new"]}),
+            1,
+        )
+        id_index = knowledge_index.build_path_id_index(self.col)
+        self.col.get_calls.clear()
+        self.assertEqual(
+            knowledge_index.update_file_metadata(
+                self.col, chunked, {"tags": ["new"]}, id_index=id_index),
+            2,
+        )
+        self.assertEqual(
+            knowledge_index.update_file_metadata(
+                self.col, os.path.join(self.tmpdir, "missing.md"),
+                {"tags": ["new"]}, id_index=id_index),
+            0,
+        )
+        self.assertEqual(self.col.get_calls, [])  # indexed fast path made no reads
+        for index, record_id in enumerate(chunk_ids, 1):
+            metadata = self.col.store[record_id]["metadata"]
+            self.assertEqual(metadata["tags"], ["new"])
+            self.assertEqual(metadata["chunk_index"], index)
+            self.assertEqual(metadata["total_chunks"], 2)
+
+    def test_get_document_embedding_single_centroid_and_missing(self):
+        single = os.path.join(self.tmpdir, "single.md")
+        chunked = os.path.join(self.tmpdir, "chunked.md")
+        no_embedding = os.path.join(self.tmpdir, "no-embedding.md")
+        self._seed(single, [os.path.abspath(single)], [[9.0, 1.0]])
+        chunk_ids = [f"{os.path.abspath(chunked)}#chunk-{i}" for i in (1, 2)]
+        self._seed(chunked, chunk_ids, [[1.0, 0.0], [3.0, 0.0]])
+        self._seed(no_embedding, [os.path.abspath(no_embedding)], [None])
+
+        self.assertEqual(
+            knowledge_index.get_document_embedding(self.col, single),
+            [9.0, 1.0],
+        )
+        self.assertEqual(
+            knowledge_index.get_document_embedding(self.col, chunked),
+            [2.0, 0.0],
+        )
+        self.assertIsNone(
+            knowledge_index.get_document_embedding(self.col, no_embedding))
+        self.assertIsNone(
+            knowledge_index.get_document_embedding(
+                self.col, os.path.join(self.tmpdir, "missing.md")))
 
 
 class TestChunkedRoundTrip(_Base):

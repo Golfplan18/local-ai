@@ -217,7 +217,7 @@ def detect_topic_cluster(
 ) -> list[dict]:
     """Surface supersession candidate pairs via topic clustering.
 
-    For each Resources/ chunk, queries ChromaDB for nearest neighbors at
+    For each Resources/ file, queries ChromaDB for nearest neighbors at
     similarity ≥ threshold within the same tag-type. Forms candidate
     pairs (older, newer) and applies entity-overlap filter to drop
     false-positive clusters.
@@ -245,12 +245,21 @@ def detect_topic_cluster(
     # pre-2026-05-29-migration collection and silently reports 0 candidates.
     sys.path.insert(0, os.path.expanduser("~/ora"))
     from orchestrator.embedding import get_collection
+    from orchestrator.tools.knowledge_index import get_document_embedding
 
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
     col = get_collection(client, COLLECTION_NAME)
 
     candidates: list[dict] = []
     seen_pairs: set[tuple[str, str]] = set()
+    # Query results identify physical Chroma records, not logical files.
+    # Normalize the resource index once so chunk metadata paths can be
+    # resolved back to their source note regardless of harmless path syntax
+    # differences (for example ``..`` components).
+    normalized_by_path = {
+        os.path.abspath(os.path.expanduser(indexed_path)): meta
+        for indexed_path, meta in by_path.items()
+    }
 
     # Recent filter cutoff
     cutoff = datetime.now() - timedelta(days=30)
@@ -264,21 +273,23 @@ def detect_topic_cluster(
             except Exception:
                 continue
 
-        # Query for nearest neighbors via embedding.
+        # Query for nearest neighbors via a document-level embedding.  Long
+        # files have multiple physical records, so the helper mean-pools all
+        # chunk embeddings into one vector instead of assuming id == path.
         # ChromaDB returns numpy arrays; truth-test via len() to avoid
         # the "truth value of an array with more than one element is
         # ambiguous" error.
         try:
-            doc_record = col.get(ids=[path], include=["embeddings"])
-            embeddings = doc_record.get("embeddings")
-            if embeddings is None or len(embeddings) == 0:
+            embedding = get_document_embedding(col, path)
+            if embedding is None:
+                print(f"  no chromadb embedding for {path}; skipping",
+                      file=sys.stderr)
                 continue
-            embedding = embeddings[0]
 
             neighbors = col.query(
                 query_embeddings=[embedding],
                 n_results=20,
-                include=["distances"],
+                include=["distances", "metadatas"],
             )
         except Exception as e:
             # Surface failures rather than silently dropping every doc.
@@ -298,12 +309,38 @@ def detect_topic_cluster(
                 break  # results sorted by distance ascending
 
             neighbor_id = neighbors["ids"][0][i]
-            if neighbor_id == path:
-                continue  # self
-            if neighbor_id not in by_path:
-                continue  # not in Resources/ or filtered out
 
-            neighbor_meta = by_path[neighbor_id]
+            # Nearest-neighbor ids are physical record ids.  For a chunked
+            # file that is ``<path>#chunk-N`` and therefore is not a key in
+            # by_path.  Chroma's always-present path metadata is the logical
+            # identity.  Keep the id fallback for legacy single records and
+            # lightweight test fakes that do not return metadatas.
+            neighbor_path = None
+            metadata_rows = neighbors.get("metadatas")
+            if (metadata_rows is not None and len(metadata_rows) > 0
+                    and metadata_rows[0] is not None
+                    and i < len(metadata_rows[0])):
+                record_meta = metadata_rows[0][i]
+                if isinstance(record_meta, dict) and record_meta.get("path"):
+                    neighbor_path = os.path.abspath(
+                        os.path.expanduser(str(record_meta["path"]))
+                    )
+
+            source_path = os.path.abspath(os.path.expanduser(path))
+            if neighbor_path == source_path:
+                continue  # self
+
+            if neighbor_path is not None:
+                neighbor_meta = normalized_by_path.get(neighbor_path)
+            else:
+                # Old single-record layout (and existing fakes): id == path.
+                neighbor_meta = by_path.get(neighbor_id)
+                if neighbor_meta is None:
+                    neighbor_meta = normalized_by_path.get(
+                        os.path.abspath(os.path.expanduser(neighbor_id))
+                    )
+            if neighbor_meta is None:
+                continue  # not in Resources/ or filtered out
 
             # Cross-tag-type guard
             if neighbor_meta["tag_type"] != meta["tag_type"]:

@@ -154,11 +154,21 @@ class TestNewsDetectorCollectionWiring(unittest.TestCase):
         get_calls = []
 
         class FakeCol:
-            def get(self, ids, include=None):
-                get_calls.append(ids[0])
-                return {"embeddings": [[0.1, 0.2]]}
+            def get(self, ids=None, where=None, include=None):
+                # get_document_embedding first resolves physical records by
+                # logical path metadata, then fetches those records' vectors.
+                if where is not None:
+                    path = where["path"]
+                    get_calls.append(path)
+                    return {"ids": [path]}
+                return {
+                    "ids": list(ids or []),
+                    "embeddings": [[0.1, 0.2] for _ in (ids or [])],
+                }
 
             def query(self, query_embeddings, n_results, include=None):
+                if include != ["distances", "metadatas"]:
+                    raise AssertionError(f"unexpected query include: {include}")
                 # Each resource's sole neighbor is the NEXT resource in
                 # iteration order — same tag_type, different date, distinct
                 # entities ("Example"/"Topic" overlap) — every resource
@@ -167,7 +177,10 @@ class TestNewsDetectorCollectionWiring(unittest.TestCase):
                 if idx + 1 >= len(paths_in_order):
                     return {"distances": [[]], "ids": [[]]}
                 neighbor = paths_in_order[idx + 1]
-                return {"distances": [[0.1]], "ids": [[neighbor]]}
+                return {
+                    "distances": [[0.1]],
+                    "ids": [[neighbor]],
+                }
 
         sentinel_client = object()
         fake_chromadb = types.SimpleNamespace(

@@ -5,11 +5,13 @@ to engram YAML files, this script pushes the updated `tags` metadata
 into the ChromaDB `knowledge` collection so the new tags flow through
 to retrieval.
 
-Uses collection.update() — does NOT re-embed. Fast.
+Uses metadata-only collection.update() calls — does NOT re-embed.
 
 Strategy: walk every engram, re-build the metadata dict via
-knowledge_index._compose_chroma_metadata(), and call update() in
-batches. ChromaDB matches on `path` (which is the chromadb id).
+knowledge_index._compose_chroma_metadata(), build one collection-wide
+path-to-record-ids index, and update every record whose `path` metadata
+matches the source file. This covers both legacy single-record files and
+HCP files stored under multiple chunk ids.
 
 Idempotent: running twice produces the same metadata.
 """
@@ -23,7 +25,6 @@ import glob
 ENGRAMS_DIR = os.path.expanduser("~/Documents/vault/Engrams")
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
 COLLECTION_NAME = "knowledge"
-BATCH_SIZE = 500
 
 
 def main():
@@ -32,34 +33,24 @@ def main():
     from orchestrator.tools.knowledge_index import (
         _parse_frontmatter,
         _compose_chroma_metadata,
+        build_path_id_index,
+        update_file_metadata,
     )
     from orchestrator.embedding import get_or_create_collection
     import chromadb
 
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
     col = get_or_create_collection(client, COLLECTION_NAME)
-    print(f"Collection {COLLECTION_NAME}: {col.count()} documents")
+    print(f"Collection {COLLECTION_NAME}: {col.count()} records")
+    id_index = build_path_id_index(col)
 
     files = sorted(glob.glob(os.path.join(ENGRAMS_DIR, "*.md")))
-    print(f"Walking {len(files)} engrams...")
+    print(f"Walking {len(files)} engram source files...")
 
-    batch_ids: list[str] = []
-    batch_metas: list[dict] = []
     total_updated = 0
-    skipped = 0
+    updated_files = 0
+    never_indexed = 0
     errors = 0
-
-    def flush():
-        nonlocal total_updated, batch_ids, batch_metas
-        if not batch_ids:
-            return
-        try:
-            col.update(ids=batch_ids, metadatas=batch_metas)
-            total_updated += len(batch_ids)
-        except Exception as e:
-            print(f"BATCH UPDATE ERROR ({len(batch_ids)} ids): {e}", file=sys.stderr)
-        batch_ids = []
-        batch_metas = []
 
     for i, path in enumerate(files):
         try:
@@ -67,27 +58,38 @@ def main():
                 content = f.read()
             meta, _body = _parse_frontmatter(content)
             chroma_meta = _compose_chroma_metadata(path, meta)
-            batch_ids.append(path)
-            batch_metas.append(chroma_meta)
+            record_count = update_file_metadata(
+                col, path, chroma_meta, id_index=id_index)
         except Exception as e:
             errors += 1
             if errors <= 5:
-                print(f"PARSE ERROR on {path}: {e}", file=sys.stderr)
+                print(f"METADATA UPDATE ERROR on {path}: {e}", file=sys.stderr)
             continue
 
-        if len(batch_ids) >= BATCH_SIZE:
-            flush()
+        if record_count == 0:
+            never_indexed += 1
+        else:
+            updated_files += 1
+            total_updated += record_count
 
         if (i + 1) % 10000 == 0:
-            print(f"  ... {i+1}/{len(files)} processed, {total_updated} updated")
-
-    flush()
+            print(f"  ... {i+1}/{len(files)} source files processed, "
+                  f"{total_updated} records updated")
 
     print(f"\n=== Summary ===")
-    print(f"  total scanned:  {len(files)}")
-    print(f"  updated:        {total_updated}")
-    print(f"  skipped:        {skipped}")
-    print(f"  errors:         {errors}")
+    print(f"  source files scanned:             {len(files)}")
+    print(f"  source files updated:             {updated_files}")
+    print(f"  ChromaDB records updated:         {total_updated}")
+    print(f"  source files never indexed:       {never_indexed}")
+    print(f"  source files with update errors:  {errors}")
+
+    return {
+        "source_files_scanned": len(files),
+        "updated_files": updated_files,
+        "updated_records": total_updated,
+        "never_indexed_files": never_indexed,
+        "errors": errors,
+    }
 
 
 if __name__ == "__main__":
