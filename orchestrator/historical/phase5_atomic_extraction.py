@@ -512,29 +512,76 @@ def process_one_pair(
 # ---------------------------------------------------------------------------
 
 
-def _empty_manifest() -> dict:
+_TOTAL_DEFAULTS = {
+    "pairs_processed": 0,
+    "pairs_with_atomics": 0,
+    "candidates_total": 0,
+    "candidates_minted": 0,
+    "candidates_dedup": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+}
+
+
+def _normalize_manifest(manifest: dict) -> dict:
+    """Bring legacy/reconstructed manifests up to the writable schema.
+
+    The emergency 2026-07-10 reconstruction preserved ``completed_pairs``
+    but omitted ``totals``.  Phase 5 used to index that mapping directly,
+    crashing on the first completed future and losing the whole cycle's
+    checkpoint.  Normalize every counter here and again at record time so a
+    partial manifest can never recreate that failure.
+    """
+    if not isinstance(manifest, dict):
+        raise ValueError("phase5 manifest root must be an object")
+
+    completed = manifest.setdefault("completed_pairs", {})
+    if not isinstance(completed, dict):
+        raise ValueError("phase5 manifest completed_pairs must be an object")
+
+    totals = manifest.get("totals")
+    if not isinstance(totals, dict):
+        totals = {}
+        manifest["totals"] = totals
+    for key, default in _TOTAL_DEFAULTS.items():
+        # A reconstructed manifest knows how many pairs were completed even
+        # though its candidate/token history was lost.
+        if key == "pairs_processed":
+            default = len(completed)
+        totals.setdefault(key, default)
+    return manifest
+
+
+def _successful_completed_paths(manifest: dict) -> set[str]:
+    """Return paths whose latest Phase 5 attempt completed without error.
+
+    Older code treated an errored result as permanently complete because the
+    path was present in ``completed_pairs``.  Keeping errored paths out of the
+    resume set makes the next invocation retry them and lets a later success
+    overwrite the failed entry.
+    """
+    completed = manifest.get("completed_pairs", {})
     return {
-        "version":          1,
-        "created_at":       datetime.now().isoformat(timespec="seconds"),
-        "completed_pairs":  {},
-        "totals": {
-            "pairs_processed":  0,
-            "pairs_with_atomics": 0,
-            "candidates_total": 0,
-            "candidates_minted": 0,
-            "candidates_dedup":  0,
-            "input_tokens":     0,
-            "output_tokens":    0,
-            "cost_usd":         0.0,
-        },
+        path for path, entry in completed.items()
+        if not (isinstance(entry, dict) and entry.get("error"))
     }
+
+
+def _empty_manifest() -> dict:
+    return _normalize_manifest({
+        "version": 1,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "completed_pairs": {},
+        "totals": dict(_TOTAL_DEFAULTS),
+    })
 
 
 def _load_manifest(path: str) -> dict:
     p = Path(path).expanduser()
     if not p.exists():
         return _empty_manifest()
-    return json.loads(p.read_text(encoding="utf-8"))
+    return _normalize_manifest(json.loads(p.read_text(encoding="utf-8")))
 
 
 def _save_manifest(manifest: dict, path: str) -> None:
@@ -604,11 +651,16 @@ def run_phase5(
 
     manifest = _load_manifest(manifest_path) if not rebuild_manifest \
                 else _empty_manifest()
-    completed = set(manifest.get("completed_pairs", {}).keys())
+    completed = _successful_completed_paths(manifest)
+    retry_errors = sum(
+        1 for entry in manifest.get("completed_pairs", {}).values()
+        if isinstance(entry, dict) and entry.get("error")
+    )
     pending = [p for p in pairs if p not in completed]
     if progress_to_stderr:
         print(f"[phase5] {len(completed):,} already done, "
-              f"{len(pending):,} pending (max_workers={max_workers})",
+              f"{len(pending):,} pending ({retry_errors:,} prior errors "
+              f"eligible for retry; max_workers={max_workers})",
               file=sys.stderr, flush=True)
 
     if not pending:
@@ -661,6 +713,7 @@ def run_phase5(
             aggregate["pairs_errored"] += 1
         if r.candidates_minted > 0:
             aggregate["pairs_with_atomics"] += 1
+        _normalize_manifest(manifest)
         manifest["completed_pairs"][r.cleaned_pair_path] = {
             "candidates_total":  r.candidates_total,
             "candidates_minted": r.candidates_minted,
