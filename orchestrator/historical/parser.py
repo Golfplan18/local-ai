@@ -327,6 +327,15 @@ def parse_live_ora(text: str, source_path: str = "") -> RawChat:
     `_save_conversation` writes).
     """
     yaml_meta, body = _parse_frontmatter(text)
+    # Live raw logs use a human-readable audit header rather than YAML
+    # frontmatter. Lift lifecycle fields into the parser metadata so Phase 1
+    # and Path 2 cannot silently downgrade a Private Dialogue to Standard.
+    audit_header = body.split("\n---", 1)[0]
+    for key in ("panel_id", "source_platform", "tag", "tag_private"):
+        match = re.search(rf"(?m)^{re.escape(key)}\s*:\s*(.*?)\s*$",
+                          audit_header)
+        if match:
+            yaml_meta[key] = match.group(1).strip().strip("'\"")
     metadata = RawChatMetadata(
         yaml_frontmatter=yaml_meta,
         title=yaml_meta.get("title", "") or Path(source_path).stem,

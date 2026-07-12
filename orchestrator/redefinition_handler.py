@@ -85,6 +85,15 @@ class QueueEntry:
     queue_index: int = 0  # 0-based position in the queue file
 
 
+def _stealth_context() -> bool:
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, _conversation_id = resolve_lifecycle_context()
+    return stealth
+
+
 def list_pending_redefinitions() -> list[QueueEntry]:
     """Read the human queue and return pending redefinition entries."""
     entries: list[QueueEntry] = []
@@ -175,6 +184,11 @@ def approve_redefinition(
 
     Returns: RedefinitionResult.
     """
+    if _stealth_context():
+        return RedefinitionResult(
+            success=False,
+            error="Redefinition persistence is suppressed in Stealth",
+        )
     entries = list_pending_escalations(redefinition_only=False)
     target = next((e for e in entries if e.queue_index == queue_index), None)
     if target is None:
@@ -245,6 +259,11 @@ def deny_redefinition(queue_index: int, reason: str = "") -> RedefinitionResult:
     """Deny a pending redefinition. Removes the entry from the queue and
     logs the denial. The PED is left unchanged.
     """
+    if _stealth_context():
+        return RedefinitionResult(
+            success=False,
+            error="Redefinition persistence is suppressed in Stealth",
+        )
     entries = list_pending_escalations(redefinition_only=False)
     target = next((e for e in entries if e.queue_index == queue_index), None)
     if target is None:

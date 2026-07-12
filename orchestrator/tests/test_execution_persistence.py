@@ -238,6 +238,23 @@ class TestWriters(_StoreTempMixin, unittest.TestCase):
         red = epx.redact_for_durable(_pkt(status="escalated"), max_sensitivity="public")
         self.assertIsNone(epx.write_durable_note(red, conversation_id="c", stealth=True))
 
+    def test_write_durable_note_refuses_symlinked_conversation_directory(self):
+        outside = Path(self._tmp).parent / (Path(self._tmp).name + "-outside")
+        outside.mkdir()
+        linked = Path(self._tmp) / epx._conversation_dirname("linked-conversation")
+        linked.symlink_to(outside, target_is_directory=True)
+        try:
+            red = epx.redact_for_durable(
+                _pkt(status="escalated"), max_sensitivity="public",
+            )
+            self.assertIsNone(epx.write_durable_note(
+                red, conversation_id="linked-conversation",
+            ))
+            self.assertEqual(list(outside.iterdir()), [])
+        finally:
+            import shutil
+            shutil.rmtree(outside, ignore_errors=True)
+
 
 # ── persist_packet end-to-end (decide → set tier → redact → write) ────────────
 class TestPersistPacket(_StoreTempMixin, unittest.TestCase):
@@ -396,15 +413,59 @@ class TestPurgeConversation(_StoreTempMixin, unittest.TestCase):
         self.assertTrue(os.path.isdir(os.path.join(self._tmp, epx._fs_safe("conv-B"))))
 
     def test_purge_matches_write_transform_for_fs_unsafe_id(self):
-        # A Windows-invalid ':' in the id must be handled by the SAME transform on write + purge,
-        # so the backstop still reaches the note (Rev-1 fold #8).
+        # A Windows-invalid ':' in a legacy caller id uses the same
+        # collision-free directory key on write + purge.
         cid = "panel:AB12/x"
         self._seed(cid)
-        subdir = os.path.join(self._tmp, epx._fs_safe(cid))
+        subdir = os.path.join(self._tmp, epx._conversation_dirname(cid))
         self.assertTrue(os.path.isdir(subdir))
         res = epx.purge_conversation(cid)
         self.assertTrue(res["note_dir_removed"])
         self.assertFalse(os.path.isdir(subdir))
+
+    def test_safe_id_purge_preserves_pre_migration_colliding_legacy_owner(self):
+        shared = os.path.join(self._tmp, "a_b")
+        os.makedirs(shared)
+        safe = os.path.join(shared, "safe.md")
+        legacy = os.path.join(shared, "legacy.md")
+        with open(safe, "w", encoding="utf-8") as stream:
+            stream.write("---\nconversation_id: a_b\n---\nsafe\n")
+        with open(legacy, "w", encoding="utf-8") as stream:
+            stream.write("---\nconversation_id: a:b\n---\nlegacy\n")
+
+        res = epx.purge_conversation("a_b")
+
+        self.assertFalse(os.path.exists(safe))
+        self.assertTrue(os.path.exists(legacy))
+        self.assertFalse(res["note_dir_removed"])
+        self.assertEqual(res["errors"], [])
+
+    def test_mixed_case_delete_scrubs_casefold_owner_and_ledger(self):
+        lower_dir = os.path.join(self._tmp, "a")
+        old_upper_dir = os.path.join(self._tmp, "A")
+        os.makedirs(lower_dir)
+        with open(os.path.join(lower_dir, "lower.md"), "w", encoding="utf-8") as stream:
+            stream.write("---\nconversation_id: a\n---\nlower\n")
+        # Case-sensitive filesystems can retain a distinct pre-migration
+        # uppercase directory; case-insensitive filesystems address the same
+        # directory, so place both exact-owner spellings there.
+        if not os.path.exists(old_upper_dir):
+            os.makedirs(old_upper_dir)
+        with open(os.path.join(old_upper_dir, "upper.md"), "w", encoding="utf-8") as stream:
+            stream.write("---\nconversation_id: A\n---\nupper\n")
+        with open(epx.ledger_sink_path(), "w", encoding="utf-8") as stream:
+            stream.write(json.dumps({"conversation_id": "a", "keep": False}) + "\n")
+            stream.write(json.dumps({"conversation_id": "A", "keep": False}) + "\n")
+            stream.write(json.dumps({"conversation_id": "a:b", "keep": True}) + "\n")
+
+        res = epx.purge_conversation("A")
+
+        self.assertFalse(os.path.exists(lower_dir))
+        self.assertFalse(os.path.exists(old_upper_dir))
+        self.assertEqual(res["ledger_lines_removed"], 2)
+        self.assertEqual(self._ledger_lines(), [{
+            "conversation_id": "a:b", "keep": True,
+        }])
 
     def test_purge_of_absent_conversation_is_noop(self):
         res = epx.purge_conversation("never-seen")

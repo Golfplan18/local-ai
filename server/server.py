@@ -9,7 +9,9 @@ This file handles Flask routing, SSE streaming, conversation persistence, and UI
 """
 
 import os, sys, json, re, threading, time, uuid, shutil, io, zipfile
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlparse
 import requests
 
@@ -102,7 +104,7 @@ except ImportError:
     RESILIENCE_AVAILABLE = False
 
 try:
-    from runtime_pipeline import RuntimePipeline
+    from orchestrator.tools.runtime_pipeline import RuntimePipeline
     RUNTIME_PIPELINE_AVAILABLE = True
 except ImportError:
     RUNTIME_PIPELINE_AVAILABLE = False
@@ -128,6 +130,16 @@ def _sse(event_type, **kwargs):
     return f"data: {json.dumps({'type': event_type, **kwargs})}\n\n"
 
 
+def _boot_context_api():
+    """Return the active legacy ``boot`` module that owns its ContextVars.
+
+    The server and CLI intentionally share the top-level compatibility module.
+    Resolving it at the request seam also keeps test/dev module reloads from
+    leaving the server bound to obsolete ContextVar instances.
+    """
+    return __import__("boot")
+
+
 # ── Async job queue (WP-7.6) ────────────────────────────────────────────────
 #
 # orchestrator/job_queue.py tracks every async capability invocation
@@ -137,7 +149,10 @@ def _sse(event_type, **kwargs):
 # polling 2026-04-30, no live consumers remained).
 
 try:
-    from job_queue import get_default_queue as _get_job_queue
+    # Package-qualified import keeps every caller on the same singleton.
+    # Importing the same file as both ``job_queue`` and
+    # ``orchestrator.job_queue`` creates two independent in-memory queues.
+    from orchestrator.job_queue import get_default_queue as _get_job_queue
     _HAS_JOB_QUEUE = True
 except Exception as _e:  # pragma: no cover — defensive
     _get_job_queue = None
@@ -248,13 +263,23 @@ def capture_start():
         return _json_response({"error": "capture unavailable"}, status=503)
     body = request.get_json(silent=True) or {}
     conv_id = (body.get("conversation_id") or "").strip()
-    if not conv_id:
-        return _json_response({"error": "conversation_id required"}, status=400)
-    options = body.get("options") or {}
-    try:
-        capture_id = _get_capture_manager().start_capture(conv_id, options)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    if not _valid_live_conversation_id(conv_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    options = dict(body.get("options") or {})
+    with _conversation_lifecycle_lock(conv_id):
+        if _is_conversation_deleted(conv_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            effective_tag, _created = _ensure_artifact_conversation_envelope(
+                conv_id, body.get("tag", ""),
+            )
+        except Exception as exc:
+            return _json_response({"error": str(exc)}, status=409)
+        options["_effective_conversation_tag"] = effective_tag
+        try:
+            capture_id = _get_capture_manager().start_capture(conv_id, options)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
     state = _get_capture_manager().get_state(capture_id)
     return _json_response({"capture_id": capture_id, "state": state})
 
@@ -336,6 +361,11 @@ except Exception as _e:  # pragma: no cover — defensive
 # hook can resolve the source media without re-querying the manager.
 _transcription_source_paths: dict[str, str] = {}
 _transcription_vault_paths: dict[str, str] = {}
+_transcription_conversations: dict[str, str] = {}
+_transcription_tags: dict[str, str] = {}
+_transcription_vault_status: dict[str, str] = {}
+_transcription_vault_errors: dict[str, str] = {}
+_transcription_metadata_lock = threading.RLock()
 
 
 def _transcription_complete_hook(event: dict) -> None:
@@ -353,28 +383,72 @@ def _transcription_complete_hook(event: dict) -> None:
     tid = event.get("transcription_id")
     if not tid or not _HAS_TRANSCRIPTION:
         return
-    try:
-        mgr = _get_transcription_manager()
-        state = mgr.get_state(tid)
-        source = _transcription_source_paths.get(tid) or state.get("source_path") or ""
-        full_state = mgr._jobs.get(tid)
-        segments = full_state.segments if full_state else []
-        plain_text = full_state.plain_text if full_state else ""
-        vault_path = _write_transcript_note(
-            source_media_path=source,
-            plain_text=plain_text,
-            segments=segments,
-            language=state.get("language"),
-            duration_ms=state.get("duration_ms"),
-            transcription_model="whisper-large-v3-local",
+    with _transcription_metadata_lock:
+        conversation_id = (
+            event.get("conversation_id")
+            or _transcription_conversations.get(tid)
+            or ""
         )
-        _transcription_vault_paths[tid] = str(vault_path)
+        fallback_tag = event.get("tag") or _transcription_tags.get(tid) or ""
+    if not _valid_existing_conversation_id(conversation_id):
+        print(
+            f"[server] transcription {tid} completed without a valid "
+            "conversation owner; refusing an unowned vault derivative",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+    try:
+        with _conversation_lifecycle_lock(conversation_id):
+            if _is_conversation_deleted(conversation_id):
+                return
+            effective_tag = _effective_conversation_tag(
+                conversation_id, fallback_tag,
+            )
+            # Stealth is creation-only and leaves no durable content outside
+            # the session tree. The session-owned source/Whisper JSON are
+            # removed by Close/Delete Forever.
+            if effective_tag == "stealth":
+                with _transcription_metadata_lock:
+                    _transcription_vault_status[tid] = "skipped"
+                return
+            mgr = _get_transcription_manager()
+            state = mgr.get_state(tid)
+            with _transcription_metadata_lock:
+                source = (
+                    _transcription_source_paths.get(tid)
+                    or state.get("source_path")
+                    or ""
+                )
+            full_state = mgr._jobs.get(tid)
+            segments = full_state.segments if full_state else []
+            plain_text = full_state.plain_text if full_state else ""
+            vault_path = _write_transcript_note(
+                source_media_path=source,
+                plain_text=plain_text,
+                segments=segments,
+                language=state.get("language"),
+                duration_ms=state.get("duration_ms"),
+                transcription_model=(
+                    state.get("transcription_model")
+                    or "whisper-local:unknown"
+                ),
+                conversation_id=conversation_id,
+                private=effective_tag == "private",
+            )
+            with _transcription_metadata_lock:
+                _transcription_vault_paths[tid] = str(vault_path)
+                _transcription_vault_status[tid] = "written"
+                _transcription_vault_errors.pop(tid, None)
     except Exception as exc:
         # Vault write failures show up on the next /state poll via the
         # absence of vault_path. The transcription itself remains in
         # the 'complete' state — the user can re-run vault export
         # manually if desired.
         print(f"[server] transcription vault-write failed for {tid}: {exc}")
+        with _transcription_metadata_lock:
+            _transcription_vault_status[tid] = "failed"
+            _transcription_vault_errors[tid] = str(exc)
 
 
 if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
@@ -384,8 +458,7 @@ if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
         print(f"[server] transcription manager subscribe failed: {_e}")
 
 
-_TRANSCRIPTION_STAGING_DIR = os.path.expanduser("~/ora/staging/transcripts/")
-os.makedirs(_TRANSCRIPTION_STAGING_DIR, exist_ok=True)
+_TRANSCRIPTION_STAGING_DIR = os.path.join(str(rp.ORA_HOME), "sessions")
 
 
 @app.route("/api/transcribe", methods=["POST"])
@@ -393,8 +466,9 @@ def transcribe_upload_and_start():
     """Multipart upload + Whisper start in one round-trip.
 
     Body: ``multipart/form-data`` with field ``file`` containing the
-    audio/video. Optional form fields: ``language`` (ISO code or
-    'auto'), ``model`` (model name without ggml- prefix).
+    audio/video and ``conversation_id``. Optional form fields: ``tag``,
+    ``language`` (ISO code or 'auto'), ``model`` (model name without
+    ggml- prefix).
 
     Returns: ``{ transcription_id, source_path }``.
     """
@@ -403,15 +477,13 @@ def transcribe_upload_and_start():
     f = request.files.get("file")
     if f is None or not f.filename:
         return _json_response({"error": "file is required"}, status=400)
+    conversation_id = (request.form.get("conversation_id") or "").strip()
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
 
-    safe_name = os.path.basename(f.filename or "upload").strip() or "upload"
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    staged_path = os.path.join(_TRANSCRIPTION_STAGING_DIR,
-                               f"{timestamp}-{safe_name}")
-    try:
-        f.save(staged_path)
-    except Exception as e:
-        return _json_response({"error": f"upload save failed: {e}"}, status=500)
+    requested_tag = request.form.get("tag", "")
+    envelope_created = False
+    envelope_available = False
 
     options = {}
     lang     = (request.form.get("language") or "").strip()
@@ -446,13 +518,83 @@ def transcribe_upload_and_start():
         if openrouter_audio_question:
             options["openrouter_audio_question"] = openrouter_audio_question
 
-    try:
-        tid = _get_transcription_manager().start(staged_path, options)
-    except Exception as e:
-        return _json_response({"error": f"start failed: {e}"}, status=500)
-    _transcription_source_paths[tid] = staged_path
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            effective_tag, envelope_created = (
+                _ensure_artifact_conversation_envelope(
+                    conversation_id, requested_tag,
+                )
+            )
+            from orchestrator.conversation_memory import (
+                _conversation_path as _conversation_envelope_path,
+                _DEFAULT_SESSIONS_ROOT as _conversation_sessions_root,
+            )
+            envelope_available = _conversation_envelope_path(
+                conversation_id, _conversation_sessions_root,
+            ).is_file()
+        except Exception as exc:
+            return _json_response({"error": str(exc)}, status=409)
 
-    return _json_response({"transcription_id": tid, "source_path": staged_path})
+        safe_name = os.path.basename(f.filename or "upload").strip() or "upload"
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+        staging_root = Path(_TRANSCRIPTION_STAGING_DIR)
+        try:
+            transcription_staging = rp.safe_owned_subdir(
+                staging_root,
+                conversation_id,
+                "transcriptions",
+                create=True,
+            )
+        except Exception as e:
+            return _json_response({
+                "error": f"staging setup failed: {e}",
+                "envelope_created": envelope_created,
+                "envelope_available": envelope_available,
+            }, status=500)
+        staging_dir = str(transcription_staging)
+        safe_name = re.sub(r"[\x00-\x1f\x7f]+", "_", safe_name)
+        staged_path = os.path.join(staging_dir, f"{timestamp}-{safe_name}")
+        try:
+            _save_filestorage_no_follow(f, staged_path)
+        except Exception as e:
+            return _json_response({
+                "error": f"upload save failed: {e}",
+                "envelope_created": envelope_created,
+                "envelope_available": envelope_available,
+            }, status=500)
+
+        options["_conversation_id"] = conversation_id
+        options["_conversation_tag"] = effective_tag
+        try:
+            tid = _get_transcription_manager().start(staged_path, options)
+        except Exception as e:
+            try:
+                os.unlink(staged_path)
+            except OSError:
+                pass
+            return _json_response({
+                "error": f"start failed: {e}",
+                "envelope_created": envelope_created,
+                "envelope_available": envelope_available,
+            }, status=500)
+        with _transcription_metadata_lock:
+            _transcription_source_paths[tid] = staged_path
+            _transcription_conversations[tid] = conversation_id
+            _transcription_tags[tid] = effective_tag
+            status = _transcription_vault_status.setdefault(tid, "pending")
+            if status == "pending":
+                _transcription_vault_errors.pop(tid, None)
+
+    return _json_response({
+        "transcription_id": tid,
+        "source_path": staged_path,
+        "conversation_id": conversation_id,
+        "tag": effective_tag,
+        "envelope_created": envelope_created,
+        "envelope_available": envelope_available,
+    })
 
 
 @app.route("/api/transcribe/<transcription_id>/state", methods=["GET"])
@@ -463,7 +605,21 @@ def transcribe_state(transcription_id):
         state = _get_transcription_manager().get_state(transcription_id)
     except KeyError:
         return _json_response({"error": "unknown transcription_id"}, status=404)
-    state["vault_path"] = _transcription_vault_paths.get(transcription_id)
+    with _transcription_metadata_lock:
+        state["vault_path"] = _transcription_vault_paths.get(transcription_id)
+        vault_status = _transcription_vault_status.get(
+            transcription_id, "pending",
+        )
+        state["vault_status"] = vault_status
+        state["vault_error"] = _transcription_vault_errors.get(transcription_id)
+    # Browser polling and manager events share one status field. Keep the
+    # persisted manager key for compatibility while emitting the event-shaped
+    # alias consumed by transcribe-input.js.
+    state["type"] = (
+        "finalizing"
+        if state.get("state") == "complete" and vault_status == "pending"
+        else state.get("state")
+    )
     return _json_response(state)
 
 
@@ -696,8 +852,88 @@ except Exception as _e:  # pragma: no cover — defensive
     print(f"[server] retrieval_config unavailable: {_e}")
 
 
-_MEDIA_LIBRARY_STAGING_DIR = os.path.expanduser("~/ora/staging/media-library/")
-os.makedirs(_MEDIA_LIBRARY_STAGING_DIR, exist_ok=True)
+_MEDIA_LIBRARY_STAGING_DEFAULT = os.path.join(
+    str(rp.ORA_HOME), "staging", "media-library", "",
+)
+_MEDIA_LIBRARY_STAGING_DIR = _MEDIA_LIBRARY_STAGING_DEFAULT
+
+
+def _media_library_staging_dir(
+    conversation_id: str,
+    *,
+    create: bool = False,
+    existing: bool = False,
+) -> str:
+    """Return an exact per-conversation staging directory.
+
+    The retired flat ``<id>-<timestamp>-<name>`` convention could not
+    distinguish IDs that were prefixes of one another (``a`` versus ``a-b``).
+    A direct child makes ownership structural and deletion exact.
+    """
+    if existing:
+        cid = (conversation_id or "").strip()
+        if not _valid_existing_conversation_id(cid):
+            raise ValueError("invalid conversation_id")
+    else:
+        cid = _canonical_live_conversation_id(conversation_id)
+    if _MEDIA_LIBRARY_STAGING_DIR != _MEDIA_LIBRARY_STAGING_DEFAULT:
+        # Explicit test/deployment override is a trusted configured root.
+        parent = rp.safe_owned_subdir(
+            _MEDIA_LIBRARY_STAGING_DIR, create=create,
+        )
+    else:
+        parent = rp.safe_owned_subdir(
+            rp.ORA_HOME, "staging", "media-library", create=create,
+        )
+    path = parent / cid
+    if create:
+        return str(rp.safe_owned_subdir(parent, cid, create=True))
+    return str(path)
+
+
+def _save_filestorage_no_follow(file_storage, target_path: str) -> None:
+    """Stream one Werkzeug upload into an exclusive sibling then replace."""
+    target = Path(target_path)
+    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(temporary, flags, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            file_storage.save(stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _purge_media_library_staging(conversation_id: str) -> int:
+    """Remove only the target's structurally-owned media staging subtree."""
+    path = _media_library_staging_dir(conversation_id, existing=True)
+    if os.path.islink(path):
+        os.unlink(path)
+        return 1
+    if not os.path.exists(path):
+        return 0
+    if not os.path.isdir(path):
+        raise ValueError(f"media staging path is not a directory: {path}")
+    removed = 0
+    for walk_root, dirnames, filenames in os.walk(path, followlinks=False):
+        removed += len(filenames)
+        removed += sum(
+            1 for name in dirnames
+            if os.path.islink(os.path.join(walk_root, name))
+        )
+    shutil.rmtree(path)
+    return removed
 
 
 def _capture_conversation_id_for(capture_id):
@@ -747,11 +983,16 @@ if _HAS_CAPTURE and _HAS_MEDIA_LIBRARY and _get_capture_manager is not None:
 def media_library_list(conversation_id):
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"available": False, "entries": []})
-    try:
-        lib = _get_media_library(conversation_id)
-        return _json_response({"available": True, "entries": lib.list_entries()})
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            lib = _get_media_library(conversation_id)
+            return _json_response({"available": True, "entries": lib.list_entries()})
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
 
 @app.route("/api/media-library/<conversation_id>/add", methods=["POST"])
@@ -764,6 +1005,25 @@ def media_library_add(conversation_id):
       * JSON body ``{path: <abs_path>}`` — registers an existing file
         by absolute path (no copy).
     """
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    if request.files or request.form:
+        requested_tag = request.form.get("tag", "")
+    else:
+        requested_tag = (request.get_json(silent=True) or {}).get("tag", "")
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, requested_tag,
+            )
+        except Exception as exc:
+            return _json_response({"error": str(exc)}, status=409)
+        return _media_library_add_live(conversation_id)
+
+
+def _media_library_add_live(conversation_id):
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
     try:
@@ -774,11 +1034,11 @@ def media_library_add(conversation_id):
     file_storage = request.files.get("file")
     if file_storage is not None and file_storage.filename:
         safe_name = os.path.basename(file_storage.filename or "upload").strip() or "upload"
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-        staged_path = os.path.join(_MEDIA_LIBRARY_STAGING_DIR,
-                                   f"{conversation_id}-{timestamp}-{safe_name}")
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
+        staging_dir = _media_library_staging_dir(conversation_id, create=True)
+        staged_path = os.path.join(staging_dir, f"{timestamp}-{safe_name}")
         try:
-            file_storage.save(staged_path)
+            _save_filestorage_no_follow(file_storage, staged_path)
         except Exception as e:
             return _json_response({"error": f"save failed: {e}"}, status=500)
         try:
@@ -809,34 +1069,44 @@ def media_library_add(conversation_id):
 def media_library_remove(conversation_id, entry_id):
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    if not lib.remove(entry_id):
-        return _json_response({"error": "unknown entry_id"}, status=404)
-    return _json_response({"removed": entry_id})
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        if not lib.remove(entry_id):
+            return _json_response({"error": "unknown entry_id"}, status=404)
+        return _json_response({"removed": entry_id})
 
 
 @app.route("/api/media-library/<conversation_id>/<entry_id>/rename", methods=["POST"])
 def media_library_rename(conversation_id, entry_id):
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     body = request.get_json(silent=True) or {}
     new_name = (body.get("new_name") or "").strip()
     if not new_name:
         return _json_response({"error": "new_name required"}, status=400)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    try:
-        entry = lib.rename(entry_id, new_name)
-    except ValueError as e:
-        return _json_response({"error": str(e)}, status=400)
-    if entry is None:
-        return _json_response({"error": "unknown entry_id"}, status=404)
-    return _json_response({"entry": entry})
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        try:
+            entry = lib.rename(entry_id, new_name)
+        except ValueError as e:
+            return _json_response({"error": str(e)}, status=400)
+        if entry is None:
+            return _json_response({"error": "unknown entry_id"}, status=404)
+        return _json_response({"entry": entry})
 
 
 @app.route("/api/media-library/<conversation_id>/<entry_id>/thumbnail",
@@ -844,15 +1114,20 @@ def media_library_rename(conversation_id, entry_id):
 def media_library_thumbnail(conversation_id, entry_id):
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    thumb = lib.get_thumbnail_path(entry_id)
-    if thumb is None:
-        return _json_response({"error": "no thumbnail"}, status=404)
-    directory = str(thumb.parent)
-    return send_from_directory(directory, thumb.name, mimetype="image/jpeg")
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        thumb = lib.get_thumbnail_path(entry_id)
+        if thumb is None:
+            return _json_response({"error": "no thumbnail"}, status=404)
+        directory = str(thumb.parent)
+        return send_from_directory(directory, thumb.name, mimetype="image/jpeg")
 
 
 @app.route("/api/media-library/<conversation_id>/<entry_id>/waveform",
@@ -876,30 +1151,35 @@ def media_library_waveform(conversation_id, entry_id):
         from waveform import render_waveform, waveform_cache_path
     except Exception as e:
         return _json_response({"error": f"waveform module: {e}"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    entry = lib.get_entry(entry_id)
-    if entry is None:
-        return _json_response({"error": "unknown entry"}, status=404)
-    if entry.get("kind") not in ("audio", "video"):
-        return _json_response({"error": "entry has no audio track"}, status=404)
-    source_path = entry.get("source_path")
-    if not source_path:
-        return _json_response({"error": "entry has no source path"}, status=404)
-    src = _Path(source_path)
-    if not src.exists():
-        return _json_response({"error": "source file missing"}, status=404)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        entry = lib.get_entry(entry_id)
+        if entry is None:
+            return _json_response({"error": "unknown entry"}, status=404)
+        if entry.get("kind") not in ("audio", "video"):
+            return _json_response({"error": "entry has no audio track"}, status=404)
+        source_path = entry.get("source_path")
+        if not source_path:
+            return _json_response({"error": "entry has no source path"}, status=404)
+        src = _Path(source_path)
+        if not src.exists():
+            return _json_response({"error": "source file missing"}, status=404)
 
-    cache_path = waveform_cache_path(lib.thumbnails_dir, entry_id)
-    if not cache_path.exists():
-        ok = render_waveform(src, cache_path)
-        if not ok:
-            return _json_response({"error": "waveform render failed"}, status=404)
-    return send_from_directory(
-        str(cache_path.parent), cache_path.name, mimetype="image/png"
-    )
+        cache_path = waveform_cache_path(lib.thumbnails_dir, entry_id)
+        if not cache_path.exists():
+            ok = render_waveform(src, cache_path)
+            if not ok:
+                return _json_response({"error": "waveform render failed"}, status=404)
+        return send_from_directory(
+            str(cache_path.parent), cache_path.name, mimetype="image/png"
+        )
 
 
 @app.route("/api/media-library/<conversation_id>/<entry_id>/transcript",
@@ -917,16 +1197,21 @@ def media_library_transcript(conversation_id, entry_id):
     """
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    entry = lib.get_entry(entry_id)
-    if entry is None:
-        return _json_response({"error": "unknown entry"}, status=404)
-    source_path = entry.get("source_path")
-    if not source_path:
-        return _json_response({"error": "entry has no source path"}, status=404)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        entry = lib.get_entry(entry_id)
+        if entry is None:
+            return _json_response({"error": "unknown entry"}, status=404)
+        source_path = entry.get("source_path")
+        if not source_path:
+            return _json_response({"error": "entry has no source path"}, status=404)
     try:
         from pathlib import Path as _Path
         json_path = _Path(source_path).with_suffix(".whisper.json")
@@ -985,19 +1270,25 @@ def media_library_import_url(conversation_id):
             {"error": "url import unavailable (yt-dlp not installed?)"},
             status=503,
         )
-    if not conversation_id:
-        return _json_response({"error": "conversation_id required"}, status=400)
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     payload = request.get_json(silent=True) or {}
     url = (payload.get("url") or "").strip()
     if not url:
         return _json_response({"error": "url required"}, status=400)
     if not (url.startswith("http://") or url.startswith("https://")):
         return _json_response({"error": "url must start with http:// or https://"}, status=400)
-    try:
-        mgr = _get_url_import_manager()
-        import_id = mgr.start(conversation_id, url)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, payload.get("tag", ""),
+            )
+            mgr = _get_url_import_manager()
+            import_id = mgr.start(conversation_id, url)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
     return _json_response({
         "import_id": import_id,
         "conversation_id": conversation_id,
@@ -1057,16 +1348,21 @@ def media_library_suggest_edits(conversation_id, entry_id):
         )
     if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
         return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    entry = lib.get_entry(entry_id)
-    if entry is None:
-        return _json_response({"error": "unknown entry"}, status=404)
-    source_path = entry.get("source_path")
-    if not source_path:
-        return _json_response({"error": "entry has no source path"}, status=404)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            lib = _get_media_library(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        entry = lib.get_entry(entry_id)
+        if entry is None:
+            return _json_response({"error": "unknown entry"}, status=404)
+        source_path = entry.get("source_path")
+        if not source_path:
+            return _json_response({"error": "entry has no source path"}, status=404)
 
     from pathlib import Path as _Path
     json_path = _Path(source_path).with_suffix(".whisper.json")
@@ -1977,24 +2273,38 @@ except Exception as _e:  # pragma: no cover — defensive
 def timeline_load(conversation_id):
     if not _HAS_TIMELINE or _get_timeline is None:
         return _json_response({"available": False}, status=503)
-    try:
-        tl = _get_timeline(conversation_id)
-        return _json_response({"available": True, "timeline": tl.load()})
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            tl = _get_timeline(conversation_id)
+            return _json_response({"available": True, "timeline": tl.load()})
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
 
 @app.route("/api/timeline/<conversation_id>", methods=["PUT"])
 def timeline_save(conversation_id):
     if not _HAS_TIMELINE or _get_timeline is None:
         return _json_response({"error": "timeline unavailable"}, status=503)
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     body = request.get_json(silent=True) or {}
-    try:
-        tl = _get_timeline(conversation_id)
-        normalized = tl.save(body)
-        return _json_response({"timeline": normalized})
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    requested_tag = body.pop("_conversation_tag", "")
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, requested_tag,
+            )
+            tl = _get_timeline(conversation_id)
+            normalized = tl.save(body)
+            return _json_response({"timeline": normalized})
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
 
 # ── A/V Phase 6 follow-up — watermark image upload ───────────────────────────
@@ -2010,10 +2320,29 @@ def timeline_save(conversation_id):
 _WATERMARK_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".webp"}
 
 
+def _store_watermark_upload(conversation_id, file_storage, extension):
+    canonical_id = _canonical_live_conversation_id(conversation_id)
+    runtime_home = Path(
+        os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
+    )
+    uploads_dir = str(rp.safe_owned_subdir(
+        runtime_home, "sessions", canonical_id, "uploads", create=True,
+    ))
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
+    target_path = os.path.join(
+        uploads_dir, f"watermark-{timestamp}{extension}",
+    )
+    _save_filestorage_no_follow(file_storage, target_path)
+    if os.path.getsize(target_path) > 10 * 1024 * 1024:
+        os.unlink(target_path)
+        raise ValueError("watermark image must be under 10 MB")
+    return target_path
+
+
 @app.route("/api/watermark/<conversation_id>/upload", methods=["POST"])
 def watermark_upload(conversation_id):
-    if not conversation_id:
-        return _json_response({"error": "conversation_id required"}, status=400)
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     f = request.files.get("file")
     if f is None or not f.filename:
         return _json_response({"error": "file is required"}, status=400)
@@ -2025,34 +2354,22 @@ def watermark_upload(conversation_id):
                       f"use PNG, JPEG, or WebP"},
             status=400,
         )
-    uploads_dir = os.path.expanduser(
-        f"~/ora/sessions/{conversation_id}/uploads/"
-    )
-    try:
-        os.makedirs(uploads_dir, exist_ok=True)
-    except Exception as e:
-        return _json_response({"error": f"uploads dir: {e}"}, status=500)
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    target_name = f"watermark-{timestamp}{ext}"
-    target_path = os.path.join(uploads_dir, target_name)
-    try:
-        f.save(target_path)
-    except Exception as e:
-        return _json_response({"error": f"save failed: {e}"}, status=500)
-    # Cap upload size at 10 MB after-the-fact (cheap; better than letting
-    # a 1 GB image through). Files larger than that get deleted.
-    try:
-        if os.path.getsize(target_path) > 10 * 1024 * 1024:
-            os.unlink(target_path)
-            return _json_response(
-                {"error": "watermark image must be under 10 MB"}, status=400
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, request.form.get("tag", ""),
             )
-    except Exception:
-        pass
+            target_path = _store_watermark_upload(conversation_id, f, ext)
+        except ValueError as e:
+            return _json_response({"error": str(e)}, status=400)
+        except Exception as e:
+            return _json_response({"error": f"save failed: {e}"}, status=500)
     return _json_response({
         "conversation_id": conversation_id,
         "image_path": target_path,
-        "filename": target_name,
+        "filename": os.path.basename(target_path),
     })
 
 
@@ -2146,17 +2463,25 @@ def render_start(conversation_id):
         except Exception:
             export_dir = None
 
-    try:
-        timeline = _get_timeline(conversation_id).load()
-        library = _get_media_library(conversation_id).list_entries()
-        rid = _get_render_manager().start(
-            conversation_id, preset_key, timeline, library,
-            export_dir=export_dir)
-        _render_conversation_lookup[rid] = conversation_id
-    except ValueError as e:
-        return _json_response({"error": str(e)}, status=400)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, body.get("tag", ""),
+            )
+            timeline = _get_timeline(conversation_id).load()
+            library = _get_media_library(conversation_id).list_entries()
+            rid = _get_render_manager().start(
+                conversation_id, preset_key, timeline, library,
+                export_dir=export_dir)
+            _render_conversation_lookup[rid] = conversation_id
+        except ValueError as e:
+            return _json_response({"error": str(e)}, status=400)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
     state = _get_render_manager().get_state(rid)
     return _json_response({"render_id": rid, "state": state})
@@ -2190,6 +2515,7 @@ try:
         extract_frame as _preview_extract_frame,
         invalidate_proxy as _preview_invalidate_proxy,
         proxy_path as _preview_proxy_path,
+        forget_conversation as _preview_forget_conversation,
     )
     _HAS_PREVIEW = True
 except Exception as _e:  # pragma: no cover — defensive
@@ -2198,20 +2524,62 @@ except Exception as _e:  # pragma: no cover — defensive
     _preview_extract_frame = None
     _preview_invalidate_proxy = None
     _preview_proxy_path = None
+    _preview_forget_conversation = None
     _HAS_PREVIEW = False
     print(f"[server] preview unavailable: {_e}")
+
+
+def _conversation_read_guard(conversation_id: str):
+    """Reject unsafe/deleted/missing sessions before any read-side factory."""
+    cid = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(cid):
+        return cid, _json_response({"error": "invalid conversation_id"}, status=400)
+    if _is_conversation_deleted(cid):
+        return cid, _json_response({"status": "deleted"}, status=410)
+    session_dir = os.path.join(str(rp.ORA_HOME), "sessions", cid)
+    if os.path.islink(session_dir) or not os.path.isdir(session_dir):
+        return cid, _json_response({"error": "conversation not found"}, status=404)
+    return cid, None
+
+
+@contextmanager
+def _conversation_read_scope(conversation_id: str):
+    """Hold the delete barrier across a read-side factory or cache writer.
+
+    Delete Forever installs its tombstone before waiting for this same lock.
+    A read that got here first may finish, after which deletion purges anything
+    it created; a read that gets here second observes the tombstone and never
+    constructs a timeline/library/preview object after the purge.
+    """
+    cid = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(cid):
+        yield cid, _json_response(
+            {"error": "invalid conversation_id"}, status=400,
+        )
+        return
+    with _conversation_lifecycle_lock(cid):
+        yield _conversation_read_guard(cid)
+
+
+# Compatibility name retained for focused preview tests and older callers.
+_preview_read_guard = _conversation_read_guard
 
 
 @app.route("/api/preview/<conversation_id>/state", methods=["GET"])
 def preview_state(conversation_id):
     if not _HAS_PREVIEW or _preview_proxy_state is None:
         return _json_response({"available": False}, status=503)
-    try:
-        st = _preview_proxy_state(conversation_id)
-        st["available"] = True
-        return _json_response(st)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            st = _preview_proxy_state(conversation_id)
+            st["available"] = True
+            return _json_response(st)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
 
 
 @app.route("/api/preview/<conversation_id>/frame", methods=["GET"])
@@ -2222,31 +2590,45 @@ def preview_frame(conversation_id):
         ms = int(request.args.get("ms", "0"))
     except (TypeError, ValueError):
         ms = 0
-    try:
-        png_bytes = _preview_extract_frame(conversation_id, ms)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    return Response(
-        png_bytes,
-        mimetype="image/png",
-        headers={
-            "Cache-Control": "no-store",
-            "Content-Length": str(len(png_bytes)),
-        },
-    )
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            png_bytes = _preview_extract_frame(conversation_id, ms)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
+        return Response(
+            png_bytes,
+            mimetype="image/png",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Length": str(len(png_bytes)),
+            },
+        )
 
 
 @app.route("/api/preview/<conversation_id>/proxy/start", methods=["POST"])
 def preview_proxy_start(conversation_id):
     if not _HAS_PREVIEW or _preview_start_proxy_render is None:
         return _json_response({"error": "preview unavailable"}, status=503)
-    try:
-        rid = _preview_start_proxy_render(conversation_id)
-    except RuntimeError as e:
-        # No clips on the timeline, etc.
-        return _json_response({"error": str(e)}, status=400)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    session_dir = os.path.join(str(rp.ORA_HOME), "sessions", conversation_id)
+    if os.path.islink(session_dir) or not os.path.isdir(session_dir):
+        return _json_response({"error": "conversation not found"}, status=404)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            rid = _preview_start_proxy_render(conversation_id)
+        except RuntimeError as e:
+            # No clips on the timeline, etc.
+            return _json_response({"error": str(e)}, status=400)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
     return _json_response({"render_id": rid})
 
 
@@ -2254,28 +2636,39 @@ def preview_proxy_start(conversation_id):
 def preview_proxy_file(conversation_id):
     if not _HAS_PREVIEW or _preview_proxy_path is None:
         return _json_response({"error": "preview unavailable"}, status=503)
-    p = _preview_proxy_path(conversation_id)
-    if not p.exists() or p.stat().st_size == 0:
-        return _json_response({"error": "no proxy"}, status=404)
-    # send_file handles HTTP Range requests automatically — required for
-    # <video> element seeking.
-    from flask import send_file
-    return send_file(
-        str(p),
-        mimetype="video/mp4",
-        conditional=True,
-        max_age=0,
-    )
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        p = _preview_proxy_path(conversation_id)
+        if not p.exists() or p.stat().st_size == 0:
+            return _json_response({"error": "no proxy"}, status=404)
+        # send_file handles HTTP Range requests automatically — required for
+        # <video> element seeking.
+        from flask import send_file
+        return send_file(
+            str(p),
+            mimetype="video/mp4",
+            conditional=True,
+            max_age=0,
+        )
 
 
 @app.route("/api/preview/<conversation_id>/invalidate", methods=["POST"])
 def preview_invalidate(conversation_id):
     if not _HAS_PREVIEW or _preview_invalidate_proxy is None:
         return _json_response({"error": "preview unavailable"}, status=503)
-    try:
-        _preview_invalidate_proxy(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
+    conversation_id, error_response = _preview_read_guard(conversation_id)
+    if error_response is not None:
+        return error_response
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        try:
+            _preview_invalidate_proxy(conversation_id)
+        except Exception as e:
+            return _json_response({"error": str(e)}, status=500)
     return _json_response({"invalidated": True})
 
 
@@ -2673,8 +3066,11 @@ _vision_retry_queue: dict[str, list[dict]] = {}
 
 def _vision_retry_queue_path(conversation_id: str) -> str:
     """Resolve the per-session JSON file path for the retry queue."""
-    conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-    return os.path.join(VISUAL_UPLOADS_ROOT, conv_slug, "vision-retry-queue.json")
+    canonical_id = _canonical_live_conversation_id(conversation_id)
+    session_dir = rp.safe_owned_subdir(
+        VISUAL_UPLOADS_ROOT, canonical_id, create=False,
+    )
+    return str(session_dir / "vision-retry-queue.json")
 
 
 def _load_vision_retry_queue(conversation_id: str) -> list[dict]:
@@ -2694,9 +3090,11 @@ def _load_vision_retry_queue(conversation_id: str) -> list[dict]:
 
 def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> None:
     """Write the session queue file. Fail-open: error never blocks the response."""
-    path = _vision_retry_queue_path(conversation_id)
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        canonical_id = _canonical_live_conversation_id(conversation_id)
+        path = str(rp.safe_owned_subdir(
+            VISUAL_UPLOADS_ROOT, canonical_id, create=True,
+        ) / "vision-retry-queue.json")
         with open(path, "w") as fh:
             json.dump(entries, fh, indent=2)
     except Exception as e:
@@ -3068,32 +3466,67 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         "gear": None,        # set at gear dispatch in _run_pipeline_from_step2
         "parent_ref": None,  # paused-turn ref on clarification continuation
     }
+    # Scope every invocation, including tests and future direct callers that
+    # bypass ``agentic_loop_stream``.  The implementation intentionally sets
+    # several per-turn contexts as the trace and risk tier become known; these
+    # outer tokens restore the worker thread exactly on normal return, error,
+    # and GeneratorExit instead of letting a Stealth/private tag or trace sink
+    # bleed into the next request served by the same thread.
+    turn_tag = _effective_conversation_tag(panel_id, conversation_tag)
+    boot_context = _boot_context_api()
+    tag_token = boot_context.set_conversation_tag_context(turn_tag)
+    trace_token = boot_context.set_turn_trace_context(None)
+    scope = nullcontext()
     try:
-        yield from _pipeline_stream_impl(
-            user_input, history, panel_id=panel_id, images=images,
-            extra_context=extra_context,
-            manual_mode_selection=manual_mode_selection,
-            manual_lens_selection=manual_lens_selection,
-            framework_selected=framework_selected, config_name=config_name,
-            conversation_tag=conversation_tag, turn_state=turn_state)
-    except GeneratorExit:
-        # Client disconnect — not an error. The finalizer derives
-        # completed (step-health present / completed hint) vs abandoned.
-        raise
-    except BaseException:
-        turn_state["status"] = "error"
-        raise
-    finally:
         try:
-            from orchestrator import pipeline_trace as _pt_fin
-            _pt_fin.finalize_manifest(
-                turn_state["trace_dir"], kind=turn_state["kind"],
-                status_hint=turn_state["status"], mode=turn_state["mode"],
-                gear=turn_state["gear"],
-                parent_trace_ref=turn_state["parent_ref"])
-        except Exception as _fin_exc:
-            print(f"[server trace] manifest finalize skipped: {_fin_exc}",
-                  flush=True)
+            from orchestrator.oversight_events import lifecycle_context_scope
+            scope = lifecycle_context_scope(
+                stealth=turn_tag == "stealth",
+                conversation_id=panel_id,
+                tool_context={
+                    "trace_dir": None,
+                    "surface": "chat",
+                    "risk_tier": None,
+                },
+            )
+        except Exception as exc:
+            # Fail open loudly. The implementation's legacy setters still
+            # seed the live turn, but restoration/correlation may be degraded.
+            print(
+                f"[conversation-lifecycle] pipeline context scope unavailable "
+                f"for {panel_id}: {exc}", file=sys.stderr, flush=True,
+            )
+        with scope:
+            try:
+                yield from _pipeline_stream_impl(
+                    user_input, history, panel_id=panel_id, images=images,
+                    extra_context=extra_context,
+                    manual_mode_selection=manual_mode_selection,
+                    manual_lens_selection=manual_lens_selection,
+                    framework_selected=framework_selected,
+                    config_name=config_name,
+                    conversation_tag=turn_tag, turn_state=turn_state)
+            except GeneratorExit:
+                # Client disconnect — not an error. The finalizer derives
+                # completed (step-health present / completed hint) vs abandoned.
+                raise
+            except BaseException:
+                turn_state["status"] = "error"
+                raise
+            finally:
+                try:
+                    from orchestrator import pipeline_trace as _pt_fin
+                    _pt_fin.finalize_manifest(
+                        turn_state["trace_dir"], kind=turn_state["kind"],
+                        status_hint=turn_state["status"], mode=turn_state["mode"],
+                        gear=turn_state["gear"],
+                        parent_trace_ref=turn_state["parent_ref"])
+                except Exception as _fin_exc:
+                    print(f"[server trace] manifest finalize skipped: {_fin_exc}",
+                          flush=True)
+    finally:
+        boot_context.reset_turn_trace_context(trace_token)
+        boot_context.reset_conversation_tag_context(tag_token)
 
 
 def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, extra_context=None,
@@ -3148,19 +3581,11 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     # privacy leak that survives ``conversation_closeout._purge_stealth``
     # only via Layer 7's defence-in-depth scrub. Order matters: this is
     # the *only* layer that prevents the write in the first place.
-    try:
-        from orchestrator.conversation_memory import get_conversation_tag as _gct
-        # An existing conversation's persisted envelope tag is authoritative
-        # (immutable after first save, matching save_turn_spatial_state's own
-        # convention) — but a BRAND NEW conversation has no envelope yet, so
-        # ``get_conversation_tag`` returns "" regardless of what the request
-        # actually asked for. Falling back to the request's own
-        # ``conversation_tag`` (the client's stealth/private choice for
-        # THIS submission) closes that gap: a first stealth/private turn
-        # in a new conversation is honoured instead of silently traced.
-        _conv_tag = _gct(panel_id) or conversation_tag or ""
-    except Exception:
-        _conv_tag = conversation_tag or ""
+    # Resolve once at turn head and use the canonical value everywhere below.
+    # For a first-turn Stealth conversation there is no envelope yet, so the
+    # creation-tag registry is the only way to suppress traces before save.
+    conversation_tag = _effective_conversation_tag(panel_id, conversation_tag)
+    _conv_tag = conversation_tag
     trace_dir = None
     trace_ref_val = None
     try:
@@ -3178,6 +3603,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     except Exception as _trace_exc:
         print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
     turn_state["trace_dir"] = trace_dir
+    # The wrapper owns restoration; this update makes the newly opened trace
+    # available to boot helpers and any copied worker context for this turn.
+    _boot_context_api().set_turn_trace_context(trace_dir)
 
     # Non-inferential trace_ref channel (design-gate condition 3): the
     # generator owns trace_dir, but the conversation savers live in
@@ -3215,8 +3643,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     # turn — including to "" — so a thread reused across requests never
     # carries a stale private flag.
     try:
-        from boot import set_conversation_tag_context as _set_conv_tag
-        _set_conv_tag(_conv_tag)
+        _boot_context_api().set_conversation_tag_context(_conv_tag)
     except Exception:
         pass
 
@@ -3829,6 +4256,54 @@ def _tool_status_label(tool_name, params):
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
                    conversation_tag="", risk_override=None, turn_state=None):
+    """Lifecycle-scoped wrapper for every legacy direct-model invocation.
+
+    ``_direct_stream`` is called both from the pipeline fallback and directly
+    by tests/legacy routes.  Keeping the scope here guarantees those direct
+    callers cannot leave oversight, tool-event, private-values, or trace
+    context attached to a reused worker thread.
+    """
+    turn_tag = _effective_conversation_tag(panel_id, conversation_tag)
+    trace_dir = (
+        turn_state.get("trace_dir")
+        if isinstance(turn_state, dict)
+        else None
+    )
+    boot_context = _boot_context_api()
+    tag_token = boot_context.set_conversation_tag_context(turn_tag)
+    trace_token = boot_context.set_turn_trace_context(trace_dir)
+    scope = nullcontext()
+    try:
+        try:
+            from orchestrator.oversight_events import lifecycle_context_scope
+            scope = lifecycle_context_scope(
+                stealth=turn_tag == "stealth",
+                conversation_id=panel_id,
+                tool_context={
+                    "trace_dir": trace_dir,
+                    "surface": "chat",
+                    "risk_tier": None,
+                },
+            )
+        except Exception as exc:
+            print(
+                f"[conversation-lifecycle] direct context scope unavailable "
+                f"for {panel_id}: {exc}", file=sys.stderr, flush=True,
+            )
+        with scope:
+            yield from _direct_stream_impl(
+                user_input, history, images=images, panel_id=panel_id,
+                conversation_tag=turn_tag, risk_override=risk_override,
+                turn_state=turn_state,
+            )
+    finally:
+        boot_context.reset_turn_trace_context(trace_token)
+        boot_context.reset_conversation_tag_context(tag_token)
+
+
+def _direct_stream_impl(user_input, history, images=None, panel_id="main",
+                        conversation_tag="", risk_override=None,
+                        turn_state=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher.
 
@@ -3872,6 +4347,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
     # Direct mode runs no step-2 context assembly, so seed the tool-event
     # recorder's turn context here (no trace dir → events go to the global
     # sink, marked surface=chat).
+    _ds_tag = _effective_conversation_tag(panel_id, conversation_tag)
+    _ds_trace_dir = (
+        turn_state.get("trace_dir")
+        if isinstance(turn_state, dict)
+        else None
+    )
     try:
         try:
             import tool_events as _te_ds
@@ -3882,14 +4363,7 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
         # non-stealth events are purgeable by conversation id. Without this a
         # stealth direct-mode turn would leak durable content to the global
         # sink — the exact hole the stealth machinery exists to close.
-        _ds_tag = conversation_tag
-        if not _ds_tag:
-            try:
-                from orchestrator.conversation_memory import get_conversation_tag as _gct
-                _ds_tag = _gct(panel_id) or ""
-            except Exception:
-                _ds_tag = ""
-        _te_ds.set_turn_context(trace_dir=None, conversation_id=panel_id,
+        _te_ds.set_turn_context(trace_dir=_ds_trace_dir, conversation_id=panel_id,
                                 stealth=(_ds_tag == "stealth"), surface="chat")
     except Exception:
         pass
@@ -4026,17 +4500,50 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
     framework picks can suppress mode-intent comparison. ``_direct_stream``
     ignores them — direct mode bypasses the classifier entirely.
     """
-    if use_pipeline:
-        yield from _pipeline_stream(user_input, history, panel_id=panel_id,
-                                    images=images, extra_context=extra_context,
-                                    manual_mode_selection=manual_mode_selection,
-                                    manual_lens_selection=manual_lens_selection,
-                                    framework_selected=framework_selected,
-                                    config_name=config_name,
-                                    conversation_tag=conversation_tag)
-    else:
-        yield from _direct_stream(user_input, history, images=images,
-                                  panel_id=panel_id, conversation_tag=conversation_tag)
+    turn_tag = _effective_conversation_tag(panel_id, conversation_tag)
+    boot_context = _boot_context_api()
+    tag_token = boot_context.set_conversation_tag_context(turn_tag)
+    trace_token = boot_context.set_turn_trace_context(None)
+    scope = nullcontext()
+    try:
+        try:
+            from orchestrator.oversight_events import lifecycle_context_scope
+            scope = lifecycle_context_scope(
+                stealth=turn_tag == "stealth",
+                conversation_id=panel_id,
+                tool_context={
+                    "trace_dir": None,
+                    "surface": "chat",
+                    "risk_tier": None,
+                },
+            )
+        except Exception as exc:
+            # Fail open loudly: legacy inner setters still provide the primary
+            # pipeline suppression, but this restoration wrapper could not be
+            # armed and direct-mode oversight correlation may be incomplete.
+            print(
+                f"[conversation-lifecycle] turn context scope unavailable "
+                f"for {panel_id}: {exc}", file=sys.stderr, flush=True,
+            )
+        with scope:
+            if use_pipeline:
+                yield from _pipeline_stream(
+                    user_input, history, panel_id=panel_id,
+                    images=images, extra_context=extra_context,
+                    manual_mode_selection=manual_mode_selection,
+                    manual_lens_selection=manual_lens_selection,
+                    framework_selected=framework_selected,
+                    config_name=config_name,
+                    conversation_tag=turn_tag,
+                )
+            else:
+                yield from _direct_stream(
+                    user_input, history, images=images,
+                    panel_id=panel_id, conversation_tag=turn_tag,
+                )
+    finally:
+        boot_context.reset_turn_trace_context(trace_token)
+        boot_context.reset_conversation_tag_context(tag_token)
 
 # ── routes ────────────────────────────────────────────────────────────────────
 
@@ -5219,7 +5726,8 @@ def document_process():
     Body: ``multipart/form-data`` with field ``file``. Optional form
     fields: ``conversation_id``, ``tag`` (one of empty/private/stealth).
 
-    The server stages the file under ``~/ora/staging/documents/`` and
+    The server stages conversation-owned files under
+    ``~/ora/staging/documents/<conversation_id>/`` and
     spawns a background worker that converts to markdown, writes the
     result as an Incubator vault note tagged ``incubating`` (and
     ``private`` when applicable) or to a stealth temp dir. Returns
@@ -5227,7 +5735,7 @@ def document_process():
     ``/api/document/stream`` for state events.
     """
     try:
-        from document_input import start as _doc_start  # type: ignore
+        from orchestrator import document_input as _document_input
     except Exception as e:
         return _json_response({"error": f"document module unavailable: {e}"}, status=503)
 
@@ -5235,36 +5743,111 @@ def document_process():
     if f is None or not f.filename:
         return _json_response({"error": "file is required"}, status=400)
 
-    safe_name = os.path.basename(f.filename or "upload").strip() or "upload"
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    staging_dir = os.path.expanduser("~/ora/staging/documents/")
-    os.makedirs(staging_dir, exist_ok=True)
-    staged_path = os.path.join(staging_dir, f"{timestamp}-{safe_name}")
-    try:
-        f.save(staged_path)
-    except Exception as e:
-        return _json_response({"error": f"upload save failed: {e}"}, status=500)
-
-    options: dict[str, str] = {"original_name": safe_name}
     conv = (request.form.get("conversation_id") or "").strip()
+    if conv and not _valid_live_conversation_id(conv):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
+    requested_tag = _normalize_tag(request.form.get("tag", ""))
+
+    def _document_envelope_available() -> bool:
+        if not conv:
+            return False
+        try:
+            from orchestrator.conversation_memory import load_conversation_json
+            return load_conversation_json(conv) is not None
+        except Exception as exc:
+            print(f"[conversation-lifecycle] document envelope verification "
+                  f"failed open for {conv}: {exc}",
+                  file=sys.stderr, flush=True)
+            return False
+
+    def _document_failure(message: str, effective_tag: str):
+        return _json_response({
+            "error": message,
+            "conversation_id": conv or None,
+            "tag": effective_tag if conv else "",
+            "envelope_created": envelope_created,
+            "envelope_available": _document_envelope_available(),
+        }, status=500)
+
+    def _stage_and_start(effective_tag: str):
+        safe_name = os.path.basename(f.filename or "upload").strip() or "upload"
+        safe_name = re.sub(r"[\x00-\x1f\x7f]+", "_", safe_name)
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
+        staging_root = rp.ORA_HOME / "staging" / "documents"
+        try:
+            staging_dir = str(
+                rp.safe_owned_subdir(staging_root, conv, create=True)
+                if conv else rp.safe_owned_subdir(staging_root, create=True)
+            )
+        except Exception as exc:
+            return None, None, _document_failure(
+                f"staging setup failed: {exc}", effective_tag,
+            )
+        staged_path = os.path.join(staging_dir, f"{timestamp}-{safe_name}")
+        try:
+            _save_filestorage_no_follow(f, staged_path)
+        except Exception as exc:
+            return None, None, _document_failure(
+                f"upload save failed: {exc}", effective_tag,
+            )
+
+        options: dict[str, str] = {"original_name": safe_name}
+        if conv:
+            options["conversation_id"] = conv
+        if effective_tag:
+            options["tag"] = effective_tag
+        try:
+            processing_id = _document_input.start(staged_path, options)
+        except Exception as exc:
+            try:
+                os.remove(staged_path)
+            except OSError:
+                pass
+            if conv:
+                try:
+                    os.rmdir(staging_dir)
+                except OSError:
+                    pass
+            return None, None, _document_failure(
+                f"start failed: {exc}", effective_tag,
+            )
+        return processing_id, staged_path, None
+
     if conv:
-        options["conversation_id"] = conv
-    tag = _normalize_tag(request.form.get("tag", ""))
-    if tag:
-        options["tag"] = tag
+        with _conversation_lifecycle_lock(conv):
+            if _is_conversation_deleted(conv):
+                return _json_response({
+                    "status": "deleted", "conversation_id": conv,
+                }, status=410)
+            try:
+                tag, envelope_created = _ensure_artifact_conversation_envelope(
+                    conv, requested_tag,
+                )
+            except Exception as exc:
+                return _json_response({"error": str(exc)}, status=409)
+            pid, staged_path, error_response = _stage_and_start(tag)
+    else:
+        envelope_created = False
+        pid, staged_path, error_response = _stage_and_start("")
+    if error_response is not None:
+        return error_response
 
-    try:
-        pid = _doc_start(staged_path, options)
-    except Exception as e:
-        return _json_response({"error": f"start failed: {e}"}, status=500)
+    envelope_available = _document_envelope_available()
 
-    return _json_response({"processing_id": pid, "source_path": staged_path})
+    return _json_response({
+        "processing_id": pid,
+        "source_path": staged_path,
+        "conversation_id": conv or None,
+        "tag": tag if conv else "",
+        "envelope_created": envelope_created,
+        "envelope_available": envelope_available,
+    })
 
 
 @app.route("/api/document/<processing_id>/state", methods=["GET"])
 def document_state(processing_id):
     try:
-        from document_input import get_state as _doc_state  # type: ignore
+        from orchestrator.document_input import get_state as _doc_state
     except Exception as e:
         return _json_response({"error": f"document module unavailable: {e}"}, status=503)
     try:
@@ -5292,7 +5875,7 @@ def _document_fanout(event: dict) -> None:
 
 # Wire the fanout exactly once at import time.
 try:
-    from document_input import subscribe as _doc_subscribe  # type: ignore
+    from orchestrator.document_input import subscribe as _doc_subscribe
     _doc_subscribe(_document_fanout)
 except Exception as _e:  # pragma: no cover
     print(f"[server] document subscribe failed: {_e}")
@@ -5301,7 +5884,7 @@ except Exception as _e:  # pragma: no cover
 @app.route("/api/document/stream")
 def document_stream():
     """SSE stream for document processing events."""
-    def generate():
+    def generate_unlocked():
         q = _stdlib_queue.Queue()
         with _document_subscribers_lock:
             _document_subscribers.append(q)
@@ -5537,6 +6120,334 @@ def _normalize_tag(raw) -> str:
 # updated by ``_invoke_pipeline.generate()`` via add-on-entry / remove-on-
 # exit (try/finally so cleanup runs even on cancellation).
 _pending_conversations: set[str] = set()
+
+
+# Conversation lifecycle coordination. A Delete Forever request marks its
+# tombstone before waiting for the per-conversation lock; writers then either
+# finish before the purge or observe the tombstone and decline to create new
+# artifacts. Locks are per ID, so unrelated conversations remain concurrent.
+_conversation_lifecycle_guard = threading.RLock()
+_conversation_lifecycle_locks: dict[str, threading.RLock] = {}
+_conversation_creation_tags: dict[str, str] = {}
+_deleted_conversations: set[str] = set()
+_unreadable_conversations: set[str] = set()
+_closed_conversations: set[str] = set()
+
+
+def _valid_existing_conversation_id(conversation_id: str) -> bool:
+    """Accept one safe direct child, including legacy punctuation IDs."""
+    if not isinstance(conversation_id, str):
+        return False
+    value = conversation_id.strip()
+    return bool(
+        value and value not in {".", ".."} and len(value) <= 255
+        and "\x00" not in value and "/" not in value and "\\" not in value
+        and not any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
+    )
+
+
+def _valid_live_conversation_id(conversation_id: str) -> bool:
+    """Accept the portable, case-stable alphabet used by new writers.
+
+    Conversation storage has to mean the same thing on case-sensitive and
+    case-insensitive filesystems.  New IDs are therefore lowercase-only;
+    legacy mixed-case IDs remain readable/deletable through
+    ``_valid_existing_conversation_id``.
+    """
+    if not isinstance(conversation_id, str):
+        return False
+    return bool(
+        conversation_id == conversation_id.strip()
+        and 0 < len(conversation_id) <= 255
+        and re.fullmatch(r"[a-z0-9_-]+", conversation_id)
+    )
+
+
+def _canonical_live_conversation_id(conversation_id: str) -> str:
+    """Return a validated storage key verbatim; never lossy-sanitize it."""
+    if not _valid_live_conversation_id(conversation_id):
+        raise ValueError("invalid conversation_id")
+    return conversation_id
+
+
+def _conversation_storage_identity(conversation_id: str) -> str:
+    """Return the cross-platform identity used by locks and tombstones.
+
+    Case variants can name the same directory on Ora's supported default
+    filesystems.  Treating them as one lifecycle identity prevents a legacy
+    mixed-case delete from racing a lowercase writer against that directory.
+    """
+    return str(conversation_id or "").casefold()
+
+
+def _assert_no_casefold_session_collision(conversation_id: str) -> None:
+    """Reserve one case-insensitive session identity on every filesystem.
+
+    New IDs are lowercase, but a legacy mixed-case session may already exist
+    on a case-sensitive host.  Refuse to create the lowercase twin so Ora's
+    Mac/Windows storage identity cannot split into two Linux directories.
+    """
+    from orchestrator.conversation_memory import _DEFAULT_SESSIONS_ROOT
+
+    cid = _canonical_live_conversation_id(conversation_id)
+    root = Path(_DEFAULT_SESSIONS_ROOT)
+    if not root.exists():
+        return
+    if not root.is_dir():
+        raise RuntimeError(f"sessions root is not a directory: {root}")
+    target = root / cid
+    if target.is_symlink():
+        raise ValueError(
+            f"conversation session path is a symlink: {target}",
+        )
+    if target.exists() and not target.is_dir():
+        raise ValueError(
+            f"conversation session path is not a directory: {target}",
+        )
+    if target.exists() and not rp.within_base(target.resolve(), root.resolve()):
+        raise ValueError(
+            f"conversation session path escapes the sessions root: {target}",
+        )
+    identity = _conversation_storage_identity(cid)
+    try:
+        for child in root.iterdir():
+            if child.name != cid and child.name.casefold() == identity:
+                raise ValueError(
+                    f"conversation_id conflicts with legacy session "
+                    f"{child.name!r}",
+                )
+    except OSError as exc:
+        # Creation must not guess when the identity registry is unreadable.
+        raise RuntimeError(
+            f"could not verify conversation identity under {root}: {exc}",
+        ) from exc
+
+
+def _conversation_lifecycle_lock(conversation_id: str) -> threading.RLock:
+    identity = _conversation_storage_identity(conversation_id)
+    with _conversation_lifecycle_guard:
+        lock = _conversation_lifecycle_locks.get(identity)
+        if lock is None:
+            lock = threading.RLock()
+            _conversation_lifecycle_locks[identity] = lock
+        return lock
+
+
+def _is_conversation_deleted(conversation_id: str) -> bool:
+    with _conversation_lifecycle_guard:
+        return _conversation_storage_identity(conversation_id) in _deleted_conversations
+
+
+def _is_conversation_closed(conversation_id: str) -> bool:
+    identity = _conversation_storage_identity(conversation_id)
+    with _conversation_lifecycle_guard:
+        if identity in _closed_conversations:
+            return True
+    try:
+        from orchestrator.conversation_memory import load_conversation_json
+        envelope = load_conversation_json(conversation_id)
+        closed = bool(isinstance(envelope, dict) and envelope.get("closed"))
+    except Exception as exc:
+        print(f"[conversation-lifecycle] closed-state read failed open for "
+              f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
+        return False
+    if closed:
+        with _conversation_lifecycle_guard:
+            _closed_conversations.add(identity)
+    return closed
+
+
+def _configured_conversation_chromadb_path() -> str:
+    """Resolve the same Chroma root used by conversation saves."""
+    try:
+        config = load_config() or {}
+        value = config.get("chromadb_path") if isinstance(config, dict) else None
+        return os.path.abspath(os.path.expanduser(
+            value or os.path.join(WORKSPACE, "chromadb")
+        ))
+    except Exception as exc:
+        fallback = os.path.abspath(os.path.join(WORKSPACE, "chromadb"))
+        print(f"[conversation-lifecycle] config read failed; using {fallback}: "
+              f"{exc}", file=sys.stderr, flush=True)
+        return fallback
+
+
+def _cross_site_mutation_response():
+    """Reject browser cross-site mutation attempts against localhost APIs.
+
+    Headerless local CLI/tests remain supported. Browsers send either Origin
+    or Sec-Fetch-Site on form/fetch POSTs, so an unrelated web page cannot
+    trigger permanent deletion merely by guessing a conversation id.
+    """
+    fetch_site = (request.headers.get("Sec-Fetch-Site") or "").lower()
+    if fetch_site == "cross-site":
+        return json.dumps({"error": "cross-site lifecycle request rejected"}), 403
+    origin = (request.headers.get("Origin") or "").strip()
+    if not origin:
+        return None
+    try:
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"} or parsed.netloc != request.host:
+            return json.dumps({"error": "cross-origin lifecycle request rejected"}), 403
+    except Exception:
+        return json.dumps({"error": "invalid Origin header"}), 403
+    return None
+
+
+def _effective_conversation_tag(conversation_id: str, requested_tag="") -> str:
+    """Resolve the immutable creation tag or authoritative envelope tag.
+
+    An existing envelope always wins, including an explicitly Standard empty
+    tag. Only a genuinely missing envelope may accept a request's creation
+    tag. The first request for a missing envelope wins until persistence lands.
+    """
+    requested = _normalize_tag(requested_tag)
+    identity = _conversation_storage_identity(conversation_id)
+    try:
+        from orchestrator.conversation_memory import (
+            get_conversation_tag,
+            load_conversation_json,
+            _conversation_path,
+            _DEFAULT_SESSIONS_ROOT,
+        )
+        # Preserve the established lookup seam used by trace/direct callers:
+        # a non-Standard persisted tag is a stronger request candidate.  The
+        # full envelope read below remains authoritative (including an
+        # explicitly Standard empty tag, which this shorthand cannot
+        # distinguish from a missing envelope).
+        persisted_hint = _normalize_tag(get_conversation_tag(conversation_id))
+        if persisted_hint:
+            requested = persisted_hint
+        envelope = load_conversation_json(conversation_id)
+    except Exception as exc:
+        print(f"[conversation-lifecycle] tag lookup failed for "
+              f"{conversation_id}: {exc}", flush=True)
+        envelope = None
+
+    if isinstance(envelope, dict):
+        stored = envelope.get("tag", "")
+        authoritative = stored if stored in _VALID_CONVERSATION_TAGS else ""
+        with _conversation_lifecycle_guard:
+            _conversation_creation_tags.pop(identity, None)
+            _unreadable_conversations.discard(identity)
+        return authoritative
+
+    # ``load_conversation_json`` intentionally returns None for both missing
+    # and unreadable files. Existing-but-corrupt state is not a new Dialogue:
+    # accepting a request-supplied Standard tag could make a Private/Stealth
+    # conversation persist in clear form. Keep execution available but use
+    # the non-persistent Stealth behavior and report the corruption loudly.
+    try:
+        envelope_path = _conversation_path(
+            conversation_id, _DEFAULT_SESSIONS_ROOT,
+        )
+        if envelope_path.exists() or envelope_path.is_symlink():
+            with _conversation_lifecycle_guard:
+                _unreadable_conversations.add(identity)
+            print(f"[conversation-lifecycle] unreadable existing envelope "
+                  f"{envelope_path}; treating as Stealth until repaired",
+                  file=sys.stderr, flush=True)
+            return "stealth"
+        with _conversation_lifecycle_guard:
+            _unreadable_conversations.discard(identity)
+    except Exception as exc:
+        print(f"[conversation-lifecycle] envelope existence check failed for "
+              f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
+
+    with _conversation_lifecycle_guard:
+        return _conversation_creation_tags.setdefault(identity, requested)
+
+
+@contextmanager
+def _conversation_turn_context(
+    conversation_id: str,
+    requested_tag: str = "",
+    *,
+    trace_dir: str | None = None,
+):
+    """Scope lifecycle-sensitive context for clarification turn seams."""
+    turn_tag = _effective_conversation_tag(conversation_id, requested_tag)
+    boot_context = _boot_context_api()
+    tag_token = boot_context.set_conversation_tag_context(turn_tag)
+    trace_token = boot_context.set_turn_trace_context(trace_dir)
+    scope = nullcontext()
+    try:
+        try:
+            from orchestrator.oversight_events import lifecycle_context_scope
+            scope = lifecycle_context_scope(
+                stealth=turn_tag == "stealth",
+                conversation_id=conversation_id,
+                tool_context={
+                    "trace_dir": trace_dir,
+                    "surface": "chat",
+                    "risk_tier": None,
+                },
+            )
+        except Exception as exc:
+            print(
+                f"[conversation-lifecycle] turn context unavailable for "
+                f"{conversation_id}: {exc}", file=sys.stderr, flush=True,
+            )
+        with scope:
+            yield turn_tag
+    finally:
+        boot_context.reset_turn_trace_context(trace_token)
+        boot_context.reset_conversation_tag_context(tag_token)
+
+
+def _ensure_artifact_conversation_envelope(
+    conversation_id: str,
+    tag: str,
+) -> tuple[str, bool]:
+    """Durably bind a pre-turn server artifact to its Dialogue.
+
+    Returns ``(effective_tag, created)``. Callers already hold the server's
+    per-conversation lifecycle lock, so the envelope and the artifact are one
+    deletion/privacy unit from the perspective of concurrent requests.
+    """
+    _assert_no_casefold_session_collision(conversation_id)
+    if _is_conversation_closed(conversation_id):
+        raise RuntimeError("conversation is closed")
+    effective_tag = _effective_conversation_tag(conversation_id, tag)
+    from orchestrator.conversation_memory import (
+        ensure_conversation_envelope,
+        _conversation_path,
+        _DEFAULT_SESSIONS_ROOT,
+    )
+    envelope_path = _conversation_path(conversation_id, _DEFAULT_SESSIONS_ROOT)
+    existed = envelope_path.exists() or envelope_path.is_symlink()
+    project_ids = None
+    if not existed:
+        try:
+            from orchestrator.active_project import (
+                get_active_project,
+                resolve_project_ids,
+            )
+            project_ids = resolve_project_ids(get_active_project())
+        except Exception as exc:
+            print(f"[conversation-lifecycle] artifact project binding failed "
+                  f"open for {conversation_id}: {exc}",
+                  file=sys.stderr, flush=True)
+    path = ensure_conversation_envelope(
+        conversation_id,
+        tag=effective_tag,
+        project_ids=project_ids,
+    )
+    if path is None:
+        print(
+            f"[conversation-lifecycle] artifact for {conversation_id} is "
+            "proceeding without a durable envelope; lifecycle recovery is "
+            "degraded",
+            file=sys.stderr,
+            flush=True,
+        )
+        return effective_tag, False
+    with _conversation_lifecycle_guard:
+        identity = _conversation_storage_identity(conversation_id)
+        _conversation_creation_tags.pop(identity, None)
+        _unreadable_conversations.discard(identity)
+        _closed_conversations.discard(identity)
+    return effective_tag, not existed
 
 
 # ── V3 Backlog 2A Chunk 1: Pre-pipeline submission log ──────────────────────
@@ -5840,8 +6751,9 @@ def _resolve_chunk_destination(output_destination: str) -> str:
         return CONVERSATIONS_DIR
 
 
-def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination="",
-                       trace_ref=None):
+def _save_conversation_unlocked(user_input, ai_response, panel_id,
+                                is_new_session, tag="",
+                                output_destination="", trace_ref=None):
     """
     Three steps, all inline, immediately after every response:
 
@@ -5860,8 +6772,9 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     private) is denormalized into the chunk's ChromaDB metadata under the
     same key, so RAG queries can filter on conversation-level mode without
     joining against conversation.json. The conversation.json envelope is
-    the source of truth (set at creation, immutable per Phase 1.1); chunks
-    are the denormalized cache.
+    the source of truth: Stealth is fixed at creation, while explicit
+    Standard/Private lifecycle mutations propagate into this denormalized
+    cache.
 
     Obsidian Plugin Design (2026-05-17): ``output_destination`` is an
     optional per-request override for the processed chunk folder. Empty /
@@ -5876,6 +6789,11 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     resolves mechanically to its trace dir. ``None`` for stealth/untraced
     turns by construction.
     """
+    if _is_conversation_deleted(panel_id):
+        print(f"[conversation-lifecycle] skipped save for deleted "
+              f"conversation {panel_id}", flush=True)
+        return None
+    tag = _effective_conversation_tag(panel_id, tag)
     chunk_dir = _resolve_chunk_destination(output_destination)
     os.makedirs(CONVERSATIONS_RAW, exist_ok=True)
     os.makedirs(chunk_dir, exist_ok=True)
@@ -5892,8 +6810,11 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
     # ── Init session on first pair ────────────────────────────────────────────
     if is_new_session or panel_id not in _session_data:
-        session_id   = uuid.uuid4().hex[:6]
-        raw_name     = f"{date_str}_{time_str}_{_slug(user_input)}.md"
+        session_id   = uuid.uuid4().hex
+        raw_name     = (
+            f"{date_str}_{time_str}_session-{session_id}_"
+            f"{_slug(user_input)}.md"
+        )
         _session_data[panel_id] = {
             "raw_path":   os.path.join(CONVERSATIONS_RAW, raw_name),
             "session_id": session_id,
@@ -5910,7 +6831,10 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
     # Fill in raw_path if early-initialized by generate() without it
     if not sess.get("raw_path"):
-        raw_name = f"{date_str}_{time_str}_{_slug(user_input)}.md"
+        raw_name = (
+            f"{date_str}_{time_str}_session-{sess['session_id']}_"
+            f"{_slug(user_input)}.md"
+        )
         sess["raw_path"] = os.path.join(CONVERSATIONS_RAW, raw_name)
     if "first_user_input" not in sess:
         sess["first_user_input"] = user_input
@@ -5929,7 +6853,9 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
                 f"session_start: {sess['start']}\n"
                 f"panel_id: {panel_id}\n"
                 f"model: {sess['model']}\n"
-                f"source_platform: local\n\n"
+                f"source_platform: local\n"
+                f"tag: {tag}\n"
+                f"tag_private: {'true' if tag == 'private' else 'false'}\n\n"
                 f"---\n"
             )
         f.write(
@@ -5956,9 +6882,9 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     thread_id = f"thread_{(panel_id or '')[:8]}_{thread_counter:03d}"
 
     topic_slug = _topic_slug(user_input, ai_response)
-    chunk_name = f"{date_str}_{time_str}_{topic_slug}.md"
-    chunk_path = os.path.join(chunk_dir, chunk_name)
     chunk_id   = f"session-{session_id}-pair-{pair_num:03d}"
+    chunk_name = f"{chunk_id}_{date_str}_{time_str}_{topic_slug}.md"
+    chunk_path = os.path.join(chunk_dir, chunk_name)
 
     # Phase 5.8: chunk YAML follows Schema §12 conversation chunk template.
     # nexus, type: chat, tags, dates — no bespoke fields. Bespoke values
@@ -6006,16 +6932,22 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
         )
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
         import json as _json_mf
-        with open(manifest_path, "a") as _mf:
-            _mf.write(_json_mf.dumps({
-                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
-                "conversation_id": panel_id,
-                "chunk_id": chunk_id,
-                "chunk_path": chunk_path,
-                "raw_path": sess["raw_path"],
-                "tag": tag,
-                "trace_ref": trace_ref,
-            }) + "\n")
+        with rp.locked_file(manifest_path):
+            rp.append_text_no_follow(
+                manifest_path,
+                _json_mf.dumps({
+                    "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                    "conversation_id": panel_id,
+                    "chunk_id": chunk_id,
+                    "chunk_path": chunk_path,
+                    "chunk_root": os.path.abspath(chunk_dir),
+                    "artifact_kind": "conversation_chunk",
+                    "managed_by": "ora",
+                    "raw_path": sess["raw_path"],
+                    "tag": tag,
+                    "trace_ref": trace_ref,
+                }) + "\n",
+            )
     except Exception as _mf_exc:
         # Manifest is a defensive layer — failure to write it should NOT
         # block the conversation save. Surface to stderr so a developer
@@ -6028,6 +6960,8 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
 
     chunk_content = (
         f"{frontmatter}\n"
+        f"<!-- ora-conversation-id: {json.dumps(panel_id, ensure_ascii=False)} -->\n"
+        f"<!-- ora-chunk-id: {json.dumps(chunk_id, ensure_ascii=False)} -->\n\n"
         f"## Context\n\n"
         f"{context_header}\n\n"
         f"## Exchange\n\n"
@@ -6053,10 +6987,29 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
         embed_text = f"{context_header}\n\n{user_input}"
         embedding  = _nomic_embed(embed_text)
 
-        # Conversation title: first user input slice (capped). Stable across
-        # turns — only set on first save; preserved otherwise.
+        # The envelope display_name is authoritative. Clearing it uses the
+        # same derived fallback as the sidebar; this keeps future chunks from
+        # reverting a rename that was already propagated to existing rows.
         first_user = sess.get("first_user_input", user_input) or user_input
-        conversation_title = first_user[:80].strip() if first_user else f"Session {session_id}"
+        conversation_title = ""
+        try:
+            from orchestrator.conversation_memory import (
+                load_conversation_json,
+                effective_conversation_title,
+                _derive_title,
+            )
+            envelope = load_conversation_json(panel_id)
+            if envelope:
+                conversation_title = effective_conversation_title(envelope)
+            if not conversation_title:
+                conversation_title = _derive_title([
+                    {"role": "user", "content": first_user}
+                ])
+        except Exception as exc:
+            print(f"[conversation-lifecycle] title resolution failed for "
+                  f"{panel_id}: {exc}", flush=True)
+        if not conversation_title:
+            conversation_title = f"Session {session_id}"
 
         # Compose the canonical metadata dict.
         combined_text = f"{user_input}\n{ai_response}"
@@ -6167,16 +7120,19 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
                     rp.DATA_DIR_STR, "conversation-indexing-failures.jsonl"
                 )
                 os.makedirs(os.path.dirname(failures_log), exist_ok=True)
-                with open(failures_log, "a") as _fh:
-                    _fh.write(_json.dumps({
-                        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
-                        "conversation_id": panel_id,
-                        "chunk_id": chunk_id,
-                        "chunk_path": chunk_path,
-                        "error": str(_indexing_exc)[:2000],
-                        "error_type": type(_indexing_exc).__name__,
-                        "tag": tag,
-                    }) + "\n")
+                with rp.locked_file(failures_log):
+                    rp.append_text_no_follow(
+                        failures_log,
+                        _json.dumps({
+                            "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                            "conversation_id": panel_id,
+                            "chunk_id": chunk_id,
+                            "chunk_path": chunk_path,
+                            "error": str(_indexing_exc)[:2000],
+                            "error_type": type(_indexing_exc).__name__,
+                            "tag": tag,
+                        }) + "\n",
+                    )
             except Exception as _log_exc:
                 # If even the failure log fails, fall through to stderr so
                 # the event is at least visible to anyone watching.
@@ -6190,6 +7146,35 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     # V3 Backlog 2A Chunk 2 — return the chunk identifier so the caller
     # can include it in the plain-HTTP reply (file-as-source-of-truth).
     return chunk_id
+
+
+def _save_conversation(user_input, ai_response, panel_id, is_new_session,
+                       tag="", output_destination="", trace_ref=None):
+    """Lifecycle-serialized wrapper around the conversation artifact save."""
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            print(f"[conversation-lifecycle] refused late save for deleted "
+                      f"conversation {panel_id}", flush=True)
+            return None
+        if _is_conversation_closed(panel_id):
+            print(f"[conversation-lifecycle] refused late save for closed "
+                  f"conversation {panel_id}", flush=True)
+            return None
+        _assert_no_casefold_session_collision(panel_id)
+        # Direct/internal first-save callers do not pass through /chat's
+        # creation-tag registration. Seed it here when there is no live
+        # session state; request-path callers already pass the canonical tag.
+        if is_new_session and panel_id not in _session_data:
+            with _conversation_lifecycle_guard:
+                _conversation_creation_tags[
+                    _conversation_storage_identity(panel_id)
+                ] = _normalize_tag(tag)
+        effective_tag = _effective_conversation_tag(panel_id, tag)
+        return _save_conversation_unlocked(
+            user_input, ai_response, panel_id, is_new_session,
+            effective_tag, output_destination=output_destination,
+            trace_ref=trace_ref,
+        )
 
 
 def _apply_style_audience(extra_context, style_audience):
@@ -6219,10 +7204,10 @@ def _apply_style_audience(extra_context, style_audience):
     return extra_context
 
 
-def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
-                      manual_mode_selection="", manual_lens_selection="",
-                      framework_selected="", submission_id="", output_destination="",
-                      config_name=None, style_audience=""):
+def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
+                               manual_mode_selection="", manual_lens_selection="",
+                               framework_selected="", submission_id="", output_destination="",
+                               config_name=None, style_audience=""):
     """Shared pipeline helper — runs the pipeline synchronously, persists the
     chunk file, and returns a plain JSON reply.
 
@@ -6397,15 +7382,18 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
 
             is_new_session = len(history) == 0
 
-            # Initialize session data early so the runtime pipeline thread can read it
-            if is_new_session or panel_id not in _session_data:
-                _session_data[panel_id] = {
-                    "raw_path": "",  # populated by _save_conversation
-                    "session_id": uuid.uuid4().hex[:6],
-                    "pair_count": 0,
-                    "model": (ep.get("name", "unknown") if ep else "unknown"),
-                    "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
+            # Initialize session data only while the lifecycle lock is held.
+            # A Delete Forever tombstone may be set while the model is still
+            # running; in that case no late in-memory or on-disk state is made.
+            if not _is_conversation_deleted(panel_id):
+                if is_new_session or panel_id not in _session_data:
+                    _session_data[panel_id] = {
+                        "raw_path": "",  # populated by _save_conversation
+                        "session_id": uuid.uuid4().hex,
+                        "pair_count": 0,
+                        "model": (ep.get("name", "unknown") if ep else "unknown"),
+                        "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
 
             # V3 Backlog 2A Chunk 2 — synchronous save inside the lock
             # so the chunk_id is known before we reply. The submission
@@ -6440,10 +7428,11 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                         data.pop("interrupted_submission_id", None)
                         env_path = _conversation_path(panel_id,
                                                       _DEFAULT_SESSIONS_ROOT)
-                        env_path.write_text(
-                            json.dumps(data, indent=2,
-                                        ensure_ascii=False),
-                            encoding="utf-8",
+                        rp.atomic_write_text(
+                            env_path,
+                            json.dumps(
+                                data, indent=2, ensure_ascii=False,
+                            ),
                         )
                         clear_conversation_error(panel_id)
                 except Exception as e:
@@ -6451,14 +7440,15 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
 
             # WP-5.3 — append this turn to conversation.json so the next
             # turn can retrieve prior spatial state. Async (best-effort).
-            threading.Thread(
-                target=_persist_turn_spatial_state,
-                args=(panel_id, clean_input, final_response, extra_context, tag),
-                kwargs={"trace_ref": trace_ref},
-                daemon=True,
-            ).start()
+            if chunk_id and not _is_conversation_deleted(panel_id):
+                threading.Thread(
+                    target=_persist_turn_spatial_state,
+                    args=(panel_id, clean_input, final_response, extra_context, tag),
+                    kwargs={"trace_ref": trace_ref},
+                    daemon=True,
+                ).start()
 
-            if is_main:
+            if chunk_id and is_main and not _is_conversation_deleted(panel_id):
                 recent = list(history[-4:]) + [
                     {"role": "user",      "content": clean_input},
                     {"role": "assistant", "content": final_response},
@@ -6473,7 +7463,9 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 }
 
             # Runtime pipeline: fire async end-of-session processing
-            if RUNTIME_PIPELINE_AVAILABLE and not is_sidebar:
+            if (chunk_id and RUNTIME_PIPELINE_AVAILABLE and not is_sidebar
+                    and tag != "stealth"
+                    and not _is_conversation_deleted(panel_id)):
                 threading.Thread(
                     target=_run_end_of_session_pipeline,
                     args=(clean_input, final_response, panel_id, cfg, history),
@@ -6481,6 +7473,14 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 ).start()
     finally:
         _pending_conversations.discard(panel_id)
+
+    if _is_conversation_deleted(panel_id):
+        _delete_pending_submission(submission_id)
+        return json.dumps({
+            "status": "deleted",
+            "conversation_id": panel_id,
+            "chunk_id": None,
+        }), 410
 
     # On a successful save, finalize the submission log (move pending →
     # processed). On a failure, leave the pending file in place — the
@@ -6526,12 +7526,54 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     })
 
 
+def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
+                     extra_context=None, tag="", manual_mode_selection="",
+                     manual_lens_selection="", framework_selected="",
+                     submission_id="", output_destination="", config_name=None,
+                     style_audience=""):
+    """Run one conversation turn under its lifecycle lock.
+
+    Delete Forever marks a tombstone before waiting on this lock. That lets an
+    already-running turn drain without being able to save, then guarantees the
+    purge runs after its trace/tool writes have stopped.
+    """
+    panel_id = (panel_id or "").strip()
+    if not _valid_live_conversation_id(panel_id):
+        _delete_pending_submission(submission_id)
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            _delete_pending_submission(submission_id)
+            return json.dumps({
+                "status": "deleted",
+                "conversation_id": panel_id,
+            }), 410
+        if _is_conversation_closed(panel_id):
+            _delete_pending_submission(submission_id)
+            return json.dumps({
+                "status": "closed",
+                "conversation_id": panel_id,
+            }), 409
+        effective_tag = _effective_conversation_tag(panel_id, tag)
+        return _invoke_pipeline_unlocked(
+            user_input, history, panel_id, is_main,
+            images=images, extra_context=extra_context, tag=effective_tag,
+            manual_mode_selection=manual_mode_selection,
+            manual_lens_selection=manual_lens_selection,
+            framework_selected=framework_selected,
+            submission_id=submission_id,
+            output_destination=output_destination,
+            config_name=config_name,
+            style_audience=style_audience,
+        )
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data       = request.get_json(force=True)
     user_input = data.get("message","").strip()
     history    = data.get("history", [])
-    panel_id   = data.get("panel_id", "main")
+    panel_id   = str(data.get("panel_id", "main") or "main").strip()
     is_main    = data.get("is_main_feed", True)
     tag        = _normalize_tag(data.get("tag", ""))
     # V3 Phase 1 — alignment-prefilter inputs. ``manual_mode_selection`` is
@@ -6563,26 +7605,42 @@ def chat():
     config_name           = (data.get("config_name") or "").strip() or None
     if not user_input:
         return json.dumps({"error":"empty message"}), 400
+    if not _valid_live_conversation_id(panel_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
 
     # V3 Backlog 2A Chunk 1 — capture the submission to disk BEFORE any
     # other processing. A user input must never be lost. The pending file
     # is the recoverable record; on successful save it moves to
     # processed/, on a server crash the next boot surfaces it as an
     # errored chunk for the user to retry / dismiss.
-    submission_id = _log_pending_submission({
-        "endpoint":              "/chat",
-        "conversation_id":       panel_id,
-        "panel_id":              panel_id,
-        "is_main_feed":          is_main,
-        "tag":                   tag,
-        "user_input":            user_input,
-        "history":               history,
-        "manual_mode_selection": manual_mode_selection,
-        "manual_lens_selection": manual_lens_selection,
-        "framework_selected":    framework_selected,
-        "output_destination":    output_destination,
-        "attachments":           data.get("attachments", []),
-    })
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": panel_id,
+            }), 410
+        if _is_conversation_closed(panel_id):
+            return json.dumps({
+                "status": "closed", "conversation_id": panel_id,
+            }), 409
+        try:
+            _assert_no_casefold_session_collision(panel_id)
+        except (ValueError, RuntimeError) as exc:
+            return json.dumps({"error": str(exc)}), 409
+        tag = _effective_conversation_tag(panel_id, tag)
+        submission_id = _log_pending_submission({
+            "endpoint":              "/chat",
+            "conversation_id":       panel_id,
+            "panel_id":              panel_id,
+            "is_main_feed":          is_main,
+            "tag":                   tag,
+            "user_input":            user_input,
+            "history":               history,
+            "manual_mode_selection": manual_mode_selection,
+            "manual_lens_selection": manual_lens_selection,
+            "framework_selected":    framework_selected,
+            "output_destination":    output_destination,
+            "attachments":           data.get("attachments", []),
+        })
 
     # Process attachments: text content inlined, images passed separately
     raw_attachments = data.get("attachments", [])
@@ -6606,7 +7664,7 @@ def chat():
 # ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
 
 # Uploads for /chat/multipart land here, partitioned by conversation_id.
-VISUAL_UPLOADS_ROOT = os.path.expanduser("~/ora/sessions/")
+VISUAL_UPLOADS_ROOT = os.path.join(str(rp.ORA_HOME), "sessions", "")
 
 
 def _save_canvas_preview_png(conversation_id: str, data_url: str) -> str | None:
@@ -6630,13 +7688,13 @@ def _save_canvas_preview_png(conversation_id: str, data_url: str) -> str | None:
     except Exception:
         return None
     try:
-        conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-        out_dir = os.path.join(VISUAL_UPLOADS_ROOT, conv_slug, "uploads")
-        os.makedirs(out_dir, exist_ok=True)
+        canonical_id = _canonical_live_conversation_id(conversation_id)
+        out_dir = str(rp.safe_owned_subdir(
+            VISUAL_UPLOADS_ROOT, canonical_id, "uploads", create=True,
+        ))
         ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         out_path = os.path.join(out_dir, f"{ts}-canvas-preview.png")
-        with open(out_path, "wb") as f:
-            f.write(raw)
+        rp.atomic_write_bytes(out_path, raw)
         return out_path
     except Exception as e:
         print(f"[WARNING] _save_canvas_preview_png failed: {e}")
@@ -6657,12 +7715,13 @@ def _save_multipart_image(conversation_id: str, file_storage) -> str | None:
         base = os.path.basename(name) or "upload"
         # Strip any path-traversal tokens
         base = base.replace("..", "_").replace("/", "_").replace("\\", "_")
-        conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-        out_dir = os.path.join(VISUAL_UPLOADS_ROOT, conv_slug, "uploads")
-        os.makedirs(out_dir, exist_ok=True)
+        canonical_id = _canonical_live_conversation_id(conversation_id)
+        out_dir = str(rp.safe_owned_subdir(
+            VISUAL_UPLOADS_ROOT, canonical_id, "uploads", create=True,
+        ))
         ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         out_path = os.path.join(out_dir, f"{ts}-{base}")
-        file_storage.save(out_path)
+        _save_filestorage_no_follow(file_storage, out_path)
         return out_path
     except Exception as e:
         print(f"[WARNING] _save_multipart_image failed: {e}")
@@ -6713,52 +7772,74 @@ def chat_multipart():
         return json.dumps({"error": "empty message"}), 400
     if not conversation_id:
         return json.dumps({"error": "missing conversation_id"}), 400
+    if (not _valid_live_conversation_id(conversation_id)
+            or not _valid_live_conversation_id(panel_id)):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    if conversation_id != panel_id:
+        # Legacy multipart callers used the placeholder panel_id="main".
+        # Canonicalize that alias to the explicit conversation_id so uploads,
+        # pending logs, envelopes, and purge all share one key.
+        if panel_id == "main":
+            panel_id = conversation_id
+        else:
+            return json.dumps({
+                "error": "conversation_id and panel_id must match",
+            }), 400
 
-    # Optional image upload — saved FIRST so the submission log can record
-    # the path. Image binaries live separately on disk; the pending file
-    # carries only the path reference, not the bytes.
-    image_path = None
-    file_storage = request.files.get("image")
-    if file_storage is not None:
-        image_path = _save_multipart_image(conversation_id, file_storage)
+    # Serialize artifact capture with Delete Forever. If deletion starts
+    # while this block is active it waits, then removes every upload/log this
+    # request created; if deletion already started this request creates none.
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": panel_id,
+            }), 410
+        if _is_conversation_closed(panel_id):
+            return json.dumps({
+                "status": "closed", "conversation_id": panel_id,
+            }), 409
+        try:
+            _assert_no_casefold_session_collision(panel_id)
+        except (ValueError, RuntimeError) as exc:
+            return json.dumps({"error": str(exc)}), 409
+        tag = _effective_conversation_tag(panel_id, tag)
 
-    # V3 Item 12 Q1 follow-up — vision-capable canvas preview bundling.
-    # The browser sends a `canvas_preview_png` data URL when the canvas
-    # has content; we persist it to the same uploads dir so vision-
-    # capable models can read it from disk just like a user-uploaded
-    # image. Text-only models ignore the file and use
-    # spatial_representation instead.
-    canvas_preview_path = None
-    canvas_preview_data_url = (form.get("canvas_preview_png") or "").strip()
-    if canvas_preview_data_url and not image_path:
-        canvas_preview_path = _save_canvas_preview_png(
-            conversation_id, canvas_preview_data_url,
-        )
+        # Optional image upload — saved FIRST so the submission log can record
+        # the path. Image binaries live separately on disk; the pending file
+        # carries only the path reference, not the bytes.
+        image_path = None
+        file_storage = request.files.get("image")
+        if file_storage is not None:
+            image_path = _save_multipart_image(conversation_id, file_storage)
 
-    # V3 Backlog 2A Chunk 1 — capture the submission to disk BEFORE any
-    # parsing or validation that could 400. Stored values are the raw form
-    # strings so a malformed spatial_representation or annotations payload
-    # is still preserved in the pending file. Validation 400s call
-    # _delete_pending_submission so they don't surface as orphans.
-    spatial_raw     = form.get("spatial_representation", "")
-    annotations_raw = form.get("annotations", "")
-    history_raw_str = form.get("history", "")
-    submission_id = _log_pending_submission({
-        "endpoint":              "/chat/multipart",
-        "conversation_id":       conversation_id,
-        "panel_id":              panel_id,
-        "is_main_feed":          is_main,
-        "tag":                   tag,
-        "user_input":            user_input,
-        "history_raw":           history_raw_str,
-        "manual_mode_selection": manual_mode_selection,
-        "manual_lens_selection": manual_lens_selection,
-        "framework_selected":    framework_selected,
-        "output_destination":    output_destination,
-        "spatial_raw":           spatial_raw,
-        "annotations_raw":       annotations_raw,
-        "image_path":            image_path,
-    })
+        # V3 Item 12 Q1 follow-up — vision-capable canvas preview bundling.
+        canvas_preview_path = None
+        canvas_preview_data_url = (form.get("canvas_preview_png") or "").strip()
+        if canvas_preview_data_url and not image_path:
+            canvas_preview_path = _save_canvas_preview_png(
+                conversation_id, canvas_preview_data_url,
+            )
+
+        # Capture raw values before parsing so malformed input is recoverable.
+        spatial_raw     = form.get("spatial_representation", "")
+        annotations_raw = form.get("annotations", "")
+        history_raw_str = form.get("history", "")
+        submission_id = _log_pending_submission({
+            "endpoint":              "/chat/multipart",
+            "conversation_id":       conversation_id,
+            "panel_id":              panel_id,
+            "is_main_feed":          is_main,
+            "tag":                   tag,
+            "user_input":            user_input,
+            "history_raw":           history_raw_str,
+            "manual_mode_selection": manual_mode_selection,
+            "manual_lens_selection": manual_lens_selection,
+            "framework_selected":    framework_selected,
+            "output_destination":    output_destination,
+            "spatial_raw":           spatial_raw,
+            "annotations_raw":       annotations_raw,
+            "image_path":            image_path,
+        })
 
     # Optional history as JSON string
     history = []
@@ -6888,7 +7969,7 @@ def chat_multipart():
 # ── WP-7.4.8: canvas save / autosave persistence ─────────────────────────────
 
 # Canvas saves land here, partitioned by conversation_id like multipart uploads.
-CANVAS_ROOT = os.path.expanduser("~/ora/sessions/")
+CANVAS_ROOT = os.path.join(str(rp.ORA_HOME), "sessions", "")
 
 # Filename ceiling for raster previews. PNG data URLs from a 10000×10000
 # Konva stage can balloon — we cap at 8 MB to keep autosave I/O bounded.
@@ -6897,10 +7978,10 @@ _PREVIEW_MAX_BYTES = 8 * 1024 * 1024
 
 def _canvas_dir(conversation_id: str) -> str:
     """Resolve the canvas directory for a conversation, creating it if needed."""
-    conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-    out_dir = os.path.join(CANVAS_ROOT, conv_slug, "canvas")
-    os.makedirs(out_dir, exist_ok=True)
-    return out_dir
+    canonical_id = _canonical_live_conversation_id(conversation_id)
+    return str(rp.safe_owned_subdir(
+        CANVAS_ROOT, canonical_id, "canvas", create=True,
+    ))
 
 
 def _decode_preview_data_url(data_url: str) -> bytes | None:
@@ -6921,6 +8002,31 @@ def _decode_preview_data_url(data_url: str) -> bytes | None:
     return raw
 
 
+def _write_canvas_artifacts(conversation_id: str, blob: bytes,
+                            preview_data_url: str | None):
+    out_dir = _canvas_dir(conversation_id)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    canvas_path = os.path.join(out_dir, f"{ts}.ora-canvas")
+    latest_path = os.path.join(out_dir, "latest.ora-canvas")
+    rp.atomic_write_bytes(canvas_path, blob)
+    rp.atomic_write_bytes(latest_path, blob)
+
+    preview_path = None
+    if preview_data_url:
+        png_bytes = _decode_preview_data_url(preview_data_url)
+        if png_bytes is not None:
+            preview_path = os.path.join(out_dir, f"{ts}.preview.png")
+            try:
+                rp.atomic_write_bytes(preview_path, png_bytes)
+                rp.atomic_write_bytes(
+                    os.path.join(out_dir, "latest.preview.png"), png_bytes,
+                )
+            except Exception as exc:
+                print(f"[WARNING] canvas_save preview write failed: {exc}")
+                preview_path = None
+    return canvas_path, latest_path, preview_path
+
+
 @app.route("/api/canvas/save", methods=["POST"])
 def canvas_save():
     """WP-7.4.8 — Persist a canvas-state file (gzip-compressed) and an
@@ -6935,7 +8041,7 @@ def canvas_save():
         'ai-generation', 'large-paste', 'image-upload')
 
     Behavior:
-      1. Sanitises conversation_id and writes the canvas bytes to a
+      1. Validates conversation_id and writes the canvas bytes to a
          timestamped file (``<ts>.ora-canvas``) plus a stable
          ``latest.ora-canvas`` mirror.
       2. Optionally decodes the preview data URL and writes
@@ -6954,6 +8060,8 @@ def canvas_save():
 
     form = request.form
     conversation_id = (form.get("conversation_id") or "main").strip() or "main"
+    if not _valid_live_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     reason = (form.get("reason") or "autosave").strip() or "autosave"
     preview_data_url = form.get("preview") or None
 
@@ -6970,37 +8078,18 @@ def canvas_save():
     except Exception as e:
         return json.dumps({"error": "invalid canvas bytes", "message": str(e)}), 400
 
-    out_dir = _canvas_dir(conversation_id)
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    canvas_name = f"{ts}.ora-canvas"
-    canvas_path = os.path.join(out_dir, canvas_name)
-    latest_path = os.path.join(out_dir, "latest.ora-canvas")
-
-    try:
-        with open(canvas_path, "wb") as f:
-            f.write(blob)
-        # latest mirror — overwrite each save so callers have a stable path.
-        with open(latest_path, "wb") as f:
-            f.write(blob)
-    except Exception as e:
-        return json.dumps({"error": "write failed", "message": str(e)}), 500
-
-    preview_path = None
-    if preview_data_url:
-        png_bytes = _decode_preview_data_url(preview_data_url)
-        if png_bytes is not None:
-            preview_name = f"{ts}.preview.png"
-            preview_path = os.path.join(out_dir, preview_name)
-            try:
-                with open(preview_path, "wb") as f:
-                    f.write(png_bytes)
-                # latest preview mirror.
-                with open(os.path.join(out_dir, "latest.preview.png"), "wb") as f:
-                    f.write(png_bytes)
-            except Exception as e:
-                # Preview is non-fatal — log and continue.
-                print(f"[WARNING] canvas_save preview write failed: {e}")
-                preview_path = None
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({"status": "deleted"}), 410
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, form.get("tag", ""),
+            )
+            canvas_path, latest_path, preview_path = _write_canvas_artifacts(
+                conversation_id, blob, preview_data_url,
+            )
+        except Exception as e:
+            return json.dumps({"error": "write failed", "message": str(e)}), 500
 
     extent = None
     try:
@@ -7038,8 +8127,17 @@ def canvas_load(conversation_id):
         200 application/octet-stream  — raw gzipped canvas-state bytes
         404 application/json           — {"error": "no canvas saved"}
     """
-    conv_slug = re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
-    canvas_dir = os.path.join(CANVAS_ROOT, conv_slug, "canvas")
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    if _is_conversation_deleted(conversation_id):
+        return json.dumps({"status": "deleted"}), 410
+    try:
+        canvas_dir = str(rp.safe_owned_subdir(
+            CANVAS_ROOT, conversation_id, "canvas", create=False,
+        ))
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)}), 409
 
     turn_arg = request.args.get("turn")
     target_path: str | None = None
@@ -7067,6 +8165,8 @@ def canvas_load(conversation_id):
 
     if not target_path or not os.path.exists(target_path):
         return json.dumps({"error": "no canvas saved"}), 404, {"Content-Type": "application/json"}
+    if os.path.islink(target_path) or not os.path.isfile(target_path):
+        return json.dumps({"error": "canvas path is not a regular file"}), 409, {"Content-Type": "application/json"}
     try:
         with open(target_path, "rb") as f:
             blob = f.read()
@@ -8488,13 +9588,21 @@ def conversations_browser():
 def conversations_restore(conversation_id):
     """Make a closed conversation visible in the active sidebar again."""
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return _json_response({"error": "conversation_id is required"}, status=400)
+    if not _valid_existing_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     try:
         from conversation_memory import set_conversation_closed, load_conversation_json
     except Exception as e:
         return _json_response({"error": f"conversation restore import failed: {e}"}, status=500)
-    path = set_conversation_closed(conversation_id, False)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        path = set_conversation_closed(conversation_id, False)
+        if path is not None:
+            with _conversation_lifecycle_guard:
+                _closed_conversations.discard(
+                    _conversation_storage_identity(conversation_id)
+                )
     if path is None:
         return _json_response({"error": "Dialogue not found", "conversation_id": conversation_id}, status=404)
     data = load_conversation_json(conversation_id) or {}
@@ -8514,8 +9622,8 @@ def conversations_set_projects(conversation_id):
     never stored. Body:
     ``{"project_ids": ["nexus", ...]}``. Returns the stored list."""
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return _json_response({"error": "conversation_id is required"}, status=400)
+    if not _valid_existing_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     try:
         from conversation_memory import set_conversation_projects, load_conversation_json
     except Exception as e:
@@ -8524,7 +9632,10 @@ def conversations_set_projects(conversation_id):
     project_ids = data.get("project_ids")
     if not isinstance(project_ids, list):
         return _json_response({"error": "project_ids must be a list"}, status=400)
-    path = set_conversation_projects(conversation_id, project_ids)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, status=410)
+        path = set_conversation_projects(conversation_id, project_ids)
     if path is None:
         return _json_response(
             {"error": "Dialogue not found", "conversation_id": conversation_id},
@@ -8541,8 +9652,8 @@ def conversations_set_projects(conversation_id):
 def conversations_related(conversation_id):
     """Return parent, child, and sibling conversation rows for a thread."""
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return _json_response({"error": "conversation_id is required"}, status=400)
+    if not _valid_existing_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, status=400)
     include_conversations = _browser_parse_bool(
         request.args.get("conversations", request.args.get("include_conversations")),
         True,
@@ -8641,8 +9752,8 @@ def conversations_fetch(conversation_id):
     conversation does not exist.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
 
     try:
         from conversation_memory import load_conversation_json
@@ -8672,8 +9783,8 @@ def conversations_mark_read(conversation_id):
     missing.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
 
     # Optional override timestamp (test harness or batch backfill).
     try:
@@ -8687,7 +9798,12 @@ def conversations_mark_read(conversation_id):
     except Exception as e:
         return json.dumps({"error": f"mark_conversation_read import failed: {e}"}), 500
 
-    path = mark_conversation_read(conversation_id, timestamp=ts if isinstance(ts, str) else None)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({"status": "deleted"}), 410
+        path = mark_conversation_read(
+            conversation_id, timestamp=ts if isinstance(ts, str) else None,
+        )
     if path is None:
         return json.dumps({"error": "Dialogue not found or unwriteable", "conversation_id": conversation_id}), 404
 
@@ -8729,8 +9845,8 @@ def conversations_fork(conversation_id):
     Response: 200 with the new envelope, or 404 if parent is missing.
     """
     parent_id = (conversation_id or "").strip()
-    if not parent_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_live_conversation_id(parent_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
 
     try:
         body = request.get_json(force=True, silent=True) or {}
@@ -8743,6 +9859,15 @@ def conversations_fork(conversation_id):
     if not requested_id:
         ts_suffix = datetime.now().strftime("%Y%m%d-%H%M%S")
         requested_id = f"{parent_id}-fork-{ts_suffix}"
+    if not _valid_live_conversation_id(requested_id):
+        return json.dumps({"error": "invalid new_id"}), 400
+
+    creation_tag = None
+    if isinstance(body, dict) and "tag" in body:
+        raw_tag = body.get("tag")
+        if not isinstance(raw_tag, str) or raw_tag.strip().lower() not in _VALID_CONVERSATION_TAGS:
+            return json.dumps({"error": "invalid creation tag"}), 400
+        creation_tag = raw_tag.strip().lower()
 
     fork_point_chunk_id = None
     if isinstance(body, dict):
@@ -8755,10 +9880,37 @@ def conversations_fork(conversation_id):
     except Exception as e:
         return json.dumps({"error": f"fork_conversation import failed: {e}"}), 500
 
-    new_envelope = fork_conversation(
-        parent_id, requested_id,
-        fork_point_chunk_id=fork_point_chunk_id,
-    )
+    # Lock both IDs in stable order so concurrent forks cannot overwrite a
+    # child and Delete Forever cannot race either envelope read/write.
+    first_id, second_id = sorted((parent_id, requested_id))
+    with _conversation_lifecycle_lock(first_id):
+        with _conversation_lifecycle_lock(second_id):
+            if (_is_conversation_deleted(parent_id)
+                    or _is_conversation_deleted(requested_id)):
+                return json.dumps({"error": "conversation was deleted"}), 410
+            try:
+                _assert_no_casefold_session_collision(requested_id)
+            except (ValueError, RuntimeError) as exc:
+                return json.dumps({"error": str(exc)}), 409
+            try:
+                from orchestrator.conversation_memory import (
+                    _conversation_path, _DEFAULT_SESSIONS_ROOT,
+                )
+                if _conversation_path(requested_id, _DEFAULT_SESSIONS_ROOT).exists():
+                    return json.dumps({"error": "new_id already exists"}), 409
+            except Exception as exc:
+                print(f"[conversation-lifecycle] fork destination check "
+                      f"failed for {requested_id}: {exc}",
+                      file=sys.stderr, flush=True)
+                return json.dumps({
+                    "error": "could not verify fork destination",
+                    "detail": str(exc),
+                }), 500
+            new_envelope = fork_conversation(
+                parent_id, requested_id,
+                fork_point_chunk_id=fork_point_chunk_id,
+                creation_tag=creation_tag,
+            )
     if new_envelope is None:
         return json.dumps({
             "error":           "parent Dialogue not found or unreadable",
@@ -8804,11 +9956,8 @@ def api_bootstrap():
           "fallback_reason": "<str>"   (only when fallback=true)
         }
 
-    Privacy: queries against the conversations collection apply the
-    default ``tag != "private"`` filter unless the caller is themselves in
-    private mode (in which case private-tagged matches are surfaced too).
-    The knowledge collection has no privacy filter — mental models are
-    not personal data.
+    Privacy: knowledge and conversation queries exclude Private records unless
+    the caller is themselves in Private mode.
     """
     try:
         data = request.get_json(force=True) or {}
@@ -8831,10 +9980,15 @@ def api_bootstrap():
         chroma_path = cfg.get("chromadb_path", os.path.join(WORKSPACE, "chromadb/"))
         client = chromadb.PersistentClient(path=chroma_path)
 
-        # Knowledge collection (mental models, no privacy filter).
+        # Knowledge collection with the canonical mode-conditioned filter.
         try:
             kn = get_collection(client, "knowledge")
-            kn_results = kn.query(query_texts=[topic], n_results=5)
+            knowledge_where = (
+                None if caller_tag == "private" else {"tag_private": False}
+            )
+            kn_results = kn.query(
+                query_texts=[topic], n_results=5, where=knowledge_where,
+            )
             docs = (kn_results or {}).get("documents") or [[]]
             metas = (kn_results or {}).get("metadatas") or [[]]
             for i, doc in enumerate(docs[0] if docs else []):
@@ -8968,8 +10122,8 @@ def conversations_mark_errored(conversation_id):
     success, 404 if conversation.json is missing.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     try:
         body = request.get_json(force=True, silent=True) or {}
     except Exception:
@@ -8982,11 +10136,14 @@ def conversations_mark_errored(conversation_id):
     except Exception as e:
         return json.dumps({"error": f"mark_conversation_errored import failed: {e}"}), 500
 
-    path = mark_conversation_errored(
-        conversation_id,
-        summary,
-        timestamp=ts if isinstance(ts, str) else None,
-    )
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({"status": "deleted"}), 410
+        path = mark_conversation_errored(
+            conversation_id,
+            summary,
+            timestamp=ts if isinstance(ts, str) else None,
+        )
     if path is None:
         return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
     return json.dumps({
@@ -9006,13 +10163,16 @@ def conversations_dismiss_error(conversation_id):
     flag set (idempotent).
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     try:
         from conversation_memory import clear_conversation_error
     except Exception as e:
         return json.dumps({"error": f"clear_conversation_error import failed: {e}"}), 500
-    path = clear_conversation_error(conversation_id)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({"status": "deleted"}), 410
+        path = clear_conversation_error(conversation_id)
     if path is None:
         return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
     return json.dumps({"ok": True})
@@ -9033,8 +10193,8 @@ def conversations_retry(conversation_id):
     conversation doesn't exist or has no user messages to retry.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     try:
         from conversation_memory import load_conversation_json
     except Exception as e:
@@ -9079,12 +10239,244 @@ def conversations_retry(conversation_id):
 
 # ── V3 Phase 1.5: conversation close-out dispatch ────────────────────────────
 
+def _quiesce_conversation_workers(conversation_id: str) -> dict:
+    """Stop conversation-keyed background writers before filesystem purge."""
+    cleaned: dict[str, object] = {}
+    errors: list[str] = []
+
+    def run(label, callback):
+        try:
+            value = callback()
+            cleaned[label] = value
+            if isinstance(value, dict):
+                for item in value.get("errors") or []:
+                    errors.append(f"{label}: {item}")
+        except Exception as exc:
+            message = f"{label}: {exc}"
+            errors.append(message)
+            print(f"[conversation-lifecycle] worker cleanup {message}",
+                  flush=True)
+
+    if _HAS_CAPTURE and _get_capture_manager is not None:
+        run("captures", lambda: _get_capture_manager().forget_conversation(
+            conversation_id))
+    if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
+        run(
+            "transcriptions",
+            lambda: _get_transcription_manager().forget_conversation(
+                conversation_id,
+            ),
+        )
+    if _HAS_URL_IMPORT and _get_url_import_manager is not None:
+        run("url_imports", lambda: _get_url_import_manager().forget_conversation(
+            conversation_id))
+    if _HAS_PREVIEW and _preview_forget_conversation is not None:
+        run("preview", lambda: _preview_forget_conversation(conversation_id))
+    if _HAS_RENDER and _get_render_manager is not None:
+        run("renders", lambda: _get_render_manager().forget_conversation(
+            conversation_id))
+    if _HAS_JOB_QUEUE and _get_job_queue is not None:
+        run("job_queue", lambda: _get_job_queue().forget_conversation(
+            conversation_id))
+    # Media registration callbacks run outside the Flask lifecycle lock.
+    # Tombstone and drain both possible import identities before filesystem
+    # purge so a stale add_entry cannot recreate media JSON/thumbnails after
+    # the session tree has been removed.
+    for label, module_name in (
+        ("media_library", "media_library"),
+        ("media_library_package", "orchestrator.media_library"),
+    ):
+        module = sys.modules.get(module_name)
+        callback = getattr(module, "forget_library", None) if module else None
+        if callback is not None:
+            run(label, lambda _callback=callback: _callback(conversation_id))
+    run("documents", lambda: __import__(
+        "orchestrator.document_input", fromlist=["purge_conversation"]
+    ).purge_conversation(conversation_id))
+
+    return {"cleaned": cleaned, "errors": errors}
+
+
+def _clear_conversation_runtime_state(conversation_id: str) -> dict:
+    """Drop content-bearing caches and Ora-owned staging copies."""
+    counts: dict[str, object] = {}
+    errors: list[str] = []
+    identity = _conversation_storage_identity(conversation_id)
+    for value in list(_pending_conversations):
+        if _conversation_storage_identity(value) == identity:
+            _pending_conversations.discard(value)
+    for mapping in (
+        _pending_clarification,
+        _session_data,
+        _bridge_state,
+        _vision_retry_queue,
+    ):
+        for key in list(mapping):
+            if _conversation_storage_identity(key) == identity:
+                mapping.pop(key, None)
+    with _conversation_lifecycle_guard:
+        _conversation_creation_tags.pop(identity, None)
+        _unreadable_conversations.discard(identity)
+        _closed_conversations.discard(identity)
+
+    # Aside histories contain the full user/assistant text for up to five
+    # turns.  Clear the already-instantiated window without calling the
+    # getter, which would manufacture a new correlated cache entry while a
+    # Delete Forever purge is in progress.
+    if SIDEBAR_WINDOW_AVAILABLE:
+        try:
+            counts["sidebar_windows"] = clear_sidebar_window(conversation_id)
+        except Exception as exc:
+            errors.append(f"sidebar_window: {exc}")
+
+    # Both package-qualified and legacy top-level imports may already exist in
+    # a long-running process. Clear either cache without instantiating one.
+    for label, module_name, function_name in (
+        ("timeline", "timeline", "forget_timeline"),
+        ("timeline_package", "orchestrator.timeline", "forget_timeline"),
+    ):
+        module = sys.modules.get(module_name)
+        callback = getattr(module, function_name, None) if module else None
+        if callback is not None:
+            try:
+                counts[label] = bool(callback(conversation_id))
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
+
+    # Multipart media uploads are Ora-owned copies. Registered external paths
+    # and user-configured capture/render outputs are references/exports and are
+    # deliberately retained.
+    try:
+        removed_staging = _purge_media_library_staging(conversation_id)
+    except Exception as exc:
+        removed_staging = 0
+        errors.append(f"media_staging: {exc}")
+    counts["media_staging_files"] = removed_staging
+
+    for render_id, cid in list(_render_conversation_lookup.items()):
+        if _conversation_storage_identity(cid) == identity:
+            _render_conversation_lookup.pop(render_id, None)
+
+    identity = conversation_id.casefold()
+    with _transcription_metadata_lock:
+        transcription_ids = [
+            tid for tid, cid in _transcription_conversations.items()
+            if cid.casefold() == identity
+        ]
+        for tid in transcription_ids:
+            _transcription_conversations.pop(tid, None)
+            _transcription_tags.pop(tid, None)
+            _transcription_source_paths.pop(tid, None)
+            _transcription_vault_paths.pop(tid, None)
+            _transcription_vault_status.pop(tid, None)
+            _transcription_vault_errors.pop(tid, None)
+    counts["transcription_metadata"] = len(transcription_ids)
+
+    for message in errors:
+        print(f"[conversation-lifecycle] runtime cleanup {message}", flush=True)
+    return {"cleared": counts, "errors": errors}
+
+
+def _delete_conversation_runtime(conversation_id: str) -> dict:
+    """Tombstone, quiesce, purge, and clear one conversation atomically."""
+    if not _valid_existing_conversation_id(conversation_id):
+        raise ValueError("invalid conversation_id")
+    # Mark before waiting: an active turn may still compute, but every late
+    # save sees this tombstone and the purge waits for that turn's lock.
+    with _conversation_lifecycle_guard:
+        _deleted_conversations.add(_conversation_storage_identity(conversation_id))
+
+    lifecycle_lock = _conversation_lifecycle_lock(conversation_id)
+    # First drain any request/runtime writer that was already inside the
+    # barrier when the tombstone landed. No later request can enter and write.
+    with lifecycle_lock:
+        pass
+
+    # Worker shutdown may join a thread whose completion callback briefly
+    # consults the server lifecycle state. Do not hold the server lock while
+    # joining it; the tombstone plus the drained request barrier above already
+    # prevents any new writer from being created in this interval.
+    workers = _quiesce_conversation_workers(conversation_id)
+
+    with lifecycle_lock:
+        try:
+            from orchestrator.conversation_closeout import (
+                delete_conversation_forever,
+            )
+            result = delete_conversation_forever(
+                conversation_id,
+                chromadb_path=_configured_conversation_chromadb_path(),
+            )
+        except Exception as exc:
+            print(f"[conversation-lifecycle] permanent purge failed for "
+                  f"{conversation_id}: {exc}", flush=True)
+            result = {
+                "conversation_id": conversation_id,
+                "action": "delete_forever",
+                "deleted": {},
+                "retained": {"explicit_vault_exports": True},
+                "errors": [f"permanent purge: {exc}"],
+            }
+        runtime = _clear_conversation_runtime_state(conversation_id)
+        result.setdefault("errors", []).extend(workers["errors"])
+        result["errors"].extend(runtime["errors"])
+        result["worker_cleanup"] = workers["cleaned"]
+        result["runtime_cleanup"] = runtime["cleared"]
+        result["limitations"] = {
+            "external_provider_retention": (
+                "Delete Forever removes active Ora-managed local copies, but "
+                "cannot recall prompts, responses, or files already sent to a "
+                "remote model, transcription, search, or other provider. Any "
+                "provider-side copy remains subject to that provider's policy."
+            ),
+            "bounded_in_flight_remote_work": (
+                "Ora cancels and waits for correlated local workers only for a "
+                "bounded interval. A remote request already in flight may finish "
+                "provider-side even though Ora rejects and purges its late result."
+            ),
+            "repository_history": (
+                "Removing an active vault or app file does not rewrite Git, "
+                "backup, filesystem-snapshot, or other external history."
+            ),
+            "explicit_and_configured_outputs": (
+                "Files explicitly exported to the vault and user-configured "
+                "capture or render destinations are user-owned outputs and remain."
+            ),
+            "registered_external_sources": (
+                "Media or documents registered by reference outside Ora's managed "
+                "staging/session roots remain at their original paths."
+            ),
+            "document_staging_after_restart": (
+                "Pre-change flat staged document uploads whose in-memory "
+                "conversation association was lost before this process started "
+                "cannot be identified safely by filename alone. New uploads use "
+                "durable per-conversation staging directories."
+            ),
+            "legacy_flat_media_staging": (
+                "Pre-change flat media-staging files that are not referenced "
+                "by surviving metadata cannot be safely attributed because "
+                "legacy conversation IDs used ambiguous filename prefixes."
+            ),
+            "legacy_sanitized_id_artifacts": (
+                "Pre-change job, upload, canvas, and retry artifacts for "
+                "punctuation-bearing IDs may share an underscore-sanitized "
+                "path with another conversation; ambiguous files are retained "
+                "rather than risking deletion of sibling data."
+            ),
+            "legacy_runtime_derivative_ownership": (
+                "Pre-change Engram or Incubator notes that cite this Dialogue "
+                "but lack the complete Ora ownership marker are retained as "
+                "ambiguous user-vault content. New runtime derivatives carry "
+                "strict ownership fields."
+            ),
+        }
+        return result
+
 @app.route("/api/conversation/<conversation_id>/close", methods=["POST"])
 def conversation_close(conversation_id):
     """Dispatch close-out for a conversation based on its tag.
 
-    The dispatch reads the conversation's ``tag`` from conversation.json
-    (set immutably at creation per V3 Phase 1.1) and:
+    The dispatch reads the authoritative ``tag`` from conversation.json and:
 
     * empty (standard) → 200 with action "close"; envelope stamped
       ``closed: true`` so the sidebar filters it out. Data is retained.
@@ -9096,12 +10488,75 @@ def conversation_close(conversation_id):
     ``errors`` so the UI can surface them — the endpoint never aborts on
     a partial failure.
 
-    Vault artifacts under ``~/Documents/vault/Sessions/`` are not
-    auto-purged; vault export is explicit and out-of-band.
+    Explicit flat vault exports and referenced sidecars under
+    ``Vault/Sessions/`` are not auto-purged; export is user-initiated and
+    out-of-band.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": conversation_id,
+            }), 410
+        try:
+            from orchestrator.conversation_memory import (
+                load_conversation_json,
+                _conversation_path,
+                _DEFAULT_SESSIONS_ROOT,
+            )
+            envelope = load_conversation_json(conversation_id)
+            envelope_path = _conversation_path(
+                conversation_id, _DEFAULT_SESSIONS_ROOT,
+            )
+            if envelope is None and not (
+                envelope_path.exists() or envelope_path.is_symlink()
+            ):
+                with _conversation_lifecycle_guard:
+                    creation_tag = _conversation_creation_tags.get(
+                        _conversation_storage_identity(conversation_id), "",
+                    )
+                    _closed_conversations.add(
+                        _conversation_storage_identity(conversation_id)
+                    )
+                return json.dumps({
+                    "conversation_id": conversation_id,
+                    "tag": creation_tag,
+                    "action": "close",
+                    "closed": False,
+                    "local_only": True,
+                    "errors": [],
+                }), 200
+        except Exception as exc:
+            # Close remains available; the authoritative resolver below logs
+            # and applies the unreadable-envelope safety policy if needed.
+            print(f"[conversation-lifecycle] close preflight failed open for "
+                  f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
+
+    effective_tag = _effective_conversation_tag(conversation_id, "")
+    with _conversation_lifecycle_guard:
+        unreadable = (
+            _conversation_storage_identity(conversation_id)
+            in _unreadable_conversations
+        )
+    if unreadable:
+        return json.dumps({
+            "error": (
+                "conversation envelope is unreadable; Close will not guess "
+                "its retention policy. Repair it or use Delete Forever."
+            ),
+            "conversation_id": conversation_id,
+        }), 409
+    if effective_tag == "stealth":
+        result = _delete_conversation_runtime(conversation_id)
+        result["action"] = "purge"  # legacy close contract
+        result["tag"] = "stealth"
+        return json.dumps(result), 200
 
     try:
         from orchestrator.conversation_closeout import close_conversation
@@ -9109,7 +10564,20 @@ def conversation_close(conversation_id):
         return json.dumps({"error": f"close_conversation import failed: {e}"}), 500
 
     try:
-        result = close_conversation(conversation_id)
+        with _conversation_lifecycle_lock(conversation_id):
+            if _is_conversation_deleted(conversation_id):
+                return json.dumps({
+                    "status": "deleted", "conversation_id": conversation_id,
+                }), 410
+            result = close_conversation(
+                conversation_id,
+                chromadb_path=_configured_conversation_chromadb_path(),
+            )
+            if result.get("closed"):
+                with _conversation_lifecycle_guard:
+                    _closed_conversations.add(
+                        _conversation_storage_identity(conversation_id)
+                    )
     except Exception as e:
         return json.dumps({
             "error": f"close_conversation failed: {e}",
@@ -9117,6 +10585,119 @@ def conversation_close(conversation_id):
         }), 500
 
     return json.dumps(result), 200
+
+
+@app.route("/api/conversation/<conversation_id>/delete-forever", methods=["POST"])
+def conversation_delete_forever(conversation_id):
+    """Permanently delete all Ora-managed conversation stores.
+
+    Explicit flat vault exports and their sidecars remain user-owned.
+    """
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    result = _delete_conversation_runtime(conversation_id)
+    return json.dumps(result), 200
+
+
+@app.route("/api/conversation/<conversation_id>/privacy-tag", methods=["POST"])
+def conversation_privacy_tag(conversation_id):
+    """Move a current Dialogue between Standard and Private.
+
+    A zero-turn Dialogue receives a durable empty envelope here so any
+    pre-turn document/canvas/media artifacts share the same privacy and
+    deletion lifecycle across restarts.
+    """
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    body = request.get_json(force=True, silent=True) or {}
+    target = body.get("tag") if isinstance(body, dict) else None
+    if target not in {"", "private"}:
+        return json.dumps({
+            "error": "tag must be standard ('') or private; Stealth is creation-only",
+        }), 400
+
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": conversation_id,
+            }), 410
+        try:
+            from orchestrator.conversation_memory import (
+                load_conversation_json,
+                _conversation_path,
+                _DEFAULT_SESSIONS_ROOT,
+            )
+            envelope_created = False
+            if load_conversation_json(conversation_id) is None:
+                envelope_path = _conversation_path(
+                    conversation_id, _DEFAULT_SESSIONS_ROOT,
+                )
+                if envelope_path.exists() or envelope_path.is_symlink():
+                    return json.dumps({
+                        "error": "conversation envelope is unreadable",
+                        "conversation_id": conversation_id,
+                    }), 409
+                creation_tag = _effective_conversation_tag(
+                    conversation_id, "",
+                )
+                if creation_tag == "stealth":
+                    return json.dumps({
+                        "error": "Stealth is creation-only and cannot be retagged",
+                    }), 409
+                _effective, envelope_created = (
+                    _ensure_artifact_conversation_envelope(
+                        conversation_id, creation_tag,
+                    )
+                )
+            from orchestrator.conversation_closeout import (
+                update_conversation_privacy_tag,
+            )
+            from orchestrator import document_input as _document_input
+            document_result = {"jobs": 0, "outputs": 0, "errors": []}
+            # Tightening privacy updates live document writers first; a
+            # failure leaves the authoritative envelope Standard. Relaxing
+            # privacy changes the envelope/caches first so any stale document
+            # output remains over-protected until its follow-up rewrite.
+            if target == "private":
+                document_result = _document_input.update_conversation_tag(
+                    conversation_id, target,
+                )
+            result = update_conversation_privacy_tag(
+                conversation_id,
+                target,
+                chromadb_path=_configured_conversation_chromadb_path(),
+            )
+            if target == "" and result.get("envelope_updated"):
+                document_result = _document_input.update_conversation_tag(
+                    conversation_id, target,
+                )
+            result["document_jobs"] = document_result
+            result["envelope_created"] = envelope_created
+            result.setdefault("errors", []).extend(
+                document_result.get("errors") or []
+            )
+        except PermissionError as exc:
+            return json.dumps({"error": str(exc)}), 409
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)}), 400
+        except Exception as exc:
+            print(f"[conversation-lifecycle] privacy update failed: {exc}",
+                  flush=True)
+            return json.dumps({"error": str(exc)}), 500
+        if not result.get("envelope_updated"):
+            return json.dumps({
+                "error": "privacy change was not committed",
+                **result,
+            }), 409
+        return json.dumps({"ok": True, **result}), 200
 
 
 # ── V3 Backlog 2C: rename a conversation's display name ─────────────────────
@@ -9134,8 +10715,11 @@ def conversation_rename(conversation_id):
         Empty string clears the override (UI falls back to derived title).
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
 
     try:
         body = request.get_json(force=True, silent=True) or {}
@@ -9146,23 +10730,50 @@ def conversation_rename(conversation_id):
         new_name = ""
 
     try:
-        from conversation_memory import set_display_name, load_conversation_json
+        from orchestrator.conversation_memory import (
+            set_display_name,
+            load_conversation_json,
+            effective_conversation_title,
+        )
+        from orchestrator.conversation_closeout import (
+            refresh_conversation_title_metadata,
+        )
     except Exception as e:
         return json.dumps({"error": f"set_display_name import failed: {e}"}), 500
 
-    path = set_display_name(conversation_id, new_name)
-    if path is None:
-        return json.dumps({
-            "error": "Dialogue not found or unwriteable",
-            "conversation_id": conversation_id,
-        }), 404
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": conversation_id,
+            }), 410
+        previous_data = load_conversation_json(conversation_id) or {}
+        previous_title = effective_conversation_title(previous_data)
+        path = set_display_name(conversation_id, new_name)
+        if path is None:
+            return json.dumps({
+                "error": "conversation not found or unwriteable",
+                "conversation_id": conversation_id,
+            }), 404
 
-    data = load_conversation_json(conversation_id) or {}
-    return json.dumps({
-        "ok": True,
-        "conversation_id": conversation_id,
-        "display_name": data.get("display_name", ""),
-    })
+        data = load_conversation_json(conversation_id) or {}
+        effective_title = effective_conversation_title(data)
+        metadata = (
+            refresh_conversation_title_metadata(
+                conversation_id, effective_title,
+                chromadb_path=_configured_conversation_chromadb_path(),
+                previous_title=previous_title,
+            )
+            if effective_title
+            else {"chromadb_records": 0, "errors": []}
+        )
+        return json.dumps({
+            "ok": True,
+            "conversation_id": conversation_id,
+            "display_name": data.get("display_name", ""),
+            "conversation_title": effective_title,
+            "chromadb_records": metadata.get("chromadb_records", 0),
+            "errors": metadata.get("errors", []),
+        })
 
 
 # ── V3 Backlog 3F: user-pinned conversations ────────────────────────────────
@@ -9179,8 +10790,8 @@ def conversation_pin(conversation_id):
     Omitted body toggles the current state.
     """
     conversation_id = (conversation_id or "").strip()
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
 
     try:
         body = request.get_json(force=True, silent=True) or {}
@@ -9195,13 +10806,16 @@ def conversation_pin(conversation_id):
     except Exception as e:
         return json.dumps({"error": f"set_conversation_pinned import failed: {e}"}), 500
 
-    if isinstance(body, dict) and "pinned" in body:
-        target_pinned = bool(body.get("pinned"))
-    else:
-        existing = load_conversation_json(conversation_id) or {}
-        target_pinned = not bool(existing.get("pinned"))
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({"status": "deleted"}), 410
+        if isinstance(body, dict) and "pinned" in body:
+            target_pinned = bool(body.get("pinned"))
+        else:
+            existing = load_conversation_json(conversation_id) or {}
+            target_pinned = not bool(existing.get("pinned"))
 
-    path = set_conversation_pinned(conversation_id, target_pinned)
+        path = set_conversation_pinned(conversation_id, target_pinned)
     if path is None:
         return json.dumps({
             "error": "Dialogue not found or unwriteable",
@@ -9344,8 +10958,8 @@ def chat_queue_retry():
     image_path = (data.get("image_path") or "").strip()
     attempt_reason = (data.get("attempt_reason") or "").strip()
 
-    if not conversation_id:
-        return json.dumps({"error": "conversation_id is required"}), 400
+    if not _valid_live_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     if not image_path:
         return json.dumps({"error": "image_path is required"}), 400
     if attempt_reason not in ("no_vision_available", "extraction_failed"):
@@ -9354,22 +10968,27 @@ def chat_queue_retry():
             "received": attempt_reason,
         }), 400
 
-    entry = {
-        "conversation_id": conversation_id,
-        "image_path": image_path,
-        "attempt_reason": attempt_reason,
-        "queued_at": datetime.now().isoformat(),
-    }
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return json.dumps({
+                "status": "deleted", "conversation_id": conversation_id,
+            }), 410
+        entry = {
+            "conversation_id": conversation_id,
+            "image_path": image_path,
+            "attempt_reason": attempt_reason,
+            "queued_at": datetime.now().isoformat(),
+        }
 
-    # Merge the disk queue with the in-memory queue (disk wins on restart).
-    # Using the disk-resident list as the source of truth avoids dropping
-    # entries persisted by a prior server process.
-    existing = _vision_retry_queue.get(conversation_id)
-    if existing is None:
-        existing = _load_vision_retry_queue(conversation_id)
-    existing.append(entry)
-    _vision_retry_queue[conversation_id] = existing
-    _persist_vision_retry_queue(conversation_id, existing)
+        # Merge the disk queue with the in-memory queue (disk wins on
+        # restart). The lifecycle lock spans read + write so Delete Forever
+        # cannot purge between them and then receive a recreated queue file.
+        existing = _vision_retry_queue.get(conversation_id)
+        if existing is None:
+            existing = _load_vision_retry_queue(conversation_id)
+        existing.append(entry)
+        _vision_retry_queue[conversation_id] = existing
+        _persist_vision_retry_queue(conversation_id, existing)
 
     return json.dumps({
         "queued": True,
@@ -9383,8 +11002,9 @@ def chat_queue_retry():
 _bridge_state = {}
 _pipeline_state = {"stage": None, "stages": [], "active": False}
 
-def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context, tag="",
-                                trace_ref=None):
+def _persist_turn_spatial_state_unlocked(
+        panel_id, user_input, ai_response, extra_context, tag="",
+        trace_ref=None):
     """WP-5.3 — append this turn to conversation.json so subsequent turns
     can retrieve the prior spatial state.
 
@@ -9399,7 +11019,7 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
     of truth for visual state continuity.
     """
     try:
-        from conversation_memory import save_turn_spatial_state
+        from orchestrator.conversation_memory import save_turn_spatial_state
         spatial_rep = None
         annotations = None
         vision_extr = None
@@ -9435,14 +11055,34 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
 
 
+def _persist_turn_spatial_state(panel_id, user_input, ai_response,
+                                extra_context, tag="", trace_ref=None):
+    """Persist envelope state only while the conversation remains live."""
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            return
+        effective_tag = _effective_conversation_tag(panel_id, tag)
+        _persist_turn_spatial_state_unlocked(
+            panel_id, user_input, ai_response, extra_context, effective_tag,
+            trace_ref=trace_ref,
+        )
+
+
 # ── runtime pipeline helper ──────────────────────────────────────────────────
 
-def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config, history=None):
-    """Fire async end-of-session processing (Phase 11 runtime pipeline)."""
+def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, config, history=None):
+    """Run end-of-session processing inside its background lifecycle worker.
+
+    The caller already runs on a daemon thread and holds the conversation
+    lifecycle lock.  Running the pipeline synchronously *on that thread*
+    keeps Delete Forever and privacy changes behind every derivative write;
+    ``RuntimePipeline.run_async`` used to release the lock immediately and
+    could recreate staging, Chroma, logs, or promoted engrams after purge.
+    """
     if not RUNTIME_PIPELINE_AVAILABLE:
         return
     try:
-        from runtime_pipeline import SessionData
+        from orchestrator.tools.runtime_pipeline import SessionData
         sess = _session_data.get(panel_id, {})
         bridge = _bridge_state.get(panel_id, {})
 
@@ -9456,6 +11096,8 @@ def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config, hist
             timestamp=datetime.now().isoformat(),
             mode=bridge.get("active_mode", ""),
             gear=bridge.get("active_gear", 0) or 0,
+            conversation_id=panel_id,
+            conversation_tag=_effective_conversation_tag(panel_id, ""),
             models_used=[sess.get("model", "")],
             user_prompt=user_input,
             final_output=ai_response,
@@ -9463,9 +11105,25 @@ def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config, hist
             source_type="chat",
         )
         pipeline = RuntimePipeline(config=config, call_fn=call_model)
-        pipeline.run_async(session_data)
-    except Exception:
-        pass  # Runtime pipeline failure never blocks the conversation
+        pipeline.run_sync(session_data)
+    except Exception as exc:
+        # Runtime extraction remains fail-open for the delivered turn, but a
+        # failure must be observable rather than silently disappearing.
+        print(f"[runtime-pipeline] conversation {panel_id}: {exc}",
+              file=sys.stderr, flush=True)
+
+
+def _run_end_of_session_pipeline(user_input, ai_response, panel_id, config,
+                                 history=None):
+    """Start extraction only for a still-live, non-Stealth conversation."""
+    with _conversation_lifecycle_lock(panel_id):
+        if (_is_conversation_deleted(panel_id)
+                or _is_conversation_closed(panel_id)
+                or _effective_conversation_tag(panel_id, "") == "stealth"):
+            return
+        _run_end_of_session_pipeline_unlocked(
+            user_input, ai_response, panel_id, config, history,
+        )
 
 
 # V3 Phase 1.4 — /api/incognito and /api/incognito/toggle endpoints removed.
@@ -10684,23 +12342,29 @@ def v3_themes_install_from_github_api():
 
 @app.route("/api/bridge/<panel_id>", methods=["POST"])
 def bridge_update(panel_id):
+    panel_id = (panel_id or "").strip()
+    if not _valid_live_conversation_id(panel_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
     data = request.get_json(force=True)
-    existing = _bridge_state.get(panel_id, {})
-    merged = {
-        "current_topic":  data.get("current_topic", existing.get("current_topic", "")),
-        "recent_messages": data.get("recent_messages", existing.get("recent_messages", []))[-5:],
-        "active_mode":    data.get("active_mode",  existing.get("active_mode")),
-        "active_gear":    data.get("active_gear",  existing.get("active_gear")),
-        "pipeline_stage": data.get("pipeline_stage", existing.get("pipeline_stage")),
-        "updated_at":     time.time(),
-    }
-    # Preserve ora-visual blocks on the bridge so the V3 Exhibits surface can
-    # pick them up on the next poll.
-    if "ora_visual_blocks" in data:
-        merged["ora_visual_blocks"] = data.get("ora_visual_blocks") or []
-    elif "ora_visual_blocks" in existing:
-        merged["ora_visual_blocks"] = existing["ora_visual_blocks"]
-    _bridge_state[panel_id] = merged
+    with _conversation_lifecycle_lock(panel_id):
+        if _is_conversation_deleted(panel_id):
+            return json.dumps({"status": "deleted"}), 410
+        existing = _bridge_state.get(panel_id, {})
+        merged = {
+            "current_topic":  data.get("current_topic", existing.get("current_topic", "")),
+            "recent_messages": data.get("recent_messages", existing.get("recent_messages", []))[-5:],
+            "active_mode":    data.get("active_mode",  existing.get("active_mode")),
+            "active_gear":    data.get("active_gear",  existing.get("active_gear")),
+            "pipeline_stage": data.get("pipeline_stage", existing.get("pipeline_stage")),
+            "updated_at":     time.time(),
+        }
+        # Preserve ora-visual blocks on the bridge so the V3 Exhibits surface
+        # can pick them up on the next poll.
+        if "ora_visual_blocks" in data:
+            merged["ora_visual_blocks"] = data.get("ora_visual_blocks") or []
+        elif "ora_visual_blocks" in existing:
+            merged["ora_visual_blocks"] = existing["ora_visual_blocks"]
+        _bridge_state[panel_id] = merged
     return json.dumps({"ok": True})
 
 @app.route("/api/bridge/<panel_id>")
@@ -10763,7 +12427,7 @@ def clarification_respond():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate():
+    def generate_unlocked():
         step1 = pending["step1"]
         config = pending["config"]
         history = pending["history"]
@@ -10772,15 +12436,9 @@ def clarification_respond():
         # Open a fresh per-resume trace, honouring stealth tag.
         _resume_trace_dir = None
         _resume_trace_ref = None
-        _resume_tag = ""
+        _resume_tag = _effective_conversation_tag(
+            panel_id, pending.get("conversation_tag") or "")
         try:
-            from orchestrator.conversation_memory import get_conversation_tag as _gct_r
-            # Persisted envelope tag wins when present; a still-paused
-            # conversation may have no envelope yet, so fall back to the
-            # ORIGINAL turn's own tag (stashed in _pending_clarification at
-            # pause time) rather than silently tracing a stealth/private
-            # resume as standard.
-            _resume_tag = _gct_r(panel_id) or pending.get("conversation_tag") or ""
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
             if _pta_r:
                 from orchestrator import pipeline_trace as _pt_r
@@ -10816,7 +12474,7 @@ def clarification_respond():
                                                   images=pending.get("images"),
                                                   extra_context=pending.get("extra_context"),
                                                   trace_dir=_resume_trace_dir,
-                                                  conversation_tag=pending.get("conversation_tag") or _resume_tag,
+                                                  conversation_tag=_resume_tag,
                                                   turn_state=turn_state):
                 yield chunk
                 try:
@@ -10856,12 +12514,18 @@ def clarification_respond():
 
         if final_response[0] is not None:
             is_new_session = len(history) == 0
-            threading.Thread(
-                target=_save_conversation,
-                args=(user_input, final_response[0], panel_id, is_new_session),
-                kwargs={"trace_ref": _resume_trace_ref},
-                daemon=True,
-            ).start()
+            chunk_id = _save_conversation(
+                user_input, final_response[0], panel_id, is_new_session,
+                _resume_tag, trace_ref=_resume_trace_ref,
+            )
+            if chunk_id:
+                threading.Thread(
+                    target=_persist_turn_spatial_state,
+                    args=(panel_id, user_input, final_response[0],
+                          pending.get("extra_context"), _resume_tag),
+                    kwargs={"trace_ref": _resume_trace_ref},
+                    daemon=True,
+                ).start()
 
             _bridge_state[panel_id] = {
                 "current_topic": user_input,
@@ -10878,6 +12542,16 @@ def clarification_respond():
         _pipeline_state.update({"stage": None, "label": "", "active": False})
         yield _sse("done")
 
+    def generate():
+        with _conversation_turn_context(
+            panel_id, pending.get("conversation_tag") or "",
+        ):
+            with _conversation_lifecycle_lock(panel_id):
+                if _is_conversation_deleted(panel_id):
+                    yield _sse("error", text="Conversation was permanently deleted.")
+                    return
+                yield from generate_unlocked()
+
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -10893,7 +12567,7 @@ def clarification_skip():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate():
+    def generate_unlocked():
         step1 = pending["step1"]
         config = pending["config"]
         history = pending["history"]
@@ -10902,12 +12576,9 @@ def clarification_skip():
         # Open a fresh per-skip trace, honouring stealth tag.
         _skip_trace_dir = None
         _skip_trace_ref = None
-        _skip_tag = ""
+        _skip_tag = _effective_conversation_tag(
+            panel_id, pending.get("conversation_tag") or "")
         try:
-            from orchestrator.conversation_memory import get_conversation_tag as _gct_s
-            # Same precedence as the resume endpoint: persisted envelope tag
-            # first, else the original turn's own tag from pending state.
-            _skip_tag = _gct_s(panel_id) or pending.get("conversation_tag") or ""
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
             if _pta_s:
                 from orchestrator import pipeline_trace as _pt_s
@@ -10939,7 +12610,7 @@ def clarification_skip():
                                                   images=pending.get("images"),
                                                   extra_context=pending.get("extra_context"),
                                                   trace_dir=_skip_trace_dir,
-                                                  conversation_tag=pending.get("conversation_tag") or _skip_tag,
+                                                  conversation_tag=_skip_tag,
                                                   turn_state=turn_state):
                 yield chunk
                 try:
@@ -10975,15 +12646,31 @@ def clarification_skip():
                       f"finalize skipped: {_fin_exc}", flush=True)
 
         if final_response[0] is not None:
-            threading.Thread(
-                target=_save_conversation,
-                args=(user_input, final_response[0], panel_id, len(history) == 0),
-                kwargs={"trace_ref": _skip_trace_ref},
-                daemon=True,
-            ).start()
+            chunk_id = _save_conversation(
+                user_input, final_response[0], panel_id, len(history) == 0,
+                _skip_tag, trace_ref=_skip_trace_ref,
+            )
+            if chunk_id:
+                threading.Thread(
+                    target=_persist_turn_spatial_state,
+                    args=(panel_id, user_input, final_response[0],
+                          pending.get("extra_context"), _skip_tag),
+                    kwargs={"trace_ref": _skip_trace_ref},
+                    daemon=True,
+                ).start()
 
         _pipeline_state.update({"stage": None, "label": "", "active": False})
         yield _sse("done")
+
+    def generate():
+        with _conversation_turn_context(
+            panel_id, pending.get("conversation_tag") or "",
+        ):
+            with _conversation_lifecycle_lock(panel_id):
+                if _is_conversation_deleted(panel_id):
+                    yield _sse("error", text="Conversation was permanently deleted.")
+                    return
+                yield from generate_unlocked()
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",

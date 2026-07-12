@@ -436,7 +436,9 @@ class SpatialReasoningMultipartE2ETests(unittest.TestCase):
         # status / conversation_id / chunk_id (no SSE frames).
         payload = json.loads(body)
         self.assertEqual(payload["status"], "ok")
-        self.assertEqual(payload["conversation_id"], "main")
+        # The explicit conversation_id is the lifecycle authority; panel_id is
+        # only a legacy UI field and must not re-own the saved turn.
+        self.assertEqual(payload["conversation_id"], "wp34-e2e")
         self.assertEqual(payload["chunk_id"], "session-test-pair-001")
 
         # --- Assertion 5: extract envelope directly from the mocked

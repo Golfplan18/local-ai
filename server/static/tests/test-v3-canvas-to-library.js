@@ -84,7 +84,10 @@ function boot() {
 
   var sandbox = {
     window: {
-      OraConversation: { getCurrentId: function () { return 'conv-1'; } },
+      OraConversation: {
+        getActiveConversationId: function () { return 'conv-1'; },
+        getActiveTag: function () { return 'private'; },
+      },
       OraCanvas: null,
       OraMediaLibrary: { refresh: function () { sandbox.window._refreshCalls = (sandbox.window._refreshCalls || 0) + 1; } },
       OraToast: null,
@@ -325,8 +328,33 @@ chain = chain.then(function () { return test('send extracts a data URL and POSTs
       return /\/api\/media-library\/[^/]+\/add$/.test(c.url);
     });
     assertEqual(hits.length, 1, 'one POST to /add');
+    assertEqual(hits[0].url, '/api/media-library/conv-1/add');
     assertEqual(hits[0].init.method, 'POST');
+    assertEqual(hits[0].init.body._entries[1].k, 'tag');
+    assertEqual(hits[0].init.body._entries[1].v, 'private');
   });
+}); });
+
+chain = chain.then(function () { return test('send ignores stale panel identity and pairs the active Dialogue ID/tag', function () {
+  var b7 = boot();
+  b7.sandbox.window.OraCanvas = { conversationId: 'stale-canvas' };
+  b7.sandbox.window.OraConversation = {
+    getActiveConversationId: function () { return 'active-dialogue'; },
+    getActiveTag: function () { return 'stealth'; },
+  };
+  var node = makeImageNode({
+    image: { src: 'data:image/png;base64,aGk=' }
+  });
+  return b7.Lib.send(makePanel({ conversationId: 'stale-panel' }), node)
+    .then(function (r) {
+      assertEqual(r.ok, true);
+      var post = b7.fetchCalls.filter(function (c) {
+        return /\/api\/media-library\/.+\/add$/.test(c.url);
+      })[0];
+      assertEqual(post.url, '/api/media-library/active-dialogue/add');
+      assertEqual(post.init.body._entries[1].k, 'tag');
+      assertEqual(post.init.body._entries[1].v, 'stealth');
+    });
 }); });
 
 chain = chain.then(function () { return test('send rejects when source src is missing', function () {

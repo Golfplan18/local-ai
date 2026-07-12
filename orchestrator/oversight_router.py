@@ -120,6 +120,27 @@ def process_event(event: dict, live: Optional[bool] = None) -> dict:
     if live is None:
         live = os.environ.get("ORA_OVERSIGHT_LIVE") == "1"
 
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    event = dict(event)
+    stealth, conversation_id = resolve_lifecycle_context(event)
+    if conversation_id and not event.get("conversation_id"):
+        event["conversation_id"] = conversation_id
+    if stealth:
+        # Stealth oversight remains deliberately ephemeral. Do not load
+        # context into a model, mutate PEDs/counters, fan out to parents, or
+        # write any audit sink. The event bus still returns the event to its
+        # caller, preserving runtime control flow without durable residue.
+        return {
+            "event_type": event.get("event_type", ""),
+            "timestamp": _now_iso(),
+            "project_nexus": event.get("project_nexus", ""),
+            "conversation_id": event.get("conversation_id", ""),
+            "action": "stealth_suppressed",
+        }
+
     # Fan-out audit records (synthesized by oversight_relationships.notify_parent
     # to surface a child's progress on the parent's PED) are not re-processed —
     # they're already-handled informational records. Skip routing entirely.
@@ -131,6 +152,7 @@ def process_event(event: dict, live: Optional[bool] = None) -> dict:
             "project_nexus": event.get("project_nexus", ""),
             "child_nexus": event.get("child_nexus", ""),
             "action": "fan_out_audit_only",
+            "conversation_id": event.get("conversation_id", ""),
         }
         _append_router_log(action)
         return action
@@ -142,6 +164,7 @@ def process_event(event: dict, live: Optional[bool] = None) -> dict:
         "project_nexus": event.get("project_nexus", ""),
         "workflow_id": event.get("workflow_id", ""),
         "section_id": event.get("section_id", ""),
+        "conversation_id": event.get("conversation_id", ""),
     }
 
     if not should_route_to_oversight(event):
@@ -206,6 +229,15 @@ def _maybe_fan_out_to_parent(event: dict):
     path is unaffected.
     """
     try:
+        try:
+            from oversight_events import resolve_lifecycle_context
+        except ImportError:  # pragma: no cover
+            from orchestrator.oversight_events import resolve_lifecycle_context
+        stealth, conversation_id = resolve_lifecycle_context(event)
+        if stealth:
+            return
+        if conversation_id and not event.get("conversation_id"):
+            event = {**event, "conversation_id": conversation_id}
         from oversight_relationships import (
             get_parent_nexus, notify_parent, should_fan_out,
         )
@@ -357,10 +389,32 @@ def _parse_pc_verdict(output: str) -> dict:
 
 
 def _append_router_log(entry: dict):
+    entry = dict(entry)
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(entry)
+    if stealth:
+        print(
+            "[oversight_router] router-log write skipped (Stealth context)",
+            flush=True,
+        )
+        return
+    if conversation_id and not entry.get("conversation_id"):
+        entry["conversation_id"] = conversation_id
     log_path = _router_log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, "a") as f:
-        f.write(json.dumps(entry, default=str) + "\n")
+    encoded = (json.dumps(entry, default=str) + "\n").encode("utf-8")
+    with _rp.locked_file(log_path):
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(log_path, flags, 0o600)
+        try:
+            os.write(fd, encoded)
+        finally:
+            os.close(fd)
 
 
 def _now_iso() -> str:

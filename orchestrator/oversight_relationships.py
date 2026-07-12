@@ -46,7 +46,10 @@ from typing import Optional
 
 from ped_parser import parse_ped_file
 from ped_watcher import load_ped_path
-from oversight_actions import file_lock, _insert_into_decision_log
+from oversight_actions import (
+    append_managed_decision_log_entry,
+    file_lock,
+)
 
 try:
     import runtime_paths as _rp
@@ -168,6 +171,16 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
 
     Returns the synthesized event dict on success, None on failure.
     """
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(child_event)
+    if stealth:
+        return None
+    if conversation_id and not child_event.get("conversation_id"):
+        child_event = {**child_event, "conversation_id": conversation_id}
+
     if not should_fan_out(child_event):
         return None
     if not parent_nexus:
@@ -191,6 +204,12 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
         "child_block_reason": child_event.get("block_reason", ""),
         "spawned_from_milestone": spawned_from or "",
         "timestamp": _now_iso(),
+        "conversation_id": child_event.get("conversation_id", ""),
+        "conversation_tag": (
+            child_event.get("conversation_tag")
+            or child_event.get("tag")
+            or ""
+        ),
         FAN_OUT_META_KEY: FAN_OUT_META_VALUE,
     }
 
@@ -202,6 +221,7 @@ def notify_parent(child_event: dict, parent_nexus: str) -> Optional[dict]:
         "project_nexus": parent_nexus,
         "child_nexus": child_nexus,
         "timestamp": synthesized["timestamp"],
+        "conversation_id": synthesized.get("conversation_id", ""),
     })
 
     return synthesized
@@ -234,30 +254,68 @@ def _append_parent_decision_log(parent_ped_path: str, synthesized: dict):
     )
     entry_text = "\n".join(lines) + "\n\n"
 
-    try:
-        with file_lock(parent_ped_path):
-            with open(parent_ped_path, encoding="utf-8") as f:
-                content = f.read()
-            new_content = _insert_into_decision_log(content, entry_text)
-            with open(parent_ped_path, "w", encoding="utf-8") as f:
-                f.write(new_content)
-    except (TimeoutError, OSError):
-        # Best-effort — Decision Log write failure shouldn't crash the router
-        pass
+    action_record: dict = {}
+    append_managed_decision_log_entry(
+        parent_ped_path,
+        entry_text,
+        synthesized,
+        kind="parent_project_fanout",
+        action_record=action_record,
+    )
+    if action_record.get("decision_log_write_failed"):
+        synthesized.setdefault("write_errors", []).append(
+            action_record["decision_log_write_failed"],
+        )
 
 
 def _append_events_log(record: dict):
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(record)
+    if stealth:
+        return
+    record = dict(record)
+    if conversation_id and not record.get("conversation_id"):
+        record["conversation_id"] = conversation_id
     log_path = _events_log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, "a") as f:
-        f.write(json.dumps(record, default=str) + "\n")
+    encoded = (json.dumps(record, default=str) + "\n").encode("utf-8")
+    with file_lock(log_path):
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(log_path, flags, 0o600)
+        try:
+            os.write(fd, encoded)
+        finally:
+            os.close(fd)
 
 
 def _append_actions_log(record: dict):
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(record)
+    if stealth:
+        return
+    record = dict(record)
+    if conversation_id and not record.get("conversation_id"):
+        record["conversation_id"] = conversation_id
     log_path = _actions_log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, "a") as f:
-        f.write(json.dumps(record, default=str) + "\n")
+    encoded = (json.dumps(record, default=str) + "\n").encode("utf-8")
+    with file_lock(log_path):
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(log_path, flags, 0o600)
+        try:
+            os.write(fd, encoded)
+        finally:
+            os.close(fd)
 
 
 def _now_iso() -> str:

@@ -161,7 +161,7 @@ class WatermarkUploadEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S
@@ -185,7 +185,9 @@ class WatermarkUploadEndpointTests(unittest.TestCase):
         # Patch HOME so it lands inside our tmp dir.
         import os
         self._saved_home = os.environ.get("HOME")
+        self._saved_ora_home = os.environ.get("ORA_HOME")
         os.environ["HOME"] = str(self._tmp_path)
+        os.environ["ORA_HOME"] = str(self._tmp_path / "ora")
 
         self.client = self.S.app.test_client()
         self.conv_id = "test_conv_wm"
@@ -197,6 +199,10 @@ class WatermarkUploadEndpointTests(unittest.TestCase):
                 os.environ.pop("HOME", None)
             else:
                 os.environ["HOME"] = self._saved_home
+            if self._saved_ora_home is None:
+                os.environ.pop("ORA_HOME", None)
+            else:
+                os.environ["ORA_HOME"] = self._saved_ora_home
             self._tmp.cleanup()
 
     def _upload(self, filename, data):

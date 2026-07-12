@@ -67,6 +67,7 @@
   var _lastDurationStamp = 0;   // wall-clock ms when _durationMs was last touched by SSE
   var _rmsDb = null;            // last seen RMS level dB
   var _regionOverlay = null;    // region-selection overlay element when active
+  var _stateEpoch = 0;          // invalidates late responses after navigation/deletion
 
   // ── DOM build ────────────────────────────────────────────────────────────
 
@@ -525,8 +526,13 @@
     if (_selectedCrop) {
       captureOpts.crop = _selectedCrop;
     }
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
     var body = {
-      conversation_id: _conversationId,
+      conversation_id: conversationId,
+      tag: (root.OraConversation
+            && typeof root.OraConversation.getActiveTag === 'function')
+        ? (root.OraConversation.getActiveTag() || '') : '',
       options: captureOpts,
     };
     fetch('/api/capture/start', {
@@ -537,6 +543,7 @@
       if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); });
       return r.json();
     }).then(function (j) {
+      if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
       _captureId = j.capture_id;
       _captureState = (j.state && j.state.state) || 'recording';
       _durationMs = 0;
@@ -547,39 +554,58 @@
       // V3 Backlog 2A Chunk 5 — start polling once we have a capture id.
       _ensurePollTimer();
     }).catch(function (e) {
+      if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
       _setStatus('Start failed: ' + e.message, 'error');
     });
   }
 
   function _pauseCapture() {
     if (!_captureId) return;
-    fetch('/api/capture/' + _captureId + '/pause', { method: 'POST' })
+    var captureId = _captureId;
+    var requestEpoch = _stateEpoch;
+    fetch('/api/capture/' + captureId + '/pause', { method: 'POST' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function () { _captureState = 'paused'; _refreshButtons(); })
-      .catch(function (e) { _setStatus('Pause failed: ' + e.message, 'error'); });
+      .then(function () {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
+        _captureState = 'paused';
+        _refreshButtons();
+      })
+      .catch(function (e) {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
+        _setStatus('Pause failed: ' + e.message, 'error');
+      });
   }
 
   function _resumeCapture() {
     if (!_captureId) return;
-    fetch('/api/capture/' + _captureId + '/resume', { method: 'POST' })
+    var captureId = _captureId;
+    var requestEpoch = _stateEpoch;
+    fetch('/api/capture/' + captureId + '/resume', { method: 'POST' })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function () {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
         _captureState = 'recording';
         _lastDurationStamp = Date.now();
         _refreshButtons();
         _ensureLocalTick();
       })
-      .catch(function (e) { _setStatus('Resume failed: ' + e.message, 'error'); });
+      .catch(function (e) {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
+        _setStatus('Resume failed: ' + e.message, 'error');
+      });
   }
 
   function _stopCapture() {
     if (!_captureId) return;
+    var captureId = _captureId;
+    var requestEpoch = _stateEpoch;
     _captureState = 'stopping';
     _refreshButtons();
     _setStatus('Finalizing…', 'info');
-    fetch('/api/capture/' + _captureId + '/stop', { method: 'POST' })
+    fetch('/api/capture/' + captureId + '/stop', { method: 'POST' })
       .then(function (r) { if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); }); return r.json(); })
       .then(function (j) {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
         _captureState = 'complete';
         _refreshButtons();
         _setStatus('Saved: ' + (j.file_path || ''), 'success');
@@ -587,6 +613,7 @@
         // can match. New start will overwrite.
       })
       .catch(function (e) {
+        if (_stateEpoch !== requestEpoch || _captureId !== captureId) return;
         _captureState = 'failed';
         _refreshButtons();
         _setStatus('Stop failed: ' + e.message, 'error');
@@ -625,9 +652,15 @@
 
   function _pollOnce() {
     if (!_captureId) { _stopPollTimer(); return; }
-    fetch('/api/capture/' + encodeURIComponent(_captureId) + '/state')
+    var captureId = _captureId;
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
+    fetch('/api/capture/' + encodeURIComponent(captureId) + '/state')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (state) {
+        if (_stateEpoch !== requestEpoch
+            || _captureId !== captureId
+            || _conversationId !== conversationId) return;
         if (!state) return;
         // Server's /state returns { type, duration_ms, rms_db, ... }
         // matching the shape the SSE handler used to consume.
@@ -637,7 +670,7 @@
           // can react to capture lifecycle without subscribing to SSE.
           try {
             document.dispatchEvent(new CustomEvent('ora:capture-state', {
-              detail: { capture_id: _captureId, state: state },
+              detail: { capture_id: captureId, state: state },
             }));
           } catch (_e) {}
           _stopPollTimer();
@@ -737,8 +770,33 @@
 
   // ── External plumbing ────────────────────────────────────────────────────
 
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    _stateEpoch += 1;
+    _stopPollTimer();
+    if (_localTickHandle) {
+      try { clearInterval(_localTickHandle); } catch (e) { /* ignore */ }
+      _localTickHandle = null;
+    }
+    _closeRegionOverlay();
+    _conversationId = null;
+    _captureId = null;
+    _captureState = 'idle';
+    _durationMs = 0;
+    _lastDurationStamp = 0;
+    _rmsDb = null;
+    _selectedCrop = null;
+    _setStatus('', '');
+    _renderDuration();
+    _renderLevel();
+    _refreshButtons();
+    return true;
+  }
+
   function setConversationId(id) {
-    _conversationId = id || null;
+    var next = id || null;
+    if (_conversationId !== next) _stateEpoch += 1;
+    _conversationId = next;
   }
 
   // ── Keyboard shortcut (in-page only — Phase 4) ───────────────────────────
@@ -788,7 +846,17 @@
     document.addEventListener('ora:conversation-selected', function (e) {
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
-      if (cid) _conversationId = cid;
+      if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
     document.addEventListener('keydown', _onKeydown, true);
 

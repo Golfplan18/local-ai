@@ -5,7 +5,8 @@ the variable is already set), which every durable oversight / execution-
 telemetry writer honors at CALL time via ``runtime_paths.sandboxed_file``:
 events.jsonl, router.jsonl, human-queue.jsonl, actions.jsonl,
 reeval-queue.jsonl, archived-peds.jsonl, revise-counters.json,
-tool-events.jsonl, execution-approvals.json, risk-sticky.json.
+conversation-ped-derivatives.json, tool-events.jsonl,
+execution-approvals.json, risk-sticky.json.
 
 Why call-time and why here: module-level path constants bake at import, and
 ``unittest discover`` imports every test module (alphabetically) BEFORE any

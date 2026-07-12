@@ -33,33 +33,70 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import threading
 from pathlib import Path
 
-from render import (
-    FFMPEG_BINARY,
-    _ms_to_sec,
-    _sort_clips_by_position,
-    get_default_manager,
-)
-from timeline import get_timeline
-from media_library import get_library
+try:
+    from . import runtime_paths as _rp
+    from .render import (
+        FFMPEG_BINARY,
+        _ms_to_sec,
+        _sort_clips_by_position,
+        get_default_manager,
+    )
+    from .timeline import get_timeline
+    from .media_library import get_library
+except ImportError:  # pragma: no cover - legacy top-level import context
+    import runtime_paths as _rp
+    from render import (
+        FFMPEG_BINARY,
+        _ms_to_sec,
+        _sort_clips_by_position,
+        get_default_manager,
+    )
+    from timeline import get_timeline
+    from media_library import get_library
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 
 PROXY_FILENAME = "preview-proxy.mp4"
 PROXY_META_FILENAME = "preview-proxy.json"
 
+_LIFECYCLE_LOCK = threading.RLock()
+_DELETED_CONVERSATIONS: set[str] = set()
+
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 
-def _conv_dir(conversation_id: str) -> Path:
-    d = SESSIONS_ROOT / conversation_id
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+def _conversation_segment(conversation_id: str) -> str:
+    """Return one safe direct session child, preserving legacy punctuation."""
+    if not isinstance(conversation_id, str):
+        raise ValueError("conversation_id must be a string")
+    cid = conversation_id.strip()
+    if (not cid or cid in {".", ".."} or len(cid) > 255
+            or "/" in cid or "\\" in cid or "\x00" in cid
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in cid)):
+        raise ValueError("invalid conversation_id")
+    return cid
+
+
+def _assert_not_deleted(conversation_id: str) -> str:
+    cid = _conversation_segment(conversation_id)
+    with _LIFECYCLE_LOCK:
+        if cid.casefold() in _DELETED_CONVERSATIONS:
+            raise RuntimeError("conversation was permanently deleted")
+    return cid
+
+
+def _conv_dir(conversation_id: str, *, create: bool = False) -> Path:
+    """Return the session path; reads never create it as a side effect."""
+    return _rp.safe_owned_subdir(
+        SESSIONS_ROOT,
+        _conversation_segment(conversation_id),
+        create=create,
+    )
 
 
 def proxy_path(conversation_id: str) -> Path:
@@ -97,12 +134,14 @@ def _read_proxy_meta(conversation_id: str) -> dict | None:
 
 
 def _write_proxy_meta(conversation_id: str, meta: dict) -> None:
-    proxy_meta_path(conversation_id).write_text(
-        json.dumps(meta, indent=2), encoding="utf-8")
+    _rp.atomic_write_text(
+        proxy_meta_path(conversation_id), json.dumps(meta, indent=2),
+    )
 
 
 def proxy_state(conversation_id: str) -> dict:
     """Report cached-proxy status for the conversation."""
+    conversation_id = _assert_not_deleted(conversation_id)
     timeline = get_timeline(conversation_id).load()
     sig = timeline_signature(timeline)
     p = proxy_path(conversation_id)
@@ -129,19 +168,25 @@ def start_proxy_render(conversation_id: str) -> str:
     with the timeline signature so subsequent ``proxy_state`` calls
     correctly detect freshness.
     """
-    timeline = get_timeline(conversation_id).load()
-    library = get_library(conversation_id).list_entries()
-    sig = timeline_signature(timeline)
+    conversation_id = _assert_not_deleted(conversation_id)
+    with _LIFECYCLE_LOCK:
+        # Re-check inside the write-side critical section so a direct module
+        # caller cannot race forget_conversation between validation and mkdir.
+        if conversation_id.casefold() in _DELETED_CONVERSATIONS:
+            raise RuntimeError("conversation was permanently deleted")
+        timeline = get_timeline(conversation_id).load()
+        library = get_library(conversation_id).list_entries()
+        sig = timeline_signature(timeline)
 
-    manager = get_default_manager()
-    out_dir = _conv_dir(conversation_id)
-    render_id = manager.start(
-        conversation_id=conversation_id,
-        preset_name="preview_proxy",
-        timeline=timeline,
-        library_entries=library,
-        export_dir=out_dir,
-    )
+        manager = get_default_manager()
+        out_dir = _conv_dir(conversation_id, create=True)
+        render_id = manager.start(
+            conversation_id=conversation_id,
+            preset_name="preview_proxy",
+            timeline=timeline,
+            library_entries=library,
+            export_dir=out_dir,
+        )
 
     state = {"resolved": False, "unsubscribe": None}
 
@@ -157,20 +202,22 @@ def start_proxy_render(conversation_id: str) -> str:
 
         if kind == "complete":
             try:
-                src = Path(event.get("output_path") or "")
-                if src and src.exists():
-                    dst = proxy_path(conversation_id)
-                    if dst.exists():
-                        try:
-                            dst.unlink()
-                        except Exception:
-                            pass
-                    src.replace(dst)
-                    _write_proxy_meta(conversation_id, {
-                        "signature": sig,
-                        "duration_ms": float(event.get("duration_ms") or 0),
-                        "render_id": render_id,
-                    })
+                with _LIFECYCLE_LOCK:
+                    if conversation_id.casefold() not in _DELETED_CONVERSATIONS:
+                        src = Path(event.get("output_path") or "")
+                        if src and src.exists():
+                            dst = proxy_path(conversation_id)
+                            if dst.exists():
+                                try:
+                                    dst.unlink()
+                                except Exception:
+                                    pass
+                            src.replace(dst)
+                            _write_proxy_meta(conversation_id, {
+                                "signature": sig,
+                                "duration_ms": float(event.get("duration_ms") or 0),
+                                "render_id": render_id,
+                            })
             except Exception:
                 pass
 
@@ -188,6 +235,7 @@ def start_proxy_render(conversation_id: str) -> str:
 def invalidate_proxy(conversation_id: str) -> None:
     """Mark the proxy as stale by deleting its meta file. The MP4 stays
     on disk until the next render replaces it (cheap, predictable)."""
+    conversation_id = _assert_not_deleted(conversation_id)
     p = proxy_meta_path(conversation_id)
     if p.exists():
         try:
@@ -200,6 +248,7 @@ def invalidate_proxy(conversation_id: str) -> None:
 
 def extract_frame(conversation_id: str, playhead_ms: int) -> bytes:
     """Extract a PNG frame at the given playhead position."""
+    conversation_id = _assert_not_deleted(conversation_id)
     if playhead_ms < 0:
         playhead_ms = 0
 
@@ -231,6 +280,20 @@ def extract_frame(conversation_id: str, playhead_ms: int) -> bytes:
 
     bytes_out = _extract_frame_from_file(str(source_path), int(source_time_ms))
     return bytes_out or _placeholder_frame()
+
+
+def forget_conversation(conversation_id: str) -> bool:
+    """Tombstone a deleted conversation against proxy reads/late callbacks.
+
+    The filesystem purge is owned by ``conversation_closeout``. This function
+    only prevents this process from recreating or repopulating that session.
+    """
+    cid = _conversation_segment(conversation_id)
+    identity = cid.casefold()
+    with _LIFECYCLE_LOCK:
+        already_deleted = identity in _DELETED_CONVERSATIONS
+        _DELETED_CONVERSATIONS.add(identity)
+    return not already_deleted
 
 
 def _find_active_video_clip(
@@ -339,5 +402,6 @@ __all__ = [
     "start_proxy_render",
     "extract_frame",
     "invalidate_proxy",
+    "forget_conversation",
     "timeline_signature",
 ]

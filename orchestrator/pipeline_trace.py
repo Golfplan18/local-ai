@@ -27,10 +27,16 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
 import datetime as _dt
 from pathlib import Path
 from typing import Any
+
+try:
+    from orchestrator import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import context
+    import runtime_paths as _rp  # type: ignore
 
 def _resolve_ora_home() -> str:
     """Resolve the Ora installation root without depending on ``HOME``.
@@ -59,6 +65,131 @@ TRACE_ROOT = os.path.join(_resolve_ora_home(), "data", "pipeline-traces")
 # value in ``_DISABLE_VALUES``) disables tracing globally regardless of
 # any per-call ``stealth`` flag. Default is on.
 _DISABLE_VALUES = frozenset({"off", "false", "0", "no", "disabled"})
+
+
+def _safe_trace_root(*, create: bool = False) -> Path:
+    """Return ``TRACE_ROOT`` without following a substituted root symlink.
+
+    ``TRACE_ROOT`` remains patchable for tests and relocatable deployments,
+    so its parent is the configured/trusted boundary.  The trace-store child
+    itself is always validated with the shared owned-directory primitive.
+    """
+    root = Path(TRACE_ROOT)
+    if not root.name:
+        raise ValueError("invalid empty trace root")
+    return _rp.safe_owned_subdir(root.parent, root.name, create=create)
+
+
+def _safe_trace_dir(
+    conversation_id: str,
+    turn_timestamp: str,
+    *,
+    create: bool = False,
+) -> Path:
+    """Return one owned turn directory with every child component checked."""
+    root = _safe_trace_root(create=create)
+    return _rp.safe_owned_subdir(
+        root, conversation_id, turn_timestamp, create=create,
+    )
+
+
+def _validated_existing_trace_dir(trace_dir: str | os.PathLike[str]) -> Path:
+    """Validate a caller-supplied turn dir against the owned trace tree."""
+    root = _safe_trace_root(create=False)
+    candidate = Path(trace_dir).absolute()
+    try:
+        parts = candidate.relative_to(root.absolute()).parts
+    except ValueError as exc:
+        raise ValueError(f"trace directory is outside TRACE_ROOT: {candidate}") from exc
+    if len(parts) != 2:
+        raise ValueError(f"trace directory has invalid depth: {candidate}")
+    validated = _rp.safe_owned_subdir(root, *parts, create=False)
+    if not validated.exists() or validated.is_symlink() or not validated.is_dir():
+        raise ValueError(f"trace directory is not an owned directory: {validated}")
+    return validated
+
+
+def _safe_trace_filename(value: str, *, label: str) -> str:
+    """Validate one direct filename/stem supplied to a trace writer."""
+    name = str(value or "")
+    if (not name or name in {".", ".."} or "/" in name or "\\" in name
+            or "\x00" in name
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)):
+        raise ValueError(f"unsafe {label}: {name!r}")
+    return name
+
+
+def _matching_conversation_dirs(
+    conversation_id: str,
+) -> tuple[list[Path], list[Path], list[str]]:
+    """Find case-equivalent owned trace dirs without following symlinks."""
+    # Validate the ID as one direct child even when the trace root is absent.
+    if (not conversation_id or conversation_id in {".", ".."}
+            or "/" in conversation_id or "\\" in conversation_id
+            or "\x00" in conversation_id
+            or any(ord(ch) < 32 or ord(ch) == 127
+                   for ch in conversation_id)):
+        raise ValueError(f"unsafe conversation trace id: {conversation_id!r}")
+    root = _safe_trace_root(create=False)
+    if not root.exists():
+        return [], [], []
+
+    identity = conversation_id.casefold()
+    directories: list[Path] = []
+    symlinks: list[Path] = []
+    errors: list[str] = []
+    with os.scandir(root) as entries:
+        for entry in entries:
+            if entry.name.casefold() != identity:
+                continue
+            path = root / entry.name
+            if entry.is_symlink():
+                symlinks.append(path)
+            elif entry.is_dir(follow_symlinks=False):
+                directories.append(path)
+            else:
+                errors.append(f"refusing non-directory conversation trace path {path}")
+    return (
+        sorted(directories, key=lambda item: item.name),
+        sorted(symlinks, key=lambda item: item.name),
+        errors,
+    )
+
+
+def _read_json_no_follow(path: Path) -> Any:
+    """Read a regular JSON file while refusing a final-component symlink."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    try:
+        mode = os.fstat(fd).st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError(f"not a regular file: {path}")
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            fd = -1
+            return json.load(stream)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _read_text_no_follow(path: Path) -> str:
+    """Read a regular text file while refusing a final-component symlink."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    try:
+        mode = os.fstat(fd).st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError(f"not a regular file: {path}")
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            fd = -1
+            return stream.read()
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def _tracing_globally_disabled() -> bool:
@@ -120,7 +251,7 @@ def start_trace(conversation_id: str | None,
     try:
         conv = conversation_id or "_orphan"
         ts = _now_ts()
-        trace_dir = os.path.join(TRACE_ROOT, conv, ts)
+        trace_dir = str(_safe_trace_dir(conv, ts, create=True))
         # Defence-in-depth: never create a path containing a literal "~".
         # _resolve_ora_home() should already prevent this, but if TRACE_ROOT
         # is ever reintroduced as a literal-"~" path, disable tracing for the
@@ -129,7 +260,6 @@ def start_trace(conversation_id: str | None,
             print("[pipeline_trace] start_trace: refusing literal '~' path "
                   f"{trace_dir!r}; tracing disabled this turn", file=sys.stderr)
             return None
-        os.makedirs(trace_dir, exist_ok=True)
         meta = {
             "conversation_id": conversation_id,
             "turn_timestamp_utc": ts,
@@ -158,9 +288,8 @@ def start_trace(conversation_id: str | None,
         # Maintain a latest-pointer for quick inspection (mirrors the
         # /tmp/ora-trace-latest.txt convention but per-conversation).
         try:
-            latest = os.path.join(TRACE_ROOT, conv, "_latest.txt")
-            with open(latest, "w") as f:
-                f.write(ts)
+            latest = os.path.join(os.path.dirname(trace_dir), "_latest.txt")
+            _atomic_write_text(latest, ts)
         except Exception:
             pass
         return trace_dir
@@ -179,17 +308,162 @@ def purge_conversation_traces(conversation_id: str) -> dict:
     Safe to call when no trace directory exists — returns
     ``deleted: False`` without raising.
     """
+    path = os.path.join(TRACE_ROOT, str(conversation_id or ""))
     if not conversation_id:
-        return {"deleted": False, "path": "", "error": "empty conversation_id"}
+        return {
+            "deleted": False,
+            "path": "",
+            "paths": [],
+            "symlink_removed": False,
+            "error": "empty conversation_id",
+        }
     try:
-        import shutil
-        path = os.path.join(TRACE_ROOT, conversation_id)
-        if not os.path.isdir(path):
-            return {"deleted": False, "path": path, "error": None}
-        shutil.rmtree(path)
-        return {"deleted": True, "path": path, "error": None}
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            return _purge_conversation_traces_unlocked(conversation_id)
     except Exception as e:
-        return {"deleted": False, "path": path, "error": str(e)}
+        return {
+            "deleted": False,
+            "path": path,
+            "paths": [],
+            "symlink_removed": False,
+            "error": str(e),
+        }
+
+
+def _purge_conversation_traces_unlocked(conversation_id: str) -> dict:
+    """Remove case-equivalent trace trees; caller holds the lifecycle lock."""
+    import shutil
+
+    requested_path = os.path.join(TRACE_ROOT, conversation_id)
+    directories, symlinks, errors = _matching_conversation_dirs(conversation_id)
+    removed: list[str] = []
+    symlink_removed = False
+
+    # A symlink occupying an Ora-owned conversation slot is residue owned by
+    # Ora, but its target is not. Unlink only the directory entry.
+    for path in symlinks:
+        try:
+            path.unlink()
+            removed.append(str(path))
+            symlink_removed = True
+        except Exception as exc:
+            errors.append(f"unlink trace symlink {path}: {exc}")
+
+    for path in directories:
+        try:
+            shutil.rmtree(path)
+            removed.append(str(path))
+        except Exception as exc:
+            errors.append(f"remove trace tree {path}: {exc}")
+
+    return {
+        "deleted": bool(removed),
+        "path": requested_path,
+        "paths": removed,
+        "symlink_removed": symlink_removed,
+        "error": "; ".join(errors) if errors else None,
+    }
+
+
+def retag_conversation_trace_manifests(
+    conversation_id: str,
+    tag: str,
+) -> dict[str, Any]:
+    """Retag every owned trace manifest for one Dialogue.
+
+    ``tag`` is the conversation tag (``""`` or ``"private"``), translated
+    to the trace schema's exact ``redaction_level`` value. The operation is
+    cross-process serialized and fail-open: malformed or suspicious entries
+    are reported while every other manifest is still attempted.
+
+    Call :func:`_retag_conversation_trace_manifests_unlocked` only when the
+    caller already holds :func:`runtime_paths.conversation_lifecycle_lock`.
+    """
+    if tag not in {"", "private"}:
+        raise ValueError("trace privacy tag must be standard ('') or 'private'")
+    with _rp.conversation_lifecycle_lock(conversation_id):
+        return _retag_conversation_trace_manifests_unlocked(
+            conversation_id, tag,
+        )
+
+
+def _retag_conversation_trace_manifests_unlocked(
+    conversation_id: str,
+    tag: str,
+) -> dict[str, Any]:
+    """Unlocked implementation for the consolidated lifecycle transaction."""
+    if tag not in {"", "private"}:
+        raise ValueError("trace privacy tag must be standard ('') or 'private'")
+
+    level = "private" if tag == "private" else "default"
+    updated: list[str] = []
+    unchanged: list[str] = []
+    errors: list[str] = []
+    directories, symlinks, discovery_errors = _matching_conversation_dirs(
+        conversation_id,
+    )
+    errors.extend(discovery_errors)
+    errors.extend(
+        f"refusing symlinked conversation trace path {path}"
+        for path in symlinks
+    )
+    identity = conversation_id.casefold()
+
+    for conversation_dir in directories:
+        try:
+            entries = list(os.scandir(conversation_dir))
+        except Exception as exc:
+            errors.append(f"scan trace directory {conversation_dir}: {exc}")
+            continue
+        for entry in sorted(entries, key=lambda item: item.name):
+            if entry.name.startswith("_"):
+                continue
+            turn_dir = conversation_dir / entry.name
+            if entry.is_symlink():
+                errors.append(f"refusing symlinked turn trace path {turn_dir}")
+                continue
+            if not entry.is_dir(follow_symlinks=False):
+                continue
+            manifest_path = turn_dir / MANIFEST_FILENAME
+            try:
+                file_stat = manifest_path.stat(follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                errors.append(f"inspect trace manifest {manifest_path}: {exc}")
+                continue
+            if not stat.S_ISREG(file_stat.st_mode):
+                errors.append(f"refusing non-regular trace manifest {manifest_path}")
+                continue
+            try:
+                manifest = _read_json_no_follow(manifest_path)
+                if not isinstance(manifest, dict):
+                    raise ValueError("manifest root is not an object")
+                manifest_id = manifest.get("conversation_id")
+                if (not isinstance(manifest_id, str)
+                        or manifest_id.casefold() != identity):
+                    raise ValueError(
+                        "manifest conversation_id does not match owned trace directory"
+                    )
+                if manifest.get("redaction_level") == level:
+                    unchanged.append(str(manifest_path))
+                    continue
+                replacement = dict(manifest)
+                replacement["redaction_level"] = level
+                _atomic_write_json(str(manifest_path), replacement)
+                updated.append(str(manifest_path))
+            except Exception as exc:
+                errors.append(f"retag trace manifest {manifest_path}: {exc}")
+
+    return {
+        "conversation_id": conversation_id,
+        "tag": tag,
+        "redaction_level": level,
+        "updated": len(updated),
+        "paths": updated,
+        "unchanged": len(unchanged),
+        "errors": errors,
+    }
 
 
 def write_step(trace_dir: str | None,
@@ -209,10 +483,12 @@ def write_step(trace_dir: str | None,
     if not trace_dir:
         return
     try:
-        json_path = os.path.join(trace_dir, f"{step_name}.json")
+        owned_trace_dir = _validated_existing_trace_dir(trace_dir)
+        safe_step_name = _safe_trace_filename(step_name, label="trace step name")
+        json_path = str(owned_trace_dir / f"{safe_step_name}.json")
         _atomic_write_json(json_path, payload)
         if markdown is not None:
-            md_path = os.path.join(trace_dir, f"{step_name}.md")
+            md_path = str(owned_trace_dir / f"{safe_step_name}.md")
             _atomic_write_text(md_path, markdown)
     except Exception as e:
         print(f"[pipeline_trace] write_step({step_name}) failed: {e}",
@@ -230,10 +506,20 @@ def append_jsonl(trace_dir: str | None,
     if not trace_dir:
         return
     try:
-        path = os.path.join(trace_dir, filename)
+        owned_trace_dir = _validated_existing_trace_dir(trace_dir)
+        safe_filename = _safe_trace_filename(
+            filename, label="trace JSONL filename",
+        )
+        path = str(owned_trace_dir / safe_filename)
         line = json.dumps(record, default=_json_default) + "\n"
-        with open(path, "a") as f:
-            f.write(line)
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(path, flags, 0o600)
+        try:
+            os.write(fd, line.encode("utf-8"))
+        finally:
+            os.close(fd)
     except Exception as e:
         print(f"[pipeline_trace] append_jsonl({filename}) failed: {e}",
               file=sys.stderr)
@@ -245,7 +531,22 @@ def append_jsonl(trace_dir: str | None,
 # envelope valid-rate (and its model-tier dependence) over time. Phase 0
 # observability: previously only a single ``step-visual-hook.json`` ever landed
 # on disk, so the true emission failure rate was unmeasurable.
-EMISSION_LOG_PATH = os.path.join(_resolve_ora_home(), "data", "visual-emission-log.jsonl")
+def emission_log_path() -> str:
+    """Resolve the global visual-emission sink at call time."""
+    try:
+        from orchestrator import runtime_paths as _rp
+    except ImportError:  # pragma: no cover - legacy top-level import context
+        try:
+            import runtime_paths as _rp  # type: ignore
+        except ImportError:
+            return os.path.join(
+                _resolve_ora_home(), "data", "visual-emission-log.jsonl",
+            )
+    return os.path.join(_rp.DATA_DIR_STR, "visual-emission-log.jsonl")
+
+
+# Compatibility constant for diagnostics/tests; writers use the dynamic helper.
+EMISSION_LOG_PATH = emission_log_path()
 
 
 def append_emission_record(record: dict[str, Any]) -> None:
@@ -257,11 +558,16 @@ def append_emission_record(record: dict[str, Any]) -> None:
     logging error prints to stderr and never disturbs the pipeline.
     """
     try:
+        try:
+            from orchestrator import runtime_paths as _rp
+        except ImportError:  # pragma: no cover - legacy top-level import context
+            import runtime_paths as _rp  # type: ignore
         record.setdefault("timestamp_utc", _dt.datetime.utcnow().isoformat() + "Z")
-        os.makedirs(os.path.dirname(EMISSION_LOG_PATH), exist_ok=True)
-        line = json.dumps(record, default=_json_default) + "\n"
-        with open(EMISSION_LOG_PATH, "a") as f:
-            f.write(line)
+        path = emission_log_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        encoded = (json.dumps(record, default=_json_default) + "\n").encode("utf-8")
+        with _rp.locked_file(path):
+            _rp.append_bytes_no_follow(path, encoded, mode=0o644)
     except Exception as e:
         print(f"[pipeline_trace] append_emission_record failed: {e}",
               file=sys.stderr)
@@ -323,6 +629,7 @@ def write_step_health(trace_dir: str | None,
     if not trace_dir:
         return
     try:
+        owned_trace_dir = _validated_existing_trace_dir(trace_dir)
         payload = {
             "gear": gear,
             "step_health": {
@@ -332,7 +639,7 @@ def write_step_health(trace_dir: str | None,
             "contingencies_fired": list(contingencies_fired),
             "finished_at": _dt.datetime.utcnow().isoformat() + "Z",
         }
-        _atomic_write_json(os.path.join(trace_dir, "step-health.json"),
+        _atomic_write_json(str(owned_trace_dir / "step-health.json"),
                            payload)
     except Exception as e:
         print(f"[pipeline_trace] write_step_health failed: {e}",
@@ -430,11 +737,18 @@ def trace_ref_for_dir(trace_dir: str | None) -> str | None:
     if not trace_dir:
         return None
     try:
-        rel = os.path.relpath(os.path.abspath(trace_dir),
-                              os.path.abspath(TRACE_ROOT))
-        if rel.startswith(".."):
+        root = _safe_trace_root(create=False)
+        candidate = Path(trace_dir)
+        rel_parts = candidate.absolute().relative_to(root.absolute()).parts
+        if len(rel_parts) != 2:
             return None
-        return rel.replace(os.sep, "/")
+        conversation_dir = root / rel_parts[0]
+        if (root.is_symlink() or conversation_dir.is_symlink()
+                or candidate.is_symlink()):
+            return None
+        if not _rp.within_base(candidate.resolve(strict=False), root.resolve(strict=False)):
+            return None
+        return "/".join(rel_parts)
     except Exception:
         return None
 
@@ -556,6 +870,8 @@ def finalize_manifest(trace_dir: str | None,
     if not trace_dir:
         return
     try:
+        owned_trace_dir = _validated_existing_trace_dir(trace_dir)
+        trace_dir = str(owned_trace_dir)
         manifest_path = os.path.join(trace_dir, MANIFEST_FILENAME)
         # Start from the on-disk manifest so fields this finalizer does not
         # own (retention_state, redaction_level, child_trace_refs, a
@@ -649,17 +965,14 @@ def finalize_manifest(trace_dir: str | None,
 # ---------------------------------------------------------------------------
 
 def _atomic_write_json(path: str, data: Any) -> None:
-    tmp = path + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=2, default=_json_default)
-    os.replace(tmp, path)
+    _rp.atomic_write_text(
+        path,
+        json.dumps(data, indent=2, default=_json_default),
+    )
 
 
 def _atomic_write_text(path: str, text: str) -> None:
-    tmp = path + ".tmp"
-    with open(tmp, "w") as f:
-        f.write(text)
-    os.replace(tmp, path)
+    _rp.atomic_write_text(path, text)
 
 
 def _json_default(obj: Any) -> str:
@@ -679,24 +992,30 @@ def latest_trace_dir(conversation_id: str | None) -> str | None:
     """
     try:
         conv = conversation_id or "_orphan"
-        latest_pointer = os.path.join(TRACE_ROOT, conv, "_latest.txt")
-        if os.path.exists(latest_pointer):
-            with open(latest_pointer) as f:
-                ts = f.read().strip()
-            candidate = os.path.join(TRACE_ROOT, conv, ts)
-            if os.path.isdir(candidate):
-                return candidate
-        # Fallback: scan and pick the lexicographically latest
-        conv_dir = os.path.join(TRACE_ROOT, conv)
-        if not os.path.isdir(conv_dir):
+        root = _safe_trace_root(create=False)
+        conv_dir = _rp.safe_owned_subdir(root, conv, create=False)
+        if not conv_dir.exists():
             return None
+        latest_pointer = conv_dir / "_latest.txt"
+        if latest_pointer.exists() and not latest_pointer.is_symlink():
+            ts = _read_text_no_follow(latest_pointer).strip()
+            try:
+                candidate = _rp.safe_owned_subdir(
+                    conv_dir, ts, create=False,
+                )
+            except ValueError:
+                candidate = None
+            if candidate is not None and candidate.is_dir():
+                return str(candidate)
+        # Fallback: scan and pick the lexicographically latest
         entries = sorted(
-            d for d in os.listdir(conv_dir)
-            if os.path.isdir(os.path.join(conv_dir, d))
-            and not d.startswith("_")
+            entry.name for entry in os.scandir(conv_dir)
+            if entry.is_dir(follow_symlinks=False)
+            and not entry.is_symlink()
+            and not entry.name.startswith("_")
         )
         if entries:
-            return os.path.join(conv_dir, entries[-1])
+            return str(conv_dir / entries[-1])
         return None
     except Exception:
         return None
@@ -706,14 +1025,16 @@ def list_traces(conversation_id: str | None) -> list[str]:
     """Return all trace directories for a conversation, oldest first."""
     try:
         conv = conversation_id or "_orphan"
-        conv_dir = os.path.join(TRACE_ROOT, conv)
-        if not os.path.isdir(conv_dir):
+        root = _safe_trace_root(create=False)
+        conv_dir = _rp.safe_owned_subdir(root, conv, create=False)
+        if not conv_dir.exists():
             return []
         return sorted(
-            os.path.join(conv_dir, d)
-            for d in os.listdir(conv_dir)
-            if os.path.isdir(os.path.join(conv_dir, d))
-            and not d.startswith("_")
+            str(conv_dir / entry.name)
+            for entry in os.scandir(conv_dir)
+            if entry.is_dir(follow_symlinks=False)
+            and not entry.is_symlink()
+            and not entry.name.startswith("_")
         )
     except Exception:
         return []

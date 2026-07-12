@@ -20,9 +20,11 @@ Helpers exposed:
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
@@ -193,6 +195,72 @@ def build_chunk_markdown(
     )
 
 
+def attach_chunk_ownership(
+    markdown: str, *, conversation_id: str, chunk_id: str,
+) -> str:
+    """Insert redundant exact ownership markers immediately after YAML."""
+    if not isinstance(conversation_id, str) or not conversation_id:
+        raise ValueError("conversation_id must be a non-empty string")
+    if not isinstance(chunk_id, str) or not chunk_id:
+        raise ValueError("chunk_id must be a non-empty string")
+    frontmatter = re.match(r"\A---\s*\n.*?\n---\s*\n", markdown, re.DOTALL)
+    if frontmatter is None:
+        raise ValueError("conversation chunk has no YAML frontmatter")
+    markers = (
+        "<!-- ora-conversation-id: "
+        + json.dumps(conversation_id, ensure_ascii=False)
+        + " -->\n<!-- ora-chunk-id: "
+        + json.dumps(chunk_id, ensure_ascii=False)
+        + " -->\n\n"
+    )
+    return markdown[:frontmatter.end()] + markers + markdown[frontmatter.end():]
+
+
+def append_chunk_manifest(
+    *,
+    conversation_id: str,
+    chunk_id: str,
+    chunk_path: str | Path,
+    tag: str = "",
+    raw_path: str = "",
+    source_path: str = "",
+    manifest_path: str | Path | None = None,
+) -> Path:
+    """Append the standard typed chunk ownership record under a shared lock."""
+    try:
+        from orchestrator import runtime_paths as rp
+    except ImportError:  # pragma: no cover - legacy top-level import context
+        import runtime_paths as rp  # type: ignore
+
+    destination = (
+        Path(manifest_path) if manifest_path is not None
+        else Path(rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    absolute_chunk = Path(chunk_path).expanduser().absolute()
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "conversation_id": conversation_id,
+        "chunk_id": chunk_id,
+        "chunk_path": str(absolute_chunk),
+        "chunk_root": str(absolute_chunk.parent),
+        "artifact_kind": "conversation_chunk",
+        "managed_by": "ora",
+        "raw_path": raw_path,
+        # Imported source archives are user-owned inputs. Keep their path as
+        # provenance, never in raw_path (which lifecycle treats as an
+        # Ora-managed raw-log deletion pointer).
+        "source_path": source_path,
+        "tag": tag,
+    }
+    with rp.locked_file(destination):
+        rp.append_text_no_follow(
+            destination,
+            json.dumps(record, ensure_ascii=False) + "\n",
+        )
+    return destination
+
+
 # ---------------------------------------------------------------------------
 # Canonical ChromaDB metadata (~22 Conv RAG §2 fields + V3 compat)
 # ---------------------------------------------------------------------------
@@ -354,6 +422,8 @@ __all__ = [
     "_v3_tag_to_schema_tags",
     "build_chunk_filename",
     "build_chunk_markdown",
+    "attach_chunk_ownership",
+    "append_chunk_manifest",
     "build_chroma_metadata",
     "mechanical_chunk_metadata",
 ]

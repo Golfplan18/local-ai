@@ -20,6 +20,7 @@ Usage:
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import threading
@@ -75,9 +76,9 @@ def emit(event) -> dict:
     Stealth awareness: when the per-thread stealth-context flag is set
     (server's ``_pipeline_stream`` sets it for stealth-tagged conversation
     turns), the event is annotated with ``stealth: True`` and the durable
-    log write is skipped. In-process handlers still receive the event so
-    runtime behaviour (cross-project fan-out, downstream actions) is not
-    altered — only the on-disk persistence surface is suppressed.
+    log write is skipped. In-process handlers still receive the annotated
+    event, but durable handlers use the same lifecycle resolver to suppress
+    PED mutations, counters, queue writes, and parent fan-out.
     """
     if is_dataclass(event):
         event = asdict(event)
@@ -95,7 +96,7 @@ def emit(event) -> dict:
     # over events.jsonl / actions.jsonl / human-queue.jsonl actually
     # findable — without this stamp the records have no key tying them
     # back to the stealth conversation that emitted them.
-    cid = _get_conversation_id_context()
+    stealth, cid = resolve_lifecycle_context(event)
     if cid and "conversation_id" not in event:
         event["conversation_id"] = cid
 
@@ -103,7 +104,7 @@ def emit(event) -> dict:
     # for stealth-tagged conversation turns. When set, skip the durable log
     # write so events derived from stealth conversations leave no on-disk
     # residue in ~/ora/data/oversight/events.jsonl.
-    if _is_stealth_context():
+    if stealth:
         event["stealth"] = True
     else:
         _append_to_log(event)
@@ -130,6 +131,7 @@ def emit(event) -> dict:
 # set_stealth_context() itself, or the durable-log skip in emit() silently
 # leaks stealth-derived content.
 import threading as _threading
+import sys as _sys
 _stealth_ctx = _threading.local()
 
 
@@ -178,8 +180,178 @@ def clear_conversation_id_context() -> None:
     _stealth_ctx.conversation_id = None
 
 
+@contextlib.contextmanager
+def lifecycle_context_scope(
+    *,
+    stealth: bool,
+    conversation_id: str | None,
+    tool_context: dict | None = None,
+):
+    """Temporarily seed and then exactly restore lifecycle context.
+
+    Both loaded ``oversight_events`` import identities are covered. When
+    ``tool_context`` is supplied, both loaded ``tool_events`` identities are
+    also set with the same authoritative conversation/Stealth values and
+    restored through their native ContextVar tokens. This is the turn/direct-
+    run API: callers wrap the full generator body in this scope so every early
+    return and exception restores the prior worker-thread state.
+
+    Example::
+
+        with lifecycle_context_scope(
+            stealth=tag == "stealth",
+            conversation_id=conversation_id,
+            tool_context={"trace_dir": trace_dir, "surface": "chat"},
+        ):
+            yield from run_turn()
+    """
+    missing = object()
+    oversight_snapshots: list[tuple[object, object, object]] = []
+    seen: set[int] = set()
+    for module_name in (__name__, "oversight_events", "orchestrator.oversight_events"):
+        module = _sys.modules.get(module_name)
+        if module is None or id(module) in seen:
+            continue
+        seen.add(id(module))
+        local = getattr(module, "_stealth_ctx", None)
+        if local is None:
+            continue
+        prior_stealth = getattr(local, "stealth", missing)
+        prior_conversation_id = getattr(local, "conversation_id", missing)
+        oversight_snapshots.append((local, prior_stealth, prior_conversation_id))
+        module.set_stealth_context(bool(stealth))
+        module.set_conversation_id_context(conversation_id)
+
+    tool_tokens: list[tuple[object, object]] = []
+    if tool_context is not None:
+        payload = dict(tool_context)
+        payload["conversation_id"] = conversation_id
+        payload["stealth"] = bool(stealth)
+        seen.clear()
+        for module_name in ("tool_events", "orchestrator.tool_events"):
+            module = _sys.modules.get(module_name)
+            if module is None or id(module) in seen:
+                continue
+            seen.add(id(module))
+            try:
+                token = module.set_turn_context(**payload)
+                tool_tokens.append((module, token))
+            except Exception as exc:
+                print(
+                    f"[oversight_events] tool lifecycle context seed failed: {exc}",
+                    flush=True,
+                )
+    try:
+        yield
+    finally:
+        for module, token in reversed(tool_tokens):
+            try:
+                module.reset_turn_context(token)
+            except Exception as exc:
+                print(
+                    f"[oversight_events] tool lifecycle context restore failed: {exc}",
+                    flush=True,
+                )
+        for local, prior_stealth, prior_conversation_id in reversed(
+            oversight_snapshots
+        ):
+            if prior_stealth is missing:
+                try:
+                    delattr(local, "stealth")
+                except AttributeError:
+                    pass
+            else:
+                local.stealth = prior_stealth
+            if prior_conversation_id is missing:
+                try:
+                    delattr(local, "conversation_id")
+                except AttributeError:
+                    pass
+            else:
+                local.conversation_id = prior_conversation_id
+
+
 def _get_conversation_id_context() -> str | None:
     return getattr(_stealth_ctx, "conversation_id", None) or None
+
+
+def _combined_lifecycle_context() -> tuple[bool, str | None]:
+    """Read both supported import identities' thread-local lifecycle state.
+
+    Ora still has legacy top-level imports alongside package-qualified imports.
+    A long-running process can therefore contain two ``oversight_events``
+    module objects. Durable writers must treat Stealth in either copy as
+    authoritative and use the first available conversation identity.
+    """
+    stealth = _is_stealth_context()
+    conversation_id = _get_conversation_id_context()
+    seen = {id(_sys.modules.get(__name__))}
+    for module_name in ("oversight_events", "orchestrator.oversight_events"):
+        module = _sys.modules.get(module_name)
+        if module is None or id(module) in seen:
+            continue
+        seen.add(id(module))
+        try:
+            stealth = bool(stealth or module._is_stealth_context())
+            conversation_id = (
+                conversation_id or module._get_conversation_id_context()
+            )
+        except Exception:
+            continue
+    return stealth, conversation_id
+
+
+def resolve_lifecycle_context(event: dict | None = None) -> tuple[bool, str | None]:
+    """Return authoritative ``(stealth, conversation_id)`` for an event.
+
+    Oversight still runs through both top-level and package-qualified import
+    identities, and some direct execution paths seed only the tool-event turn
+    context.  Every durable oversight handler uses this resolver so an
+    explicitly Stealth event, either thread-local copy, or either tool-event
+    context is sufficient to suppress persistence.  The explicit event
+    identity wins when choosing the owner stamped on derived records.
+    """
+    candidate = event if isinstance(event, dict) else {}
+    nested = candidate.get("event")
+    nested = nested if isinstance(nested, dict) else {}
+
+    conversation_id = (
+        candidate.get("conversation_id")
+        or nested.get("conversation_id")
+        or None
+    )
+    if conversation_id is not None:
+        conversation_id = str(conversation_id).strip() or None
+    stealth = bool(
+        candidate.get("stealth")
+        or nested.get("stealth")
+        or candidate.get("conversation_tag") == "stealth"
+        or nested.get("conversation_tag") == "stealth"
+        or candidate.get("tag") == "stealth"
+        or nested.get("tag") == "stealth"
+    )
+
+    context_stealth, context_conversation_id = _combined_lifecycle_context()
+    stealth = bool(stealth or context_stealth)
+    conversation_id = conversation_id or context_conversation_id
+
+    seen: set[int] = set()
+    for module_name in ("tool_events", "orchestrator.tool_events"):
+        module = _sys.modules.get(module_name)
+        if module is None or id(module) in seen:
+            continue
+        seen.add(id(module))
+        try:
+            tool_context = module.get_turn_context() or {}
+            stealth = bool(stealth or tool_context.get("stealth"))
+            conversation_id = (
+                conversation_id or tool_context.get("conversation_id") or None
+            )
+        except Exception:
+            continue
+    if conversation_id is not None:
+        conversation_id = str(conversation_id).strip() or None
+    return stealth, conversation_id
 
 
 def read_event_log(since_offset: int = 0, max_events: int = 1000) -> tuple[list[dict], int]:
@@ -216,10 +388,17 @@ def _append_to_log(event: dict):
     """Append a JSONL line to the event log. Thread-safe."""
     log_path = _log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    line = json.dumps(event, default=str) + "\n"
+    line = (json.dumps(event, default=str) + "\n").encode("utf-8")
     with _log_lock:
-        with open(log_path, "a") as f:
-            f.write(line)
+        with _rp.locked_file(log_path):
+            flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(log_path, flags, 0o600)
+            try:
+                os.write(fd, line)
+            finally:
+                os.close(fd)
 
 
 def _now_iso() -> str:

@@ -7,7 +7,10 @@ derived from outside provider catalogs, so the server writes them under
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
+import stat
+import tempfile
 import time
 from pathlib import Path
 
@@ -48,7 +51,8 @@ SCRATCH_DIR_STR = str(SCRATCH_DIR)
 # ── Oversight/telemetry write sandbox (test harness hook) ───────────────────
 # When ORA_OVERSIGHT_SANDBOX names a directory, every durable oversight and
 # execution-telemetry writer (events.jsonl, router.jsonl, human-queue.jsonl,
-# actions.jsonl, reeval-queue.jsonl, revise-counters.json, tool-events.jsonl,
+# actions.jsonl, reeval-queue.jsonl, revise-counters.json,
+# conversation-ped-derivatives.json, tool-events.jsonl,
 # execution-approvals.json, risk-sticky.json) rebases its file into that
 # directory INSTEAD of the live data tree. Resolution happens at CALL time,
 # not import time, so the guard holds no matter when the variable is set
@@ -106,6 +110,142 @@ def within_base(path, base) -> bool:
     return pk == bk or pk.startswith(bk + "/")
 
 
+def safe_owned_subdir(
+    base: str | Path,
+    *segments: str,
+    create: bool = False,
+) -> Path:
+    """Return an owned descendant directory without following child symlinks.
+
+    ``base`` is a trusted configured root and may itself resolve through a
+    user-selected symlink. Every supplied child segment must be one direct
+    name; existing symlink/non-directory components are rejected. This keeps
+    session/staging writers inside the tree Delete Forever can later purge.
+    """
+    root = Path(base)
+    if create:
+        root.mkdir(parents=True, exist_ok=True)
+    if root.exists() and not root.is_dir():
+        raise ValueError(f"owned root is not a directory: {root}")
+    resolved_root = root.resolve(strict=False)
+    current = root
+    for raw_segment in segments:
+        segment = str(raw_segment)
+        if (not segment or segment in {".", ".."}
+                or "/" in segment or "\\" in segment or "\x00" in segment
+                or any(ord(ch) < 32 or ord(ch) == 127 for ch in segment)):
+            raise ValueError(f"unsafe owned path segment: {segment!r}")
+        current = current / segment
+        if current.is_symlink():
+            raise ValueError(f"owned path component is a symlink: {current}")
+        if create:
+            try:
+                current.mkdir()
+            except FileExistsError:
+                pass
+        if current.exists():
+            if not current.is_dir() or current.is_symlink():
+                raise ValueError(
+                    f"owned path component is not a directory: {current}",
+                )
+            if not within_base(current.resolve(), resolved_root):
+                raise ValueError(f"owned path escapes configured root: {current}")
+    return current
+
+
+def atomic_write_text(path: str | Path, text: str, *, mode: int = 0o600) -> None:
+    """Atomically replace a text file without following the destination.
+
+    The exclusive temp is created in the already-validated parent directory;
+    ``os.replace`` replaces a symlink entry itself rather than its target.
+    """
+    target = Path(path)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent),
+    )
+    try:
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            fd = -1
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def atomic_write_bytes(path: str | Path, payload: bytes, *, mode: int = 0o600) -> None:
+    """Binary counterpart to :func:`atomic_write_text` with no-follow replace."""
+    target = Path(path)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent),
+    )
+    try:
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def append_bytes_no_follow(
+    path: str | Path,
+    payload: bytes,
+    *,
+    mode: int = 0o600,
+) -> None:
+    """Append a complete payload while refusing a final-component symlink.
+
+    Callers that share a sink across processes must hold :func:`locked_file`
+    around this helper. ``O_APPEND`` keeps each completed write at the current
+    end of the regular file; the loop handles short writes explicitly.
+    """
+    target = Path(path)
+    if target.is_symlink():
+        raise ValueError(f"append target is a symlink: {target}")
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(target, flags, mode)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError(f"append target is not a regular file: {target}")
+        view = memoryview(payload)
+        while view:
+            written = os.write(fd, view)
+            if written <= 0:
+                raise OSError(f"short append to {target}")
+            view = view[written:]
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def append_text_no_follow(
+    path: str | Path,
+    text: str,
+    *,
+    mode: int = 0o600,
+) -> None:
+    """UTF-8 text counterpart to :func:`append_bytes_no_follow`."""
+    append_bytes_no_follow(path, text.encode("utf-8"), mode=mode)
+
+
 def within_any_base(path, bases) -> bool:
     """True iff ``path`` is inside ANY of ``bases`` (see :func:`within_base`)."""
     return any(within_base(path, b) for b in bases)
@@ -136,7 +276,11 @@ def locked_file(path, timeout: float = DEFAULT_LOCK_TIMEOUT):
     seconds. Always releases on exit."""
     lock_path = str(path) + ".lock"
     os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
-    fp = open(lock_path, "a+")
+    flags = os.O_RDWR | os.O_CREAT | os.O_APPEND
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(lock_path, flags, 0o600)
+    fp = os.fdopen(fd, "a+")
     deadline = time.time() + timeout
     try:
         while True:
@@ -164,6 +308,35 @@ def locked_file(path, timeout: float = DEFAULT_LOCK_TIMEOUT):
         except Exception:
             pass
         fp.close()
+
+
+@contextlib.contextmanager
+def conversation_lifecycle_lock(
+    conversation_id: str,
+    timeout: float = DEFAULT_LOCK_TIMEOUT,
+):
+    """Cross-process lock for one Dialogue's managed derivatives.
+
+    The Flask lifecycle lock only coordinates threads in the server process.
+    Runtime tools such as Daily Note generation and the retention sweeper may
+    run in a separate process, so destructive/retagging operations share this
+    hashed lock as well.  The hash avoids putting a user-visible legacy ID in
+    a filename while case-folding preserves Ora's cross-platform identity
+    semantics.
+    """
+    value = str(conversation_id or "").strip()
+    if (not value or value in {".", ".."} or len(value) > 255
+            or "/" in value or "\\" in value or "\x00" in value
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in value)):
+        raise ValueError("invalid conversation_id for lifecycle lock")
+    identity = value.casefold().encode("utf-8")
+    digest = hashlib.sha256(identity).hexdigest()
+    lock_root = safe_owned_subdir(
+        Path(DATA_DIR_STR), "lifecycle-locks", create=True,
+    )
+    # locked_file appends its own `.lock` suffix.
+    with locked_file(lock_root / digest, timeout=timeout):
+        yield
 
 PRESET_NAMES = ("free", "budget", "speed", "premium")
 RUNTIME_OVERLAY_CONFIGURATION_NAMES = PRESET_NAMES + ("user-pipeline",)

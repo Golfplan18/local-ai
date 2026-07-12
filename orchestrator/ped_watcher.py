@@ -21,7 +21,12 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from ped_parser import parse_ped_file, get_active_milestone_states
+try:
+    from ped_parser import parse_ped_file, get_active_milestone_states
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.ped_parser import (
+        parse_ped_file, get_active_milestone_states,
+    )
 
 try:
     import runtime_paths as _rp

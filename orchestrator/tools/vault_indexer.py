@@ -38,6 +38,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Optional
 
+try:
+    from orchestrator import runtime_paths as _rp
+except ImportError:  # pragma: no cover - direct script execution
+    import runtime_paths as _rp  # type: ignore
+
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -173,7 +178,23 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 
 
 def yaml_skip_by_type(yaml_meta: dict) -> bool:
-    """Return True if the YAML `type:` says this is a derived artifact."""
+    """Return True for derived artifacts that must stay out of this cache.
+
+    Managed conversation transcripts are runtime derivatives.  Their text,
+    paragraph hashes, and summaries must not survive a privacy transition or
+    deletion in the historical paste-detection index.  The complete ownership
+    pair avoids excluding user-authored transcripts that merely share a type.
+    """
+    if (yaml_meta.get("artifact_kind") == "conversation_transcript"
+            and yaml_meta.get("managed_by") == "ora"):
+        return True
+    raw_tags = yaml_meta.get("tags") or []
+    tags = [raw_tags] if isinstance(raw_tags, str) else raw_tags
+    if isinstance(tags, list) and any(
+        isinstance(tag, str) and tag.strip().casefold() == "private"
+        for tag in tags
+    ):
+        return True
     t = yaml_meta.get("type", "")
     if isinstance(t, str):
         return t.strip() in SKIP_TYPES
@@ -395,10 +416,10 @@ def _load_existing(output_file: Path) -> tuple[dict, int]:
     return by_path, next_id
 
 
-def build_index(vault_path: str = VAULT_DEFAULT,
-                output_path: str = INDEX_DEFAULT,
-                rebuild: bool = False,
-                progress: bool = False) -> dict:
+def _build_index_locked(vault_path: str = VAULT_DEFAULT,
+                        output_path: str = INDEX_DEFAULT,
+                        rebuild: bool = False,
+                        progress: bool = False) -> dict:
     """Build or update the vault index.
 
     Returns a stats dict with counts per category.
@@ -430,14 +451,9 @@ def build_index(vault_path: str = VAULT_DEFAULT,
             continue
 
         existing_entry = existing.get(rel_path)
-        if (existing_entry
-                and not rebuild
-                and existing_entry.get("file_mtime") == mtime):
-            entries.append(existing_entry)
-            stats["unchanged"] += 1
-            continue
-
-        # Parse + run yaml-type skip check.
+        # Parse before reusing a cached row.  Lifecycle-derived artifact
+        # exclusion is authoritative even when an older index already has an
+        # unchanged entry for that path.
         try:
             text = path.read_text(encoding="utf-8")
         except OSError as e:
@@ -448,6 +464,13 @@ def build_index(vault_path: str = VAULT_DEFAULT,
         yaml_meta, body = parse_frontmatter(text)
         if yaml_skip_by_type(yaml_meta):
             stats["yaml_skipped"] += 1
+            continue
+
+        if (existing_entry
+                and not rebuild
+                and existing_entry.get("file_mtime") == mtime):
+            entries.append(existing_entry)
+            stats["unchanged"] += 1
             continue
 
         # Entry id: reuse if updating, else allocate next.
@@ -478,11 +501,27 @@ def build_index(vault_path: str = VAULT_DEFAULT,
         "stats":      stats,
         "entries":    entries,
     }
-    output_file.write_text(
+    _rp.atomic_write_text(
+        output_file,
         json.dumps(output, indent=2, ensure_ascii=False),
-        encoding="utf-8",
     )
     return stats
+
+
+def build_index(vault_path: str = VAULT_DEFAULT,
+                output_path: str = INDEX_DEFAULT,
+                rebuild: bool = False,
+                progress: bool = False) -> dict:
+    """Build under the same sidecar lock used by lifecycle cache cleanup."""
+    output_file = Path(output_path).expanduser()
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with _rp.locked_file(output_file):
+        return _build_index_locked(
+            vault_path=vault_path,
+            output_path=output_path,
+            rebuild=rebuild,
+            progress=progress,
+        )
 
 
 # ---------------------------------------------------------------------------

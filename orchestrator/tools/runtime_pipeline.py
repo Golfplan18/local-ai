@@ -32,17 +32,25 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
+import threading
 import time
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 
+try:
+    from orchestrator import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import context
+    import runtime_paths as _rp  # type: ignore
 
-VAULT_PATH = os.path.expanduser("~/Documents/vault")
-STAGING_DIR = os.path.expanduser("~/ora/data/extraction-staging/")
-SESSION_LOG_DIR = os.path.expanduser("~/ora/data/session-logs/")
-CONTINUITY_DIR = os.path.expanduser("~/ora/data/continuity/")
+VAULT_PATH = _rp.VAULT_STR
+STAGING_DIR = os.path.join(_rp.DATA_DIR_STR, "extraction-staging")
+SESSION_LOG_DIR = os.path.join(_rp.DATA_DIR_STR, "session-logs")
+CONTINUITY_DIR = os.path.join(_rp.DATA_DIR_STR, "continuity")
 
 
 @dataclass
@@ -52,6 +60,11 @@ class SessionData:
     timestamp: str
     mode: str
     gear: int
+    # Stable lifecycle identity. ``session_id`` is the legacy six-character
+    # processing run id; conversation_id is what Delete Forever and privacy
+    # propagation can use to find every automatically-derived note.
+    conversation_id: str = ""
+    conversation_tag: str = ""
     models_used: list[str] = field(default_factory=list)
     rag_resources: list[str] = field(default_factory=list)
     token_consumption: dict = field(default_factory=dict)  # {stage: tokens}
@@ -65,8 +78,18 @@ class SessionData:
     source_type: str = ""  # override for input type detection ("chat" from server)
 
 
-CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
+CHROMADB_PATH = str(_rp.ORA_HOME / "chromadb")
+ENTITY_INDEX_PATH = os.path.join(_rp.DATA_DIR_STR, "entity-index.json")
 CONVERGENCE_THRESHOLD = 5  # arrival_history entries needed for engram promotion flag
+_STAGING_WRITE_LOCK = threading.Lock()
+
+
+def _staging_directory(*, create: bool = False) -> Path:
+    """Return the managed extraction root without following a root symlink."""
+    configured = Path(STAGING_DIR)
+    return _rp.safe_owned_subdir(
+        configured.parent, configured.name, create=create,
+    )
 
 
 @dataclass
@@ -103,6 +126,9 @@ class RuntimePipeline:
         self.config = config or {}
         self.call_fn = call_fn
         self.vault_path = vault_path or VAULT_PATH
+        self.chromadb_path = os.path.abspath(os.path.expanduser(str(
+            self.config.get("chromadb_path") or CHROMADB_PATH
+        )))
         self._executor = ThreadPoolExecutor(max_workers=1)
 
     def run_async(self, session_data: SessionData) -> None:
@@ -120,6 +146,7 @@ class RuntimePipeline:
         """Execute all runtime steps in sequence."""
         start_time = time.time()
         result = RuntimeResult(session_id=session_data.session_id)
+        staged_paths: list[str] = []
 
         # Step 1: Session logging
         try:
@@ -148,20 +175,21 @@ class RuntimePipeline:
             result.notes_extracted = extract_result.get("extracted", 0)
             result.notes_approved = extract_result.get("approved", 0)
             result.notes_review = extract_result.get("review", 0)
+            staged_paths = list(extract_result.get("staged_paths") or [])
             result.steps_completed.append("knowledge_extraction")
         except Exception as e:
             result.steps_failed.append(f"knowledge_extraction: {e}")
 
         # Step 7: ChromaDB ingestion
         try:
-            self._step7_chromadb_ingest()
+            self._step7_chromadb_ingest(staged_paths)
             result.steps_completed.append("chromadb_ingestion")
         except Exception as e:
             result.steps_failed.append(f"chromadb_ingestion: {e}")
 
         # Step 8: Relationship extraction
         try:
-            rel_count = self._step8_relationship_extraction()
+            rel_count = self._step8_relationship_extraction(staged_paths)
             result.relationships_found = rel_count
             result.steps_completed.append("relationship_extraction")
         except Exception as e:
@@ -169,7 +197,7 @@ class RuntimePipeline:
 
         # Step 9: Glossary gap check
         try:
-            gaps = self._step9_glossary_check()
+            gaps = self._step9_glossary_check(staged_paths)
             result.glossary_gaps = gaps
             result.steps_completed.append("glossary_check")
         except Exception as e:
@@ -177,7 +205,7 @@ class RuntimePipeline:
 
         # Step 10: Tag validation
         try:
-            warnings = self._step10_tag_validation()
+            warnings = self._step10_tag_validation(staged_paths)
             result.tag_warnings = warnings
             result.steps_completed.append("tag_validation")
         except Exception as e:
@@ -185,7 +213,7 @@ class RuntimePipeline:
 
         # Step 11: Entity extraction
         try:
-            self._step11_entity_extraction()
+            self._step11_entity_extraction(staged_paths)
             result.steps_completed.append("entity_extraction")
         except Exception as e:
             result.steps_failed.append(f"entity_extraction: {e}")
@@ -194,7 +222,10 @@ class RuntimePipeline:
         # Query each new note against ChromaDB for high-similarity existing notes.
         # Heuristic classification runs inline; model classification deferred.
         try:
-            p2_count = self._step12_pass2_relationships()
+            p2_count = self._step12_pass2_relationships(
+                staged_paths,
+                include_private=session_data.conversation_tag == "private",
+            )
             result.pass2_relationships = p2_count
             result.steps_completed.append("pass2_relationships")
         except Exception as e:
@@ -203,7 +234,7 @@ class RuntimePipeline:
         # Step 13: Convergence check
         # Flag notes whose arrival_history crossed the engram promotion threshold.
         try:
-            flags = self._step13_convergence_check()
+            flags = self._step13_convergence_check(staged_paths)
             result.convergence_flags = flags
             result.steps_completed.append("convergence_check")
         except Exception as e:
@@ -217,8 +248,12 @@ class RuntimePipeline:
         try:
             if os.environ.get("ORA_RUNTIME_ENGRAM_PROMOTION", "").strip().lower() in (
                     "1", "on", "true", "yes"):
-                from orchestrator.tools.engram_promotion import promote_staging_dir
-                promo = promote_staging_dir(index=True)
+                from orchestrator.tools.engram_promotion import promote_staging_files
+                promo = promote_staging_files(
+                    staged_paths,
+                    index=True,
+                    chromadb_path=self.chromadb_path,
+                )
                 result.notes_promoted = promo.get("promoted", 0)
                 result.engram_autocommit = promo.get("autocommit", {})
                 result.steps_completed.append("engram_promotion")
@@ -295,12 +330,14 @@ class RuntimePipeline:
         Returns counts of extracted/approved/review notes.
         """
         if not data.final_output and not data.conversation_history:
-            return {"extracted": 0, "approved": 0, "review": 0}
+            return {"extracted": 0, "approved": 0, "review": 0,
+                    "staged_paths": []}
 
         # Build session transcript
         transcript = self._build_transcript(data)
         if not transcript:
-            return {"extracted": 0, "approved": 0, "review": 0}
+            return {"extracted": 0, "approved": 0, "review": 0,
+                    "staged_paths": []}
 
         try:
             from input_detect import detect_input_type
@@ -319,11 +356,14 @@ class RuntimePipeline:
 
             # Run extraction
             engine = ExtractionEngine(call_fn=self.call_fn, config=self.config)
-            extraction = engine.extract(transcript, type_result,
-                                        source_file=data.session_id)
+            source_file = data.conversation_id or data.session_id
+            extraction = engine.extract(
+                transcript, type_result, source_file=source_file,
+            )
 
             if not extraction.screened:
-                return {"extracted": 0, "approved": 0, "review": 0}
+                return {"extracted": 0, "approved": 0, "review": 0,
+                        "staged_paths": []}
 
             # Quality gate
             gate_results = evaluate_batch(extraction.screened)
@@ -332,74 +372,120 @@ class RuntimePipeline:
             review = gate_results.get("review", [])
 
             # Write approved notes to staging
-            os.makedirs(STAGING_DIR, exist_ok=True)
+            staged_paths: list[str] = []
             for note, _ in approved:
-                self._write_note_to_staging(note)
+                staged_paths.append(self._write_note_to_staging(
+                    note,
+                    source_file=source_file,
+                    private=data.conversation_tag == "private",
+                ))
 
             return {
                 "extracted": len(extraction.screened),
                 "approved": len(approved),
                 "review": len(review),
+                "staged_paths": staged_paths,
             }
         except ImportError:
-            return {"extracted": 0, "approved": 0, "review": 0}
+            return {"extracted": 0, "approved": 0, "review": 0,
+                    "staged_paths": []}
         except Exception:
-            return {"extracted": 0, "approved": 0, "review": 0}
+            return {"extracted": 0, "approved": 0, "review": 0,
+                    "staged_paths": []}
 
-    def _step7_chromadb_ingest(self):
+    def _staged_note_paths(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None,
+    ) -> list[str]:
+        """Resolve an explicit run-owned path set, or scan only for legacy callers."""
+        try:
+            staging_dir = _staging_directory(create=False)
+        except Exception as exc:
+            print(f"[runtime_pipeline] unsafe staging root: {exc}", file=sys.stderr)
+            return []
+        if note_paths is None:
+            if not staging_dir.is_dir():
+                return []
+            candidates = (
+                str(staging_dir / name)
+                for name in os.listdir(staging_dir)
+                if name.endswith(".md")
+            )
+        else:
+            candidates = (os.fspath(path) for path in note_paths)
+
+        staging_root = os.path.abspath(staging_dir)
+        resolved: list[str] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            path = os.path.abspath(candidate)
+            if (not path.endswith(".md")
+                    or os.path.normcase(os.path.dirname(path))
+                    != os.path.normcase(staging_root)):
+                print(f"[runtime_pipeline] skipped non-staging run path: {path}",
+                      file=sys.stderr)
+                continue
+            try:
+                mode = os.stat(path, follow_symlinks=False).st_mode
+            except OSError:
+                continue
+            if path in seen or not stat.S_ISREG(mode):
+                continue
+            seen.add(path)
+            resolved.append(path)
+        return resolved
+
+    def _step7_chromadb_ingest(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ):
         """Ingest newly staged notes into ChromaDB knowledge collection."""
-        if not os.path.exists(STAGING_DIR):
-            return
-
         try:
             from orchestrator.tools.knowledge_index import index_single_file
         except ImportError:
             # Knowledge index not available — skip
             return
 
-        for f in os.listdir(STAGING_DIR):
-            if f.endswith('.md'):
-                path = os.path.join(STAGING_DIR, f)
-                try:
-                    index_single_file(path, verbose=False)
-                except Exception as exc:
-                    # Fail open: the session continues and the note stays in
-                    # staging, but the miss must be visible — a silent pass
-                    # here left staged notes unindexed for weeks.
-                    print(f"[runtime_pipeline] chromadb ingest failed for {f}: "
-                          f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        for path in self._staged_note_paths(note_paths):
+            try:
+                index_single_file(
+                    path,
+                    verbose=False,
+                    chromadb_path=self.chromadb_path,
+                )
+            except Exception as exc:
+                # Fail open: the session continues and the note stays in
+                # staging, but the miss must be visible — a silent pass
+                # here left staged notes unindexed for weeks.
+                print(f"[runtime_pipeline] chromadb ingest failed for "
+                      f"{os.path.basename(path)}: {type(exc).__name__}: {exc}",
+                      file=sys.stderr)
 
-    def _step8_relationship_extraction(self) -> int:
+    def _step8_relationship_extraction(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ) -> int:
         """Run Pass 1 relationship discovery on newly staged notes."""
-        if not os.path.exists(STAGING_DIR):
-            return 0
-
         count = 0
         try:
             from orchestrator.tools.relationship_discovery import discover_relationships
 
-            for f in os.listdir(STAGING_DIR):
-                if f.endswith('.md'):
-                    path = os.path.join(STAGING_DIR, f)
-                    relationships = discover_relationships(path, self.vault_path)
-                    count += len(relationships)
+            for path in self._staged_note_paths(note_paths):
+                relationships = discover_relationships(path, self.vault_path)
+                count += len(relationships)
         except ImportError:
             pass
 
         return count
 
-    def _step9_glossary_check(self) -> list[str]:
+    def _step9_glossary_check(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ) -> list[str]:
         """Check definitions_required against glossary index."""
         gaps = []
 
-        if not os.path.exists(STAGING_DIR):
-            return gaps
-
-        for f in os.listdir(STAGING_DIR):
-            if not f.endswith('.md'):
-                continue
-
-            path = os.path.join(STAGING_DIR, f)
+        for path in self._staged_note_paths(note_paths):
             try:
                 with open(path, "r") as fh:
                     content = fh.read()
@@ -427,27 +513,24 @@ class RuntimePipeline:
 
         return gaps
 
-    def _step10_tag_validation(self) -> list[str]:
+    def _step10_tag_validation(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ) -> list[str]:
         """Validate tags against controlled vocabulary."""
         # Controlled vocabulary from Framework — Knowledge Artifact Coach
         controlled_tags = {
             "atomic", "molecular", "compound", "process", "glossary",
             "framework/instruction", "framework/builder", "position",
-            "archived", "incubating",
+            "archived", "incubating", "private",
             "epistemology", "narrative_theory", "cosmology",
             "political_economy", "ai_methodology",
         }
 
         warnings = []
 
-        if not os.path.exists(STAGING_DIR):
-            return warnings
-
-        for f in os.listdir(STAGING_DIR):
-            if not f.endswith('.md'):
-                continue
-
-            path = os.path.join(STAGING_DIR, f)
+        for path in self._staged_note_paths(note_paths):
+            f = os.path.basename(path)
             try:
                 with open(path, "r") as fh:
                     content = fh.read()
@@ -472,56 +555,43 @@ class RuntimePipeline:
 
         return warnings
 
-    def _step11_entity_extraction(self):
-        """Extract entities from new notes for co-occurrence index."""
-        if not os.path.exists(STAGING_DIR):
+    def _step11_entity_extraction(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ):
+        """Retire the unused, provenance-free entity cache.
+
+        Repository-wide call-site review found no reader for
+        ``entity-index.json``; the runtime step was its sole writer. Keeping a
+        title-only cache made Private retagging and Delete Forever impossible to
+        implement exactly, so runtime removes the obsolete cache instead of
+        generating another unmanaged derivative.
+        """
+        del note_paths
+        path = os.path.abspath(ENTITY_INDEX_PATH)
+        if not (os.path.lexists(path)):
             return
+        if os.path.isdir(path) and not os.path.islink(path):
+            raise ValueError(f"refusing to retire non-file entity index: {path}")
+        os.unlink(path)
+        print(f"[runtime_pipeline] retired unused entity index: {path}",
+              file=sys.stderr)
 
-        try:
-            from orchestrator.tools.entity_cooccurrence import EntityExtractor
-
-            extractor = EntityExtractor()
-            entity_index_path = os.path.expanduser("~/ora/data/entity-index.json")
-
-            # Load existing index
-            existing = {}
-            if os.path.exists(entity_index_path):
-                with open(entity_index_path, "r") as f:
-                    existing = json.load(f)
-
-            for f in os.listdir(STAGING_DIR):
-                if not f.endswith('.md'):
-                    continue
-
-                path = os.path.join(STAGING_DIR, f)
-                with open(path, "r") as fh:
-                    content = fh.read()
-
-                title = f[:-3]  # strip .md
-                entities = extractor.extract(content)
-                existing[title] = [e.text for e in entities]
-
-            # Save updated index
-            os.makedirs(os.path.dirname(entity_index_path), exist_ok=True)
-            with open(entity_index_path, "w") as fh:
-                json.dump(existing, fh, indent=2)
-
-        except ImportError:
-            pass
-
-    def _step12_pass2_relationships(self) -> int:
+    def _step12_pass2_relationships(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+        *,
+        include_private: bool = False,
+    ) -> int:
         """
         Pass 2 relationship discovery at runtime: query each newly staged
         note against ChromaDB for semantic neighbors, classify relationship
         type using heuristic. O(1) per new note — no full-vault scan.
         """
-        if not os.path.exists(STAGING_DIR):
-            return 0
-
         try:
             import chromadb
             from orchestrator.embedding import get_collection
-            client = chromadb.PersistentClient(path=CHROMADB_PATH)
+            client = chromadb.PersistentClient(path=self.chromadb_path)
             collection = get_collection(client, "knowledge")
         except Exception:
             return 0
@@ -534,11 +604,8 @@ class RuntimePipeline:
         new_relationships = 0
         similarity_threshold = 0.85
 
-        for fname in os.listdir(STAGING_DIR):
-            if not fname.endswith(".md"):
-                continue
-
-            path = os.path.join(STAGING_DIR, fname)
+        for path in self._staged_note_paths(note_paths):
+            fname = os.path.basename(path)
             try:
                 with open(path, "r") as fh:
                     content = fh.read()
@@ -552,6 +619,7 @@ class RuntimePipeline:
                 results = collection.query(
                     query_texts=[content[:2000]],  # first 2000 chars
                     n_results=10,
+                    where=(None if include_private else {"tag_private": False}),
                 )
             except Exception:
                 continue
@@ -618,7 +686,10 @@ class RuntimePipeline:
             return "parallels"
         return "no_relationship"
 
-    def _step13_convergence_check(self) -> list[str]:
+    def _step13_convergence_check(
+        self,
+        note_paths: Iterable[str | os.PathLike[str]] | None = None,
+    ) -> list[str]:
         """
         Check newly staged notes for convergence: if arrival_history
         crossed the engram promotion threshold, flag it.
@@ -626,14 +697,8 @@ class RuntimePipeline:
         """
         flags = []
 
-        if not os.path.exists(STAGING_DIR):
-            return flags
-
-        for fname in os.listdir(STAGING_DIR):
-            if not fname.endswith(".md"):
-                continue
-
-            path = os.path.join(STAGING_DIR, fname)
+        for path in self._staged_note_paths(note_paths):
+            fname = os.path.basename(path)
             try:
                 with open(path, "r") as fh:
                     content = fh.read()
@@ -683,19 +748,20 @@ class RuntimePipeline:
 
         return "\n\n".join(parts)
 
-    def _write_note_to_staging(self, note):
+    def _write_note_to_staging(
+        self,
+        note,
+        *,
+        source_file: str = "",
+        private: bool = False,
+    ):
         """Write an extracted note to the staging directory."""
         import re
 
         title = getattr(note, "title", "Untitled")
         safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
         safe_title = re.sub(r'\s+', ' ', safe_title).strip()[:200]
-
-        path = os.path.join(STAGING_DIR, f"{safe_title}.md")
-        counter = 1
-        while os.path.exists(path):
-            path = os.path.join(STAGING_DIR, f"{safe_title}-{counter}.md")
-            counter += 1
+        safe_title = safe_title or "Untitled"
 
         fm = getattr(note, "yaml_frontmatter", {})
         body = getattr(note, "body", "")
@@ -709,13 +775,32 @@ class RuntimePipeline:
         else:
             lines.append("nexus:")
         lines.append(f"type: {fm.get('type', 'working')}")
+        # Strict lifecycle ownership. Once promoted into a user-vault root,
+        # source_file alone is only provenance (a user-authored note may cite
+        # the same Dialogue); these fields are what authorize surgical
+        # privacy/delete handling.
+        lines.append("artifact_kind: conversation_runtime_derivative")
+        lines.append("managed_by: ora")
         tags = fm.get("tags", [])
+        if not isinstance(tags, list):
+            tags = [tags] if tags else []
+        tags = [str(tag) for tag in tags if str(tag).strip()]
+        if private and "private" not in tags:
+            tags.append("private")
         if isinstance(tags, list) and tags:
             lines.append("tags:")
             for t in tags:
                 lines.append(f"  - {t}")
         else:
             lines.append("tags:")
+        if source_file:
+            # ``source_file`` is a standard DP provenance field consumed by
+            # knowledge_index.  Using the stable conversation id makes
+            # privacy changes and Delete Forever exact instead of relying on
+            # filenames or semantic matching.
+            lines.append(
+                "source_file: " + json.dumps(source_file, ensure_ascii=False)
+            )
         subtype = getattr(note, "subtype", None)
         if subtype:
             lines.append(f"subtype: {subtype}")
@@ -725,8 +810,21 @@ class RuntimePipeline:
         lines.append("")
         lines.append(body)
 
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+        content = "\n".join(lines)
+        # Different conversations may finish concurrently. Serialize filename
+        # allocation with creation so equal titles never overwrite each other
+        # or cause one run to claim another run's path.
+        with _STAGING_WRITE_LOCK:
+            staging_dir = _staging_directory(create=True)
+            path = staging_dir / f"{safe_title}.md"
+            counter = 1
+            while os.path.lexists(path):
+                if path.is_symlink():
+                    raise ValueError(f"refusing symlinked staging note: {path}")
+                path = staging_dir / f"{safe_title}-{counter}.md"
+                counter += 1
+            _rp.atomic_write_text(path, content)
+        return str(path)
 
     def _glossary_exists(self, term: str) -> bool:
         """Check if a glossary note exists for a given term."""

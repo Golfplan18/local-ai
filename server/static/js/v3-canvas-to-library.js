@@ -182,25 +182,28 @@
 
   // ── Send to library ────────────────────────────────────────────────────
 
-  function _resolveConversationId(panel) {
-    // Best-effort: look up the active conversation. visual-panel doesn't
-    // own this; OraConversation typically does. Falls back to OraCanvas.
+  function _resolveActiveConversation() {
+    // OraConversation owns both identity and privacy. Read both values from
+    // that one authoritative active Dialogue so a stale canvas/panel binding
+    // cannot send bytes under one Dialogue ID and another Dialogue's tag.
     if (root.OraConversation
-        && typeof root.OraConversation.getCurrentId === 'function') {
-      var cid = root.OraConversation.getCurrentId();
-      if (cid) return cid;
+        && typeof root.OraConversation.getActiveConversationId === 'function') {
+      var cid = root.OraConversation.getActiveConversationId();
+      if (cid) {
+        return {
+          id: cid,
+          tag: (typeof root.OraConversation.getActiveTag === 'function')
+            ? (root.OraConversation.getActiveTag() || '') : ''
+        };
+      }
     }
-    if (root.OraCanvas && root.OraCanvas.conversationId) {
-      return root.OraCanvas.conversationId;
-    }
-    if (panel && panel.conversationId) return panel.conversationId;
     return null;
   }
 
   function send(panel, node) {
     if (!node) return Promise.resolve({ ok: false, reason: 'no image' });
-    var conversationId = _resolveConversationId(panel);
-    if (!conversationId) {
+    var activeConversation = _resolveActiveConversation();
+    if (!activeConversation) {
       return Promise.resolve({ ok: false, reason: 'no active Dialogue' });
     }
     return _extractSourceBlob(node).then(function (extract) {
@@ -208,7 +211,9 @@
       var fd = new FormData();
       var name = _filenameFor(node);
       fd.append('file', extract.blob, name);
-      var url = '/api/media-library/' + encodeURIComponent(conversationId) + '/add';
+      fd.append('tag', activeConversation.tag);
+      var url = '/api/media-library/'
+        + encodeURIComponent(activeConversation.id) + '/add';
       return fetch(url, { method: 'POST', body: fd }).then(function (r) {
         if (!r || !r.ok) {
           return r.json().then(function (j) {

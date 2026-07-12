@@ -17,6 +17,7 @@ Verifies:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -25,6 +26,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -227,6 +229,19 @@ class TestFrontmatter(unittest.TestCase):
     def test_yaml_skip_by_type_working(self):
         meta = {"type": "working"}
         self.assertFalse(yaml_skip_by_type(meta))
+
+    def test_yaml_skip_managed_transcript_but_not_user_transcript(self):
+        self.assertTrue(yaml_skip_by_type({
+            "type": "transcript",
+            "artifact_kind": "conversation_transcript",
+            "managed_by": "ora",
+        }))
+        self.assertFalse(yaml_skip_by_type({"type": "transcript"}))
+
+    def test_yaml_skip_private_content(self):
+        self.assertTrue(yaml_skip_by_type({
+            "type": "working", "tags": ["atomic", "private"],
+        }))
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +486,67 @@ class TestBuildIndex(unittest.TestCase):
         ):
             self.assertNotIn(must_not, paths,
                               f"unexpected entry: {must_not}")
+
+    def test_incremental_build_drops_preexisting_managed_transcript_cache(self):
+        transcript = self.vault / "Transcript — Managed.md"
+        transcript.write_text(
+            "---\ntype: transcript\ntags:\n  - incubating\n"
+            "artifact_kind: conversation_transcript\nmanaged_by: ora\n"
+            "source_file: target\n---\n\nSensitive transcript body.\n",
+            encoding="utf-8",
+        )
+        self.output.write_text(json.dumps({
+            "version": 1,
+            "vault_path": str(self.vault),
+            "entries": [{
+                "id": "vault-9999",
+                "vault_path": transcript.name,
+                "file_mtime": transcript.stat().st_mtime,
+                "yaml_type": "transcript",
+                "summary": "Sensitive transcript body.",
+                "paragraph_hashes": ["secret"],
+            }],
+        }), encoding="utf-8")
+
+        build_index(
+            vault_path=str(self.vault), output_path=str(self.output),
+            rebuild=False,
+        )
+
+        paths = {row["vault_path"] for row in load_index(str(self.output))["entries"]}
+        self.assertNotIn(transcript.name, paths)
+
+    def test_writer_holds_shared_sidecar_lock_across_complete_build(self):
+        from orchestrator.tools import vault_indexer
+
+        state = {"locked": False, "path": None}
+
+        @contextlib.contextmanager
+        def locked(path):
+            state["locked"] = True
+            state["path"] = Path(path)
+            try:
+                yield
+            finally:
+                state["locked"] = False
+
+        def build_locked(**_kwargs):
+            self.assertTrue(state["locked"])
+            return {"new": 0}
+
+        with (
+            mock.patch.object(vault_indexer._rp, "locked_file", locked),
+            mock.patch.object(
+                vault_indexer, "_build_index_locked", side_effect=build_locked,
+            ),
+        ):
+            result = vault_indexer.build_index(
+                vault_path=str(self.vault), output_path=str(self.output),
+            )
+
+        self.assertEqual(result, {"new": 0})
+        self.assertEqual(state["path"], self.output)
+        self.assertFalse(state["locked"])
 
     def test_maturity_flag(self):
         build_index(vault_path=str(self.vault),

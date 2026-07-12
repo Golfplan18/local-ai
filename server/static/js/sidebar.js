@@ -15,6 +15,7 @@
  *   POST /api/conversation/<id>/mark-read
  *   POST /api/conversation/<id>/pin
  *   POST /api/conversation/<id>/close
+ *   POST /api/conversation/<id>/delete-forever
  *
  * Refresh: poll every 12s while the page is visible. Page-visibility
  * change triggers an immediate refresh on resume.
@@ -105,6 +106,7 @@
   let browserFetchTimer = null;
   let browserFilterTimer = null;
   let browserReturnFocus = null;
+  const lifecycleBusyIds = new Set();
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -254,11 +256,15 @@
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'sidebar-row-close';
-      close.setAttribute('aria-label', 'Close Dialogue');
+      const closeLabel = row.tag === 'stealth' ? 'Delete Dialogue forever' : 'Close Dialogue';
+      close.setAttribute('aria-label', closeLabel);
+      close.title = closeLabel;
       close.textContent = '×';
+      close.disabled = lifecycleBusyIds.has(row.conversation_id);
+      close.setAttribute('aria-disabled', close.disabled ? 'true' : 'false');
       close.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        onCloseClick(row);
+        onCloseClick(Object.assign({}, row, { tag: el.dataset.tag || '' }));
       });
       el.appendChild(close);
       if (!row.is_welcome) {
@@ -563,9 +569,13 @@
     [...sidebar.querySelectorAll('.sidebar-row')].forEach(el => {
       el.classList.toggle('is-active', el.dataset.conversationId === activeConvId);
     });
-    // Mark as read (best-effort) and emit a custom event so the output
-    // pane can swap to this conversation. Output-pane integration is
-    // Phase 4 / Phase 5 territory; the event is a hook for that wiring.
+    // Select immediately. Mark-read must not delay output state activation:
+    // the row's Close/Delete action can otherwise race ahead of load and a
+    // late response could reactivate an unavailable Dialogue.
+    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+      detail: { conversation_id: row.conversation_id, tag: row.tag, title: row.title },
+    }));
+    // Mark as read (best-effort) after selection is in flight.
     try {
       await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/mark-read`, {
         method: 'POST',
@@ -573,9 +583,6 @@
         body: JSON.stringify({}),
       });
     } catch (e) {}
-    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
-      detail: { conversation_id: row.conversation_id, tag: row.tag, title: row.title },
-    }));
     // Refresh the list so the unread → active migration shows up.
     fetchList();
     // Backlog 3E — temporary mode collapses on row selection; pinned
@@ -584,26 +591,25 @@
   };
 
   const onCloseClick = async (row) => {
-    // Backlog 11 — unsent-input close confirmation. If there's a saved
-    // draft for this conversation, confirm before close so we don't
-    // silently lose the user's in-progress text.
-    let hasDraft = false;
-    try {
-      hasDraft = !!localStorage.getItem('ora-v3-draft-' + row.conversation_id);
-    } catch (e) {}
-    if (hasDraft) {
-      if (!confirm('This Dialogue has an unsent message in the Inquiry pane. Close anyway?')) return;
-      try { localStorage.removeItem('ora-v3-draft-' + row.conversation_id); } catch (e) {}
+    // The conversation module owns response/body validation, draft cleanup,
+    // destructive confirmation, partial-error surfacing, and active-state
+    // reset. Drafts are deliberately not removed until the request succeeds.
+    const lifecycle = window.OraConversation;
+    const method = row.tag === 'stealth' ? 'deleteForever' : 'closeConversation';
+    if (!lifecycle || typeof lifecycle[method] !== 'function') {
+      console.error(`[sidebar] ${method} unavailable for ${row.conversation_id}`);
+      window.alert('Dialogue lifecycle controls are unavailable.');
+      return;
     }
-    if (row.tag === 'stealth') {
-      if (!confirm('This stealth Dialogue will be permanently deleted. This cannot be undone. Confirm?')) return;
+    const result = await lifecycle[method](row.conversation_id, {
+      tag: row.tag || '',
+      source: 'sidebar-row',
+    });
+    if (!result || result.ok !== true) return;
+    if (row.conversation_id === activeConvId
+        && typeof lifecycle.getActiveConversationId === 'function') {
+      activeConvId = lifecycle.getActiveConversationId() || null;
     }
-    try {
-      await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/close`, {
-        method: 'POST',
-      });
-    } catch (e) {}
-    if (row.conversation_id === activeConvId) activeConvId = null;
     fetchList();
   };
 
@@ -672,7 +678,9 @@
 
   const onNewThread = () => {
     document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {
-      detail: { source: 'sidebar' },
+      // Generic New is always Standard. Tagged creation belongs to the
+      // explicit Private/Stealth spine-menu actions.
+      detail: { tag: '', source: 'sidebar' },
     }));
   };
 
@@ -1078,6 +1086,55 @@
     });
     closeBrowser();
     if (!isPinned()) setExpanded(false);
+  });
+
+  document.addEventListener('ora:conversation-load-failed', (e) => {
+    const detail = (e && e.detail) || {};
+    activeConvId = detail.active_conversation_id || null;
+    [...sidebar.querySelectorAll('.sidebar-row')].forEach(el => {
+      el.classList.toggle('is-active', el.dataset.conversationId === activeConvId);
+    });
+    fetchList();
+  });
+
+  document.addEventListener('ora:conversation-lifecycle-state', (e) => {
+    const detail = (e && e.detail) || {};
+    const conversationId = detail.conversation_id;
+    if (!conversationId) return;
+    if (detail.active) lifecycleBusyIds.add(conversationId);
+    else lifecycleBusyIds.delete(conversationId);
+    Array.from(sidebar.querySelectorAll('.sidebar-row')).forEach((rowEl) => {
+      if (rowEl.dataset.conversationId !== conversationId) return;
+      rowEl.classList.toggle('is-lifecycle-busy', !!detail.active);
+      const close = rowEl.querySelector('.sidebar-row-close');
+      if (close) {
+        close.disabled = !!detail.active;
+        close.setAttribute('aria-disabled', detail.active ? 'true' : 'false');
+      }
+    });
+  });
+
+  // Privacy mutations are authoritative at runtime. Update any visible row
+  // immediately, then refresh from the server so grouped snapshots and the
+  // Library view converge on the same tag.
+  document.addEventListener('ora:conversation-tag-changed', (e) => {
+    const detail = (e && e.detail) || {};
+    if (!detail.conversation_id) return;
+    const rowEl = Array.from(sidebar.querySelectorAll('.sidebar-row'))
+      .find((candidate) => candidate.dataset.conversationId === detail.conversation_id);
+    if (rowEl) {
+      const tag = detail.tag || '';
+      rowEl.dataset.tag = tag;
+      const prefix = rowEl.querySelector('.sidebar-row-prefix');
+      if (prefix) prefix.textContent = prefixForTag(tag);
+      const close = rowEl.querySelector('.sidebar-row-close');
+      if (close) {
+        const label = tag === 'stealth' ? 'Delete Dialogue forever' : 'Close Dialogue';
+        close.setAttribute('aria-label', label);
+        close.title = label;
+      }
+    }
+    fetchList();
   });
 
   // Backlog 3E — pin-in-place button at the top of the expanded panel.

@@ -194,18 +194,21 @@ class RecordModelUsage(unittest.TestCase):
         )
 
     def test_writes_usage_record(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            boot._TURN_TRACE_DIR_CV.set(tmp)
+        with tempfile.TemporaryDirectory() as root:
+            trace_dir = os.path.join(root, "cost-dialogue", "turn")
+            os.makedirs(trace_dir)
+            trace_token = boot.set_turn_trace_context(trace_dir)
             try:
-                boot._record_model_usage(
-                    {"id": "endp-A", "model_id": "qwen/qwen3.5-9b",
-                     "service": "openrouter"},
-                    prompt_tokens=200, completion_tokens=100,
-                    total_tokens=300,
-                )
+                with patch.object(boot.pipeline_trace, "TRACE_ROOT", root):
+                    boot._record_model_usage(
+                        {"id": "endp-A", "model_id": "qwen/qwen3.5-9b",
+                         "service": "openrouter"},
+                        prompt_tokens=200, completion_tokens=100,
+                        total_tokens=300,
+                    )
             finally:
-                boot._TURN_TRACE_DIR_CV.set(None)
-            path = os.path.join(tmp, "usage.jsonl")
+                boot.reset_turn_trace_context(trace_token)
+            path = os.path.join(trace_dir, "usage.jsonl")
             self.assertTrue(os.path.exists(path))
             with open(path) as f:
                 lines = [json.loads(l) for l in f if l.strip()]

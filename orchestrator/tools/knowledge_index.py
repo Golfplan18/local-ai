@@ -75,6 +75,12 @@ import yaml
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
 
+
+def _resolved_chromadb_path(chromadb_path: str | os.PathLike[str] | None = None) -> str:
+    """Return an absolute Chroma root while preserving the legacy default."""
+    configured = os.fspath(chromadb_path) if chromadb_path is not None else CHROMADB_PATH
+    return os.path.abspath(os.path.expanduser(configured))
+
 # Upper bound (chars) on BOTH the stored ChromaDB document and the text sent
 # to the embedder. Derived from the qwen3-embedding-8b input ceiling —
 # 32k tokens × ~4 chars/token ≈ 128k chars — with margin. This is a safety
@@ -128,6 +134,8 @@ _RETIRED_PROPERTIES = frozenset({
 # ChromaDB metadata. List-typed values become JSON strings.
 _STANDARD_SCALAR_FIELDS = (
     "subtype",
+    "artifact_kind",
+    "managed_by",
     "source_file",
     "source_format",
     "source_path",
@@ -766,7 +774,9 @@ def index_file(
         print(f"  + {chroma_meta['title']}")
 
 
-def get_knowledge_collection():
+def get_knowledge_collection(
+    chromadb_path: str | os.PathLike[str] | None = None,
+):
     """Create the ChromaDB client and return the embedder-bound knowledge
     collection — the same binding index_path uses. Entry point for runtime
     callers (session post-processing, engram promotion) that index or
@@ -776,30 +786,37 @@ def get_knowledge_collection():
     # Lazy import to avoid circular dependencies at module load.
     from orchestrator.embedding import get_or_create_collection
 
-    client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    client = chromadb.PersistentClient(path=_resolved_chromadb_path(chromadb_path))
     return get_or_create_collection(client, "knowledge")
 
 
 def index_single_file(filepath: str, *, force: bool = False,
-                      verbose: bool = True) -> dict[str, int]:
+                      verbose: bool = True,
+                      chromadb_path: str | os.PathLike[str] | None = None,
+                      ) -> dict[str, int]:
     """Index one .md file into the knowledge collection, building the
     client/collection binding in-call. Returns the stats dict so the
     caller can see the real outcome ({"indexed": 1} vs a skip or read
     error) instead of treating "no exception" as success.
     """
     stats = {"indexed": 0, "skipped": 0, "errors": 0}
-    index_file(get_knowledge_collection(), filepath, stats,
+    index_file(get_knowledge_collection(chromadb_path), filepath, stats,
                force=force, verbose=verbose)
     return stats
 
 
-def index_path(path: str, reindex: bool = False) -> None:
+def index_path(
+    path: str,
+    reindex: bool = False,
+    *,
+    chromadb_path: str | os.PathLike[str] | None = None,
+) -> None:
     """Index a file or directory into the knowledge collection."""
     import chromadb
     # Lazy import to avoid circular dependencies at module load.
     from orchestrator.embedding import delete_collection, get_or_create_collection
 
-    client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    client = chromadb.PersistentClient(path=_resolved_chromadb_path(chromadb_path))
 
     if reindex:
         try:

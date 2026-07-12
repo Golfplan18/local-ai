@@ -798,6 +798,10 @@
         <div class="output-pane-header-left">
           <span class="output-pane-mode-icon" id="outputPaneModeIcon" aria-hidden="true"></span>
           <span class="output-pane-display-name" id="outputPaneDisplayName">Dialogue</span>
+          <button class="output-pane-actions-btn" type="button" id="outputPaneActionsBtn"
+                  aria-label="Dialogue actions" aria-haspopup="menu"
+                  aria-expanded="false" aria-controls="outputPaneActionsMenu"
+                  title="Dialogue actions" hidden>⋯</button>
         </div>
         <div class="output-pane-header-right">
           <button class="output-pane-nav-btn" type="button" id="outputPaneNavBack"
@@ -847,7 +851,9 @@
     <div class="spine-top">
 
       <button class="spine-button" type="button" aria-label="Stealth"
-              data-mode-button="stealth" id="modeBtnStealth">
+              data-mode-button="stealth" id="modeBtnStealth"
+              aria-haspopup="menu" aria-expanded="false"
+              aria-controls="oraModeDropdown">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2">
           <circle cx="12" cy="12" r="9"/>
@@ -856,7 +862,9 @@
       </button>
 
       <button class="spine-button" type="button" aria-label="Private"
-              data-mode-button="private" id="modeBtnPrivate">
+              data-mode-button="private" id="modeBtnPrivate"
+              aria-haspopup="menu" aria-expanded="false"
+              aria-controls="oraModeDropdown">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
@@ -1263,9 +1271,11 @@
       if (bracketLeft)  bracketLeft.textContent  = '';
       if (bracketRight) bracketRight.textContent = '';
     }
-    // Spec §5A — refresh the disabled state on the OTHER mode button
-    // every time the active mode changes.
-    updateModeButtonAvailability();
+    // Refresh the pressed state every time the active conversation mode
+    // changes. Either spine menu remains available so a Private Dialogue
+    // can create/fork Stealth (and vice versa) without first changing the
+    // current Dialogue.
+    updateModeButtonState();
   };
 
   // Q&A message lives in its own element, centered in the right bridge,
@@ -1280,50 +1290,164 @@
     }
   };
 
-  // V3 spec §5A — mutual exclusivity. While one mode is active the OTHER
-  // mode button is visually disabled (greyed) with a hover tooltip
-  // explaining why. No modal interruption — the disabled state IS the
-  // affordance. updateModeButtonAvailability() is called whenever the
-  // current mode changes (entered, exited, navigated to a tagged thread).
-  const updateModeButtonAvailability = () => {
+  // Confidentiality belongs to the active Dialogue, but the two spine
+  // menus are creation surfaces as well. Keep both available across modes;
+  // aria-pressed reports which tag the active Dialogue currently carries.
+  const updateModeButtonState = () => {
     const cur = currentMode();
     document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
       const btnMode = btn.dataset.modeButton;
-      const blocked = !!cur && cur !== btnMode;
-      btn.classList.toggle('mode-button-disabled', blocked);
-      btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
-      if (blocked) {
-        btn.setAttribute('title',
-          `Exit ${MODE_LABELS[cur] || cur} before entering ${MODE_LABELS[btnMode] || btnMode}`);
-      } else {
-        btn.removeAttribute('title');
-      }
+      btn.setAttribute('aria-disabled', 'false');
+      btn.setAttribute('aria-pressed', cur === btnMode ? 'true' : 'false');
+      btn.removeAttribute('title');
     });
   };
+  updateModeButtonState();
 
-  // V3 spec §4 / §5 — Stealth / Private dropdowns. Clicking a mode button
-  // (when not in the OTHER mode) opens a New / Fork / Exit menu instead
-  // of toggling immediately. Exit only appears when already in that mode.
+  // Stealth / Private creation and lifecycle menus. Stealth is
+  // creation-only: an existing Dialogue is never retagged into or out of
+  // Stealth. Private permits the explicit Standard <-> Private mutation.
   let modeDropdownEl = null;
+  let modeDropdownAnchor = null;
+  let modeDropdownConversationId = null;
+
+  const enabledModeDropdownItems = () => (
+    modeDropdownEl
+      ? Array.from(modeDropdownEl.querySelectorAll('.mode-dropdown-item:not(:disabled)'))
+      : []
+  );
+
+  const pageTabStopsOutsideModeDropdown = () => Array.from(document.querySelectorAll(
+    'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), '
+    + 'textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+  )).filter((element) => {
+    if (modeDropdownEl && modeDropdownEl.contains(element)) return false;
+    if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+    if (element.closest('[hidden], [aria-hidden="true"]')) return false;
+    const closedDropdown = element.closest('.mode-dropdown');
+    return !closedDropdown || closedDropdown.classList.contains('show');
+  });
+
+  const focusModeDropdownItem = (item) => {
+    enabledModeDropdownItems().forEach((candidate) => {
+      candidate.tabIndex = candidate === item ? 0 : -1;
+    });
+    if (item) item.focus();
+  };
+
+  const focusNextToModeAnchor = (anchor, backwards) => {
+    if (!anchor) return;
+    const tabStops = pageTabStopsOutsideModeDropdown();
+    const anchorIndex = tabStops.indexOf(anchor);
+    const nextIndex = anchorIndex + (backwards ? -1 : 1);
+    const target = anchorIndex >= 0 ? tabStops[nextIndex] : null;
+    if (target) target.focus();
+    else if (anchor.isConnected) anchor.focus();
+  };
+
   const buildModeDropdown = () => {
     if (modeDropdownEl) return modeDropdownEl;
     modeDropdownEl = document.createElement('div');
+    modeDropdownEl.id = 'oraModeDropdown';
     modeDropdownEl.className = 'mode-dropdown';
     modeDropdownEl.setAttribute('role', 'menu');
+    modeDropdownEl.addEventListener('keydown', (event) => {
+      const items = enabledModeDropdownItems();
+      if (!items.length) return;
+      const currentIndex = Math.max(0, items.indexOf(document.activeElement));
+      let nextIndex = null;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+      else if (event.key === 'ArrowUp') {
+        nextIndex = (currentIndex - 1 + items.length) % items.length;
+      } else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = items.length - 1;
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModeDropdown({ restoreFocus: true });
+        return;
+      } else if (event.key === 'Tab') {
+        event.preventDefault();
+        const priorAnchor = modeDropdownAnchor;
+        closeModeDropdown();
+        focusNextToModeAnchor(priorAnchor, event.shiftKey);
+        return;
+      }
+      if (nextIndex !== null) {
+        event.preventDefault();
+        focusModeDropdownItem(items[nextIndex]);
+      }
+    });
+    modeDropdownEl.addEventListener('focusout', (event) => {
+      const next = event.relatedTarget;
+      if (!next || (!modeDropdownEl.contains(next) && next !== modeDropdownAnchor)) {
+        closeModeDropdown();
+      }
+    });
     document.body.appendChild(modeDropdownEl);
     return modeDropdownEl;
   };
-  const closeModeDropdown = () => {
+
+  const closeModeDropdown = (options = {}) => {
+    const priorAnchor = modeDropdownAnchor;
     if (modeDropdownEl) modeDropdownEl.classList.remove('show');
+    if (modeDropdownEl) {
+      modeDropdownEl.querySelectorAll('.mode-dropdown-item').forEach((item) => {
+        item.tabIndex = -1;
+      });
+    }
+    document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
+      btn.setAttribute('aria-expanded', 'false');
+    });
+    modeDropdownAnchor = null;
+    modeDropdownConversationId = null;
+    if (options.restoreFocus && priorAnchor && priorAnchor.isConnected) {
+      priorAnchor.focus();
+    }
   };
+
   const openModeDropdown = (mode, anchorBtn) => {
+    if (modeDropdownEl
+        && modeDropdownEl.classList.contains('show')
+        && modeDropdownAnchor === anchorBtn) {
+      closeModeDropdown({ restoreFocus: true });
+      return;
+    }
+    closeModeDropdown();
+    document.dispatchEvent(new CustomEvent('ora:close-output-actions-menu'));
     const dd = buildModeDropdown();
-    const inMode = currentMode() === mode;
-    const items = [
-      { action: 'new',  label: 'New' },
-      { action: 'fork', label: 'Fork' },
-    ];
-    if (inMode) items.push({ action: 'exit', label: 'Exit' });
+    const conversation = window.OraConversation;
+    const activeId = conversation && typeof conversation.getActiveConversationId === 'function'
+      ? conversation.getActiveConversationId()
+      : null;
+    const activeTag = conversation && typeof conversation.getActiveTag === 'function'
+      ? conversation.getActiveTag()
+      : (currentMode() || '');
+    const readOnly = conversation && typeof conversation.isReadOnly === 'function'
+      ? conversation.isReadOnly()
+      : false;
+    const canFork = conversation && typeof conversation.canFork === 'function'
+      ? conversation.canFork()
+      : false;
+    modeDropdownAnchor = anchorBtn;
+    modeDropdownConversationId = activeId;
+    const items = mode === 'private'
+      ? [
+          { action: 'new',  label: 'New private' },
+          { action: 'fork', label: 'Fork as private', disabled: !canFork },
+        ]
+      : [
+          { action: 'new',  label: 'New stealth' },
+          { action: 'fork', label: 'Fork as stealth', disabled: !canFork },
+        ];
+
+    if (mode === 'private' && activeId && !readOnly && activeTag !== 'stealth') {
+      items.push(activeTag === 'private'
+        ? { action: 'make-standard', label: 'Make current Standard' }
+        : { action: 'make-private', label: 'Make current Private' });
+    }
+    if (mode === 'stealth' && activeId && !readOnly && activeTag === 'stealth') {
+      items.push({ action: 'delete-forever', label: 'Delete Forever', danger: true });
+    }
 
     dd.innerHTML = '';
     items.forEach(i => {
@@ -1333,11 +1457,19 @@
       b.dataset.action = i.action;
       b.dataset.mode = mode;
       b.setAttribute('role', 'menuitem');
+      b.tabIndex = -1;
       b.textContent = i.label;
+      if (i.danger) b.classList.add('is-danger');
+      if (i.disabled) {
+        b.disabled = true;
+        b.setAttribute('aria-disabled', 'true');
+        b.title = 'Fork becomes available after the first turn';
+      }
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        handleModeDropdownAction(mode, i.action);
-        closeModeDropdown();
+        const boundConversationId = activeId;
+        closeModeDropdown({ restoreFocus: true });
+        handleModeDropdownAction(mode, i.action, boundConversationId);
       });
       dd.appendChild(b);
     });
@@ -1348,58 +1480,82 @@
     dd.style.left = (r.right + 8) + 'px';
     dd.dataset.modeContext = mode;
     dd.classList.add('show');
+    anchorBtn.setAttribute('aria-expanded', 'true');
+    const firstItem = enabledModeDropdownItems()[0];
+    if (firstItem) focusModeDropdownItem(firstItem);
   };
 
-  const handleModeDropdownAction = (mode, action) => {
+  const modeMenuTargetIsCurrent = (conversation, conversationId) => {
+    const currentId = conversation
+      && typeof conversation.getActiveConversationId === 'function'
+      ? conversation.getActiveConversationId()
+      : null;
+    if (conversationId && currentId === conversationId) return true;
+    console.error('[mode-dropdown] active Dialogue changed before action', {
+      expected: conversationId,
+      current: currentId,
+    });
+    window.alert('The active Dialogue changed. Reopen the menu and try again.');
+    return false;
+  };
+
+  const handleModeDropdownAction = (mode, action, conversationId) => {
     if (action === 'new') {
-      // Activate the mode, then open the bootstrap flow with that tag.
-      // The bootstrap modal already reads currentMode() to set the tag,
-      // so setMode first ensures the new conversation is properly tagged.
-      setMode(mode);
       document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {
         detail: { tag: mode, source: 'mode-dropdown' },
       }));
       return;
     }
     if (action === 'fork') {
-      // Fire a fork-request event — the active-conversation tracker (built
-      // out as Phase 5.7 + Phase 6.2 conversation routing matures) will
-      // pick it up and call /api/conversation/<id>/fork. For now this
-      // cleanly surfaces user intent without an active-conversation id
-      // being known to the inline script.
-      setMode(mode);
+      const conversation = window.OraConversation;
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      // The creation tag travels with the fork request. Do not change the
+      // current mode optimistically; the fork response/selection is the
+      // authority for the newly-created Dialogue's tag.
       document.dispatchEvent(new CustomEvent('ora:fork-conversation-requested', {
-        detail: { tag: mode, source: 'mode-dropdown' },
+        detail: {
+          tag: mode,
+          source: 'mode-dropdown',
+          parent_conversation_id: conversationId,
+        },
       }));
       return;
     }
-    if (action === 'exit') {
-      if (mode === 'stealth') {
-        const ok = window.confirm(
-          'This stealth Dialogue will be permanently deleted. ' +
-          'This cannot be undone. Confirm exit?'
-        );
-        if (!ok) return;
-        document.dispatchEvent(new CustomEvent('ora:exit-stealth-requested', {
-          detail: { source: 'mode-dropdown' },
-        }));
-        setMode(null);
-      } else {
-        // Private exit just clears the mode UI; vault content is retained.
-        setMode(null);
+    if (action === 'make-private' || action === 'make-standard') {
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.setPrivacyTag !== 'function') {
+        window.alert('Dialogue privacy controls are unavailable.');
+        return;
       }
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      conversation.setPrivacyTag(
+        action === 'make-private' ? 'private' : '',
+        conversationId
+      );
       return;
     }
+    if (action === 'delete-forever') {
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.deleteForever !== 'function') {
+        window.alert('Delete Forever is unavailable.');
+        return;
+      }
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      conversation.deleteForever(conversationId, { source: 'mode-dropdown' });
+      return;
+    }
+  };
+
+  window.OraModeMenu = {
+    close: closeModeDropdown,
+    isOpen: () => !!(modeDropdownEl && modeDropdownEl.classList.contains('show')),
+    getBoundConversationId: () => modeDropdownConversationId,
   };
 
   document.querySelectorAll('.spine-button[data-mode-button]').forEach(btn => {
     const mode = btn.dataset.modeButton;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const cur = currentMode();
-      // Spec §5A — disabled mode button silently ignores clicks; tooltip
-      // surfaces on hover. No modal interruption.
-      if (cur && cur !== mode) return;
       openModeDropdown(mode, btn);
     });
   });
@@ -1464,6 +1620,7 @@
   //     re-selecting the same one is a no-op).
   var _lastSelectedConvForPaneExit = null;
   document.addEventListener('ora:new-thread-requested', function () {
+    closeModeDropdown();
     if (currentPaneMode() === 'video') setPaneMode(null);
   });
   document.addEventListener('ora:conversation-selected', function (e) {
@@ -1485,25 +1642,55 @@
     closeModeDropdown();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModeDropdown();
+    if (e.key === 'Escape'
+        && !e.defaultPrevented
+        && modeDropdownEl
+        && modeDropdownEl.classList.contains('show')) {
+      e.preventDefault();
+      closeModeDropdown({ restoreFocus: true });
+    }
+  });
+  document.addEventListener('ora:close-mode-dropdown', () => closeModeDropdown());
+  document.addEventListener('ora:conversation-loading-state', (e) => {
+    if (e && e.detail && e.detail.loading) closeModeDropdown();
+  });
+  document.addEventListener('ora:conversation-lifecycle-state', (e) => {
+    const detail = (e && e.detail) || {};
+    if (detail.active) closeModeDropdown();
   });
 
   // V3 Phase 5.7 — when the sidebar reports a conversation selection,
   // activate the mode UI from the conversation's tag. Standard-tagged
   // conversations clear the mode.
   document.addEventListener('ora:conversation-selected', (e) => {
+    closeModeDropdown();
     const tag = e.detail && e.detail.tag;
-    if (tag === 'stealth' || tag === 'private') {
-      // Suppress the mutual-exclusivity modal here — the user didn't
-      // click a mode button; they navigated to a tagged conversation,
-      // which intrinsically carries that mode.
-      [...document.body.classList]
-        .filter(c => c.endsWith('-mode'))
-        .forEach(c => document.body.classList.remove(c));
-      setMode(tag);
-    } else {
-      setMode(null);
-    }
+    setMode(tag === 'stealth' || tag === 'private' ? tag : null);
+  });
+
+  // A loaded envelope or successful privacy mutation is authoritative over
+  // row/request metadata. Keep the bridge/spine UI aligned with that tag.
+  document.addEventListener('ora:conversation-tag-changed', (e) => {
+    const detail = (e && e.detail) || {};
+    const activeId = window.OraConversation
+      && typeof window.OraConversation.getActiveConversationId === 'function'
+      ? window.OraConversation.getActiveConversationId()
+      : null;
+    if (detail.conversation_id && activeId && detail.conversation_id !== activeId) return;
+    closeModeDropdown();
+    setMode(detail.tag === 'stealth' || detail.tag === 'private' ? detail.tag : null);
+  });
+
+  // New/fallback state is also explicit. In particular, successful Close
+  // and Delete Forever start a fresh Standard Dialogue and must clear any
+  // previous Private/Stealth presentation.
+  document.addEventListener('ora:fresh-conversation-started', (e) => {
+    closeModeDropdown();
+    const tag = e && e.detail && e.detail.tag;
+    setMode(tag === 'stealth' || tag === 'private' ? tag : null);
+  });
+  document.addEventListener('ora:conversation-lifecycle-completed', () => {
+    closeModeDropdown();
   });
 
   rightInputArea.addEventListener('focus', updateQAMessage);
@@ -1552,6 +1739,49 @@
     if (document.body.classList.contains('stealth-mode')) return 'stealth';
     if (document.body.classList.contains('private-mode')) return 'private';
     return '';
+  };
+
+  const inquiryMutationBlockMessage = () => {
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.isReadOnly !== 'function'
+        || !conversation.isReadOnly()) return '';
+    const lifecycleBusy = typeof conversation.isLifecycleBusy === 'function'
+      && conversation.isLifecycleBusy();
+    if (lifecycleBusy) {
+      return 'Wait for the current Dialogue lifecycle change to finish before continuing.';
+    }
+    const loading = typeof conversation.isLoading === 'function'
+      && conversation.isLoading();
+    return loading
+      ? 'Wait for the selected Dialogue to finish loading before continuing.'
+      : 'Library archives and engrams are read-only. Start or fork a live Dialogue to continue.';
+  };
+
+  const requireMutableInquiry = () => {
+    const message = inquiryMutationBlockMessage();
+    if (!message) return true;
+    window.alert(message);
+    return false;
+  };
+
+  const syncAttachmentSurfaceAvailability = () => {
+    const blocked = !!inquiryMutationBlockMessage();
+    const attachButton = document.getElementById('inputToolbarAttach');
+    const attachInput = document.getElementById('inputToolbarAttachFile');
+    const inputPane = document.querySelector('.input-pane');
+    if (attachButton) {
+      attachButton.disabled = blocked;
+      attachButton.setAttribute('aria-disabled', blocked ? 'true' : 'false');
+      attachButton.title = blocked ? 'Attachments unavailable for this Dialogue' : 'Attach file';
+    }
+    if (attachInput) attachInput.disabled = blocked;
+    if (inputPane) inputPane.classList.toggle('is-attachment-read-only', blocked);
+  };
+
+  window.OraInquiryLifecycle = {
+    blockMessage: inquiryMutationBlockMessage,
+    requireMutable: requireMutableInquiry,
+    syncAttachmentSurface: syncAttachmentSurfaceAvailability,
   };
 
   // V3 Backlog 8 — turn rendering goes through OraConversation now so
@@ -2108,6 +2338,7 @@
       submitToScratchpad(rightContent);
       return;
     }
+    if (!requireMutableInquiry()) return;
     const leftContent = leftInputArea.value.trim();
     const hasAttachedImages = !!(window.OraInputAttachments
       && typeof window.OraInputAttachments.imageFiles === 'function'
@@ -2301,6 +2532,7 @@
         setImageGenerateMode(!imageGenerateMode);
         if (leftInputArea) leftInputArea.focus();
       } else if (action === 'attach') {
+        if (!requireMutableInquiry()) return;
         const fileInput = document.getElementById('inputToolbarAttachFile');
         if (fileInput) fileInput.click();
       }
@@ -2345,18 +2577,59 @@
   // by dropping the file in.
   const _attachmentRow = document.getElementById('inputPaneAttachments');
   const _pendingAttachments = [];
+  let _attachmentOwnerConversationId = null;
+  let _attachmentGeneration = 0;
 
-  const _addPendingAttachment = (file, kind, processingId) => {
+  const _clearAttachmentComposition = (nextOwnerConversationId) => {
+    _attachmentGeneration += 1;
+    _attachmentOwnerConversationId = nextOwnerConversationId || null;
+    _pendingAttachments.length = 0;
+    if (_attachmentRow) _attachmentRow.replaceChildren();
+  };
+
+  const _setAttachmentOwner = (conversationId) => {
+    if (_attachmentOwnerConversationId !== conversationId) {
+      _clearAttachmentComposition(conversationId);
+    }
+  };
+
+  const _attachmentDispatchIsCurrent = (conversationId, generation) => (
+    _attachmentOwnerConversationId === conversationId
+      && _attachmentGeneration === generation
+  );
+
+  const _addPendingAttachment = (file, kind, processingId, conversationId) => {
     const entry = {
       name: file.name,
       type: file.type || '',
       size: file.size || 0,
       kind: kind,                  // 'audio' | 'video' | 'document' | 'image'
       processing_id: processingId, // server-side id for status tracking
+      conversation_id: conversationId,
       file: kind === 'image' ? file : null,
     };
     _pendingAttachments.push(entry);
     return entry;
+  };
+
+  const _removePendingAttachment = (entry) => {
+    const index = _pendingAttachments.indexOf(entry);
+    if (index >= 0) _pendingAttachments.splice(index, 1);
+  };
+
+  const _bindPendingAttachmentDismiss = (host, kind, processingId, entry) => {
+    if (!host || !processingId) return;
+    const dataKey = kind === 'document' ? 'documentId' : 'transcribeId';
+    const selector = kind === 'document'
+      ? '[data-document-id]'
+      : '[data-transcribe-id]';
+    const chip = Array.from(host.querySelectorAll(selector)).find(
+      candidate => candidate.dataset[dataKey] === String(processingId)
+    );
+    const close = chip && chip.querySelector('.transcribe-chip__close');
+    if (close) {
+      close.addEventListener('click', () => _removePendingAttachment(entry), { once: true });
+    }
   };
 
   const _formatAttachmentBytes = (bytes) => {
@@ -2424,8 +2697,7 @@
     close.setAttribute('aria-label', 'Remove image attachment');
     close.textContent = '×';
     close.addEventListener('click', () => {
-      const idx = _pendingAttachments.indexOf(entry);
-      if (idx >= 0) _pendingAttachments.splice(idx, 1);
+      _removePendingAttachment(entry);
       chip.remove();
     });
 
@@ -2445,51 +2717,89 @@
     chip.innerHTML =
       '<span class="transcribe-chip__icon" aria-hidden="true">!</span>' +
       '<div class="transcribe-chip__body">' +
-        '<div class="transcribe-chip__name">' + (file.name || 'file') + '</div>' +
+        '<div class="transcribe-chip__name"></div>' +
         '<div class="transcribe-chip__status">Unsupported file type</div>' +
       '</div>' +
       '<button type="button" class="transcribe-chip__close" aria-label="Dismiss">×</button>';
+    chip.querySelector('.transcribe-chip__name').textContent = file.name || 'file';
     chip.querySelector('.transcribe-chip__close').addEventListener('click', () => chip.remove());
     _attachmentRow.appendChild(chip);
   };
 
-  const dispatchFile = async (file) => {
+  const dispatchFile = async (file, mutationVerified = false, dispatchContext = null) => {
     if (!file) return;
-    const conv = currentConversationId();
+    if (!mutationVerified && !requireMutableInquiry()) return;
+    const conv = dispatchContext && dispatchContext.conversationId
+      ? dispatchContext.conversationId
+      : currentConversationId();
+    if (!dispatchContext) _setAttachmentOwner(conv);
+    const generation = dispatchContext
+      ? dispatchContext.generation
+      : _attachmentGeneration;
     const tag  = currentTag();
     if (_isImageFile(file)) {
-      const entry = _addPendingAttachment(file, 'image', null);
+      if (!_attachmentDispatchIsCurrent(conv, generation)) return;
+      const entry = _addPendingAttachment(file, 'image', null, conv);
       _renderImageAttachmentChip(file, entry);
       return;
     }
     if (window.OraTranscribeInput && window.OraTranscribeInput.isMediaFile(file)) {
+      const stagingHost = document.createDocumentFragment();
       try {
-        const tid = await window.OraTranscribeInput.acceptFile(file, _attachmentRow);
+        const tid = await window.OraTranscribeInput.acceptFile(file, stagingHost, {
+          conversation_id: conv,
+          tag: tag,
+        });
+        if (!_attachmentDispatchIsCurrent(conv, generation)) return;
         const kind = (file.type || '').startsWith('audio/') ? 'audio' : 'video';
-        _addPendingAttachment(file, kind, tid);
+        const entry = _addPendingAttachment(file, kind, tid, conv);
+        _bindPendingAttachmentDismiss(stagingHost, kind, tid, entry);
+        if (_attachmentRow) _attachmentRow.appendChild(stagingHost);
       } catch (e) {
+        if (_attachmentDispatchIsCurrent(conv, generation) && _attachmentRow) {
+          _attachmentRow.appendChild(stagingHost);
+        }
         console.warn('[file-drop] transcribe accept failed:', e);
       }
       return;
     }
     if (window.OraDocumentInput && window.OraDocumentInput.isDocumentFile(file)) {
+      const stagingHost = document.createDocumentFragment();
       try {
-        const pid = await window.OraDocumentInput.acceptFile(file, _attachmentRow, {
+        const pid = await window.OraDocumentInput.acceptFile(file, stagingHost, {
           conversation_id: conv,
           tag: tag,
         });
-        _addPendingAttachment(file, 'document', pid);
+        if (!_attachmentDispatchIsCurrent(conv, generation)) return;
+        const entry = _addPendingAttachment(file, 'document', pid, conv);
+        _bindPendingAttachmentDismiss(stagingHost, 'document', pid, entry);
+        if (_attachmentRow) _attachmentRow.appendChild(stagingHost);
       } catch (e) {
+        if (_attachmentDispatchIsCurrent(conv, generation) && _attachmentRow) {
+          _attachmentRow.appendChild(stagingHost);
+        }
         console.warn('[file-drop] document accept failed:', e);
       }
       return;
     }
-    _renderUnsupportedChip(file);
+    if (_attachmentDispatchIsCurrent(conv, generation)) _renderUnsupportedChip(file);
+  };
+
+  const dispatchFiles = (files) => {
+    const batch = Array.from(files || []).filter(Boolean);
+    if (!batch.length || !requireMutableInquiry()) return;
+    const conversationId = currentConversationId();
+    _setAttachmentOwner(conversationId);
+    const dispatchContext = {
+      conversationId,
+      generation: _attachmentGeneration,
+    };
+    batch.forEach(file => { void dispatchFile(file, true, dispatchContext); });
   };
 
   document.addEventListener('ora:input-toolbar:files', (e) => {
     const files = (e.detail && e.detail.files) || [];
-    files.forEach(dispatchFile);
+    dispatchFiles(files);
   });
 
   // Native drag-and-drop on the input pane. We intercept dragover to
@@ -2502,6 +2812,11 @@
       if (!e.dataTransfer || !e.dataTransfer.types) return;
       if (Array.from(e.dataTransfer.types).indexOf('Files') === -1) return;
       e.preventDefault();
+      if (inquiryMutationBlockMessage()) {
+        _dragDepth = 0;
+        _inputPaneEl.classList.remove('is-dragover');
+        return;
+      }
       _dragDepth += 1;
       _inputPaneEl.classList.add('is-dragover');
     });
@@ -2509,7 +2824,7 @@
       if (!e.dataTransfer || !e.dataTransfer.types) return;
       if (Array.from(e.dataTransfer.types).indexOf('Files') === -1) return;
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
+      e.dataTransfer.dropEffect = inquiryMutationBlockMessage() ? 'none' : 'copy';
     });
     _inputPaneEl.addEventListener('dragleave', () => {
       _dragDepth = Math.max(0, _dragDepth - 1);
@@ -2522,19 +2837,50 @@
       e.preventDefault();
       _dragDepth = 0;
       _inputPaneEl.classList.remove('is-dragover');
-      files.forEach(dispatchFile);
+      dispatchFiles(files);
     });
   }
+
+  const queueAttachmentSurfaceSync = () => {
+    Promise.resolve().then(syncAttachmentSurfaceAvailability);
+  };
+  const syncAttachmentOwnerFromNavigation = (event) => {
+    const detail = (event && event.detail) || {};
+    let nextConversationId = null;
+    if (event.type === 'ora:conversation-load-failed') {
+      nextConversationId = detail.active_conversation_id || null;
+    } else if (event.type !== 'ora:conversation-loading-state' || detail.loading) {
+      nextConversationId = detail.conversation_id || detail.id || null;
+    }
+    if (nextConversationId) _setAttachmentOwner(nextConversationId);
+  };
+  document.addEventListener('ora:conversation-selected', syncAttachmentOwnerFromNavigation);
+  document.addEventListener('ora:conversation-loading-state', syncAttachmentOwnerFromNavigation);
+  document.addEventListener('ora:conversation-load-failed', syncAttachmentOwnerFromNavigation);
+  document.addEventListener('ora:fresh-conversation-started', syncAttachmentOwnerFromNavigation);
+  document.addEventListener('ora:conversation-selected', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:conversation-loading-state', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:conversation-lifecycle-state', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:conversation-tag-changed', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:conversation-load-failed', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:fresh-conversation-started', queueAttachmentSurfaceSync);
+  document.addEventListener('ora:conversation-lifecycle-completed', queueAttachmentSurfaceSync);
+  syncAttachmentSurfaceAvailability();
 
   // Expose a tiny accessor + clear so the framework gap analyzer's
   // _summarizeAttachments() and the submit code's per-input clear can
   // both reach this state without duplicating it.
   window.OraInputAttachments = {
-    list:  () => _pendingAttachments.slice(),
+    list:  () => _attachmentOwnerConversationId === currentConversationId()
+      ? _pendingAttachments.slice()
+      : [],
     imageFiles: () => _pendingAttachments
+      .filter(a => _attachmentOwnerConversationId === currentConversationId())
       .filter(a => a && a.kind === 'image' && a.file)
       .map(a => a.file),
-    clear: () => { _pendingAttachments.length = 0; if (_attachmentRow) _attachmentRow.innerHTML = ''; },
+    canAttach: () => !inquiryMutationBlockMessage(),
+    addFiles: dispatchFiles,
+    clear: () => _clearAttachmentComposition(_attachmentOwnerConversationId),
   };
 
   // ─── V3 Input Handling Phase 5 — bridge selection label ──────────────

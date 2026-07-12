@@ -263,6 +263,15 @@ class TestLiveOra(unittest.TestCase):
         self.assertEqual(chat.turns[0].timestamp,
                          datetime(2026, 4, 1, 7, 29, 33))
 
+    def test_private_audit_header_is_lifted_into_metadata(self):
+        raw = LIVE_ORA_SAMPLE.replace(
+            "panel_id: ad4d24\n",
+            "panel_id: ad4d24\ntag: private\ntag_private: true\n",
+        )
+        chat = parse_live_ora(raw)
+        self.assertEqual(chat.metadata.yaml_frontmatter["tag"], "private")
+        self.assertEqual(chat.metadata.yaml_frontmatter["tag_private"], "true")
+
 
 # ---------------------------------------------------------------------------
 # Top-level dispatch

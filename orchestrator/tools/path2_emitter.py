@@ -20,19 +20,32 @@ The wiring stays the same — only the stage bodies change.
 
 from __future__ import annotations
 
-import hashlib
+import json
 import os
-import uuid
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
 from orchestrator.conversation_chunk import (
+    append_chunk_manifest,
+    attach_chunk_ownership,
     build_chroma_metadata,
     build_chunk_filename,
     build_chunk_markdown,
     mechanical_chunk_metadata,
+)
+from orchestrator.historical.chain_detector import derive_session_id
+from orchestrator.historical.path2_orchestrator import (
+    historical_conversation_id,
+    migrate_legacy_path2_identity,
+)
+from orchestrator import runtime_paths as _rp
+
+
+_CHUNK_OWNER_RE = re.compile(
+    r'<!-- ora-chunk-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
 )
 
 
@@ -131,20 +144,24 @@ def pairs_from_messages(messages: list[dict],
 # ---------------------------------------------------------------------------
 
 
-def _derive_session_id(conversation_id: str, raw_path: str) -> str:
-    """Stable session_id for a historical conversation. Hashes the
-    conversation_id + raw_path so re-running the emitter produces the
-    same session_id (and thus the same ChromaDB ids) — supports
-    resumable processing."""
-    h = hashlib.sha256()
-    h.update((conversation_id or "").encode("utf-8"))
-    h.update(b"|")
-    h.update((raw_path or "").encode("utf-8"))
-    return h.hexdigest()[:6]
+def _derive_session_id(_conversation_id: str, raw_path: str) -> str:
+    """Compatibility wrapper for the canonical source-path identity."""
+    return derive_session_id(raw_path)
 
 
 def _thread_id(conversation_id: str, counter: int) -> str:
     return f"thread_{(conversation_id or '')[:8]}_{counter:03d}"
+
+
+def _path_has_chunk_id(path: str | Path, chunk_id: str) -> bool:
+    candidate = Path(path)
+    if candidate.is_symlink() or not candidate.is_file():
+        return False
+    try:
+        match = _CHUNK_OWNER_RE.search(candidate.read_text(encoding="utf-8"))
+        return bool(match and json.loads(match.group("value")) == chunk_id)
+    except (OSError, json.JSONDecodeError):
+        return False
 
 
 def emit_path2_chunks(
@@ -160,17 +177,18 @@ def emit_path2_chunks(
     pre_process_stages: Optional[list[PreProcessStage]] = None,
     finalize: bool = True,
     default_when: Optional[datetime] = None,
+    manifest_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Re-emit a historical chat as conversation chunks (Path 2).
 
     Args:
         messages: parsed message list (from vault_export._parse_raw_session_log
             or any equivalent format conversion).
-        conversation_id: identifier for this historical conversation. Used
-            as the panel_id-equivalent in the chunks' metadata so close-out
-            and RAG queries can group chunks together.
-        raw_path: path to the source markdown (recorded on each chunk for
-            close-out + audit).
+        conversation_id: prior/importer identifier accepted only as a legacy
+            migration alias. Lifecycle identity is always derived from the
+            source path.
+        raw_path: user-owned source markdown path. It is retained as
+            ``source_path`` provenance and is never a lifecycle delete target.
         conversations_dir: directory where chunk markdown files land.
         chromadb_path: chromadb persistent client path.
         model_id: producer model name (default 'historical-import').
@@ -182,18 +200,30 @@ def emit_path2_chunks(
             total_turns + is_last_turn. (Set False for tests that want
             to inspect the pre-finalize state.)
         default_when: timestamp to use for pairs lacking one (default: now()).
+        manifest_path: optional test/relocation override for the standard
+            conversation ownership manifest.
 
     Returns a stats dict.
     """
     stages = pre_process_stages or default_pre_process_stages()
     os.makedirs(conversations_dir, exist_ok=True)
-    session_id = _derive_session_id(conversation_id, raw_path)
+    requested_conversation_id = str(conversation_id or "")
+    conversation_id = historical_conversation_id(raw_path)
+    session_id = derive_session_id(raw_path)
+
+    migration = migrate_legacy_path2_identity(
+        raw_path,
+        conversations_dir=conversations_dir,
+        chromadb_path=chromadb_path,
+        manifest_path=manifest_path,
+        legacy_conversation_ids=(requested_conversation_id,),
+    )
 
     stats = {
         "chunks_written":         0,
         "chunks_indexed":         0,
         "skipped_pairs":          0,
-        "errors":                 [],
+        "errors":                 list(migration.get("errors") or []),
         "first_pair_timestamp":   None,
         "last_pair_timestamp":    None,
         "session_id":             session_id,
@@ -244,32 +274,58 @@ def emit_path2_chunks(
         prior_topic = topic_primary
 
         # Compose chunk file content + filename.
+        chunk_id = f"session-{session_id}-pair-{pair.pair_num:03d}"
         chunk_filename = build_chunk_filename(pair.when, pair.user_input,
                                                 pair.ai_response)
         chunk_path = os.path.join(conversations_dir, chunk_filename)
-        # Filename collision guard (multiple pairs same minute + slug).
-        if os.path.exists(chunk_path):
+        # Re-runs reuse their exact owned path. A real collision receives the
+        # deterministic pair suffix; an occupied suffix fails loudly rather
+        # than overwriting another managed or user-owned file.
+        if os.path.lexists(chunk_path) and not _path_has_chunk_id(
+            chunk_path, chunk_id,
+        ):
             stem, ext = os.path.splitext(chunk_filename)
             chunk_filename = f"{stem}-pair{pair.pair_num:03d}{ext}"
             chunk_path = os.path.join(conversations_dir, chunk_filename)
+            if os.path.lexists(chunk_path) and not _path_has_chunk_id(
+                chunk_path, chunk_id,
+            ):
+                stats["errors"].append(
+                    f"chunk filename collision is not owned by {chunk_id}: "
+                    f"{chunk_path}"
+                )
+                continue
 
-        chunk_markdown = build_chunk_markdown(
+        chunk_markdown = attach_chunk_ownership(build_chunk_markdown(
             user_input=pair.user_input,
             ai_response=pair.ai_response,
             context_header=context_header,
             when=pair.when,
             tag=tag,
-        )
+        ), conversation_id=conversation_id, chunk_id=chunk_id)
 
         try:
-            with open(chunk_path, "w", encoding="utf-8") as f:
-                f.write(chunk_markdown)
+            append_chunk_manifest(
+                conversation_id=conversation_id,
+                chunk_id=chunk_id,
+                chunk_path=chunk_path,
+                tag=tag,
+                # Historical source archives remain imported inputs, not
+                # Ora-owned raw logs eligible for lifecycle deletion.
+                raw_path="",
+                source_path=raw_path,
+                manifest_path=manifest_path,
+            )
+        except Exception as e:
+            stats["errors"].append(f"manifest chunk {chunk_path}: {e}")
+
+        try:
+            _rp.atomic_write_text(Path(chunk_path), chunk_markdown)
             stats["chunks_written"] += 1
         except Exception as e:
             stats["errors"].append(f"write chunk {chunk_path}: {e}")
             continue
 
-        chunk_id = f"session-{session_id}-pair-{pair.pair_num:03d}"
         meta = build_chroma_metadata(
             user_input=pair.user_input,
             ai_response=pair.ai_response,
@@ -277,17 +333,18 @@ def emit_path2_chunks(
             session_id=session_id,
             pair_num=pair.pair_num,
             model_id=model_id,
-            raw_path=raw_path,
+            raw_path="",
             chunk_path=chunk_path,
             when=pair.when,
             first_user_input=first_user_input or pair.user_input,
             topic_primary=topic_primary,
             topics=topics,
             turn_summary=context_header,
-            thread_id=_thread_id(conversation_id, thread_counter),
+            thread_id=_thread_id(session_id, thread_counter),
             tag=tag,
             source_platform=source_platform,
         )
+        meta["source_path"] = raw_path
         # Attach annotations from any stage that wanted to mark the chunk.
         if pair.annotations:
             for k, v in pair.annotations.items():
@@ -313,7 +370,7 @@ def emit_path2_chunks(
             # Bind the canonical embedding_function so historical chunks
             # are embedded the same way live ones are.
             col = get_or_create_collection(client, "conversations")
-            col.add(
+            col.upsert(
                 ids=[r["id"] for r in chroma_records],
                 documents=[r["document"] for r in chroma_records],
                 metadatas=[r["metadata"] for r in chroma_records],

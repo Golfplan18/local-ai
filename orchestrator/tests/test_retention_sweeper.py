@@ -9,6 +9,7 @@ Run::
 """
 from __future__ import annotations
 
+import contextlib
 import gzip
 import json
 import os
@@ -67,6 +68,9 @@ class RetentionSweeperBase(unittest.TestCase):
             mock.patch.object(retention_sweeper, "HEARTBEAT_FILE",
                               str(self.oversight / "retention-sweeper-heartbeat.json")),
             mock.patch.object(retention_sweeper, "ROTATABLE_JSONL", [str(self.jsonl)]),
+            mock.patch.object(
+                retention_sweeper._rp, "DATA_DIR_STR", str(root / "data"),
+            ),
         ]
         for p in self.patches:
             p.start()
@@ -114,6 +118,42 @@ class TraceSweepTests(RetentionSweeperBase):
         self.assertEqual(summary["traces_removed"], 0)
         self.assertTrue(turn.exists())
 
+    def test_symlinked_turn_is_not_followed(self):
+        conv = self.traces / "conv-1"
+        outside = Path(self.tmp.name) / "outside-turn"
+        conv.mkdir()
+        outside.mkdir()
+        (outside / "trace.json").write_text("secret")
+        self._age(outside, 400)
+        (conv / "old-turn").symlink_to(outside, target_is_directory=True)
+
+        summary = retention_sweeper.sweep()
+
+        self.assertEqual(summary["traces_removed"], 0)
+        self.assertEqual((outside / "trace.json").read_text(), "secret")
+
+    def test_trace_sweep_uses_conversation_lifecycle_lock(self):
+        conv = self.traces / "conv-lock"
+        turn = conv / "old-turn"
+        turn.mkdir(parents=True)
+        self._age(turn, 45)
+        seen = []
+        real_lock = retention_sweeper._rp.conversation_lifecycle_lock
+
+        @contextlib.contextmanager
+        def record_lock(conversation_id, *args, **kwargs):
+            seen.append(conversation_id)
+            with real_lock(conversation_id, *args, **kwargs):
+                yield
+
+        with mock.patch.object(
+            retention_sweeper._rp, "conversation_lifecycle_lock",
+            side_effect=record_lock,
+        ):
+            retention_sweeper.sweep()
+
+        self.assertIn("conv-lock", seen)
+
 
 class LogSweepTests(RetentionSweeperBase):
     def test_old_log_gzipped_recent_untouched(self):
@@ -142,6 +182,29 @@ class LogSweepTests(RetentionSweeperBase):
         summary = retention_sweeper.sweep()
         self.assertEqual(summary["archives_deleted"], 1)
         self.assertFalse(ancient.exists())
+
+    def test_expired_tool_event_archive_uses_shared_sidecar_lock(self):
+        self.data_archive.mkdir(parents=True)
+        ancient = self.data_archive / "tool-events-ancient.jsonl.gz"
+        with gzip.open(ancient, "wt") as stream:
+            stream.write('{"event": "old"}\n')
+        self._age(ancient, 200)
+
+        real_locked_file = retention_sweeper._rp.locked_file
+        locked_paths: list[Path] = []
+
+        def record_lock(path, *args, **kwargs):
+            locked_paths.append(Path(path))
+            return real_locked_file(path, *args, **kwargs)
+
+        with mock.patch.object(
+            retention_sweeper._rp, "locked_file", side_effect=record_lock,
+        ):
+            summary = retention_sweeper.sweep()
+
+        self.assertEqual(summary["archives_deleted"], 1)
+        self.assertFalse(ancient.exists())
+        self.assertIn(ancient, locked_paths)
 
 
 class ServerLogTests(RetentionSweeperBase):
@@ -233,6 +296,51 @@ class JsonlRotationTests(RetentionSweeperBase):
         self.assertEqual(summary["jsonl_rotated"], [])
         self.assertTrue(self.jsonl.exists())
 
+    def test_tool_event_rotation_locks_source_and_destination_archive(self):
+        live = self.jsonl.parent / "tool-events.jsonl"
+        live.write_text('{"r": 1}\n' * 200000)
+        expected_archive = (
+            self.data_archive / "tool-events-20260712-120000.jsonl.gz"
+        )
+        real_locked_file = retention_sweeper._rp.locked_file
+        locked_paths: list[Path] = []
+        lock_entries: list[tuple[Path, tuple[Path, ...]]] = []
+        lock_stack: list[Path] = []
+
+        @contextlib.contextmanager
+        def record_lock(path, *args, **kwargs):
+            resolved = Path(path)
+            locked_paths.append(resolved)
+            with real_locked_file(path, *args, **kwargs):
+                lock_entries.append((resolved, tuple(lock_stack)))
+                lock_stack.append(resolved)
+                try:
+                    yield
+                finally:
+                    lock_stack.pop()
+
+        with (
+            mock.patch.object(retention_sweeper, "ROTATABLE_JSONL", [str(live)]),
+            mock.patch.object(retention_sweeper, "_stamp",
+                              return_value="20260712-120000"),
+            mock.patch.object(retention_sweeper._rp, "locked_file",
+                              side_effect=record_lock),
+            mock.patch.dict(os.environ, {"ORA_RETENTION_JSONL_MB": "1"}),
+        ):
+            summary = retention_sweeper.sweep()
+
+        self.assertEqual(summary["jsonl_rotated"], ["tool-events.jsonl"])
+        self.assertFalse(live.exists())
+        self.assertTrue(expected_archive.exists())
+        self.assertIn(live, locked_paths)
+        self.assertIn(expected_archive, locked_paths)
+        archive_parents = [
+            parents for path, parents in lock_entries
+            if path == expected_archive
+        ]
+        self.assertEqual(len(archive_parents), 1)
+        self.assertIn(live, archive_parents[0])
+
 
 class SessionSweepTests(RetentionSweeperBase):
     def test_disabled_by_default(self):
@@ -266,6 +374,45 @@ class SessionSweepTests(RetentionSweeperBase):
         with mock.patch.dict(os.environ, {"ORA_RETENTION_SESSIONS_DAYS": "90"}):
             summary = retention_sweeper.sweep()
         self.assertEqual(summary["sessions_archived"], 0)
+
+    def test_symlinked_archive_root_is_rejected(self):
+        old = self.sessions / "old-session"
+        outside = Path(self.tmp.name) / "outside-archive"
+        old.mkdir()
+        outside.mkdir()
+        self._age(old, 120)
+        self.sessions_archive.symlink_to(outside, target_is_directory=True)
+
+        with mock.patch.dict(os.environ, {"ORA_RETENTION_SESSIONS_DAYS": "90"}):
+            summary = retention_sweeper.sweep()
+
+        self.assertTrue(old.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assertTrue(summary["errors"])
+
+    def test_session_sweep_uses_conversation_lifecycle_lock(self):
+        old = self.sessions / "old-session"
+        old.mkdir()
+        self._age(old, 120)
+        seen = []
+        real_lock = retention_sweeper._rp.conversation_lifecycle_lock
+
+        @contextlib.contextmanager
+        def record_lock(conversation_id, *args, **kwargs):
+            seen.append(conversation_id)
+            with real_lock(conversation_id, *args, **kwargs):
+                yield
+
+        with (
+            mock.patch.object(
+                retention_sweeper._rp, "conversation_lifecycle_lock",
+                side_effect=record_lock,
+            ),
+            mock.patch.dict(os.environ, {"ORA_RETENTION_SESSIONS_DAYS": "90"}),
+        ):
+            retention_sweeper.sweep()
+
+        self.assertIn("old-session", seen)
 
 
 class SweepInfrastructureTests(RetentionSweeperBase):

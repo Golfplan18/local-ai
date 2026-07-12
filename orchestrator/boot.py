@@ -87,9 +87,36 @@ _CONVERSATION_TAG_CV: ContextVar[str] = ContextVar("conversation_tag", default="
 PRIVATE_VALUES_HEADING = "## Private Context"
 
 
-def set_conversation_tag_context(tag: str) -> None:
-    """Stamp the current context with the conversation's privacy tag."""
-    _CONVERSATION_TAG_CV.set(tag if tag in ("private", "stealth") else "")
+def set_conversation_tag_context(tag: str):
+    """Stamp privacy context and return a token that can restore its caller."""
+    return _CONVERSATION_TAG_CV.set(
+        tag if tag in ("private", "stealth") else "",
+    )
+
+
+def reset_conversation_tag_context(token) -> None:
+    """Restore a token returned by :func:`set_conversation_tag_context`."""
+    if token is None:
+        return
+    try:
+        _CONVERSATION_TAG_CV.reset(token)
+    except Exception:
+        pass
+
+
+def set_turn_trace_context(trace_dir: str | None):
+    """Set the current turn trace and return its ContextVar reset token."""
+    return _TURN_TRACE_DIR_CV.set(trace_dir or None)
+
+
+def reset_turn_trace_context(token) -> None:
+    """Restore a token returned by :func:`set_turn_trace_context`."""
+    if token is None:
+        return
+    try:
+        _TURN_TRACE_DIR_CV.reset(token)
+    except Exception:
+        pass
 
 
 def _filter_private_values(mind_content: str) -> str:
@@ -7172,6 +7199,54 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None,
                                conversation_tag: str = "") -> dict:
+    """Run Step 2 under turn-local trace, privacy, and tool contexts.
+
+    Step 2 is also called directly by the server and tests, outside the CLI
+    ``run_pipeline`` wrapper. Own both tokens here so every standalone call is
+    isolated, while nested calls restore the CLI/server's outer turn context.
+    """
+    trace_token = set_turn_trace_context(trace_dir)
+    tag_token = set_conversation_tag_context(conversation_tag)
+    tool_events_module = None
+    tool_events_token = None
+    try:
+        try:
+            try:
+                import tool_events as tool_events_module
+            except ImportError:
+                from orchestrator import tool_events as tool_events_module
+            conversation_id = None
+            if trace_dir:
+                conversation_id = (
+                    os.path.basename(os.path.dirname(trace_dir)) or None
+                )
+            tool_events_token = tool_events_module.set_turn_context(
+                trace_dir=trace_dir,
+                conversation_id=conversation_id,
+                stealth=conversation_tag == "stealth",
+                surface="chat",
+            )
+        except Exception as exc:
+            tool_events_module = None
+            print(f"[boot] Step 2 tool context unavailable: {exc}")
+        return _run_step2_context_assembly_impl(
+            step1_result,
+            config,
+            trace_dir=trace_dir,
+            config_name=config_name,
+            conversation_tag=conversation_tag,
+        )
+    finally:
+        if tool_events_module is not None:
+            tool_events_module.reset_turn_context(tool_events_token)
+        reset_conversation_tag_context(tag_token)
+        reset_turn_trace_context(trace_token)
+
+
+def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
+                                     trace_dir: str | None = None,
+                                     config_name: str | None = None,
+                                     conversation_tag: str = "") -> dict:
     """Step 2: Assemble context package for pipeline stages.
 
     Python loads the mode file, performs RAG queries, and builds the complete
@@ -7233,32 +7308,6 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
     #   4. Delete `orchestrator/tests/test_rag_isolation_bypass.py`.
     #   5. Remove the `rag_isolation` field from any configuration JSON
     #      under `~/ora/config/configurations/`.
-    # 2026-05-28: per-turn trace dir on a ContextVar so every model
-    # call wrapper can record its token usage without each call site
-    # having to thread ``trace_dir`` through three layers of helpers.
-    if trace_dir:
-        _TURN_TRACE_DIR_CV.set(trace_dir)
-    else:
-        _TURN_TRACE_DIR_CV.set(None)
-
-    # Execution Review Phase 1: seed the tool-event recorder's turn context
-    # (sink selection + stealth suppression + correlation). Propagates to
-    # Gear-4 workers via _submit_with_context like every other contextvar.
-    try:
-        try:
-            import tool_events as _tool_events
-        except ImportError:
-            from orchestrator import tool_events as _tool_events
-        _conv_id = None
-        if trace_dir:
-            # trace dirs are data/pipeline-traces/<conversation_id>/<turn>/
-            _conv_id = os.path.basename(os.path.dirname(trace_dir)) or None
-        _tool_events.set_turn_context(
-            trace_dir=trace_dir, conversation_id=_conv_id,
-            stealth=(conversation_tag == "stealth"), surface="chat")
-    except Exception:
-        pass
-
     # Per-profile configs (config/configurations/<name>.json) hold the flag;
     # routing-config.json (the ``config`` parameter) does not. Load the
     # per-profile config when ``config_name`` is provided so the production
@@ -9184,7 +9233,12 @@ def run_pipeline(user_input: str, history: list = None,
     turn_state = {
         "trace_dir": None, "kind": "unknown", "status": None,
         "mode": None, "gear": None, "parent_ref": None,
+        "trace_context_token": None,
+        "tool_events_context_token": None,
+        "tool_events_module": None,
     }
+    effective_tag = conversation_tag or ("stealth" if stealth else "")
+    tag_token = set_conversation_tag_context(effective_tag)
     try:
         return _run_pipeline_impl(
             user_input, history, output_target, execution_context,
@@ -9204,6 +9258,13 @@ def run_pipeline(user_input: str, history: list = None,
                     parent_trace_ref=turn_state["parent_ref"])
             except Exception as _fin_exc:
                 print(f"[boot trace] manifest finalize skipped: {_fin_exc}")
+        tool_events_module = turn_state.get("tool_events_module")
+        if tool_events_module is not None:
+            tool_events_module.reset_turn_context(
+                turn_state.get("tool_events_context_token"),
+            )
+        reset_turn_trace_context(turn_state.get("trace_context_token"))
+        reset_conversation_tag_context(tag_token)
 
 
 def _run_pipeline_impl(user_input: str, history: list = None,
@@ -9247,10 +9308,21 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     conversations.
     """
     if turn_state is None:
-        # Direct invocation (tests, future callers) — track locally so the
-        # branch assignments below never need a guard.
-        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
-                      "mode": None, "gear": None, "parent_ref": None}
+        # Preserve the public wrapper's finalization and ContextVar cleanup for
+        # legacy direct callers of the implementation seam.
+        return run_pipeline(
+            user_input,
+            history,
+            output_target,
+            execution_context,
+            conversation_id,
+            ambiguity_mode,
+            stealth,
+            config_name,
+            conversation_tag,
+            style_id,
+            style_register,
+        )
     config = load_routing_config()
 
     # --- Pipeline forensic trace — open the per-turn directory now so
@@ -9270,6 +9342,23 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             conversation_tag=conversation_tag,
         )
     turn_state["trace_dir"] = trace_dir
+    turn_state["trace_context_token"] = set_turn_trace_context(trace_dir)
+    try:
+        try:
+            import tool_events as _cli_tool_events
+        except ImportError:
+            from orchestrator import tool_events as _cli_tool_events
+        turn_state["tool_events_module"] = _cli_tool_events
+        turn_state["tool_events_context_token"] = (
+            _cli_tool_events.set_turn_context(
+                trace_dir=trace_dir,
+                conversation_id=conversation_id,
+                stealth=bool(stealth or conversation_tag == "stealth"),
+                surface="terminal",
+            )
+        )
+    except Exception as exc:
+        print(f"[boot] CLI tool context unavailable: {exc}")
 
     # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
     # Handled BEFORE any slash dispatch (condition 5): a bare `/risk <tier>`

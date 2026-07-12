@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
@@ -9,6 +10,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -22,6 +24,8 @@ from orchestrator.historical.path2_orchestrator import (  # noqa: E402
     emit_chunks_for_session,
     emit_chunks_for_all_sessions,
     group_cleaned_pairs_by_session,
+    historical_conversation_id,
+    backfill_legacy_path2_identities,
 )
 
 # Replace the Ollama-backed embedding function with a deterministic stub
@@ -49,6 +53,7 @@ def _write_cleaned_pair(
     thread_id: str = "thread_abcdef12_001",
     prior_pair: str = "",
     next_pair: str = "",
+    tags: str = "[]",
 ) -> str:
     # Per-call unique counter so multiple sessions in the same test
     # directory don't collide on filenames (the on-disk file name is
@@ -72,7 +77,7 @@ def _write_cleaned_pair(
         f"next_pair: {next_pair}\n"
         "processing_model: claude-haiku-4-5\n"
         "processed_at: 2026-05-02T08:00:00\n"
-        "tags: []\n"
+        f"tags: {tags}\n"
         "---\n"
         "\n## Context\n\n"
         "### Session context\n\n"
@@ -103,8 +108,14 @@ class TestEmitChunksForSession(unittest.TestCase):
         self.conv_dir = os.path.join(self.tmp, "conversations")
         self.chroma   = os.path.join(self.tmp, "chromadb")
         os.makedirs(self.cp_dir)
+        from orchestrator import runtime_paths
+        self._data_patch = mock.patch.object(
+            runtime_paths, "DATA_DIR_STR", os.path.join(self.tmp, "data"),
+        )
+        self._data_patch.start()
 
     def tearDown(self):
+        self._data_patch.stop()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _make_session(self, source_chat="~/Documents/conversations/raw/test.md",
@@ -157,6 +168,49 @@ class TestEmitChunksForSession(unittest.TestCase):
         self.assertNotIn("source_pair_num:", body)
         self.assertNotIn("processing_model:", body)
         self.assertNotIn("source_chat:", body)
+        expected_id = historical_conversation_id(
+            "~/Documents/conversations/raw/test.md"
+        )
+        self.assertIn(
+            f'<!-- ora-conversation-id: "{expected_id}" -->',
+            body,
+        )
+
+    def test_index_failure_chunk_is_recoverable_by_exact_owner_marker(self):
+        class FailingCollection:
+            def upsert(self, **_kwargs):
+                raise RuntimeError("synthetic indexing failure")
+
+        from orchestrator.conversation_closeout import _scan_owned_chunks
+
+        paths = self._make_session(n_pairs=1)
+        result = emit_chunks_for_session(
+            paths,
+            conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+            chromadb_collection=FailingCollection(),
+        )
+
+        self.assertEqual(result.chunks_written, 1)
+        self.assertEqual(result.chunks_indexed, 0)
+        expected_id = historical_conversation_id(
+            "~/Documents/conversations/raw/test.md"
+        )
+        recovered = _scan_owned_chunks(Path(self.conv_dir), expected_id)
+        self.assertEqual(recovered, [Path(result.output_paths[0])])
+        manifest = Path(self.tmp) / "data" / "conversation-manifest.jsonl"
+        record = json.loads(manifest.read_text(encoding="utf-8").splitlines()[0])
+        self.assertEqual(
+            record["conversation_id"],
+            expected_id,
+        )
+        self.assertEqual(
+            record["source_path"],
+            "~/Documents/conversations/raw/test.md",
+        )
+        self.assertEqual(record["raw_path"], "")
+        self.assertEqual(record["artifact_kind"], "conversation_chunk")
+        self.assertEqual(record["managed_by"], "ora")
 
     def test_chunks_use_historical_dates_in_filename(self):
         paths = self._make_session()
@@ -273,6 +327,30 @@ class TestEmitChunksForSession(unittest.TestCase):
         suffixed = [f for f in files if "-pair" in f]
         self.assertEqual(len(suffixed), 1)
 
+    def test_preexisting_unowned_filename_is_never_claimed(self):
+        paths = self._make_session(n_pairs=1)
+        expected = (
+            Path(self.conv_dir)
+            / "2025-08-12_10-01_question-about-quantum-mechanics.md"
+        )
+        Path(self.conv_dir).mkdir(parents=True, exist_ok=True)
+        expected.write_text("user-owned collision\n", encoding="utf-8")
+        result = emit_chunks_for_session(
+            paths,
+            conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+        )
+        self.assertEqual(expected.read_text(encoding="utf-8"),
+                         "user-owned collision\n")
+        self.assertEqual(result.chunks_written, 1)
+        self.assertIn("-pair001.md", result.output_paths[0])
+        self.assertIn(
+            historical_conversation_id(
+                "~/Documents/conversations/raw/test.md"
+            ),
+            Path(result.output_paths[0]).read_text(encoding="utf-8"),
+        )
+
     def test_session_id_stable_across_calls(self):
         # Same source_chat → same session_id every time.
         paths = self._make_session(source_chat="~/foo/test.md")
@@ -285,6 +363,144 @@ class TestEmitChunksForSession(unittest.TestCase):
             paths2, conversations_dir=self.conv_dir, chromadb_path=self.chroma,
         )
         self.assertEqual(r1.session_id, r2.session_id)
+
+    def test_runtime_migration_rekeys_legacy_records_markers_and_manifest(self):
+        source = "~/Documents/conversations/raw/legacy-source.md"
+        paths = self._make_session(source_chat=source, n_pairs=1)
+        emitted = emit_chunks_for_session(
+            paths,
+            conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+        )
+        safe_id = historical_conversation_id(source)
+        new_chunk_id = emitted.chunk_ids[0]
+        legacy_chunk_id = "session-acde12-pair-001"
+
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection
+        client = chromadb.PersistentClient(path=self.chroma)
+        collection = get_or_create_collection(client, "conversations")
+        current = collection.get(
+            ids=[new_chunk_id], include=["metadatas", "documents"],
+        )
+        legacy_meta = dict(current["metadatas"][0])
+        legacy_meta["conversation_id"] = source
+        legacy_meta["session_id"] = "acde12"
+        legacy_meta["raw_path"] = source
+        legacy_meta.pop("source_path", None)
+        collection.delete(ids=[new_chunk_id])
+        collection.upsert(
+            ids=[legacy_chunk_id],
+            documents=[current["documents"][0]],
+            metadatas=[legacy_meta],
+        )
+        from orchestrator import embedding
+        retired = client.get_or_create_collection(
+            name="conversations_v2",
+            metadata={
+                "hnsw:space": "cosine",
+                "ora:logical_collection": "conversations",
+            },
+            embedding_function=embedding.get_embedding_function(),
+        )
+        retired.upsert(
+            ids=[legacy_chunk_id],
+            documents=[current["documents"][0]],
+            metadatas=[legacy_meta],
+        )
+
+        chunk_path = Path(emitted.output_paths[0])
+        chunk_body = chunk_path.read_text(encoding="utf-8")
+        chunk_path.write_text(
+            chunk_body.replace(
+                f'<!-- ora-conversation-id: "{safe_id}" -->',
+                f'<!-- ora-conversation-id: "{source}" -->',
+            ).replace(
+                f'<!-- ora-chunk-id: "{new_chunk_id}" -->',
+                f'<!-- ora-chunk-id: "{legacy_chunk_id}" -->',
+            ),
+            encoding="utf-8",
+        )
+        manifest = Path(self.tmp) / "data" / "conversation-manifest.jsonl"
+        record = json.loads(manifest.read_text(encoding="utf-8").splitlines()[0])
+        record["conversation_id"] = source
+        record["chunk_id"] = legacy_chunk_id
+        record["raw_path"] = source
+        record.pop("source_path", None)
+        manifest.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+        backfilled = backfill_legacy_path2_identities(
+            conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+            manifest_path=manifest,
+        )
+        self.assertEqual(backfilled["sources_discovered"], 1)
+        migrated = backfilled["migrations"][safe_id]
+        self.assertEqual(migrated["errors"], [])
+        self.assertGreaterEqual(migrated["chromadb_records"], 1)
+        rows = collection.get(where={"conversation_id": safe_id})
+        self.assertEqual(rows["ids"], [new_chunk_id])
+        self.assertEqual(rows["metadatas"][0]["raw_path"], "")
+        self.assertEqual(rows["metadatas"][0]["source_path"], source)
+        self.assertEqual(collection.get(ids=[legacy_chunk_id])["ids"], [])
+        retired_rows = retired.get(where={"conversation_id": safe_id})
+        self.assertEqual(retired_rows["ids"], [new_chunk_id])
+        self.assertEqual(retired.get(ids=[legacy_chunk_id])["ids"], [])
+        migrated_body = chunk_path.read_text(encoding="utf-8")
+        self.assertIn(f'<!-- ora-conversation-id: "{safe_id}" -->', migrated_body)
+        self.assertIn(f'<!-- ora-chunk-id: "{new_chunk_id}" -->', migrated_body)
+        migrated_manifest = json.loads(
+            manifest.read_text(encoding="utf-8").splitlines()[0]
+        )
+        self.assertEqual(migrated_manifest["conversation_id"], safe_id)
+        self.assertEqual(migrated_manifest["chunk_id"], new_chunk_id)
+        self.assertEqual(migrated_manifest["raw_path"], "")
+        self.assertEqual(migrated_manifest["source_path"], source)
+
+    def test_delete_safe_id_migrates_legacy_marker_before_purge(self):
+        from orchestrator import conversation_closeout
+
+        source_path = Path(self.tmp) / "imports" / "source-chat.md"
+        source_path.parent.mkdir()
+        source_path.write_text("user-owned imported source\n", encoding="utf-8")
+        source = str(source_path)
+        safe_id = historical_conversation_id(source)
+        chunk = Path(self.conv_dir) / "legacy-chunk.md"
+        chunk.parent.mkdir(parents=True, exist_ok=True)
+        chunk.write_text(
+            "---\ntype: chat\ntags:\n---\n"
+            f'<!-- ora-conversation-id: "{source}" -->\n'
+            '<!-- ora-chunk-id: "session-old-pair-001" -->\n\nbody\n',
+            encoding="utf-8",
+        )
+        manifest = Path(self.tmp) / "data" / "conversation-manifest.jsonl"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(json.dumps({
+            "conversation_id": source,
+            "chunk_id": "session-old-pair-001",
+            "chunk_path": str(chunk),
+            "chunk_root": str(chunk.parent),
+            "artifact_kind": "conversation_chunk",
+            "managed_by": "ora",
+            "raw_path": "",
+        }) + "\n", encoding="utf-8")
+        vault_sessions = Path(self.tmp) / "vault" / "Sessions"
+        vault_sessions.mkdir(parents=True)
+
+        result = conversation_closeout._purge_stealth(
+            safe_id,
+            sessions_root=Path(self.tmp) / "sessions",
+            conversations_dir=Path(self.conv_dir),
+            conversations_raw=Path(self.tmp) / "conversations" / "raw",
+            chromadb_path=Path(self.chroma),
+            vault_sessions=vault_sessions,
+        )
+        self.assertFalse(chunk.exists())
+        self.assertTrue(source_path.exists())
+        self.assertEqual(manifest.read_text(encoding="utf-8"), "")
+        migration = result["deleted"]["historical_identity_migration"]
+        self.assertEqual(migration["matched_source"], source)
+        self.assertEqual(result["deleted"]["recovered_chunk_files"], [str(chunk)])
 
     def test_empty_user_input_pair_emits_chunk(self):
         # Phase 1 empty-side success contract: empty user input still
@@ -304,6 +520,35 @@ class TestEmitChunksForSession(unittest.TestCase):
         self.assertEqual(result.chunks_written, 1)
         self.assertEqual(len(result.errors), 0)
 
+    def test_private_cleaned_pair_remains_private_through_path2(self):
+        path = _write_cleaned_pair(
+            self.cp_dir,
+            pair_num=1,
+            timestamp="2025-08-12T10:00:00",
+            user_input="Private prompt",
+            ai_response="Private answer",
+            tags="[private]",
+        )
+        result = emit_chunks_for_session(
+            [path], conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+        )
+        self.assertEqual(result.errors, [])
+        body = Path(result.output_paths[0]).read_text(encoding="utf-8")
+        self.assertIn("tags:\n  - private", body)
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection
+        collection = get_or_create_collection(
+            chromadb.PersistentClient(path=self.chroma), "conversations",
+        )
+        rows = collection.get(where={
+            "conversation_id": historical_conversation_id(
+                "~/Documents/conversations/raw/test-chat.md"
+            ),
+        })
+        self.assertTrue(rows["metadatas"][0]["tag_private"])
+        self.assertEqual(rows["metadatas"][0]["tag"], "private")
+
 
 # ---------------------------------------------------------------------------
 # Multi-session orchestration
@@ -318,8 +563,14 @@ class TestEmitChunksForAllSessions(unittest.TestCase):
         self.conv_dir = os.path.join(self.tmp, "conversations")
         self.chroma   = os.path.join(self.tmp, "chromadb")
         os.makedirs(self.cp_dir)
+        from orchestrator import runtime_paths
+        self._data_patch = mock.patch.object(
+            runtime_paths, "DATA_DIR_STR", os.path.join(self.tmp, "data"),
+        )
+        self._data_patch.start()
 
     def tearDown(self):
+        self._data_patch.stop()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _make_pair_in_session(self, source: str, pair_num: int,

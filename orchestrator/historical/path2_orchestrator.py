@@ -31,7 +31,9 @@ ChromaDB embedding function (nomic via Ollama) is the throughput floor.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -42,6 +44,8 @@ from typing import Any, Callable, Optional
 
 from orchestrator.conversation_chunk import (
     _extract_keywords,
+    append_chunk_manifest,
+    attach_chunk_ownership,
     build_chroma_metadata,
     build_chunk_filename,
     build_chunk_markdown,
@@ -74,6 +78,634 @@ DEFAULT_CHROMADB_PATH     = "/Users/oracle/ora/chromadb"
 # MARKDOWN file still carries the full text; only the EMBEDDED text
 # used for RAG retrieval is truncated.
 MAX_EMBED_CHARS = 10_000
+
+_OWNERSHIP_ID_RE = re.compile(
+    r'<!-- ora-conversation-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
+)
+_CHUNK_ID_RE = re.compile(
+    r'<!-- ora-chunk-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
+)
+_PAIR_ID_RE = re.compile(r"^session-.+-pair-(\d+)$")
+_SAFE_HISTORICAL_ID_RE = re.compile(r"^historical-[0-9a-f]{12}$")
+
+
+def historical_conversation_id(source_chat: str) -> str:
+    """Return the filesystem-safe lifecycle identity for one source chat."""
+    source = str(source_chat or "").strip()
+    if not source:
+        raise ValueError("historical source_chat must be non-empty")
+    return f"historical-{derive_session_id(source)}"
+
+
+def _historical_record(metadata: Any) -> bool:
+    if not isinstance(metadata, dict):
+        return False
+    platform = str(metadata.get("source_platform") or "").casefold()
+    model = str(metadata.get("model_id") or "").casefold()
+    return platform.startswith("historical") or model.startswith("historical")
+
+
+def _replacement_chunk_id(value: Any, session_id: str,
+                          metadata: dict | None = None) -> str | None:
+    pair_num: int | None = None
+    if isinstance(metadata, dict):
+        candidate = metadata.get("turn_index")
+        if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
+            pair_num = candidate
+    if pair_num is None and isinstance(value, str):
+        match = _PAIR_ID_RE.match(value)
+        if match:
+            pair_num = int(match.group(1))
+    if pair_num is None:
+        return None
+    return f"session-{session_id}-pair-{pair_num:03d}"
+
+
+def _chunk_file_owned_by(path: str | Path, conversation_id: str,
+                         chunk_id: str) -> bool:
+    candidate = Path(path)
+    if candidate.is_symlink() or not candidate.is_file():
+        return False
+    try:
+        text = candidate.read_text(encoding="utf-8")
+        owner = _OWNERSHIP_ID_RE.search(text)
+        chunk = _CHUNK_ID_RE.search(text)
+        return bool(
+            owner and chunk
+            and json.loads(owner.group("value")) == conversation_id
+            and json.loads(chunk.group("value")) == chunk_id
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
+def migrate_legacy_path2_identity(
+    source_chat: str,
+    *,
+    conversations_dir: str | Path,
+    chromadb_path: str | Path,
+    manifest_path: str | Path | None = None,
+    legacy_conversation_ids: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Idempotently migrate prior Path-2 ownership to the safe identity.
+
+    This compatibility pass runs synchronously when Path 2 runs; it is never a
+    scheduled cleanup. It updates every discoverable physical conversation
+    collection, exact Ora ownership markers, and the ownership manifest. The
+    imported source itself is retained: legacy ``raw_path`` provenance is
+    moved to ``source_path`` so lifecycle cannot mistake it for an Ora raw log.
+    """
+    source = str(source_chat or "").strip()
+    safe_id = historical_conversation_id(source)
+    session_id = derive_session_id(source)
+    legacy_hints = {
+        value for value in legacy_conversation_ids
+        if isinstance(value, str) and value
+    }
+    source_aliases = {source, safe_id}
+    result: dict[str, Any] = {
+        "conversation_id": safe_id,
+        "source_path": source,
+        "chromadb_records": 0,
+        "chunk_files": 0,
+        "manifest_entries": 0,
+        "errors": [],
+    }
+    known_chunk_paths: set[Path] = set()
+    chunk_id_map: dict[str, str] = {}
+
+    try:
+        import chromadb
+        from orchestrator import embedding
+
+        client = chromadb.PersistentClient(path=str(chromadb_path))
+        try:
+            physical_names = embedding.discover_collection_copies(
+                client, "conversations",
+            )
+        except Exception as exc:
+            result["errors"].append(
+                f"discover historical ChromaDB copies: {exc}"
+            )
+            physical_names = embedding.resolve_collection_copies("conversations")
+
+        for physical_name in physical_names:
+            try:
+                collection = embedding.get_collection(client, physical_name)
+            except Exception:
+                # A configured rollback name need not exist on every machine.
+                continue
+            try:
+                try:
+                    rows = collection.get(
+                        where={"raw_path": source},
+                        include=["metadatas", "documents", "embeddings"],
+                    )
+                except Exception:
+                    rows = collection.get(
+                        where={"raw_path": source},
+                        include=["metadatas", "documents"],
+                    )
+                # Already-migrated rows carry source_path instead.
+                migrated_rows = collection.get(
+                    where={"source_path": source},
+                    include=["metadatas", "documents"],
+                )
+            except Exception as exc:
+                result["errors"].append(
+                    f"query historical ChromaDB {physical_name}: {exc}"
+                )
+                continue
+
+            combined: dict[str, tuple[dict, Any, Any]] = {}
+            for payload in (rows, migrated_rows):
+                ids = list(payload.get("ids") or [])
+                metadatas = list(payload.get("metadatas") or [])
+                documents = list(payload.get("documents") or [])
+                raw_embeddings = payload.get("embeddings")
+                embeddings = (
+                    list(raw_embeddings) if raw_embeddings is not None else []
+                )
+                for index, row_id in enumerate(ids):
+                    metadata = (
+                        metadatas[index]
+                        if index < len(metadatas) and isinstance(metadatas[index], dict)
+                        else {}
+                    )
+                    document = documents[index] if index < len(documents) else None
+                    vector = embeddings[index] if index < len(embeddings) else None
+                    combined[str(row_id)] = (metadata, document, vector)
+
+            for old_id, (metadata, document, vector) in combined.items():
+                if not _historical_record(metadata):
+                    continue
+                owner = metadata.get("conversation_id")
+                chunk_path = metadata.get("chunk_path") or metadata.get("obsidian_path")
+                if isinstance(chunk_path, str) and chunk_path:
+                    known_chunk_paths.add(Path(chunk_path).expanduser().absolute())
+                replacement_id = _replacement_chunk_id(old_id, session_id, metadata)
+                if replacement_id is None:
+                    result["errors"].append(
+                        f"historical ChromaDB {physical_name} {old_id}: "
+                        "missing positive turn_index; identity retained"
+                    )
+                    continue
+                replacement = dict(metadata)
+                replacement["conversation_id"] = safe_id
+                replacement["session_id"] = session_id
+                replacement["source_path"] = source
+                replacement["raw_path"] = ""
+                chunk_id_map[old_id] = replacement_id
+                try:
+                    if replacement_id == old_id:
+                        collection.update(ids=[old_id], metadatas=[replacement])
+                    else:
+                        kwargs: dict[str, Any] = {
+                            "ids": [replacement_id],
+                            "metadatas": [replacement],
+                        }
+                        if vector is not None:
+                            kwargs["embeddings"] = [vector]
+                        elif isinstance(document, str):
+                            kwargs["documents"] = [document]
+                        else:
+                            raise ValueError(
+                                "record has neither embedding nor document"
+                            )
+                        collection.upsert(**kwargs)
+                        collection.delete(ids=[old_id])
+                    result["chromadb_records"] += 1
+                except Exception as exc:
+                    result["errors"].append(
+                        f"migrate historical ChromaDB {physical_name} "
+                        f"{old_id}: {exc}"
+                    )
+    except Exception as exc:
+        result["errors"].append(f"open historical ChromaDB: {exc}")
+
+    root = Path(conversations_dir).expanduser().absolute()
+    candidates: set[Path] = set(known_chunk_paths)
+    if root.exists() and not root.is_symlink() and root.is_dir():
+        candidates.update(path.absolute() for path in root.glob("*.md"))
+    elif root.exists():
+        result["errors"].append(
+            f"historical chunk migration: refusing non-directory {root}"
+        )
+
+    try:
+        from orchestrator import runtime_paths as rp
+    except ImportError:  # pragma: no cover - legacy top-level context
+        import runtime_paths as rp  # type: ignore
+
+    root_resolved = root.resolve(strict=False)
+    for path in sorted(candidates, key=str):
+        try:
+            absolute = path.expanduser().absolute()
+            if absolute.is_symlink() or not absolute.is_file():
+                continue
+            if root_resolved not in absolute.resolve(strict=False).parents:
+                continue
+            text = absolute.read_text(encoding="utf-8")
+            owner_match = _OWNERSHIP_ID_RE.search(text)
+            chunk_match = _CHUNK_ID_RE.search(text)
+            if owner_match is None or chunk_match is None:
+                continue
+            owner = json.loads(owner_match.group("value"))
+            old_chunk_id = json.loads(chunk_match.group("value"))
+            eligible = (
+                absolute in known_chunk_paths
+                or (isinstance(owner, str) and owner in source_aliases)
+                or (
+                    isinstance(owner, str)
+                    and owner not in {"", safe_id}
+                    and historical_conversation_id(owner) == safe_id
+                )
+            )
+            if not eligible:
+                if isinstance(owner, str) and owner in legacy_hints:
+                    result["errors"].append(
+                        f"historical chunk {absolute}: legacy alias {owner!r} "
+                        "is not tied to this source by ChromaDB; retained"
+                    )
+                continue
+            new_chunk_id = chunk_id_map.get(old_chunk_id)
+            if new_chunk_id is None:
+                new_chunk_id = _replacement_chunk_id(old_chunk_id, session_id)
+            if new_chunk_id is None:
+                result["errors"].append(
+                    f"historical chunk {absolute}: cannot derive pair identity"
+                )
+                continue
+            replacement = _OWNERSHIP_ID_RE.sub(
+                "<!-- ora-conversation-id: "
+                + json.dumps(safe_id, ensure_ascii=False)
+                + " -->",
+                text,
+                count=1,
+            )
+            replacement = _CHUNK_ID_RE.sub(
+                "<!-- ora-chunk-id: "
+                + json.dumps(new_chunk_id, ensure_ascii=False)
+                + " -->",
+                replacement,
+                count=1,
+            )
+            if replacement != text:
+                rp.atomic_write_text(absolute, replacement)
+                result["chunk_files"] += 1
+            if isinstance(old_chunk_id, str):
+                chunk_id_map[old_chunk_id] = new_chunk_id
+            known_chunk_paths.add(absolute)
+        except Exception as exc:
+            result["errors"].append(
+                f"migrate historical chunk {path}: {exc}"
+            )
+
+    destination = (
+        Path(manifest_path) if manifest_path is not None
+        else Path(rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+    )
+    if destination.exists():
+        try:
+            with rp.locked_file(destination):
+                if destination.is_symlink() or not destination.is_file():
+                    raise ValueError(f"refusing non-regular manifest {destination}")
+                output: list[str] = []
+                changed = False
+                for line_no, line in enumerate(
+                    destination.read_text(encoding="utf-8").splitlines(), 1
+                ):
+                    if not line.strip():
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        result["errors"].append(
+                            f"historical manifest {destination}:{line_no}: {exc}"
+                        )
+                        output.append(line)
+                        continue
+                    if not isinstance(record, dict):
+                        output.append(line)
+                        continue
+                    owner = record.get("conversation_id")
+                    old_chunk_id = record.get("chunk_id")
+                    record_path = record.get("chunk_path")
+                    try:
+                        absolute_record_path = (
+                            Path(record_path).expanduser().absolute()
+                            if isinstance(record_path, str) and record_path else None
+                        )
+                    except Exception:
+                        absolute_record_path = None
+                    eligible = (
+                        record.get("managed_by") == "ora"
+                        and record.get("artifact_kind") == "conversation_chunk"
+                        and (
+                            (
+                                isinstance(owner, str)
+                                and owner in source_aliases
+                            )
+                            or (
+                                isinstance(old_chunk_id, str)
+                                and old_chunk_id in chunk_id_map
+                            )
+                            or absolute_record_path in known_chunk_paths
+                        )
+                    )
+                    if not eligible:
+                        if isinstance(owner, str) and owner in legacy_hints:
+                            result["errors"].append(
+                                f"historical manifest {destination}:{line_no}: "
+                                f"legacy alias {owner!r} is ambiguous without "
+                                "an exact source-linked chunk; retained"
+                            )
+                        output.append(line)
+                        continue
+                    replacement = dict(record)
+                    replacement["conversation_id"] = safe_id
+                    replacement["source_path"] = source
+                    replacement["raw_path"] = ""
+                    new_chunk_id = chunk_id_map.get(old_chunk_id)
+                    if new_chunk_id is None:
+                        new_chunk_id = _replacement_chunk_id(old_chunk_id, session_id)
+                    if new_chunk_id is not None:
+                        replacement["chunk_id"] = new_chunk_id
+                    output.append(json.dumps(replacement, ensure_ascii=False))
+                    changed = changed or replacement != record
+                    if replacement != record:
+                        result["manifest_entries"] += 1
+                if changed:
+                    rp.atomic_write_text(destination, "\n".join(output) + "\n")
+        except Exception as exc:
+            result["errors"].append(
+                f"migrate historical manifest {destination}: {exc}"
+            )
+    return result
+
+
+def migrate_path2_identity_for_safe_id(
+    conversation_id: str,
+    *,
+    conversations_dir: str | Path,
+    chromadb_path: str | Path,
+    manifest_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Resolve and migrate an existing import from only its new safe id.
+
+    Lifecycle endpoints call this synchronously before mutating a historical
+    Dialogue. Source discovery uses durable provenance in the manifest,
+    ownership markers, and every discoverable Chroma copy. A hash collision or
+    conflicting provenance is retained and reported rather than guessed.
+    """
+    safe_id = str(conversation_id or "").strip()
+    result: dict[str, Any] = {
+        "conversation_id": safe_id,
+        "matched_source": "",
+        "chromadb_records": 0,
+        "chunk_files": 0,
+        "manifest_entries": 0,
+        "errors": [],
+    }
+    if not _SAFE_HISTORICAL_ID_RE.fullmatch(safe_id):
+        return result
+
+    try:
+        from orchestrator import runtime_paths as rp
+    except ImportError:  # pragma: no cover - legacy top-level context
+        import runtime_paths as rp  # type: ignore
+
+    sources: set[str] = set()
+
+    def consider(value: Any) -> None:
+        if not isinstance(value, str) or not value or value == safe_id:
+            return
+        try:
+            if historical_conversation_id(value) == safe_id:
+                sources.add(value)
+        except ValueError:
+            return
+
+    destination = (
+        Path(manifest_path) if manifest_path is not None
+        else Path(rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+    )
+    if destination.exists():
+        try:
+            with rp.locked_file(destination):
+                if destination.is_symlink() or not destination.is_file():
+                    raise ValueError(f"refusing non-regular manifest {destination}")
+                for line_no, line in enumerate(
+                    destination.read_text(encoding="utf-8").splitlines(), 1
+                ):
+                    if not line.strip():
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        result["errors"].append(
+                            f"historical source discovery "
+                            f"{destination}:{line_no}: {exc}"
+                        )
+                        continue
+                    if (not isinstance(record, dict)
+                            or record.get("managed_by") != "ora"
+                            or record.get("artifact_kind") != "conversation_chunk"):
+                        continue
+                    consider(record.get("source_path"))
+                    consider(record.get("conversation_id"))
+        except Exception as exc:
+            result["errors"].append(
+                f"historical source discovery manifest {destination}: {exc}"
+            )
+
+    root = Path(conversations_dir).expanduser().absolute()
+    if root.exists() and not root.is_symlink() and root.is_dir():
+        for path in sorted(root.glob("*.md")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+                owner = _OWNERSHIP_ID_RE.search(text)
+                if owner is not None:
+                    consider(json.loads(owner.group("value")))
+            except Exception as exc:
+                result["errors"].append(
+                    f"historical source discovery chunk {path}: {exc}"
+                )
+    elif root.exists():
+        result["errors"].append(
+            f"historical source discovery: refusing non-directory {root}"
+        )
+
+    try:
+        import chromadb
+        from orchestrator import embedding
+        client = chromadb.PersistentClient(path=str(chromadb_path))
+        for physical_name in embedding.discover_collection_copies(
+            client, "conversations",
+        ):
+            try:
+                collection = embedding.get_collection(client, physical_name)
+            except Exception:
+                continue
+            try:
+                rows = collection.get(include=["metadatas"])
+                for metadata in rows.get("metadatas") or []:
+                    if not _historical_record(metadata):
+                        continue
+                    consider(metadata.get("source_path"))
+                    consider(metadata.get("raw_path"))
+            except Exception as exc:
+                result["errors"].append(
+                    f"historical source discovery ChromaDB "
+                    f"{physical_name}: {exc}"
+                )
+    except Exception as exc:
+        result["errors"].append(f"historical source discovery ChromaDB: {exc}")
+
+    if len(sources) > 1:
+        result["errors"].append(
+            f"historical identity {safe_id} resolves to conflicting sources: "
+            + ", ".join(sorted(sources))
+        )
+        return result
+    if not sources:
+        return result
+    source = next(iter(sources))
+    migrated = migrate_legacy_path2_identity(
+        source,
+        conversations_dir=conversations_dir,
+        chromadb_path=chromadb_path,
+        manifest_path=manifest_path,
+    )
+    result.update({
+        "matched_source": source,
+        "chromadb_records": migrated.get("chromadb_records", 0),
+        "chunk_files": migrated.get("chunk_files", 0),
+        "manifest_entries": migrated.get("manifest_entries", 0),
+    })
+    result["errors"].extend(migrated.get("errors") or [])
+    return result
+
+
+def backfill_legacy_path2_identities(
+    *,
+    conversations_dir: str | Path,
+    chromadb_path: str | Path,
+    manifest_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Explicit runtime backfill for every discoverable legacy Path-2 source.
+
+    This function is intentionally callable, idempotent, and unscheduled. It
+    scans only Ora-managed historical provenance, then delegates each source
+    to the same exact migration used by the emitter and lifecycle boundary.
+    """
+    try:
+        from orchestrator import runtime_paths as rp
+    except ImportError:  # pragma: no cover - legacy top-level context
+        import runtime_paths as rp  # type: ignore
+
+    sources: set[str] = set()
+    errors: list[str] = []
+
+    def add_source(value: Any) -> None:
+        if not isinstance(value, str):
+            return
+        source = value.strip()
+        if not source or _SAFE_HISTORICAL_ID_RE.fullmatch(source):
+            return
+        # Legacy ownership was a source path. Do not reinterpret an arbitrary
+        # user conversation id as a path-derived historical source.
+        if ("/" in source or "\\" in source or source.startswith("~")
+                or source.casefold().endswith(".md")):
+            sources.add(source)
+
+    destination = (
+        Path(manifest_path) if manifest_path is not None
+        else Path(rp.DATA_DIR_STR) / "conversation-manifest.jsonl"
+    )
+    if destination.exists():
+        try:
+            with rp.locked_file(destination):
+                if destination.is_symlink() or not destination.is_file():
+                    raise ValueError(f"refusing non-regular manifest {destination}")
+                for line_no, line in enumerate(
+                    destination.read_text(encoding="utf-8").splitlines(), 1
+                ):
+                    if not line.strip():
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        errors.append(
+                            f"historical manifest {destination}:{line_no}: {exc}"
+                        )
+                        continue
+                    if (isinstance(record, dict)
+                            and record.get("managed_by") == "ora"
+                            and record.get("artifact_kind") == "conversation_chunk"):
+                        add_source(record.get("source_path"))
+                        add_source(record.get("conversation_id"))
+        except Exception as exc:
+            errors.append(f"historical manifest discovery {destination}: {exc}")
+
+    root = Path(conversations_dir).expanduser().absolute()
+    if root.exists() and not root.is_symlink() and root.is_dir():
+        for path in sorted(root.glob("*.md")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                match = _OWNERSHIP_ID_RE.search(
+                    path.read_text(encoding="utf-8")
+                )
+                if match is not None:
+                    add_source(json.loads(match.group("value")))
+            except Exception as exc:
+                errors.append(f"historical chunk discovery {path}: {exc}")
+    elif root.exists():
+        errors.append(f"historical chunk discovery: refusing non-directory {root}")
+
+    try:
+        import chromadb
+        from orchestrator import embedding
+        client = chromadb.PersistentClient(path=str(chromadb_path))
+        for physical_name in embedding.discover_collection_copies(
+            client, "conversations",
+        ):
+            try:
+                collection = embedding.get_collection(client, physical_name)
+            except Exception:
+                continue
+            try:
+                rows = collection.get(include=["metadatas"])
+                for metadata in rows.get("metadatas") or []:
+                    if not _historical_record(metadata):
+                        continue
+                    add_source(metadata.get("source_path"))
+                    add_source(metadata.get("raw_path"))
+            except Exception as exc:
+                errors.append(
+                    f"historical ChromaDB discovery {physical_name}: {exc}"
+                )
+    except Exception as exc:
+        errors.append(f"historical ChromaDB discovery: {exc}")
+
+    migrations: dict[str, dict[str, Any]] = {}
+    for source in sorted(sources):
+        migrated = migrate_legacy_path2_identity(
+            source,
+            conversations_dir=conversations_dir,
+            chromadb_path=chromadb_path,
+            manifest_path=manifest_path,
+        )
+        migrations[historical_conversation_id(source)] = migrated
+        errors.extend(migrated.get("errors") or [])
+    return {
+        "sources_discovered": len(sources),
+        "migrations": migrations,
+        "errors": errors,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +812,7 @@ def emit_chunks_for_session(
     chain_label:       str = "",
     skip_if_chunk_exists: bool = True,
     chromadb_collection = None,
+    manifest_path: str | Path | None = None,
 ) -> SessionEmissionResult:
     """Emit chunk files + ChromaDB records for one source-chat session.
 
@@ -210,7 +843,7 @@ def emit_chunks_for_session(
         )
 
     source_chat       = first.source_chat
-    conversation_id   = source_chat   # one chat = one conversation
+    conversation_id   = historical_conversation_id(source_chat)
     session_id        = derive_session_id(source_chat)
     source_platform   = first.source_platform
     first_user_input  = first.cleaned_user_input or first.cleaned_ai_response
@@ -222,6 +855,36 @@ def emit_chunks_for_session(
         chain_label   = chain_label,
         pairs_total   = len(cleaned_pair_paths),
     )
+
+    privacy_states: set[bool] = set()
+    for candidate_path in cleaned_pair_paths:
+        try:
+            candidate = (
+                first if candidate_path == cleaned_pair_paths[0]
+                else load_cleaned_pair(candidate_path)
+            )
+        except Exception:
+            continue
+        privacy_states.add(
+            any(str(value).casefold() == "private" for value in candidate.tags)
+        )
+    if len(privacy_states) > 1:
+        result.errors.append(
+            "conflicting Standard/Private tags across one historical source; "
+            "no chunks emitted"
+        )
+        result.duration_secs = time.monotonic() - start
+        return result
+    conversation_tag = "private" if True in privacy_states else ""
+
+    migration = migrate_legacy_path2_identity(
+        source_chat,
+        conversations_dir=conversations_dir,
+        chromadb_path=chromadb_path,
+        manifest_path=manifest_path,
+        legacy_conversation_ids=(source_chat,),
+    )
+    result.errors.extend(migration.get("errors") or [])
 
     # Open ChromaDB collection if not provided.
     owns_collection = False
@@ -267,6 +930,7 @@ def emit_chunks_for_session(
             when, cp.cleaned_user_input, cp.cleaned_ai_response,
         )
         chunk_path = os.path.join(conversations_dir, base_name)
+        chunk_id = f"session-{session_id}-pair-{cp.source_pair_num:03d}"
 
         if chunk_path in seen_filenames:
             # Intra-session collision — suffix with pair number.
@@ -275,6 +939,25 @@ def emit_chunks_for_session(
                 conversations_dir,
                 f"{stem}-pair{cp.source_pair_num:03d}{ext}",
             )
+        elif os.path.lexists(chunk_path) and not _chunk_file_owned_by(
+            chunk_path, conversation_id, chunk_id,
+        ):
+            stem, ext = os.path.splitext(base_name)
+            chunk_path = os.path.join(
+                conversations_dir,
+                f"{stem}-pair{cp.source_pair_num:03d}{ext}",
+            )
+
+        if (os.path.lexists(chunk_path)
+                and not _chunk_file_owned_by(
+                    chunk_path, conversation_id, chunk_id,
+                )
+                and chunk_path not in seen_filenames):
+            result.errors.append(
+                f"chunk filename collision is not owned by {chunk_id}: "
+                f"{chunk_path}"
+            )
+            continue
 
         # Skip-if-exists ONLY skips the file write (not the indexing).
         # ChromaDB upsert is idempotent — re-indexing an existing chunk
@@ -282,7 +965,8 @@ def emit_chunks_for_session(
         # failed on a prior run (e.g. embedding-model errors).
         skip_write = (
             skip_if_chunk_exists
-            and os.path.exists(chunk_path)
+            and os.path.lexists(chunk_path)
+            and _chunk_file_owned_by(chunk_path, conversation_id, chunk_id)
             and chunk_path not in seen_filenames
         )
         seen_filenames.add(chunk_path)
@@ -291,7 +975,6 @@ def emit_chunks_for_session(
         context_header = _compose_context_header(cp)
         topics         = _topics_from_pair(cp)
         topic_primary  = topics[0] if topics else ""
-
         if skip_write:
             # File already exists — don't rewrite, but still build
             # metadata + queue for indexing below.
@@ -299,13 +982,13 @@ def emit_chunks_for_session(
             result.output_paths.append(chunk_path)
         else:
             try:
-                chunk_md = build_chunk_markdown(
+                chunk_md = attach_chunk_ownership(build_chunk_markdown(
                     user_input    = cp.cleaned_user_input,
                     ai_response   = cp.cleaned_ai_response,
                     context_header= context_header,
                     when          = when,
-                    tag           = "",
-                )
+                    tag           = conversation_tag,
+                ), conversation_id=conversation_id, chunk_id=chunk_id)
             except Exception as e:
                 result.errors.append(
                     f"build chunk md pair {cp.source_pair_num}: {e}"
@@ -313,8 +996,25 @@ def emit_chunks_for_session(
                 continue
 
             try:
-                with open(chunk_path, "w", encoding="utf-8") as f:
-                    f.write(chunk_md)
+                append_chunk_manifest(
+                    conversation_id=conversation_id,
+                    chunk_id=chunk_id,
+                    chunk_path=chunk_path,
+                    tag=conversation_tag,
+                    # The source archive is imported input, not an Ora-owned
+                    # raw log eligible for Delete Forever.
+                    raw_path="",
+                    source_path=source_chat,
+                    manifest_path=manifest_path,
+                )
+            except Exception as e:
+                result.errors.append(
+                    f"manifest {os.path.basename(chunk_path)}: {e}"
+                )
+
+            try:
+                from orchestrator import runtime_paths as rp
+                rp.atomic_write_text(Path(chunk_path), chunk_md)
                 result.chunks_written += 1
                 result.output_paths.append(chunk_path)
             except Exception as e:
@@ -332,7 +1032,7 @@ def emit_chunks_for_session(
                 session_id        = session_id,
                 pair_num          = cp.source_pair_num,
                 model_id          = _historical_model_id(source_platform),
-                raw_path          = source_chat,
+                raw_path          = "",
                 chunk_path        = chunk_path,
                 when              = when,
                 first_user_input  = first_user_input,
@@ -340,20 +1040,18 @@ def emit_chunks_for_session(
                 topics            = topics,
                 turn_summary      = cp.pair_context or context_header[:200],
                 thread_id         = cp.thread_id,
-                tag               = "",
+                tag               = conversation_tag,
                 source_platform   = f"historical-{source_platform}",
                 chain_id          = chain_id,
                 chain_label       = chain_label,
             )
+            meta["source_path"] = source_chat
         except Exception as e:
             result.errors.append(
                 f"build chroma meta pair {cp.source_pair_num}: {e}"
             )
             continue
 
-        chunk_id = (
-            f"session-{session_id}-pair-{cp.source_pair_num:03d}"
-        )
         result.chunk_ids.append(chunk_id)
 
         # Embedded document text — paste-free user voice + context header.
@@ -476,6 +1174,7 @@ def emit_chunks_for_all_sessions(
     chain_labels:      Optional[dict[str, str]] = None,
     max_workers:       int = 4,
     progress_cb:       Optional[Callable[[str, SessionEmissionResult], None]] = None,
+    manifest_path:     str | Path | None = None,
 ) -> dict[str, SessionEmissionResult]:
     """Emit chunks for many sessions in parallel.
 
@@ -517,6 +1216,7 @@ def emit_chunks_for_all_sessions(
             chain_id            = chain_id,
             chain_label         = chain_label,
             chromadb_collection = collection,
+            manifest_path       = manifest_path,
         )
         return source, r
 
@@ -546,6 +1246,10 @@ __all__ = [
     "DEFAULT_CONVERSATIONS_DIR",
     "DEFAULT_CHROMADB_PATH",
     "SessionEmissionResult",
+    "historical_conversation_id",
+    "migrate_legacy_path2_identity",
+    "migrate_path2_identity_for_safe_id",
+    "backfill_legacy_path2_identities",
     "emit_chunks_for_session",
     "emit_chunks_for_all_sessions",
     "group_cleaned_pairs_by_session",

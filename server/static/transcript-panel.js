@@ -286,8 +286,9 @@
     var ctrl = (typeof AbortController !== 'undefined')
       ? new AbortController() : null;
     _loadAbort = ctrl;
+    var conversationId = _conversationId;
     _setStatus('Loading transcript…');
-    var url = '/api/media-library/' + encodeURIComponent(_conversationId)
+    var url = '/api/media-library/' + encodeURIComponent(conversationId)
             + '/' + encodeURIComponent(entryId) + '/transcript';
     fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
       .then(function (r) {
@@ -296,7 +297,8 @@
         return r.json();
       })
       .then(function (data) {
-        if (entryId !== _loadingEntryId) return; // a newer load won the race
+        if (_conversationId !== conversationId
+            || entryId !== _loadingEntryId) return; // a newer load won the race
         _loadingEntryId = null;
         // Stale suggestions don't apply to a new clip's source range.
         if (_suggestionsForEntry && _suggestionsForEntry !== entryId) {
@@ -321,7 +323,8 @@
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
-        if (entryId !== _loadingEntryId) return;
+        if (_conversationId !== conversationId
+            || entryId !== _loadingEntryId) return;
         _loadingEntryId = null;
         _setStatus('Couldn’t load transcript: ' + (err && err.message || err));
       });
@@ -359,11 +362,15 @@
   // ── suggestions section (Video Editing Suggestions framework) ───────────
 
   function _resetSuggestions() {
+    _suggestRunning = false;
     _suggestionsForEntry = null;
     _suggestions = [];
     if (_suggSummaryEl) _suggSummaryEl.textContent = '';
     if (_suggListEl) _suggListEl.innerHTML = '';
-    if (_suggRunBtn) _suggRunBtn.disabled = false;
+    if (_suggRunBtn) {
+      _suggRunBtn.disabled = false;
+      _suggRunBtn.textContent = 'Suggest edits';
+    }
   }
 
   function _onSuggestEdits() {
@@ -374,6 +381,8 @@
       return;
     }
     if (!_conversationId) return;
+    var conversationId = _conversationId;
+    var entryId = _loadedEntryId;
     _suggestRunning = true;
     if (_suggRunBtn) {
       _suggRunBtn.disabled = true;
@@ -382,8 +391,8 @@
     _suggSummaryEl.textContent = '';
     _suggListEl.innerHTML = '';
 
-    var url = '/api/media-library/' + encodeURIComponent(_conversationId)
-            + '/' + encodeURIComponent(_loadedEntryId) + '/suggest-edits';
+    var url = '/api/media-library/' + encodeURIComponent(conversationId)
+            + '/' + encodeURIComponent(entryId) + '/suggest-edits';
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -393,6 +402,8 @@
         return r.json().then(function (j) { return { ok: r.ok, data: j }; });
       })
       .then(function (res) {
+        if (_conversationId !== conversationId
+            || _loadedEntryId !== entryId) return;
         if (!res.ok) {
           throw new Error((res.data && res.data.error) || 'request failed');
         }
@@ -404,12 +415,16 @@
         _renderSuggestions();
       })
       .catch(function (err) {
+        if (_conversationId !== conversationId
+            || _loadedEntryId !== entryId) return;
         if (_suggSummaryEl) {
           _suggSummaryEl.textContent = 'Couldn’t generate suggestions: '
             + (err && err.message || err);
         }
       })
       .then(function () {
+        if (_conversationId !== conversationId
+            || _loadedEntryId !== entryId) return;
         _suggestRunning = false;
         if (_suggRunBtn) {
           _suggRunBtn.disabled = false;
@@ -622,13 +637,32 @@
 
   // ── external plumbing ────────────────────────────────────────────────────
 
-  function setConversationId(id) {
-    _conversationId = id || null;
+  function _resetConversationState() {
+    if (_loadAbort) {
+      try { _loadAbort.abort(); } catch (_ignored) { /* */ }
+      _loadAbort = null;
+    }
     _loadedEntryId = null;
     _loadingEntryId = null;
     _segments = [];
+    _segmentEls = [];
+    _activeSegmentIdx = -1;
+    _suppressAutoScrollUntil = 0;
+    _resetSuggestions();
     if (_listEl) _renderSegments();
     _setStatus('');
+  }
+
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    _conversationId = null;
+    _resetConversationState();
+    return true;
+  }
+
+  function setConversationId(id) {
+    _resetConversationState();
+    _conversationId = id || null;
     if (document.body.classList.contains('pane-mode-video')) {
       _refreshActiveFromPlayhead();
     }
@@ -658,6 +692,16 @@
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
       if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
     document.addEventListener('ora:timeline-playhead-changed', function () {
       if (!_rootEl || !_rootEl.classList.contains('transcript-panel--visible')) return;

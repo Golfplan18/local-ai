@@ -6,9 +6,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
+import threading
 import time
 from contextvars import ContextVar
 from datetime import datetime
+from pathlib import Path
 
 # CAMPAIGN-RAG-BYPASS-2026-05-26 — context-propagated flag set by the
 # pipeline (boot.run_step2_context_assembly) at the start of every turn.
@@ -466,36 +469,76 @@ def validate_path(file_path: str, operation: str = "read") -> tuple[bool, str]:
 
 # ── Audit logging ─────────────────────────────────────────────────────────
 
-_session_log_path = None
+# ``tool_events`` is the canonical, conversation-correlated dispatch sink.
+# The older ``logs/session-*.log`` duplicate had no reader and no ownership
+# field, so neither Stealth suppression nor Delete Forever could address it
+# exactly. Retire that sink at runtime and remove its legacy files once rather
+# than adding a second global JSONL rewrite surface.
+_dispatch_log_retire_lock = threading.Lock()
+_retired_dispatch_log_roots: set[str] = set()
 
 
-def _init_log():
-    global _session_log_path
-    if _session_log_path is None:
-        os.makedirs(LOG_DIR, exist_ok=True)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        _session_log_path = os.path.join(LOG_DIR, f"session-{ts}.log")
+def retire_legacy_session_logs(log_dir: str | os.PathLike[str] | None = None) -> dict:
+    """Remove the retired, uncorrelated dispatcher session-log store.
+
+    This cleanup is intentionally corpus-wide: the legacy format has no
+    conversation identity, and the repository has no consumer for it. The
+    correlated ``tool_events`` store remains authoritative. Symlinks are
+    unlinked without following; unexpected entries are retained and reported.
+    """
+    root = Path(log_dir or LOG_DIR)
+    removed: list[str] = []
+    errors: list[str] = []
+    try:
+        if not root.exists():
+            return {"removed": removed, "errors": errors}
+        if root.is_symlink() or not root.is_dir():
+            raise ValueError(f"refusing non-directory dispatcher log root {root}")
+        for path in sorted(root.glob("session-*.log")):
+            try:
+                if path.is_symlink() or path.is_file():
+                    path.unlink()
+                    removed.append(str(path))
+                elif path.exists():
+                    raise ValueError(f"refusing non-file dispatcher log {path}")
+            except Exception as exc:
+                errors.append(f"{path}: {exc}")
+    except Exception as exc:
+        errors.append(str(exc))
+    for error in errors:
+        print(f"[dispatcher] legacy session-log retirement: {error}",
+              file=sys.stderr, flush=True)
+    return {"removed": removed, "errors": errors}
+
+
+def _retire_legacy_session_logs_once() -> None:
+    root_key = _rp.norm_key(LOG_DIR)
+    with _dispatch_log_retire_lock:
+        if root_key in _retired_dispatch_log_roots:
+            return
+        result = retire_legacy_session_logs(LOG_DIR)
+        if not result["errors"]:
+            _retired_dispatch_log_roots.add(root_key)
+        if result["removed"]:
+            print(
+                f"[dispatcher] retired {len(result['removed'])} legacy "
+                "uncorrelated session log(s); tool_events is authoritative",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def _log_dispatch(tool_name: str, parameters: dict, classification: dict | None,
                   permission: str, result_summary: str, duration_ms: int):
-    """Log a tool dispatch to the session log file."""
-    _init_log()
-    ts = datetime.now().isoformat()
-    # Redact potential secrets
-    safe_params = json.dumps(parameters)[:200]
-    for secret_key in ("password", "key", "token", "secret", "credential"):
-        if secret_key in safe_params.lower():
-            safe_params = "[REDACTED]"
-            break
-    level = classification.get("level", "-") if classification else "-"
-    line = (f"{ts} | {tool_name} | risk={level} | {permission} | "
-            f"{duration_ms}ms | params={safe_params} | result={result_summary[:200]}\n")
-    try:
-        with open(_session_log_path, "a") as f:
-            f.write(line)
-    except Exception:
-        pass
+    """Compatibility seam: retire the duplicate sink; persist nothing here.
+
+    Machine-readable dispatch logging happens through ``tool_events.record``
+    below, which already carries conversation identity and suppresses Stealth.
+    Keeping this call in place avoids destabilizing the dispatch control flow
+    while making every old early-return call harmless.
+    """
+    del tool_name, parameters, classification, permission, result_summary, duration_ms
+    _retire_legacy_session_logs_once()
 
 
 # ── Consecutive call limiter ──────────────────────────────────────────────

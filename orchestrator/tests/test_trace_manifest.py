@@ -13,8 +13,10 @@ Run::
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -56,6 +58,12 @@ class TraceManifestBase(unittest.TestCase):
         patcher = mock.patch.object(pipeline_trace, "TRACE_ROOT", self.root)
         patcher.start()
         self.addCleanup(patcher.stop)
+        data_patcher = mock.patch.object(
+            pipeline_trace._rp, "DATA_DIR_STR",
+            os.path.join(self.tmp.name, "data"),
+        )
+        data_patcher.start()
+        self.addCleanup(data_patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     # -- helpers -----------------------------------------------------------
@@ -107,6 +115,156 @@ class TestSkeleton(TraceManifestBase):
         d = self.start()
         residue = [n for n in os.listdir(d) if n.endswith(".tmp")]
         self.assertEqual(residue, [])
+
+    def test_trace_root_symlink_is_refused_without_touching_target(self):
+        outside = Path(self.tmp.name) / "outside"
+        outside.mkdir()
+        Path(self.root).rmdir()
+        Path(self.root).symlink_to(outside, target_is_directory=True)
+
+        self.assertIsNone(self.start())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_conversation_trace_symlink_is_refused(self):
+        outside = Path(self.tmp.name) / "outside-conversation"
+        outside.mkdir()
+        (Path(self.root) / "conv-a").symlink_to(
+            outside, target_is_directory=True,
+        )
+
+        self.assertIsNone(self.start())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_trace_writers_refuse_swapped_turn_directory_symlink(self):
+        trace_dir = Path(self.start())
+        outside = Path(self.tmp.name) / "outside-turn"
+        outside.mkdir()
+        shutil.rmtree(trace_dir)
+        trace_dir.symlink_to(outside, target_is_directory=True)
+
+        pipeline_trace.write_step(str(trace_dir), "step1", {"secret": "no"})
+        pipeline_trace.append_jsonl(str(trace_dir), "usage.jsonl", {"secret": "no"})
+        pipeline_trace.write_step_health(str(trace_dir), {}, 1, [])
+        pipeline_trace.finalize_manifest(str(trace_dir), kind="direct")
+
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_trace_writer_rejects_filename_traversal(self):
+        trace_dir = Path(self.start())
+        pipeline_trace.write_step(str(trace_dir), "../escape", {"secret": "no"})
+        pipeline_trace.append_jsonl(str(trace_dir), "../escape.jsonl", {})
+        self.assertFalse((trace_dir.parent / "escape.json").exists())
+        self.assertFalse((trace_dir.parent / "escape.jsonl").exists())
+
+
+class TestTraceLifecycleMutation(TraceManifestBase):
+    def test_purge_uses_shared_lock_and_removes_case_variants(self):
+        first = self.start("Dialogue-A")
+        self.assertTrue(first)
+        entered: list[str] = []
+
+        @contextlib.contextmanager
+        def fake_lock(conversation_id):
+            entered.append(conversation_id)
+            yield
+
+        with mock.patch.object(
+            pipeline_trace._rp, "conversation_lifecycle_lock", fake_lock,
+        ):
+            result = pipeline_trace.purge_conversation_traces("DIALOGUE-A")
+
+        self.assertEqual(entered, ["DIALOGUE-A"])
+        self.assertTrue(result["deleted"])
+        self.assertEqual(len(result["paths"]), 1)
+        self.assertFalse(Path(first).parent.exists())
+
+    def test_purge_unlinks_conversation_symlink_not_external_target(self):
+        outside = Path(self.tmp.name) / "external-traces"
+        outside.mkdir()
+        sentinel = outside / "keep.txt"
+        sentinel.write_text("keep", encoding="utf-8")
+        link = Path(self.root) / "conv-link"
+        link.symlink_to(outside, target_is_directory=True)
+
+        result = pipeline_trace.purge_conversation_traces("conv-link")
+
+        self.assertTrue(result["deleted"])
+        self.assertTrue(result["symlink_removed"])
+        self.assertFalse(link.exists())
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep")
+
+    def test_retag_updates_owned_manifests_and_reverses_exact_level(self):
+        first = self.start("Dialogue-A")
+
+        private = pipeline_trace.retag_conversation_trace_manifests(
+            "DIALOGUE-A", "private",
+        )
+        self.assertEqual(private["updated"], 1)
+        self.assertEqual(private["errors"], [])
+        self.assertEqual(self.manifest(first)["redaction_level"], "private")
+        self.assertEqual(self.manifest(first)["terminal_status"], "open")
+
+        standard = pipeline_trace.retag_conversation_trace_manifests(
+            "dialogue-a", "",
+        )
+        self.assertEqual(standard["updated"], 1)
+        self.assertEqual(self.manifest(first)["redaction_level"], "default")
+
+    def test_retag_refuses_foreign_or_symlinked_manifest(self):
+        owned = Path(self.start("conv-a"))
+        manifest = owned / pipeline_trace.MANIFEST_FILENAME
+        outside = Path(self.tmp.name) / "outside-manifest.json"
+        outside.write_text(
+            json.dumps({"conversation_id": "conv-a", "redaction_level": "default"}),
+            encoding="utf-8",
+        )
+        manifest.unlink()
+        manifest.symlink_to(outside)
+
+        result = pipeline_trace.retag_conversation_trace_manifests(
+            "conv-a", "private",
+        )
+
+        self.assertEqual(result["updated"], 0)
+        self.assertTrue(result["errors"])
+        self.assertEqual(
+            json.loads(outside.read_text(encoding="utf-8"))["redaction_level"],
+            "default",
+        )
+
+        manifest.unlink()
+        manifest.write_text(
+            json.dumps({"conversation_id": "someone-else",
+                        "redaction_level": "default"}),
+            encoding="utf-8",
+        )
+        result = pipeline_trace.retag_conversation_trace_manifests(
+            "conv-a", "private",
+        )
+        self.assertEqual(result["updated"], 0)
+        self.assertTrue(any("does not match" in error
+                            for error in result["errors"]))
+
+    def test_retag_rejects_stealth_and_uses_shared_lock(self):
+        self.start("conv-a")
+        entered: list[str] = []
+
+        @contextlib.contextmanager
+        def fake_lock(conversation_id):
+            entered.append(conversation_id)
+            yield
+
+        with mock.patch.object(
+            pipeline_trace._rp, "conversation_lifecycle_lock", fake_lock,
+        ):
+            pipeline_trace.retag_conversation_trace_manifests(
+                "conv-a", "private",
+            )
+        self.assertEqual(entered, ["conv-a"])
+        with self.assertRaises(ValueError):
+            pipeline_trace.retag_conversation_trace_manifests(
+                "conv-a", "stealth",
+            )
 
 
 class TestTraceRef(TraceManifestBase):
@@ -697,6 +855,131 @@ class TestRunPipelineFinalization(unittest.TestCase):
                                    conversation_tag="private")
         m = self._manifest_for("t-boot-priv")
         self.assertEqual(m["redaction_level"], "private")
+
+    def test_cli_turn_context_is_private_then_standard_without_leak(self):
+        import slash_commands
+        import tool_events
+
+        observed = []
+
+        def observe_context(_command):
+            observed.append((
+                self.boot._CONVERSATION_TAG_CV.get(),
+                self.boot._TURN_TRACE_DIR_CV.get(),
+                tool_events.get_turn_context(),
+            ))
+            return "queue empty"
+
+        outer_tag = self.boot.set_conversation_tag_context("")
+        outer_trace = self.boot.set_turn_trace_context("/tmp/caller-trace")
+        outer_tool = tool_events.set_turn_context(
+            trace_dir="/tmp/caller-tool-trace",
+            conversation_id="caller",
+            surface="test",
+        )
+        try:
+            with mock.patch.object(
+                slash_commands, "run_runtime_command",
+                side_effect=observe_context,
+            ):
+                self.boot.run_pipeline(
+                    "/queue", conversation_id="t-context-private",
+                    conversation_tag="private",
+                )
+                self.assertEqual(self.boot._CONVERSATION_TAG_CV.get(), "")
+                self.assertEqual(
+                    self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/caller-trace",
+                )
+                self.boot.run_pipeline(
+                    "/queue", conversation_id="t-context-standard",
+                )
+            self.assertEqual([item[0] for item in observed], ["private", ""])
+            self.assertEqual(
+                [Path(item[1]).parent.name for item in observed],
+                ["t-context-private", "t-context-standard"],
+            )
+            self.assertEqual(
+                [item[2]["conversation_id"] for item in observed],
+                ["t-context-private", "t-context-standard"],
+            )
+            self.assertEqual(
+                [item[2]["surface"] for item in observed],
+                ["terminal", "terminal"],
+            )
+            self.assertEqual(self.boot._CONVERSATION_TAG_CV.get(), "")
+            self.assertEqual(
+                self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/caller-trace",
+            )
+            self.assertEqual(
+                tool_events.get_turn_context()["conversation_id"], "caller",
+            )
+        finally:
+            tool_events.reset_turn_context(outer_tool)
+            self.boot.reset_turn_trace_context(outer_trace)
+            self.boot.reset_conversation_tag_context(outer_tag)
+
+    def test_step2_context_tokens_reset_on_return_and_exception(self):
+        import tool_events
+
+        observed = []
+
+        def observe_step2(*_args, **_kwargs):
+            observed.append((
+                self.boot._CONVERSATION_TAG_CV.get(),
+                self.boot._TURN_TRACE_DIR_CV.get(),
+                tool_events.get_turn_context(),
+            ))
+            return {"ok": True}
+
+        outer_tag = self.boot.set_conversation_tag_context("")
+        outer_trace = self.boot.set_turn_trace_context("/tmp/outer-step2")
+        outer_tool = tool_events.set_turn_context(
+            trace_dir="/tmp/outer-tool-step2",
+            conversation_id="outer-step2",
+            surface="test",
+        )
+        try:
+            with mock.patch.object(
+                self.boot, "_run_step2_context_assembly_impl",
+                side_effect=observe_step2,
+            ):
+                result = self.boot.run_step2_context_assembly(
+                    {}, {}, trace_dir="/tmp/private-step2/turn",
+                    conversation_tag="private",
+                )
+            self.assertEqual(result, {"ok": True})
+            self.assertEqual(
+                observed[0][:2], ("private", "/tmp/private-step2/turn"),
+            )
+            self.assertEqual(
+                observed[0][2]["conversation_id"], "private-step2",
+            )
+            self.assertEqual(self.boot._CONVERSATION_TAG_CV.get(), "")
+            self.assertEqual(
+                self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/outer-step2",
+            )
+            self.assertEqual(
+                tool_events.get_turn_context()["conversation_id"],
+                "outer-step2",
+            )
+
+            with mock.patch.object(
+                self.boot, "_run_step2_context_assembly_impl",
+                side_effect=RuntimeError("step2 failed"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "step2 failed"):
+                    self.boot.run_step2_context_assembly(
+                        {}, {}, trace_dir="/tmp/error-step2/turn",
+                        conversation_tag="private",
+                    )
+            self.assertEqual(self.boot._CONVERSATION_TAG_CV.get(), "")
+            self.assertEqual(
+                self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/outer-step2",
+            )
+        finally:
+            tool_events.reset_turn_context(outer_tool)
+            self.boot.reset_turn_trace_context(outer_trace)
+            self.boot.reset_conversation_tag_context(outer_tag)
 
 
 if __name__ == "__main__":

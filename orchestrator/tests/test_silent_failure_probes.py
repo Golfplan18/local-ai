@@ -259,8 +259,9 @@ class ProbeOversightStealthContext(unittest.TestCase):
 
 class ProbeAgenticLoopOverrun(unittest.TestCase):
     def test_overrun_writes_jsonl_and_warns(self):
-        from orchestrator import pipeline_trace as pt
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as root:
+            trace_dir = os.path.join(root, "overrun-dialogue", "turn")
+            os.makedirs(trace_dir)
             # Mock call_model and parse_tool_calls to force a loop.
             with mock.patch.object(boot, "call_model",
                                     return_value="<tool_call>...</tool_call>"), \
@@ -269,19 +270,22 @@ class ProbeAgenticLoopOverrun(unittest.TestCase):
                  mock.patch.object(boot, "execute_tool",
                                     return_value="r"), \
                  mock.patch.object(boot, "strip_tool_calls",
-                                    return_value=""):
+                                    return_value=""), \
+                 mock.patch.object(boot.pipeline_trace, "TRACE_ROOT", root):
                 buf = io.StringIO()
                 with redirect_stderr(buf):
                     result = boot._run_model_with_tools(
                         [{"role": "system", "content": "s"}],
                         {"name": "fake"},
                         max_iterations=2,
-                        trace_dir=tmp,
+                        trace_dir=trace_dir,
                         step_name="probe",
                     )
                 self.assertEqual(result, "")
                 self.assertIn("agentic loop hit max_iterations", buf.getvalue())
-                overrun_log = os.path.join(tmp, "agentic-loop-overruns.jsonl")
+                overrun_log = os.path.join(
+                    trace_dir, "agentic-loop-overruns.jsonl",
+                )
                 self.assertTrue(os.path.exists(overrun_log))
                 with open(overrun_log) as f:
                     rec = json.loads(f.readline())

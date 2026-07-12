@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -68,15 +69,172 @@ class TestStep7ChromadbIngest(unittest.TestCase):
 
     def test_staged_note_lands_in_collection(self):
         fake = _FakeCollection()
+        custom_chroma = os.path.join(self.tmp, "configured-chroma")
+        pipeline = rp.RuntimePipeline({"chromadb_path": custom_chroma})
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.object(knowledge_index, "get_knowledge_collection",
+                               return_value=fake) as get_collection, \
+             mock.patch.object(knowledge_index, "_nomic_embed",
+                               return_value=None):
+            pipeline._step7_chromadb_ingest([self.note])
+
+        self.assertIn(os.path.abspath(self.note), fake.added_ids)
+        get_collection.assert_called_once_with(os.path.abspath(custom_chroma))
+
+    def test_explicit_run_paths_do_not_sweep_another_conversation_note(self):
+        sibling = os.path.join(self.tmp, "Another conversation.md")
+        with open(sibling, "w", encoding="utf-8") as f:
+            f.write(STAGED.replace("abc123", "other-conversation"))
+        fake = _FakeCollection()
         pipeline = rp.RuntimePipeline()
         with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
              mock.patch.object(knowledge_index, "get_knowledge_collection",
                                return_value=fake), \
              mock.patch.object(knowledge_index, "_nomic_embed",
                                return_value=None):
-            pipeline._step7_chromadb_ingest()
+            pipeline._step7_chromadb_ingest([self.note])
 
-        self.assertIn(os.path.abspath(self.note), fake.added_ids)
+        self.assertEqual(fake.added_ids, [os.path.abspath(self.note)])
+
+    def test_staging_writer_rejects_symlinked_root(self):
+        root = os.path.join(self.tmp, "managed-staging")
+        outside = os.path.join(self.tmp, "outside")
+        os.mkdir(outside)
+        os.symlink(outside, root, target_is_directory=True)
+        pipeline = rp.RuntimePipeline()
+        note = types.SimpleNamespace(
+            title="Secret", yaml_frontmatter={}, body="must stay managed",
+            subtype=None,
+        )
+
+        with mock.patch.object(rp, "STAGING_DIR", root), self.assertRaises(ValueError):
+            pipeline._write_note_to_staging(
+                note, source_file="conversation-a", private=True,
+            )
+
+        self.assertEqual(os.listdir(outside), [])
+
+    def test_staging_writer_rejects_file_symlink_without_touching_target(self):
+        staging = os.path.join(self.tmp, "managed-staging")
+        os.mkdir(staging)
+        outside = os.path.join(self.tmp, "outside.md")
+        with open(outside, "w", encoding="utf-8") as stream:
+            stream.write("must remain")
+        os.symlink(outside, os.path.join(staging, "Secret.md"))
+        pipeline = rp.RuntimePipeline()
+        note = types.SimpleNamespace(
+            title="Secret", yaml_frontmatter={}, body="managed content",
+            subtype=None,
+        )
+
+        with mock.patch.object(rp, "STAGING_DIR", staging), self.assertRaises(ValueError):
+            pipeline._write_note_to_staging(
+                note, source_file="conversation-a", private=True,
+            )
+
+        with open(outside, encoding="utf-8") as stream:
+            self.assertEqual(stream.read(), "must remain")
+
+    def test_ingest_skips_symlinked_staging_note(self):
+        outside = os.path.join(self.tmp, "outside.md")
+        with open(outside, "w", encoding="utf-8") as stream:
+            stream.write(STAGED)
+        linked = os.path.join(self.tmp, "linked.md")
+        os.symlink(outside, linked)
+        pipeline = rp.RuntimePipeline()
+
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp):
+            self.assertEqual(pipeline._staged_note_paths([linked]), [])
+
+    def test_staging_note_carries_strict_lifecycle_ownership(self):
+        staging = os.path.join(self.tmp, "managed-staging")
+        pipeline = rp.RuntimePipeline()
+        note = types.SimpleNamespace(
+            title="Owned", yaml_frontmatter={}, body="managed body",
+            subtype=None,
+        )
+        with mock.patch.object(rp, "STAGING_DIR", staging):
+            path = pipeline._write_note_to_staging(
+                note, source_file="conversation-a", private=False,
+            )
+        with open(path, encoding="utf-8") as stream:
+            content = stream.read()
+        self.assertIn("artifact_kind: conversation_runtime_derivative\n", content)
+        self.assertIn("managed_by: ora\n", content)
+        self.assertIn('source_file: "conversation-a"\n', content)
+
+    def test_pass2_uses_configured_chroma_and_private_filter(self):
+        queries = []
+        client_paths = []
+
+        class QueryCollection:
+            def query(self, **kwargs):
+                queries.append(kwargs)
+                return {"ids": [[]], "metadatas": [[]], "distances": [[]]}
+
+        fake_chromadb = types.SimpleNamespace(
+            PersistentClient=lambda *, path: client_paths.append(path) or object(),
+        )
+        configured = os.path.join(self.tmp, "custom-db")
+        pipeline = rp.RuntimePipeline({"chromadb_path": configured})
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.dict(sys.modules, {"chromadb": fake_chromadb}), \
+             mock.patch("orchestrator.embedding.get_collection",
+                        return_value=QueryCollection()):
+            pipeline._step12_pass2_relationships(
+                [self.note], include_private=False,
+            )
+            pipeline._step12_pass2_relationships(
+                [self.note], include_private=True,
+            )
+
+        self.assertEqual(client_paths, [os.path.abspath(configured)] * 2)
+        self.assertEqual(queries[0]["where"], {"tag_private": False})
+        self.assertIsNone(queries[1]["where"])
+
+    def test_run_threads_only_extracted_paths_through_downstream_steps(self):
+        pipeline = rp.RuntimePipeline()
+        owned = self.note
+        pipeline._step1_session_log = mock.Mock()
+        pipeline._step2_conversation_summary = mock.Mock()
+        pipeline._step3_continuity_archive = mock.Mock()
+        pipeline._step4_knowledge_extraction = mock.Mock(return_value={
+            "extracted": 1, "approved": 1, "review": 0,
+            "staged_paths": [owned],
+        })
+        pipeline._step7_chromadb_ingest = mock.Mock()
+        pipeline._step8_relationship_extraction = mock.Mock(return_value=0)
+        pipeline._step9_glossary_check = mock.Mock(return_value=[])
+        pipeline._step10_tag_validation = mock.Mock(return_value=[])
+        pipeline._step11_entity_extraction = mock.Mock()
+        pipeline._step12_pass2_relationships = mock.Mock(return_value=0)
+        pipeline._step13_convergence_check = mock.Mock(return_value=[])
+        pipeline._log_result = mock.Mock()
+
+        pipeline.run_sync(rp.SessionData(
+            session_id="run-1", timestamp="2026-07-12T00:00:00",
+            mode="", gear=0, conversation_id="private-conversation",
+            conversation_tag="private", final_output="done",
+        ))
+
+        pipeline._step7_chromadb_ingest.assert_called_once_with([owned])
+        pipeline._step8_relationship_extraction.assert_called_once_with([owned])
+        pipeline._step9_glossary_check.assert_called_once_with([owned])
+        pipeline._step10_tag_validation.assert_called_once_with([owned])
+        pipeline._step11_entity_extraction.assert_called_once_with([owned])
+        pipeline._step12_pass2_relationships.assert_called_once_with(
+            [owned], include_private=True,
+        )
+        pipeline._step13_convergence_check.assert_called_once_with([owned])
+
+    def test_entity_index_writer_is_retired_and_old_cache_removed(self):
+        entity_index = os.path.join(self.tmp, "entity-index.json")
+        with open(entity_index, "w", encoding="utf-8") as f:
+            f.write('{"Sensitive title": ["Private Person"]}')
+        pipeline = rp.RuntimePipeline()
+        with mock.patch.object(rp, "ENTITY_INDEX_PATH", entity_index):
+            pipeline._step11_entity_extraction([self.note])
+        self.assertFalse(os.path.exists(entity_index))
 
 
 if __name__ == "__main__":

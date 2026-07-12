@@ -195,6 +195,26 @@ class PrivacyGate(unittest.TestCase):
         self.boot.set_conversation_tag_context("banana")
         self.assertNotIn("caretaker", self.boot._filter_private_values(self.CONTENT))
 
+    def test_context_tokens_restore_prior_privacy_and_trace(self):
+        outer_tag = self.boot.set_conversation_tag_context("")
+        outer_trace = self.boot.set_turn_trace_context("/tmp/outer-trace")
+        try:
+            tag_token = self.boot.set_conversation_tag_context("private")
+            trace_token = self.boot.set_turn_trace_context("/tmp/inner-trace")
+            self.assertIn("caretaker", self.boot._filter_private_values(self.CONTENT))
+            self.assertEqual(
+                self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/inner-trace",
+            )
+            self.boot.reset_turn_trace_context(trace_token)
+            self.boot.reset_conversation_tag_context(tag_token)
+            self.assertNotIn("caretaker", self.boot._filter_private_values(self.CONTENT))
+            self.assertEqual(
+                self.boot._TURN_TRACE_DIR_CV.get(), "/tmp/outer-trace",
+            )
+        finally:
+            self.boot.reset_turn_trace_context(outer_trace)
+            self.boot.reset_conversation_tag_context(outer_tag)
+
     def test_no_private_section_unchanged(self):
         plain = "## Standing Principles\n\nhonesty\n"
         self.assertEqual(self.boot._filter_private_values(plain), plain)
