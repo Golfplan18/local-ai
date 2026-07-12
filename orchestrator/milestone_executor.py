@@ -44,6 +44,7 @@ from framework_parser import (
 )
 from framework_invocability import resolve_user_invocable_framework
 from scratch import ScratchSession
+import runtime_paths as _rp
 
 
 MAX_RETRIES = 3
@@ -158,8 +159,8 @@ def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     never raises.
 
     Since 2026-07-01 this is a two-file write: the full self-spec (the
-    4000-6000-word portrait) is archived to ~/ora/mindspec/self-spec.md,
-    and ~/ora/mind.md — the file load_boot_md injects into every prompt
+    4000-6000-word portrait) is archived under ORA_HOME/mindspec/self-spec.md,
+    and ORA_HOME/mind.md — the file load_boot_md injects into every prompt
     when "custom values" is on — gets the assistant-directives PROJECTION
     (guided-wizard base + second-person directives derived from the
     portrait via one model call; see mind_projection.py). A portrait
@@ -177,7 +178,7 @@ def _maybe_persist_self_mindspec(framework_name, mode, final_output):
                 from tools.file_ops import file_write
             except ImportError:
                 from orchestrator.tools.file_ops import file_write
-        ora = _os.path.expanduser("~/ora")
+        ora = str(_rp.ORA_HOME)
         file_write(_os.path.join(ora, "mindspec", "self-spec.md"), final_output)
         mind_path = _os.path.join(ora, "mind.md")
         try:
@@ -1171,7 +1172,7 @@ def format_execution_result(result: FrameworkExecutionResult) -> str:
         return (
             f"[Framework {result.framework_name}{mode_suffix} failed at "
             f"{len(result.milestones)} milestone(s). {result.failure_reason}]\n\n"
-            f"Scratch preserved at ~/ora/scratch/{result.execution_id}/"
+            f"Scratch preserved at {_rp.SCRATCH_DIR / result.execution_id}/"
         )
 
     drift_warnings = []

@@ -47,11 +47,11 @@ from typing import Optional
 ORA_ROOT = Path(
     os.environ.get("ORA_HOME") or Path(__file__).resolve().parents[1]
 ).expanduser().resolve()
-VAULT_ROOT = Path(
-    os.environ.get("ORA_VAULT_PATH")
-    or os.environ.get("ORA_VAULT")
-    or (Path.home() / "Documents" / "vault")
-).expanduser().resolve()
+if str(ORA_ROOT) not in sys.path:
+    sys.path.insert(0, str(ORA_ROOT))
+from orchestrator import runtime_paths as _rp  # noqa: E402
+
+VAULT_ROOT = _rp.vault_dir().resolve()
 
 MODES_DIR = VAULT_ROOT / "Modes"
 LENSES_DIR = VAULT_ROOT / "Lenses"

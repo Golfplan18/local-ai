@@ -57,6 +57,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical import RawChat
 from orchestrator.historical.context_header import ContextHeader
 from orchestrator.historical.pair_cleanup import CleanedPair
@@ -66,7 +67,7 @@ from orchestrator.historical.pair_cleanup import CleanedPair
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_OUTPUT_DIR = os.path.expanduser("~/Documents/Commercial AI archives")
+DEFAULT_OUTPUT_DIR = str(_rp.historical_archive_dir())
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +119,7 @@ def build_yaml_frontmatter(
     source_chat = cleaned_pair.source_path or raw_chat.source_path or ""
     # Strip any leading absolute prefix to keep this portable.
     if source_chat:
-        source_chat = source_chat.replace(os.path.expanduser("~/"), "~/")
+        source_chat = _rp.home_relative_display(source_chat)
     processing_model = ""
     if cleaned_pair.user_record and cleaned_pair.user_record.route:
         processing_model = cleaned_pair.user_record.route.model_id

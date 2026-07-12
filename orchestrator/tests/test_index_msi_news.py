@@ -20,6 +20,8 @@ import shutil
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -371,6 +373,60 @@ class TestIndexMsiNews(unittest.TestCase):
         self.assertIn("[250/250]", out)
         # No noisy per-file lines from index_file.
         self.assertNotIn("  + 2026-01-04-batch", out)
+
+
+class TestRuntimePaths(unittest.TestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, True)
+
+    def _write_article(self, vault: str, name: str) -> str:
+        mirror = os.path.join(vault, "MSI News")
+        os.makedirs(mirror)
+        path = os.path.join(mirror, name)
+        with open(path, "w", encoding="utf-8") as stream:
+            stream.write(
+                "---\nheadline: Relocated article\nai_generated: true\n---\n\n"
+                + ARTICLE_BODY
+            )
+        return path
+
+    def test_late_vault_aliases_relocate_default_scan(self):
+        for env_name in ("ORA_VAULT", "ORA_VAULT_PATH"):
+            with self.subTest(env_name=env_name):
+                vault = os.path.join(self.tmpdir, env_name.lower())
+                expected = self._write_article(
+                    vault, f"2026-07-12-{env_name.lower()}.md"
+                )
+                collection = _FakeCollection()
+                with mock.patch.dict(os.environ, {env_name: vault}, clear=True):
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        stats = index_msi_news.index_msi_news(
+                            paths=None, collection=collection
+                        )
+                self.assertEqual(stats, {"indexed": 1, "skipped": 0, "errors": 0})
+                self.assertIn(os.path.abspath(expected), collection.store)
+
+    def test_late_chromadb_override_relocates_persistent_client(self):
+        relocated = os.path.join(self.tmpdir, "relocated-chromadb")
+        captured = []
+
+        class _PersistentClient:
+            def __init__(self, *, path):
+                captured.append(path)
+
+        chromadb = SimpleNamespace(PersistentClient=_PersistentClient)
+        with mock.patch.dict(os.environ, {"ORA_CHROMADB_PATH": relocated}, clear=True):
+            with mock.patch.dict(sys.modules, {"chromadb": chromadb}):
+                with mock.patch(
+                    "orchestrator.embedding.get_or_create_collection",
+                    return_value="collection",
+                ) as get_collection:
+                    self.assertEqual(index_msi_news._collection(), "collection")
+
+        self.assertEqual(captured, [relocated])
+        get_collection.assert_called_once()
 
 
 if __name__ == "__main__":

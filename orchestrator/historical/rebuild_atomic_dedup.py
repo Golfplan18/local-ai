@@ -21,8 +21,8 @@ missed `Engrams/Historical Atomics/<YYYY>/`).
 
 CLI:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.rebuild_atomic_dedup
-    /opt/homebrew/bin/python3 -m orchestrator.historical.rebuild_atomic_dedup --keep-existing
+    python -m orchestrator.historical.rebuild_atomic_dedup
+    python -m orchestrator.historical.rebuild_atomic_dedup --keep-existing
 """
 
 from __future__ import annotations
@@ -38,9 +38,10 @@ from pathlib import Path
 import chromadb
 import yaml
 
+from orchestrator import runtime_paths as _rp
 
-VAULT_ROOT = "/Users/oracle/Documents/vault/Engrams"
-CHROMA_PATH = "/Users/oracle/ora/chromadb"
+VAULT_ROOT = str(_rp.vault_dir() / "Engrams")
+CHROMA_PATH = str(_rp.chromadb_dir())
 COLLECTION = "atomic_dedup"
 
 # Documents are truncated to this length before embedding — dedup

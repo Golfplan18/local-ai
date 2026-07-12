@@ -11,6 +11,7 @@ Run::
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -93,6 +94,15 @@ class LoadConfigTests(SchedulerBase):
     def test_no_frontmatter_falls_back(self):
         self.doc.write_text("# Just a heading\n")
         self.assertEqual(ms.load_config(), ms.DEFAULT_CONFIG)
+
+
+class RuntimePathTests(unittest.TestCase):
+    def test_control_doc_uses_shared_call_time_vault(self):
+        vault = Path(tempfile.gettempdir()) / "maintenance-vault"
+        with mock.patch.dict(os.environ, {"ORA_VAULT": str(vault)}, clear=True):
+            self.assertEqual(
+                Path(ms.control_doc_path()), vault / ms.CONTROL_DOC_NAME
+            )
 
 
 class DueTasksTests(SchedulerBase):

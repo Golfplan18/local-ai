@@ -9,7 +9,9 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from pathlib import Path
 from textwrap import dedent
+from unittest import mock
 
 # Make orchestrator/ importable
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +28,18 @@ from workflow_spec_parser import (  # noqa: E402
     parse_workflow_spec_text,
     check_reference_integrity,
 )
+import oversight_context as oc  # noqa: E402
+
+
+class TestOversightContextRuntimePath(unittest.TestCase):
+    def test_bundle_pef_default_uses_current_shared_vault(self):
+        vault = Path("/tmp/oversight-context-vault")
+        with mock.patch.object(oc._rp, "vault_dir", return_value=vault):
+            bundle = oc.OversightContextBundle(event={}, event_class="unknown")
+        self.assertEqual(
+            Path(bundle.pef_toolkit_reference),
+            vault / "Framework — Problem Evolution.md",
+        )
 
 
 # ---------- PED parser tests ----------

@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import sys
 import time
@@ -39,6 +38,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
@@ -55,12 +55,12 @@ from orchestrator.historical.chain_detector import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_ARCHIVE_DIR    = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_VAULT_ROOT     = "/Users/oracle/Documents/vault/Engrams/Historical Atomics"
-DEFAULT_CHROMADB_PATH  = "/Users/oracle/ora/chromadb"
+DEFAULT_ARCHIVE_DIR    = str(_rp.historical_archive_dir())
+DEFAULT_VAULT_ROOT     = str(_rp.vault_dir() / "Engrams" / "Historical Atomics")
+DEFAULT_CHROMADB_PATH  = str(_rp.chromadb_dir())
 DEFAULT_DEDUP_COLLECTION = "atomic_dedup"
-DEFAULT_MANIFEST_PATH  = "/Users/oracle/ora/data/phase5-manifest.json"
-DEFAULT_REPORT_PATH    = "/Users/oracle/ora/data/phase5-report.json"
+DEFAULT_MANIFEST_PATH  = str(_rp.DATA_DIR / "phase5-manifest.json")
+DEFAULT_REPORT_PATH    = str(_rp.DATA_DIR / "phase5-report.json")
 
 # Extraction model — Sonnet 4.5 for quality per user direction.
 EXTRACTION_MODEL = "claude-sonnet-4-5"
@@ -253,7 +253,7 @@ def build_atomic_note(c: AtomicCandidate) -> str:
     """Compose the markdown body for a Phase 5 atomic note."""
     today = datetime.now().strftime("%Y-%m-%d")
     when_str = c.when.strftime("%Y-%m-%d")
-    rel_source = c.source_chat.replace(os.path.expanduser("~/"), "~/")
+    rel_source = _rp.home_relative_display(c.source_chat)
     yaml_lines = [
         "---",
         "nexus:",
@@ -512,24 +512,28 @@ def process_one_pair(
 # ---------------------------------------------------------------------------
 
 
+def _empty_manifest() -> dict:
+    return {
+        "version":          1,
+        "created_at":       datetime.now().isoformat(timespec="seconds"),
+        "completed_pairs":  {},
+        "totals": {
+            "pairs_processed":  0,
+            "pairs_with_atomics": 0,
+            "candidates_total": 0,
+            "candidates_minted": 0,
+            "candidates_dedup":  0,
+            "input_tokens":     0,
+            "output_tokens":    0,
+            "cost_usd":         0.0,
+        },
+    }
+
+
 def _load_manifest(path: str) -> dict:
     p = Path(path).expanduser()
     if not p.exists():
-        return {
-            "version":          1,
-            "created_at":       datetime.now().isoformat(timespec="seconds"),
-            "completed_pairs":  {},
-            "totals": {
-                "pairs_processed":  0,
-                "pairs_with_atomics": 0,
-                "candidates_total": 0,
-                "candidates_minted": 0,
-                "candidates_dedup":  0,
-                "input_tokens":     0,
-                "output_tokens":    0,
-                "cost_usd":         0.0,
-            },
-        }
+        return _empty_manifest()
     return json.loads(p.read_text(encoding="utf-8"))
 
 
@@ -599,7 +603,7 @@ def run_phase5(
               file=sys.stderr, flush=True)
 
     manifest = _load_manifest(manifest_path) if not rebuild_manifest \
-                else _load_manifest("/nonexistent")
+                else _empty_manifest()
     completed = set(manifest.get("completed_pairs", {}).keys())
     pending = [p for p in pairs if p not in completed]
     if progress_to_stderr:

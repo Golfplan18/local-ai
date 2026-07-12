@@ -10,8 +10,8 @@ oversight daemon, with the user's vault as the control surface.
 Control document
 ----------------
 
-``~/Documents/vault/Reference — Ora Periodic Maintenance.md`` (override
-dir with $ORA_VAULT_PATH). Its YAML frontmatter carries the live config:
+``<configured vault>/Reference — Ora Periodic Maintenance.md``. Its YAML
+frontmatter carries the live config:
 
     maintenance:
       orphan_cleanup: weekly
@@ -41,7 +41,7 @@ oversight_health like every other watcher.
 
 Standalone:
 
-    /opt/homebrew/bin/python3 ~/ora/orchestrator/maintenance_scheduler.py [--dry-run]
+    python -m orchestrator.maintenance_scheduler [--dry-run]
 """
 from __future__ import annotations
 
@@ -51,8 +51,13 @@ import re
 import time
 from datetime import datetime, timezone
 
-ORA_DIR = os.path.expanduser(os.environ.get("ORA_HOME", "~/ora"))
-DATA_DIR = os.path.join(ORA_DIR, "data")
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
+ORA_DIR = _rp.WORKSPACE
+DATA_DIR = _rp.DATA_DIR_STR
 OVERSIGHT_DATA_DIR = os.path.join(DATA_DIR, "oversight")
 STATE_FILE = os.path.join(DATA_DIR, "maintenance-state.json")
 RESULTS_FILE = os.path.join(DATA_DIR, "maintenance-results.jsonl")
@@ -62,8 +67,7 @@ CONTROL_DOC_NAME = "Reference — Ora Periodic Maintenance.md"
 
 
 def control_doc_path() -> str:
-    vault = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
-    return os.path.join(vault, CONTROL_DOC_NAME)
+    return str(_rp.vault_dir() / CONTROL_DOC_NAME)
 
 
 DEFAULT_CONFIG = {

@@ -28,10 +28,14 @@ migration — because it is already live in on-disk pointer files, browser
 
 from __future__ import annotations
 
+import argparse
 import json
+import hashlib
 import os
 import re
+import sys
 import threading
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -59,8 +63,15 @@ except ImportError:  # pragma: no cover - package-qualified import context
 # checkout cannot read project records from a different installation.
 POINTER_DIR = _rp.DATA_DIR / "projects"
 
-# Same rule the plugin registry enforces on a manifest nexus.
-_NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+# Every surface that declares a new nexus (container creation, plugin
+# manifests, and nexus rename) shares this policy.  Keeping it here prevents a
+# plugin pointer from creating a filename that the container view cannot safely
+# represent on Windows.
+MAX_NEXUS_LENGTH = 64
+NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+# Compatibility alias for out-of-tree imports.  New code must use
+# ``validate_nexus`` rather than matching the expression directly.
+_NEXUS_RE = NEXUS_RE
 
 # Deprecated compatibility alias.  It deliberately retains the historical
 # value; callers should use ``DEFAULT_NEXUS`` for the canonical runtime id.
@@ -68,7 +79,22 @@ GENERAL_NEXUS = LEGACY_DEFAULT_NEXUS
 PROJECT_STATUSES = ("active", "inactive", "archived")
 # Both the current and legacy sentinel are reserved so neither a fresh nor a
 # stale caller can ever create a real project that collides with the default.
-RESERVED_NEXUS = {DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS, ""}
+WINDOWS_DEVICE_NEXUSES = frozenset({
+    "con", "prn", "aux", "nul",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+})
+RESERVED_NEXUS = frozenset({
+    DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS, "", *WINDOWS_DEVICE_NEXUSES,
+})
+
+# Keep new project identities comfortably inside the legacy Windows MAX_PATH
+# boundary even when long-path support is disabled.  The descendant reserve is
+# for a generated output filename, collision suffix, and temporary suffix.
+WINDOWS_PORTABLE_PATH_LIMIT = 240
+MAX_FOLDER_COMPONENT_UNITS = 80
+PROJECT_CHILD_RESERVE_UNITS = 120
+_WINDOWS_INVALID_COMPONENT_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 # Inert default slots added now (G1.33 decision 3): wired as the model-profile,
 # style, and persona sub-steps land. ``private`` and the profile are honored
@@ -89,19 +115,228 @@ class ProjectMetaError(Exception):
     pass
 
 
+class NexusValidationError(ValueError):
+    pass
+
+
+class ProjectStorageError(ProjectMetaError):
+    pass
+
+
 def _pointer_path(nexus: str, pointer_dir: Path | None = None) -> Path:
     return (pointer_dir or POINTER_DIR) / f"{nexus}.json"
 
 
+def validate_nexus(value: Any) -> str:
+    """Validate a newly declared nexus and return it unchanged."""
+    if not isinstance(value, str) or not value:
+        raise NexusValidationError("nexus must be a non-empty string")
+    if len(value) > MAX_NEXUS_LENGTH:
+        raise NexusValidationError(
+            f"nexus must be at most {MAX_NEXUS_LENGTH} characters; got {len(value)}"
+        )
+    if not NEXUS_RE.fullmatch(value):
+        raise NexusValidationError(
+            "nexus must use lowercase letters, digits, hyphens, or underscores "
+            "and start with a letter or digit"
+        )
+    if value in RESERVED_NEXUS:
+        raise NexusValidationError(f"{value!r} is reserved")
+    return value
+
+
+def validate_existing_nexus_source(value: Any) -> str:
+    """Validate an existing pointer name for remediation.
+
+    Old Mac installations may already contain an overlength or DOS-device
+    pointer.  It must remain renameable before Windows sync, while traversal
+    and the two synthetic-default sentinels stay forbidden.
+    """
+    if not isinstance(value, str) or not value or not NEXUS_RE.fullmatch(value):
+        raise NexusValidationError("existing nexus is not a path-safe lowercase slug")
+    if value in {DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS}:
+        raise NexusValidationError(f"{value!r} is reserved and cannot be renamed")
+    return value
+
+
+def is_valid_nexus(value: Any) -> bool:
+    try:
+        validate_nexus(value)
+        return True
+    except NexusValidationError:
+        return False
+
+
 def slugify_nexus(name: str) -> str:
     """Derive a lowercase kebab-case nexus slug from a display name."""
-    return re.sub(r"[^a-z0-9]+", "-", (name or "").strip().lower()).strip("-")
+    slug = re.sub(r"[^a-z0-9]+", "-", (name or "").strip().lower()).strip("-")
+    return slug[:MAX_NEXUS_LENGTH].rstrip("-_")
 
 
-def _safe_folder_name(name: str) -> str:
-    """Human-readable, filesystem-safe immutable project folder name."""
+def _legacy_folder_identity(name: str) -> str:
+    """Frozen PR-227 folder derivation, used only when identity is absent."""
     cleaned = re.sub(r"[\\/]+", " ", (name or "").strip()).strip()
     return cleaned if cleaned and cleaned not in (".", "..") else "Untitled"
+
+
+def _utf16_units(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
+
+
+def _truncate_utf16(value: str, limit: int) -> str:
+    if limit <= 0:
+        return ""
+    out: list[str] = []
+    used = 0
+    for char in value:
+        width = _utf16_units(char)
+        if used + width > limit:
+            break
+        out.append(char)
+        used += width
+    return "".join(out)
+
+
+def _folder_component_budget(vault_root: Path) -> int:
+    root = str(Path(vault_root).resolve()).rstrip("/\\")
+    project_prefix = root + "\\Projects\\"
+    matrix_prefix = root + r"\Matrix\Project Matrix "
+    project_budget = (
+        WINDOWS_PORTABLE_PATH_LIMIT
+        - _utf16_units(project_prefix)
+        - 1
+        - PROJECT_CHILD_RESERVE_UNITS
+    )
+    matrix_budget = (
+        WINDOWS_PORTABLE_PATH_LIMIT
+        - _utf16_units(matrix_prefix)
+        - _utf16_units(".md")
+    )
+    return min(MAX_FOLDER_COMPONENT_UNITS, project_budget, matrix_budget)
+
+
+def _windows_device_component(value: str) -> bool:
+    stem = value.rstrip(" .").split(".", 1)[0].casefold()
+    return stem in WINDOWS_DEVICE_NEXUSES
+
+
+def _portable_collision_key(value: str) -> str:
+    """Conservative equality key for Windows/cloud-synced components."""
+    return unicodedata.normalize("NFC", value).rstrip(" .").casefold()
+
+
+def _folder_identity_error(value: Any, *, vault_root: Path) -> str | None:
+    if not isinstance(value, str) or not value:
+        return "folder_name must be a non-empty string"
+    if unicodedata.normalize("NFC", value) != value:
+        return "folder_name is not Unicode NFC-normalized"
+    if _WINDOWS_INVALID_COMPONENT_RE.search(value):
+        return "folder_name contains a character Windows does not allow"
+    if value in (".", "..") or value.endswith((" ", ".")):
+        return "folder_name is not a portable path component"
+    if _windows_device_component(value):
+        return "folder_name uses a reserved Windows device name"
+    budget = _folder_component_budget(vault_root)
+    if budget < 1:
+        return "vault path is too deep for a portable project folder"
+    if _utf16_units(value) > budget:
+        return f"folder_name exceeds the {budget}-UTF-16-unit path budget"
+    return None
+
+
+def validate_folder_identity(value: Any, *, vault_root: Path | None = None) -> str:
+    """Validate a persisted folder identity without changing it."""
+    root = Path(vault_root or _default_vault_projects_dir().parent)
+    error = _folder_identity_error(value, vault_root=root)
+    if error:
+        raise ProjectStorageError(error)
+    return value
+
+
+def _pointer_folder_identity(nexus: str, data: dict[str, Any]) -> Any:
+    if "folder_name" in data:
+        return data.get("folder_name")
+    raw_name = data.get("name")
+    return _legacy_folder_identity(raw_name if isinstance(raw_name, str) else nexus)
+
+
+def _occupied_folder_names(
+    pointer_dir: Path, vault_projects_dir: Path, *, exclude_nexus: str | None = None,
+) -> set[str]:
+    occupied: set[str] = set()
+    if pointer_dir.is_dir():
+        for pf in pointer_dir.glob("*.json"):
+            if exclude_nexus is not None and pf.stem == exclude_nexus:
+                continue
+            try:
+                data = json.loads(pf.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(data, dict) or not pointer_has_container_metadata(data):
+                continue
+            folder = _pointer_folder_identity(pf.stem, data)
+            if isinstance(folder, str):
+                occupied.add(_portable_collision_key(folder))
+    if vault_projects_dir.is_dir():
+        try:
+            occupied.update(
+                _portable_collision_key(p.name)
+                for p in vault_projects_dir.iterdir()
+            )
+        except OSError:
+            pass
+    return occupied
+
+
+def _portable_folder_base(display_name: str) -> str:
+    value = unicodedata.normalize("NFC", display_name or "")
+    value = _WINDOWS_INVALID_COMPONENT_RE.sub(" ", value)
+    value = re.sub(r"\s+", " ", value).strip().rstrip(" .")
+    if not value or value in (".", ".."):
+        value = "Untitled"
+    if _windows_device_component(value):
+        value = f"_{value}"
+    return value
+
+
+def allocate_folder_name(
+    display_name: str,
+    nexus: str,
+    *,
+    pointer_dir: Path | None = None,
+    vault_projects_dir: Path | None = None,
+    exclude_nexus: str | None = None,
+) -> str:
+    """Allocate one new, immutable, case-insensitively unique folder name."""
+    try:
+        validate_nexus(nexus)
+    except NexusValidationError as exc:
+        raise ProjectStorageError(str(exc)) from exc
+    pdir = Path(pointer_dir or POINTER_DIR)
+    projects = Path(vault_projects_dir or _default_vault_projects_dir())
+    budget = _folder_component_budget(projects.parent)
+    if budget < 8:
+        raise ProjectStorageError("vault path is too deep for a portable project folder")
+    base = _portable_folder_base(display_name)
+    base = _truncate_utf16(base, budget).rstrip(" .") or "Untitled"
+    occupied = _occupied_folder_names(
+        pdir, projects, exclude_nexus=exclude_nexus,
+    )
+    if _portable_collision_key(base) not in occupied:
+        return base
+
+    # Keep the suffix bounded even when the nexus itself uses all 64 chars.
+    # The digest is stable and still derived from the logical identity.
+    suffix = " -- " + hashlib.sha256(nexus.encode("ascii")).hexdigest()[:8]
+    prefix = _truncate_utf16(base, budget - _utf16_units(suffix)).rstrip(" .")
+    candidate = (prefix or "Project") + suffix
+    serial = 2
+    while _portable_collision_key(candidate) in occupied:
+        numbered = f"{suffix}-{serial}"
+        prefix = _truncate_utf16(base, budget - _utf16_units(numbered)).rstrip(" .")
+        candidate = (prefix or "Project") + numbered
+        serial += 1
+    return candidate
 
 
 def default_project_meta() -> dict[str, Any]:
@@ -126,10 +361,10 @@ def general_meta() -> dict[str, Any]:
 
 
 def _normalize_meta(nexus: str, data: dict) -> dict[str, Any]:
-    expanded = dict(data)
-    _expand_pointer_compat(nexus, expanded, force=False)
-    legacy_name = expanded.get("name")
-    display_name = expanded.get("display_name")
+    """Project the public metadata shape without writing or sanitizing state."""
+    legacy_name = data.get("name")
+    display_name = data.get("display_name")
+    folder_name = _pointer_folder_identity(nexus, data)
     status = data.get("status")
     meta: dict[str, Any] = {
         "nexus": nexus,
@@ -145,11 +380,9 @@ def _normalize_meta(nexus: str, data: dict) -> dict[str, Any]:
             if isinstance(display_name, str) and display_name.strip()
             else (legacy_name.strip() if isinstance(legacy_name, str) and legacy_name.strip() else nexus)
         ),
-        "folder_name": _safe_folder_name(
-            expanded.get("folder_name")
-            if isinstance(expanded.get("folder_name"), str) and expanded.get("folder_name").strip()
-            else (legacy_name if isinstance(legacy_name, str) and legacy_name.strip() else nexus)
-        ),
+        # A present value is an opaque on-disk identity.  It may need an
+        # explicit Windows migration, but a read must never mutate it.
+        "folder_name": folder_name,
         "status": status if status in PROJECT_STATUSES else "active",
         "is_default": False,
         "is_plugin": bool(data.get("root")),
@@ -194,9 +427,14 @@ def _expand_pointer_compat(nexus: str, data: dict[str, Any], *, force: bool) -> 
     has_raw_name = isinstance(raw_name, str) and bool(raw_name.strip())
     raw_name = raw_name.strip() if has_raw_name else nexus
 
-    raw_folder = data.get("folder_name")
-    has_folder = isinstance(raw_folder, str) and bool(raw_folder.strip())
-    folder_name = _safe_folder_name(raw_folder if has_folder else raw_name)
+    # A present folder_name is already a physical identity.  Never pass it
+    # through the allocator/sanitizer: doing so would repoint a project during
+    # an ordinary read or metadata update.
+    folder_name = (
+        data.get("folder_name")
+        if "folder_name" in data
+        else _legacy_folder_identity(raw_name)
+    )
 
     raw_display = data.get("display_name")
     has_display = isinstance(raw_display, str) and bool(raw_display.strip())
@@ -225,22 +463,10 @@ def read_project_meta(nexus: str, pointer_dir: Path | None = None) -> dict[str, 
         return None
     if not isinstance(data, dict):
         return None
-    expanded = dict(data)
-    if _expand_pointer_compat(nexus, expanded, force=False):
-        # Best-effort lazy expansion covers import/WSGI contexts that do not run
-        # the normal server startup migration. Reread under the shared lock so a
-        # concurrent plugin registration or metadata update cannot be replaced.
-        with _lock:
-            try:
-                with _rp.locked_file(pf):
-                    current = json.loads(pf.read_text(encoding="utf-8"))
-                    if isinstance(current, dict):
-                        if _expand_pointer_compat(nexus, current, force=False):
-                            _write_pointer(nexus, current, pointer_dir)
-                        expanded = current
-            except (OSError, TimeoutError, json.JSONDecodeError):
-                pass
-    return _normalize_meta(nexus, expanded)
+    # Reads are deliberately pure.  Additive old/new-reader fields are written
+    # only by the explicit startup schema migration below; a read never changes
+    # a persisted physical identity.
+    return _normalize_meta(nexus, data)
 
 
 def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
@@ -255,7 +481,9 @@ def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
     if pdir.is_dir():
         for pf in pdir.glob("*.json"):
             nexus = pf.stem
-            if not _NEXUS_RE.match(nexus):
+            try:
+                validate_existing_nexus_source(nexus)
+            except NexusValidationError:
                 continue
             if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
                 continue
@@ -307,7 +535,9 @@ def migrate_project_folder_names(pointer_dir: Path | None = None) -> int:
     with _lock:
         for pf in sorted(pdir.glob("*.json")):
             nexus = pf.stem
-            if not _NEXUS_RE.match(nexus):
+            try:
+                validate_existing_nexus_source(nexus)
+            except NexusValidationError:
                 continue
             if canonicalize_project_nexus(nexus) == DEFAULT_NEXUS:
                 continue
@@ -325,7 +555,12 @@ def migrate_project_folder_names(pointer_dir: Path | None = None) -> int:
     return migrated
 
 
-def create_project(name: str, pointer_dir: Path | None = None) -> dict[str, Any]:
+def create_project(
+    name: str,
+    pointer_dir: Path | None = None,
+    *,
+    vault_projects_dir: Path | None = None,
+) -> dict[str, Any]:
     """Create a container project record from a display name.
 
     Derives a kebab nexus from the name, refuses reserved/colliding nexuses,
@@ -333,10 +568,12 @@ def create_project(name: str, pointer_dir: Path | None = None) -> dict[str, Any]
     creation flow (a later sub-step), not here — this is the record only.
     """
     nexus = slugify_nexus(name)
-    if not nexus or not _NEXUS_RE.match(nexus):
-        raise ProjectMetaError(f"could not derive a valid nexus from name {name!r}")
-    if nexus in RESERVED_NEXUS:
-        raise ProjectMetaError(f"{nexus!r} is reserved")
+    try:
+        validate_nexus(nexus)
+    except NexusValidationError as exc:
+        raise ProjectMetaError(
+            f"could not derive a valid nexus from name {name!r}: {exc}"
+        ) from exc
     with _lock:
         pf = _pointer_path(nexus, pointer_dir)
         with _rp.locked_file(pf):
@@ -344,7 +581,12 @@ def create_project(name: str, pointer_dir: Path | None = None) -> dict[str, Any]
                 raise ProjectMetaError(f"a project named {nexus!r} already exists")
             now = datetime.now().isoformat(timespec="seconds")
             display_name = (name or nexus).strip()
-            folder_name = _safe_folder_name(display_name)
+            folder_name = allocate_folder_name(
+                display_name,
+                nexus,
+                pointer_dir=pointer_dir,
+                vault_projects_dir=vault_projects_dir,
+            )
             data = {
                 "nexus": nexus,
                 # Legacy readers derive the folder from name. Keep it frozen;
@@ -378,7 +620,21 @@ def _update_pointer(nexus: str, mutate, pointer_dir: Path | None = None) -> dict
                 if not isinstance(data, dict):
                     return None
                 data.setdefault("nexus", nexus)
-                _expand_pointer_compat(nexus, data, force=True)
+                if data.get("root") and not pointer_has_container_metadata(data):
+                    # First container mutation of a pure plugin pointer is the
+                    # point at which it receives a physical identity.  Allocate
+                    # it under current policy rather than freezing a new legacy
+                    # identity through the compatibility path.
+                    folder_name = allocate_folder_name(
+                        nexus, nexus, pointer_dir=pointer_dir,
+                    )
+                    data.update({
+                        "name": folder_name,
+                        "display_name": nexus,
+                        "folder_name": folder_name,
+                    })
+                else:
+                    _expand_pointer_compat(nexus, data, force=True)
                 mutate(data)
                 _write_pointer(nexus, data, pointer_dir)
         except (OSError, TimeoutError):
@@ -438,16 +694,45 @@ def update_project_meta(
 # ---------------------------------------------------------------------------
 
 DEFAULT_VAULT_PROJECTS_DIR = _rp.VAULT / "Projects"
+_INITIAL_DEFAULT_VAULT_PROJECTS_DIR = DEFAULT_VAULT_PROJECTS_DIR
+
+
+def _default_vault_projects_dir() -> Path:
+    """Resolve the vault at call time while preserving the test override hook."""
+    configured = Path(DEFAULT_VAULT_PROJECTS_DIR)
+    if configured != _INITIAL_DEFAULT_VAULT_PROJECTS_DIR:
+        return configured
+    accessor = getattr(_rp, "vault_dir", None)
+    return (Path(accessor()) if callable(accessor) else _rp.VAULT) / "Projects"
+
+
+def project_folder_path(
+    folder_name: str, vault_projects_dir: Path | None = None,
+) -> Path:
+    """Return the exact, validated path for one persisted folder identity."""
+    base = Path(vault_projects_dir or _default_vault_projects_dir())
+    identity = validate_folder_identity(folder_name, vault_root=base.parent)
+    candidate = base / identity
+    try:
+        candidate.resolve(strict=False).relative_to(base.resolve(strict=False))
+    except ValueError as exc:  # defense in depth against platform path quirks
+        raise ProjectStorageError("folder_name escapes the Projects directory") from exc
+    return candidate
 
 
 def ensure_project_folder(name: str, vault_projects_dir: Path | None = None) -> Path | None:
     """Best-effort: create ``<vault>/Projects/<name>/`` so a project's outputs
     don't pile up in the vault root. Returns the path, or None if creation
-    failed (e.g. the server lacks Full-Disk-Access to ~/Documents) — never
-    raises, so project creation is not blocked by folder creation."""
-    base = vault_projects_dir or DEFAULT_VAULT_PROJECTS_DIR
+    failed (e.g. the server lacks Full-Disk-Access to Documents). An invalid
+    persisted identity raises ``ProjectStorageError`` so callers can surface a
+    migration-required state instead of silently choosing another folder."""
+    folder = project_folder_path(name, vault_projects_dir)
     try:
-        folder = Path(base) / _safe_folder_name(name)
+        # A missing vault means storage is unavailable (for example cloud Ora),
+        # not permission to manufacture a new directory tree at a guessed path.
+        # ``Projects`` itself may be created inside an existing vault.
+        if not folder.parent.parent.is_dir():
+            return None
         folder.mkdir(parents=True, exist_ok=True)
         return folder
     except OSError:
@@ -474,9 +759,13 @@ def list_project_files(
     the root would incorrectly absorb every real project's files and the rest
     of the vault. Never raises.
     """
-    projects_base = Path(vault_projects_dir or DEFAULT_VAULT_PROJECTS_DIR)
+    projects_base = Path(vault_projects_dir or _default_vault_projects_dir())
     is_vault_root = name is None
-    base = projects_base.parent if is_vault_root else projects_base / _safe_folder_name(name)
+    base = (
+        projects_base.parent
+        if is_vault_root
+        else project_folder_path(name, projects_base)
+    )
     if not base.is_dir():
         return {
             "exists": False,
@@ -518,15 +807,547 @@ def list_project_files(
     }
 
 
+# ---------------------------------------------------------------------------
+# Explicit Windows storage migration.  Planning is pure and execution requires
+# an affirmative confirmation; this is never called from import/read/startup.
+# ---------------------------------------------------------------------------
+
+def _pointer_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _migration_source_path(folder_name: Any, projects_dir: Path) -> Path:
+    """Join a legacy Mac component without applying Windows transformations."""
+    if (
+        not isinstance(folder_name, str)
+        or not folder_name
+        or folder_name in (".", "..")
+        or "/" in folder_name
+        or "\\" in folder_name
+        or Path(folder_name).is_absolute()
+    ):
+        raise ProjectStorageError("legacy folder identity is not path-confined")
+    return projects_dir / folder_name
+
+
+def _matrix_path_error(path: Path, *, vault_root: Path) -> str | None:
+    """Return why an existing Matrix path cannot survive Windows sync."""
+    matrix_dir = (vault_root / "Matrix").resolve(strict=False)
+    resolved = path.resolve(strict=False)
+    if resolved.parent != matrix_dir:
+        return "Matrix file is outside the vault Matrix directory"
+    name = path.name
+    if unicodedata.normalize("NFC", name) != name:
+        return "Matrix filename is not Unicode NFC-normalized"
+    if _WINDOWS_INVALID_COMPONENT_RE.search(name):
+        return "Matrix filename contains a character Windows does not allow"
+    if name in (".", "..") or name.endswith((" ", ".")):
+        return "Matrix filename is not a portable path component"
+    if _windows_device_component(name):
+        return "Matrix filename uses a reserved Windows device name"
+    if _utf16_units(str(resolved)) > WINDOWS_PORTABLE_PATH_LIMIT:
+        return "Matrix path exceeds the portable Windows path budget"
+    return None
+
+
+def _resolve_matrix_for_migration(nexus: str, vault_root: Path) -> Path | None:
+    """Resolve by frontmatter through operation_matrix's public API."""
+    try:
+        from orchestrator import operation_matrix
+    except ImportError:  # pragma: no cover - direct orchestrator PYTHONPATH
+        import operation_matrix  # type: ignore
+    # Passing no folder identity deliberately bypasses convention-name guessing
+    # and resolves solely from canonical frontmatter nexus.
+    return operation_matrix.resolve_matrix_path(nexus, None, vault=vault_root)
+
+
+def _same_existing_path(left: Path, right: Path) -> bool:
+    if left == right:
+        return True
+    if not left.exists() or not right.exists():
+        return False
+    try:
+        return left.samefile(right)
+    except OSError:
+        return False
+
+
+def plan_windows_project_storage_migration(
+    *,
+    pointer_dir: Path | None = None,
+    vault_projects_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Report physical project folders that require a Windows-safe rename.
+
+    This function performs no writes.  Malformed pointers, invalid source
+    nexuses, missing folders, and ambiguous case-insensitive identities are
+    reported rather than guessed at.
+    """
+    pdir = Path(pointer_dir or POINTER_DIR)
+    projects = Path(vault_projects_dir or _default_vault_projects_dir())
+    records: list[tuple[str, Path, dict[str, Any], Any]] = []
+    scan_blocked: list[dict[str, Any]] = []
+    if pdir.is_dir():
+        for pf in sorted(pdir.glob("*.json")):
+            nexus = pf.stem
+            if nexus in {DEFAULT_NEXUS, LEGACY_DEFAULT_NEXUS}:
+                continue
+            try:
+                data = json.loads(pf.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                scan_blocked.append({
+                    "nexus": nexus,
+                    "folder_name": None,
+                    "reasons": [f"could not read project pointer: {exc}"],
+                })
+                continue
+            if not isinstance(data, dict):
+                scan_blocked.append({
+                    "nexus": nexus,
+                    "folder_name": None,
+                    "reasons": ["project pointer is not a JSON object"],
+                })
+                continue
+            if not pointer_has_container_metadata(data):
+                continue
+            records.append((nexus, pf, data, _pointer_folder_identity(nexus, data)))
+
+    identities: dict[str, list[str]] = {}
+    for nexus, _, _, folder in records:
+        if isinstance(folder, str):
+            identities.setdefault(_portable_collision_key(folder), []).append(nexus)
+
+    changes: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = list(scan_blocked)
+    for nexus, pf, data, folder in records:
+        reasons: list[str] = []
+        try:
+            validate_nexus(nexus)
+        except NexusValidationError as exc:
+            reasons.append(f"nexus requires rename first: {exc}")
+
+        folder_error = _folder_identity_error(folder, vault_root=projects.parent)
+        colliders = (
+            identities.get(_portable_collision_key(folder), [])
+            if isinstance(folder, str)
+            else []
+        )
+        duplicate = len(colliders) > 1
+        if duplicate:
+            # A same-spelling identity points multiple projects at one folder;
+            # ownership cannot be inferred.  Distinct case-only spellings on a
+            # case-sensitive source filesystem are safe to plan after the first.
+            spellings = {
+                str(other_folder)
+                for nx, _, _, other_folder in records
+                if nx in colliders
+            }
+            if len(spellings) == 1:
+                reasons.append(
+                    "multiple projects share this exact folder identity: "
+                    + ", ".join(colliders)
+                )
+            elif nexus != sorted(colliders)[0]:
+                folder_error = folder_error or "case-insensitive folder collision"
+
+        matrix_path: Path | None = None
+        matrix_error: str | None = None
+        try:
+            matrix_path = _resolve_matrix_for_migration(nexus, projects.parent)
+            if matrix_path is not None:
+                matrix_error = _matrix_path_error(
+                    matrix_path, vault_root=projects.parent,
+                )
+        except Exception as exc:
+            reasons.append(f"Matrix resolution is ambiguous or unreadable: {exc}")
+
+        if reasons:
+            blocked.append({
+                "nexus": nexus,
+                "folder_name": folder,
+                "reasons": [
+                    *([folder_error] if folder_error else []),
+                    *([matrix_error] if matrix_error else []),
+                    *reasons,
+                ],
+            })
+            continue
+
+        if not folder_error and not matrix_error:
+            continue
+
+        folder_move = bool(folder_error)
+        matrix_move = bool(matrix_error and matrix_path is not None)
+        try:
+            if folder_move:
+                source = _migration_source_path(folder, projects)
+                target_name = allocate_folder_name(
+                    str(data.get("display_name") or data.get("name") or nexus),
+                    nexus,
+                    pointer_dir=pdir,
+                    vault_projects_dir=projects,
+                    exclude_nexus=nexus,
+                )
+                target = projects / target_name
+            else:
+                source = target = _migration_source_path(folder, projects)
+                target_name = str(folder)
+        except ProjectStorageError as exc:
+            blocked.append({
+                "nexus": nexus,
+                "folder_name": folder,
+                "reasons": [
+                    *([folder_error] if folder_error else []),
+                    *([matrix_error] if matrix_error else []),
+                    str(exc),
+                ],
+            })
+            continue
+
+        matrix_target: Path | None = None
+        if matrix_move:
+            matrix_target = projects.parent / "Matrix" / f"Project Matrix {target_name}.md"
+            target_error = _matrix_path_error(
+                matrix_target, vault_root=projects.parent,
+            )
+            if target_error:
+                blocked.append({
+                    "nexus": nexus,
+                    "folder_name": folder,
+                    "reasons": [matrix_error, f"proposed Matrix target: {target_error}"],
+                })
+                continue
+            if matrix_target.exists() and not _same_existing_path(matrix_path, matrix_target):
+                blocked.append({
+                    "nexus": nexus,
+                    "folder_name": folder,
+                    "reasons": [
+                        matrix_error,
+                        f"proposed Matrix target already exists: {matrix_target}",
+                    ],
+                })
+                continue
+
+        entry = {
+            "nexus": nexus,
+            "reasons": [
+                *([folder_error] if folder_error else []),
+                *([matrix_error] if matrix_error else []),
+            ],
+            "old_folder_name": folder,
+            "new_folder_name": target_name,
+            "pointer_path": str(pf),
+            "pointer_sha256": _pointer_digest(pf),
+            "folder_move": folder_move,
+            "source_path": str(source) if folder_move else None,
+            "target_path": str(target) if folder_move else None,
+            "matrix_move": matrix_move,
+            "matrix_source_path": str(matrix_path) if matrix_move else None,
+            "matrix_target_path": str(matrix_target) if matrix_move else None,
+            "matrix_sha256": _pointer_digest(matrix_path) if matrix_move else None,
+        }
+        entry_blockers: list[str] = []
+        if folder_move and not source.is_dir():
+            entry_blockers.append("source project folder does not exist")
+        if matrix_move and (matrix_path is None or not matrix_path.is_file()):
+            entry_blockers.append("source Matrix file does not exist")
+        if entry_blockers:
+            blocked.append({
+                "nexus": nexus,
+                "folder_name": folder,
+                "reasons": [*entry["reasons"], *entry_blockers],
+            })
+        else:
+            changes.append(entry)
+
+    body = {
+        "version": 2,
+        "pointer_dir": str(pdir),
+        "vault_projects_dir": str(projects),
+        "changes": changes,
+        "blocked": blocked,
+    }
+    fingerprint = hashlib.sha256(
+        json.dumps(body, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    return {
+        **body,
+        "fingerprint": fingerprint,
+        "has_changes": bool(changes),
+        "can_apply": bool(changes) and not blocked,
+    }
+
+
+def _move_migration_path(source: Path, target: Path, nexus: str) -> None:
+    if source == target:
+        return
+    if _portable_collision_key(source.name) != _portable_collision_key(target.name):
+        os.replace(source, target)
+        return
+    intermediate = source.with_name(
+        f".{source.name}.{nexus}.{os.getpid()}.ora-migration"
+    )
+    if intermediate.exists():
+        raise ProjectStorageError(f"migration staging path already exists: {intermediate}")
+    os.replace(source, intermediate)
+    try:
+        os.replace(intermediate, target)
+    except Exception:
+        os.replace(intermediate, source)
+        raise
+
+
+def apply_windows_project_storage_migration(
+    plan: dict[str, Any], *, confirmed: bool = False,
+) -> dict[str, Any]:
+    """Apply a reviewed migration plan, rolling back a failed pointer write."""
+    if not confirmed:
+        raise ProjectStorageError("migration requires explicit confirmation")
+    if not isinstance(plan, dict) or plan.get("version") != 2:
+        raise ProjectStorageError("unsupported or malformed migration plan")
+    if plan.get("blocked"):
+        raise ProjectStorageError("migration plan has blockers and cannot be applied")
+    changes = plan.get("changes")
+    if not isinstance(changes, list) or not changes:
+        return {"ok": True, "applied": [], "errors": []}
+
+    # Validate the plan fingerprint and every source before the first move.
+    signed_body = {
+        key: plan.get(key)
+        for key in ("version", "pointer_dir", "vault_projects_dir", "changes", "blocked")
+    }
+    expected_fingerprint = hashlib.sha256(
+        json.dumps(signed_body, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    if plan.get("fingerprint") != expected_fingerprint:
+        raise ProjectStorageError("migration plan fingerprint does not match its contents")
+    for entry in changes:
+        pf = Path(entry["pointer_path"])
+        if not pf.is_file() or _pointer_digest(pf) != entry.get("pointer_sha256"):
+            raise ProjectStorageError(f"project pointer changed since planning: {pf}")
+        if entry.get("folder_move"):
+            source = Path(entry["source_path"])
+            target = Path(entry["target_path"])
+            if not source.is_dir():
+                raise ProjectStorageError(f"source project folder is missing: {source}")
+            if target.exists() and not _same_existing_path(source, target):
+                raise ProjectStorageError(f"migration target now exists: {target}")
+        if entry.get("matrix_move"):
+            matrix_source = Path(entry["matrix_source_path"])
+            matrix_target = Path(entry["matrix_target_path"])
+            if (
+                not matrix_source.is_file()
+                or _pointer_digest(matrix_source) != entry.get("matrix_sha256")
+            ):
+                raise ProjectStorageError(
+                    f"Matrix file changed or disappeared since planning: {matrix_source}"
+                )
+            if matrix_target.exists() and not _same_existing_path(
+                matrix_source, matrix_target,
+            ):
+                raise ProjectStorageError(
+                    f"Matrix migration target now exists: {matrix_target}"
+                )
+
+    applied: list[str] = []
+    errors: list[str] = []
+    pdir = Path(plan["pointer_dir"])
+    for entry in changes:
+        nexus = entry["nexus"]
+        pf = Path(entry["pointer_path"])
+        source = Path(entry["source_path"]) if entry.get("folder_move") else None
+        target = Path(entry["target_path"]) if entry.get("folder_move") else None
+        matrix_source = (
+            Path(entry["matrix_source_path"]) if entry.get("matrix_move") else None
+        )
+        matrix_target = (
+            Path(entry["matrix_target_path"]) if entry.get("matrix_move") else None
+        )
+        folder_moved = False
+        matrix_moved = False
+        try:
+            with _lock:
+                with _rp.locked_file(pf):
+                    if _pointer_digest(pf) != entry["pointer_sha256"]:
+                        raise ProjectStorageError(
+                            f"project pointer changed during migration: {pf}"
+                        )
+                    data = json.loads(pf.read_text(encoding="utf-8"))
+                    if not isinstance(data, dict):
+                        raise ProjectStorageError(f"project pointer is not an object: {pf}")
+                    if matrix_source is not None:
+                        if _pointer_digest(matrix_source) != entry["matrix_sha256"]:
+                            raise ProjectStorageError(
+                                f"Matrix file changed during migration: {matrix_source}"
+                            )
+                    if source is not None and target is not None:
+                        _move_migration_path(source, target, nexus)
+                        folder_moved = source != target
+                    if matrix_source is not None and matrix_target is not None:
+                        _move_migration_path(matrix_source, matrix_target, nexus)
+                        matrix_moved = matrix_source != matrix_target
+                    if entry.get("folder_move"):
+                        data["folder_name"] = entry["new_folder_name"]
+                        # Rollback readers derive Projects/<name>; keep it pinned
+                        # to the same migrated physical identity.
+                        data["name"] = entry["new_folder_name"]
+                        _write_pointer(nexus, data, pdir)
+            applied.append(nexus)
+        except Exception as exc:
+            rollback_errors: list[str] = []
+            if (
+                matrix_moved
+                and matrix_target is not None
+                and matrix_source is not None
+                and matrix_target.exists()
+                and not matrix_source.exists()
+            ):
+                try:
+                    _move_migration_path(matrix_target, matrix_source, nexus)
+                except Exception as rb_exc:  # preserve both failures for repair
+                    rollback_errors.append(f"Matrix rollback failed: {rb_exc}")
+            if (
+                folder_moved
+                and target is not None
+                and source is not None
+                and target.exists()
+                and not source.exists()
+            ):
+                try:
+                    _move_migration_path(target, source, nexus)
+                except Exception as rb_exc:
+                    rollback_errors.append(f"folder rollback failed: {rb_exc}")
+            message = f"{nexus}: {exc}"
+            if rollback_errors:
+                message += "; " + "; ".join(rollback_errors)
+            errors.append(message)
+            break
+    return {"ok": not errors, "applied": applied, "errors": errors}
+
+
+def _migration_cli(argv: list[str] | None = None) -> int:
+    """Expose report-first Windows storage remediation as an explicit CLI.
+
+    ``report`` only scans and prints JSON.  ``apply`` either consumes that
+    saved JSON verbatim or regenerates the current report for an exact
+    fingerprint, and requires the operator to repeat the reviewed fingerprint
+    through an intentionally explicit confirmation flag.
+    """
+    parser = argparse.ArgumentParser(
+        prog="python -m orchestrator.project_meta",
+        description="Inspect or explicitly apply Windows project-storage migration.",
+    )
+    commands = parser.add_subparsers(dest="command")
+    migration = commands.add_parser("windows-storage-migration")
+    actions = migration.add_subparsers(dest="action")
+
+    report = actions.add_parser(
+        "report", help="print a write-free migration report as JSON"
+    )
+    report.add_argument("--pointer-dir", type=Path)
+    report.add_argument("--vault-projects-dir", type=Path)
+
+    apply_cmd = actions.add_parser(
+        "apply", help="apply a saved or exact-fingerprint migration report"
+    )
+    source = apply_cmd.add_mutually_exclusive_group()
+    source.add_argument(
+        "--plan", type=Path, help="saved JSON emitted by the report command"
+    )
+    source.add_argument(
+        "--fingerprint",
+        help="exact fingerprint of the current report (which is regenerated)",
+    )
+    apply_cmd.add_argument("--pointer-dir", type=Path)
+    apply_cmd.add_argument("--vault-projects-dir", type=Path)
+    apply_cmd.add_argument(
+        "--confirm-apply-fingerprint",
+        help="repeat the reviewed report fingerprint to authorize filesystem writes",
+    )
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command != "windows-storage-migration" or args.action not in {
+            "report", "apply",
+        }:
+            raise ProjectStorageError(
+                "choose 'windows-storage-migration report' or "
+                "'windows-storage-migration apply'"
+            )
+
+        if args.action == "report":
+            result = plan_windows_project_storage_migration(
+                pointer_dir=args.pointer_dir,
+                vault_projects_dir=args.vault_projects_dir,
+            )
+            print(json.dumps(result, sort_keys=True, ensure_ascii=False))
+            return 0
+
+        if bool(args.plan) == bool(args.fingerprint):
+            raise ProjectStorageError(
+                "apply requires exactly one of --plan or --fingerprint"
+            )
+        if args.plan:
+            try:
+                loaded = json.loads(args.plan.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ProjectStorageError(
+                    f"could not read migration plan {args.plan}: {exc}"
+                ) from exc
+            if not isinstance(loaded, dict):
+                raise ProjectStorageError("saved migration plan is not a JSON object")
+            plan = loaded
+        else:
+            plan = plan_windows_project_storage_migration(
+                pointer_dir=args.pointer_dir,
+                vault_projects_dir=args.vault_projects_dir,
+            )
+            if args.fingerprint != plan.get("fingerprint"):
+                raise ProjectStorageError(
+                    "current migration report does not match --fingerprint; "
+                    "generate and review a fresh report"
+                )
+
+        reviewed_fingerprint = plan.get("fingerprint")
+        if (
+            not isinstance(reviewed_fingerprint, str)
+            or args.confirm_apply_fingerprint != reviewed_fingerprint
+        ):
+            raise ProjectStorageError(
+                "--confirm-apply-fingerprint must exactly match the reviewed "
+                "migration report fingerprint"
+            )
+        result = apply_windows_project_storage_migration(plan, confirmed=True)
+        print(json.dumps(result, sort_keys=True, ensure_ascii=False))
+        return 0 if result.get("ok") else 1
+    except (ProjectMetaError, NexusValidationError, ValueError) as exc:
+        print(
+            json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False),
+            file=sys.stderr,
+        )
+        return 2
+
+
 __all__ = [
     "POINTER_DIR",
     "DEFAULT_NEXUS",
     "LEGACY_DEFAULT_NEXUS",
     "GENERAL_NEXUS",
+    "MAX_NEXUS_LENGTH",
+    "NEXUS_RE",
+    "WINDOWS_DEVICE_NEXUSES",
+    "RESERVED_NEXUS",
     "PROJECT_STATUSES",
     "DEFAULT_VAULT_PROJECTS_DIR",
     "ProjectMetaError",
+    "NexusValidationError",
+    "ProjectStorageError",
+    "validate_nexus",
+    "validate_existing_nexus_source",
+    "is_valid_nexus",
     "slugify_nexus",
+    "allocate_folder_name",
+    "validate_folder_identity",
     "default_project_meta",
     "general_meta",
     "pointer_has_container_metadata",
@@ -538,5 +1359,12 @@ __all__ = [
     "touch_project",
     "update_project_meta",
     "ensure_project_folder",
+    "project_folder_path",
     "list_project_files",
+    "plan_windows_project_storage_migration",
+    "apply_windows_project_storage_migration",
 ]
+
+
+if __name__ == "__main__":
+    raise SystemExit(_migration_cli())

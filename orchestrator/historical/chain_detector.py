@@ -43,6 +43,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.tools.vault_indexer import (
     extract_key_phrases,
     topic_fingerprint,
@@ -53,7 +54,7 @@ from orchestrator.tools.vault_indexer import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-CHAIN_INDEX_DEFAULT = "/Users/oracle/ora/data/chain-index.json"
+CHAIN_INDEX_DEFAULT = str(_rp.DATA_DIR / "chain-index.json")
 
 # Method 1 — title-keyword sensitivity
 DEFAULT_MIN_SHARED_TITLE_KEYWORDS = 2   # ≥ 2 distinctive keywords in common

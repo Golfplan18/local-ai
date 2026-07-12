@@ -34,15 +34,28 @@ from datetime import datetime, timedelta
 
 import yaml
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-ORA_DIR = os.path.expanduser("~/ora")
-VAULT_PATH = os.path.expanduser("~/Documents/vault")
-DATA_DIR = os.path.join(ORA_DIR, "data")
-LOG_DIR = os.path.join(ORA_DIR, "logs")
+ORA_DIR = _rp.WORKSPACE
+_DEFAULT_VAULT_PATH = _rp.VAULT_STR
+VAULT_PATH = _DEFAULT_VAULT_PATH  # compatibility patch hook
+DATA_DIR = _rp.DATA_DIR_STR
+LOG_DIR = str(_rp.LOGS_DIR)
+
+
+def _vault_path() -> str:
+    """Current canonical vault, unless a test/extension patched the hook."""
+    if VAULT_PATH != _DEFAULT_VAULT_PATH:
+        return VAULT_PATH
+    return str(_rp.vault_dir())
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +124,7 @@ def _parse_yaml_frontmatter(file_path: str) -> dict | None:
 def _scan_vault_notes() -> list[dict]:
     """Scan all markdown files in the vault with their frontmatter."""
     notes = []
-    for root, dirs, files in os.walk(VAULT_PATH):
+    for root, dirs, files in os.walk(_vault_path()):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         for fname in files:
             if not fname.endswith(".md"):
@@ -187,7 +200,7 @@ def task_1_orphan_cleanup(graph=None) -> TaskResult:
         # Collect titles by filename walk only — _scan_vault_notes() parses
         # YAML frontmatter for every file, which this task doesn't need.
         vault_titles_normalized = set()
-        for root, dirs, files in os.walk(VAULT_PATH):
+        for root, dirs, files in os.walk(_vault_path()):
             dirs[:] = [d for d in dirs if not d.startswith(".")
                        and d != "Archive"]
             for fname in files:

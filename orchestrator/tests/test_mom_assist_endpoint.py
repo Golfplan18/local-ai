@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import sys
+import tempfile
 import unittest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,6 +31,18 @@ _GOOD = (
 
 class MomAssistTests(unittest.TestCase):
     def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.vault = pathlib.Path(self._tmp.name)
+        (self.vault / "Matrix").mkdir()
+        self._orig_vault_env = os.environ.get("ORA_VAULT_PATH")
+        os.environ["ORA_VAULT_PATH"] = str(self.vault)
+        from orchestrator import project_meta as pm
+        self._pm = pm
+        self._orig_pointer_dir = pm.POINTER_DIR
+        self._orig_projects_dir = pm.DEFAULT_VAULT_PROJECTS_DIR
+        pm.POINTER_DIR = self.vault / "project-pointers"
+        pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
+        pm.create_project("My Book")
         self.client = server.app.test_client()
         self._orig_call = server._call_small_model_with_system
         self._orig_write = om.write_mom
@@ -40,6 +54,13 @@ class MomAssistTests(unittest.TestCase):
     def tearDown(self):
         server._call_small_model_with_system = self._orig_call
         om.write_mom = self._orig_write
+        self._pm.POINTER_DIR = self._orig_pointer_dir
+        self._pm.DEFAULT_VAULT_PROJECTS_DIR = self._orig_projects_dir
+        if self._orig_vault_env is None:
+            os.environ.pop("ORA_VAULT_PATH", None)
+        else:
+            os.environ["ORA_VAULT_PATH"] = self._orig_vault_env
+        self._tmp.cleanup()
 
     def _stub(self, ret):
         server._call_small_model_with_system = lambda *a, **k: ret
@@ -65,9 +86,13 @@ class MomAssistTests(unittest.TestCase):
         self.assertEqual(called["n"], 0)  # never calls the model
 
     def test_good_draft_parses_and_roundtrips(self):
-        self._stub(_GOOD)
+        prompts = []
+        def _capture(prompt, *args, **kwargs):
+            prompts.append(prompt)
+            return _GOOD
+        server._call_small_model_with_system = _capture
         r = self.client.post("/api/projects/my-book/mom-assist",
-                             json={"name": "My Book", "intent": "a tool"})
+                             json={"name": "Attacker Supplied", "intent": "a tool"})
         self.assertEqual(r.status_code, 200)
         s = json.loads(r.data)["suggestions"]
         self.assertEqual(s["mission"], "Ship a useful tool.")
@@ -75,6 +100,8 @@ class MomAssistTests(unittest.TestCase):
         self.assertEqual(len(s["milestones"]), 2)
         self.assertEqual(s["milestones"][0]["text"], "Draft v1 by Friday")
         self.assertTrue(s["milestones"][1]["done"])
+        self.assertIn("Project name: My Book", prompts[0])
+        self.assertNotIn("Attacker Supplied", prompts[0])
         # milestones_raw is the canonical round-trip of the parsed list.
         self.assertEqual(
             s["milestones_raw"],

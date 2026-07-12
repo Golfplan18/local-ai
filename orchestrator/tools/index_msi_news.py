@@ -35,11 +35,37 @@ import re
 import sys
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.tools.knowledge_index import index_file, strip_markdown_sections
 
-VAULT = os.environ.get("ORA_VAULT") or os.path.expanduser("~/Documents/vault")
-MSI_NEWS = os.path.join(VAULT, "MSI News")
-CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
+# Compatibility patch hooks for callers/tests that historically replaced these
+# module constants. Normal calls resolve the shared roots late so environment
+# changes, Windows Documents redirection, and the legacy ORA_VAULT_PATH alias
+# all select the same storage tree as the rest of Ora.
+_DEFAULT_VAULT = _rp.VAULT_STR
+VAULT = _DEFAULT_VAULT
+_DEFAULT_MSI_NEWS = os.path.join(_DEFAULT_VAULT, "MSI News")
+MSI_NEWS = _DEFAULT_MSI_NEWS
+_DEFAULT_CHROMADB_PATH = _rp.CHROMADB_DIR_STR
+CHROMADB_PATH = _DEFAULT_CHROMADB_PATH
+
+
+def _vault_path() -> str:
+    if VAULT != _DEFAULT_VAULT:
+        return VAULT
+    return str(_rp.vault_dir())
+
+
+def _msi_news_path() -> str:
+    if MSI_NEWS != _DEFAULT_MSI_NEWS:
+        return MSI_NEWS
+    return os.path.join(_vault_path(), "MSI News")
+
+
+def _chromadb_path() -> str:
+    if CHROMADB_PATH != _DEFAULT_CHROMADB_PATH:
+        return CHROMADB_PATH
+    return str(_rp.chromadb_dir())
 
 # Forced Ora-schema metadata for every MSI News article. Single source of
 # truth for the MSI knowledge-RAG identity.
@@ -152,7 +178,7 @@ def msi_body_filter(body: str) -> str:
 def _collection():
     import chromadb
     from orchestrator.embedding import get_or_create_collection
-    client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    client = chromadb.PersistentClient(path=_chromadb_path())
     return get_or_create_collection(client, "knowledge")
 
 
@@ -174,7 +200,7 @@ def index_msi_news(
     """
     col = collection if collection is not None else _collection()
     if paths is None:
-        paths = sorted(glob.glob(os.path.join(MSI_NEWS, "*.md")))
+        paths = sorted(glob.glob(os.path.join(_msi_news_path(), "*.md")))
     stats = {"indexed": 0, "skipped": 0, "errors": 0}
     total = len(paths)
     for i, p in enumerate(paths, 1):

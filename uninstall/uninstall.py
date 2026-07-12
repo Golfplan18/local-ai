@@ -4,9 +4,9 @@
 Removes runtime state created by ``scripts/install.py`` and the day-to-day
 operation of Ora. By design:
 
-  - **NEVER** touches the vault at ``~/Documents/vault/`` — that's the
+  - **NEVER** touches the configured vault — that's the
     canonical persistence layer for the user's content.
-  - Preserves ``~/Documents/conversations/`` by default. Pass
+  - Preserves the configured conversations directory by default. Pass
     ``--include-conversations`` to opt in to deleting them.
   - Preserves downloaded local model files by default (expensive to
     re-download). Pass ``--include-models`` to opt in.
@@ -32,15 +32,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HOME = Path(os.path.expanduser("~"))
-VAULT = HOME / "Documents" / "vault"
-CONVERSATIONS = HOME / "Documents" / "conversations"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import runtime_paths as _rp  # noqa: E402
+
+_ROOTS = _rp.resolve_runtime_roots()
+VAULT = _ROOTS.vault
+CONVERSATIONS = _ROOTS.conversations
 
 # Paths the uninstaller removes by default. These are runtime artifacts
 # only — no source code, no user content.
@@ -208,9 +211,13 @@ def main():
 
     print("Ora uninstall — runtime state removal")
     print(f"Repo root:     {REPO_ROOT}")
-    print(f"Vault:         {VAULT}  (NEVER touched)")
-    print(f"Conversations: {CONVERSATIONS}  ({'WILL DELETE' if args.include_conversations else 'preserved'})")
+    print(f"Documents:     {_ROOTS.documents}  ({_ROOTS.sources['documents']})")
+    print(f"Vault:         {VAULT}  ({_ROOTS.sources['vault']}; NEVER touched)")
+    print(f"Conversations: {CONVERSATIONS}  ({_ROOTS.sources['conversations']}; "
+          f"{'WILL DELETE' if args.include_conversations else 'preserved'})")
     print(f"Models:        {REPO_ROOT / 'models'}  ({'WILL DELETE' if args.include_models else 'preserved'})")
+    for warning in _ROOTS.warnings:
+        print(f"WARNING: {warning}")
     print()
 
     targets = _gather_targets(args.include_models, args.include_conversations)

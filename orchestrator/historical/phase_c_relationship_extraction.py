@@ -32,6 +32,7 @@ from typing import Optional
 
 import yaml
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 
 
@@ -39,10 +40,10 @@ from orchestrator.historical.api_client import AnthropicClient
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_VAULT_ROOT = "/Users/oracle/Documents/vault/Engrams"
-DEFAULT_CHROMADB_PATH = "/Users/oracle/ora/chromadb"
+DEFAULT_VAULT_ROOT = str(_rp.vault_dir() / "Engrams")
+DEFAULT_CHROMADB_PATH = str(_rp.chromadb_dir())
 DEFAULT_DEDUP_COLLECTION = "atomic_dedup"
-DEFAULT_MANIFEST_PATH = "/Users/oracle/ora/data/phase-c-manifest.json"
+DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "phase-c-manifest.json")
 
 # Haiku 4.5 — fast classifier for the relationship typing task.
 RELATION_MODEL = "claude-haiku-4-5"

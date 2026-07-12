@@ -34,10 +34,11 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.project_meta import (
-    RESERVED_NEXUS,
-    _NEXUS_RE,
+    NexusValidationError,
     POINTER_DIR,
     _pointer_path,
+    validate_existing_nexus_source,
+    validate_nexus,
 )
 from orchestrator.operation_matrix import vault_root
 
@@ -210,19 +211,18 @@ def rename_nexus(
     ``dry_run=False`` the cascade is performed atomically per file.
     """
     old = (old or "").strip().lower()
-    new = (new or "").strip().lower()
-    if old in RESERVED_NEXUS:
-        raise NexusRenameError(f"{old!r} is reserved and cannot be renamed")
-    if new in RESERVED_NEXUS:
-        raise NexusRenameError(f"{new!r} is reserved")
-    # Validate BOTH slugs' shape before any path is built from them — guards the
-    # pointer-file path against traversal (defense-in-depth; the HTTP route
-    # already can't carry a slash, but this module is reusable).
-    if not _NEXUS_RE.match(old):
-        raise NexusRenameError(f"{old!r} is not a valid nexus")
-    if not _NEXUS_RE.match(new):
-        raise NexusRenameError(
-            f"{new!r} is not a valid nexus (lowercase letters, digits, - and _)")
+    new = (new or "").strip()
+    try:
+        # The source validator deliberately permits an already-live DOS device
+        # or overlength pointer so a Mac installation can remediate it before
+        # Windows sync.  Every newly declared destination uses strict policy.
+        validate_existing_nexus_source(old)
+    except NexusValidationError as exc:
+        raise NexusRenameError(str(exc)) from exc
+    try:
+        validate_nexus(new)
+    except NexusValidationError as exc:
+        raise NexusRenameError(str(exc)) from exc
     if old == new:
         raise NexusRenameError("old and new nexus are the same")
 
@@ -233,6 +233,12 @@ def rename_nexus(
         raise NexusRenameError(f"no project pointer for {old!r}")
     if new_pointer.exists():
         raise NexusRenameError(f"a project named {new!r} already exists")
+    try:
+        pointer_snapshot = json.loads(old_pointer.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise NexusRenameError(f"could not read project pointer for {old!r}: {exc}") from exc
+    if not isinstance(pointer_snapshot, dict):
+        raise NexusRenameError(f"project pointer for {old!r} is not an object")
 
     vroot = vault or vault_root()
     sroot = Path(sessions_root) if sessions_root else _default_sessions_root()
@@ -250,20 +256,36 @@ def rename_nexus(
         "conversation_count": len(conversations),
         "pointer_renamed": False,
         "active_updated": False,
+        "physical_identity_unchanged": True,
+        "folder_name": pointer_snapshot.get("folder_name"),
+        "legacy_name": pointer_snapshot.get("name"),
         "errors": [],
     }
     if dry_run:
         return report
 
-    # 1) Vault frontmatter.
+    # 1) Vault frontmatter. A Matrix rewrite is load-bearing: changing the
+    # pointer nexus while its Matrix still claims the old nexus would make the
+    # Matrix unresolvable. Keep the old pointer authoritative if that rewrite
+    # fails; the report remains explicit about the partial vault-file work.
+    matrix_dir = vroot / "Matrix"
+    matrix_rewrite_failed = False
     for p in vault_files:
+        is_matrix = p.parent == matrix_dir
         try:
             text = p.read_text(encoding="utf-8")
             rewritten = rewrite_frontmatter_nexus(text, old, new)
             if rewritten is not None:
                 _atomic_write(p, rewritten)
+            elif is_matrix:
+                matrix_rewrite_failed = True
+                report["errors"].append(
+                    f"{p}: Matrix frontmatter no longer claims nexus {old!r}"
+                )
         except OSError as exc:
             report["errors"].append(f"{p}: {exc}")
+            if is_matrix:
+                matrix_rewrite_failed = True
 
     # 2) Conversation memberships.
     from conversation_memory import set_conversation_projects
@@ -275,20 +297,25 @@ def rename_nexus(
             report["errors"].append(f"conversation {cid}: {exc}")
 
     # 3) Project pointer rename (old.json → new.json, internal nexus updated).
-    try:
-        data = json.loads(old_pointer.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            data["nexus"] = new
-        _atomic_write(new_pointer, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-        old_pointer.unlink()
-        report["pointer_renamed"] = True
-    except (OSError, json.JSONDecodeError) as exc:
-        report["errors"].append(f"pointer: {exc}")
+    if matrix_rewrite_failed:
+        report["errors"].append(
+            "pointer: not renamed because a Matrix frontmatter rewrite failed"
+        )
+    else:
+        try:
+            data = json.loads(old_pointer.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                data["nexus"] = new
+            _atomic_write(new_pointer, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+            old_pointer.unlink()
+            report["pointer_renamed"] = True
+        except (OSError, json.JSONDecodeError) as exc:
+            report["errors"].append(f"pointer: {exc}")
 
     # 4) Active-project pointer.
     try:
         from orchestrator.active_project import get_active_project, set_active_project
-        if get_active_project() == old:
+        if report["pointer_renamed"] and get_active_project() == old:
             set_active_project(new)
             report["active_updated"] = True
     except Exception as exc:

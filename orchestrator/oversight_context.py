@@ -41,10 +41,20 @@ except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator.ped_watcher import load_ped_path
     from orchestrator.corpus_watcher import load_workflow_pointer
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-WORKSPACE = os.path.expanduser("~/ora/")
-VAULT = os.path.expanduser("~/Documents/vault/")
-PEF_PATH = os.path.join(VAULT, "Framework — Problem Evolution.md")
+
+WORKSPACE = _rp.WORKSPACE
+VAULT = _rp.VAULT_STR
+PEF_PATH = str(_rp.VAULT / "Framework — Problem Evolution.md")
+
+
+def pef_path() -> str:
+    """Current PEF path, honoring canonical and legacy vault overrides."""
+    return str(_rp.vault_dir() / "Framework — Problem Evolution.md")
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +106,7 @@ class OversightContextBundle:
     claim: str = ""
     decision_log_excerpt: list = field(default_factory=list)
     framework_chain: list = field(default_factory=list)
-    pef_toolkit_reference: str = PEF_PATH
+    pef_toolkit_reference: str = field(default_factory=pef_path)
     load_errors: list = field(default_factory=list)
     matrix_classification: str = ""  # "project" / "operation" / "passion" / "incubator"
     classification_warnings: list = field(default_factory=list)

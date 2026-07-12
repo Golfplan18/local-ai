@@ -29,24 +29,67 @@ vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
 from __future__ import annotations
 
 import os
+import ntpath
 import re
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.operation_matrix import vault_root
 
 # §2.8 LOCKED locations — siblings of ~/Documents/vault, outside the vault.
-EXPORTS_DIR = Path.home() / "Documents" / "Ora Exports"
-RESOURCES_DIR = Path.home() / "Documents" / "Ora Resources"
+_INITIAL_EXPORTS_DIR = _rp.DOCUMENTS / "Ora Exports"
+_INITIAL_RESOURCES_DIR = _rp.DOCUMENTS / "Ora Resources"
+EXPORTS_DIR = _INITIAL_EXPORTS_DIR  # compatibility patch hook
+RESOURCES_DIR = _INITIAL_RESOURCES_DIR  # compatibility patch hook
 
 # Deprecated compatibility constant for out-of-tree callers that explicitly
 # request the former folder. It is intentionally no longer the function
 # default: an omitted ``outputs_subdir`` now means the vault root.
 DEFAULT_OUTPUTS_SUBDIR = "Outputs"
+
+PROJECT_OUTPUT_CHILD_BUDGET_UNITS = 120
+WINDOWS_PORTABLE_PATH_LIMIT = 240
+
+
+class ExportError(Exception):
+    """Base class for explicit export failures."""
+
+
+class ProjectExportIdentityError(ExportError):
+    """A requested project does not have one usable persisted identity."""
+
+
+class ProjectExportNotFoundError(ProjectExportIdentityError):
+    """The requested non-Common project record does not exist."""
+
+
+class ProjectExportMigrationRequiredError(ProjectExportIdentityError):
+    """The requested project's physical identity requires migration."""
+
+
+class ExportPathError(ExportError):
+    """The destination leaves no safe Windows filename budget."""
+
+
+def current_exports_dir() -> Path:
+    """Configured generated-export root, resolved at call time."""
+    if Path(EXPORTS_DIR) != _INITIAL_EXPORTS_DIR:
+        return Path(EXPORTS_DIR)
+    return _rp.documents_dir() / "Ora Exports"
+
+
+def current_resources_dir() -> Path:
+    """Configured imported-resource root, resolved at call time."""
+    if Path(RESOURCES_DIR) != _INITIAL_RESOURCES_DIR:
+        return Path(RESOURCES_DIR)
+    return _rp.documents_dir() / "Ora Resources"
+
 
 def ensure_export_dirs(
     exports_dir: Path | None = None, resources_dir: Path | None = None
@@ -55,8 +98,8 @@ def ensure_export_dirs(
 
     Returns their paths and whether each exists, for the UI's quick-access
     links. Never raises (a sandboxed server may lack ~/Documents access)."""
-    ex = exports_dir or EXPORTS_DIR
-    res = resources_dir or RESOURCES_DIR
+    ex = Path(exports_dir) if exports_dir is not None else current_exports_dir()
+    res = Path(resources_dir) if resources_dir is not None else current_resources_dir()
     out: dict[str, Any] = {}
     for key, path in (("exports", ex), ("resources", res)):
         try:
@@ -69,7 +112,8 @@ def ensure_export_dirs(
 
 
 def _slugify(text: str, max_words: int = 8) -> str:
-    words = re.sub(r"[^\w\s-]", "", (text or "").lower()).split()[:max_words]
+    normalized = unicodedata.normalize("NFC", text or "")
+    words = re.sub(r"[^\w\s-]", "", normalized.lower()).split()[:max_words]
     slug = "-".join(words).strip("-")
     return slug or "output"
 
@@ -83,14 +127,65 @@ def _derive_title(content: str) -> str:
     return "output"
 
 
-def _unique_path(folder: Path, base: str, suffix: str = ".md") -> Path:
-    """A non-colliding path ``folder/base.md`` → ``base-2.md`` …"""
-    candidate = folder / f"{base}{suffix}"
-    n = 2
-    while candidate.exists():
-        candidate = folder / f"{base}-{n}{suffix}"
+def _utf16_units(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
+
+
+def _truncate_utf16(value: str, limit: int) -> str:
+    out: list[str] = []
+    used = 0
+    for char in value:
+        width = _utf16_units(char)
+        if used + width > limit:
+            break
+        out.append(char)
+        used += width
+    return "".join(out)
+
+
+def _filename_budget(folder: Path, *, project_output: bool) -> int:
+    remaining = (
+        WINDOWS_PORTABLE_PATH_LIMIT
+        - _utf16_units(str(folder.resolve(strict=False)).rstrip("/\\"))
+        - 1
+    )
+    if project_output:
+        remaining = min(remaining, PROJECT_OUTPUT_CHILD_BUDGET_UNITS)
+    if remaining < _utf16_units("x.md.tmp"):
+        raise ExportPathError(
+            "destination path is too deep for a portable output filename"
+        )
+    return remaining
+
+
+def _unique_path(
+    folder: Path,
+    base: str,
+    suffix: str = ".md",
+    *,
+    project_output: bool = False,
+) -> Path:
+    """Return a non-colliding path within the full Windows path budget.
+
+    The base is re-truncated for every numeric collision marker. ``.tmp`` is
+    reserved because the write path appends it to the final extension.
+    """
+    budget = _filename_budget(folder, project_output=project_output)
+    n = 1
+    while True:
+        marker = "" if n == 1 else f"-{n}"
+        fixed = marker + suffix + ".tmp"
+        base_budget = budget - _utf16_units(fixed)
+        if base_budget < 1:
+            raise ExportPathError(
+                "destination path leaves no room for a portable output basename"
+            )
+        bounded = _truncate_utf16(base, base_budget).rstrip(" .-") or "output"
+        bounded = _truncate_utf16(bounded, base_budget).rstrip(" .-") or "x"
+        candidate = folder / f"{bounded}{marker}{suffix}"
+        if not candidate.exists():
+            return candidate
         n += 1
-    return candidate
 
 
 def _format_nexus(nexus: str | None) -> str:
@@ -114,19 +209,56 @@ def save_output_to_vault(
 ) -> Path | None:
     """Save one rendered output as a canonical vault markdown note.
 
-    Lands in ``<vault>/Projects/<project_folder_name>/`` when a project is
-    given. ``project_name`` remains a compatibility alias for callers that do
-    not yet pass the project's immutable folder identity. Otherwise, output
-    lands at the vault root. ``outputs_subdir`` remains as an explicit
-    compatibility override for callers that intentionally request a subfolder;
-    it has no default. Returns the written path, or None if the vault is
-    unavailable (never raises)."""
+    A real project is resolved from its pointer and its exact persisted
+    ``folder_name`` is the only accepted physical identity. ``project_name`` is
+    retained only to fail old project callers loudly; it is never a storage
+    fallback. Non-project callers retain the explicit ``outputs_subdir``
+    compatibility path. Returns None when the vault itself is unavailable.
+    """
     if content is None:
         return None
-    root = vault or vault_root()
-    folder_name = project_folder_name or project_name
-    if folder_name:
-        folder = root / "Projects" / _safe_folder(folder_name)
+    root = Path(vault or vault_root())
+    if not root.is_dir():
+        return None
+
+    canonical_nexus = (project_nexus or "").strip().lower()
+    is_project = canonical_nexus not in ("", "commons", "general")
+    if project_name is not None:
+        raise ProjectExportIdentityError(
+            "project_name is not a storage identity; pass only project_nexus"
+        )
+    if is_project:
+        if outputs_subdir:
+            raise ProjectExportIdentityError(
+                "outputs_subdir cannot override a project's persisted folder"
+            )
+        try:
+            from orchestrator import project_meta as _pm
+            record = _pm.read_project_meta(canonical_nexus)
+        except Exception as exc:
+            raise ProjectExportIdentityError(
+                f"could not resolve project {canonical_nexus!r}: {exc}"
+            ) from exc
+        if record is None or record.get("is_default"):
+            raise ProjectExportNotFoundError(
+                f"no project record for {canonical_nexus!r}"
+            )
+        persisted = record.get("folder_name")
+        if project_folder_name is not None and project_folder_name != persisted:
+            raise ProjectExportIdentityError(
+                "supplied project_folder_name does not match the persisted identity"
+            )
+        try:
+            folder = _pm.project_folder_path(
+                persisted,
+                vault_projects_dir=root / "Projects",
+            )
+        except _pm.ProjectStorageError as exc:
+            raise ProjectExportMigrationRequiredError(str(exc)) from exc
+    elif project_folder_name is not None:
+        raise ProjectExportIdentityError(
+            "project_folder_name requires a real persisted project nexus"
+        )
     elif outputs_subdir:
         folder = root / _safe_folder(outputs_subdir)
     else:
@@ -138,7 +270,11 @@ def save_output_to_vault(
 
     display = (title or "").strip() or _derive_title(content)
     today = datetime.now().strftime("%Y-%m-%d")
-    path = _unique_path(folder, f"{today} {_slugify(display)}")
+    path = _unique_path(
+        folder,
+        f"{today} {_slugify(display)}",
+        project_output=is_project,
+    )
     frontmatter = (
         "---\n"
         + _format_nexus(project_nexus)
@@ -151,7 +287,7 @@ def save_output_to_vault(
     )
     body = content if content.endswith("\n") else content + "\n"
     try:
-        tmp = path.with_suffix(".md.tmp")
+        tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(frontmatter + body, encoding="utf-8")
         tmp.replace(path)
     except OSError:
@@ -174,22 +310,46 @@ NATIVE_FORMATS = ("markdown",)
 # are present; the installer bundles them.
 PANDOC_FORMATS = ("docx", "pdf")
 
-# Homebrew/user installs aren't always on a service's minimal PATH — resolve
-# against the common bin dirs too.
-_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
+# Package-manager/user installs aren't always on a service's minimal PATH.
+_POSIX_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
 # PDF engines Pandoc can drive, preferred order (Typst is the plan's choice).
 _PDF_ENGINES = ("typst", "weasyprint", "wkhtmltopdf", "tectonic", "xelatex", "pdflatex")
 
 
+def _binary_search_dirs(
+    platform_name: str | None = None,
+    env: dict[str, str] | None = None,
+) -> tuple[str, ...]:
+    """Extra service-PATH locations for the current operating system."""
+    platform_name = platform_name or os.name
+    if platform_name != "nt":
+        return _POSIX_BIN_DIRS
+    env = os.environ if env is None else env
+    out: list[str] = []
+
+    def add(root: str | None, *parts: str) -> None:
+        if root:
+            out.append(ntpath.join(root, *parts))
+
+    add(env.get("LOCALAPPDATA"), "Pandoc")
+    add(env.get("ProgramFiles"), "Pandoc")
+    add(env.get("ProgramFiles(x86)"), "Pandoc")
+    add(env.get("ProgramData"), "chocolatey", "bin")
+    add(env.get("USERPROFILE"), "scoop", "shims")
+    add(env.get("USERPROFILE"), ".cargo", "bin")
+    add(env.get("LOCALAPPDATA"), "Microsoft", "WinGet", "Links")
+    return tuple(dict.fromkeys(out))
+
+
 def _which(name: str) -> str | None:
-    """Absolute path to ``name``, checking PATH then the common bin dirs."""
+    """Absolute path to ``name``, honoring PATHEXT and common install dirs."""
     found = shutil.which(name)
     if found:
         return found
-    for d in _BIN_DIRS:
-        cand = os.path.join(d, name)
-        if os.path.isfile(cand) and os.access(cand, os.X_OK):
-            return cand
+    for directory in _binary_search_dirs():
+        found = shutil.which(name, path=directory)
+        if found:
+            return found
     return None
 
 
@@ -234,7 +394,7 @@ def export_to_file(
     pandoc = pandoc_path()
     if pandoc is None:
         return None
-    base = exports_dir or EXPORTS_DIR
+    base = Path(exports_dir) if exports_dir is not None else current_exports_dir()
     try:
         base.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -271,6 +431,8 @@ def export_to_file(
 __all__ = [
     "EXPORTS_DIR",
     "RESOURCES_DIR",
+    "current_exports_dir",
+    "current_resources_dir",
     "NATIVE_FORMATS",
     "PANDOC_FORMATS",
     "ensure_export_dirs",

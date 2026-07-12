@@ -39,6 +39,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 from orchestrator.historical.chain_detector import (
     derive_session_id,
@@ -55,11 +56,11 @@ from orchestrator.historical.cleaned_pair_reader import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_ARCHIVE_DIR     = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_CONVERSATIONS_DIR = "/Users/oracle/Documents/conversations"
-DEFAULT_VAULT_ROOT      = "/Users/oracle/Documents/vault"
-DEFAULT_CHROMADB_PATH   = "/Users/oracle/ora/chromadb"
-DEFAULT_REPORT_PATH     = "/Users/oracle/ora/data/privacy-report.json"
+DEFAULT_ARCHIVE_DIR     = str(_rp.historical_archive_dir())
+DEFAULT_CONVERSATIONS_DIR = str(_rp.conversations_dir())
+DEFAULT_VAULT_ROOT      = str(_rp.vault_dir())
+DEFAULT_CHROMADB_PATH   = str(_rp.chromadb_dir())
+DEFAULT_REPORT_PATH     = str(_rp.DATA_DIR / "privacy-report.json")
 
 # Propagate chain → all-private when this fraction of the chain's
 # detected pairs are private. Conservative — avoids sweeping a 500-

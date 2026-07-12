@@ -100,9 +100,17 @@ class ProjectMetaTests(unittest.TestCase):
         pointer.write_text(json.dumps(rolled_back), encoding="utf-8")
 
         current = pm.read_project_meta("my-book", pointer_dir=self.d)
-        repaired = json.loads(pointer.read_text(encoding="utf-8"))
+        unchanged = json.loads(pointer.read_text(encoding="utf-8"))
         self.assertEqual(current["name"], "Book of Law")
         self.assertEqual(current["folder_name"], "My Book")
+        # Reads are pure even when the compatibility fields disagree.
+        self.assertEqual(unchanged["name"], "Legacy Edited Label")
+        self.assertEqual(unchanged["folder_name"], "My Book")
+
+        # The explicit startup schema expansion repairs only the rollback field;
+        # it does not transform the persisted folder identity.
+        self.assertEqual(pm.migrate_project_folder_names(self.d), 1)
+        repaired = json.loads(pointer.read_text(encoding="utf-8"))
         self.assertEqual(repaired["name"], "My Book")
         self.assertEqual(repaired["display_name"], "Book of Law")
         self.assertEqual(repaired["folder_name"], "My Book")
@@ -169,6 +177,98 @@ class ProjectMetaTests(unittest.TestCase):
         pm.create_project("Book", pointer_dir=self.d)
         with self.assertRaises(pm.ProjectMetaError):
             pm.create_project("Book", pointer_dir=self.d)
+
+    def test_central_nexus_policy_length_and_windows_devices(self):
+        self.assertEqual(pm.validate_nexus("a" * 64), "a" * 64)
+        for bad in ("a" * 65, "commons", "general", "con", "COM1", "lpt9"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(pm.NexusValidationError):
+                    pm.validate_nexus(bad)
+
+    def test_legacy_invalid_nexus_can_be_remediation_source(self):
+        self.assertEqual(pm.validate_existing_nexus_source("con"), "con")
+        self.assertEqual(pm.validate_existing_nexus_source("a" * 65), "a" * 65)
+        for bad in ("commons", "general", "../escape", "Bad"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(pm.NexusValidationError):
+                    pm.validate_existing_nexus_source(bad)
+
+    def test_read_present_folder_identity_is_exact_and_pure(self):
+        pointer = self.d / "portable-read.json"
+        raw = {
+            "nexus": "portable-read",
+            "name": "Legacy Edited",
+            "display_name": "Visible",
+            "folder_name": "Already:Persisted. ",
+        }
+        pointer.write_text(json.dumps(raw), encoding="utf-8")
+        before = pointer.read_bytes()
+
+        meta = pm.read_project_meta("portable-read", pointer_dir=self.d)
+
+        self.assertEqual(meta["name"], "Visible")
+        self.assertEqual(meta["folder_name"], "Already:Persisted. ")
+        self.assertEqual(pointer.read_bytes(), before)
+
+    def test_portable_folder_allocator_and_casefold_collision(self):
+        projects = self.d / "vault" / "Projects"
+        projects.mkdir(parents=True)
+        first = pm.allocate_folder_name(
+            '  CON<>:"/\\|?*\x01.  ', "first",
+            pointer_dir=self.d / "pointers", vault_projects_dir=projects,
+        )
+        self.assertTrue(first.startswith("_CON"))
+        self.assertNotRegex(first, r'[<>:"/\\|?*\x00-\x1f]')
+        self.assertFalse(first.endswith((" ", ".")))
+
+        (projects / "My Book").mkdir()
+        second = pm.allocate_folder_name(
+            "my book", "other",
+            pointer_dir=self.d / "pointers", vault_projects_dir=projects,
+        )
+        self.assertEqual(second, "my book -- d9298a10")
+
+    def test_portable_collision_key_catches_unicode_equivalence(self):
+        projects = self.d / "vault" / "Projects"
+        projects.mkdir(parents=True)
+        (projects / "Cafe\u0301").mkdir()
+
+        allocated = pm.allocate_folder_name(
+            "Caf\u00e9", "other",
+            pointer_dir=self.d / "pointers", vault_projects_dir=projects,
+        )
+
+        self.assertEqual(allocated, "Caf\u00e9 -- d9298a10")
+
+    def test_collision_hash_suffix_stays_bounded_for_maximum_nexus(self):
+        projects = self.d / "vault" / "Projects"
+        projects.mkdir(parents=True)
+        (projects / "Same").mkdir()
+        nexus = "a" * pm.MAX_NEXUS_LENGTH
+
+        allocated = pm.allocate_folder_name(
+            "Same", nexus,
+            pointer_dir=self.d / "pointers", vault_projects_dir=projects,
+        )
+
+        self.assertRegex(allocated, r"^Same -- [0-9a-f]{8}$")
+        self.assertLessEqual(pm._utf16_units(allocated), pm.MAX_FOLDER_COMPONENT_UNITS)
+
+    def test_folder_allocator_enforces_utf16_and_full_path_budget(self):
+        projects = self.d / "vault" / "Projects"
+        projects.mkdir(parents=True)
+        allocated = pm.allocate_folder_name(
+            "😀" * 100, "emoji",
+            pointer_dir=self.d / "pointers", vault_projects_dir=projects,
+        )
+        self.assertLessEqual(pm._utf16_units(allocated), pm.MAX_FOLDER_COMPONENT_UNITS)
+
+        deep = self.d / ("d" * 100) / ("e" * 100) / "Projects"
+        with self.assertRaises(pm.ProjectStorageError):
+            pm.allocate_folder_name(
+                "Project", "project",
+                pointer_dir=self.d / "pointers", vault_projects_dir=deep,
+            )
 
     def test_commons_is_synthetic_default(self):
         g = pm.read_project_meta("commons", pointer_dir=self.d)
@@ -273,12 +373,328 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertIsNotNone(folder)
         self.assertTrue(folder.is_dir())
         self.assertEqual(folder.name, "My Book")
-        f2 = pm.ensure_project_folder("a/b", vault_projects_dir=proj_dir)
-        self.assertTrue(f2.is_dir())
-        self.assertNotIn("/", f2.name)
-        for traversal in (".", ".."):
-            safe = pm.ensure_project_folder(traversal, vault_projects_dir=proj_dir)
-            self.assertEqual(safe, proj_dir / "Untitled")
+        for invalid in ("a/b", ".", ".."):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(pm.ProjectStorageError):
+                    pm.ensure_project_folder(invalid, vault_projects_dir=proj_dir)
+
+    def test_project_folder_path_is_exact_not_resanitized(self):
+        projects = self.d / "Projects"
+        self.assertEqual(
+            pm.project_folder_path("Exact Name", projects),
+            projects / "Exact Name",
+        )
+        for invalid in ("a/b", "..", "CON", "trailing."):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(pm.ProjectStorageError):
+                    pm.project_folder_path(invalid, projects)
+
+    def test_windows_storage_migration_is_report_first_and_confirmed(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad: Folder."
+        source.mkdir(parents=True)
+        (source / "draft.md").write_text("keep", encoding="utf-8")
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book",
+            "name": "Bad: Folder.",
+            "display_name": "Book Display",
+            "folder_name": "Bad: Folder.",
+            "future": {"kept": True},
+        }), encoding="utf-8")
+        before = pointer.read_bytes()
+
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+
+        self.assertTrue(plan["can_apply"])
+        self.assertEqual(pointer.read_bytes(), before)
+        self.assertTrue(source.is_dir())
+        with self.assertRaises(pm.ProjectStorageError):
+            pm.apply_windows_project_storage_migration(plan)
+
+        outcome = pm.apply_windows_project_storage_migration(plan, confirmed=True)
+        self.assertTrue(outcome["ok"])
+        self.assertEqual(outcome["applied"], ["book"])
+        raw = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertEqual(raw["name"], raw["folder_name"])
+        self.assertEqual(raw["display_name"], "Book Display")
+        self.assertEqual(raw["future"], {"kept": True})
+        target = projects / raw["folder_name"]
+        self.assertTrue((target / "draft.md").is_file())
+        self.assertFalse(source.exists())
+
+    def test_windows_storage_migration_moves_matrix_resolved_by_frontmatter(self):
+        from orchestrator import operation_matrix as om
+
+        pdir = self.d / "pointers"
+        vault = self.d / "vault"
+        projects = vault / "Projects"
+        matrix_dir = vault / "Matrix"
+        pdir.mkdir(parents=True)
+        source_folder = projects / "Bad: Folder."
+        source_folder.mkdir(parents=True)
+        matrix_dir.mkdir()
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad: Folder.",
+            "display_name": "Book", "folder_name": "Bad: Folder.",
+        }), encoding="utf-8")
+        matrix_source = matrix_dir / "Project Matrix Bad: Folder..md"
+        matrix_source.write_text(
+            "---\nnexus:\n  - book\ntype: matrix\n---\n\n## Mission\n\nKeep me.\n",
+            encoding="utf-8",
+        )
+
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+
+        self.assertTrue(plan["can_apply"])
+        entry = plan["changes"][0]
+        self.assertTrue(entry["folder_move"])
+        self.assertTrue(entry["matrix_move"])
+        self.assertEqual(pathlib.Path(entry["matrix_source_path"]), matrix_source)
+
+        outcome = pm.apply_windows_project_storage_migration(plan, confirmed=True)
+
+        self.assertTrue(outcome["ok"])
+        raw = json.loads(pointer.read_text(encoding="utf-8"))
+        matrix_target = matrix_dir / f"Project Matrix {raw['folder_name']}.md"
+        self.assertFalse(matrix_source.exists())
+        self.assertIn("Keep me.", matrix_target.read_text(encoding="utf-8"))
+        self.assertEqual(
+            om.resolve_matrix_path("book", raw["folder_name"], vault=vault),
+            matrix_target,
+        )
+
+    def test_windows_storage_migration_can_move_only_nonportable_matrix(self):
+        pdir = self.d / "pointers"
+        vault = self.d / "vault"
+        projects = vault / "Projects"
+        matrix_dir = vault / "Matrix"
+        pdir.mkdir(parents=True)
+        projects.mkdir(parents=True)
+        matrix_dir.mkdir()
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Book",
+            "display_name": "Book", "folder_name": "Book",
+        }), encoding="utf-8")
+        before = pointer.read_bytes()
+        matrix_source = matrix_dir / "Legacy: Book Matrix.md"
+        matrix_source.write_text(
+            "---\nnexus:\n  - book\ntype: matrix\n---\n\nbody\n",
+            encoding="utf-8",
+        )
+
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+
+        entry = plan["changes"][0]
+        self.assertFalse(entry["folder_move"])
+        self.assertTrue(entry["matrix_move"])
+        outcome = pm.apply_windows_project_storage_migration(plan, confirmed=True)
+        self.assertTrue(outcome["ok"])
+        self.assertEqual(pointer.read_bytes(), before)
+        self.assertFalse(matrix_source.exists())
+        self.assertTrue((matrix_dir / "Project Matrix Book.md").is_file())
+
+    def test_windows_storage_migration_blocks_ambiguous_or_colliding_matrix(self):
+        pdir = self.d / "pointers"
+        vault = self.d / "vault"
+        projects = vault / "Projects"
+        matrix_dir = vault / "Matrix"
+        pdir.mkdir(parents=True)
+        projects.mkdir(parents=True)
+        matrix_dir.mkdir()
+        (pdir / "book.json").write_text(json.dumps({
+            "nexus": "book", "name": "Book",
+            "display_name": "Book", "folder_name": "Book",
+        }), encoding="utf-8")
+        for name in ("One.md", "Two.md"):
+            (matrix_dir / name).write_text(
+                "---\nnexus:\n  - book\ntype: matrix\n---\n", encoding="utf-8",
+            )
+
+        ambiguous = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+        self.assertFalse(ambiguous["can_apply"])
+        self.assertIn("multiple Matrix files", ambiguous["blocked"][0]["reasons"][-1])
+
+        for path in matrix_dir.glob("*.md"):
+            path.unlink()
+        (matrix_dir / "Legacy: Book.md").write_text(
+            "---\nnexus:\n  - book\ntype: matrix\n---\n", encoding="utf-8",
+        )
+        (matrix_dir / "Project Matrix Book.md").write_text(
+            "---\nnexus:\n  - other\ntype: matrix\n---\n", encoding="utf-8",
+        )
+        collision = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+        self.assertFalse(collision["can_apply"])
+        self.assertIn("already exists", collision["blocked"][0]["reasons"][-1])
+
+    def test_windows_storage_migration_reports_missing_source_as_blocker(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        (pdir / "book.json").write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Name",
+            "display_name": "Book", "folder_name": "Bad:Name",
+        }), encoding="utf-8")
+
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+
+        self.assertFalse(plan["can_apply"])
+        self.assertTrue(plan["blocked"])
+
+    def test_windows_storage_migration_rolls_back_failed_pointer_write(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad:Folder"
+        source.mkdir(parents=True)
+        matrix_dir = projects.parent / "Matrix"
+        matrix_dir.mkdir()
+        matrix_source = matrix_dir / "Bad:Matrix.md"
+        matrix_source.write_text(
+            "---\nnexus:\n  - book\ntype: matrix\n---\n", encoding="utf-8",
+        )
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Folder",
+            "display_name": "Book", "folder_name": "Bad:Folder",
+        }), encoding="utf-8")
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+        original_write = pm._write_pointer
+        try:
+            pm._write_pointer = lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+            outcome = pm.apply_windows_project_storage_migration(plan, confirmed=True)
+        finally:
+            pm._write_pointer = original_write
+
+        self.assertFalse(outcome["ok"])
+        self.assertTrue(source.is_dir())
+        self.assertFalse(pathlib.Path(plan["changes"][0]["target_path"]).exists())
+        self.assertTrue(matrix_source.is_file())
+        self.assertFalse(
+            pathlib.Path(plan["changes"][0]["matrix_target_path"]).exists()
+        )
+        raw = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertEqual(raw["folder_name"], "Bad:Folder")
+
+    def test_windows_storage_migration_cli_reports_without_writes_and_applies_saved_plan(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad:Folder"
+        source.mkdir(parents=True)
+        (source / "draft.md").write_text("keep", encoding="utf-8")
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Folder",
+            "display_name": "Book", "folder_name": "Bad:Folder",
+        }), encoding="utf-8")
+        pointer_before = pointer.read_bytes()
+        command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "report",
+            "--pointer-dir", str(pdir),
+            "--vault-projects-dir", str(projects),
+        ]
+
+        reported = subprocess.run(
+            command, cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(reported.returncode, 0, reported.stderr)
+        plan = json.loads(reported.stdout)
+        self.assertTrue(plan["can_apply"])
+        self.assertEqual(pointer.read_bytes(), pointer_before)
+        self.assertTrue(source.is_dir())
+
+        plan_path = self.d / "reviewed-plan.json"
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        apply_command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "apply", "--plan", str(plan_path),
+        ]
+        unconfirmed = subprocess.run(
+            apply_command, cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(unconfirmed.returncode, 2)
+        self.assertFalse(json.loads(unconfirmed.stderr)["ok"])
+        self.assertEqual(pointer.read_bytes(), pointer_before)
+        self.assertTrue(source.is_dir())
+
+        applied = subprocess.run(
+            [
+                *apply_command,
+                "--confirm-apply-fingerprint", plan["fingerprint"],
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue(json.loads(applied.stdout)["ok"])
+        migrated = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertNotEqual(migrated["folder_name"], "Bad:Folder")
+        self.assertTrue((projects / migrated["folder_name"] / "draft.md").is_file())
+
+    def test_windows_storage_migration_cli_can_apply_exact_current_fingerprint(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad:Folder"
+        source.mkdir(parents=True)
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Folder",
+            "display_name": "Book", "folder_name": "Bad:Folder",
+        }), encoding="utf-8")
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+        base_command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "apply",
+            "--pointer-dir", str(pdir),
+            "--vault-projects-dir", str(projects),
+        ]
+
+        stale = subprocess.run(
+            [
+                *base_command, "--fingerprint", "0" * 64,
+                "--confirm-apply-fingerprint", "0" * 64,
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(stale.returncode, 2)
+        self.assertIn("fresh report", json.loads(stale.stderr)["error"])
+        self.assertTrue(source.is_dir())
+
+        applied = subprocess.run(
+            [
+                *base_command, "--fingerprint", plan["fingerprint"],
+                "--confirm-apply-fingerprint", plan["fingerprint"],
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue(json.loads(applied.stdout)["ok"])
+        self.assertFalse(source.exists())
 
     def test_list_project_files_missing_folder(self):
         idx = pm.list_project_files("Nope", vault_projects_dir=self.d / "vp")

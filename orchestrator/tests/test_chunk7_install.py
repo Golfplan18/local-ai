@@ -99,6 +99,28 @@ class TestPreflightStep(unittest.TestCase):
         ok = install.step_preflight(state, dry_run=True)
         self.assertTrue(ok)
 
+    def test_path_preflight_accepts_explicit_documents_and_vault(self):
+        docs = Path(self.tmp.name)
+        with mock.patch.dict(
+            "os.environ",
+            {"ORA_DOCUMENTS": str(docs), "ORA_VAULT": str(docs / "vault")},
+            clear=True,
+        ):
+            self.assertTrue(install._runtime_path_preflight(dry_run=True))
+
+    def test_path_preflight_rejects_conflicting_vault_aliases(self):
+        docs = Path(self.tmp.name)
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "ORA_DOCUMENTS": str(docs),
+                "ORA_VAULT": str(docs / "a"),
+                "ORA_VAULT_PATH": str(docs / "b"),
+            },
+            clear=True,
+        ):
+            self.assertFalse(install._runtime_path_preflight(dry_run=True))
+
 
 class TestProfileStep(unittest.TestCase):
     def setUp(self):
@@ -135,6 +157,11 @@ class TestCompletionMarker(unittest.TestCase):
         # The test protocol in Working — Project — Ora Install Script Overhaul
         # specifies the exact grep target:
         self.assertEqual(install.COMPLETION_MARKER, "INSTALL_COMPLETE: 0 warnings, 0 errors")
+
+    def test_windows_completion_uses_batch_launcher(self):
+        lines = install._next_launch_instructions(platform_name="win32", os_name="nt")
+        self.assertIn("start.bat", " ".join(lines))
+        self.assertNotIn("./start.sh", " ".join(lines))
 
 
 class TestSmokeHelpers(unittest.TestCase):

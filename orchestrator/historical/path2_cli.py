@@ -21,7 +21,7 @@ emission state. Re-runs skip sessions already complete unless
 
 CLI:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.path2_cli \\
+    python -m orchestrator.historical.path2_cli \\
         --max-workers 4
 """
 
@@ -37,6 +37,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.chain_detector import (
     CHAIN_INDEX_DEFAULT,
     DEFAULT_MIN_SHARED_PHRASES,
@@ -65,7 +66,7 @@ from orchestrator.historical.path2_orchestrator import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_MANIFEST_PATH = "/Users/oracle/ora/data/path2-manifest.json"
+DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "path2-manifest.json")
 
 
 # ---------------------------------------------------------------------------

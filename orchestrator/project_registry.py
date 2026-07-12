@@ -42,10 +42,6 @@ TOOL_INTERFACE_ARGV_STDOUT = "argv-stdout-json"
 TOOL_INTERFACE_STDIN_STDOUT = "stdin-stdout-json"
 KNOWN_INTERFACES = frozenset({TOOL_INTERFACE_ARGV_STDOUT, TOOL_INTERFACE_STDIN_STDOUT})
 
-# Project nexus: lowercase kebab-case identifier (matches Ora's existing
-# `project_nexus` convention used by PEDs and the oversight router).
-_NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
-
 # Capability slot name (Plugin Convention §12): lowercase letters, digits,
 # underscores; matches the core slot-name convention in `capabilities.json`
 # (e.g., `image_generates_cartoon`).
@@ -285,14 +281,16 @@ class Project:
 
 
 def _validate_nexus(nexus: Any, manifest_path: Path) -> str:
-    if not isinstance(nexus, str) or not nexus:
-        raise ManifestError(f"{manifest_path}: 'nexus' is required and must be a non-empty string")
-    if not _NEXUS_RE.match(nexus):
+    try:
+        try:
+            from project_meta import validate_nexus
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator.project_meta import validate_nexus
+        return validate_nexus(nexus)
+    except (ValueError, TypeError) as exc:
         raise ManifestError(
-            f"{manifest_path}: 'nexus' must be lowercase kebab-case "
-            f"(letters/digits/hyphens/underscores, starting with a letter or digit); got {nexus!r}"
-        )
-    return nexus
+            f"{manifest_path}: invalid 'nexus' {nexus!r}: {exc}"
+        ) from exc
 
 
 def _validate_command(command: Any, context: str, manifest_path: Path) -> list[str]:
@@ -967,7 +965,12 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
 
     Project tools can rely on these being set:
       - ORA_HOME           — path to the Ora installation root
+      - ORA_DOCUMENTS      — resolved platform Documents root
       - ORA_VAULT          — path to the canonical vault (Ora-global)
+      - ORA_VAULT_PATH     — legacy alias, pinned to ORA_VAULT
+      - ORA_CONVERSATIONS  — canonical conversation corpus
+      - ORA_HISTORICAL_ARCHIVE — canonical cleaned-pair archive
+      - ORA_CHROMADB_PATH  — canonical ChromaDB root
       - ORA_PROJECT_NEXUS  — the nexus of the calling project
       - ORA_PROJECT_ROOT   — absolute path to the project root
 
@@ -982,11 +985,24 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
                               invocation. Falls through to the Router's
                               context-derived default when unset.
 
-    Extra env from the caller takes precedence over these defaults.
+    Extra env is included when resolving roots. Conflicting canonical/legacy
+    aliases fail before a subprocess is launched; every child receives one
+    normalized snapshot so it cannot split state across different defaults.
     """
     env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     env.setdefault("ORA_HOME", _ora_home())
-    env.setdefault("ORA_VAULT", os.path.expanduser("~/Documents/vault"))
+    roots = _rp.resolve_runtime_roots(env)
+    env.update({
+        "ORA_HOME": str(roots.ora_home),
+        "ORA_DOCUMENTS": str(roots.documents),
+        "ORA_VAULT": str(roots.vault),
+        "ORA_VAULT_PATH": str(roots.vault),
+        "ORA_CONVERSATIONS": str(roots.conversations),
+        "ORA_HISTORICAL_ARCHIVE": str(roots.historical_archive),
+        "ORA_CHROMADB_PATH": str(roots.chromadb),
+    })
     env["ORA_PROJECT_NEXUS"] = project.nexus
     env["ORA_PROJECT_ROOT"] = str(project.root)
     # Execution Review Phase 1: children that import Ora (a minority — most
@@ -1010,8 +1026,6 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
             env["ORA_RISK_TIER"] = str(_ctx["risk_tier"])
     except Exception:
         pass
-    if extra_env:
-        env.update(extra_env)
     return env
 
 

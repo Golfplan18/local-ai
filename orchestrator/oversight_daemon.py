@@ -20,6 +20,11 @@ import threading
 import time
 from datetime import datetime, timezone
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 # Configurable intervals
 DEFAULT_PED_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_PED_WATCHER_SEC", "60"))
 DEFAULT_CORPUS_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_CORPUS_WATCHER_SEC", "60"))
@@ -37,7 +42,20 @@ DEFAULT_FAST_STALL_SEC = int(os.environ.get("ORA_DAEMON_FAST_STALL_SEC", "300"))
 DEFAULT_SLOW_STALL_SEC = int(os.environ.get("ORA_DAEMON_SLOW_STALL_SEC", "7200"))
 
 # Vault path — the canonical location for PEDs and other oversight artifacts.
-VAULT_PATH = os.path.expanduser(os.environ.get("ORA_VAULT_PATH", "~/Documents/vault/"))
+_DEFAULT_VAULT_PATH = _rp.VAULT_STR
+VAULT_PATH = _DEFAULT_VAULT_PATH  # compatibility patch hook
+_SCAN_SKIP_DIRS = {"Archive", ".obsidian", "Sessions"}
+
+
+def _vault_path() -> str:
+    if VAULT_PATH != _DEFAULT_VAULT_PATH:
+        return VAULT_PATH
+    return str(_rp.vault_dir())
+
+
+def _prune_scan_dirs(dirs: list[str]) -> None:
+    """Prune by path component, independent of slash direction."""
+    dirs[:] = [name for name in dirs if name not in _SCAN_SKIP_DIRS]
 
 # Every module whose _write_heartbeat the daemon drives. The fast lane
 # writes each one at startup, and the tests' oversight_sandbox fixture
@@ -64,7 +82,8 @@ def scan_vault_and_register_peds() -> list[tuple[str, str]]:
 
     Returns: list of (nexus, ped_path) for newly-registered projects.
     """
-    if not os.path.isdir(VAULT_PATH):
+    vault_path = _vault_path()
+    if not os.path.isdir(vault_path):
         return []
 
     from ped_watcher import (
@@ -80,10 +99,8 @@ def scan_vault_and_register_peds() -> list[tuple[str, str]]:
     already_registered = set(list_known_projects())
     newly_registered: list[tuple[str, str]] = []
 
-    for root, dirs, files in os.walk(VAULT_PATH):
-        # Skip archive and noise directories
-        if any(skip in root for skip in ("/Archive", "/.obsidian", "/Sessions")):
-            continue
+    for root, dirs, files in os.walk(vault_path):
+        _prune_scan_dirs(dirs)
         for filename in files:
             if not filename.endswith(".md"):
                 continue
@@ -178,7 +195,8 @@ def scan_vault_and_register_workflows() -> list[tuple[str, str]]:
 
     Returns: list of (workflow_id, workflow_spec_path) for newly-registered.
     """
-    if not os.path.isdir(VAULT_PATH):
+    vault_path = _vault_path()
+    if not os.path.isdir(vault_path):
         return []
 
     from corpus_watcher import (
@@ -194,15 +212,14 @@ def scan_vault_and_register_workflows() -> list[tuple[str, str]]:
     already_registered = set(list_known_workflows())
     newly_registered: list[tuple[str, str]] = []
 
-    # Also walk ~/ora/workflows/ which is the convention for workflow spec files
-    search_roots = [VAULT_PATH, os.path.expanduser("~/ora/workflows/")]
+    # Also walk the configured Ora workspace's workflow-spec directory.
+    search_roots = [vault_path, str(_rp.ORA_HOME / "workflows")]
 
     for root_path in search_roots:
         if not os.path.isdir(root_path):
             continue
         for root, dirs, files in os.walk(root_path):
-            if any(skip in root for skip in ("/Archive", "/.obsidian", "/Sessions")):
-                continue
+            _prune_scan_dirs(dirs)
             for filename in files:
                 if not filename.endswith(".md"):
                     continue
