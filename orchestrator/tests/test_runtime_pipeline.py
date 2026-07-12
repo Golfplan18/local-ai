@@ -192,6 +192,146 @@ class TestStep7ChromadbIngest(unittest.TestCase):
         self.assertEqual(queries[0]["where"], {"tag_private": False})
         self.assertIsNone(queries[1]["where"])
 
+    def test_malformed_archived_metadata_has_unknown_policy_state(self):
+        self.assertIsNone(rp._metadata_tag_state({
+            "tag_archived": "unknown",
+        }, "archived"))
+        self.assertIsNone(rp._metadata_tag_state({
+            "tags": {"archived": True},
+        }, "archived"))
+
+    def test_pass2_threads_custom_vault_to_relationship_mutation(self):
+        class QueryCollection:
+            def query(self, **kwargs):
+                return {
+                    "ids": [["archived-id"]],
+                    "metadatas": [[{"title": "ArchivedTarget"}]],
+                    "distances": [[0.1]],
+                }
+
+        fake_chromadb = types.SimpleNamespace(
+            PersistentClient=lambda *, path: object(),
+        )
+        custom_vault = os.path.join(self.tmp, "custom-vault")
+        pipeline = rp.RuntimePipeline(vault_path=custom_vault)
+
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.dict(sys.modules, {"chromadb": fake_chromadb}), \
+             mock.patch("orchestrator.embedding.get_collection",
+                        return_value=QueryCollection()), \
+             mock.patch(
+                 "orchestrator.tools.relationship_discovery.update_note_relationships"
+             ) as update:
+            pipeline._step12_pass2_relationships([self.note])
+
+        update.assert_called_once()
+        self.assertEqual(update.call_args.kwargs, {
+            "vault_path": custom_vault,
+            "known_paths": {},
+            "return_count": True,
+        })
+
+    def test_pass2_batches_candidates_and_counts_only_written_rows(self):
+        class QueryCollection:
+            def query(self, **kwargs):
+                return {
+                    "ids": [["one", "two"]],
+                    "metadatas": [[{"title": "Target One"}, {"title": "Target Two"}]],
+                    "distances": [[0.1, 0.1]],
+                }
+
+        fake_chromadb = types.SimpleNamespace(
+            PersistentClient=lambda *, path: object(),
+        )
+        pipeline = rp.RuntimePipeline(vault_path=self.tmp)
+
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.dict(sys.modules, {"chromadb": fake_chromadb}), \
+             mock.patch("orchestrator.embedding.get_collection",
+                        return_value=QueryCollection()), \
+             mock.patch.object(
+                 pipeline, "_classify_relationship_heuristic",
+                 return_value="supports",
+             ), \
+             mock.patch(
+                 "orchestrator.tools.relationship_discovery.update_note_relationships",
+                 return_value=1,
+             ) as update:
+            count = pipeline._step12_pass2_relationships([self.note])
+
+        self.assertEqual(count, 1)
+        update.assert_called_once()
+        self.assertEqual(len(update.call_args.args[1]), 2)
+
+    def test_pass2_missing_canonical_path_fails_open(self):
+        class QueryCollection:
+            def query(self, **kwargs):
+                return {
+                    "ids": [["archived"]],
+                    "metadatas": [[{
+                        "title": "Archived Target",
+                        "tag_archived": True,
+                    }]],
+                    "distances": [[0.1]],
+                }
+
+        fake_chromadb = types.SimpleNamespace(
+            PersistentClient=lambda *, path: object(),
+        )
+        pipeline = rp.RuntimePipeline(vault_path=self.tmp)
+
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.dict(sys.modules, {"chromadb": fake_chromadb}), \
+             mock.patch("orchestrator.embedding.get_collection",
+                        return_value=QueryCollection()), \
+             mock.patch(
+                 "orchestrator.tools.relationship_discovery.update_note_relationships",
+                 return_value=1,
+             ) as update:
+            count = pipeline._step12_pass2_relationships([self.note])
+
+        self.assertEqual(count, 1)
+        update.assert_called_once()
+
+    def test_pass2_uses_candidate_yaml_over_stale_active_metadata(self):
+        target = os.path.join(self.tmp, "Archived Target.md")
+        with open(target, "w", encoding="utf-8") as stream:
+            stream.write(
+                "---\ntype: engram\ntags: [atomic, archived]\n---\n"
+                "# Archived Target\n"
+            )
+
+        class QueryCollection:
+            def query(self, **kwargs):
+                return {
+                    "ids": [["archived"]],
+                    "metadatas": [[{
+                        "title": "Archived Target",
+                        "path": target,
+                        "tag_archived": False,
+                    }]],
+                    "distances": [[0.1]],
+                }
+
+        fake_chromadb = types.SimpleNamespace(
+            PersistentClient=lambda *, path: object(),
+        )
+        pipeline = rp.RuntimePipeline(vault_path=self.tmp)
+
+        with mock.patch.object(rp, "STAGING_DIR", self.tmp), \
+             mock.patch.dict(sys.modules, {"chromadb": fake_chromadb}), \
+             mock.patch("orchestrator.embedding.get_collection",
+                        return_value=QueryCollection()), \
+             mock.patch.object(
+                 pipeline, "_classify_relationship_heuristic",
+                 return_value="supports",
+             ):
+            count = pipeline._step12_pass2_relationships([self.note])
+
+        self.assertEqual(count, 0)
+        with open(self.note, encoding="utf-8") as stream:
+            self.assertNotIn("target: Archived Target", stream.read())
+
     def test_run_threads_only_extracted_paths_through_downstream_steps(self):
         pipeline = rp.RuntimePipeline()
         owned = self.note

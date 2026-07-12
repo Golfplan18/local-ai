@@ -21,6 +21,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sqlite3
@@ -49,6 +50,8 @@ EXCLUDED_DIRS = frozenset({"Archive", ".trash"})
 # the note silently drops out of the scan. Line-anchor the terminator.
 # (Incident 2026-07-02: "Framework — MSI Malcolm Little King Spinner".)
 _FRONTMATTER_TERMINATOR = re.compile(r"^---[ \t\r]*$", re.MULTILINE)
+
+_LOG = logging.getLogger(__name__)
 
 
 def _frontmatter_end(content: str) -> int:
@@ -136,7 +139,51 @@ class RelationshipGraph:
                     yield root, filename
 
     @staticmethod
-    def _parse_relationships_text(content: str, filepath: str,
+    def _parse_frontmatter_text(content: str, filepath: str,
+                                errors: list[str]) -> dict:
+        """Parse a note's YAML frontmatter, reporting rather than hiding
+        malformed or unreadable metadata.
+
+        An empty mapping is also the fail-open result: callers enforcing
+        archived-target policy must not mistake a lookup failure for proof
+        that the target is archived.
+        """
+        try:
+            if not content.startswith("---"):
+                return {}
+            end = _frontmatter_end(content)
+            if end == -1:
+                errors.append(f"{filepath}: unterminated YAML frontmatter")
+                return {}
+            fm = yaml.safe_load(content[3:end]) or {}
+            if not isinstance(fm, dict):
+                errors.append(f"{filepath}: YAML frontmatter is not a mapping")
+                return {}
+            return fm
+        except Exception as exc:
+            errors.append(f"{filepath}: {exc}")
+            return {}
+
+    @staticmethod
+    def _relationships_from_frontmatter(fm: dict) -> set[tuple]:
+        """Extract normalized relationship triples from parsed YAML."""
+        rows = set()
+        relationships = fm.get("relationships", [])
+        if not relationships or not isinstance(relationships, list):
+            return rows
+
+        for rel in relationships:
+            if not isinstance(rel, dict):
+                continue
+            rtype = rel.get("type", "")
+            target = rel.get("target", "")
+            confidence = rel.get("confidence", "medium")
+            if rtype and target:
+                rows.add((str(target), str(rtype), str(confidence)))
+        return rows
+
+    @classmethod
+    def _parse_relationships_text(cls, content: str, filepath: str,
                                   errors: list[str]) -> set[tuple]:
         """Extract (target, type, confidence) tuples from a note's YAML
         frontmatter (already-read file content). Returns an empty set when
@@ -147,30 +194,135 @@ class RelationshipGraph:
         date objects, but the columns have TEXT affinity — comparing what
         YAML yields against what SQLite returns must be type-stable or
         sync_from_vault never converges."""
-        rows = set()
-        try:
-            if not content.startswith("---"):
-                return rows
-            end = _frontmatter_end(content)
-            if end == -1:
-                return rows
-            fm = yaml.safe_load(content[3:end]) or {}
+        fm = cls._parse_frontmatter_text(content, filepath, errors)
+        return cls._relationships_from_frontmatter(fm)
 
-            relationships = fm.get("relationships", [])
-            if not relationships or not isinstance(relationships, list):
-                return rows
+    @staticmethod
+    def _is_archived_frontmatter(fm: dict) -> bool:
+        """Whether an active note carries the controlled ``archived`` tag.
 
-            for rel in relationships:
-                if not isinstance(rel, dict):
-                    continue
-                rtype = rel.get("type", "")
-                target = rel.get("target", "")
-                confidence = rel.get("confidence", "medium")
-                if rtype and target:
-                    rows.add((str(target), str(rtype), str(confidence)))
-        except Exception as e:
-            errors.append(f"{filepath}: {e}")
-        return rows
+        Archive-directory placement is deliberately not considered here:
+        those paths are excluded from the active graph and retain the normal
+        missing/orphan behavior.
+        """
+        tags = fm.get("tags") or []
+        if isinstance(tags, str):
+            tags = [tags]
+        return isinstance(tags, list) and "archived" in tags
+
+    @classmethod
+    def scan_archived_targets(
+        cls,
+        vault_path: str,
+        target_identities: set[str] | None = None,
+        *,
+        resolve_statement_claims: bool = False,
+        known_paths: dict[str, list[str]] | None = None,
+    ) -> tuple[set[str], list[str]]:
+        """Return active relationship target identities tagged archived.
+
+        Filename stems are the normal graph identity. Engram H1 claims are
+        included as compatibility identities for pre-resolution graph rows.
+        When ``target_identities`` is provided, ordinary notes are parsed only
+        when their filename stem is one of those proposed targets. Canonical
+        runtime graph targets are filename stems, so statement-claim fallback
+        is opt-in and reserved for explicit compatibility audits. Omitting the
+        set retains the exhaustive scan used by audit/report commands.
+
+        Lookup errors are returned and logged loudly; the partial result is
+        intentionally used so callers fail open for identities they could not
+        inspect rather than blocking all relationship creation.
+        """
+        requested = (
+            {str(identity) for identity in target_identities}
+            if target_identities is not None
+            else None
+        )
+        archived_stems: set[str] = set()
+        archived_statement_stems: set[str] = set()
+        titles: set[str] = set()
+        claim_to_stem: dict[str, str] = {}
+        errors: list[str] = []
+
+        if not os.path.isdir(vault_path):
+            errors.append(f"{vault_path}: vault root is not a directory")
+
+        def record_walk_error(exc: OSError) -> None:
+            errors.append(f"{getattr(exc, 'filename', vault_path)}: {exc}")
+
+        entries: list[tuple[str, str, bool]] = []
+        if requested is not None and known_paths is not None:
+            titles.update(known_paths)
+            for title in requested:
+                for filepath in known_paths.get(title, []):
+                    entries.append((
+                        title,
+                        filepath,
+                        os.path.basename(os.path.dirname(filepath))
+                        in STATEMENT_KEYED_DIRS,
+                    ))
+        else:
+            for root, dirs, files in os.walk(vault_path, onerror=record_walk_error):
+                dirs[:] = [d for d in dirs if not d.startswith(".")
+                           and d not in EXCLUDED_DIRS]
+                for filename in files:
+                    if not filename.endswith(".md"):
+                        continue
+                    title = filename[:-3]
+                    titles.add(title)
+                    filepath = os.path.join(root, filename)
+                    statement_keyed = os.path.basename(root) in STATEMENT_KEYED_DIRS
+                    entries.append((title, filepath, statement_keyed))
+
+        if requested is None:
+            unresolved_claims = None
+        elif resolve_statement_claims:
+            unresolved_claims = requested - titles
+        else:
+            unresolved_claims = set()
+        for title, filepath, statement_keyed in entries:
+            if (
+                requested is not None
+                and title not in requested
+                and not (statement_keyed and unresolved_claims)
+            ):
+                continue
+            try:
+                with open(filepath, "r") as fh:
+                    content = fh.read()
+            except Exception as exc:
+                errors.append(f"{filepath}: {exc}")
+                continue
+            h1 = cls._extract_h1(content) if statement_keyed else None
+            if (
+                requested is not None
+                and title not in requested
+                and h1 not in unresolved_claims
+            ):
+                continue
+            fm = cls._parse_frontmatter_text(content, filepath, errors)
+            is_archived = cls._is_archived_frontmatter(fm)
+            if (requested is None or title in requested) and is_archived:
+                archived_stems.add(title)
+            if h1 and (requested is None or h1 in unresolved_claims):
+                existing = claim_to_stem.get(h1)
+                if existing is None or title < existing:
+                    claim_to_stem[h1] = title
+                if is_archived:
+                    archived_statement_stems.add(title)
+
+        archived = set(archived_stems)
+        for claim, stem in claim_to_stem.items():
+            # Match graph resolution precedence: a real filename title wins
+            # over an identically-worded engram claim.
+            if claim not in titles and stem in archived_statement_stems:
+                archived.add(claim)
+
+        for error in errors:
+            _LOG.warning(
+                "archived-target lookup failed open; relationships remain "
+                "allowed for unresolved identities: %s", error)
+        return archived, errors
 
     @staticmethod
     def _extract_h1(content: str) -> str | None:
@@ -200,7 +352,9 @@ class RelationshipGraph:
         iteration order is hash-randomized) and sync never converges."""
         return a if (cls._CONF_RANK.get(a, 0), a) >= (cls._CONF_RANK.get(b, 0), b) else b
 
-    def _scan_vault_relationships(self, errors: list[str]) -> tuple[dict, int, dict]:
+    def _scan_vault_relationships(
+        self, errors: list[str]
+    ) -> tuple[dict, int, dict, list[dict]]:
         """One vault pass → ({source_title: {(target, type, confidence)}},
         notes_scanned, resolution_stats). Notes without relationships are
         not in the dict.
@@ -224,6 +378,7 @@ class RelationshipGraph:
         constraint."""
         raw: list[tuple[str, set[tuple]]] = []
         claim_to_stem: dict[str, str] = {}
+        archived_titles: set[str] = set()
         titles: set[str] = set()
         duplicate_claims = 0
         notes_scanned = 0
@@ -240,6 +395,10 @@ class RelationshipGraph:
                 errors.append(f"{filepath}: {e}")
                 continue
 
+            fm = self._parse_frontmatter_text(content, filepath, errors)
+            if self._is_archived_frontmatter(fm):
+                archived_titles.add(source_title)
+
             if os.path.basename(root) in STATEMENT_KEYED_DIRS:
                 h1 = self._extract_h1(content)
                 if h1:
@@ -251,7 +410,7 @@ class RelationshipGraph:
                         if source_title < existing:
                             claim_to_stem[h1] = source_title
 
-            rows = self._parse_relationships_text(content, filepath, errors)
+            rows = self._relationships_from_frontmatter(fm)
             if rows:
                 raw.append((source_title, rows))
 
@@ -276,12 +435,26 @@ class RelationshipGraph:
             source: {(t, ty, c) for (t, ty), c in kv.items()}
             for source, kv in desired_kv.items()
         }
+        archived_target_links = [
+            {
+                "source": source,
+                "target": target,
+                "type": rtype,
+                "confidence": confidence,
+            }
+            for source, rows in desired.items()
+            for target, rtype, confidence in rows
+            if target in archived_titles
+        ]
         resolution = {
             "claims_indexed": len(claim_to_stem),
             "resolved_targets": resolved_targets,
             "duplicate_claims": duplicate_claims,
         }
-        return desired, notes_scanned, resolution
+        archived_target_links.sort(
+            key=lambda row: (row["source"], row["target"], row["type"])
+        )
+        return desired, notes_scanned, resolution, archived_target_links
 
     def build_from_vault(self) -> dict:
         """
@@ -294,7 +467,9 @@ class RelationshipGraph:
         self.conn.execute("DELETE FROM relationships")
 
         errors: list[str] = []
-        desired, notes_scanned, resolution = self._scan_vault_relationships(errors)
+        desired, notes_scanned, resolution, archived_target_links = (
+            self._scan_vault_relationships(errors)
+        )
 
         relationships_indexed = 0
         for source_title, rows in desired.items():
@@ -321,6 +496,7 @@ class RelationshipGraph:
             "notes_scanned": notes_scanned,
             "relationships_indexed": relationships_indexed,
             "resolution": resolution,
+            "archived_target_links": archived_target_links,
             "errors": errors
         }
 
@@ -337,7 +513,9 @@ class RelationshipGraph:
         Returns stats dict.
         """
         errors: list[str] = []
-        desired, notes_scanned, resolution = self._scan_vault_relationships(errors)
+        desired, notes_scanned, resolution, archived_target_links = (
+            self._scan_vault_relationships(errors)
+        )
 
         db_sources = {row[0] for row in self.conn.execute(
             "SELECT DISTINCT source FROM relationships")}
@@ -393,21 +571,85 @@ class RelationshipGraph:
             "rows_removed": rows_removed,
             "sources_removed": sources_removed,
             "resolution": resolution,
+            "archived_target_links": archived_target_links,
             "errors": errors
         }
 
-    def add_relationships(self, source: str, relationships: list[dict]):
-        """Add relationships for a single note (incremental update)."""
+    def add_relationships(self, source: str, relationships: list[dict]) -> dict:
+        """Add allowed relationships for a single note.
+
+        New links to active notes carrying the controlled ``archived`` tag
+        are blocked. Lookup failures are loud but fail open. Existing graph
+        rows are never removed by this mutation path.
+        """
+        proposed_targets = {str(rel["target"]) for rel in relationships}
+        archived_targets, lookup_errors = self.scan_archived_targets(
+            self.vault_path,
+            proposed_targets,
+            resolve_statement_claims=True,
+        )
+        added = 0
+        blocked: list[dict] = []
+        errors: list[str] = list(lookup_errors)
         for rel in relationships:
+            target = str(rel["target"])
+            if target in archived_targets:
+                blocked.append({
+                    "source": source,
+                    "target": target,
+                    "type": str(rel["type"]),
+                })
+                _LOG.warning(
+                    "blocked new relationship to archived target: %s -> %s (%s)",
+                    source, target, rel["type"]
+                )
+                continue
             try:
                 self.conn.execute(
                     "INSERT OR REPLACE INTO relationships (source, target, type, confidence) VALUES (?, ?, ?, ?)",
-                    (source, str(rel["target"]), str(rel["type"]),
+                    (source, target, str(rel["type"]),
                      str(rel.get("confidence", "medium")))
                 )
-            except sqlite3.Error:
-                pass
+                added += 1
+            except sqlite3.Error as exc:
+                message = f"{source} -> {target}: {exc}"
+                errors.append(message)
+                _LOG.error("relationship graph insert failed: %s", message)
         self.conn.commit()
+        return {"added": added, "blocked": blocked, "errors": errors}
+
+    def find_archived_target_links(self) -> list[dict]:
+        """Report existing graph edges to archived targets without mutation."""
+        archived_targets, _ = self.scan_archived_targets(self.vault_path)
+        if not archived_targets:
+            return []
+
+        cur = self.conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS temp._archived_targets")
+        cur.execute(
+            "CREATE TEMP TABLE _archived_targets (target TEXT PRIMARY KEY)"
+        )
+        cur.executemany(
+            "INSERT OR IGNORE INTO _archived_targets VALUES (?)",
+            ((target,) for target in archived_targets),
+        )
+        try:
+            rows = cur.execute("""
+                SELECT source, target, type, confidence FROM relationships
+                WHERE target IN (SELECT target FROM _archived_targets)
+                ORDER BY source, target, type
+            """).fetchall()
+        finally:
+            cur.execute("DROP TABLE IF EXISTS temp._archived_targets")
+        return [
+            {
+                "source": row[0],
+                "target": row[1],
+                "type": row[2],
+                "confidence": row[3],
+            }
+            for row in rows
+        ]
 
     def get_relationships(self, note_title: str, types: list[str] = None,
                           confidence_min: str = None) -> list[dict]:
@@ -614,6 +856,7 @@ if __name__ == "__main__":
         print("  query <note_title>   — Show relationships for a note")
         print("  connected <title> [depth] — Show connected notes")
         print("  orphans              — Find orphan targets")
+        print("  archived-links        — Report links to archived targets")
         print("  cleanup              — Remove orphan relationships")
         print("  stats                — Show graph statistics")
         sys.exit(1)
@@ -633,6 +876,9 @@ if __name__ == "__main__":
             print(f"Errors: {len(result['errors'])}")
             for err in result['errors'][:10]:
                 print(f"  {err}")
+        if result['archived_target_links']:
+            print("Links to archived targets: "
+                  f"{len(result['archived_target_links'])} (preserved)")
 
     elif command == "sync":
         print("Syncing relationship graph with vault YAML (incremental)...")
@@ -649,6 +895,13 @@ if __name__ == "__main__":
             print(f"Errors: {len(result['errors'])}")
             for err in result['errors'][:10]:
                 print(f"  {err}")
+        if result['archived_target_links']:
+            print("Links to archived targets: "
+                  f"{len(result['archived_target_links'])} (preserved)")
+
+    elif command == "archived-links":
+        links = graph.find_archived_target_links()
+        print(json.dumps(links, indent=2))
 
     elif command == "query":
         if len(sys.argv) < 3:
