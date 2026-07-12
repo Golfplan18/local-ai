@@ -84,6 +84,37 @@ CONVERGENCE_THRESHOLD = 5  # arrival_history entries needed for engram promotion
 _STAGING_WRITE_LOCK = threading.Lock()
 
 
+def _metadata_tag_state(metadata: dict, tag: str) -> bool | None:
+    """Return indexed tag membership, or None when legacy metadata is silent."""
+    marker = f"tag_{tag}"
+    if marker in metadata:
+        value = metadata.get(marker)
+        if isinstance(value, bool):
+            return value
+        normalized = str(value or "").strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+        return None
+
+    if "tags" not in metadata:
+        return None
+    value = metadata.get("tags")
+    if isinstance(value, str):
+        raw = value.strip()
+        try:
+            decoded = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            decoded = raw.split(",")
+        value = decoded
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return None
+    if any(isinstance(item, (dict, list, tuple, set)) for item in value):
+        return None
+    return tag.lower() in {str(item).strip().lower() for item in value}
+
+
 def _staging_directory(*, create: bool = False) -> Path:
     """Return the managed extraction root without following a root symlink."""
     configured = Path(STAGING_DIR)
@@ -627,6 +658,8 @@ class RuntimePipeline:
             if not results or not results.get("ids"):
                 continue
 
+            proposed_relationships: list[dict] = []
+            known_target_paths: dict[str, list[str]] = {}
             for i, match_id in enumerate(results["ids"][0]):
                 distance = results["distances"][0][i] if results.get("distances") else 1.0
                 similarity = max(0, 1 - (distance / 2))
@@ -635,13 +668,57 @@ class RuntimePipeline:
                     continue
 
                 # Get match title from metadata
-                match_title = ""
+                match_title = str(match_id)
+                match_metadata: dict = {}
                 if results.get("metadatas") and i < len(results["metadatas"][0]):
-                    match_title = results["metadatas"][0][i].get("title", match_id)
+                    match_metadata = results["metadatas"][0][i] or {}
+                    match_title = str(match_metadata.get("title") or match_id)
 
                 # Skip self-matches
                 if match_title == note_title:
                     continue
+
+                archived_state = _metadata_tag_state(match_metadata, "archived")
+                raw_path = str(
+                    match_metadata.get("path")
+                    or match_metadata.get("obsidian_path")
+                    or ""
+                ).strip()
+                target_path = ""
+                if raw_path:
+                    candidate = (
+                        raw_path if os.path.isabs(raw_path)
+                        else os.path.join(self.vault_path, raw_path)
+                    )
+                    candidate = os.path.realpath(candidate)
+                    vault_root = os.path.realpath(self.vault_path)
+                    try:
+                        inside_vault = os.path.commonpath(
+                            [vault_root, candidate]
+                        ) == vault_root
+                    except ValueError:
+                        inside_vault = False
+                    expected_title = os.path.basename(candidate).rsplit(".", 1)[0]
+                    if (
+                        inside_vault
+                        and os.path.isfile(candidate)
+                        and expected_title == match_title
+                    ):
+                        target_path = candidate
+                        known_target_paths.setdefault(match_title, []).append(candidate)
+
+                if not target_path:
+                    metadata_hint = (
+                        "archived" if archived_state is True
+                        else "active" if archived_state is False
+                        else "unknown"
+                    )
+                    print(
+                        f"[runtime_pipeline] canonical archived-target YAML "
+                        f"unavailable for {match_title}; policy failed open "
+                        f"(indexed state: {metadata_hint})",
+                        file=sys.stderr,
+                    )
 
                 # Heuristic classification
                 rel_type = self._classify_relationship_heuristic(
@@ -649,18 +726,32 @@ class RuntimePipeline:
                 )
 
                 if rel_type and rel_type != "no_relationship":
-                    new_relationships += 1
-                    if update_note_relationships:
-                        relationship = {
-                            "target": match_title,
-                            "type": rel_type,
-                            "confidence": round(similarity, 3),
-                            "source": "pass2_runtime",
-                        }
-                        try:
-                            update_note_relationships(path, [relationship])
-                        except Exception:
-                            pass
+                    proposed_relationships.append({
+                        "target": match_title,
+                        "type": rel_type,
+                        "confidence": round(similarity, 3),
+                        "source": "pass2_runtime",
+                    })
+
+            if not proposed_relationships:
+                continue
+            if update_note_relationships:
+                try:
+                    new_relationships += int(update_note_relationships(
+                        path,
+                        proposed_relationships,
+                        vault_path=self.vault_path,
+                        known_paths=known_target_paths,
+                        return_count=True,
+                    ))
+                except Exception as exc:
+                    print(
+                        f"[runtime_pipeline] Pass 2 relationship mutation failed "
+                        f"for {path}: {type(exc).__name__}: {exc}",
+                        file=sys.stderr,
+                    )
+            else:
+                new_relationships += len(proposed_relationships)
 
         return new_relationships
 

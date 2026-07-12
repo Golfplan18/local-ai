@@ -23,6 +23,7 @@ from orchestrator.tools.periodic_maintenance import task_1_orphan_cleanup
 EMPTY_SYNC_STATS = {
     "notes_scanned": 0, "sources_in_yaml": 0,
     "rows_added": 0, "rows_removed": 0, "sources_removed": 0, "errors": [],
+    "archived_target_links": [],
 }
 
 
@@ -122,6 +123,36 @@ class TestTask1Wiring(Task1TestBase):
         self.assertEqual(result.stats["sources_removed"], 2)
         self.assertIn("added 3", result.message)
         self.assertIn("removed 7", result.message)
+
+    def test_archived_target_links_are_alerted_but_not_removed(self):
+        links = [{
+            "source": "LegacySource", "target": "ArchivedTarget",
+            "type": "supports", "confidence": "high",
+        }]
+        stats = dict(EMPTY_SYNC_STATS, archived_target_links=links)
+        graph = FakeGraph(sync_stats=stats)
+
+        result = task_1_orphan_cleanup(graph=graph)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.stats["archived_target_links"], 1)
+        self.assertIn("flagged 1", result.message)
+        self.assertTrue(any("preserved" in alert for alert in result.alerts))
+        self.assertNotIn("remove_orphans", graph.calls)
+
+    def test_scan_errors_are_alerted_without_blocking_sync(self):
+        stats = dict(
+            EMPTY_SYNC_STATS,
+            errors=["Broken.md: unterminated YAML frontmatter"],
+        )
+
+        result = task_1_orphan_cleanup(graph=FakeGraph(sync_stats=stats))
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.stats["scan_errors"], 1)
+        self.assertIn("reported 1 scan errors", result.message)
+        self.assertTrue(any("failed open" in alert for alert in result.alerts))
+        self.assertTrue(any("Broken.md" in alert for alert in result.alerts))
 
     def test_find_failure_fails_task(self):
         graph = FakeGraph(find_raises=RuntimeError("boom"))

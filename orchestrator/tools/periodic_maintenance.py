@@ -215,11 +215,32 @@ def task_1_orphan_cleanup(graph=None) -> TaskResult:
         "rows_added": sync_stats["rows_added"],
         "rows_removed": sync_stats["rows_removed"],
         "sources_removed": sync_stats["sources_removed"],
+        "archived_target_links": len(
+            sync_stats.get("archived_target_links", [])
+        ),
+        "scan_errors": len(sync_stats.get("errors", [])),
     }
+    archived_link_count = result.stats["archived_target_links"]
+    scan_error_count = result.stats["scan_errors"]
     result.message = (
         f"Found {orphan_count} dangling targets; sync added "
-        f"{sync_stats['rows_added']} rows, removed {sync_stats['rows_removed']}"
+        f"{sync_stats['rows_added']} rows, removed {sync_stats['rows_removed']}; "
+        f"flagged {archived_link_count} links to archived targets; "
+        f"reported {scan_error_count} scan errors"
     )
+
+    if archived_link_count:
+        result.alerts.append(
+            f"Found {archived_link_count} existing relationship links to "
+            f"archived targets — preserved for human review"
+        )
+
+    if scan_error_count:
+        samples = "; ".join(str(error) for error in sync_stats["errors"][:3])
+        result.alerts.append(
+            f"Relationship graph scan failed open for {scan_error_count} notes; "
+            f"archived-target reporting may be incomplete. Samples: {samples}"
+        )
 
     if orphan_count > 10:
         result.alerts.append(
