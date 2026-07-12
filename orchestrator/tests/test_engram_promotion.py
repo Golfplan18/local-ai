@@ -239,5 +239,82 @@ class TestPromotionIndexing(unittest.TestCase):
         self.assertIn(os.path.abspath(self.note), fake.deleted_ids)
 
 
+class _FakeChunkedCollection:
+    """Chromadb stand-in that actually stores records and supports the
+    where= metadata filter delete_file_records()/resolve_file_ids() rely
+    on — unlike _FakeCollection above, which can't represent a staging note
+    stored as multiple '<abspath>#chunk-N' records."""
+
+    def __init__(self):
+        self.store = {}
+
+    def seed_chunked(self, path, n_chunks):
+        abspath = os.path.abspath(path)
+        for i in range(1, n_chunks + 1):
+            self.store[f"{abspath}#chunk-{i}"] = {
+                "document": f"chunk {i}",
+                "metadata": {"path": abspath, "chunk_index": i,
+                             "total_chunks": n_chunks},
+            }
+
+    def get(self, ids=None, where=None, include=None):
+        if where:
+            found = [i for i, rec in self.store.items()
+                     if all(rec["metadata"].get(k) == v
+                            for k, v in where.items())]
+        elif ids is None:
+            found = list(self.store)
+        else:
+            found = [i for i in ids if i in self.store]
+        return {"ids": found}
+
+    def delete(self, ids):
+        for i in ids:
+            self.store.pop(i, None)
+
+    def add(self, ids, documents, metadatas, embeddings=None):
+        for j, id_ in enumerate(ids):
+            self.store[id_] = {"document": documents[j], "metadata": metadatas[j]}
+
+
+class TestPromotionIndexingChunkedStaging(unittest.TestCase):
+    """Regression for engram_promotion.py:254 assuming single-record
+    id == abspath. A staging note whose body exceeded one HCP chunk (PR
+    #215) is stored as multiple '<abspath>#chunk-N' records; the promotion
+    step must drop ALL of them, not just the (never-present) bare-abspath
+    id, or orphan chunk records survive the promotion."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.staging = os.path.join(self.tmp, "staging")
+        self.vault = os.path.join(self.tmp, "Engrams")
+        self.promoted = os.path.join(self.tmp, "promoted")
+        os.makedirs(self.staging)
+        self.note = os.path.join(self.staging, "A vetted claim about something.md")
+        with open(self.note, "w", encoding="utf-8") as f:
+            f.write(STAGED)
+
+    def test_promotion_drops_all_chunk_records_for_staging_path(self):
+        from unittest import mock
+
+        from orchestrator.tools import knowledge_index
+
+        fake = _FakeChunkedCollection()
+        fake.seed_chunked(self.note, 3)  # staging note indexed as 3 chunks
+        with mock.patch.object(knowledge_index, "get_knowledge_collection",
+                               return_value=fake), \
+             mock.patch.object(knowledge_index, "_nomic_embed",
+                               return_value=None):
+            ep.staging_note_to_engram(
+                self.note, vault_engrams=self.vault,
+                promoted_dir=self.promoted, index=True)
+
+        staging_abspath = os.path.abspath(self.note)
+        self.assertFalse(
+            any(rec["metadata"].get("path") == staging_abspath
+                for rec in fake.store.values()),
+            "orphan chunk record(s) survived promotion")
+
+
 if __name__ == "__main__":
     unittest.main()
