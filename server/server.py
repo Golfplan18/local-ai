@@ -63,7 +63,8 @@ def _model_refresh_env() -> dict:
 # Import all shared functions from orchestrator
 from boot import (
     load_boot_md, load_routing_config as load_config, get_active_endpoint as get_endpoint,
-    get_slot_endpoint, call_model, parse_tool_calls, strip_tool_calls, execute_tool,
+    get_slot_endpoint, get_endpoint_by_id, list_interactive_endpoints, call_model,
+    parse_tool_calls, strip_tool_calls, execute_tool,
     run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
     run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
@@ -79,7 +80,9 @@ from compaction import compact_context
 
 # Phase 13-14 imports (graceful fallback if not available)
 try:
-    from sidebar_window import get_sidebar_window, clear_all_sidebar_windows
+    from sidebar_window import (
+        get_sidebar_window, clear_sidebar_window, clear_all_sidebar_windows,
+    )
     SIDEBAR_WINDOW_AVAILABLE = True
 except ImportError:
     SIDEBAR_WINDOW_AVAILABLE = False
@@ -8577,7 +8580,7 @@ def api_bootstrap():
     """V3 Phase 6.1 — Conversation bootstrap endpoint.
 
     Side-channel call (NOT pipeline routing): topic → ChromaDB query across
-    knowledge + conversations collections → local-fast model assembly →
+    knowledge + conversations collections → configured utility-model assembly →
     return structured summary. Bypasses the analysis pipeline entirely
     per spec §6.3.
 
@@ -8685,13 +8688,15 @@ def api_bootstrap():
             context_lines.append(f"{src}\n{snippet}")
     context_block = "\n\n".join(context_lines)
 
-    # ── Step 3: Local-fast model assembly ───────────────────────────────────
+    # ── Step 3: configured utility-model assembly ───────────────────────────
     summary_text = ""
     fallback = False
     fallback_reason = None
     try:
         cfg = load_config()
-        ep = get_slot_endpoint(cfg, "sidebar")  # sidebar slot resolves the local-fast bucket
+        # Historical compatibility path for the bootstrap helper. New Aside
+        # requests use their dedicated user setting in /api/scratchpad.
+        ep = get_slot_endpoint(cfg, "sidebar")
         if not ep:
             raise RuntimeError("sidebar slot has no endpoint configured")
 
@@ -9008,16 +9013,26 @@ def conversation_pin(conversation_id):
 
 # ── V3 Backlog 6: right-side scratchpad ─────────────────────────────────────
 
+@app.route("/api/aside/models", methods=["GET"])
+def aside_models():
+    """Return only model ids accepted by the explicit Aside resolver."""
+    try:
+        return json.dumps({"models": list_interactive_endpoints()})
+    except Exception as exc:
+        print(f"[aside] model inventory failed open: {exc}",
+              file=sys.stderr, flush=True)
+        return json.dumps({"models": [], "error": str(exc)})
+
 @app.route("/api/scratchpad", methods=["POST"])
 def api_scratchpad():
-    """Plain-HTTP scratchpad endpoint for the right-column Q&A.
+    """Plain-HTTP Aside endpoint for the right-column Q&A.
 
     V3 Backlog 2A Chunk 4 (2026-04-30) — migrated from SSE streaming. The
     user does not see model thinking; the answer is pushed to the right-
-    column output as soon as it's ready. Spec item 6 — local-fast model,
-    no save, no ChromaDB write, no server-side history. Each request is
-    independent; the client maintains a short autopurging history of the
-    last ~10 entries in DOM.
+    column output as soon as it's ready. The dedicated Aside model preference
+    is independent of the active configuration's SMALL/utility cell. Context
+    is an in-memory five-turn rolling window; nothing is written to disk or
+    ChromaDB. The client separately keeps its visible DOM history bounded.
 
     Request body:
         { "prompt": "<string>" }
@@ -9041,18 +9056,46 @@ def api_scratchpad():
 
     try:
         cfg = load_config()
-        ep = get_slot_endpoint(cfg, "sidebar")
+        try:
+            if not _HAS_USER_SETTINGS or _user_settings is None:
+                raise RuntimeError("user settings module is unavailable")
+            preferred_id = _user_settings.get_setting("aside.model_id", "")
+        except Exception as settings_exc:
+            preferred_id = ""
+            print(f"[aside] model preference read failed: {settings_exc}; "
+                  "falling back to SMALL/utility", file=sys.stderr, flush=True)
+
+        ep = get_endpoint_by_id(preferred_id) if preferred_id else None
+        if preferred_id and not ep:
+            print(f"[aside] preferred endpoint {preferred_id!r} is unavailable; "
+                  "falling back to SMALL/utility", file=sys.stderr, flush=True)
         if not ep:
-            return json.dumps({"error": "local-fast endpoint not configured"})
-        from boot import call_local_endpoint
-        answer = call_local_endpoint(
-            [{"role": "user", "content": prompt}],
-            ep,
-        )
-        if isinstance(answer, str) and answer.startswith("[Error"):
-            return json.dumps({"error": answer})
-        return json.dumps({"answer": answer or ""})
+            ep = get_slot_endpoint(cfg, "sidebar")
+        if not ep:
+            error = "Aside model and SMALL fallback are not configured"
+            print(f"[aside] {error}", file=sys.stderr, flush=True)
+            return json.dumps({"error": error})
+
+        window = get_sidebar_window("aside")
+        # One window transaction spans context read + model call + append, so
+        # rapid submits cannot both read the same prior turn and then land out
+        # of causal order. The lock is per window, not process-global.
+        with window.transaction():
+            messages = window.get_history()
+            messages.append({"role": "user", "content": prompt})
+            answer = call_model(messages, ep)
+            if isinstance(answer, str) and answer.lstrip().startswith("[Error"):
+                print(f"[aside] model call failed open: {answer}",
+                      file=sys.stderr, flush=True)
+                return json.dumps({"error": answer})
+            if not isinstance(answer, str) or not answer.strip():
+                error = "Aside model returned no response"
+                print(f"[aside] {error}", file=sys.stderr, flush=True)
+                return json.dumps({"error": error})
+            window.add_exchange(prompt, answer)
+        return json.dumps({"answer": answer})
     except Exception as e:
+        print(f"[aside] request failed open: {e}", file=sys.stderr, flush=True)
         return json.dumps({"error": str(e)})
 
 
@@ -9233,7 +9276,6 @@ def sidebar_clear():
         return json.dumps({"error": "Sidebar window not available"}), 501
     data = request.get_json(force=True)
     pid = data.get("panel_id", "sidebar")
-    from sidebar_window import clear_sidebar_window
     clear_sidebar_window(pid)
     return json.dumps({"ok": True, "panel_id": pid})
 

@@ -97,6 +97,12 @@ DEFAULTS: dict = {
         # preserve the minimal canvas surface.
         "visual_help_enabled": False,
     },
+    "aside": {
+        # Dedicated default, intentionally independent of the active model
+        # configuration's SMALL/utility selection. If unavailable at runtime,
+        # /api/scratchpad logs loudly and falls back to that utility chain.
+        "model_id": "gemini/gemini-3.1-flash-lite",
+    },
     "keyboard": {
         # command_id -> shortcut string. Missing / null / "" means "use
         # the browser-side default from keyboard-shortcuts.js".
@@ -267,6 +273,14 @@ def _validate_updates(updates: dict) -> None:
         raise SettingsError("styles.default_id must be a string ('' = none)")
     if "use_custom_values" in st and not isinstance(st["use_custom_values"], bool):
         raise SettingsError("styles.use_custom_values must be a boolean")
+
+    aside = updates.get("aside")
+    if aside is not None and not isinstance(aside, dict):
+        raise SettingsError("aside must be an object")
+    if isinstance(aside, dict) and "model_id" in aside:
+        model_id = aside["model_id"]
+        if not isinstance(model_id, str):
+            raise SettingsError("aside.model_id must be a string")
 
 
 # ── API key handling (keyring) ──────────────────────────────────────────────

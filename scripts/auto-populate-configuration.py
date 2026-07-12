@@ -432,8 +432,12 @@ def _vendor_authoritative_enabled() -> bool:
         return v not in ("0", "false", "no", "off")
 
 
-def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
-    """The ids the vendor-catalogue-authoritative Models pane can resolve:
+def _vendor_authoritative_inventory(
+    base_registry_path: Path | None = None,
+) -> tuple[set[str], dict[str, str]]:
+    """Return the pane-resolvable ids and native serialization aliases.
+
+    The ids the vendor-catalogue-authoritative Models pane can resolve are:
     native VA keys ∪ alias forms whose canonical target is a live VA key —
     exactly the pane's ``_resolveRegistryModel`` contract (server.py
     model_registry_get serves ``{models, aliases}`` from the VA file, and
@@ -455,7 +459,7 @@ def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
     so a corrupt base registry doesn't also silently drop the VA restriction.
     """
     if not _vendor_authoritative_enabled():
-        return set()
+        return set(), {}
     va_path: Path | None = None
     try:
         from orchestrator import runtime_paths as _rp
@@ -470,11 +474,13 @@ def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
         if va_path and Path(va_path).exists():
             va = json.loads(Path(va_path).read_text())
             va_keys = set((va.get("models") or {}).keys())
+            aliases = {}
             resolvable = set(va_keys)
             for legacy, canonical in (va.get("aliases") or {}).items():
                 if canonical in va_keys:
                     resolvable.add(legacy)
-            return resolvable
+                    aliases[legacy] = canonical
+            return resolvable, aliases
     except Exception as exc:
         # A malformed/unreadable VA file must never abort the bake — degrade to
         # no VA restriction (the base-registry filter still applies), but say so.
@@ -483,7 +489,92 @@ def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
             f"(proceeding without VA restriction): {exc}",
             file=sys.stderr,
         )
-    return set()
+    return set(), {}
+
+
+def _va_resolvable_ids(base_registry_path: Path | None = None) -> set[str]:
+    """Backward-compatible view of the pane-resolvable id set."""
+    return _vendor_authoritative_inventory(base_registry_path)[0]
+
+
+def _routing_serialization_inventory(
+    base_registry_path: Path | None,
+    vendor_aliases: dict[str, str],
+) -> tuple[set[str], dict[str, str]]:
+    """Return routing endpoint ids plus aliases that serialize to them.
+
+    The model catalog is OpenRouter-shaped while the de-duplicated routing
+    inventory prefers native endpoint ids. Direct endpoints retain their
+    former OpenRouter id in ``openrouter_fallback_model_id``; use that durable
+    provenance, together with the vendor-authoritative alias map and exact
+    case-insensitive endpoint aliases, to make every baked id routable.
+
+    Missing/corrupt routing data fails open with a loud log: callers receive
+    an empty endpoint set, which disables the routing filter rather than
+    aborting preset generation.
+    """
+    env_path = os.environ.get("ORA_ROUTING_CONFIG_PATH")
+    if env_path:
+        routing_path = Path(env_path)
+    elif base_registry_path is not None:
+        routing_path = Path(base_registry_path).parent / "routing-config.json"
+    else:
+        try:
+            from orchestrator import runtime_paths as _rp
+            routing_path = _rp.routing_config_path()
+        except Exception:
+            routing_path = CONFIG_DIR / "routing-config.json"
+
+    try:
+        routing = json.loads(routing_path.read_text())
+        endpoints = [
+            endpoint for endpoint in (routing.get("endpoints") or [])
+            if (isinstance(endpoint, dict)
+                and endpoint.get("id")
+                and endpoint.get("enabled") is not False
+                and endpoint.get("status", "active") == "active"
+                and endpoint.get("type") in ("local", "api"))
+        ]
+    except Exception as exc:
+        print(
+            f"[auto-populate] routing inventory read failed "
+            f"(proceeding without routing-id restriction): {exc}",
+            file=sys.stderr,
+        )
+        return set(), dict(vendor_aliases)
+
+    endpoint_ids = {endpoint["id"] for endpoint in endpoints}
+    aliases = dict(vendor_aliases)
+    # Router accepts case-equivalent endpoint ids. Preserve the exact runtime
+    # spelling in generated JSON so other consumers do not need that fallback.
+    for endpoint_id in endpoint_ids:
+        if endpoint_id.lower() != endpoint_id:
+            aliases.setdefault(endpoint_id.lower(), endpoint_id)
+    # Dedupe preserves an OpenRouter dispatch route on the native survivor.
+    # That field is also the authoritative removed-id -> survivor mapping for
+    # future auto-population runs (e.g. z-ai/glm-5.2 -> qwen/glm-5.2).
+    for endpoint in endpoints:
+        fallback_id = endpoint.get("openrouter_fallback_model_id")
+        if isinstance(fallback_id, str) and fallback_id:
+            aliases[fallback_id] = endpoint["id"]
+            aliases.setdefault(fallback_id.lower(), endpoint["id"])
+    return endpoint_ids, aliases
+
+
+def _canonical_model_id(model_id: str, aliases: dict[str, str] | None) -> str:
+    """Resolve an exact/case alias chain without guessing model identity."""
+    current = model_id
+    seen = set()
+    alias_map = aliases or {}
+    while isinstance(current, str) and current not in seen:
+        seen.add(current)
+        target = alias_map.get(current)
+        if target is None:
+            target = alias_map.get(current.lower())
+        if not isinstance(target, str) or not target or target == current:
+            break
+        current = target
+    return current
 
 
 def registry_crossref(registry_path: Path | None = None) -> dict:
@@ -509,6 +600,11 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
                                 OpenRouter-only model the pane flags DEPRECATED.
                                 Empty when the inversion is off or the VA file
                                 is missing (no restriction).
+      ``routing_endpoint_ids`` — exact ids in the runtime routing inventory;
+                                used with canonical_aliases to guarantee baked
+                                ids resolve instead of silently cascading.
+      ``canonical_aliases``   — exact/case/vendor/OpenRouter aliases mapped to
+                                the surviving runtime endpoint id.
 
     Reachability policy (2026-06-11): a chat model is pick-eligible only
     when the probe POSITIVELY verified it (``reachable`` is True), so the
@@ -529,7 +625,9 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
     # base registry's health, so a corrupt/missing base must NOT silently drop
     # the VA restriction (that would re-skew picker vs pane). See
     # _va_resolvable_ids. Empty when the inversion is off / file missing.
-    va_resolvable_ids = _va_resolvable_ids(path)
+    va_resolvable_ids, vendor_aliases = _vendor_authoritative_inventory(path)
+    routing_endpoint_ids, canonical_aliases = _routing_serialization_inventory(
+        path, vendor_aliases)
     out = {
         "registry_ids": set(),
         "unreachable_ids": set(),
@@ -538,6 +636,8 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
         "reasoning_model_ids": set(),
         "vision_verified_ids": set(),
         "va_resolvable_ids": va_resolvable_ids,
+        "routing_endpoint_ids": routing_endpoint_ids,
+        "canonical_aliases": canonical_aliases,
     }
     if not Path(path).exists():
         return out
@@ -599,6 +699,8 @@ def registry_crossref(registry_path: Path | None = None) -> dict:
             "reasoning_model_ids": set(),
             "vision_verified_ids": set(),
             "va_resolvable_ids": va_resolvable_ids,
+            "routing_endpoint_ids": routing_endpoint_ids,
+            "canonical_aliases": canonical_aliases,
         }
     return out
 
@@ -619,6 +721,25 @@ def filter_in_registry(candidates: list[dict], registry_ids: set[str]) -> list[d
     if not registry_ids:
         return candidates
     return [m for m in candidates if m.get("id") in registry_ids]
+
+
+def filter_routing_resolvable(
+    candidates: list[dict],
+    routing_endpoint_ids: set[str],
+    canonical_aliases: dict[str, str] | None,
+) -> list[dict]:
+    """Keep catalog rows that serialize to a real routing endpoint.
+
+    Empty endpoint inventory is a fail-open no-op for fresh installs or a
+    damaged runtime file; registry_crossref logs that degradation loudly.
+    """
+    if not routing_endpoint_ids:
+        return candidates
+    return [
+        model for model in candidates
+        if _canonical_model_id(model.get("id", ""), canonical_aliases)
+        in routing_endpoint_ids
+    ]
 
 
 def filter_va_resolvable(candidates: list[dict], va_resolvable_ids: set[str]) -> list[dict]:
@@ -1272,16 +1393,29 @@ def pick_vision_substitute(catalog: list[dict], size_bucket: str, preset_mode: s
 # ─── Cell shape ──────────────────────────────────────────────────────────
 
 
-def picks_to_cell(picks: list[dict], vision_substitute: str | None) -> dict | None:
+def picks_to_cell(
+    picks: list[dict],
+    vision_substitute: str | None,
+    canonical_aliases: dict[str, str] | None = None,
+) -> dict | None:
     """Convert top-N picks to the cell shape (primary + fallback + vision_substitute)."""
     if not picks:
         return None
+    aliases = canonical_aliases or {}
+    ids: list[str] = []
+    for pick in picks:
+        model_id = _canonical_model_id(pick["id"], aliases)
+        if model_id and model_id not in ids:
+            ids.append(model_id)
+    if not ids:
+        return None
     cell = {
-        "primary": picks[0]["id"],
-        "fallback": [p["id"] for p in picks[1:]],
+        "primary": ids[0],
+        "fallback": ids[1:],
     }
     if vision_substitute:
-        cell["vision_substitute"] = vision_substitute
+        cell["vision_substitute"] = _canonical_model_id(
+            vision_substitute, aliases)
     return cell
 
 
@@ -1300,6 +1434,8 @@ def populate_configuration(
     registry_ids: set[str] | None = None,
     vision_verified_ids: set[str] | None = None,
     va_resolvable_ids: set[str] | None = None,
+    routing_endpoint_ids: set[str] | None = None,
+    canonical_aliases: dict[str, str] | None = None,
     min_context: int | None = None,
 ) -> dict:
     """Compute the full configuration dict for a given preset.
@@ -1334,6 +1470,12 @@ def populate_configuration(
     slot. None/empty → no restriction (inversion off or no VA file). See
     filter_va_resolvable.
 
+    ``routing_endpoint_ids`` + ``canonical_aliases``: constrain the catalog
+    to ids that serialize to a real routing endpoint, then write the surviving
+    endpoint's exact id. This is a hard identity check, unlike the soft pane
+    filter: a non-resolving id is not a working fallback. Empty endpoint set
+    means no restriction (fresh install / fail-open degraded inventory).
+
     ``min_context``: when set (the ``min_context_1m`` preset toggle passes
     900000), every slot restricts to models with a context window at least
     this large so long prompts fit. Threaded into both pick functions.
@@ -1360,6 +1502,8 @@ def populate_configuration(
     # can pick, so this hard global filter can't empty a slot. See
     # filter_in_registry.
     catalog = filter_in_registry(catalog, registry_ids or set())
+    catalog = filter_routing_resolvable(
+        catalog, routing_endpoint_ids or set(), canonical_aliases)
     # NOTE: the vendor-catalogue-authoritative restriction is NOT applied here.
     # It's threaded into the pick functions as a SOFT per-slot filter (with
     # graceful degrade), because the pane-resolvable set can be thinner than the
@@ -1579,7 +1723,8 @@ def populate_configuration(
                     min_context=min_context,
                 )
                 notes.extend(pick_notes)
-                section[cell_name] = picks_to_cell(picks, vision_substitute)
+                section[cell_name] = picks_to_cell(
+                    picks, vision_substitute, canonical_aliases)
             else:
                 picks, pick_notes = pick_for_paid_slot(
                     catalog,
@@ -1612,7 +1757,8 @@ def populate_configuration(
                     knee_cost_norm=slot_settings["knee_cost_norm"],
                 )
                 notes.extend(pick_notes)
-                section[cell_name] = picks_to_cell(picks, vision_substitute)
+                section[cell_name] = picks_to_cell(
+                    picks, vision_substitute, canonical_aliases)
             if notes:
                 loosening_log[f"{slot_section}.{cell_name}"] = notes
             if diversity and picks:
@@ -1731,6 +1877,8 @@ def main():
     registry_ids = xref["registry_ids"]
     vision_verified_ids = xref.get("vision_verified_ids") or set()
     va_resolvable_ids = xref.get("va_resolvable_ids") or set()
+    routing_endpoint_ids = xref.get("routing_endpoint_ids") or set()
+    canonical_aliases = xref.get("canonical_aliases") or {}
     if va_resolvable_ids:
         print(f"[auto-populate] vendor-authoritative inventory active: restricting picks to {len(va_resolvable_ids)} pane-resolvable ids (avoids DEPRECATED picks).")
     if unreachable_ids:
@@ -1752,6 +1900,8 @@ def main():
         registry_ids=registry_ids,
         vision_verified_ids=vision_verified_ids,
         va_resolvable_ids=va_resolvable_ids,
+        routing_endpoint_ids=routing_endpoint_ids,
+        canonical_aliases=canonical_aliases,
         min_context=900000 if args.min_context_1m else None,
     )
     config["name"] = args.config_name

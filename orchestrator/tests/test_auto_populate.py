@@ -1032,6 +1032,8 @@ class TestRegistryCrossrefVaResolvable(unittest.TestCase):
             "openai/orphan": {"category": "chat"},
             "meta/keep": {"category": "chat"},
         }}))
+        (Path(tmp) / "routing-config.json").write_text(
+            json.dumps({"endpoints": []}))
         return base
 
     def test_builds_resolvable_set_when_enabled(self):
@@ -1045,6 +1047,45 @@ class TestRegistryCrossrefVaResolvable(unittest.TestCase):
             # native keys + resolvable alias; dangling alias dropped.
             self.assertEqual(got, {"openai/gpt-native", "meta/keep", "openai/native"})
             self.assertNotIn("openai/dangling", got)
+            self.assertEqual(
+                xref["canonical_aliases"],
+                {"openai/native": "openai/gpt-native"},
+            )
+
+    def test_cell_serialization_uses_canonical_endpoint_ids(self):
+        cell = auto_populate.picks_to_cell(
+            [
+                {"id": "google/gemini-3.1-flash-lite"},
+                {"id": "x-ai/grok-4.3"},
+            ],
+            None,
+            {
+                "google/gemini-3.1-flash-lite": "gemini/gemini-3.1-flash-lite",
+                "x-ai/grok-4.3": "xai/grok-4.3",
+            },
+        )
+        self.assertEqual(cell["primary"], "gemini/gemini-3.1-flash-lite")
+        self.assertEqual(cell["fallback"], ["xai/grok-4.3"])
+
+    def test_routing_fallback_provenance_maps_removed_id_to_survivor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self._base(tmp)
+            routing = Path(tmp) / "routing-config.json"
+            routing.write_text(json.dumps({"endpoints": [{
+                "id": "qwen/glm-5.2",
+                "type": "api",
+                "status": "active",
+                "enabled": True,
+                "openrouter_fallback_model_id": "z-ai/glm-5.2",
+            }]}))
+            with mock.patch.dict(os.environ, {
+                    "ORA_VENDOR_CATALOG_AUTHORITATIVE": "0"}, clear=False):
+                xref = auto_populate.registry_crossref(base)
+        self.assertEqual(
+            xref["canonical_aliases"]["z-ai/glm-5.2"],
+            "qwen/glm-5.2",
+        )
+        self.assertEqual(xref["routing_endpoint_ids"], {"qwen/glm-5.2"})
 
     def test_disabled_yields_empty_set(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1072,6 +1113,8 @@ class TestRegistryCrossrefVaResolvable(unittest.TestCase):
         # filter and re-skews picker vs pane.
         with tempfile.TemporaryDirectory() as tmp:
             va = self._write_va(tmp)
+            (Path(tmp) / "routing-config.json").write_text(
+                json.dumps({"endpoints": []}))
             absent_base = Path(tmp) / "no-such-registry.json"
             with mock.patch.dict(os.environ, {
                     "ORA_VENDOR_CATALOG_AUTHORITATIVE": "1",
@@ -1125,6 +1168,38 @@ class TestPopulateConfiguration(unittest.TestCase):
         for cell_name in ["depth", "breadth"]:
             cell = config["cells"]["analysis"]["gear4"][cell_name]
             self.assertNotIn("vision_substitute", cell)
+
+    def test_every_baked_id_resolves_in_routing_inventory(self):
+        catalog = _fixture_catalog()
+        presets = _fixture_presets()
+        routing_ids = {model["id"] for model in catalog}
+        routing_ids.difference_update({"a/fast", "b/mini", "c/tiny"})
+        routing_ids.add("native/fast")
+        config = auto_populate.populate_configuration(
+            "budget",
+            catalog,
+            presets,
+            routing_endpoint_ids=routing_ids,
+            canonical_aliases={"a/fast": "native/fast"},
+        )
+
+        baked_ids = set()
+
+        def collect(value):
+            if isinstance(value, dict):
+                if isinstance(value.get("primary"), str):
+                    baked_ids.add(value["primary"])
+                baked_ids.update(value.get("fallback") or [])
+                for child in value.values():
+                    collect(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect(child)
+
+        collect(config["cells"])
+        self.assertIn("native/fast", baked_ids)
+        self.assertNotIn("a/fast", baked_ids)
+        self.assertTrue(baked_ids <= routing_ids)
 
     def test_free_end_to_end(self):
         catalog = _fixture_catalog()
