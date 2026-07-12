@@ -177,6 +177,7 @@ def save_turn_spatial_state(
     timestamp: str | None = None,
     tag: str = "",
     project_ids: list[str] | None = None,
+    trace_ref: str | None = None,
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Append a user+assistant pair to conversation.json with optional
@@ -204,6 +205,13 @@ def save_turn_spatial_state(
     verbatim (membership is edited via the project modal, not per turn).
     ``None`` / empty means the default ``General`` project.
 
+    The ``trace_ref`` argument (trace manifest, Chunk 0) is the turn's
+    pipeline-trace ref ("<conversation_id>/<turn_timestamp>", relative to
+    the trace root). Stamped on the ASSISTANT turn — the turn the trace
+    explains. ``None`` (stealth / tracing off / no trace) writes ``null``;
+    the key is always present, matching the reserved-``None`` field
+    convention on the assistant turn.
+
     Returns the path written, or ``None`` on I/O failure (non-blocking; the
     persistence step must never break the conversation flow).
     """
@@ -221,7 +229,7 @@ def save_turn_spatial_state(
         return _do_write(path, conversation_id, user_input, ai_response,
                           tag, timestamp, spatial_representation,
                           annotations, vision_extraction_result,
-                          project_ids)
+                          project_ids, trace_ref)
 
 
 def _do_write(
@@ -235,6 +243,7 @@ def _do_write(
     annotations: dict | list | None,
     vision_extraction_result: dict | None,
     project_ids: list[str] | None = None,
+    trace_ref: str | None = None,
 ) -> Path | None:
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
@@ -342,6 +351,7 @@ def _do_write(
         "spatial_representation": None,
         "annotations": None,
         "vision_extraction_result": None,
+        "trace_ref": trace_ref,
     }
 
     existing["messages"].append(user_turn)

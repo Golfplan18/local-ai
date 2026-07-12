@@ -55,7 +55,15 @@ class TestPipelineStreamHoistsStealthAboveShortCircuits(unittest.TestCase):
         self.src = server_py.read_text()
 
         # Locate the _pipeline_stream function body (next def after it).
-        start = self.src.index("def _pipeline_stream(")
+        #
+        # 2026-07-11 (Trace Walk Chunk 0): ``_pipeline_stream`` is now a
+        # thin wrapper owning the generator-level try/finally that
+        # finalizes the turn's trace manifest; it delegates the actual
+        # turn logic to ``_pipeline_stream_impl`` via ``yield from``. The
+        # stealth/trace-setup-before-every-short-circuit invariant this
+        # test class protects lives in the impl body now, so locate that
+        # function instead of the (now near-empty) wrapper.
+        start = self.src.index("def _pipeline_stream_impl(")
         # Heuristic: cut at the next top-level def or @route.
         end = self.src.index("\ndef ", start + 1)
         self.body = self.src[start:end]
