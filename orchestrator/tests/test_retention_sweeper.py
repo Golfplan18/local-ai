@@ -154,6 +154,39 @@ class TraceSweepTests(RetentionSweeperBase):
 
         self.assertIn("conv-lock", seen)
 
+    def test_pinned_trace_is_not_removed(self):
+        conv = self.traces / "conv-1"
+        pinned = conv / "old-pinned"
+        default = conv / "old-default"
+        pinned.mkdir(parents=True)
+        default.mkdir(parents=True)
+        (pinned / "trace-manifest.json").write_text(json.dumps({
+            "retention_state": "pinned",
+        }))
+        (default / "trace-manifest.json").write_text(json.dumps({
+            "retention_state": "default",
+        }))
+        self._age(pinned, 45)
+        self._age(default, 45)
+
+        summary = retention_sweeper.sweep()
+        self.assertEqual(summary["traces_removed"], 1)
+        self.assertEqual(summary["traces_pinned_skipped"], 1)
+        self.assertTrue(pinned.exists())
+        self.assertFalse(default.exists())
+
+    def test_missing_manifest_is_not_treated_as_pinned(self):
+        conv = self.traces / "conv-1"
+        turn = conv / "old-missing-manifest"
+        turn.mkdir(parents=True)
+        self._age(turn, 45)
+
+        summary = retention_sweeper.sweep()
+        self.assertEqual(summary["traces_removed"], 1)
+        self.assertEqual(summary["traces_pinned_skipped"], 0)
+        self.assertFalse(turn.exists())
+
+
 
 class LogSweepTests(RetentionSweeperBase):
     def test_old_log_gzipped_recent_untouched(self):

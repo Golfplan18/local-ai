@@ -209,6 +209,9 @@ def execute_framework(
     execution_id: Optional[str] = None,
     project_nexus: Optional[str] = None,
     config_name: Optional[str] = None,
+    trace_dir: Optional[str] = None,
+    conversation_tag: str = "",
+    trace_context: Optional[dict] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
@@ -252,6 +255,8 @@ def execute_framework(
         config = load_routing_config()
 
     fw = parse_framework_file(framework_path)
+    if trace_context is not None:
+        trace_context["framework_id"] = fw.name
 
     # Resolve effective config_name: explicit arg > framework-routing.json
     # default > None (Router auto-derives from execution_context).
@@ -262,6 +267,8 @@ def execute_framework(
         selected_mode, mode_reasoning, effective_input = select_mode(
             fw, user_input, config
         )
+        if trace_context is not None:
+            trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get(selected_mode, [])
         if not milestones:
             raise FrameworkParseError(
@@ -278,6 +285,8 @@ def execute_framework(
         selected_mode = "all"
         mode_reasoning = "single-mode framework"
         effective_input = user_input
+        if trace_context is not None:
+            trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get("all", [])
         if not milestones:
             raise FrameworkParseError(
@@ -285,8 +294,18 @@ def execute_framework(
             )
 
     scratch = ScratchSession.create(fw.name, execution_id=execution_id)
+    if trace_context is not None:
+        trace_context["execution_id"] = scratch.execution_id
     started = time.time()
     results: list[MilestoneResult] = []
+    parent_trace_ref = None
+    if trace_dir:
+        try:
+            import pipeline_trace
+            parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
+        except ImportError:
+            from orchestrator import pipeline_trace
+            parent_trace_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
 
     # ---- Oversight hook: FrameworkStarted ----
     emit_oversight_event({
@@ -301,7 +320,13 @@ def execute_framework(
 
     try:
         for milestone in milestones:
-            result = _run_milestone(fw, milestone, scratch, effective_input, config, config_name=config_name)
+            result = _run_milestone(
+                fw, milestone, scratch, effective_input, config,
+                config_name=config_name, parent_trace_dir=trace_dir,
+                parent_trace_ref=parent_trace_ref,
+                selected_mode=selected_mode,
+                conversation_tag=conversation_tag,
+                trace_context=trace_context)
             results.append(result)
 
             # ---- Oversight hook: MilestoneComplete ----
@@ -420,6 +445,11 @@ def _run_milestone(
     user_input: str,
     config: dict,
     config_name: Optional[str] = None,
+    parent_trace_dir: Optional[str] = None,
+    parent_trace_ref: Optional[str] = None,
+    selected_mode: Optional[str] = None,
+    conversation_tag: str = "",
+    trace_context: Optional[dict] = None,
 ) -> MilestoneResult:
     """Execute a single milestone with retry. Returns a MilestoneResult.
 
@@ -429,13 +459,29 @@ def _run_milestone(
 
     last_exception: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
+        child_trace_dir = _start_child_trace(
+            parent_trace_dir, handoff, framework.name, milestone.id,
+            parent_trace_ref, selected_mode, milestone.gear,
+            conversation_tag, trace_context)
+        child_status = "error"
         try:
-            deliverable = _run_through_gear_pipeline(handoff, milestone, config, config_name=config_name)
+            deliverable = _run_child_attempt(
+                child_trace_dir, parent_trace_ref, handoff, milestone,
+                config, config_name=config_name, framework_id=framework.name,
+                selected_mode=selected_mode,
+                stealth=(conversation_tag == "stealth"))
             scratch.write_milestone(milestone.id, deliverable)
 
-            drift_status, drift_reasoning = _run_drift_check(
-                milestone, deliverable, user_input, config
-            )
+            _drift_trace_token, _drift_tool_token = _bind_trace_context(
+                child_trace_dir, stealth=(conversation_tag == "stealth"),
+                surface="framework")
+            try:
+                drift_status, drift_reasoning = _run_drift_check(
+                    milestone, deliverable, user_input, config
+                )
+            finally:
+                _reset_trace_context(_drift_trace_token, _drift_tool_token)
+            child_status = "completed"
             return MilestoneResult(
                 milestone_id=milestone.id,
                 name=milestone.name,
@@ -445,10 +491,19 @@ def _run_milestone(
                 attempts=attempt,
             )
         except Exception as exc:
+            child_status = "error"
             last_exception = exc
             # Brief backoff between retries
             if attempt < MAX_RETRIES:
                 time.sleep(2 ** (attempt - 1))
+        except BaseException:
+            child_status = "error"
+            raise
+        finally:
+            _finalize_child_trace(
+                child_trace_dir, child_status, framework.name,
+                milestone.id, selected_mode, milestone.gear,
+                parent_trace_ref)
 
     raise MilestoneExecutionError(
         f"Milestone {milestone.id} ({milestone.name!r}) failed after "
@@ -565,6 +620,10 @@ def _indent(text: str, prefix: str) -> str:
 def _run_through_gear_pipeline(
     handoff_packet: str, milestone: Milestone, config: dict,
     config_name: Optional[str] = None,
+    trace_dir: Optional[str] = None,
+    parent_trace_ref: Optional[str] = None,
+    framework_id: Optional[str] = None,
+    selected_mode: Optional[str] = None,
 ) -> str:
     """Send the handoff packet through the existing gear pipeline.
 
@@ -581,7 +640,10 @@ def _run_through_gear_pipeline(
     """
     from boot import run_gear3, run_gear4, build_system_prompt_for_gear
 
-    context_pkg = _build_context_pkg(handoff_packet, milestone)
+    context_pkg = _build_context_pkg(
+        handoff_packet, milestone, trace_dir=trace_dir,
+        parent_trace_ref=parent_trace_ref, framework_id=framework_id,
+        selected_mode=selected_mode)
 
     if milestone.gear >= 4:
         return run_gear4(context_pkg, config, config_name=config_name)
@@ -607,9 +669,13 @@ def _run_through_gear_pipeline(
         return _run_model_with_tools(messages, endpoint)
 
 
-def _build_context_pkg(handoff_packet: str, milestone: Milestone) -> dict:
+def _build_context_pkg(handoff_packet: str, milestone: Milestone,
+                       trace_dir: Optional[str] = None,
+                       parent_trace_ref: Optional[str] = None,
+                       framework_id: Optional[str] = None,
+                       selected_mode: Optional[str] = None) -> dict:
     """Build the minimal context_pkg that run_gear3/4 expect."""
-    return {
+    pkg = {
         "cleaned_prompt": handoff_packet,
         "operational_notation": handoff_packet,
         "mode": "synthesis",  # MVP default; layer instructions dominate
@@ -620,6 +686,146 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone) -> dict:
         "framework_execution": True,
         "milestone_id": milestone.id,
     }
+    if trace_dir:
+        pkg["trace_dir"] = trace_dir
+    if parent_trace_ref:
+        pkg["parent_trace_ref"] = parent_trace_ref
+    if framework_id:
+        pkg["framework_id"] = framework_id
+    if selected_mode:
+        pkg["framework_mode"] = selected_mode
+    return pkg
+
+
+def _start_child_trace(parent_trace_dir: Optional[str],
+                       handoff_packet: str,
+                       framework_id: str,
+                       milestone_id: str,
+                       parent_trace_ref: Optional[str],
+                       selected_mode: Optional[str],
+                       gear: int,
+                       conversation_tag: str,
+                       trace_context: Optional[dict]) -> Optional[str]:
+    if not parent_trace_dir:
+        return None
+    try:
+        try:
+            import pipeline_trace
+        except ImportError:
+            from orchestrator import pipeline_trace
+        parent_manifest = pipeline_trace.read_manifest(parent_trace_dir) or {}
+        child_dir = pipeline_trace.start_trace(
+            conversation_id=parent_manifest.get("conversation_id"),
+            raw_input=handoff_packet,
+            ambiguity_mode="assume",
+            stealth=(conversation_tag == "stealth"),
+            conversation_tag=conversation_tag,
+        )
+        child_ref = pipeline_trace.trace_ref_for_dir(child_dir)
+        if child_ref:
+            pipeline_trace.append_child_trace_ref(parent_trace_dir, child_ref)
+            if trace_context is not None:
+                refs = trace_context.setdefault("child_trace_refs", [])
+                if child_ref not in refs:
+                    refs.append(child_ref)
+        pipeline_trace.update_manifest_fields(
+            child_dir,
+            trace_kind="framework-milestone",
+            mode=selected_mode or "all",
+            gear=gear,
+            parent_trace_ref=parent_trace_ref,
+            framework_id=framework_id,
+            milestone_id=milestone_id,
+        )
+        return child_dir
+    except Exception:
+        return None
+
+
+def _run_child_attempt(child_trace_dir: Optional[str],
+                       parent_trace_ref: Optional[str],
+                       handoff_packet: str,
+                       milestone: Milestone,
+                       config: dict,
+                       config_name: Optional[str],
+                       framework_id: str,
+                       selected_mode: Optional[str],
+                       stealth: bool = False) -> str:
+    trace_token, tool_token = _bind_trace_context(
+        child_trace_dir, stealth=stealth, surface="framework")
+    try:
+        return _run_through_gear_pipeline(
+            handoff_packet, milestone, config, config_name=config_name,
+            trace_dir=child_trace_dir, parent_trace_ref=parent_trace_ref,
+            framework_id=framework_id, selected_mode=selected_mode)
+    finally:
+        _reset_trace_context(trace_token, tool_token)
+
+
+def _bind_trace_context(trace_dir: Optional[str],
+                        stealth: bool = False,
+                        surface: str = "framework"):
+    try:
+        from boot import _TURN_TRACE_DIR_CV
+        trace_token = _TURN_TRACE_DIR_CV.set(trace_dir)
+    except Exception:
+        trace_token = None
+    tool_token = None
+    try:
+        try:
+            import tool_events as _te
+        except ImportError:
+            from orchestrator import tool_events as _te
+        conv_id = None
+        if trace_dir:
+            conv_id = os.path.basename(os.path.dirname(trace_dir))
+        tool_token = _te.set_turn_context(
+            trace_dir=trace_dir, conversation_id=conv_id,
+            stealth=stealth, surface=surface)
+    except Exception:
+        tool_token = None
+    return trace_token, tool_token
+
+
+def _reset_trace_context(trace_token, tool_token) -> None:
+    try:
+        if trace_token is not None:
+            from boot import _TURN_TRACE_DIR_CV
+            _TURN_TRACE_DIR_CV.reset(trace_token)
+    except Exception:
+        pass
+    try:
+        if tool_token is not None:
+            try:
+                import tool_events as _te
+            except ImportError:
+                from orchestrator import tool_events as _te
+            _te.reset_turn_context(tool_token)
+    except Exception:
+        pass
+
+
+def _finalize_child_trace(child_trace_dir: Optional[str],
+                          status: str,
+                          framework_id: str,
+                          milestone_id: str,
+                          selected_mode: Optional[str],
+                          gear: int,
+                          parent_trace_ref: Optional[str]) -> None:
+    if not child_trace_dir:
+        return
+    try:
+        try:
+            import pipeline_trace
+        except ImportError:
+            from orchestrator import pipeline_trace
+        pipeline_trace.finalize_manifest(
+            child_trace_dir, kind="framework-milestone",
+            status_hint=status, mode=selected_mode or "all", gear=gear,
+            parent_trace_ref=parent_trace_ref,
+            framework_id=framework_id, milestone_id=milestone_id)
+    except Exception:
+        pass
 
 
 # ---------- Drift check ----------
@@ -991,7 +1197,11 @@ def format_execution_result(result: FrameworkExecutionResult) -> str:
     return "\n".join(parts)
 
 
-def run_framework_command(user_input: str, config: dict) -> str:
+def run_framework_command(user_input: str, config: dict,
+                          *,
+                          trace_dir: Optional[str] = None,
+                          conversation_tag: str = "",
+                          trace_context: Optional[dict] = None) -> str:
     """Top-level: parse a slash command + execute + format. Used by boot.py
     and server.py as the entry point for /framework slash-command invocations.
 
@@ -1002,9 +1212,15 @@ def run_framework_command(user_input: str, config: dict) -> str:
     try:
         framework_name, framework_query, config_name = parse_framework_command(user_input)
     except ValueError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return f"[Framework command error: {exc}]"
+    if trace_context is not None:
+        trace_context["framework_id"] = framework_name
 
     if not framework_query.strip():
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return (
             f"[Framework {framework_name} invoked without a query. For one-shot "
             f"execution, supply a query: `/framework {framework_name} <your input>`. "
@@ -1014,15 +1230,35 @@ def run_framework_command(user_input: str, config: dict) -> str:
         )
 
     try:
-        result = execute_framework(framework_name, framework_query, config, config_name=config_name)
+        _parent_trace_token, _parent_tool_token = _bind_trace_context(
+            trace_dir, stealth=(conversation_tag == "stealth"),
+            surface="framework")
+        try:
+            result = execute_framework(
+                framework_name, framework_query, config,
+                config_name=config_name, trace_dir=trace_dir,
+                conversation_tag=conversation_tag,
+                trace_context=trace_context)
+        finally:
+            _reset_trace_context(_parent_trace_token, _parent_tool_token)
     except FileNotFoundError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return f"[Framework file not found: {exc}]"
     except FrameworkParseError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return f"[Framework parse error: {exc}]"
     except NotImplementedError as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return f"[Framework execution not yet supported: {exc}]"
     except Exception as exc:
+        if trace_context is not None:
+            trace_context["status"] = "error"
         return f"[Unexpected error during framework execution: {exc}]"
+    if trace_context is not None:
+        trace_context.setdefault("status", "completed" if result.success else "error")
 
     return format_execution_result(result)
 

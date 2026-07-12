@@ -69,6 +69,10 @@ _CURRENT_STEP_CV: ContextVar[str | None] = ContextVar(
     "current_pipeline_step", default=None,
 )
 
+_CALL_METADATA_CV: ContextVar[dict | None] = ContextVar(
+    "current_model_call_metadata", default=None,
+)
+
 # Per-turn conversation tag ("" / "private" / "stealth"). Set by
 # ``server.py::_pipeline_stream`` at turn head (same spot as the oversight
 # stealth context) so ``load_boot_md`` can gate the mind.md
@@ -9236,6 +9240,7 @@ def run_pipeline(user_input: str, history: list = None,
         "trace_context_token": None,
         "tool_events_context_token": None,
         "tool_events_module": None,
+        "framework_id": None, "milestone_id": None, "child_refs": [],
     }
     effective_tag = conversation_tag or ("stealth" if stealth else "")
     tag_token = set_conversation_tag_context(effective_tag)
@@ -9255,7 +9260,10 @@ def run_pipeline(user_input: str, history: list = None,
                     turn_state["trace_dir"], kind=turn_state["kind"],
                     status_hint=turn_state["status"],
                     mode=turn_state["mode"], gear=turn_state["gear"],
-                    parent_trace_ref=turn_state["parent_ref"])
+                    parent_trace_ref=turn_state["parent_ref"],
+                    framework_id=turn_state["framework_id"],
+                    milestone_id=turn_state["milestone_id"],
+                    child_trace_refs=turn_state["child_refs"])
             except Exception as _fin_exc:
                 print(f"[boot trace] manifest finalize skipped: {_fin_exc}")
         tool_events_module = turn_state.get("tool_events_module")
@@ -9450,7 +9458,16 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             # test runs here too — removes the lone output-unavailable path.
             _fw_out = None
             try:
-                _fw_out = run_framework_command(user_input, config)
+                turn_state["kind"] = "framework-run"
+                _trace_ctx = {"conversation_tag": conversation_tag}
+                _fw_out = run_framework_command(
+                    user_input, config, trace_dir=trace_dir,
+                    conversation_tag=conversation_tag,
+                    trace_context=_trace_ctx)
+                turn_state["status"] = _trace_ctx.get("status") or "completed"
+                turn_state["framework_id"] = _trace_ctx.get("framework_id")
+                turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
+                turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
                 return _fw_out
             finally:
                 try:
@@ -11117,10 +11134,20 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
     # label its usage.jsonl record (trace self-detection — handoff #5).
     # Both the first attempt and the retry below run under this label.
     _CURRENT_STEP_CV.set(step_name)
+    _call_meta = {
+        "step": step_name, "slot": slot, "gear": gear,
+        "config_name": config_name,
+    }
+    _call_meta_token = _CALL_METADATA_CV.set(_call_meta)
     try:
         text = _run_model_with_tools(list(messages), endpoint, images=images)
     except Exception as e:
         text = f"[{step_name} call error: {e}]"
+    finally:
+        try:
+            _CALL_METADATA_CV.reset(_call_meta_token)
+        except Exception:
+            pass
     text = _strip_dispatch_noise(text)
     ok, reason = _step_output_health(text, step_name, min_chars=min_chars)
     if ok:
@@ -11187,10 +11214,18 @@ def _call_with_retry(messages: list, endpoint: dict, step_name: str,
         else:
             retry_msgs.append({"role": "user", "content": hint})
 
+    _retry_meta_token = _CALL_METADATA_CV.set({
+        **_call_meta, "step": f"{step_name}:retry",
+    })
     try:
         text2 = _run_model_with_tools(retry_msgs, target_endpoint, images=images)
     except Exception as e:
         text2 = f"[{step_name} retry error: {e}]"
+    finally:
+        try:
+            _CALL_METADATA_CV.reset(_retry_meta_token)
+        except Exception:
+            pass
     text2 = _strip_dispatch_noise(text2)
     ok2, reason2 = _step_output_health(text2, step_name, min_chars=min_chars)
     # Diagnostic: record the retry outcome + which endpoint it hit so
@@ -11553,6 +11588,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "Evaluate per the universal seven-section contract."
         )},
     ]
+    eval_user = eval_messages[1]["content"]
     # Chunk B': retry-once + slot fallback advancement on the evaluator.
     breadth_evaluation, eval_ok, eval_reason = _call_with_supplement(
         eval_messages, breadth_endpoint, "evaluator",
@@ -11574,6 +11610,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         contingencies_fired.append("step4-evaluator-degraded-no-feedback")
     _trace_step_g3("step4-eval", {
         "system_prompt": eval_system,
+        "user_message": eval_user,
         "raw_response_pre_contingency": raw_eval_response,
         "raw_response": breadth_evaluation,
         "ok": eval_ok,
@@ -11673,6 +11710,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         contingencies_fired.append("step5-reviser-degraded-using-analyst-output")
     _trace_step_g3("step5-revised", {
         "system_prompt": revise_system,
+        "user_message": revise_user,
         "raw_response_pre_contingency": raw_revise_response,
         "raw_response": revised_analysis,
         "ok": rev_ok,
@@ -11797,6 +11835,8 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
             "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "system_prompt": verify_system,
+            "user_message": verify_user,
             "verdict_raw": verified,
             "verdict_resolved": verdict_label,
             "passed_parser_verdict": passed,
@@ -11849,6 +11889,20 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             images=_images_for_endpoint(images, depth_endpoint),
             slot="depth", gear=3, config_name=config_name,
         )
+        _trace_step_g3(f"step6-cycle-{cycle + 1}-re-revision", {
+            "cycle": cycle + 1,
+            "system_prompt": revise_system,
+            "user_message": re_revise_messages[1]["content"],
+            "raw_response": revised_analysis,
+            "ok": _re_rev_ok,
+            "reason": _re_rev_reason,
+            "prior_verifier_verdict": verdict_label,
+            "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+        }, markdown=(
+            f"# Step 6 — Re-revision after verifier FAIL (Gear 3, cycle {cycle + 1})\n\n"
+            f"**Health:** {'ok' if _re_rev_ok else 'DEGRADED'} — {_re_rev_reason}\n\n"
+            f"{revised_analysis}\n"
+        ))
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
 
     # --- Step 6.5: Final-output quality gate (single bounded redo) ----------
@@ -11928,6 +11982,18 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             images=_images_for_endpoint(images, depth_endpoint),
             slot="depth", gear=3, config_name=config_name,
         )
+        _trace_step_g3("step6_5-quality-gate-redo", {
+            "system_prompt": revise_system,
+            "user_message": gate_redo_messages[1]["content"],
+            "raw_response": revised_analysis,
+            "ok": _qg_redo_ok,
+            "reason": _qg_redo_reason,
+            "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+        }, markdown=(
+            "# Step 6.5 — Quality-gate redo (Gear 3)\n\n"
+            f"**Health:** {'ok' if _qg_redo_ok else 'DEGRADED'} — {_qg_redo_reason}\n\n"
+            f"{revised_analysis}\n"
+        ))
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
         # Execution Review Phase 4 (Rev 1): the FAIL redo produced a NEW deliverable
@@ -11944,6 +12010,8 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     _record("step6_5-quality-gate", gate_call_ok,
             f"verdict={gate_verdict_label} redo={gate_redo_fired}")
     _trace_step_g3("step6_5-quality-gate", {
+        "system_prompt": gate_system,
+        "user_message": gate_user,
         "verdict_raw": gate_out,
         "verdict_resolved": gate_verdict_label,
         "passed": gate_passed,
@@ -12738,6 +12806,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             "cycle": cycle + 1,
             "max_cycles": MAX_VERIFY_CYCLES + 1,
             "verify_system_prompt_chars": len(verify_system),
+            "system_prompt": verify_system,
             "verify_depth_user_message": verify_depth_user_message,
             "verify_breadth_user_message": verify_breadth_user_message,
             "depth_verdict_raw": depth_verdict,
@@ -12827,43 +12896,80 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # revised output. BROKEN-with-structurally-sound revised output
         # already unblocked above, so this loop skips it.
         futures = {}
+        rerevise_users: dict[str, str] = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             if not depth_unblocks:
+                rerevise_users["depth"] = (
+                    f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+                    f"## YOUR PREVIOUS REVISION\n\n{revised_depth}\n\n"
+                    f"## VERIFIER'S FINDINGS\n\n{depth_verdict}\n\n"
+                    "Address the verifier's findings and revise again."
+                )
                 futures["depth"] = _submit_with_context(executor,
                     _call_with_retry,
                     [{"role": "system", "content": revise_system},
-                     {"role": "user", "content": (
-                         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                         f"## YOUR PREVIOUS REVISION\n\n{revised_depth}\n\n"
-                         f"## VERIFIER'S FINDINGS\n\n{depth_verdict}\n\n"
-                         "Address the verifier's findings and revise again."
-                     )}],
+                     {"role": "user", "content": rerevise_users["depth"]}],
                     depth_endpoint, "reviser", 30, None, None,
                     slot="depth", gear=4, config_name=config_name,
                 )
             if not breadth_unblocks:
+                rerevise_users["breadth"] = (
+                    f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+                    f"## YOUR PREVIOUS REVISION\n\n{revised_breadth}\n\n"
+                    f"## VERIFIER'S FINDINGS\n\n{breadth_verdict}\n\n"
+                    "Address the verifier's findings and revise again."
+                )
                 futures["breadth"] = _submit_with_context(executor,
                     _call_with_retry,
                     [{"role": "system", "content": revise_system},
-                     {"role": "user", "content": (
-                         f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-                         f"## YOUR PREVIOUS REVISION\n\n{revised_breadth}\n\n"
-                         f"## VERIFIER'S FINDINGS\n\n{breadth_verdict}\n\n"
-                         "Address the verifier's findings and revise again."
-                     )}],
+                     {"role": "user", "content": rerevise_users["breadth"]}],
                     breadth_endpoint, "reviser", 30, None, None,
                     slot="breadth", gear=4, config_name=config_name,
                 )
             if "depth" in futures:
+                _depth_rerev_ok, _depth_rerev_reason = True, "ok"
                 try:
-                    revised_depth, _, _ = futures["depth"].result()
+                    revised_depth, _depth_rerev_ok, _depth_rerev_reason = futures["depth"].result()
                 except Exception as e:
                     revised_depth = f"[Re-revision error: {e}]"
+                    _depth_rerev_ok, _depth_rerev_reason = False, str(e)
+                _trace_step(f"step6-cycle-{cycle + 1}-re-revision-depth", {
+                    "cycle": cycle + 1,
+                    "stream": "depth",
+                    "system_prompt": revise_system,
+                    "user_message": rerevise_users.get("depth", ""),
+                    "raw_response": revised_depth,
+                    "ok": _depth_rerev_ok,
+                    "reason": _depth_rerev_reason,
+                    "prior_verifier_verdict": _verdict_label(depth_passed, depth_broken),
+                    "endpoint": depth_endpoint.get("name") if isinstance(depth_endpoint, dict) else str(depth_endpoint),
+                }, markdown=(
+                    f"# Step 6 — Depth re-revision after verifier FAIL (cycle {cycle + 1})\n\n"
+                    f"**Health:** {'ok' if _depth_rerev_ok else 'DEGRADED'} — {_depth_rerev_reason}\n\n"
+                    f"{revised_depth}\n"
+                ))
             if "breadth" in futures:
+                _breadth_rerev_ok, _breadth_rerev_reason = True, "ok"
                 try:
-                    revised_breadth, _, _ = futures["breadth"].result()
+                    revised_breadth, _breadth_rerev_ok, _breadth_rerev_reason = futures["breadth"].result()
                 except Exception as e:
                     revised_breadth = f"[Re-revision error: {e}]"
+                    _breadth_rerev_ok, _breadth_rerev_reason = False, str(e)
+                _trace_step(f"step6-cycle-{cycle + 1}-re-revision-breadth", {
+                    "cycle": cycle + 1,
+                    "stream": "breadth",
+                    "system_prompt": revise_system,
+                    "user_message": rerevise_users.get("breadth", ""),
+                    "raw_response": revised_breadth,
+                    "ok": _breadth_rerev_ok,
+                    "reason": _breadth_rerev_reason,
+                    "prior_verifier_verdict": _verdict_label(breadth_passed, breadth_broken),
+                    "endpoint": breadth_endpoint.get("name") if isinstance(breadth_endpoint, dict) else str(breadth_endpoint),
+                }, markdown=(
+                    f"# Step 6 — Breadth re-revision after verifier FAIL (cycle {cycle + 1})\n\n"
+                    f"**Health:** {'ok' if _breadth_rerev_ok else 'DEGRADED'} — {_breadth_rerev_reason}\n\n"
+                    f"{revised_breadth}\n"
+                ))
 
     if external_consolidation:
         _record(
@@ -13231,6 +13337,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 f"verdict={gate_verdict_label} problem={problem}")
         _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {
             "pass": _qg_pass + 1,
+            "system_prompt": gate_system,
+            "user_message": gate_user,
             "verdict_raw": gate_out,
             "verdict_resolved": gate_verdict_label,
             "problem_kind": problem,
@@ -13273,6 +13381,18 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 min_chars=30, retry_hint=None, images=None,
                 slot="formatter", gear=4, config_name=config_name,
             )
+            _trace_step("step8_6-quality-gate-formatting-redo", {
+                "system_prompt": format_system,
+                "user_message": _qg_fmt_msgs[-1]["content"],
+                "raw_response": _qg_re_fmt,
+                "ok": _qg_fmt_ok,
+                "reason": _qg_fmt_reason,
+                "endpoint": formatter_endpoint.get("name") if isinstance(formatter_endpoint, dict) else str(formatter_endpoint),
+            }, markdown=(
+                "# Step 8.6 — Quality-gate formatting redo\n\n"
+                f"**Health:** {'ok' if _qg_fmt_ok else 'DEGRADED'} — {_qg_fmt_reason}\n\n"
+                f"{_qg_re_fmt}\n"
+            ))
             _record("step8_6-quality-gate-formatting-redo",
                     _qg_fmt_ok, _qg_fmt_reason)
             contingencies_fired.append("step8_6-quality-gate-FAIL-formatting-redo")
@@ -13310,6 +13430,18 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                 context_pkg=context_pkg,
                 slot="consolidation", gear=4, config_name=config_name,
             )
+            _trace_step("step8_6-quality-gate-reconsolidate", {
+                "system_prompt": consolidate_system,
+                "user_message": _qg_recon_msgs[-1]["content"],
+                "raw_response": _qg_re_consol,
+                "ok": _qg_rc_ok,
+                "reason": _qg_rc_reason,
+                "endpoint": consolidator_endpoint.get("name") if isinstance(consolidator_endpoint, dict) else str(consolidator_endpoint),
+            }, markdown=(
+                "# Step 8.6 — Quality-gate reconsolidation redo\n\n"
+                f"**Health:** {'ok' if _qg_rc_ok else 'DEGRADED'} — {_qg_rc_reason}\n\n"
+                f"{_qg_re_consol}\n"
+            ))
             _record("step8_6-quality-gate-reconsolidate",
                     _qg_rc_ok, _qg_rc_reason)
             contingencies_fired.append("step8_6-quality-gate-FAIL-analysis-redo")
@@ -13335,6 +13467,18 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                     min_chars=30, retry_hint=None, images=None,
                     slot="formatter", gear=4, config_name=config_name,
                 )
+                _trace_step("step8_6-quality-gate-reformat", {
+                    "system_prompt": format_system,
+                    "user_message": _qg_refmt_msgs[1]["content"],
+                    "raw_response": _qg_re_fmt2,
+                    "ok": _qg_rf_ok,
+                    "reason": _qg_rf_reason,
+                    "endpoint": formatter_endpoint.get("name") if isinstance(formatter_endpoint, dict) else str(formatter_endpoint),
+                }, markdown=(
+                    "# Step 8.6 — Reformat after quality-gate reconsolidation\n\n"
+                    f"**Health:** {'ok' if _qg_rf_ok else 'DEGRADED'} — {_qg_rf_reason}\n\n"
+                    f"{_qg_re_fmt2}\n"
+                ))
                 _record("step8_6-quality-gate-reformat",
                         _qg_rf_ok, _qg_rf_reason)
                 if _qg_rf_ok and _qg_re_fmt2.strip():
@@ -13396,6 +13540,43 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
 
 DEFAULT_MACHINE_ID = "studio-128"
+
+
+def _record_physical_model_call_config(
+    endpoint: dict,
+    *,
+    max_tokens: int | None = None,
+    attempt_index: int = 1,
+    provider_attempt: str = "",
+) -> None:
+    """Record the effective endpoint/config for one physical model request."""
+    if not PIPELINE_TRACE_AVAILABLE:
+        return
+    trace_dir = _TURN_TRACE_DIR_CV.get()
+    if not trace_dir:
+        return
+    try:
+        base_meta = _CALL_METADATA_CV.get() or {}
+        call_meta = dict(base_meta)
+        invocation_id = call_meta.get("invocation_id")
+        if not invocation_id:
+            invocation_id = f"{int(time.time() * 1000000)}-{id(base_meta)}"
+            call_meta["invocation_id"] = invocation_id
+            if isinstance(base_meta, dict):
+                base_meta["invocation_id"] = invocation_id
+        call_meta.update({
+            "physical_attempt": True,
+            "attempt_index": attempt_index,
+            "provider_attempt": provider_attempt,
+            "effective_max_tokens": max_tokens,
+        })
+        effective_endpoint = dict(endpoint or {})
+        if max_tokens is not None:
+            effective_endpoint["max_tokens"] = max_tokens
+        pipeline_trace.record_model_call_config(
+            trace_dir, effective_endpoint, call_meta)
+    except Exception:
+        pass
 
 
 def call_model(messages: list, endpoint: dict, images: list = None) -> str:
@@ -13842,8 +14023,14 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     initial = int(endpoint.get("max_tokens") or _DEFAULT_API_MAX_TOKENS)
     retry_cap = initial * 2
     text = ""
-    for attempt in (initial, retry_cap):
+    for attempt_index, attempt in enumerate((initial, retry_cap), start=1):
         try:
+            _record_physical_model_call_config(
+                endpoint,
+                max_tokens=attempt,
+                attempt_index=attempt_index,
+                provider_attempt=label,
+            )
             text, truncated = make_call(attempt)
         except Exception as e:
             return f"[Error calling {label} API: {e}]"
@@ -13947,6 +14134,12 @@ def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
             with os.fdopen(fd, "w") as f:
                 f.write(system_msg)
             cmd += ["--system-prompt-file", sys_file]
+        _record_physical_model_call_config(
+            endpoint,
+            max_tokens=endpoint.get("max_tokens"),
+            attempt_index=1,
+            provider_attempt="claude-code",
+        )
         result = subprocess.run(
             cmd, input=prompt_text, capture_output=True, text=True,
             timeout=int(os.environ.get("ORA_CLAUDE_CODE_TIMEOUT", "1800")),
@@ -14564,6 +14757,12 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
+            _record_physical_model_call_config(
+                endpoint,
+                max_tokens=endpoint.get("max_tokens"),
+                attempt_index=1,
+                provider_attempt="ollama",
+            )
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read())
                 return data.get("message", {}).get("content", "[No response]")
@@ -14600,6 +14799,12 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
             # the local stack. The previous 4096 cap was truncating
             # long-form output for no benefit.
             gen_tokens = endpoint.get("max_tokens", 999_999_999)
+            _record_physical_model_call_config(
+                endpoint,
+                max_tokens=gen_tokens,
+                attempt_index=1,
+                provider_attempt="mlx",
+            )
             raw = mlx_generate(model_obj, tokenizer, prompt=prompt, max_tokens=gen_tokens, verbose=False)
             return _extract_final_response(raw)
         except FileNotFoundError:
