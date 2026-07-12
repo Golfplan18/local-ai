@@ -20,17 +20,25 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 import yaml
 
 from orchestrator.tools.relationship_graph import RelationshipGraph
+from orchestrator.tools.relationship_discovery import (
+    discover_relationships,
+    update_note_relationships,
+)
 
 
-def write_note(vault_path: str, relpath: str, relationships=None, body="Body."):
+def write_note(vault_path: str, relpath: str, relationships=None, body="Body.",
+               tags=None):
     """Write a vault note with YAML frontmatter."""
     path = os.path.join(vault_path, relpath)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fm = {"type": "note"}
+    if tags is not None:
+        fm["tags"] = tags
     if relationships is not None:
         fm["relationships"] = relationships
     content = "---\n" + yaml.safe_dump(fm, sort_keys=False) + "---\n\n" + body + "\n"
@@ -162,6 +170,25 @@ class TestBuildFromVault(RelationshipGraphTestBase):
         self.graph.build_from_vault()
         types = {r[2] for r in self.all_rows() if r[0] == "NoteD"}
         self.assertEqual(types, {"supports", "extends"})
+
+    def test_preserves_and_reports_existing_link_to_archived_target(self):
+        write_note(self.vault, "ArchivedTarget.md", tags=["archived"])
+        write_note(self.vault, "LegacySource.md", [
+            {"type": "supports", "target": "ArchivedTarget", "confidence": "high"},
+        ])
+
+        result = self.graph.build_from_vault()
+
+        self.assertIn(
+            ("LegacySource", "ArchivedTarget", "supports", "high"),
+            self.all_rows(),
+        )
+        self.assertEqual(result["archived_target_links"], [{
+            "source": "LegacySource",
+            "target": "ArchivedTarget",
+            "type": "supports",
+            "confidence": "high",
+        }])
 
 
 class TestTraversal(RelationshipGraphTestBase):
@@ -401,6 +428,224 @@ class TestSyncFromVault(RelationshipGraphTestBase):
         stats = self.graph.sync_from_vault()
         self.assertEqual(stats["rows_added"], 0)
         self.assertEqual(stats["rows_removed"], 0)
+
+    def test_sync_flags_archived_target_without_removing_edge(self):
+        write_note(self.vault, "ArchivedTarget.md", tags=["archived"])
+        write_note(self.vault, "LegacySource.md", [
+            {"type": "extends", "target": "ArchivedTarget"},
+        ])
+
+        stats = self.graph.sync_from_vault()
+
+        self.assertEqual(len(stats["archived_target_links"]), 1)
+        self.assertIn(
+            ("LegacySource", "ArchivedTarget", "extends", "medium"),
+            self.all_rows(),
+        )
+
+
+class TestArchivedTargetPolicy(RelationshipGraphTestBase):
+    def setUp(self):
+        super().setUp()
+        write_note(self.vault, "ArchivedTarget.md", tags=["archived"])
+
+    def test_direct_graph_mutation_blocks_archived_target(self):
+        with self.assertLogs(
+            "orchestrator.tools.relationship_graph", level="WARNING"
+        ) as logs:
+            result = self.graph.add_relationships("NewSource", [
+                {"type": "supports", "target": "ArchivedTarget"},
+                {"type": "supports", "target": "NoteB"},
+            ])
+
+        self.assertEqual(result["added"], 1)
+        self.assertEqual(result["blocked"], [{
+            "source": "NewSource",
+            "target": "ArchivedTarget",
+            "type": "supports",
+        }])
+        self.assertNotIn(
+            ("NewSource", "ArchivedTarget", "supports", "medium"),
+            self.all_rows(),
+        )
+        self.assertIn(
+            ("NewSource", "NoteB", "supports", "medium"),
+            self.all_rows(),
+        )
+        self.assertIn("blocked new relationship", "\n".join(logs.output))
+
+    def test_existing_archived_target_edges_are_reported_not_deleted(self):
+        self.graph.conn.execute(
+            "INSERT INTO relationships (source, target, type, confidence) "
+            "VALUES (?, ?, ?, ?)",
+            ("LegacySource", "ArchivedTarget", "qualifies", "low"),
+        )
+        self.graph.conn.commit()
+
+        report = self.graph.find_archived_target_links()
+
+        self.assertEqual(report, [{
+            "source": "LegacySource",
+            "target": "ArchivedTarget",
+            "type": "qualifies",
+            "confidence": "low",
+        }])
+        self.assertIn(
+            ("LegacySource", "ArchivedTarget", "qualifies", "low"),
+            self.all_rows(),
+        )
+
+    def test_lookup_failure_is_loud_and_fails_open(self):
+        real_open = open
+
+        def fail_one(path, *args, **kwargs):
+            if str(path).endswith("ArchivedTarget.md"):
+                raise PermissionError("fixture denied")
+            return real_open(path, *args, **kwargs)
+
+        with self.assertLogs(
+            "orchestrator.tools.relationship_graph", level="WARNING"
+        ) as logs, mock.patch(
+            "orchestrator.tools.relationship_graph.open", side_effect=fail_one,
+            create=True,
+        ):
+            result = self.graph.add_relationships("NewSource", [{
+                "type": "supports",
+                "target": "ArchivedTarget",
+            }])
+
+        self.assertEqual(result["added"], 1)
+        self.assertTrue(result["errors"])
+        self.assertIn("failed open", "\n".join(logs.output))
+        self.assertIn(
+            ("NewSource", "ArchivedTarget", "supports", "medium"),
+            self.all_rows(),
+        )
+
+    def test_unterminated_target_frontmatter_is_loud_and_fails_open(self):
+        broken = os.path.join(self.vault, "BrokenTarget.md")
+        with open(broken, "w", encoding="utf-8") as stream:
+            stream.write("---\ntags: [archived]\n# BrokenTarget\n")
+
+        with self.assertLogs(
+            "orchestrator.tools.relationship_graph", level="WARNING"
+        ) as logs:
+            result = self.graph.add_relationships("NewSource", [{
+                "type": "supports",
+                "target": "BrokenTarget",
+            }])
+
+        self.assertEqual(result["added"], 1)
+        self.assertTrue(result["errors"])
+        self.assertIn("unterminated YAML frontmatter", "\n".join(logs.output))
+
+    def test_targeted_lookup_does_not_read_unrelated_regular_notes(self):
+        unrelated = write_note(self.vault, "Unrelated.md", tags=["archived"])
+        real_open = open
+
+        def reject_unrelated(path, *args, **kwargs):
+            if os.fspath(path) == unrelated:
+                raise AssertionError("unrelated note was parsed")
+            return real_open(path, *args, **kwargs)
+
+        with mock.patch(
+            "orchestrator.tools.relationship_graph.open",
+            side_effect=reject_unrelated,
+            create=True,
+        ):
+            result = self.graph.add_relationships("NewSource", [{
+                "type": "supports",
+                "target": "NoteB",
+            }])
+
+        self.assertEqual(result["added"], 1)
+
+    def test_discovery_does_not_propose_archived_wikilink_target(self):
+        source = write_note(
+            self.vault,
+            "DiscoverySource.md",
+            body="Archived [[ArchivedTarget]] supports active [[NoteB]].",
+        )
+
+        relationships = discover_relationships(source, self.vault)
+
+        self.assertNotIn("ArchivedTarget", {r["target"] for r in relationships})
+        self.assertIn("NoteB", {r["target"] for r in relationships})
+
+    def test_yaml_mutation_blocks_new_but_preserves_existing_archived_edge(self):
+        source = write_note(self.vault, "YamlSource.md", [
+            {"type": "qualifies", "target": "ArchivedTarget"},
+        ])
+
+        modified = update_note_relationships(source, [
+            {"type": "supports", "target": "ArchivedTarget"},
+            {"type": "supports", "target": "NoteB"},
+        ], vault_path=self.vault)
+
+        self.assertTrue(modified)
+        with open(source, "r") as fh:
+            fm = yaml.safe_load(fh.read().split("---", 2)[1])
+        relationships = fm["relationships"]
+        self.assertIn(
+            {"type": "qualifies", "target": "ArchivedTarget"},
+            relationships,
+        )
+        self.assertNotIn(
+            {"type": "supports", "target": "ArchivedTarget"},
+            relationships,
+        )
+        self.assertIn(
+            {"type": "supports", "target": "NoteB"},
+            relationships,
+        )
+
+    def test_exhaustive_audit_recognizes_legacy_engram_claim_identity(self):
+        archived_claim = "An archived claim remains inspectable"
+        write_note(
+            self.vault,
+            "Engrams/2024-01-09_archived-claim.md",
+            body=engram_body(archived_claim),
+            tags=["archived"],
+        )
+
+        archived_targets, errors = self.graph.scan_archived_targets(self.vault)
+
+        self.assertEqual(errors, [])
+        self.assertIn(archived_claim, archived_targets)
+
+    def test_direct_mutation_blocks_archived_legacy_claim_identity(self):
+        archived_claim = "An archived claim cannot receive a new edge"
+        write_note(
+            self.vault,
+            "Engrams/2024-01-11_archived-claim.md",
+            body=engram_body(archived_claim),
+            tags=["archived"],
+        )
+
+        result = self.graph.add_relationships("NewSource", [{
+            "type": "supports",
+            "target": archived_claim,
+        }])
+
+        self.assertEqual(result["added"], 0)
+        self.assertEqual(result["blocked"][0]["target"], archived_claim)
+
+    def test_real_title_takes_precedence_over_same_archived_engram_claim(self):
+        write_note(self.vault, "Shared Identity.md")
+        write_note(
+            self.vault,
+            "Engrams/2024-01-10_archived-imposter.md",
+            body=engram_body("Shared Identity"),
+            tags=["archived"],
+        )
+
+        result = self.graph.add_relationships("NewSource", [{
+            "type": "supports",
+            "target": "Shared Identity",
+        }])
+
+        self.assertEqual(result["added"], 1)
+        self.assertEqual(result["blocked"], [])
 
 
 class TestFrontmatterLiteralDelimiter(unittest.TestCase):

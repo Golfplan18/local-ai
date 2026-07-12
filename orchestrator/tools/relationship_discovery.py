@@ -15,9 +15,18 @@ Usage:
 from __future__ import annotations
 
 import os
+import logging
 import re
 import yaml
 from pathlib import Path
+
+if __package__:
+    from orchestrator.tools.relationship_graph import RelationshipGraph
+else:  # Preserve direct ``python relationship_discovery.py`` CLI usage.
+    from relationship_graph import RelationshipGraph
+
+
+_LOG = logging.getLogger(__name__)
 
 
 # The 13 relationship types
@@ -192,16 +201,25 @@ def classify_relationship(context: str, source_fm: dict, target_name: str) -> st
     return "supports"
 
 
-def get_vault_note_titles(vault_path: str) -> set[str]:
-    """Get all note titles (filenames without .md) in the vault."""
-    titles = set()
-    for root, dirs, files in os.walk(vault_path):
+def get_vault_note_paths(vault_path: str) -> dict[str, list[str]]:
+    """Map note-title identities to paths with one runtime vault walk."""
+    paths: dict[str, list[str]] = {}
+
+    def walk_error(exc: OSError) -> None:
+        _LOG.warning("vault title lookup failed open: %s", exc)
+
+    for root, dirs, files in os.walk(vault_path, onerror=walk_error):
         # Skip hidden directories and known non-content directories
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != "Archive"]
         for f in files:
             if f.endswith(".md"):
-                titles.add(f[:-3])  # Remove .md extension
-    return titles
+                paths.setdefault(f[:-3], []).append(os.path.join(root, f))
+    return paths
+
+
+def get_vault_note_titles(vault_path: str) -> set[str]:
+    """Get all note titles (filenames without .md) in the vault."""
+    return set(get_vault_note_paths(vault_path))
 
 
 def discover_relationships(note_path: str, vault_path: str = None) -> list[dict]:
@@ -226,10 +244,20 @@ def discover_relationships(note_path: str, vault_path: str = None) -> list[dict]
     source_fm = parse_yaml_frontmatter(content)
 
     # Get all valid vault note titles for validation
-    valid_titles = get_vault_note_titles(vault_path)
-
+    valid_paths = get_vault_note_paths(vault_path)
+    valid_titles = set(valid_paths)
     # Extract wikilinks
     links = extract_wikilinks(content)
+    archived_targets, _ = RelationshipGraph.scan_archived_targets(
+        vault_path,
+        {
+            str(link["target"])
+            for link in links
+            if str(link["target"]) in valid_titles
+        },
+        resolve_statement_claims=False,
+        known_paths=valid_paths,
+    )
 
     # Classify each link
     relationships = []
@@ -245,6 +273,15 @@ def discover_relationships(note_path: str, vault_path: str = None) -> list[dict]
 
         # Validate target exists in vault
         if target not in valid_titles:
+            continue
+
+        # Archived notes remain valid graph targets for legacy inspection,
+        # but Pass 1 must not create new links to them.
+        if target in archived_targets:
+            _LOG.warning(
+                "blocked discovered relationship to archived target: %s -> %s",
+                Path(note_path).stem, target,
+            )
             continue
 
         # Classify the relationship
@@ -265,13 +302,24 @@ def discover_relationships(note_path: str, vault_path: str = None) -> list[dict]
     return relationships
 
 
-def update_note_relationships(note_path: str, relationships: list[dict]) -> bool:
+def update_note_relationships(
+    note_path: str,
+    relationships: list[dict],
+    vault_path: str = None,
+    archived_targets: set[str] | None = None,
+    known_paths: dict[str, list[str]] | None = None,
+    return_count: bool = False,
+) -> bool | int:
     """
     Write discovered relationships into a note's YAML frontmatter.
     Merges with existing relationships (does not overwrite).
 
-    Returns True if the file was modified, False otherwise.
+    Returns True if the file was modified, False otherwise. Runtime callers
+    may request the exact number of newly written rows with ``return_count``.
     """
+    if vault_path is None:
+        vault_path = os.path.expanduser("~/Documents/vault")
+
     with open(note_path, "r") as f:
         content = f.read()
 
@@ -283,13 +331,27 @@ def update_note_relationships(note_path: str, relationships: list[dict]) -> bool
 
     # Find new relationships to add
     new_rels = []
+    if archived_targets is None or known_paths is not None:
+        scanned_targets, _ = RelationshipGraph.scan_archived_targets(
+            vault_path,
+            {str(rel["target"]) for rel in relationships},
+            resolve_statement_claims=False,
+            known_paths=known_paths,
+        )
+        archived_targets = set(archived_targets or ()) | scanned_targets
     for rel in relationships:
         key = (rel["type"], rel["target"])
+        if str(rel["target"]) in archived_targets:
+            _LOG.warning(
+                "blocked YAML relationship to archived target: %s -> %s (%s)",
+                Path(note_path).stem, rel["target"], rel["type"],
+            )
+            continue
         if key not in existing_keys:
             new_rels.append(rel)
 
     if not new_rels:
-        return False
+        return 0 if return_count else False
 
     # Merge
     merged = existing + new_rels
@@ -312,7 +374,7 @@ def update_note_relationships(note_path: str, relationships: list[dict]) -> bool
     with open(note_path, "w") as f:
         f.write(new_content)
 
-    return True
+    return len(new_rels) if return_count else True
 
 
 if __name__ == "__main__":
@@ -342,7 +404,9 @@ if __name__ == "__main__":
             print(f"  {rel['type']} → \"{rel['target']}\" (confidence: {rel['confidence']})")
 
         if write_mode:
-            modified = update_note_relationships(note_path, relationships)
+            modified = update_note_relationships(
+                note_path, relationships, vault_path=vault_path
+            )
             if modified:
                 print(f"\nUpdated {note_path}")
             else:

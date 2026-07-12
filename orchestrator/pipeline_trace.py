@@ -25,6 +25,7 @@ The full trace contract lives in:
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import stat
@@ -250,16 +251,28 @@ def start_trace(conversation_id: str | None,
 
     try:
         conv = conversation_id or "_orphan"
-        ts = _now_ts()
-        trace_dir = str(_safe_trace_dir(conv, ts, create=True))
-        # Defence-in-depth: never create a path containing a literal "~".
-        # _resolve_ora_home() should already prevent this, but if TRACE_ROOT
-        # is ever reintroduced as a literal-"~" path, disable tracing for the
-        # turn rather than littering the working directory with a "~" tree.
-        if "~" in trace_dir:
-            print("[pipeline_trace] start_trace: refusing literal '~' path "
-                  f"{trace_dir!r}; tracing disabled this turn", file=sys.stderr)
-            return None
+        root = _safe_trace_root(create=True)
+        conv_dir = _rp.safe_owned_subdir(root, conv, create=True)
+        base_ts = _now_ts()
+        suffix = 1
+        while True:
+            ts = base_ts if suffix == 1 else f"{base_ts}-{suffix}"
+            trace_path = conv_dir / ts
+            trace_dir = str(trace_path)
+            # Defence-in-depth: never create a path containing a literal "~".
+            # _resolve_ora_home() should already prevent this, but if TRACE_ROOT
+            # is ever reintroduced as a literal-"~" path, disable tracing for the
+            # turn rather than littering the working directory with a "~" tree.
+            if "~" in trace_dir:
+                print("[pipeline_trace] start_trace: refusing literal '~' path "
+                      f"{trace_dir!r}; tracing disabled this turn", file=sys.stderr)
+                return None
+            try:
+                os.mkdir(trace_path)
+                break
+            except FileExistsError:
+                suffix += 1
+                continue
         meta = {
             "conversation_id": conversation_id,
             "turn_timestamp_utc": ts,
@@ -525,6 +538,70 @@ def append_jsonl(trace_dir: str | None,
               file=sys.stderr)
 
 
+def record_model_call_config(trace_dir: str | None,
+                             endpoint: dict | None,
+                             call_meta: dict[str, Any] | None = None) -> None:
+    """Append a redacted per-call endpoint/config snapshot.
+
+    Records model identity and sampling/runtime knobs only. Prompt content and
+    credentials are intentionally excluded; API keys/base URLs with embedded
+    credentials are never persisted.
+    """
+    if not trace_dir:
+        return
+    endpoint = endpoint or {}
+    call_meta = call_meta or {}
+    sampling_keys = (
+        "temperature", "top_p", "top_k", "max_tokens",
+        "max_completion_tokens", "timeout", "request_timeout",
+        "reasoning_effort",
+    )
+    record = {
+        "timestamp_utc": _dt.datetime.utcnow().isoformat() + "Z",
+        "step": call_meta.get("step") or "",
+        "slot": call_meta.get("slot"),
+        "gear": call_meta.get("gear"),
+        "config_name": call_meta.get("config_name"),
+        "invocation_id": call_meta.get("invocation_id"),
+        "physical_attempt": call_meta.get("physical_attempt"),
+        "attempt_index": call_meta.get("attempt_index"),
+        "provider_attempt": call_meta.get("provider_attempt"),
+        "effective_max_tokens": call_meta.get("effective_max_tokens"),
+        "endpoint_id": endpoint.get("id") or endpoint.get("name"),
+        "endpoint_name": endpoint.get("name"),
+        "endpoint_type": endpoint.get("type"),
+        "service": endpoint.get("service"),
+        "provider": endpoint.get("provider"),
+        "model_id": (
+            endpoint.get("model_id") or endpoint.get("model")
+            or endpoint.get("id") or endpoint.get("name")
+        ),
+        "openrouter_fallback_model_id": endpoint.get("openrouter_fallback_model_id"),
+        "sampling": {
+            k: endpoint.get(k)
+            for k in sampling_keys
+            if endpoint.get(k) is not None
+        },
+    }
+    base_url = endpoint.get("base_url") or endpoint.get("url")
+    if isinstance(base_url, str) and base_url:
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(base_url)
+            if parsed.hostname:
+                record["base_url_host"] = (
+                    f"{parsed.hostname}:{parsed.port}"
+                    if parsed.port else parsed.hostname
+                )
+            elif parsed.netloc:
+                record["base_url_host"] = parsed.netloc.rsplit("@", 1)[-1]
+            else:
+                record["base_url_host"] = ""
+        except Exception:
+            record["base_url_host"] = ""
+    append_jsonl(trace_dir, "model-call-config.jsonl", record)
+
+
 # Corpus-wide ora-visual emission log. Unlike the per-turn trace files, this
 # is a single fixed-path JSONL that accumulates one record per visual-envelope
 # emission ATTEMPT across every turn — the data needed to measure the real
@@ -738,19 +815,103 @@ def trace_ref_for_dir(trace_dir: str | None) -> str | None:
         return None
     try:
         root = _safe_trace_root(create=False)
+        root_real = root.resolve(strict=False)
         candidate = Path(trace_dir)
-        rel_parts = candidate.absolute().relative_to(root.absolute()).parts
+        candidate_real = candidate.resolve(strict=False)
+        rel_parts = candidate_real.relative_to(root_real).parts
         if len(rel_parts) != 2:
             return None
         conversation_dir = root / rel_parts[0]
+        owned = _rp.safe_owned_subdir(root, rel_parts[0], rel_parts[1], create=False)
         if (root.is_symlink() or conversation_dir.is_symlink()
-                or candidate.is_symlink()):
-            return None
-        if not _rp.within_base(candidate.resolve(strict=False), root.resolve(strict=False)):
+                or owned.is_symlink()):
             return None
         return "/".join(rel_parts)
     except Exception:
         return None
+
+
+def resolve_trace_ref(trace_ref: str | None) -> str | None:
+    """Resolve ``<conversation_id>/<turn>`` to a manifest-bearing turn dir.
+
+    Rejects traversal, absolute paths, root refs, and conversation-dir refs.
+    """
+    if not trace_ref or not isinstance(trace_ref, str):
+        return None
+    ref = trace_ref.strip().replace("\\", "/")
+    if not ref or ref.startswith("/") or ref.startswith("../") or "/../" in ref:
+        return None
+    parts = [p for p in ref.split("/") if p]
+    if len(parts) != 2 or any(p in (".", "..") for p in parts):
+        return None
+    try:
+        candidate = _safe_trace_dir(parts[0], parts[1], create=False)
+    except Exception:
+        return None
+    manifest = candidate / MANIFEST_FILENAME
+    if (not candidate.is_dir() or candidate.is_symlink()
+            or not manifest.is_file() or manifest.is_symlink()):
+        return None
+    return str(candidate.resolve(strict=False))
+
+
+def read_manifest(trace_dir: str | None) -> dict[str, Any] | None:
+    if not trace_dir:
+        return None
+    try:
+        with open(os.path.join(trace_dir, MANIFEST_FILENAME)) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def update_manifest_fields(trace_dir: str | None, **fields: Any) -> dict[str, Any] | None:
+    """Best-effort in-place manifest update preserving unrelated fields."""
+    if not trace_dir:
+        return None
+    try:
+        manifest = read_manifest(trace_dir)
+        if manifest is None:
+            return None
+        manifest.update(fields)
+        _atomic_write_json(os.path.join(trace_dir, MANIFEST_FILENAME), manifest)
+        return manifest
+    except Exception as exc:
+        print(f"[pipeline_trace] update_manifest_fields failed: {exc}",
+              file=sys.stderr)
+        return None
+
+
+def append_child_trace_ref(parent_trace_dir: str | None,
+                           child_trace_ref: str | None) -> None:
+    """Append a child trace ref to the parent manifest, deduping in order."""
+    if not parent_trace_dir or not child_trace_ref:
+        return
+    try:
+        manifest = read_manifest(parent_trace_dir)
+        if manifest is None:
+            return
+        refs = manifest.get("child_trace_refs")
+        if not isinstance(refs, list):
+            refs = []
+        refs = [r for r in refs if isinstance(r, str)]
+        if child_trace_ref not in refs:
+            refs.append(child_trace_ref)
+        update_manifest_fields(parent_trace_dir, child_trace_refs=refs)
+    except Exception as exc:
+        print(f"[pipeline_trace] append_child_trace_ref failed: {exc}",
+              file=sys.stderr)
+
+
+def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
+    """Set retention_state for a resolved turn trace ref."""
+    if state not in {"default", "pinned"}:
+        raise ValueError("retention state must be 'default' or 'pinned'")
+    trace_dir = resolve_trace_ref(trace_ref)
+    if trace_dir is None:
+        return None
+    return update_manifest_fields(trace_dir, retention_state=state)
 
 
 def _manifest_skeleton(conversation_id: str | None,
@@ -844,7 +1005,10 @@ def finalize_manifest(trace_dir: str | None,
                       status_hint: str | None = None,
                       mode: str | None = None,
                       gear: int | None = None,
-                      parent_trace_ref: str | None = None) -> None:
+                      parent_trace_ref: str | None = None,
+                      framework_id: str | None = None,
+                      milestone_id: str | None = None,
+                      child_trace_refs: list[str] | None = None) -> None:
     """Finalize the turn's trace manifest. Idempotent; never raises.
 
     Called from the single generator-level ``finally`` wrapping each server
@@ -946,6 +1110,14 @@ def finalize_manifest(trace_dir: str | None,
             "terminal_status": status,
             "gear": gear,
             "mode": mode,
+            "framework_id": (
+                framework_id if framework_id is not None
+                else manifest.get("framework_id")
+            ),
+            "milestone_id": (
+                milestone_id if milestone_id is not None
+                else manifest.get("milestone_id")
+            ),
             "expected_steps": _expected_steps_for(kind, gear, actual),
             "actual_steps": actual,
             "derived_artifacts": derived,
@@ -953,6 +1125,16 @@ def finalize_manifest(trace_dir: str | None,
         })
         if parent_trace_ref:
             manifest["parent_trace_ref"] = parent_trace_ref
+        if child_trace_refs is not None:
+            existing = manifest.get("child_trace_refs")
+            merged: list[str] = []
+            for ref in (existing if isinstance(existing, list) else []):
+                if isinstance(ref, str) and ref not in merged:
+                    merged.append(ref)
+            for ref in child_trace_refs:
+                if isinstance(ref, str) and ref not in merged:
+                    merged.append(ref)
+            manifest["child_trace_refs"] = merged
         _atomic_write_json(manifest_path, manifest)
     except Exception as e:
         # Fail-open (design-gate Q1): the manifest must never break a turn.
@@ -1038,3 +1220,39 @@ def list_traces(conversation_id: str | None) -> list[str]:
         )
     except Exception:
         return []
+
+
+def _main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Inspect or pin Ora trace manifests.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    for name in ("pin", "unpin", "status"):
+        p = sub.add_parser(name)
+        p.add_argument("trace_ref")
+    args = parser.parse_args(argv)
+    if args.command == "status":
+        trace_dir = resolve_trace_ref(args.trace_ref)
+        manifest = read_manifest(trace_dir) if trace_dir else None
+        if manifest is None:
+            print(json.dumps({"ok": False, "error": "trace_ref not found"}))
+            return 1
+        print(json.dumps({
+            "ok": True,
+            "trace_ref": args.trace_ref,
+            "retention_state": manifest.get("retention_state", "default"),
+        }, indent=2))
+        return 0
+    state = "pinned" if args.command == "pin" else "default"
+    manifest = set_retention_state(args.trace_ref, state)
+    if manifest is None:
+        print(json.dumps({"ok": False, "error": "trace_ref not found"}))
+        return 1
+    print(json.dumps({
+        "ok": True,
+        "trace_ref": args.trace_ref,
+        "retention_state": manifest.get("retention_state"),
+    }, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())

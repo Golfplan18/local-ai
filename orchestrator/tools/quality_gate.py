@@ -12,15 +12,16 @@ Auto-approve criteria (all 9 must pass):
   5. YAML frontmatter complete
   6. Limits/boundary section present (for causal_claim, analogy, process_principle)
   7. Self-containedness verified (heuristic)
-  8. Minimum length (at least 2 proposition bullets)
+  8. Minimum length (at least 2 substantive proposition bullets)
   9. No duplicate title (requires vault search callback)
 
 Auto-reject criteria (any 1 triggers):
   1. Empty body
   2. Topic-label title
   3. Re-education content (flagged by Pass A)
-  4. Fragment (fewer than 2 complete sentences)
-  5. Exact duplicate title
+  4. Fragment (no complete proposition or fewer than 2 complete sentences)
+  5. Zero substantive propositions (for atomic/molecular notes)
+  6. Exact duplicate title
 
 Human-review criteria (any 1 triggers):
   1-8 as defined in Specification — Note Quality Gate.md (vault canonical)
@@ -35,6 +36,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+
+
+# Provisional tuning constants: recalibrate after observing real promotion
+# candidates. Two independently useful propositions is the current approval
+# floor; shorter clauses are too easy for metadata labels to satisfy.
+MIN_SUBSTANTIVE_PROPOSITIONS = 2
+MIN_SUBSTANTIVE_PROPOSITION_WORDS = 4
 
 
 @dataclass
@@ -81,8 +89,15 @@ class QualityGate:
         yaml_fm = getattr(note, "yaml_frontmatter", {})
         signal_id = getattr(note, "signal_id", "")
         relationships = getattr(note, "relationships", [])
+        generation_mode = getattr(note, "generation_mode", "model")
+        degraded_reason = getattr(note, "degraded_reason", None)
 
         is_proposition_format = note_type in ("atomic", "molecular")
+        bullets = self._extract_bullets(body)
+        substantive_bullets = (
+            self._extract_substantive_propositions(body, title)
+            if is_proposition_format else bullets
+        )
 
         # ---------------------------------------------------------------
         # Auto-reject checks (any one triggers rejection)
@@ -110,17 +125,50 @@ class QualityGate:
             checks["re_education"] = {"pass": True, "detail": "Not flagged"}
 
         # 4. Fragment
-        bullets = self._extract_bullets(body)
         sentences = self._count_sentences(body)
-        is_fragment = len(bullets) < 2 and sentences < 2
+        # A single complete proposition is borderline, not catastrophic. The
+        # proposition floor below routes it to review; zero substantive
+        # propositions remains a rejection for proposition-format notes.
+        if is_proposition_format:
+            is_fragment = not substantive_bullets and sentences < 2
+            fragment_detail = (
+                f"Body has {len(bullets)} bullets, "
+                f"{len(substantive_bullets)} substantive propositions, "
+                f"and {sentences} sentences"
+            )
+        else:
+            is_fragment = len(bullets) < 2 and sentences < 2
+            fragment_detail = f"Body has {len(bullets)} bullets and {sentences} sentences"
         checks["fragment"] = {
             "pass": not is_fragment,
-            "detail": f"Body has {len(bullets)} bullets and {sentences} sentences"
+            "detail": fragment_detail,
         }
         if is_fragment and body.strip():
-            reject_reasons.append(f"Fragment: {len(bullets)} bullets, {sentences} sentences")
+            reject_reasons.append(f"Fragment: {fragment_detail}")
 
-        # 5. Exact duplicate title (if vault search available)
+        # 5. Substance floor for proposition-format notes. Raw bullet count is
+        # not evidence of content: the old Pass-B fallback emitted one title
+        # restatement plus one provenance bullet and therefore passed the
+        # former two-bullet check without adding a single proposition.
+        if is_proposition_format:
+            ignored_count = len(bullets) - len(substantive_bullets)
+            checks["substantive_propositions"] = {
+                "pass": len(substantive_bullets) >= MIN_SUBSTANTIVE_PROPOSITIONS,
+                "detail": (
+                    f"{len(substantive_bullets)} substantive proposition(s); "
+                    f"{ignored_count} title/provenance/scaffolding or "
+                    "non-proposition bullet(s) excluded"
+                ),
+                "count": len(substantive_bullets),
+                "ignored_count": ignored_count,
+            }
+            if not substantive_bullets:
+                reject_reasons.append(
+                    "No substantive propositions after excluding title "
+                    "restatements and provenance/scaffolding"
+                )
+
+        # 6. Exact duplicate title (if vault search available)
         if self.vault_title_search:
             similarity = self.vault_title_search(title)
             checks["duplicate_title"] = {
@@ -152,19 +200,38 @@ class QualityGate:
             checks["position_type"] = {"pass": False, "detail": "Position notes always require human review"}
             review_reasons.append("Position note — requires human confirmation of intellectual stance")
 
+        # A source-grounded deterministic candidate keeps processing alive
+        # when canonical model Pass B fails, but it is explicitly degraded
+        # and cannot enter the permanent-memory promotion path unattended.
+        degraded = generation_mode != "model"
+        checks["generation_mode"] = {
+            "pass": not degraded,
+            "detail": (
+                "Canonical model Pass B"
+                if not degraded
+                else f"Degraded {generation_mode}: {degraded_reason or 'reason unavailable'}"
+            ),
+        }
+        if degraded:
+            review_reasons.append(
+                f"Degraded Pass B candidate ({generation_mode}) requires review"
+            )
+
         # ---------------------------------------------------------------
         # Auto-approve checks (all 9 must pass for proposition-format notes)
         # ---------------------------------------------------------------
 
         if is_proposition_format:
             # 1. Grammar scan
-            grammar_result = self._grammar_scan(body)
+            grammar_result = self._grammar_scan(body, bullets=substantive_bullets)
             checks["grammar_scan"] = grammar_result
             if not grammar_result["pass"]:
                 review_reasons.append(f"Grammar violation: {grammar_result['detail']}")
 
             # 2. Schema conformance
-            schema_result = self._schema_check(body, note_type, subtype)
+            schema_result = self._schema_check(
+                body, note_type, subtype, bullets=substantive_bullets
+            )
             checks["schema_conformance"] = schema_result
             if not schema_result["pass"]:
                 review_reasons.append(f"Schema violation: {schema_result['detail']}")
@@ -205,19 +272,25 @@ class QualityGate:
                     review_reasons.append(f"Missing limits/boundary section for {subtype}")
 
             # 7. Self-containedness
-            self_contained = self._self_containedness_check(bullets)
+            self_contained = self._self_containedness_check(substantive_bullets)
             checks["self_containedness"] = self_contained
             if not self_contained["pass"]:
                 review_reasons.append(f"Self-containedness: {self_contained['detail']}")
 
             # 8. Minimum length
-            min_length = len(bullets) >= 2
+            min_length = len(substantive_bullets) >= MIN_SUBSTANTIVE_PROPOSITIONS
             checks["minimum_length"] = {
                 "pass": min_length,
-                "detail": f"{len(bullets)} proposition bullets"
+                "detail": (
+                    f"{len(substantive_bullets)} substantive proposition bullets "
+                    f"(provisional approval floor: {MIN_SUBSTANTIVE_PROPOSITIONS})"
+                ),
             }
             if not min_length:
-                review_reasons.append(f"Below minimum length: {len(bullets)} bullets")
+                review_reasons.append(
+                    "Borderline substance: "
+                    f"{len(substantive_bullets)} substantive proposition(s)"
+                )
 
             # 9. No duplicate (already checked above in reject section)
 
@@ -247,12 +320,13 @@ class QualityGate:
     # Grammar checks
     # -------------------------------------------------------------------
 
-    def _grammar_scan(self, body: str) -> dict:
+    def _grammar_scan(self, body: str, bullets: list[str] | None = None) -> dict:
         """
         Scan proposition bullets for grammar rule violations.
         Returns {"pass": bool, "detail": str, "violations": list}.
         """
-        bullets = self._extract_bullets(body)
+        if bullets is None:
+            bullets = self._extract_bullets(body)
         violations = []
 
         for i, bullet in enumerate(bullets, 1):
@@ -313,7 +387,8 @@ class QualityGate:
     # Schema checks
     # -------------------------------------------------------------------
 
-    def _schema_check(self, body: str, note_type: str, subtype: str | None) -> dict:
+    def _schema_check(self, body: str, note_type: str, subtype: str | None,
+                      bullets: list[str] | None = None) -> dict:
         """Check if body matches the expected schema for its type and subtype."""
         if note_type not in ("atomic", "molecular"):
             return {"pass": True, "detail": f"Schema check not applicable for {note_type}"}
@@ -321,7 +396,8 @@ class QualityGate:
         if not subtype:
             return {"pass": False, "detail": "Missing subtype for atomic note"}
 
-        bullets = self._extract_bullets(body)
+        if bullets is None:
+            bullets = self._extract_bullets(body)
 
         if subtype == "causal_claim":
             # Must have directional language
@@ -438,6 +514,92 @@ class QualityGate:
     # -------------------------------------------------------------------
     # Content checks
     # -------------------------------------------------------------------
+
+    def _extract_substantive_propositions(self, body: str, title: str) -> list[str]:
+        """Return content-bearing proposition bullets from an atomic body.
+
+        Title restatements, provenance/transport metadata, and structural
+        labels do not become knowledge merely because they use bullet syntax.
+        The remaining bullet must also look like a complete proposition rather
+        than a heading or noun phrase. This is intentionally deterministic: it
+        is the final mechanical backstop, not a replacement model judgment.
+        """
+        title_key = self._normalize_proposition(title)
+        substantive = []
+
+        for bullet in self._extract_bullets(body):
+            if self._is_provenance_or_scaffolding_bullet(bullet):
+                continue
+
+            bullet_key = self._normalize_proposition(bullet)
+            if not bullet_key or bullet_key == title_key:
+                continue
+
+            if not self._looks_like_complete_proposition(bullet):
+                continue
+
+            substantive.append(bullet)
+
+        return substantive
+
+    def _normalize_proposition(self, text: str) -> str:
+        """Normalize formatting and claim labels for restatement detection."""
+        normalized = re.sub(r'[`*_~]+', '', text or '').strip()
+        normalized = re.sub(
+            r'^(?:claim|title|summary|thesis|proposition)\s*[:\-—]\s*',
+            '',
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        normalized = re.sub(r'[^\w\s]', ' ', normalized.lower())
+        return ' '.join(normalized.split())
+
+    def _is_provenance_or_scaffolding_bullet(self, text: str) -> bool:
+        """Identify bullets that describe note transport rather than content."""
+        stripped = re.sub(r'[`*_~]+', '', text or '').strip()
+
+        metadata_label = re.match(
+            r'^(?:sources?|provenance|origin|source[ _-]file|source[ _-]section|'
+            r'signal(?:[ _-]id)?|document[ _-]id|file|path|tags?|relationships?|'
+            r'note[ _-]type|subtype|metadata)\s*(?::|=|\-|—)\s*',
+            stripped,
+            flags=re.IGNORECASE,
+        )
+        if metadata_label:
+            return True
+
+        return bool(re.match(
+            r'^(?:extracted|generated|derived|imported)\s+from\b',
+            stripped,
+            flags=re.IGNORECASE,
+        ))
+
+    def _looks_like_complete_proposition(self, text: str) -> bool:
+        """Conservatively distinguish clauses from labels and headings."""
+        stripped = re.sub(r'[`*_~]+', '', text or '').strip()
+        words = re.findall(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)?", stripped)
+        if len(words) < MIN_SUBSTANTIVE_PROPOSITION_WORDS:
+            return False
+        if stripped.endswith(':'):
+            return False
+
+        predicate_patterns = (
+            r'\b(?:is|are|was|were|be|been|being|has|have|had|do|does|did|'
+            r'can|could|will|would|shall|should|may|might|must)\b',
+            r'\b(?:causes?|prevents?|enables?|produces?|creates?|generates?|'
+            r'establishes?|determines?|influences?|affects?|drives?|forms?|'
+            r'reduces?|increases?|improves?|requires?|supports?|preserves?|'
+            r'blocks?|routes?|removes?|adds?|uses?|keeps?|makes?|means?|'
+            r'refers?|denotes?|describes?|defines?|maps?|corresponds?|'
+            r'parallels?|leads?|results?|modulates?|accelerates?|slows?|'
+            r'falls?|rises?|shortens?|lengthens?|disappears?|emerges?|'
+            r'distinguishes?|clarifies?|explains?|captures?|identifies?|'
+            r'separates?|changes?|depends?|applies?|holds?|contains?|'
+            r'includes?|excludes?|returns?|retrieves?|stores?|writes?|reads?)\b',
+            r'\b[A-Za-z]+(?:ed|ing|ize|ise|izes|ises|ifies|ified|ating|ates)\b',
+        )
+        return any(re.search(pattern, stripped, re.IGNORECASE)
+                   for pattern in predicate_patterns)
 
     def _has_limits_section(self, body: str) -> bool:
         """Check if body contains limits, boundaries, or exception conditions."""
@@ -565,15 +727,16 @@ if __name__ == "__main__":
     print("  5. YAML frontmatter complete")
     print("  6. Limits/boundary section (causal_claim, analogy, process_principle)")
     print("  7. Self-containedness")
-    print("  8. Minimum length (2+ bullets)")
+    print("  8. Minimum length (2+ substantive proposition bullets)")
     print("  9. No duplicate title")
     print()
     print("Auto-reject criteria (any 1 triggers):")
     print("  1. Empty body")
     print("  2. Topic-label title")
     print("  3. Re-education content")
-    print("  4. Fragment (<2 sentences)")
-    print("  5. Exact duplicate (>0.95 similarity)")
+    print("  4. Fragment (no complete proposition or <2 sentences)")
+    print("  5. Zero substantive propositions (atomic/molecular)")
+    print("  6. Exact duplicate (>0.95 similarity)")
     print()
     print("Human-review criteria (any 1 triggers):")
     print("  1. Potential contradiction")

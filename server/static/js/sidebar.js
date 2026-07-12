@@ -94,6 +94,8 @@
   let browserStatus = null;
   let browserConversationsToggle = null;
   let browserEngramsToggle = null;
+  let browserTagsInput = null;
+  let browserShowArchivedToggle = null;
   let browserRelevanceSlider = null;
   let browserRelevanceValue = null;
   let browserResizeObserver = null;
@@ -102,6 +104,8 @@
   let browserLastData = null;
   let browserIncludeConversations = true;
   let browserIncludeEngrams = true;
+  let browserTags = '';
+  let browserShowArchived = false;
   let browserMinRelevance = 0;
   let browserFetchTimer = null;
   let browserFilterTimer = null;
@@ -719,6 +723,17 @@
         <div class="conversation-browser-summary">
           <div class="conversation-browser-status" aria-live="polite"></div>
           <div class="conversation-browser-filters">
+            <label class="conversation-browser-tags"
+                   title="Comma-separated tags; all selected tags must match">
+              <span class="conversation-browser-tags-label">Tags</span>
+              <input class="conversation-browser-tags-input" type="text"
+                     placeholder="atomic, framework/instruction"
+                     aria-label="Filter by tags (all selected tags must match)"
+                     spellcheck="false"
+                     autocorrect="off"
+                     autocapitalize="none"
+                     autocomplete="off" />
+            </label>
             <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
               <input class="conversation-browser-filter-conversations" type="checkbox" checked>
               Dialogues
@@ -726,6 +741,10 @@
             <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
               <input class="conversation-browser-filter-engrams" type="checkbox" checked>
               Engrams
+            </label>
+            <label class="conversation-browser-filter-chip">
+              <input class="conversation-browser-filter-archived" type="checkbox">
+              Show archived
             </label>
             <label class="conversation-browser-relevance" title="Minimum relevance for searched results">
               <span class="conversation-browser-relevance-label">Relevance</span>
@@ -743,6 +762,8 @@
     browserSort = browserOverlay.querySelector('.conversation-browser-sort');
     browserConversationsToggle = browserOverlay.querySelector('.conversation-browser-filter-conversations');
     browserEngramsToggle = browserOverlay.querySelector('.conversation-browser-filter-engrams');
+    browserTagsInput = browserOverlay.querySelector('.conversation-browser-tags-input');
+    browserShowArchivedToggle = browserOverlay.querySelector('.conversation-browser-filter-archived');
     browserRelevanceSlider = browserOverlay.querySelector('.conversation-browser-relevance-slider');
     browserRelevanceValue = browserOverlay.querySelector('.conversation-browser-relevance-value');
     browserRows = browserOverlay.querySelector('.conversation-browser-rows');
@@ -760,7 +781,7 @@
     if (browserSort) {
       browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
     }
-    [browserConversationsToggle, browserEngramsToggle].forEach((toggle) => {
+    [browserConversationsToggle, browserEngramsToggle, browserShowArchivedToggle].forEach((toggle) => {
       if (!toggle) return;
       toggle.addEventListener('change', scheduleBrowserFilterRefresh);
       const chip = toggle.closest('.conversation-browser-filter-chip');
@@ -771,6 +792,17 @@
         browserMinRelevance = parseInt(browserRelevanceSlider.value, 10) || 0;
         updateBrowserFilterUI();
         scheduleBrowserFetch();
+      });
+    }
+    if (browserTagsInput) {
+      browserTagsInput.addEventListener('input', scheduleBrowserFetch);
+      browserTagsInput.addEventListener('change', scheduleBrowserFilterRefresh);
+      browserTagsInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (browserFetchTimer) clearTimeout(browserFetchTimer);
+        browserFetchTimer = null;
+        fetchBrowser(browserSearch ? browserSearch.value : '');
       });
     }
     browserSearch.addEventListener('keydown', (e) => {
@@ -791,6 +823,11 @@
       const chip = browserEngramsToggle.closest('.conversation-browser-filter-chip');
       if (chip) chip.classList.toggle('conversation-browser-filter-chip-on', !!browserEngramsToggle.checked);
     }
+    if (browserShowArchivedToggle) {
+      const chip = browserShowArchivedToggle.closest('.conversation-browser-filter-chip');
+      if (chip) chip.classList.toggle(
+        'conversation-browser-filter-chip-on', !!browserShowArchivedToggle.checked);
+    }
     if (browserRelevanceValue) {
       browserRelevanceValue.textContent = `${browserMinRelevance}+`;
     }
@@ -799,6 +836,8 @@
   const syncBrowserFilterState = () => {
     browserIncludeConversations = !!(browserConversationsToggle && browserConversationsToggle.checked);
     browserIncludeEngrams = !!(browserEngramsToggle && browserEngramsToggle.checked);
+    browserTags = browserTagsInput ? browserTagsInput.value : '';
+    browserShowArchived = !!(browserShowArchivedToggle && browserShowArchivedToggle.checked);
   };
 
   const scheduleBrowserFilterRefresh = () => {
@@ -823,6 +862,13 @@
     syncBrowserFilterState();
     params.set('conversations', browserIncludeConversations ? '1' : '0');
     params.set('engrams', browserIncludeEngrams ? '1' : '0');
+    const tags = String(browserTags || '')
+      .split(',')
+      .map(tag => tag.trim().toLowerCase())
+      .filter((tag, index, all) => tag && all.indexOf(tag) === index)
+      .join(',');
+    if (tags) params.set('tags', tags);
+    params.set('show_archived', browserShowArchived ? '1' : '0');
     params.set('min_relevance', String(browserMinRelevance || 0));
     if (browserSort && browserSort.value) params.set('sort', browserSort.value);
   };

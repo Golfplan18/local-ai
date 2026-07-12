@@ -3471,6 +3471,9 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         "mode": None,        # step1's mode once known
         "gear": None,        # set at gear dispatch in _run_pipeline_from_step2
         "parent_ref": None,  # paused-turn ref on clarification continuation
+        "framework_id": None,
+        "milestone_id": None,
+        "child_refs": [],
     }
     # Scope every invocation, including tests and future direct callers that
     # bypass ``agentic_loop_stream``.  The implementation intentionally sets
@@ -3526,7 +3529,10 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                         turn_state["trace_dir"], kind=turn_state["kind"],
                         status_hint=turn_state["status"], mode=turn_state["mode"],
                         gear=turn_state["gear"],
-                        parent_trace_ref=turn_state["parent_ref"])
+                        parent_trace_ref=turn_state["parent_ref"],
+                        framework_id=turn_state["framework_id"],
+                        milestone_id=turn_state["milestone_id"],
+                        child_trace_refs=turn_state["child_refs"])
                 except Exception as _fin_exc:
                     print(f"[server trace] manifest finalize skipped: {_fin_exc}",
                           flush=True)
@@ -3861,7 +3867,16 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             yield _sse("pipeline_stage", stage="framework_execution",
                        label="Running framework via layered milestone executor…")
             try:
-                result_text = run_framework_command(user_input, config)
+                turn_state["kind"] = "framework-run"
+                _trace_ctx = {"conversation_tag": _conv_tag}
+                result_text = run_framework_command(
+                    user_input, config, trace_dir=trace_dir,
+                    conversation_tag=_conv_tag,
+                    trace_context=_trace_ctx)
+                turn_state["status"] = _trace_ctx.get("status") or "completed"
+                turn_state["framework_id"] = _trace_ctx.get("framework_id")
+                turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
+                turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
             except Exception as exc:
                 turn_state["status"] = "error"
                 yield _sse("error", text=f"Framework execution error: {exc}")
@@ -8503,6 +8518,160 @@ def _browser_is_knowledge_note(meta: dict) -> bool:
     return str((meta or {}).get("type") or "").lower() in _BROWSER_KNOWLEDGE_TYPES
 
 
+def _browser_normalize_tags(value) -> list[str]:
+    """Return stable, lowercase tags across live and legacy metadata forms.
+
+    Knowledge records have existed with native lists, JSON-encoded lists,
+    comma-delimited strings, and one plain scalar.  Library filtering must
+    treat those layouts identically while preserving slash-qualified tags
+    such as ``framework/instruction``.
+    """
+    if value is None or value == "":
+        return []
+    if isinstance(value, (list, tuple, set, frozenset)):
+        values = value
+    elif isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return []
+        decoded = None
+        if raw[:1] in "[({" and raw[-1:] in "])}":
+            try:
+                decoded = json.loads(raw)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                try:
+                    import ast
+                    decoded = ast.literal_eval(raw)
+                except (SyntaxError, ValueError):
+                    decoded = None
+        if isinstance(decoded, (list, tuple, set, frozenset)):
+            values = decoded
+        else:
+            values = raw.split(",") if "," in raw else [raw]
+    else:
+        values = [value]
+
+    tags: list[str] = []
+    seen: set[str] = set()
+    for item in values:
+        if isinstance(item, (list, tuple, set, frozenset)):
+            candidates = _browser_normalize_tags(item)
+        elif isinstance(item, str) and (
+            "," in item or (item[:1] in "[({" and item[-1:] in "])}")
+        ):
+            candidates = _browser_normalize_tags(item)
+        else:
+            cleaned = str(item).strip().strip("[](){}\"'").strip().lower()
+            candidates = [cleaned] if cleaned else []
+        for tag in candidates:
+            if tag and tag not in seen:
+                seen.add(tag)
+                tags.append(tag)
+    return tags
+
+
+def _browser_truthy_metadata(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _browser_metadata_tags(meta: dict | None) -> list[str]:
+    meta = meta or {}
+    tags = _browser_normalize_tags(meta.get("tags"))
+    seen = set(tags)
+    # Boolean extracts are the canonical fast-filter fields and also cover
+    # old records whose full ``tags`` metadata was never backfilled.
+    for key, value in meta.items():
+        if not str(key).startswith("tag_") or not _browser_truthy_metadata(value):
+            continue
+        tag = str(key)[len("tag_"):].strip().lower()
+        if tag and tag not in seen:
+            seen.add(tag)
+            tags.append(tag)
+    return tags
+
+
+def _browser_row_tags(row: dict | None) -> list[str]:
+    row = row or {}
+    values = row.get("tags")
+    if values in (None, "", []):
+        values = row.get("tag")
+    return _browser_normalize_tags(values)
+
+
+def _browser_parse_requested_tags(values) -> list[str]:
+    """Parse repeatable and comma-delimited ``tags`` query parameters."""
+    return _browser_normalize_tags(list(values or []))
+
+
+def _browser_row_matches_tag_filters(
+    row: dict,
+    *,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
+) -> bool:
+    tags = _browser_row_tags(row)
+    row["tags"] = tags
+    # ``show_archived`` governs archived knowledge, not archived-conversation
+    # memory (which is the Library's normal Dialogue history lane).
+    if row.get("source_kind") == "engram" and "archived" in tags and not show_archived:
+        return False
+    # Multiple selected tags deliberately narrow with AND semantics.
+    return set(_browser_normalize_tags(required_tags)).issubset(tags)
+
+
+def _browser_frontmatter_tags(content: str, *, path: str = "") -> list[str]:
+    """Read tags from a Markdown note without letting YAML failures go quiet."""
+    text = str(content or "")
+    if not text.startswith("---"):
+        return []
+    match = re.match(r"^---\s*\n(.*?)\n---(?:\s*\n|\Z)", text, flags=re.S)
+    if not match:
+        print(
+            f"[conversation-browser] unterminated YAML frontmatter while reading tags: {path or '<memory>'}",
+            file=sys.stderr,
+        )
+        return []
+    frontmatter = match.group(1)
+    try:
+        import yaml
+        parsed = yaml.safe_load(frontmatter) or {}
+        if isinstance(parsed, dict):
+            return _browser_normalize_tags(parsed.get("tags"))
+        print(
+            f"[conversation-browser] non-mapping YAML frontmatter while reading tags: {path or '<memory>'}",
+            file=sys.stderr,
+        )
+    except Exception as exc:
+        # Fail open, loudly.  A narrow fallback still recognizes ordinary
+        # inline and block-list tags so an unrelated malformed field does not
+        # make an archived note visible by default.
+        print(
+            f"[conversation-browser] YAML tag parse failed for {path or '<memory>'}: {exc}",
+            file=sys.stderr,
+        )
+
+    inline = re.search(r"(?m)^tags:[ \t]*(.*?)[ \t]*$", frontmatter)
+    if not inline:
+        return []
+    first = inline.group(1).strip()
+    if first:
+        return _browser_normalize_tags(first)
+    tail = frontmatter[inline.end():]
+    block: list[str] = []
+    for line in tail.splitlines():
+        item = re.match(r"^\s+-\s*(.*?)\s*$", line)
+        if item:
+            block.append(item.group(1))
+            continue
+        if line.strip() and not line[:1].isspace():
+            break
+    return _browser_normalize_tags(block)
+
+
 def _browser_encode_source_id(prefix: str, value: str) -> str:
     import base64
     raw = str(value or "").encode("utf-8")
@@ -8677,6 +8846,9 @@ def _browser_row_from_chroma_hit(
 ) -> dict | None:
     doc = document or metadata.get("chroma:document") or ""
     if logical_collection == "conversations":
+        row_tags = _browser_normalize_tags(
+            [metadata.get("tags"), metadata.get("tag")]
+        )
         source_id = (
             metadata.get("conversation_id")
             or metadata.get("raw_path")
@@ -8699,6 +8871,7 @@ def _browser_row_from_chroma_hit(
             "result_type": "archive_conversation",
             "source_kind": "archive",
             "tag": metadata.get("tag") or "",
+            "tags": row_tags,
             "title": title,
             "snippet": snippet,
             "matched_turn_index": matched_turn,
@@ -8722,6 +8895,7 @@ def _browser_row_from_chroma_hit(
     if logical_collection == "knowledge":
         if not _browser_is_knowledge_note(metadata):
             return None
+        row_tags = _browser_metadata_tags(metadata)
         source_path = metadata.get("path") or metadata.get("obsidian_path")
         if not source_path:
             source = metadata.get("source")
@@ -8737,6 +8911,7 @@ def _browser_row_from_chroma_hit(
             "result_type": "engram" if str(metadata.get("type") or "").lower() in ("engram", "chat") else "knowledge_note",
             "source_kind": "engram",
             "tag": metadata.get("tags") or "",
+            "tags": row_tags,
             "title": title,
             "snippet": snippet,
             "matched_turn_index": 0,
@@ -8770,6 +8945,8 @@ def _browser_chroma_exact_rows(
     *,
     logical_collection: str,
     limit: int,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
 ) -> list[dict]:
     terms = _browser_terms(query)
     if not terms:
@@ -8821,17 +8998,20 @@ def _browser_chroma_exact_rows(
                 doc = meta.get("chroma:document") or fts_text or ""
                 term_hits = sum(1 for term in terms if term in doc.lower())
                 score = boost + (term_hits * 4.0) - min(abs(float(rank or 0)), 50.0) / 20.0
-                _browser_merge_best(
-                    out,
-                    _browser_row_from_chroma_hit(
-                        logical_collection=logical_collection,
-                        embedding_id=embedding_id,
-                        document=doc,
-                        metadata=meta,
-                        query=query,
-                        score=score,
-                    ),
+                candidate = _browser_row_from_chroma_hit(
+                    logical_collection=logical_collection,
+                    embedding_id=embedding_id,
+                    document=doc,
+                    metadata=meta,
+                    query=query,
+                    score=score,
                 )
+                if candidate and _browser_row_matches_tag_filters(
+                    candidate,
+                    required_tags=required_tags,
+                    show_archived=show_archived,
+                ):
+                    _browser_merge_best(out, candidate)
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] exact {logical_collection} search failed: {exc}", file=sys.stderr)
@@ -8868,6 +9048,8 @@ def _browser_chroma_fuzzy_rows(
     *,
     logical_collection: str,
     limit: int,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
 ) -> list[dict]:
     fts_query = _browser_fuzzy_fts_query(query)
     if not fts_query:
@@ -8905,27 +9087,37 @@ def _browser_chroma_fuzzy_rows(
             if relevance < 58.0:
                 continue
             score = 80.0 + relevance - min(abs(float(rank or 0)), 50.0) / 20.0
-            _browser_merge_best(
-                out,
-                _browser_row_from_chroma_hit(
-                    logical_collection=logical_collection,
-                    embedding_id=embedding_id,
-                    document=doc,
-                    metadata=meta,
-                    query=query,
-                    score=score,
-                ),
+            candidate = _browser_row_from_chroma_hit(
+                logical_collection=logical_collection,
+                embedding_id=embedding_id,
+                document=doc,
+                metadata=meta,
+                query=query,
+                score=score,
             )
+            if candidate and _browser_row_matches_tag_filters(
+                candidate,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ):
+                _browser_merge_best(out, candidate)
         con.close()
     except Exception as exc:
         print(f"[conversation-browser] fuzzy {logical_collection} search failed: {exc}", file=sys.stderr)
     return _browser_sort_rows(list(out.values()), "relevance")[:limit]
 
 
-def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
+def _browser_vault_markdown_rows(
+    query: str,
+    limit: int = 40,
+    *,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
+    vault_root: str | None = None,
+) -> list[dict]:
     if not (query or "").strip():
         return []
-    vault_root = str(rp.vault_dir())
+    vault_root = vault_root or str(rp.vault_dir())
     if not os.path.isdir(vault_root):
         return []
     terms = _browser_match_terms(query)
@@ -8952,7 +9144,9 @@ def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
         return len(query_grams & title_grams) >= 4
 
     rows: list[dict] = []
-    skipped_dirs = {".git", ".obsidian", ".trash", "node_modules", "__pycache__"}
+    skipped_dirs = {
+        ".git", ".obsidian", ".trash", "Archive", "node_modules", "__pycache__",
+    }
     try:
         for root, dirs, files in os.walk(vault_root):
             dirs[:] = [d for d in dirs if d not in skipped_dirs and not d.startswith(".")]
@@ -8970,8 +9164,22 @@ def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
                 try:
                     with open(path, "r", encoding="utf-8") as f:
                         content = f.read(40000)
-                except OSError:
-                    pass
+                except OSError as exc:
+                    print(
+                        f"[conversation-browser] vault Markdown read failed for {path}: {exc}",
+                        file=sys.stderr,
+                    )
+                tags = _browser_frontmatter_tags(content, path=path)
+                candidate_identity = {
+                    "source_kind": "engram",
+                    "tags": tags,
+                }
+                if not _browser_row_matches_tag_filters(
+                    candidate_identity,
+                    required_tags=required_tags,
+                    show_archived=show_archived,
+                ):
+                    continue
                 content_l = content.lower()
                 content_hits = sum(
                     1 for term in _browser_match_terms(query)
@@ -8992,7 +9200,8 @@ def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
                     "source_conversation_id": path,
                     "result_type": "vault_note",
                     "source_kind": "engram",
-                    "tag": "",
+                    "tag": ", ".join(tags),
+                    "tags": tags,
                     "title": _browser_source_title({"path": path}, content) or title,
                     "snippet": _browser_snippet_from_text(content or title, query),
                     "matched_turn_index": 0,
@@ -9014,6 +9223,8 @@ def _browser_chroma_semantic_rows(
     *,
     logical_collection: str,
     limit: int,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
 ) -> list[dict]:
     if not (query or "").strip():
         return []
@@ -9044,17 +9255,20 @@ def _browser_chroma_semantic_rows(
                 continue
             similarity = 1.0 - float(dist if dist is not None else 1.0)
             score = 70.0 + (similarity * 40.0)
-            _browser_merge_best(
-                out,
-                _browser_row_from_chroma_hit(
-                    logical_collection=logical_collection,
-                    embedding_id=embedding_id,
-                    document=doc or "",
-                    metadata=meta or {},
-                    query=query,
-                    score=score,
-                ),
+            candidate = _browser_row_from_chroma_hit(
+                logical_collection=logical_collection,
+                embedding_id=embedding_id,
+                document=doc or "",
+                metadata=meta or {},
+                query=query,
+                score=score,
             )
+            if candidate and _browser_row_matches_tag_filters(
+                candidate,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ):
+                _browser_merge_best(out, candidate)
     except Exception as exc:
         print(f"[conversation-browser] semantic {logical_collection} search failed: {exc}", file=sys.stderr)
     return sorted(out.values(), key=lambda r: float(r.get("score") or 0), reverse=True)[:limit]
@@ -9156,6 +9370,8 @@ def _browser_filter_rows(
     include_engrams: bool,
     min_relevance: float,
     has_query: bool,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
 ) -> list[dict]:
     out: list[dict] = []
     for row in rows:
@@ -9164,6 +9380,12 @@ def _browser_filter_rows(
             if not include_engrams:
                 continue
         elif not include_conversations:
+            continue
+        if not _browser_row_matches_tag_filters(
+            row,
+            required_tags=required_tags,
+            show_archived=show_archived,
+        ):
             continue
         relevance = _browser_row_relevance(row, has_query=has_query)
         row["relevance"] = relevance
@@ -9217,6 +9439,7 @@ def _browser_live_rows(query: str) -> list[dict]:
         out.update({
             "result_type": "live_conversation",
             "source_kind": "live",
+            "tags": _browser_normalize_tags(out.get("tag")),
             "snippet": snippet,
             "matched_message_index": match.get("matched_message_index"),
             "matched_turn_index": match.get("matched_turn_index"),
@@ -9397,7 +9620,13 @@ def _browser_memory_envelope(conversation_id: str) -> dict | None:
     )
 
 
-def _browser_archive_related_rows(conversation_id: str, limit: int = 100) -> list[dict]:
+def _browser_archive_related_rows(
+    conversation_id: str,
+    limit: int = 100,
+    *,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
+) -> list[dict]:
     source_id = _browser_decode_source_id("archive", conversation_id)
     if not source_id:
         return []
@@ -9482,9 +9711,13 @@ def _browser_archive_related_rows(conversation_id: str, limit: int = 100) -> lis
                     query="",
                     score=related_score,
                 )
-                if row:
+                if row and _browser_row_matches_tag_filters(
+                    row,
+                    required_tags=required_tags,
+                    show_archived=show_archived,
+                ):
                     row["relation"] = "related"
-                _browser_merge_best(rows_by_id, row)
+                    _browser_merge_best(rows_by_id, row)
             con.close()
         except Exception as exc:
             print(f"[conversation-browser] archive related lookup failed: {exc}", file=sys.stderr)
@@ -9492,7 +9725,11 @@ def _browser_archive_related_rows(conversation_id: str, limit: int = 100) -> lis
     if len(rows_by_id) < limit:
         title = _browser_source_title(chunks[0], chunks[0].get("chroma:document") or "")
         for row in _browser_chroma_semantic_rows(
-            title, logical_collection="conversations", limit=max(20, limit - len(rows_by_id))
+            title,
+            logical_collection="conversations",
+            limit=max(20, limit - len(rows_by_id)),
+            required_tags=required_tags,
+            show_archived=show_archived,
         ):
             if row.get("source_conversation_id") == source_id:
                 continue
@@ -9508,6 +9745,8 @@ def _browser_engram_related_rows(
     *,
     include_conversations: bool = True,
     include_engrams: bool = True,
+    required_tags: tuple[str, ...] | list[str] = (),
+    show_archived: bool = False,
 ) -> list[dict]:
     source_id = _browser_decode_source_id("engram", conversation_id)
     if not source_id:
@@ -9522,18 +9761,36 @@ def _browser_engram_related_rows(
 
     rows_by_id: dict[str, dict] = {}
     if include_engrams:
-        for row in _browser_chroma_exact_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+        for row in _browser_chroma_exact_rows(
+            query,
+            logical_collection="knowledge",
+            limit=max(20, limit // 2),
+            required_tags=required_tags,
+            show_archived=show_archived,
+        ):
             if row.get("conversation_id") == conversation_id:
                 continue
             row["relation"] = "related"
             _browser_merge_best(rows_by_id, row)
-        for row in _browser_chroma_semantic_rows(query, logical_collection="knowledge", limit=max(20, limit // 2)):
+        for row in _browser_chroma_semantic_rows(
+            query,
+            logical_collection="knowledge",
+            limit=max(20, limit // 2),
+            required_tags=required_tags,
+            show_archived=show_archived,
+        ):
             if row.get("conversation_id") == conversation_id:
                 continue
             row["relation"] = row.get("relation") or "semantic"
             _browser_merge_best(rows_by_id, row)
     if include_conversations:
-        for row in _browser_chroma_semantic_rows(query, logical_collection="conversations", limit=max(20, limit // 2)):
+        for row in _browser_chroma_semantic_rows(
+            query,
+            logical_collection="conversations",
+            limit=max(20, limit // 2),
+            required_tags=required_tags,
+            show_archived=show_archived,
+        ):
             row["relation"] = row.get("relation") or "conversation"
             _browser_merge_best(rows_by_id, row)
     return _browser_sort_rows(list(rows_by_id.values()), "relevance")[:limit]
@@ -9554,6 +9811,8 @@ def conversations_browser():
         request.args.get("engrams", request.args.get("include_engrams")),
         True,
     )
+    required_tags = _browser_parse_requested_tags(request.args.getlist("tags"))
+    show_archived = _browser_parse_bool(request.args.get("show_archived"), False)
     min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
     try:
         limit = int(request.args.get("limit") or 100)
@@ -9578,15 +9837,40 @@ def conversations_browser():
     if query:
         if include_conversations:
             archive_rows.extend(_browser_chroma_exact_rows(
-                query, logical_collection="conversations", limit=120))
+                query,
+                logical_collection="conversations",
+                limit=120,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ))
             archive_rows.extend(_browser_chroma_fuzzy_rows(
-                query, logical_collection="conversations", limit=80))
+                query,
+                logical_collection="conversations",
+                limit=80,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ))
         if include_engrams:
             engram_rows.extend(_browser_chroma_exact_rows(
-                query, logical_collection="knowledge", limit=80))
+                query,
+                logical_collection="knowledge",
+                limit=80,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ))
             engram_rows.extend(_browser_chroma_fuzzy_rows(
-                query, logical_collection="knowledge", limit=80))
-            engram_rows.extend(_browser_vault_markdown_rows(query, limit=40))
+                query,
+                logical_collection="knowledge",
+                limit=80,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ))
+            engram_rows.extend(_browser_vault_markdown_rows(
+                query,
+                limit=40,
+                required_tags=required_tags,
+                show_archived=show_archived,
+            ))
         local_rows = archive_rows + engram_rows
         local_best = max(
             (
@@ -9598,10 +9882,20 @@ def conversations_browser():
         if len(local_rows) < 30 or local_best < 90.0:
             if include_conversations:
                 archive_rows.extend(_browser_chroma_semantic_rows(
-                    query, logical_collection="conversations", limit=80))
+                    query,
+                    logical_collection="conversations",
+                    limit=80,
+                    required_tags=required_tags,
+                    show_archived=show_archived,
+                ))
             if include_engrams:
                 engram_rows.extend(_browser_chroma_semantic_rows(
-                    query, logical_collection="knowledge", limit=60))
+                    query,
+                    logical_collection="knowledge",
+                    limit=60,
+                    required_tags=required_tags,
+                    show_archived=show_archived,
+                ))
     else:
         if include_conversations:
             archive_rows.extend(_browser_latest_archive_rows(limit=limit))
@@ -9617,6 +9911,8 @@ def conversations_browser():
         include_engrams=include_engrams,
         min_relevance=min_relevance,
         has_query=bool(query),
+        required_tags=required_tags,
+        show_archived=show_archived,
     )
     rows = _browser_sort_rows(rows, sort_mode)
     return _json_response({
@@ -9624,6 +9920,8 @@ def conversations_browser():
         "sort": sort_mode,
         "include_conversations": include_conversations,
         "include_engrams": include_engrams,
+        "tags": required_tags,
+        "show_archived": show_archived,
         "min_relevance": min_relevance,
         "rows": rows[:limit],
         "total": len(rows),
@@ -9709,22 +10007,32 @@ def conversations_related(conversation_id):
         request.args.get("engrams", request.args.get("include_engrams")),
         True,
     )
+    required_tags = _browser_parse_requested_tags(request.args.getlist("tags"))
+    show_archived = _browser_parse_bool(request.args.get("show_archived"), False)
     min_relevance = _browser_parse_min_relevance(request.args.get("min_relevance"))
     sort_mode = (request.args.get("sort") or "relevance").strip().lower()
     if sort_mode not in {"relevance", "recency"}:
         sort_mode = "relevance"
     if conversation_id.startswith("archive:"):
-        rows = _browser_archive_related_rows(conversation_id) if include_conversations else []
+        rows = _browser_archive_related_rows(
+            conversation_id,
+            required_tags=required_tags,
+            show_archived=show_archived,
+        ) if include_conversations else []
         rows = _browser_filter_rows(
             rows,
             include_conversations=include_conversations,
             include_engrams=include_engrams,
             min_relevance=min_relevance,
             has_query=True,
+            required_tags=required_tags,
+            show_archived=show_archived,
         )
         rows = _browser_sort_rows(rows, sort_mode)
         return _json_response({
             "conversation_id": conversation_id,
+            "tags": required_tags,
+            "show_archived": show_archived,
             "rows": rows,
         })
     if conversation_id.startswith("engram:"):
@@ -9732,6 +10040,8 @@ def conversations_related(conversation_id):
             conversation_id,
             include_conversations=include_conversations,
             include_engrams=include_engrams,
+            required_tags=required_tags,
+            show_archived=show_archived,
         )
         rows = _browser_filter_rows(
             rows,
@@ -9739,15 +10049,21 @@ def conversations_related(conversation_id):
             include_engrams=include_engrams,
             min_relevance=min_relevance,
             has_query=True,
+            required_tags=required_tags,
+            show_archived=show_archived,
         )
         rows = _browser_sort_rows(rows, sort_mode)
         return _json_response({
             "conversation_id": conversation_id,
+            "tags": required_tags,
+            "show_archived": show_archived,
             "rows": rows,
         })
     if not include_conversations:
         return _json_response({
             "conversation_id": conversation_id,
+            "tags": required_tags,
+            "show_archived": show_archived,
             "rows": [],
         })
     try:
@@ -9783,9 +10099,20 @@ def conversations_related(conversation_id):
         elif parent_id and row.get("parent_conversation_id") == parent_id:
             add(row, "sibling")
 
+    related = _browser_filter_rows(
+        related,
+        include_conversations=True,
+        include_engrams=include_engrams,
+        min_relevance=0.0,
+        has_query=False,
+        required_tags=required_tags,
+        show_archived=show_archived,
+    )
     related.sort(key=lambda r: (r.get("relation") != "self", r.get("last_activity_at") or ""), reverse=False)
     return _json_response({
         "conversation_id": conversation_id,
+        "tags": required_tags,
+        "show_archived": show_archived,
         "rows": related,
     })
 

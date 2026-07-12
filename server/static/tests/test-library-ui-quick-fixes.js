@@ -46,6 +46,8 @@ var dom = new jsdom.JSDOM(
 var w = dom.window;
 var forkRequests = 0;
 var browserRequests = 0;
+var browserRequestUrls = [];
+var relatedRequestUrls = [];
 var envelopeRequests = 0;
 var envelopes = {
   'named-live': {
@@ -83,12 +85,24 @@ w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
   if (decoded.indexOf('/api/conversations/browser?') === 0) {
     browserRequests += 1;
+    browserRequestUrls.push(decoded);
     return response(true, {
       rows: [{
         conversation_id: 'named-live',
         source_kind: 'live',
         title: 'Saved Dialogue Name',
         snippet: 'This second line must not be rendered.',
+      }],
+      total: 1,
+    });
+  }
+  if (/^\/api\/conversation\/[^/]+\/related\?/.test(decoded)) {
+    relatedRequestUrls.push(decoded);
+    return response(true, {
+      rows: [{
+        conversation_id: 'named-live',
+        source_kind: 'live',
+        title: 'Saved Dialogue Name',
       }],
       total: 1,
     });
@@ -199,6 +213,39 @@ async function run() {
     library.getAttribute('aria-modal') === 'false');
   record('Library search has a programmatic label',
     search.getAttribute('aria-label') === 'Search Dialogues');
+  var tagsInput = w.document.querySelector('.conversation-browser-tags-input');
+  var archivedToggle = w.document.querySelector('.conversation-browser-filter-archived');
+  record('Library tag filter communicates ALL-selected narrowing',
+    tagsInput.getAttribute('aria-label') === 'Filter by tags (all selected tags must match)');
+  record('Library archived toggle is labelled and opt-in',
+    archivedToggle.checked === false &&
+    archivedToggle.closest('label').textContent.indexOf('Show archived') !== -1);
+  var initialBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
+  record('Library defaults to hiding archived engrams',
+    initialBrowserParams.get('show_archived') === '0' && !initialBrowserParams.has('tags'));
+
+  tagsInput.value = ' Atomic, framework/instruction, atomic ';
+  tagsInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  var taggedBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
+  record('Library sends normalized unique tags to browser search',
+    taggedBrowserParams.get('tags') === 'atomic,framework/instruction');
+
+  archivedToggle.checked = true;
+  archivedToggle.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush();
+  await flush();
+  var archivedBrowserParams = new w.URL(browserRequestUrls[browserRequestUrls.length - 1], w.location.href).searchParams;
+  record('Library show-archived toggle updates browser search',
+    archivedBrowserParams.get('show_archived') === '1');
+
+  related.click();
+  await flush();
+  var relatedParams = new w.URL(relatedRequestUrls[relatedRequestUrls.length - 1], w.location.href).searchParams;
+  record('Library forwards tags and archived visibility to related lookup',
+    relatedParams.get('tags') === 'atomic,framework/instruction' &&
+    relatedParams.get('show_archived') === '1');
   var titleButton = row.querySelector('.conversation-browser-title');
   record('Library row exposes a labelled group',
     row.getAttribute('role') === 'group' &&
@@ -226,6 +273,8 @@ async function run() {
     ['Close button', '.conversation-browser-close'],
     ['Dialogue filter', '.conversation-browser-filter-conversations'],
     ['Engram filter', '.conversation-browser-filter-engrams'],
+    ['tag filter', '.conversation-browser-tags-input'],
+    ['show archived filter', '.conversation-browser-filter-archived'],
     ['relevance slider', '.conversation-browser-relevance-slider'],
     ['row checkbox', '.conversation-browser-check'],
     ['row title', '.conversation-browser-title'],

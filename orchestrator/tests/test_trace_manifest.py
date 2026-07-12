@@ -20,8 +20,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 HERE = Path(__file__).resolve().parent
@@ -266,6 +268,30 @@ class TestTraceLifecycleMutation(TraceManifestBase):
                 "conv-a", "stealth",
             )
 
+    def test_start_trace_concurrent_same_timestamp_unique_dirs(self):
+        results = []
+        errors = []
+
+        def _worker():
+            try:
+                results.append(self.start("conv-race"))
+            except Exception as exc:
+                errors.append(exc)
+
+        with mock.patch.object(pipeline_trace, "_now_ts",
+                               return_value="20260712T000000Z"):
+            threads = [threading.Thread(target=_worker) for _ in range(50)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        self.assertEqual(errors, [])
+        self.assertEqual(len(results), 50)
+        self.assertEqual(len(set(results)), 50)
+        self.assertTrue(all(os.path.isdir(p) for p in results))
+
+
 
 class TestTraceRef(TraceManifestBase):
     def test_ref_is_relative_conv_slash_ts(self):
@@ -278,6 +304,42 @@ class TestTraceRef(TraceManifestBase):
         self.assertIsNone(pipeline_trace.trace_ref_for_dir(None))
         self.assertIsNone(pipeline_trace.trace_ref_for_dir(""))
         self.assertIsNone(pipeline_trace.trace_ref_for_dir(self.tmp.name))
+
+    def test_resolve_trace_ref_requires_manifest_bearing_turn_dir(self):
+        d = self.start("conv-r")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        self.assertEqual(pipeline_trace.resolve_trace_ref(ref),
+                         os.path.realpath(d))
+        self.assertIsNone(pipeline_trace.resolve_trace_ref("../conv-r/x"))
+        self.assertIsNone(pipeline_trace.resolve_trace_ref("conv-r"))
+        self.assertIsNone(pipeline_trace.resolve_trace_ref("conv-r/nope"))
+
+    def test_resolve_trace_ref_rejects_symlink_escape(self):
+        external = tempfile.TemporaryDirectory()
+        self.addCleanup(external.cleanup)
+        outside_turn = os.path.join(external.name, "turn")
+        os.makedirs(outside_turn)
+        pipeline_trace._atomic_write_json(
+            os.path.join(outside_turn, "trace-manifest.json"),
+            {"trace_kind": "chat"})
+        conv_dir = os.path.join(self.root, "conv-link")
+        os.makedirs(conv_dir)
+        os.symlink(outside_turn, os.path.join(conv_dir, "evil"))
+        self.assertIsNone(pipeline_trace.resolve_trace_ref("conv-link/evil"))
+
+    def test_pin_unpin_preserves_manifest_fields(self):
+        d = self.start("conv-pin")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="framework-run", status_hint="completed",
+            framework_id="deep-research-protocol",
+            child_trace_refs=["conv-pin/child-a"])
+        pinned = pipeline_trace.set_retention_state(ref, "pinned")
+        self.assertEqual(pinned["retention_state"], "pinned")
+        self.assertEqual(pinned["framework_id"], "deep-research-protocol")
+        self.assertEqual(pinned["child_trace_refs"], ["conv-pin/child-a"])
+        unpinned = pipeline_trace.set_retention_state(ref, "default")
+        self.assertEqual(unpinned["retention_state"], "default")
 
 
 class TestFinalizeStatusAndKind(TraceManifestBase):
@@ -580,6 +642,73 @@ class TestFinalizeLifecycle(TraceManifestBase):
         self.assertEqual(self.manifest(d)["parent_trace_ref"],
                          "conv-a/20260101T000000Z")
 
+    def test_framework_fields_and_child_refs_dedupe(self):
+        d = self.start()
+        m = self.manifest(d)
+        m["child_trace_refs"] = ["conv-a/child-1"]
+        pipeline_trace._atomic_write_json(
+            os.path.join(d, "trace-manifest.json"), m)
+        pipeline_trace.finalize_manifest(
+            d, kind="framework-run", status_hint="completed",
+            mode="all", framework_id="fw-a",
+            child_trace_refs=["conv-a/child-1", "conv-a/child-2"])
+        m2 = self.manifest(d)
+        self.assertEqual(m2["trace_kind"], "framework-run")
+        self.assertEqual(m2["terminal_status"], "completed")
+        self.assertEqual(m2["framework_id"], "fw-a")
+        self.assertEqual(m2["mode"], "all")
+        self.assertEqual(m2["child_trace_refs"],
+                         ["conv-a/child-1", "conv-a/child-2"])
+
+    def test_append_child_trace_ref_preserves_and_dedupes(self):
+        d = self.start()
+        pipeline_trace.append_child_trace_ref(d, "conv-a/child-1")
+        pipeline_trace.append_child_trace_ref(d, "conv-a/child-1")
+        pipeline_trace.append_child_trace_ref(d, "conv-a/child-2")
+        self.assertEqual(self.manifest(d)["child_trace_refs"],
+                         ["conv-a/child-1", "conv-a/child-2"])
+
+    def test_model_call_config_snapshot_is_redacted(self):
+        d = self.start()
+        endpoint = {
+            "id": "ep-a", "name": "Endpoint A", "type": "api",
+            "service": "openai", "provider": "openai",
+            "model": "gpt-test", "temperature": 0.2,
+            "top_p": 0.9, "max_tokens": 123,
+            "api_key": "SECRET", "credential_key": "ora/secret",
+            "base_url": "https://user:pass@example.test/v1",
+        }
+        pipeline_trace.record_model_call_config(
+            d, endpoint,
+            {"step": "verifier", "slot": "breadth", "gear": 4,
+             "config_name": "Premium"})
+        with open(os.path.join(d, "model-call-config.jsonl")) as f:
+            rec = json.loads(f.readline())
+        self.assertEqual(rec["step"], "verifier")
+        self.assertEqual(rec["slot"], "breadth")
+        self.assertEqual(rec["gear"], 4)
+        self.assertEqual(rec["config_name"], "Premium")
+        self.assertEqual(rec["model_id"], "gpt-test")
+        self.assertEqual(rec["sampling"]["temperature"], 0.2)
+        blob = json.dumps(rec)
+        self.assertNotIn("SECRET", blob)
+        self.assertNotIn("credential_key", blob)
+        self.assertNotIn("user:pass", blob)
+
+    def test_model_call_config_rejects_schemeless_credential_url(self):
+        d = self.start()
+        endpoint = {
+            "id": "ep-b", "type": "api", "service": "openai",
+            "model": "gpt-test",
+            "base_url": "user:pass@example.test/v1",
+        }
+        pipeline_trace.record_model_call_config(d, endpoint, {})
+        with open(os.path.join(d, "model-call-config.jsonl")) as f:
+            rec = json.loads(f.readline())
+        blob = json.dumps(rec)
+        self.assertEqual(rec["base_url_host"], "")
+        self.assertNotIn("pass@example.test", blob)
+
     def test_finalize_rebuilds_when_skeleton_missing(self):
         # Pre-manifest trace dirs (or a clobbered skeleton) still finalize.
         d = self.start()
@@ -601,6 +730,236 @@ class TestFinalizeLifecycle(TraceManifestBase):
         pipeline_trace.finalize_manifest(d, kind="direct")
         residue = [n for n in os.listdir(d) if n.endswith(".tmp")]
         self.assertEqual(residue, [])
+
+
+class TestMilestoneChildLifecycle(TraceManifestBase):
+    def _fake_framework(self):
+        return SimpleNamespace(name="fw-a", layers={})
+
+    def _fake_milestone(self):
+        return SimpleNamespace(
+            id="m1",
+            name="Milestone One",
+            gear=3,
+            required_prior=[],
+            layers_covered=[],
+            output_format="Return text.",
+            verification_criterion="Text exists.",
+            conditional_layers="",
+            drift_check_question="",
+        )
+
+    def _fake_scratch(self):
+        return SimpleNamespace(
+            read_all_prior=lambda _ids: {},
+            write_milestone=lambda _mid, _deliverable: None,
+        )
+
+    def test_child_trace_stays_open_until_attempt_finalizes(self):
+        import milestone_executor
+        parent = self.start("fw-parent")
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        child = milestone_executor._start_child_trace(
+            parent, "handoff", "fw-a", "m1", parent_ref, "all", 3, "", {})
+        m = self.manifest(child)
+        self.assertEqual(m["trace_kind"], "framework-milestone")
+        self.assertEqual(m["terminal_status"], "open")
+        self.assertIsNone(m["finalized_at"])
+        self.assertEqual(m["parent_trace_ref"], parent_ref)
+
+    def test_keyboard_interrupt_finalizes_child_error(self):
+        import milestone_executor
+        parent = self.start("fw-parent")
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        with mock.patch.object(milestone_executor, "_run_child_attempt",
+                               side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                milestone_executor._run_milestone(
+                    self._fake_framework(), self._fake_milestone(),
+                    self._fake_scratch(), "user input", {},
+                    parent_trace_dir=parent,
+                    parent_trace_ref=parent_ref,
+                    selected_mode="all",
+                    trace_context={},
+                )
+        parent_m = self.manifest(parent)
+        self.assertEqual(len(parent_m["child_trace_refs"]), 1)
+        child = pipeline_trace.resolve_trace_ref(parent_m["child_trace_refs"][0])
+        self.assertEqual(self.manifest(child)["terminal_status"], "error")
+
+    def test_run_milestone_retry_creates_error_then_completed_children(self):
+        import milestone_executor
+        parent = self.start("fw-parent")
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        writes = []
+        scratch = SimpleNamespace(
+            read_all_prior=lambda _ids: {},
+            write_milestone=lambda mid, deliverable: writes.append(
+                (mid, deliverable)),
+        )
+        trace_context = {}
+        with mock.patch.object(
+            milestone_executor, "_run_child_attempt",
+            side_effect=[RuntimeError("first attempt failed"), "deliverable"],
+        ), mock.patch.object(
+            milestone_executor, "_run_drift_check",
+            return_value=("IN_SCOPE", "ok"),
+        ), mock.patch.object(milestone_executor.time, "sleep",
+                            return_value=None):
+            result = milestone_executor._run_milestone(
+                self._fake_framework(), self._fake_milestone(),
+                scratch, "user input", {},
+                parent_trace_dir=parent,
+                parent_trace_ref=parent_ref,
+                selected_mode="all",
+                trace_context=trace_context,
+            )
+
+        self.assertEqual(result.attempts, 2)
+        self.assertEqual(writes, [("m1", "deliverable")])
+        parent_m = self.manifest(parent)
+        child_refs = parent_m["child_trace_refs"]
+        self.assertEqual(len(child_refs), 2)
+        self.assertEqual(len(set(child_refs)), 2)
+        self.assertEqual(trace_context["child_trace_refs"], child_refs)
+        statuses = []
+        for child_ref in child_refs:
+            child_dir = pipeline_trace.resolve_trace_ref(child_ref)
+            self.assertIsNotNone(child_dir)
+            child = self.manifest(child_dir)
+            statuses.append(child["terminal_status"])
+            self.assertEqual(child["parent_trace_ref"], parent_ref)
+            self.assertEqual(child["framework_id"], "fw-a")
+            self.assertEqual(child["milestone_id"], "m1")
+        self.assertEqual(statuses, ["error", "completed"])
+
+
+class TestPhysicalModelCallConfig(TraceManifestBase):
+    def setUp(self):
+        super().setUp()
+        import boot
+        self.boot = boot
+        patcher = mock.patch.object(self.boot.pipeline_trace, "TRACE_ROOT",
+                                    self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_truncation_retry_records_each_effective_attempt(self):
+        d = self.start("model-config")
+        trace_token = self.boot._TURN_TRACE_DIR_CV.set(d)
+        meta_token = self.boot._CALL_METADATA_CV.set({
+            "step": "step-x",
+            "slot": "analyst",
+            "gear": 4,
+            "config_name": "test-config",
+        })
+        try:
+            def _make_call(max_tokens):
+                return ("text", max_tokens == 10)
+
+            result = self.boot._call_api_with_truncation_retry(
+                _make_call, "OpenAI",
+                {"id": "ep-a", "type": "api", "service": "openai",
+                 "model": "gpt-test", "max_tokens": 10})
+        finally:
+            self.boot._CALL_METADATA_CV.reset(meta_token)
+            self.boot._TURN_TRACE_DIR_CV.reset(trace_token)
+
+        self.assertEqual(result, "text")
+        with open(os.path.join(d, "model-call-config.jsonl")) as f:
+            records = [json.loads(line) for line in f if line.strip()]
+        self.assertEqual(len(records), 2)
+        self.assertEqual([r["effective_max_tokens"] for r in records],
+                         [10, 20])
+        self.assertEqual([r["attempt_index"] for r in records], [1, 2])
+        self.assertEqual({r["provider_attempt"] for r in records},
+                         {"OpenAI"})
+        self.assertEqual(len({r["invocation_id"] for r in records}), 1)
+
+    def _bind_boot_trace(self, trace_dir, meta=None):
+        trace_token = self.boot._TURN_TRACE_DIR_CV.set(trace_dir)
+        meta_token = self.boot._CALL_METADATA_CV.set(meta or {
+            "step": "step-x", "slot": "analyst", "gear": 4,
+            "config_name": "test-config",
+        })
+        return trace_token, meta_token
+
+    def _reset_boot_trace(self, trace_token, meta_token):
+        self.boot._CALL_METADATA_CV.reset(meta_token)
+        self.boot._TURN_TRACE_DIR_CV.reset(trace_token)
+
+    def _model_config_records(self, trace_dir):
+        with open(os.path.join(trace_dir, "model-call-config.jsonl")) as f:
+            return [json.loads(line) for line in f if line.strip()]
+
+    def test_claude_code_subscription_records_physical_attempt(self):
+        d = self.start("cc-config")
+        trace_token, meta_token = self._bind_boot_trace(d)
+        completed = SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({
+                "result": "hello",
+                "usage": {"input_tokens": 1, "output_tokens": 2},
+                "modelUsage": {
+                    "claude-opus-4-8": {
+                        "inputTokens": 1, "outputTokens": 2,
+                    },
+                },
+            }),
+            stderr="",
+        )
+        try:
+            with mock.patch("subprocess.run", return_value=completed), \
+                 mock.patch.dict(os.environ, {"ORA_CLAUDE_CODE_BIN": "claude"}):
+                result = self.boot._call_claude_code_subscription(
+                    [{"role": "user", "content": "hello"}],
+                    {"id": "cc", "type": "api", "service": "claude-code",
+                     "model": "claude-opus-4-8"})
+        finally:
+            self._reset_boot_trace(trace_token, meta_token)
+        self.assertEqual(result, "hello")
+        records = self._model_config_records(d)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["provider_attempt"], "claude-code")
+        self.assertEqual(records[0]["model_id"], "claude-opus-4-8")
+
+    def test_mlx_records_resolved_default_token_cap(self):
+        d = self.start("mlx-config")
+        trace_token, meta_token = self._bind_boot_trace(d)
+        fake_tokenizer = SimpleNamespace(
+            apply_chat_template=lambda *_args, **_kw: "prompt")
+        fake_mlx = SimpleNamespace(
+            load=lambda _model: ("model-obj", fake_tokenizer),
+            generate=lambda *_args, **_kw: "answer",
+        )
+        try:
+            with mock.patch.dict(sys.modules, {"mlx_lm": fake_mlx}):
+                result = self.boot.call_local_endpoint(
+                    [{"role": "user", "content": "hello"}],
+                    {"id": "local-mlx", "type": "local",
+                     "engine": "mlx", "model": "mlx-model"})
+        finally:
+            self.boot._mlx_cache.clear()
+            self._reset_boot_trace(trace_token, meta_token)
+        self.assertEqual(result, "answer")
+        records = self._model_config_records(d)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["provider_attempt"], "mlx")
+        self.assertEqual(records[0]["effective_max_tokens"], 999_999_999)
+
+    def test_unsupported_local_engine_records_no_physical_attempt(self):
+        d = self.start("unsupported-local")
+        trace_token, meta_token = self._bind_boot_trace(d)
+        try:
+            result = self.boot.call_local_endpoint(
+                [{"role": "user", "content": "hello"}],
+                {"id": "local-bad", "type": "local",
+                 "engine": "nope", "model": "x"})
+        finally:
+            self._reset_boot_trace(trace_token, meta_token)
+        self.assertIn("Unsupported engine", result)
+        self.assertFalse(os.path.exists(
+            os.path.join(d, "model-call-config.jsonl")))
 
 
 class TestGitignoreCoverage(unittest.TestCase):
@@ -680,11 +1039,72 @@ class TestServerStreamWrapper(unittest.TestCase):
         return out
 
     def _manifest_for(self, conv):
+        trace_dir = self._turn_dir_for(conv)
+        with open(os.path.join(trace_dir, "trace-manifest.json")) as f:
+            return json.load(f)
+
+    def _turn_dir_for(self, conv):
         conv_dir = os.path.join(self.root, conv)
         turns = [t for t in os.listdir(conv_dir) if not t.startswith("_")]
-        self.assertEqual(len(turns), 1)
-        with open(os.path.join(conv_dir, turns[0], "trace-manifest.json")) as f:
-            return json.load(f)
+        self.assertGreaterEqual(len(turns), 1)
+        if len(turns) == 1:
+            return os.path.join(conv_dir, turns[0])
+        parents = []
+        for turn in turns:
+            trace_dir = os.path.join(conv_dir, turn)
+            try:
+                with open(os.path.join(trace_dir, "trace-manifest.json")) as f:
+                    m = json.load(f)
+                if m.get("trace_kind") != "framework-milestone":
+                    parents.append(trace_dir)
+            except Exception:
+                pass
+        self.assertEqual(len(parents), 1)
+        return parents[0]
+
+    def _fake_completed_framework_with_retry(self, *_args, **kwargs):
+        import milestone_executor
+        trace_dir = kwargs["trace_dir"]
+        trace_context = kwargs["trace_context"]
+        parent_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
+        first = milestone_executor._start_child_trace(
+            trace_dir, "attempt one", "fw-happy", "m1", parent_ref,
+            "all", 3, kwargs.get("conversation_tag", ""), trace_context)
+        milestone_executor._finalize_child_trace(
+            first, "error", "fw-happy", "m1", "all", 3, parent_ref)
+        second = milestone_executor._start_child_trace(
+            trace_dir, "attempt two", "fw-happy", "m1", parent_ref,
+            "all", 3, kwargs.get("conversation_tag", ""), trace_context)
+        milestone_executor._finalize_child_trace(
+            second, "completed", "fw-happy", "m1", "all", 3, parent_ref)
+        trace_context.update({
+            "status": "completed",
+            "framework_id": "fw-happy",
+            "mode": "all",
+        })
+        return "framework complete"
+
+    def _assert_completed_framework_lineage(self, conv):
+        parent_dir = self._turn_dir_for(conv)
+        parent = self._manifest_for(conv)
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent_dir)
+        self.assertEqual(parent["trace_kind"], "framework-run")
+        self.assertEqual(parent["terminal_status"], "completed")
+        self.assertEqual(parent["framework_id"], "fw-happy")
+        self.assertEqual(len(parent["child_trace_refs"]), 2)
+        self.assertEqual(len(set(parent["child_trace_refs"])), 2)
+        child_statuses = []
+        for child_ref in parent["child_trace_refs"]:
+            child_dir = pipeline_trace.resolve_trace_ref(child_ref)
+            self.assertIsNotNone(child_dir)
+            with open(os.path.join(child_dir, "trace-manifest.json")) as f:
+                child = json.load(f)
+            child_statuses.append(child["terminal_status"])
+            self.assertEqual(child["trace_kind"], "framework-milestone")
+            self.assertEqual(child["parent_trace_ref"], parent_ref)
+            self.assertEqual(child["framework_id"], "fw-happy")
+            self.assertEqual(child["milestone_id"], "m1")
+        self.assertEqual(child_statuses, ["error", "completed"])
 
     def test_runtime_command_short_circuit_finalizes_honestly(self):
         import slash_commands
@@ -708,6 +1128,37 @@ class TestServerStreamWrapper(unittest.TestCase):
         m = self._manifest_for("t-conv-err")
         self.assertEqual(m["trace_kind"], "runtime_command")
         self.assertEqual(m["terminal_status"], "error")
+
+    def test_framework_command_error_finalizes_error(self):
+        import milestone_executor
+        def _fake_framework(*_args, **kwargs):
+            kwargs["trace_context"].update({
+                "status": "error", "framework_id": "fw-x",
+            })
+            return "[Framework parse error: bad]"
+
+        with mock.patch.object(milestone_executor, "framework_command_has_query",
+                               return_value=True), \
+             mock.patch.object(milestone_executor, "run_framework_command",
+                               side_effect=_fake_framework):
+            list(self.S._pipeline_stream(
+                "/framework fw-x do thing", [], panel_id="t-conv-fw-err"))
+        m = self._manifest_for("t-conv-fw-err")
+        self.assertEqual(m["trace_kind"], "framework-run")
+        self.assertEqual(m["terminal_status"], "error")
+        self.assertEqual(m["framework_id"], "fw-x")
+
+    def test_framework_command_completed_parent_child_lineage(self):
+        import milestone_executor
+        with mock.patch.object(milestone_executor, "framework_command_has_query",
+                               return_value=True), \
+             mock.patch.object(milestone_executor, "run_framework_command",
+                               side_effect=self._fake_completed_framework_with_retry):
+            events = self._events(list(self.S._pipeline_stream(
+                "/framework fw-happy do thing", [],
+                panel_id="t-conv-fw-happy")))
+        self.assertTrue(any(e.get("type") == "trace_ref" for e in events))
+        self._assert_completed_framework_lineage("t-conv-fw-happy")
 
     def test_client_disconnect_finalizes_abandoned(self):
         gen = self.S._pipeline_stream("anything", [], panel_id="t-conv-gx")
@@ -818,11 +1269,72 @@ class TestRunPipelineFinalization(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
 
     def _manifest_for(self, conv):
+        trace_dir = self._turn_dir_for(conv)
+        with open(os.path.join(trace_dir, "trace-manifest.json")) as f:
+            return json.load(f)
+
+    def _turn_dir_for(self, conv):
         conv_dir = os.path.join(self.root, conv)
         turns = [t for t in os.listdir(conv_dir) if not t.startswith("_")]
-        self.assertEqual(len(turns), 1)
-        with open(os.path.join(conv_dir, turns[0], "trace-manifest.json")) as f:
-            return json.load(f)
+        self.assertGreaterEqual(len(turns), 1)
+        if len(turns) == 1:
+            return os.path.join(conv_dir, turns[0])
+        parents = []
+        for turn in turns:
+            trace_dir = os.path.join(conv_dir, turn)
+            try:
+                with open(os.path.join(trace_dir, "trace-manifest.json")) as f:
+                    m = json.load(f)
+                if m.get("trace_kind") != "framework-milestone":
+                    parents.append(trace_dir)
+            except Exception:
+                pass
+        self.assertEqual(len(parents), 1)
+        return parents[0]
+
+    def _fake_completed_framework_with_retry(self, *_args, **kwargs):
+        import milestone_executor
+        trace_dir = kwargs["trace_dir"]
+        trace_context = kwargs["trace_context"]
+        parent_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
+        first = milestone_executor._start_child_trace(
+            trace_dir, "attempt one", "fw-cli-happy", "m1", parent_ref,
+            "all", 3, kwargs.get("conversation_tag", ""), trace_context)
+        milestone_executor._finalize_child_trace(
+            first, "error", "fw-cli-happy", "m1", "all", 3, parent_ref)
+        second = milestone_executor._start_child_trace(
+            trace_dir, "attempt two", "fw-cli-happy", "m1", parent_ref,
+            "all", 3, kwargs.get("conversation_tag", ""), trace_context)
+        milestone_executor._finalize_child_trace(
+            second, "completed", "fw-cli-happy", "m1", "all", 3, parent_ref)
+        trace_context.update({
+            "status": "completed",
+            "framework_id": "fw-cli-happy",
+            "mode": "all",
+        })
+        return "framework complete"
+
+    def _assert_completed_framework_lineage(self, conv):
+        parent_dir = self._turn_dir_for(conv)
+        parent = self._manifest_for(conv)
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent_dir)
+        self.assertEqual(parent["trace_kind"], "framework-run")
+        self.assertEqual(parent["terminal_status"], "completed")
+        self.assertEqual(parent["framework_id"], "fw-cli-happy")
+        self.assertEqual(len(parent["child_trace_refs"]), 2)
+        self.assertEqual(len(set(parent["child_trace_refs"])), 2)
+        child_statuses = []
+        for child_ref in parent["child_trace_refs"]:
+            child_dir = pipeline_trace.resolve_trace_ref(child_ref)
+            self.assertIsNotNone(child_dir)
+            with open(os.path.join(child_dir, "trace-manifest.json")) as f:
+                child = json.load(f)
+            child_statuses.append(child["terminal_status"])
+            self.assertEqual(child["trace_kind"], "framework-milestone")
+            self.assertEqual(child["parent_trace_ref"], parent_ref)
+            self.assertEqual(child["framework_id"], "fw-cli-happy")
+            self.assertEqual(child["milestone_id"], "m1")
+        self.assertEqual(child_statuses, ["error", "completed"])
 
     def test_runtime_command_finalizes_honestly(self):
         import slash_commands
@@ -834,6 +1346,38 @@ class TestRunPipelineFinalization(unittest.TestCase):
         m = self._manifest_for("t-boot-rc")
         self.assertEqual(m["trace_kind"], "runtime_command")
         self.assertEqual(m["terminal_status"], "short_circuit")
+
+    def test_framework_command_error_finalizes_error(self):
+        import milestone_executor
+        def _fake_framework(*_args, **kwargs):
+            kwargs["trace_context"].update({
+                "status": "error", "framework_id": "fw-cli",
+            })
+            return "[Framework parse error: bad]"
+
+        with mock.patch.object(milestone_executor, "framework_command_has_query",
+                               return_value=True), \
+             mock.patch.object(milestone_executor, "run_framework_command",
+                               side_effect=_fake_framework):
+            result = self.boot.run_pipeline(
+                "/framework fw-cli do thing", conversation_id="t-boot-fw-err")
+        self.assertIn("Framework parse error", result)
+        m = self._manifest_for("t-boot-fw-err")
+        self.assertEqual(m["trace_kind"], "framework-run")
+        self.assertEqual(m["terminal_status"], "error")
+        self.assertEqual(m["framework_id"], "fw-cli")
+
+    def test_framework_command_completed_parent_child_lineage(self):
+        import milestone_executor
+        with mock.patch.object(milestone_executor, "framework_command_has_query",
+                               return_value=True), \
+             mock.patch.object(milestone_executor, "run_framework_command",
+                               side_effect=self._fake_completed_framework_with_retry):
+            result = self.boot.run_pipeline(
+                "/framework fw-cli-happy do thing",
+                conversation_id="t-boot-fw-happy")
+        self.assertEqual(result, "framework complete")
+        self._assert_completed_framework_lineage("t-boot-fw-happy")
 
     def test_exception_finalizes_error_not_left_open(self):
         import slash_commands

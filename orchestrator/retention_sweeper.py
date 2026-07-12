@@ -163,6 +163,16 @@ def _sweep_traces(cutoff_days: int, now: float, dry_run: bool, summary: dict):
                         continue
                     try:
                         if os.stat(turn_dir, follow_symlinks=False).st_mtime < cutoff:
+                            manifest_path = turn_dir / "trace-manifest.json"
+                            try:
+                                with open(manifest_path) as f:
+                                    manifest = json.load(f)
+                                if (isinstance(manifest, dict)
+                                        and manifest.get("retention_state") == "pinned"):
+                                    summary["traces_pinned_skipped"] += 1
+                                    continue
+                            except Exception:
+                                pass
                             if not dry_run:
                                 shutil.rmtree(turn_dir)
                             summary["traces_removed"] += 1
@@ -381,6 +391,7 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
     now = time.time() if now is None else now
     summary: dict = {
         "traces_removed": 0,
+        "traces_pinned_skipped": 0,
         "logs_archived": 0,
         "archives_deleted": 0,
         "server_log_rotated": False,
