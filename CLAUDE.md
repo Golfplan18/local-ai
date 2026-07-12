@@ -279,6 +279,11 @@ None currently tracked. (The Tier 2 question bank modules previously listed here
 cd ~/ora/server/static/ora-visual-compiler/tests && node run.js
 
 # Run Python server-side test suite (visual + pipeline)
+# NOTE: if running from a worktree other than ~/ora (e.g. `git worktree add`),
+# export ORA_HOME to that worktree's own root first — mirroring what start.sh
+# does — or `import server` will silently push the LIVE ~/ora checkout's
+# orchestrator/ onto sys.path ahead of the worktree's own copy, making the
+# worktree's code changes invisible to its own test run.
 cd ~/ora && /opt/homebrew/bin/python3 -m unittest discover -s orchestrator/tests
 
 # Run the full meta-layer oversight test suite (13 test files, 293 tests)

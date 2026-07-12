@@ -13,8 +13,10 @@ import os
 import sys
 import unittest
 
-# Make `orchestrator.historical.*` importable when run from the repo root
-sys.path.insert(0, os.path.expanduser("~/ora"))
+# Make `orchestrator.historical.*` importable when run from the repo root.
+# Derived from __file__ (same pattern as test_stealth_short_circuit_purge_2026_05_17.py)
+# rather than hardcoded to ~/ora, so this resolves correctly from a worktree too.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from orchestrator.historical.run_engram_cleaning_resolver import (
     parse_queue,

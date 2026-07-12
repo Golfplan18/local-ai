@@ -16,7 +16,9 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.expanduser("~/ora"))
+# Derived from __file__ (same pattern as test_stealth_short_circuit_purge_2026_05_17.py)
+# rather than hardcoded to ~/ora, so this resolves correctly from a worktree too.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from orchestrator.historical.run_news_supersession_resolver import (
     parse_queue,
