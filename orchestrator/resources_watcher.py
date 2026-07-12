@@ -42,12 +42,22 @@ import json
 import os
 import re
 import stat
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
+
+# Direct CLI execution sets sys.path to orchestrator/ rather than the repo
+# root, but export imports package-qualified runtime modules.  Add the repo
+# root before resolving either import style so direct script execution works
+# exactly like module execution.
+if __package__ in (None, ""):
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
 
 try:
     import export as _export
