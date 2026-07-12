@@ -61,16 +61,18 @@ ORA_LENSES_DIR = ORA_ROOT / "knowledge" / "mental-models"
 
 TERRITORIES_FILE = VAULT_ROOT / "Reference — Analytical Territories.md"
 TEMPLATE_FILE = VAULT_ROOT / "Reference — Mode Specification Template.md"
-SIGNAL_REGISTRY_FILE = VAULT_ROOT / "Reference — Signal Vocabulary Registry.md"
+SIGNAL_REGISTRY_FILE = VAULT_ROOT / "Registry — Signal Vocabulary Registry.md"
+MODE_REGISTRY_FILE = VAULT_ROOT / "Registry — Mode Registry.md"
 WITHIN_TREES_FILE = VAULT_ROOT / "Reference — Within-Territory Disambiguation Trees.md"
 CROSS_ADJ_FILE = VAULT_ROOT / "Reference — Cross-Territory Adjacency.md"
 DISAMBIG_GUIDE_FILE = VAULT_ROOT / "Reference — Disambiguation Style Guide.md"
 LENS_SPEC_FILE = VAULT_ROOT / "Reference — Lens Library Specification.md"
 PIPELINE_FILE = VAULT_ROOT / "Reference — Pre-Routing Pipeline Architecture.md"
 
-CATCH_ALL_MODES = {"adversarial", "simple", "standard"}
+RETIRED_MODE_IDS = {"adversarial", "standard"}
 NON_MODE_FILES = {"INDEX"}  # vault navigation files that live in /Modes/ but aren't modes
-ARCHIVED_MODES = CATCH_ALL_MODES | NON_MODE_FILES
+EXCLUDED_MODE_FILES = RETIRED_MODE_IDS | NON_MODE_FILES
+UTILITY_MODE_IDS = {"factual-lookup", "general-inquiry", "subjective-inquiry", "simple"}
 
 # The 21 territory IDs (T1-T21)
 TERRITORY_IDS = {f"T{i}" for i in range(1, 22)}
@@ -89,7 +91,6 @@ REQUIRED_TEMPLATE_FIELDS = {
     "when_not_to_invoke",
     "composition",
     "input_contract",
-    "output_contract",
     "critical_questions",
     "failure_modes",
     "lens_dependencies",
@@ -98,17 +99,32 @@ REQUIRED_TEMPLATE_FIELDS = {
     "escalation_signals",
 }
 
+SIMPLE_BYPASS_REQUIRED_FIELDS = {
+    "mode_id",
+    "canonical_name",
+    "suffix_rule",
+    "educational_name",
+    "territory",
+    "trigger_conditions",
+    "input_contract",
+    "output_contract",
+    "expected_runtime",
+}
+
 # Required pipeline-stage subsections (## headings in body)
 REQUIRED_PIPELINE_SUBSECTIONS = {
     "DEPTH ANALYSIS GUIDANCE",
     "BREADTH ANALYSIS GUIDANCE",
-    "EVALUATION CRITERIA",
+    "ANALYTICAL BRIEF AND EVALUATION CRITERIA",
     "REVISION GUIDANCE",
     "CONSOLIDATION GUIDANCE",
     "VERIFICATION CRITERIA",
+    "OUTPUT FORMAT GUIDANCE",
+    "DEFAULT GEAR",
+    "RAG PROFILE",
 }
 
-# 8 vault canonical → ora runtime file pairs (Decision K)
+# 9 vault canonical → Ora runtime architecture pairs
 ARCHITECTURE_PAIRS = [
     ("Reference — Analytical Territories.md", "territories.md"),
     ("Reference — Mode Specification Template.md", "mode-template.md"),
@@ -118,6 +134,7 @@ ARCHITECTURE_PAIRS = [
     ("Registry — Signal Vocabulary Registry.md", "signal-vocabulary-registry.md"),
     ("Reference — Within-Territory Disambiguation Trees.md", "within-territory-trees.md"),
     ("Reference — Cross-Territory Adjacency.md", "cross-territory-adjacency.md"),
+    ("Reference — Trusted Web Sources.md", "trusted-web-sources.md"),
 ]
 
 
@@ -213,13 +230,58 @@ def extract_h2_sections(body: str) -> set[str]:
 
 
 def list_mode_files() -> list[Path]:
-    """List all mode files except retired catch-alls."""
+    """List the 64 active resident + utility mode files."""
     if not MODES_DIR.exists():
         return []
     return [
         p for p in MODES_DIR.glob("*.md")
-        if p.stem not in ARCHIVED_MODES and not p.stem.endswith(".bak")
+        if p.stem not in EXCLUDED_MODE_FILES and not p.stem.endswith(".bak")
     ]
+
+
+def _registry_mode_ids() -> tuple[set[str], set[str]]:
+    """Return (resident, deferred) IDs from the canonical Mode Registry.
+
+    The registry deliberately separates the 60 resident analysis modes from
+    fourteen CR-6 candidates. Deferred IDs are valid routing references but do
+    not require a runtime file until promoted.
+    """
+    if not MODE_REGISTRY_FILE.exists():
+        return set(), set()
+    content = read_file(MODE_REGISTRY_FILE)
+    resident_start = content.find("## Per-Territory Mode Entries")
+    resident_end = content.find("## Lens Library Cross-Reference", resident_start)
+    deferred_start = content.find("## Deferred Candidates (CR-6)")
+    deferred_end = content.find("## Cross-References", deferred_start)
+    resident_block = content[resident_start:resident_end]
+    deferred_block = content[deferred_start:deferred_end]
+    entry_pattern = re.compile(r"^- \*\*`([a-z0-9-]+)`\*\*", re.MULTILINE)
+    inline_pattern = re.compile(r"`([a-z0-9-]+)`")
+    return set(entry_pattern.findall(resident_block)), set(inline_pattern.findall(deferred_block))
+
+
+def _declared_mode_id(content: str) -> Optional[str]:
+    match = re.search(r"^mode_id:\s*([a-z0-9-]+)\s*$", content, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _lens_dependencies(content: str) -> set[str]:
+    """Extract lens IDs only from the YAML lens_dependencies block."""
+    match = re.search(
+        r"^lens_dependencies:\s*$\n(?P<block>(?:^[ \t]+.*(?:\n|$))*)",
+        content,
+        re.MULTILINE,
+    )
+    if not match:
+        return set()
+    return {
+        item.group(1)
+        for item in re.finditer(
+            r"^\s{4}-\s*([a-z0-9-]+)(?:\s|\(|$)",
+            match.group("block"),
+            re.MULTILINE,
+        )
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +289,7 @@ def list_mode_files() -> list[Path]:
 # ---------------------------------------------------------------------------
 
 def check_template_conformance(verbose: bool = False) -> CheckResult:
-    """Verify every mode file has all required template fields and pipeline subsections."""
+    """Verify the current 64-file mode schema and canonical registry split."""
     result = CheckResult(name="template", passed=True)
     mode_files = list_mode_files()
     if not mode_files:
@@ -235,9 +297,41 @@ def check_template_conformance(verbose: bool = False) -> CheckResult:
         result.details.append(f"No mode files found in {MODES_DIR}")
         return result
 
+    if len(mode_files) != 64:
+        result.passed = False
+        result.details.append(f"Expected 64 mode files; found {len(mode_files)}")
+
+    resident_ids, deferred_ids = _registry_mode_ids()
+    file_ids = {p.stem for p in mode_files}
+    expected_residents = file_ids - UTILITY_MODE_IDS
+    if not MODE_REGISTRY_FILE.exists():
+        result.passed = False
+        result.details.append(f"Mode registry not found: {MODE_REGISTRY_FILE}")
+    else:
+        missing_residents = expected_residents - resident_ids
+        stale_residents = resident_ids - expected_residents
+        if missing_residents:
+            result.passed = False
+            result.details.append(
+                f"Mode registry missing resident IDs: {sorted(missing_residents)}")
+        if stale_residents:
+            result.passed = False
+            result.details.append(
+                f"Mode registry has resident IDs without files: {sorted(stale_residents)}")
+        if len(deferred_ids) != 14:
+            result.passed = False
+            result.details.append(
+                f"Expected 14 deferred CR-6 IDs in registry; found {len(deferred_ids)}")
+
     for mode_file in sorted(mode_files):
         content = read_file(mode_file)
         _, body = parse_yaml_frontmatter(content)
+
+        declared_id = _declared_mode_id(body)
+        identity_issues = []
+        if declared_id != mode_file.stem:
+            identity_issues.append(
+                f"declared mode_id {declared_id!r} != filename {mode_file.stem!r}")
 
         # Check YAML keys (in code blocks within body)
         yaml_keys = extract_top_level_yaml_keys(body)
@@ -245,7 +339,12 @@ def check_template_conformance(verbose: bool = False) -> CheckResult:
         if "atomic_spec" in yaml_keys or "molecular_spec" in yaml_keys:
             yaml_keys.add("composition_spec")  # treat either as composition_spec
 
-        missing = REQUIRED_TEMPLATE_FIELDS - yaml_keys
+        required_fields = (
+            SIMPLE_BYPASS_REQUIRED_FIELDS
+            if mode_file.stem == "simple"
+            else REQUIRED_TEMPLATE_FIELDS
+        )
+        missing = required_fields - yaml_keys
         # composition_spec is satisfied by atomic_spec OR molecular_spec; remove from missing
         # if neither present, missing.add('composition_spec')... but that's not in REQUIRED set
         # The required set only has top-level fields the template lists. Let's just check.
@@ -284,7 +383,7 @@ def check_template_conformance(verbose: bool = False) -> CheckResult:
                     continue
                 edu_name_issues.append(f"acronym '{acronym}' lacks sub-parens expansion or contextualizing text")
 
-        if missing or missing_subsections or edu_name_issues:
+        if missing or missing_subsections or edu_name_issues or identity_issues:
             result.passed = False
             issues = []
             if missing:
@@ -293,6 +392,8 @@ def check_template_conformance(verbose: bool = False) -> CheckResult:
                 issues.append(f"missing pipeline subsections: {sorted(missing_subsections)}")
             if edu_name_issues:
                 issues.append(f"educational_name issues: {edu_name_issues}")
+            if identity_issues:
+                issues.extend(identity_issues)
             result.details.append(f"{mode_file.name}: {'; '.join(issues)}")
         elif verbose:
             result.details.append(f"{mode_file.name}: OK")
@@ -301,7 +402,7 @@ def check_template_conformance(verbose: bool = False) -> CheckResult:
 
 
 def check_crossref_resolution(verbose: bool = False) -> CheckResult:
-    """Verify mode_id, territory, lens_id references resolve."""
+    """Verify active/deferred/utility mode, territory, and lens references."""
     result = CheckResult(name="crossref", passed=True)
 
     mode_files = list_mode_files()
@@ -310,8 +411,13 @@ def check_crossref_resolution(verbose: bool = False) -> CheckResult:
         result.details.append("No mode files found")
         return result
 
-    valid_mode_ids = {p.stem for p in mode_files}
-    valid_lens_ids = {p.stem for p in LENSES_DIR.glob("*.md") if not p.stem.endswith(".bak")}
+    active_mode_ids = {p.stem for p in mode_files}
+    resident_ids, deferred_ids = _registry_mode_ids()
+    valid_mode_ids = active_mode_ids | deferred_ids
+    valid_lens_ids = {
+        p.stem for p in LENSES_DIR.glob("*.md")
+        if p.stem != "INDEX" and not p.stem.endswith(".bak")
+    }
 
     # Read territories file once
     territories_content = read_file(TERRITORIES_FILE) if TERRITORIES_FILE.exists() else ""
@@ -321,9 +427,20 @@ def check_crossref_resolution(verbose: bool = False) -> CheckResult:
 
         # Check territory reference
         territory_match = re.search(r"^territory:\s*(T\d+)-", content, re.MULTILINE)
+        if mode_file.stem == "simple":
+            if not re.search(r"^territory:\s*T-bypass\s*$", content, re.MULTILINE):
+                result.passed = False
+                result.details.append(
+                    f"{mode_file.name}: direct bypass must declare territory T-bypass")
+            territory_match = None
         if territory_match:
             territory_id = territory_match.group(1)
-            if territory_id not in TERRITORY_IDS:
+            if mode_file.stem in UTILITY_MODE_IDS:
+                if territory_id != "T0":
+                    result.passed = False
+                    result.details.append(
+                        f"{mode_file.name}: utility mode must use T0, found '{territory_id}'")
+            elif territory_id not in TERRITORY_IDS:
                 result.passed = False
                 result.details.append(f"{mode_file.name}: invalid territory '{territory_id}'")
             elif territory_id not in territories_content:
@@ -339,10 +456,20 @@ def check_crossref_resolution(verbose: bool = False) -> CheckResult:
                     result.passed = False
                     result.details.append(f"{mode_file.name}: references unknown mode_id '{ref_id}'")
 
-        # Check lens_dependencies references
-        for lens_match in re.finditer(r"-\s*([\w-]+)\s*(?:\(|$)", content):
-            # Heuristic: only flag if it looks like a lens_id reference (kebab-case, in a lens_dependencies block)
-            pass  # too noisy without context-aware parsing; skip for now
+        # Deferred CR-6 IDs are valid references without runtime files. Every
+        # lens dependency, by contrast, must resolve to an installed lens now.
+        for lens_id in sorted(_lens_dependencies(content)):
+            if lens_id not in valid_lens_ids:
+                result.passed = False
+                result.details.append(
+                    f"{mode_file.name}: references unknown lens_id '{lens_id}'")
+
+    if verbose:
+        result.details.append(
+            f"Resolved {len(active_mode_ids)} active mode IDs "
+            f"({len(resident_ids)} resident + {len(UTILITY_MODE_IDS)} utility), "
+            f"{len(deferred_ids)} deferred IDs, and {len(valid_lens_ids)} content lens IDs "
+            "(INDEX.md excluded)")
 
     return result
 
@@ -357,13 +484,14 @@ def check_signal_vocabulary(verbose: bool = False) -> CheckResult:
         return result
 
     content = read_file(SIGNAL_REGISTRY_FILE)
-    valid_mode_ids = {p.stem for p in list_mode_files()}
+    valid_mode_ids = {p.stem for p in list_mode_files()} - UTILITY_MODE_IDS
 
     # Count signals per mode_id (heuristic: count rows in markdown tables that reference each mode_id)
     signal_counts: dict[str, int] = {m: 0 for m in valid_mode_ids}
     referenced_mode_ids: set[str] = set()
 
-    # Match table rows. Each row has fields separated by `|`. The `mode` column should appear.
+    # Match table rows. The third data column is the mode ID.
+    all_referenced_mode_ids: set[str] = set()
     for line in content.split("\n"):
         if not line.startswith("|"):
             continue
@@ -371,54 +499,74 @@ def check_signal_vocabulary(verbose: bool = False) -> CheckResult:
         # Skip header rows / separator rows
         if any(p.startswith("-") and all(c in "-: " for c in p) for p in parts):
             continue
-        for part in parts:
-            # Mode IDs are kebab-case; check if part matches a valid mode_id
-            if part in valid_mode_ids:
-                signal_counts[part] += 1
-                referenced_mode_ids.add(part)
+        if len(parts) < 5:
+            continue
+        mode_id = parts[3]
+        if not re.fullmatch(r"[a-z0-9-]+", mode_id) or mode_id == "mode":
+            continue
+        all_referenced_mode_ids.add(mode_id)
+        if mode_id in valid_mode_ids:
+            signal_counts[mode_id] += 1
+            referenced_mode_ids.add(mode_id)
 
     # Modes with <3 signals are flagged
     for mode_id, count in signal_counts.items():
         if count < 3:
-            # Allow placeholder entries for modes built later (Wave 4) — flag at warning level
-            if count == 0:
-                result.details.append(f"WARN: mode '{mode_id}' has 0 signal entries (built later or genuinely missing)")
-            else:
-                result.passed = False
-                result.details.append(f"mode '{mode_id}' has only {count} signal entries (need ≥3)")
+            result.passed = False
+            result.details.append(f"mode '{mode_id}' has only {count} signal entries (need ≥3)")
 
-    # Orphan signals (referenced mode_ids that aren't in valid set)
-    # Skip — the heuristic above only matches valid_mode_ids
+    orphan_ids = all_referenced_mode_ids - valid_mode_ids
+    for mode_id in sorted(orphan_ids):
+        result.passed = False
+        result.details.append(f"signal registry references non-resident mode '{mode_id}'")
+
+    if verbose and result.passed:
+        result.details.append(
+            f"All {len(valid_mode_ids)} resident modes have ≥3 signals; "
+            "utility/bypass modes are correctly exempt")
 
     return result
 
 
 def check_runtime_config(verbose: bool = False) -> CheckResult:
-    """Verify every mode file declares ## DEFAULT GEAR in its body.
+    """Verify every mode carries the in-file runtime contract.
 
     Reversed 2026-05-12: runtime fields no longer live in a separate file.
     Each mode file declares its own gear in a ## DEFAULT GEAR section.
     """
     result = CheckResult(name="runtime", passed=True)
 
-    missing = []
+    missing: list[tuple[str, list[str]]] = []
     for path in list_mode_files():
         content = read_file(path)
+        absent = []
         if not re.search(r"^## DEFAULT GEAR\s*$", content, re.MULTILINE):
-            missing.append(path.stem)
+            absent.append("## DEFAULT GEAR")
+        if not re.search(r"^## RAG PROFILE\s*$", content, re.MULTILINE):
+            absent.append("## RAG PROFILE")
+        if path.stem == "simple":
+            if not re.search(r"^gear:\s*1\s*$", content, re.MULTILINE):
+                absent.append("gear: 1")
+        elif not re.search(r"^default_depth_tier:\s*\S+", content, re.MULTILINE):
+            absent.append("default_depth_tier")
+        if not re.search(r"^expected_runtime:\s*\S+", content, re.MULTILINE):
+            absent.append("expected_runtime")
+        if absent:
+            missing.append((path.stem, absent))
 
-    for mode_id in sorted(missing):
+    for mode_id, absent in sorted(missing):
         result.passed = False
-        result.details.append(f"mode '{mode_id}' is missing the ## DEFAULT GEAR section")
+        result.details.append(f"mode '{mode_id}' is missing: {', '.join(absent)}")
 
     if verbose and not missing:
-        result.details.append(f"All mode files declare ## DEFAULT GEAR")
+        result.details.append(
+            "All 64 mode files declare depth/runtime fields, ## DEFAULT GEAR, and ## RAG PROFILE")
 
     return result
 
 
 def check_drift_parity(verbose: bool = False) -> CheckResult:
-    """Verify the 8 architecture file pairs match (modulo YAML)."""
+    """Verify the 9 architecture file pairs match (modulo vault YAML)."""
     result = CheckResult(name="drift", passed=True)
 
     for vault_name, ora_name in ARCHITECTURE_PAIRS:
@@ -505,14 +653,18 @@ def _markdown_files_containing(pattern: str, *, regex: bool = False) -> list[str
 
 
 def check_architectural_debt(verbose: bool = False) -> CheckResult:
-    """Verify no remaining references to retired Mode Classification Directory,
-    catch-all modes, or old T19 name (outside archival locations)."""
+    """Verify no active identifiers point at retired routing artifacts.
+
+    Human-readable rename and retirement history is valid documentation. This
+    check therefore targets executable identifiers and file paths, not every
+    prose mention of the old display names.
+    """
     result = CheckResult(name="debt", passed=True)
 
     # Stale reference patterns to check
     stale_patterns = [
-        ("Mode Classification Directory", "retired Mode Classification Directory"),
-        ("Visual and Spatial Structure", "old T19 name (renamed to Spatial Composition)"),
+        ("T19-visual-and-spatial-structure",
+         "retired T19 identifier (renamed to T19-spatial-composition)"),
     ]
 
     # Files to exclude (archival locations + this script + the implementation plan + by-design retire mentions)
@@ -543,12 +695,12 @@ def check_architectural_debt(verbose: bool = False) -> CheckResult:
         "Working — Reference — The Adversarial AI Agent Book Outline.md",  # TODO-flagged for Phase 7+ deep rewrite
         "Working — Book — Analytical Methods Accessible Outline.md",  # TODO-flagged for Phase 7+ deep rewrite
         "Working — Framework — Mode Specification Rebuild Plan.md",  # historical plan; references retired Phase A.5
-        "Reference — Pipeline Routing Test Corpus.md",  # 200-prompt corpus; tests behavior including legacy mentions
+        "Reference — Pipeline Routing Test Corpus.md",  # 220-prompt corpus; tests behavior including legacy mentions
     }
 
     catch_all_patterns = {
         catch_all: rf"\b{re.escape(catch_all)}\.md\b"
-        for catch_all in sorted(CATCH_ALL_MODES)
+        for catch_all in sorted(RETIRED_MODE_IDS)
     }
     searches = [(pattern, False) for pattern, _description in stale_patterns]
     searches.extend((pattern, True) for pattern in catch_all_patterns.values())
@@ -559,12 +711,14 @@ def check_architectural_debt(verbose: bool = False) -> CheckResult:
         for line in matches[pattern]:
             if any(excl in line for excl in excluded_paths):
                 continue
-            # Allow references in cross-reference audit / archival files
-            if "Reference — Analytical Territories" in line:
-                # Notes about renaming are expected
-                continue
             result.passed = False
             result.details.append(f"Stale reference '{pattern}' in: {line}")
+
+    retired_directory = ORA_ROOT / "frameworks" / "mode-classification-directory.md"
+    if retired_directory.exists():
+        result.passed = False
+        result.details.append(
+            f"Retired Mode Classification Directory still live: {retired_directory}")
 
     # Check for retired catch-all mode references in mode files / framework files
     for catch_all, pattern in catch_all_patterns.items():

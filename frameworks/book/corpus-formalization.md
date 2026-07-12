@@ -121,7 +121,7 @@ C-Design typically executes in a single elicitation session that may span multip
 Required reading in order:
 1. `Framework — Process Formalization.md` — sibling meta-framework (process side)
 2. `Framework — Output Formalization.md` — sibling meta-framework (output side)
-3. `Framework — PFF / CFF / OFF Integration Architecture.md` — the three-framework integration spec
+3. `Reference — PFF-CFF-OFF Integration Architecture.md` — the three-framework integration spec
 
 Supporting documents:
 - `Registry — Framework Registry.md` — for registering generated bespoke corpus frameworks
@@ -965,7 +965,7 @@ Chain runtime behavior is the responsibility of the user or the runtime system (
 
 ## Section XI: Integration with PFF and OFF
 
-CFF is one of three sibling meta-frameworks. The Process Formalization Framework (PFF) formalizes processes that produce information. The Output Formalization Framework (OFF) formalizes outputs that express information. CFF formalizes the corpus where information from PFFs accumulates and from which OFFs render artifacts. The full three-framework integration is specified in `Framework — PFF-CFF-OFF Integration Architecture.md`. This section provides CFF's perspective on that architecture.
+CFF is one of three sibling meta-frameworks. The Process Formalization Framework (PFF) formalizes processes that produce information. The Output Formalization Framework (OFF) formalizes outputs that express information. CFF formalizes the corpus where information from PFFs accumulates and from which OFFs render artifacts. The full three-framework integration is specified in `Reference — PFF-CFF-OFF Integration Architecture.md`. This section provides CFF's perspective on that architecture.
 
 ### CFF as the connection point
 
@@ -998,7 +998,7 @@ CFF also generates the workflow spec artifact (per integration architecture), th
 
 ### Reference
 
-Full architecture: `Framework — PFF-CFF-OFF Integration Architecture.md`. Sibling specifications: `Framework — Process Formalization.md` and `Framework — Output Formalization.md`.
+Full architecture: `Reference — PFF-CFF-OFF Integration Architecture.md`. Sibling specifications: `Framework — Process Formalization.md` and `Framework — Output Formalization.md`.
 
 ---
 

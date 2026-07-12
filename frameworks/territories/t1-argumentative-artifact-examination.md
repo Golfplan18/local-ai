@@ -1,4 +1,3 @@
-
 # Framework — Argumentative Artifact Examination
 
 *Self-contained framework for evaluating an existing argument, claim-set, position, or text-as-argument for its internal soundness, framing structure, rhetorical mechanisms, and propaganda function. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

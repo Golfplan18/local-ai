@@ -1,4 +1,3 @@
-
 # Reference — Mode Specification Template
 
 *The locked template for every mode in the registry. Atomic and molecular modes share this template; per-section content adapts to composition. This file is referenced from Phase 2 (existing mode migration), Phase 4 (new mode build), and the four-stage pre-routing pipeline at Stage 4 (mode execution). Locked per the 15 architectural decisions of 2026-05-01.*

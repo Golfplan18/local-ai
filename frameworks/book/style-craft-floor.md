@@ -1,3 +1,5 @@
+*Canonical source for the Output Style framework's universal craft floor (competence baseline). Engine mirror (loaded at runtime): `~/ora/frameworks/book/style-craft-floor.md`. Edit here; keep the mirror in sync.*
+
 # Craft floor
 
 *The competence baseline every Output Style profile inherits. It outranks style: if a stylistic instruction conflicts with the craft floor, the craft floor wins. The assembly step composes this into every gear-3/4 style block; the completeness line also rides in the compact gear-1/2 demeanor block.*

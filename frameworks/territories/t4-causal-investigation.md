@@ -1,4 +1,3 @@
-
 # Framework — Causal Investigation
 
 *Self-contained framework for taking an outcome, symptom, or pattern of events and tracing backward to causes, mechanisms, or generative structures. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

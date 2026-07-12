@@ -1,4 +1,3 @@
-
 # Framework — Hypothesis Evaluation
 
 *Self-contained framework for taking multiple competing explanations and a body of evidence and adjudicating among them using diagnosticity, base rates, and Bayesian or quasi-Bayesian reasoning. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

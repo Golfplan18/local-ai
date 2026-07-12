@@ -26,7 +26,7 @@ Required:
 Optional:
 - **nexus**: Project identifier for report inheritance. Format: string matching a Master Matrix entry. Source: parent PED if spawned within a project.
   Default behavior if absent: the final report is saved as domain-general (empty nexus).
-- **sources_allowed**: Filter restricting retrieval to a subset of `{vault, web, browser_ai, api_ai}`. Format: list of strings.
+- **sources_allowed**: Filter restricting retrieval to a subset of `{vault, web, api_ai}`. Format: list of strings. `api_ai` routes through the standard model-routing slot system; the prior `browser_ai` option was retired with the subscription-deprecation cleanup (2026-05-16).
   Default behavior if absent: all available sources, with vault consulted first.
 - **depth_cap**: Maximum iteration depth for follow-up query generation. Format: integer between 1 and 10.
   Default behavior if absent: 3.
@@ -67,7 +67,7 @@ This framework delivers three sequential milestones. Each milestone is a coheren
 
 ### Milestone 2: Evidence Integrated and Iteration Resolved
 
-- **Endpoint produced:** An integrated_evidence_map with one entry per sub-query in research_plan, each carrying deduplicated claims tagged with source class ([VAULT], [WEB], [BROWSER_AI], [API_AI], [INFERRED]) and citations; iteration_decision (one of CONVERGED, CONVERGED_WITH_GAPS, BLOCKED — never ITERATE, since iteration is internal to this milestone); uncovered-dimension caveats recorded for the synthesis layer.
+- **Endpoint produced:** An integrated_evidence_map with one entry per sub-query in research_plan, each carrying deduplicated claims tagged with source class ([VAULT], [WEB], [API_AI], [INFERRED]) and citations; iteration_decision (one of CONVERGED, CONVERGED_WITH_GAPS, BLOCKED — never ITERATE, since iteration is internal to this milestone); uncovered-dimension caveats recorded for the synthesis layer.
 - **Verification criterion:** Every sub-query in research_plan appears in integrated_evidence_map; every retained claim carries a source-class tag and citation; iteration count did not exceed depth_cap; vault was consulted before external retrieval for every sub-query (unless sources_allowed explicitly excluded vault); subagent_cap was respected on every fan-out wave; iteration_decision is one of CONVERGED, CONVERGED_WITH_GAPS, or BLOCKED.
 - **Layers covered:** 3, 4, 5
 - **Required prior milestones:** M1
@@ -203,7 +203,7 @@ ASSUMPTIONS ADDED (if any): [list]
 
 1. Decompose `normalized_query` into between 3 and 7 sub-queries. Each sub-query must be independently answerable and must not overlap materially with any other. IF the query naturally decomposes into more than 7 sub-queries, THEN group related sub-queries into dimensions and treat the dimensions as the primary decomposition (still 3-7 units).
 2. For each sub-query, declare a `coverage_criterion` — a concrete statement of what constitutes "adequately answered." Example: "At least two independent sources describe the mechanism, plus one named limitation."
-3. For each sub-query, declare `source_hints`: a prioritized list of source classes likely to contain relevant evidence. Use the Ora claim taxonomy. `VAULT_CONTENT` is always first-ranked; then `CURRENT_WEB`, `BROWSER_AI_CONSULTATION`, `API_AI_CONSULTATION`, `SPECIALIZED_DOMAIN` as applicable to the sub-query.
+3. For each sub-query, declare `source_hints`: a prioritized list of source classes likely to contain relevant evidence. Use the Ora claim taxonomy. `VAULT_CONTENT` is always first-ranked; then `CURRENT_WEB`, `API_AI_CONSULTATION`, `SPECIALIZED_DOMAIN` as applicable to the sub-query.
 4. Declare the `stopping_criteria` for the run: all sub-queries satisfy their `coverage_criterion`, OR the iteration depth reaches `depth_cap`, OR the loop failsafe triggers (per Capability Dispatch Architecture).
 5. IF `caller_context = USER_DIRECT` AND `clarification_status = COMPLETED` (the user's input was vague enough to require clarification), THEN surface the full `research_plan` to the user for review and approval before proceeding to Layer 3. Wait for explicit approval or edit. IF the user edits the plan, THEN incorporate edits and re-present.
 6. IF `caller_context = USER_DIRECT` AND `clarification_status = SKIPPED` (the input was detailed), THEN proceed without plan review — the user's detailed prompt is treated as the approved plan.
@@ -389,7 +389,7 @@ Reason: [text]
    - **Cross-Query Synthesis**: patterns that span multiple sub-queries; themes; notable convergences or divergences; the analytical through-line.
    - **Named Caveats and Epistemic Notes**: uncovered sub-queries from Layer 5; sparse-evidence zones; `[INFERRED]` claims with their reasoning basis; known source-corpus biases.
    - **Bibliography**: every URL cited in the body, grouped by source class; vault paths listed separately; duplicate URLs collapsed to a single entry.
-2. Every substantive claim carries an inline source-class tag: one of `[VAULT]`, `[WEB]`, `[BROWSER_AI]`, `[API_AI]`, or `[INFERRED]`. External citations include the URL inline or as a numbered footnote. Vault citations include the vault file path.
+2. Every substantive claim carries an inline source-class tag: one of `[VAULT]`, `[WEB]`, `[API_AI]`, or `[INFERRED]`. External citations include the URL inline or as a numbered footnote. Vault citations include the vault file path.
 3. Apply the Citation Hallucination Trap correction: every external URL in the report must appear in `integrated_evidence_map` or in a `subagent_reports` entry. Do not invent URLs. Do not paraphrase a URL structure you did not receive from retrieval.
 4. Apply the Topical Sprawl Trap correction: every paragraph in the Sub-Query Sections must address its own sub-query. Content that belongs to a different sub-query moves to that sub-query's section. Content that belongs to none is deleted.
 5. Apply the Context Dilution Trap correction: the synthesis model works from `integrated_evidence_map` (condensed), not from the full subagent reports. Evidence entered the map already condensed; do not re-expand into full-text pastes during synthesis.

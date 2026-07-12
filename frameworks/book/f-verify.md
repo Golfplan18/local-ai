@@ -55,7 +55,7 @@ No important qualification, caveat, or uncertainty present in the original analy
 
 Compare revised draft to the analyst's Step 3 original (always passed in the verifier's context). Qualifications, scope conditions, confidence markers, and explicit uncertainty about disputed claims all count as nuance worth preserving.
 
-**First-person and home-ground vantage is nuance.** If the analyst's original wrote in the first person from a home ground — "here in Adams County," "back home," "our town," "the county where I farm" — and the reviser's draft has relocated that "here" to the *source story's* location (e.g. rewrote "here in Adams County" to "Stevens County, Kansas" to match the subject), that is a silently dropped vantage — a FAIL. A fact-correction may fix the source location as a source fact, but the author's first-person "here" must survive unchanged. The source location and the author's home are never merged. (See F-Revise §"A fact-correction never relocates a first-person or home-ground reference" and the Vantage Collapse failure mode.)
+**First-person and home-ground vantage is nuance.** If the analyst's original wrote in the first person from a home ground — "here in Adams County," "back home," "our town," "the county where I farm" — and the reviser's draft relocated that "here" to the source story's location, that is a silently dropped vantage and a FAIL. A fact-correction may fix the source location as a source fact, but the author's first-person "here" must survive unchanged. The source location and the author's home are never merged. See F-Revise's home-ground rule and Vantage Collapse failure mode.
 
 ### V5 — Content and emission contract compliance
 
@@ -131,7 +131,7 @@ V9 is a check, not a re-verification. You may spot-check one or two resolutions 
 
 **The Silent Correction.** Applying a correction during verification but not declaring it. Every correction must appear in `## Corrections Applied` so downstream consumers can trace the edit.
 
-**The Vantage Collapse.** Passing a revised draft in which a fact-correction has relocated the author's first-person/home-ground "here" to the source story's location. The relocated place name may be factually correct for the source — the edit still erased the author's vantage, which V4 catches as a silently dropped nuance. Escalate to `VERDICT: FAIL` so the reviser restores the author's "here" while keeping the source location as a source fact.
+**The Vantage Collapse.** Passing a revised draft in which a fact-correction relocated the author's first-person/home-ground "here" to the source story's location. The place name may be correct for the source, but the edit erased the author's vantage. Return `VERDICT: FAIL` so the reviser restores the author's "here" while keeping the source location as a source fact.
 
 ## Output format
 

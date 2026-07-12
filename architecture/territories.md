@@ -1,4 +1,3 @@
-
 # Reference — Analytical Territories
 
 *The 21-territory inventory for Ora's mode registry. Each territory is a coherent region of analytical work characterized by shared problem-shape, input-types, and output contracts. Modes are positions within territories; every mode lives in exactly one home territory (Decision D parsing principle). This file is the load-bearing reference cited from `Reference — Mode Specification Template.md`, `Reference — Within-Territory Disambiguation Trees.md`, `Reference — Cross-Territory Adjacency.md`, and the four-stage pre-routing pipeline.*
@@ -476,7 +475,7 @@ The boundary-verification sub-deliverable appears at the end of this file. It en
 | T20 | Open Exploration (Generative) | E | Specificity | 1 (Idea Development + Research Question Generation deferred) | Partial |
 | T21 | Execution / Project Mode (Non-Analytical) | — | Specificity | 2 | Strong |
 
-**Total resident modes:** 60 modes across 21 territories. Of these:
+**Total resident modes:** 60 public/campaign analysis modes across 21 territories. This resident-mode count excludes the four runtime utility/bypass modes (`factual-lookup`, `general-inquiry`, `subjective-inquiry`, `simple`) and the folder index. Of these:
 - 22 keep-modes from the existing 25 (after retiring 3 catch-alls and parsing Systems Dynamics into 2)
 - 1 Wicked Problems mode created from existing framework (Decision H)
 - 33 new modes built across Waves 1–4

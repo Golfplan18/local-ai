@@ -1,3 +1,5 @@
+*Canonical source for the Output Style framework's genre arrangement schemas (ordered slot-lists). Engine mirror (loaded at runtime): `~/ora/frameworks/book/style-arrangement-schemas.md`. Edit here; keep the mirror in sync.*
+
 # Arrangement schemas — ordered slot-lists
 
 *Each genre selects one schema. A schema is an ORDERED list of slots plus what goes in each — never a one-word label. The assembly step injects the chosen schema at the produce and format steps. Schemas are defaults with permission to deviate when the content plainly demands it; lead each slot with its point.*

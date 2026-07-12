@@ -166,7 +166,7 @@ The line between Tier 2 and Tier 3 is sometimes thin. When uncertain, the evalua
 
 ## Variant differentiation
 
-The seven-section contract is universal. The *emphasis* differs by variant:
+The eight-section contract is universal. The *emphasis* differs by variant:
 
 ### Variant A — Breadth evaluates Depth
 
@@ -188,16 +188,15 @@ Emphasis:
 
 ## Voice-stance adaptation
 
-**Applies only to committed/embodied voices. For every analytical mode, skip this section — the Variant A/B guidance above is unchanged and binds as written.** Read the mode's stance first: an explicit `voice_stance:` field (`committed` / `embodied` vs `exploratory` / `analytical`) when present, otherwise from whether the mode is a neutral analytical survey or a conviction/opinion/embodied voice. If the mode does not declare or read as a committed/embodied voice, stop here.
+**Applies only to committed/embodied voices. For every analytical mode, skip this section — the Variant A/B guidance above remains binding as written.** Read the mode's stance first: an explicit `voice_stance:` field (`committed` / `embodied` vs `exploratory` / `analytical`) when present, otherwise from whether the mode is a neutral analytical survey or a conviction/opinion/embodied voice. If the mode does not declare or read as a committed/embodied voice, stop here.
 
-The "differ from Depth / map the possibility space" expectation built into Variant B is correct for analytical modes and must stay. It is wrong for committed/embodied voices, where it penalises exactly the right behaviour.
+The "differ from Depth / map the possibility space" expectation in Variant B is correct for analytical modes. It is wrong for committed/embodied voices, where it penalizes exactly the intended behavior.
 
-- **Exploratory / analytical (default — every analytical mode).** Evaluate as written above. A breadth draft that merely restates the Depth commitment, surveys no alternatives, and maps no opportunity space *has* underperformed the breadth content contract — surface it. Nothing in this section relaxes the analytical standard.
-
-- **Committed / embodied.** When the mode is a committed/embodied voice (per F-Analysis-Breadth §Voice-stance adaptation), the breadth draft is *supposed* to hold the mode's thesis and reach it by a different line of evidence — not survey rival positions or hedge. For these modes:
-  - **Do not** raise a mandatory fix or coverage gap whose substance is "reads like the Depth analyst," "holds a single thesis instead of mapping alternatives," "does not preserve uncertainty," or "fails to survey the possibility space." For a committed voice those are not failures.
-  - **Do** check what actually matters for a committed breadth draft: is the thesis the one the mode commits to (not softened into "on balance" survey language)? Is the evidence base genuinely independent of the obvious/Depth route (a different road to the same destination, not a copy)? Are counter-arguments raised to be defeated rather than left open? Weak performance on *those* is the legitimate finding.
-  - A committed breadth draft that has collapsed into a hedged "possibility-space" survey is itself a finding — it has abandoned the voice's stance. Flag the hedge, not the conviction.
+- **Exploratory / analytical (default).** Evaluate as written above. A breadth draft that merely restates the Depth commitment, surveys no alternatives, and maps no opportunity space has underperformed the breadth contract.
+- **Committed / embodied.** The breadth draft is supposed to hold the mode's thesis and reach it through a different line of evidence, not survey rival positions or hedge. For these modes:
+  - Do not raise a finding whose substance is that the draft holds a single thesis, preserves too little uncertainty, or fails to survey the possibility space.
+  - Do check whether it holds the contract's thesis without softening, reaches it through an evidence route genuinely independent of the obvious/Depth route, and defeats rather than merely lists counter-arguments.
+  - Flag a committed breadth draft that collapses into a hedged possibility-space survey: it has abandoned the voice's stance.
 
 ## Where mode-specific content lives
 

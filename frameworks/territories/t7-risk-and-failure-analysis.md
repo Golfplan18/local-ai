@@ -1,4 +1,3 @@
-
 # Framework — Risk and Failure Analysis
 
 *Self-contained framework for examining a plan, system, or design specifically for failure modes, vulnerabilities, fragilities, and tail risks. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

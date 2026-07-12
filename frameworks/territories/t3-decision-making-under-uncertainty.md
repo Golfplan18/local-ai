@@ -1,4 +1,3 @@
-
 # Framework — Decision-Making Under Uncertainty
 
 *Self-contained framework for taking a decision context (alternatives, criteria, constraints, uncertainty) and producing structured guidance for choice. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

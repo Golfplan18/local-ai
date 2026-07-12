@@ -307,12 +307,11 @@ Provenance is **not** a vault property — it is derived from the `type` field a
 
 | Type | Weight | Decays? |
 |---|---:|---|
-| `engram`, `framework`, `mode`, `reference` | 1.0 | No |
-| `resource` | 0.7 | No |
-| `incubator` | 0.4 | Yes (cluster-recency decay) |
-| `chat` | 0.3 | Yes |
-| `working` | 0.2 | Yes |
+| `engram` (user-side or AI-side) | 1.0 | No |
+| `resource` (incl. cleared/trusted websites) | 0.8 | No |
+| `chat`, `transcript` | 0.6 | Yes (cluster-recency decay) |
 | `web` | 0.1 | Yes |
+| `framework`, `mode`, `reference`, `working`, `matrix`, `supervision` | — (not retrieved) | n/a |
 
 `matrix` and `supervision` are not retrieved as content — they support navigation only.
 

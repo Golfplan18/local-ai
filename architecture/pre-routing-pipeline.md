@@ -1,4 +1,3 @@
-
 # Reference — Pre-Routing Pipeline Architecture
 
 *The four-stage routing pipeline that replaces the intent-classification flow of the retired Mode Classification Directory. This file specifies the architecture; companion files specify the supporting registries: `Registry — Signal Vocabulary Registry.md` (Stage 2 lookup), `Reference — Within-Territory Disambiguation Trees.md` (Stage 2 within-territory disambiguation), `Reference — Cross-Territory Adjacency.md` (Stage 1 cross-territory disambiguation), `Reference — Disambiguation Style Guide.md` (Stage 2 and Stage 3 question phrasing). The orchestrator implementation (Phase 9) reads from `~/ora/architecture/pre-routing-pipeline.md` (this file's ora-runtime pair) and the supporting registries.*
@@ -441,6 +440,6 @@ This file **is referenced from**:
 - `Registry — Mode Registry.md` (Phase 7 rewrite — opens with pipeline overview)
 - `Reference — Ora Overview and Document Registry.md` (Phase 7 update)
 - `~/ora/CLAUDE.md` (Phase 7 update — pairing rules + orchestrator architecture pointer)
-- `Framework — System File Drift Correction.md` (Phase 1 update — drift correction registry)
+- `Framework — Documentation-Code Parity.md` (Phase 1 update — drift correction registry)
 
 *End of Reference — Pre-Routing Pipeline Architecture.*

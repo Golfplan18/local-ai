@@ -1,4 +1,3 @@
-
 # Framework — Conceptual Clarification
 
 *Self-contained framework for taking a concept, term, or definitional disagreement as input and resolving, sharpening, engineering, or genealogically tracing it. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

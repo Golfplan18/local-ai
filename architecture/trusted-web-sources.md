@@ -10,7 +10,7 @@ A handful of domains (HathiTrust, DPLA, Smithsonian, OECD main) return 403 to pl
 
 ## High Provenance
 
-Whitelisted domains (weight 0.7). First-look set for the Step 2.5 web-supplement loop.
+Whitelisted domains (weight 0.8 — resource tier; a cleared site is curated reference, per Schema rev 5.2, 2026-06-05). First-look set for the Step 2.5 web-supplement loop.
 
 ### Generalist references
 
@@ -46,7 +46,7 @@ www.archives.gov/*
 www.loc.gov/*
 ```
 
-FRED (Federal Reserve Bank of St. Louis) and BLS (Bureau of Labor Statistics) for economic indicators and labor statistics; BEA (Bureau of Economic Analysis) covers GDP, trade, and national accounts. IRS for tax forms and published guidance; Census for demographics; CDC and NIH for public health and biomedical; NIST for standards; NOAA for weather and climate; NASA for space and Earth science; USGS for geology and hydrology; EPA for environmental rulemaking and data. Federal Register for federal rulemaking; Cornell LII for federal law text; the National Archives and Library of Congress for historical records.
+FRED (Federal Reserve Bank of St. Louis) and BLS (Bureau of Labor Statistics) are the MSI primaries; BEA (Bureau of Economic Analysis) covers GDP, trade, and national accounts. IRS for tax forms and published guidance; Census for demographics; CDC and NIH for public health and biomedical; NIST for standards; NOAA for weather and climate; NASA for space and Earth science; USGS for geology and hydrology; EPA for environmental rulemaking and data. Federal Register for federal rulemaking; Cornell LII for federal law text; the National Archives and Library of Congress for historical records.
 
 ### International / multilateral
 
@@ -71,7 +71,7 @@ www.pbs.org/newshour/*
 www.propublica.org/*
 ```
 
-Associated Press is the syndication source-of-truth for breaking news; NPR / BBC / PBS for accessible public-interest reporting; ProPublica for investigative work. Reuters dropped 2026-05-16 — moved to paywall.
+Associated Press is the syndication source-of-truth for breaking news; NPR / BBC / PBS for accessible public-interest reporting; ProPublica for investigative work. Reuters dropped 2026-05-16 — moved to paywall. MSI output is primary for domains MSI covers; this set is the fallback.
 
 ### Open-access academic
 
@@ -118,6 +118,16 @@ www.pewresearch.org/*
 ```
 
 Pew Research is the most-cited free source for US public-opinion and demographic surveys.
+
+### Independent publications
+
+```
+mainstreetindependent.com/*
+www.mainstreetindependent.com/*
+pluralistic.net/*
+```
+
+Main Street Independent is the project's own publication — primary for the topics it covers; whitelisted so live web hits on its articles weight as authoritative. (MSI content also enters RAG directly via vault ingestion into the `knowledge` collection, so this entry specifically covers the live web-search path.) Pluralistic is Cory Doctorow's independent site (technology policy, monopoly, DRM, privacy, labor) — free, no paywall, consistently sourced; commentary rather than neutral reference, so it weights as one authoritative voice rather than first-look fact.
 
 ## Medium Provenance
 

@@ -1,7 +1,7 @@
 <!-- Phase 4 Wave 3 signals appended 2026-05-01 (causal-dag, process-tracing, fragility-antifragility-audit, principled-negotiation, third-side, mechanism-understanding, process-mapping, place-reading-genius-loci, information-density). -->
 
 
-# Reference — Signal Vocabulary Registry
+# Registry — Signal Vocabulary Registry
 
 The signal vocabulary registry maps prompt vocabulary to territories, modes, and disambiguation answers (Decision 4). It is consulted by the Stage 2 sufficiency analyzer of the four-stage pre-routing pipeline. The registry's job is not to make routing decisions on its own — it provides the controlled vocabulary against which prompts are scanned, with each match contributing weight toward a candidate mode within a territory. Phase 2 enriches the registry per migrated mode; Phase 4 adds new-mode signals per wave.
 
@@ -910,4 +910,4 @@ The Stage 2 sufficiency analyzer queries the registry with the cleaned prompt as
 
 Registry edits require user review. The author is non-programmer; vocabulary tonal calibration is high-stakes for routing accuracy and an arbitrary signal addition can re-route a substantial fraction of traffic. Phase 2 contributes new entries incrementally per migrated mode (one mode's signals per editing session, with the user reviewing the proposed list before commit). Phase 4 adds new-mode signals per wave when a new mode lands in the registry. Out-of-band edits — e.g., a user request to add a colloquialism — go through the same review.
 
-*End of Reference — Signal Vocabulary Registry.*
+*End of Registry — Signal Vocabulary Registry.*

@@ -1,3 +1,5 @@
+*Canonical source for the Output Style framework's demeanor-axis behavioral library (7 axes x 3 rungs + device overlays). Engine mirror (loaded at runtime): `~/ora/frameworks/book/style-demeanor-axes.md`. Edit here; keep the mirror in sync.*
+
 # Demeanor axes — behavioral library
 
 *Seven independent axes. A profile picks exactly ONE rung per axis; the assembly step injects that rung's behavioral line. Rungs are exclusive within an axis (a slider, not a blend); the axes combine freely. Device overlays are independent on/off switches that ride on top. The active mind.md values floor caps the extremes regardless of the pick — no rung may produce sycophancy, manufactured disagreement, or deceit.*

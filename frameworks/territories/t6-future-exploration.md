@@ -1,4 +1,3 @@
-
 # Framework — Future Exploration
 
 *Self-contained framework for looking forward — projecting consequences, building scenarios, forecasting probabilities, exploring possibility-spaces, anticipating sequels and failure modes. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

@@ -1,10 +1,12 @@
+*Canonical source for the Output Style framework's registry of built-in Output Style profiles. Engine mirror (loaded at runtime): `~/ora/frameworks/book/style-registry.md`. Edit here; keep the mirror in sync.*
+
 # Output Style Registry
 
-*The catalog of built-in Output Style profiles — one entry per profile. This is the "presets" surface the picker reads. The resolver reads an entry's machine block to build the injected style; the behavioral text it points at lives in the component libraries: [[style-demeanor-axes]] (rung text), [[style-arrangement-schemas]] (the ordered schema), [[style-craft-floor]] (the competence floor). Custom profiles use the same shape but live in the user data store (`~/ora/data/custom-styles.json`), not this file.*
+*The catalog of built-in Output Style profiles — one entry per profile. This is the "presets" surface the picker reads. The resolver reads an entry's machine block to build the injected style; the behavioral text it points at lives in the component libraries: [[Specification — Output Style Demeanor Axes]] (rung text), [[Specification — Output Style Arrangement Schemas]] (the ordered schema), [[Specification — Output Style Craft Floor]] (the competence floor). Custom profiles use the same shape but live in the user data store (`~/ora/data/custom-styles.json`), not this file.*
 
 *Precedence, stated in every assembled block: **values floor > completeness floor > craft floor > substance/findings > style.** Style never overrides a finding, a correction, or a fact.*
 
-*`values_source` defaults to `default-mindspec` — the engine's generic, general-population-median values file (`~/ora/mindspec/default-mindspec.md`) — so a profile carries accurate values with no per-user interview. A user who turns on custom values swaps this to their own `mind.md`. Demeanor picks name one rung per axis (see the axis library for the rung set). `register_default` is the resting register; register is set by the pipeline path — a profile's optional conversational alternate demeanor applies at gears 1-2, the written form at gears 3-4.*
+*`values_source` defaults to `default-mindspec` — the engine's generic, general-population-median values file (`~/ora/mindspec/default-mindspec.md`) — so a profile carries accurate values with no per-user interview. A user who turns on custom values swaps this to their own `mind.md`. Demeanor picks name one rung per axis (see the axis library for the rung set). `register_default` is the resting register; the pipeline path selects the operative register — a profile's optional conversational alternate demeanor applies at gears 1–2, and its written form at gears 3–4.*
 
 ## explainer
 ```yaml
@@ -161,10 +163,12 @@ glossary: {}
 ```
 
 ## conversational
-<!-- Listed last: conversational doubles as the internal/casual register-voice
+
+<!-- Listed last: conversational doubles as the internal/casual register voice
      (the G1.36 honne/tatemae path folds style_id="conversational"; a project can
-     bind output_style="conversational"), so it's a real, selectable genre but
-     deprioritized to the end of the picker. -->
+     bind output_style="conversational"), so it remains selectable but is
+     intentionally deprioritized to the end of the picker. -->
+
 ```yaml
 display_name: Conversational
 description: chat, texts, personal email — answer first, plainly

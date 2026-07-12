@@ -127,12 +127,12 @@ O-Design typically executes in a single elicitation session. O-Modify, O-Render,
 Required reading in order:
 1. `Framework — Process Formalization.md` — sibling meta-framework
 2. `Framework — Corpus Formalization.md` — sibling meta-framework
-3. `Framework — PFF-CFF-OFF Integration Architecture.md` — three-framework integration spec
+3. `Reference — PFF-CFF-OFF Integration Architecture.md` — three-framework integration spec
 4. `Working — Framework — MindSpec to OFF Integration.md` — voice composition contract
 
 Supporting documents:
 - `Framework — MindSpec Interview.md` — for understanding the mind.md sections OFF reads
-- The OFF overview document (`Working — Reference — OFF and Style Guide Overview.md`) — the predecessor design document this canonical spec was generated from
+- The OFF overview document (`Archive/Working — Reference — OFF and Style Guide Overview.md.archived-2026-07-11`) — the predecessor design document this canonical spec was generated from (archived 2026-07-11; its Part Two is the design source for the deferred Style Guide Module, tracked as G3.33)
 
 ---
 
@@ -763,7 +763,7 @@ At runtime, the four layers compose in order: content is populated, craft floor 
 
 ## Section IX: Integration with PFF and CFF
 
-OFF is one of three sibling meta-frameworks. PFF formalizes processes that produce information; CFF formalizes the corpus where information accumulates; OFF formalizes outputs that express information. The three-framework integration is specified in detail in `Framework — PFF-CFF-OFF Integration Architecture.md`.
+OFF is one of three sibling meta-frameworks. PFF formalizes processes that produce information; CFF formalizes the corpus where information accumulates; OFF formalizes outputs that express information. The three-framework integration is specified in detail in `Reference — PFF-CFF-OFF Integration Architecture.md`.
 
 ### Detection trigger built into OFF design
 
@@ -798,7 +798,7 @@ The read contract becomes part of the corpus's read alignment in CFF Layer 8 (Ou
 
 ### Reference
 
-Full architecture: `Framework — PFF-CFF-OFF Integration Architecture.md`.
+Full architecture: `Reference — PFF-CFF-OFF Integration Architecture.md`.
 
 ---
 
@@ -932,7 +932,7 @@ Known Limitations:
   - Cross-medium aesthetic composition (via mind.md Aesthetic Sensibility section) is supported architecturally but unvalidated
   - First-use validation expected against bespoke frameworks generated for Word, Excel, PowerPoint
 File Location: ~/Documents/vault/Framework — Output Formalization.md (with mirror at ~/ora/frameworks/book/output-formalization.md)
-Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Working — Reference — OFF and Style Guide Overview.md (2026-04-23)
+Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Archive/Working — Reference — OFF and Style Guide Overview.md.archived-2026-07-11 (2026-04-23)
 Confidence: medium — architecture is sound and traces from established meta-framework patterns (PFF, CFF); execution layer details may require refinement after first production runs of bespoke framework generation
 Version: 1.0
 ```

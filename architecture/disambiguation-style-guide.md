@@ -1,4 +1,3 @@
-
 # Reference — Disambiguation Style Guide
 
 This document is the canonical style guide governing every user-facing disambiguation question Ora produces across the four-stage pre-routing pipeline (intent surfacing, territory disambiguation, input completeness check, and final mode selection). It establishes permitted and forbidden vocabulary, sanctioned question patterns, naming and parenthetical conventions, anti-patterns to refuse, default routing when the user does not respond cleanly, escalation hooks for handing off from a lighter mode to a heavier one, and the response patterns the input completeness checker uses when required input is missing or underspecified. The guide assumes the user is not a methodologist; every question Ora asks must be answerable in plain English by a domain expert who has never read a registry entry in their life.

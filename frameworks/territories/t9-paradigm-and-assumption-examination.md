@@ -1,4 +1,3 @@
-
 # Framework — Paradigm and Assumption Examination
 
 *Self-contained framework for stepping outside the assumed frame of a problem to examine the assumptions, paradigms, and worldviews that shape how the problem is being constructed. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

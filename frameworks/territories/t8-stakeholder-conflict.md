@@ -1,4 +1,3 @@
-
 # Framework — Stakeholder Conflict
 
 *Self-contained framework for taking a situation involving multiple parties with divergent interests/values and characterizing the conflict structure, surfacing positions and interests, and identifying integrative possibilities. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*

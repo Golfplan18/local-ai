@@ -1,4 +1,3 @@
-
 # Framework — Interest and Power Analysis
 
 *Self-contained framework for surfacing who benefits, who pays, who has power to shape this, whose voices are absent, and how interest structures explain what is observed. Compiled 2026-05-01 from territory entry, member mode specs, lens dependencies, and open debates.*
