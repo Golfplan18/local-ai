@@ -38,7 +38,7 @@ from tools import knowledge_index  # noqa: E402
 
 # Install the deterministic embedding stub so chromadb operations don't
 # depend on Ollama running. Cross-platform — pure Python.
-from orchestrator.embedding import install_test_stub  # noqa: E402
+from orchestrator.embedding import install_test_stub, resolve_collection  # noqa: E402
 install_test_stub()
 
 
@@ -623,7 +623,7 @@ class TestEndToEndIndexing(unittest.TestCase):
     def _get_chunk(self, doc_id):
         import chromadb
         client = chromadb.PersistentClient(path=self.chromadb_path)
-        col = client.get_collection("knowledge")
+        col = client.get_collection(resolve_collection("knowledge"))
         return col.get(ids=[doc_id])
 
     def test_block_list_tags_roundtrip(self):
@@ -665,7 +665,7 @@ class TestEndToEndIndexing(unittest.TestCase):
 
         import chromadb
         client = chromadb.PersistentClient(path=self.chromadb_path)
-        col = client.get_collection("knowledge")
+        col = client.get_collection(resolve_collection("knowledge"))
         framework_results = col.get(where={"type": "framework"})
         self.assertEqual(len(framework_results["ids"]), 1)
         chat_results = col.get(where={"type": "chat"})
@@ -695,7 +695,7 @@ class TestEndToEndIndexing(unittest.TestCase):
 
         import chromadb
         client = chromadb.PersistentClient(path=self.chromadb_path)
-        col = client.get_collection("knowledge")
+        col = client.get_collection(resolve_collection("knowledge"))
         # Active records: tag_archived = False
         active = col.get(where={"tag_archived": False})
         self.assertEqual(len(active["ids"]), 1)
