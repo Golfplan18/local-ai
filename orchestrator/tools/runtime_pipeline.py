@@ -280,7 +280,7 @@ class RuntimePipeline:
         os.makedirs(CONTINUITY_DIR, exist_ok=True)
 
         # Write to project-specific continuity file
-        nexus = data.nexus or "general"
+        nexus = data.nexus or "commons"
         path = os.path.join(CONTINUITY_DIR, f"continuity-{nexus}.md")
 
         with open(path, "w") as f:

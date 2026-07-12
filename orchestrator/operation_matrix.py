@@ -121,7 +121,7 @@ def resolve_matrix_path(
         if cand.is_file():
             return cand
     nexus_l = (nexus or "").strip().lower()
-    if not nexus_l or nexus_l == "general":
+    if not nexus_l or nexus_l in ("commons", "general"):
         return None
     for pf in sorted(mdir.glob("*.md")):
         try:
@@ -370,8 +370,8 @@ def write_mom(
     missing and ``create_if_missing`` is True. Returns the re-read MOM, or
     None if no file exists / could be created.
     """
-    if (nexus or "").strip().lower() in ("", "general"):
-        return None  # General is synthetic — no matrix file
+    if (nexus or "").strip().lower() in ("", "commons", "general"):
+        return None  # Commons is synthetic — no matrix file
     path = resolve_matrix_path(nexus, name, vault=vault)
     if path is None:
         if not create_if_missing or not name:

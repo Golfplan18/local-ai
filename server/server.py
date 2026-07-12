@@ -4414,20 +4414,22 @@ def api_projects_list():
 def api_active_project_get():
     """Return the active project nexus that new conversations bind to (G1.33).
 
-    ``"general"`` is the synthetic default (empty project_ids / empty nexus).
+    ``"commons"`` is the synthetic default (empty project_ids / empty nexus).
+    Its legacy id ``"general"`` (pre-2026-07-11) is still accepted wherever a
+    nexus is read in, permanently — not a one-time migration.
     """
     try:
         from orchestrator.active_project import get_active_project
         return _json_response({"ok": True, "nexus": get_active_project()})
     except Exception as exc:
         return _json_response(
-            {"ok": False, "error": str(exc), "nexus": "general"}, 503
+            {"ok": False, "error": str(exc), "nexus": "commons"}, 503
         )
 
 
 @app.route("/api/active-project", methods=["POST"])
 def api_active_project_set():
-    """Set the active project. Body: ``{"nexus": "..."}`` ("general"/empty resets)."""
+    """Set the active project. Body: ``{"nexus": "..."}`` ("commons"/legacy "general"/empty resets)."""
     try:
         from orchestrator.active_project import set_active_project, get_active_project
     except Exception as exc:
@@ -4440,9 +4442,9 @@ def api_active_project_set():
 
 @app.route("/api/projects/meta", methods=["GET"])
 def api_projects_meta():
-    """Switcher list (G1.33): General first, then projects by recency, each with
+    """Switcher list (G1.33): Commons first, then projects by recency, each with
     conversation + unread counts so the switcher can badge cross-project
-    activity (General == all-inclusive). Pass ``?status=active`` to filter."""
+    activity (Commons == all-inclusive). Pass ``?status=active`` to filter."""
     try:
         from orchestrator import project_meta as _pm
         projects = _pm.list_project_meta()
@@ -4454,7 +4456,7 @@ def api_projects_meta():
             p for p in projects
             if p.get("is_default") or p.get("status") == status_filter
         ]
-    # Per-project conversation + unread counts (best-effort; General gets all).
+    # Per-project conversation + unread counts (best-effort; Commons gets all).
     counts: dict = {}
     try:
         from conversation_memory import iter_conversations
@@ -4462,7 +4464,7 @@ def api_projects_meta():
             la, lr = r.get("last_activity_at"), r.get("last_read_at")
             unread = bool(la) and (not lr or la > lr)
             pids = [p for p in (r.get("project_ids") or []) if isinstance(p, str)]
-            for t in ["general", *pids]:
+            for t in ["commons", *pids]:
                 c = counts.setdefault(t, {"conversation_count": 0, "unread_count": 0})
                 c["conversation_count"] += 1
                 if unread:
@@ -4745,12 +4747,12 @@ def api_projects_mom_assist(nexus):
     ``{"name": str?, "intent": str?, "fields": {"mission","objectives",
     "milestones_raw"}?}``. Returns ``{ok, suggestions:{mission, objectives,
     milestones:[{text,done,indent}], milestones_raw}}``. Degrades to ok:false
-    (503 model unavailable / 502 unparseable / 400 General) — never a 500."""
+    (503 model unavailable / 502 unparseable / 400 Commons) — never a 500."""
     try:
         from orchestrator import operation_matrix as _om
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
-    if (nexus or "").strip().lower() in ("", "general"):
+    if (nexus or "").strip().lower() in ("", "commons", "general"):
         return _json_response(
             {"ok": False, "error": "Commons has no Operation-Matrix."}, 400)
     data = request.get_json(silent=True) or {}
@@ -4890,7 +4892,7 @@ def api_projects_conversations(nexus):
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
     nexus_l = (nexus or "").strip().lower()
-    all_projects = (not nexus_l) or nexus_l == "general"
+    all_projects = (not nexus_l) or nexus_l in ("commons", "general")
     candidates = (request.args.get("candidates") or "").strip().lower() in (
         "1", "true", "yes", "on")
 
@@ -5995,7 +5997,7 @@ def _apply_style_audience(extra_context, style_audience):
     """G1.36 honne/tatemae — when the input-pane toggle marks this turn
     ``internal``, fold the active project's ``interaction_style`` onto
     ``extra_context["style_id"]`` (how Ora talks TO you), overriding the default
-    OUTPUT style for this turn only. ``external`` (default), General, an
+    OUTPUT style for this turn only. ``external`` (default), Commons, an
     unset interaction_style, or an explicit /style one-off already on
     extra_context → unchanged. Returns extra_context (possibly a new dict);
     best-effort, never raises."""
@@ -6007,7 +6009,7 @@ def _apply_style_audience(extra_context, style_audience):
         from orchestrator.active_project import get_active_project
         from orchestrator import project_meta as _pm
         nx = get_active_project()
-        if nx and nx.lower() != "general":
+        if nx and nx.lower() not in ("commons", "general"):
             rec = _pm.read_project_meta(nx)
             isid = (rec or {}).get("interaction_style")
             if isinstance(isid, str) and isid.strip():
@@ -6919,9 +6921,10 @@ def conversations_list():
     # pinned / unread / active groups to that project; errored + pending
     # (running) PIERCE the filter and stay GLOBAL, so background work and
     # failures aren't hidden while you work in another project (the locked
-    # switcher spec). Absent / "general" == the all-inclusive view.
+    # switcher spec). Absent / "commons" / legacy "general" == the
+    # all-inclusive view.
     _project_id = (request.args.get("project_id") or "").strip()
-    _all_projects = (not _project_id) or _project_id.lower() == "general"
+    _all_projects = (not _project_id) or _project_id.lower() in ("commons", "general")
 
     def _in_project(r):
         return _all_projects or (_project_id in (r.get("project_ids") or []))
@@ -8299,8 +8302,9 @@ def conversations_restore(conversation_id):
 def conversations_set_projects(conversation_id):
     """Replace a conversation's project memberships (G1.33 sub-step 5).
 
-    A conversation can belong to many projects; ``general`` is the implicit
-    baseline (empty list == General) and is never stored. Body:
+    A conversation can belong to many projects; ``commons`` (and its legacy
+    id ``general``) is the implicit baseline (empty list == Commons) and is
+    never stored. Body:
     ``{"project_ids": ["nexus", ...]}``. Returns the stored list."""
     conversation_id = (conversation_id or "").strip()
     if not conversation_id:
@@ -14563,9 +14567,9 @@ def api_export():
             from orchestrator.active_project import get_active_project
             project_nexus = get_active_project()
         except Exception:
-            project_nexus = "general"
+            project_nexus = "commons"
     project_name = None
-    if project_nexus and project_nexus.lower() != "general":
+    if project_nexus and project_nexus.lower() not in ("commons", "general"):
         try:
             from orchestrator import project_meta as _pm
             rec = _pm.read_project_meta(project_nexus)

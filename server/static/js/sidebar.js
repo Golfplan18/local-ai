@@ -59,8 +59,10 @@
   const outputStyleName = sidebar.querySelector('#sidebarOutputStyleName');
 
   const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
-  let activeProjectId = 'general';
-  try { activeProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'general'; } catch (e) {}
+  // "general" was the pre-2026-07-11 id; a browser that stored it before the
+  // rename keeps working — every comparison below accepts both values.
+  let activeProjectId = 'commons';
+  try { activeProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'commons'; } catch (e) {}
   let projectsCache = [];
 
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
@@ -363,7 +365,7 @@
 
   // ── G1.33 project switcher ──────────────────────────────────────────────
   const projectDisplayName = (nexus) =>
-    nexus === 'general' ? 'Commons' : nexus;
+    (nexus === 'commons' || nexus === 'general') ? 'Commons' : nexus;
 
   const renderProjects = () => {
     if (!projectListEl) return;
@@ -423,7 +425,7 @@
   };
 
   const setActiveProject = async (nexus, name) => {
-    activeProjectId = nexus || 'general';
+    activeProjectId = nexus || 'commons';
     try { localStorage.setItem(ACTIVE_PROJECT_KEY, activeProjectId); } catch (e) {}
     if (projectNameEl) projectNameEl.textContent = name || projectDisplayName(activeProjectId);
     closeProjectMenu();

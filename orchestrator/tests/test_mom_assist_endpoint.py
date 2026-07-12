@@ -44,7 +44,17 @@ class MomAssistTests(unittest.TestCase):
     def _stub(self, ret):
         server._call_small_model_with_system = lambda *a, **k: ret
 
-    def test_general_400_no_model_call(self):
+    def test_commons_400_no_model_call(self):
+        called = {"n": 0}
+        def _spy(*a, **k):
+            called["n"] += 1
+            return _GOOD
+        server._call_small_model_with_system = _spy
+        r = self.client.post("/api/projects/commons/mom-assist", json={"intent": "x"})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(called["n"], 0)  # never calls the model
+
+    def test_legacy_general_400_no_model_call(self):
         called = {"n": 0}
         def _spy(*a, **k):
             called["n"] += 1

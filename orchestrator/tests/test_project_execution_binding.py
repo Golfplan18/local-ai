@@ -59,7 +59,12 @@ class RouterProjectProfileTests(unittest.TestCase):
         got = self.router._resolve_config_name(None, "interactive")
         self.assertNotEqual(got, "no-such-config-xyz")
 
-    def test_general_ignores_project(self):
+    def test_commons_ignores_project(self):
+        self._patch("commons", {"default_model_profile": "user-pipeline"})
+        got = self.router._resolve_config_name(None, "interactive")
+        self.assertNotEqual(got, "user-pipeline")
+
+    def test_legacy_general_ignores_project(self):
         self._patch("general", {"default_model_profile": "user-pipeline"})
         got = self.router._resolve_config_name(None, "interactive")
         self.assertNotEqual(got, "user-pipeline")
@@ -103,7 +108,14 @@ class BootStyleFallbackTests(unittest.TestCase):
         self.pm.read_project_meta = lambda n, *a, **k: {"output_style": "conversational"}
         self.assertEqual(self.boot._resolve_effective_style_id({}), "from-manifest")
 
-    def test_general_ignores_record(self):
+    def test_commons_ignores_record(self):
+        self.ap.get_active_project = lambda: "commons"
+        self.pr.get_project = lambda n, *a, **k: None
+        self.pm.read_project_meta = lambda n, *a, **k: {"output_style": "conversational"}
+        self.us.get_setting = lambda k, *a, **kw: None
+        self.assertIsNone(self.boot._resolve_effective_style_id({}))
+
+    def test_legacy_general_ignores_record(self):
         self.ap.get_active_project = lambda: "general"
         self.pr.get_project = lambda n, *a, **k: None
         self.pm.read_project_meta = lambda n, *a, **k: {"output_style": "conversational"}

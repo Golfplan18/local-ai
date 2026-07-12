@@ -1050,9 +1050,10 @@ def set_conversation_projects(
     """Replace a conversation's explicit project memberships (G1.33).
 
     ``project_ids`` is the full new list of project nexus slugs the
-    conversation belongs to. The implicit ``General`` project is never
-    stored (an empty list == General), so ``general`` and empty entries are
-    stripped and the list is de-duplicated preserving order. This is the
+    conversation belongs to. The implicit ``Commons`` project is never
+    stored (an empty list == Commons), so ``commons``, its legacy id
+    ``general``, and empty entries are stripped and the list is
+    de-duplicated preserving order. This is the
     membership-edit path used by the project modal; conversation *creation*
     sets membership via ``save_turn_spatial_state``'s ``project_ids`` arg.
 
@@ -1076,9 +1077,10 @@ def set_conversation_projects(
             if not isinstance(pid, str):
                 continue
             slug = pid.strip()
-            # General is the implicit baseline (empty list) — never stored,
-            # and therefore never removable.
-            if not slug or slug.lower() == "general":
+            # Commons is the implicit baseline (empty list) — never stored,
+            # and therefore never removable. Its legacy id "general" is
+            # honored the same way.
+            if not slug or slug.lower() in ("commons", "general"):
                 continue
             if slug not in seen:
                 seen.add(slug)

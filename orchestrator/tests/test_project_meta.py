@@ -41,22 +41,31 @@ class ProjectMetaTests(unittest.TestCase):
 
     def test_create_reserved_and_collision(self):
         with self.assertRaises(pm.ProjectMetaError):
-            pm.create_project("General", pointer_dir=self.d)
+            pm.create_project("General", pointer_dir=self.d)  # legacy reserved word
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.create_project("Commons", pointer_dir=self.d)  # canonical reserved word
         pm.create_project("Book", pointer_dir=self.d)
         with self.assertRaises(pm.ProjectMetaError):
             pm.create_project("Book", pointer_dir=self.d)
 
-    def test_general_is_synthetic_default(self):
-        g = pm.read_project_meta("general", pointer_dir=self.d)
-        self.assertEqual(g["nexus"], "general")
+    def test_commons_is_synthetic_default(self):
+        g = pm.read_project_meta("commons", pointer_dir=self.d)
+        self.assertEqual(g["nexus"], "commons")
         self.assertTrue(g["is_default"])
         # Never written to disk.
+        self.assertFalse((self.d / "commons.json").exists())
+
+    def test_legacy_general_resolves_to_commons(self):
+        # Permanent backward compatibility, not a one-time migration.
+        g = pm.read_project_meta("general", pointer_dir=self.d)
+        self.assertEqual(g["nexus"], "commons")
+        self.assertTrue(g["is_default"])
         self.assertFalse((self.d / "general.json").exists())
 
     def test_read_missing_returns_none(self):
         self.assertIsNone(pm.read_project_meta("nope", pointer_dir=self.d))
 
-    def test_list_general_first_and_recency_desc(self):
+    def test_list_commons_first_and_recency_desc(self):
         pm.create_project("Alpha", pointer_dir=self.d)
         pm.create_project("Beta", pointer_dir=self.d)
         # Explicit, distinct recency so the sort is deterministic.
@@ -67,7 +76,7 @@ class ProjectMetaTests(unittest.TestCase):
             json.dumps({"nexus": "beta", "name": "Beta", "status": "active",
                         "last_accessed_at": "2026-06-27T10:00:00"}), encoding="utf-8")
         lst = pm.list_project_meta(pointer_dir=self.d)
-        self.assertEqual(lst[0]["nexus"], "general")
+        self.assertEqual(lst[0]["nexus"], "commons")
         nexuses = [m["nexus"] for m in lst]
         self.assertLess(nexuses.index("alpha"), nexuses.index("beta"))
 

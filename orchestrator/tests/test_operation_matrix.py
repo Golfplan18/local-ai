@@ -85,6 +85,9 @@ class OperationMatrixReadTests(unittest.TestCase):
 
     def test_resolve_missing(self):
         self.assertIsNone(om.resolve_matrix_path("ghost", "Ghost", vault=self.vault))
+        self.assertIsNone(om.resolve_matrix_path("commons", "Commons", vault=self.vault))
+
+    def test_resolve_missing_legacy_general(self):
         self.assertIsNone(om.resolve_matrix_path("general", "General", vault=self.vault))
 
     def test_read_mom(self):
@@ -182,7 +185,10 @@ class OperationMatrixWriteTests(unittest.TestCase):
         self.assertIn("## Objectives\n\nShip it.", text)
         self.assertIn("- [ ] step one", text)
 
-    def test_general_is_noop(self):
+    def test_commons_is_noop(self):
+        self.assertIsNone(om.write_mom("commons", "Commons", mission="x", vault=self.vault))
+
+    def test_legacy_general_is_noop(self):
         self.assertIsNone(om.write_mom("general", "General", mission="x", vault=self.vault))
 
     def test_no_create_when_disabled(self):

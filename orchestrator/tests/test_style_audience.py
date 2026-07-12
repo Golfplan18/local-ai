@@ -54,7 +54,11 @@ class StyleAudienceTests(unittest.TestCase):
         out = server._apply_style_audience({"style_id": "from-slash"}, "internal")
         self.assertEqual(out.get("style_id"), "from-slash")
 
-    def test_general_is_noop(self):
+    def test_commons_is_noop(self):
+        self._patch("commons", {"interaction_style": "conversational"})
+        self.assertIsNone(server._apply_style_audience(None, "internal"))
+
+    def test_legacy_general_is_noop(self):
         self._patch("general", {"interaction_style": "conversational"})
         self.assertIsNone(server._apply_style_audience(None, "internal"))
 

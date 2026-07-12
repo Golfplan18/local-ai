@@ -7113,7 +7113,7 @@ def _resolve_effective_style_id(config):
         # Projects feature has no plugin manifest, so get_project() is None. Read
         # its output_style from the container record so the modal's choice
         # actually drives the deliverable.
-        if nexus and nexus.lower() != "general":
+        if nexus and nexus.lower() not in ("commons", "general"):
             try:
                 from project_meta import read_project_meta
             except ImportError:

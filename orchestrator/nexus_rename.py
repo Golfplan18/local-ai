@@ -34,7 +34,6 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.project_meta import (
-    GENERAL_NEXUS,
     RESERVED_NEXUS,
     _NEXUS_RE,
     POINTER_DIR,

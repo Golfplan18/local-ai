@@ -819,7 +819,7 @@ class Router:
                 from orchestrator import active_project as _ap
                 from orchestrator import project_meta as _pm
                 nexus = _ap.get_active_project()
-                if nexus and nexus.lower() != "general":
+                if nexus and nexus.lower() not in ("commons", "general"):
                     rec = _pm.read_project_meta(nexus)
                     prof = (rec or {}).get("default_model_profile")
                     if (isinstance(prof, str) and prof.strip()

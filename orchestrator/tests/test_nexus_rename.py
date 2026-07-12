@@ -149,6 +149,10 @@ class RenameCascadeTests(unittest.TestCase):
 
     def test_validation(self):
         with self.assertRaises(nr.NexusRenameError):
+            nr.rename_nexus("book", "commons", vault=self.vault, pointer_dir=self.pdir,
+                            sessions_root=self.sess, dry_run=True)
+        with self.assertRaises(nr.NexusRenameError):
+            # Legacy reserved word — still blocked permanently.
             nr.rename_nexus("book", "general", vault=self.vault, pointer_dir=self.pdir,
                             sessions_root=self.sess, dry_run=True)
         with self.assertRaises(nr.NexusRenameError):

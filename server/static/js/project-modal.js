@@ -24,7 +24,7 @@
 (() => {
   let modal = null;
   let els = {};
-  let current = { nexus: 'general', name: 'Commons' };
+  let current = { nexus: 'commons', name: 'Commons' };
   let momRawMode = false;
   let momCache = null;
   let filesCache = null;
@@ -35,7 +35,8 @@
   let mode = 'edit';  // 'edit' | 'create'
   let pendingNexus = null;  // a previewed nexus rename awaiting Apply
 
-  const isGeneral = () => (current.nexus || '').toLowerCase() === 'general';
+  // "general" was the pre-2026-07-11 id; still recognized permanently.
+  const isCommons = () => ['commons', 'general'].includes((current.nexus || '').toLowerCase());
 
   const TABS = [
     { id: 'overview', label: 'Overview' },
@@ -379,7 +380,7 @@
   async function open(nexus, name) {
     build();
     mode = 'edit';
-    current = { nexus: nexus || 'general', name: name || nexus || 'Commons' };
+    current = { nexus: nexus || 'commons', name: name || nexus || 'Commons' };
     resetTransient();
     applyMode();
     els.titleName.textContent = current.name;
@@ -396,7 +397,7 @@
 
   // ── Overview ─────────────────────────────────────────────────────────────
   async function loadOverview() {
-    const general = isGeneral();
+    const general = isCommons();
     els.name.value = current.name;
     els.name.disabled = general;
     els.status.disabled = general;
@@ -490,7 +491,7 @@
 
   async function saveOverview() {
     if (mode === 'create') { createProject(); return; }
-    if (isGeneral()) return;
+    if (isCommons()) return;
     const body = {
       name: (els.name.value || '').trim(),
       status: els.status.value,
@@ -520,7 +521,7 @@
     } catch (e) {
       setStatus(els.ovMsg, 'Save failed: ' + (e.message || e), 'error');
     } finally {
-      els.ovSave.disabled = isGeneral();
+      els.ovSave.disabled = isCommons();
     }
   }
 
@@ -575,7 +576,7 @@
 
   // ── Advanced: rename the nexus (bulk-YAML cascade, preview → apply) ───────
   async function previewNexus() {
-    if (isGeneral() || mode === 'create') return;
+    if (isCommons() || mode === 'create') return;
     const next = (els.nexus.value || '').trim().toLowerCase();
     if (els.nexusApply) els.nexusApply.style.display = 'none';
     pendingNexus = null;
@@ -612,7 +613,7 @@
   }
 
   async function applyNexus() {
-    if (!pendingNexus || isGeneral()) return;
+    if (!pendingNexus || isCommons()) return;
     const from = current.nexus, to = pendingNexus;
     if (!confirm(`Rename the internal id from "${from}" to "${to}"? This rewrites the nexus across the vault and Dialogue memberships and cannot be auto-undone.`)) {
       return;
@@ -709,7 +710,7 @@
   }
 
   async function loadMom() {
-    if (isGeneral()) {
+    if (isCommons()) {
       momCache = {};
       setStatus(els.momNote, '');
       els.momNote.textContent = 'Commons has no Operation-Matrix. Create a project to set a Mission, Objectives, and Milestones.';
@@ -745,7 +746,7 @@
   }
 
   async function assistMom() {
-    if (isGeneral()) return;
+    if (isCommons()) return;
     // Clobber guard — the assist DRAFTS into the fields; confirm before
     // overwriting existing content (checked against the SAME sources saveMom
     // reads, so raw vs checkbox mode is honored).
@@ -796,7 +797,7 @@
   }
 
   async function saveMom() {
-    if (isGeneral()) return;
+    if (isCommons()) return;
     const body = {
       name: current.name,
       mission: els.mission.value,
@@ -963,7 +964,7 @@
         restore.addEventListener('click', () => restoreConvo(c.conversation_id));
         actions.appendChild(restore);
       }
-      if (!isGeneral()) {
+      if (!isCommons()) {
         const rm = document.createElement('button');
         rm.type = 'button';
         rm.className = 'project-modal__btn project-modal__btn--mini project-modal__btn--danger';
@@ -990,7 +991,7 @@
     els.convoList.innerHTML = '';
     setStatus(els.convosMsg, 'Loading…');
     // The "add" section is meaningless for General (it contains everything).
-    if (els.convoAddWrap) els.convoAddWrap.style.display = isGeneral() ? 'none' : '';
+    if (els.convoAddWrap) els.convoAddWrap.style.display = isCommons() ? 'none' : '';
     const includeClosed = !!(els.convosClosed && els.convosClosed.checked);
     try {
       const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
@@ -1001,7 +1002,7 @@
       rows.forEach(c => frag.appendChild(convoRow(c, 'member')));
       els.convoList.appendChild(frag);
       if (!rows.length) {
-        setStatus(els.convosMsg, isGeneral()
+        setStatus(els.convosMsg, isCommons()
           ? 'No Dialogues yet.'
           : 'No Dialogues in this project yet — add some below.');
       } else {
@@ -1018,7 +1019,7 @@
   }
 
   async function runCandidateSearch() {
-    if (isGeneral()) return;
+    if (isCommons()) return;
     const q = (els.convoSearch.value || '').trim();
     if (!q) { els.convoAddList.innerHTML = ''; return; }
     els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">Searching…</div>';
@@ -1041,7 +1042,7 @@
   }
 
   async function setMembership(c, nexus, add) {
-    const existing = (c.project_ids || []).filter(p => p && p !== 'general');
+    const existing = (c.project_ids || []).filter(p => p && p !== 'commons' && p !== 'general');
     let next;
     if (add) next = existing.includes(nexus) ? existing : [...existing, nexus];
     else next = existing.filter(p => p !== nexus);
