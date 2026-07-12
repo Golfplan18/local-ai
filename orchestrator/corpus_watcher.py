@@ -20,8 +20,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from corpus_parser import parse_corpus_file, section_state_summary, ParsedCorpus
-from workflow_spec_parser import parse_workflow_spec_file, ParsedWorkflowSpec
+try:
+    from corpus_parser import parse_corpus_file, section_state_summary, ParsedCorpus
+    from workflow_spec_parser import parse_workflow_spec_file, ParsedWorkflowSpec
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.corpus_parser import (
+        parse_corpus_file, section_state_summary, ParsedCorpus,
+    )
+    from orchestrator.workflow_spec_parser import (
+        parse_workflow_spec_file, ParsedWorkflowSpec,
+    )
 
 try:
     import runtime_paths as _rp

@@ -37,6 +37,12 @@
 
   if (typeof document === 'undefined') return;
 
+  function _activeConversationTag() {
+    return (root.OraConversation
+            && typeof root.OraConversation.getActiveTag === 'function')
+      ? (root.OraConversation.getActiveTag() || '') : '';
+  }
+
   // ── module state ─────────────────────────────────────────────────────────
 
   var _panelEl = null;        // .media-library panel root
@@ -141,6 +147,7 @@
   // ── URL import (yt-dlp) ──────────────────────────────────────────────────
 
   var _activeImportPoll = null;
+  var _activeImportStopper = null;
 
   function _setImportStatus(statusEl, text, kind) {
     if (!statusEl) return;
@@ -174,15 +181,17 @@
     inputEl.disabled = true;
     _setImportStatus(statusEl, 'Starting…', 'progress');
 
-    var endpoint = '/api/media-library/' + encodeURIComponent(_conversationId)
+    var conversationId = _conversationId;
+    var endpoint = '/api/media-library/' + encodeURIComponent(conversationId)
                  + '/import-url';
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url }),
+      body: JSON.stringify({ url: url, tag: _activeConversationTag() }),
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, data: j }; }); })
       .then(function (res) {
+        if (_conversationId !== conversationId) return;
         if (!res.ok) {
           throw new Error((res.data && res.data.error) || 'import failed');
         }
@@ -190,6 +199,7 @@
         _pollImport(importId, inputEl, btnEl, statusEl);
       })
       .catch(function (err) {
+        if (_conversationId !== conversationId) return;
         btnEl.disabled = false;
         inputEl.disabled = false;
         _setImportStatus(statusEl, 'Import failed: ' + err.message, 'error');
@@ -197,14 +207,15 @@
   }
 
   function _pollImport(importId, inputEl, btnEl, statusEl) {
-    var endpoint = '/api/media-library/' + encodeURIComponent(_conversationId)
+    var conversationId = _conversationId;
+    var endpoint = '/api/media-library/' + encodeURIComponent(conversationId)
                  + '/import/' + encodeURIComponent(importId) + '/state';
     var stop = false;
     function _onTick() {
       fetch(endpoint)
         .then(function (r) { return r.json(); })
         .then(function (state) {
-          if (stop) return;
+          if (stop || _conversationId !== conversationId) return;
           if (!state || state.error) {
             _finishImport(false, state && state.error || 'lost connection',
                           inputEl, btnEl, statusEl);
@@ -242,22 +253,28 @@
           _activeImportPoll = setTimeout(_onTick, 1500);
         })
         .catch(function (err) {
-          if (stop) return;
+          if (stop || _conversationId !== conversationId) return;
           _finishImport(false, 'Lost connection: ' + err.message,
                         inputEl, btnEl, statusEl);
         });
     }
     _activeImportPoll = setTimeout(_onTick, 100);
-    // Track the stopper alongside the poll so _finishImport can clear it.
-    _activeImportPoll._stopper = function () { stop = true; };
+    _activeImportStopper = function () { stop = true; };
   }
 
-  function _finishImport(ok, message, inputEl, btnEl, statusEl) {
+  function _cancelImportPoll() {
+    if (_activeImportStopper) {
+      try { _activeImportStopper(); } catch (e) { /* */ }
+      _activeImportStopper = null;
+    }
     if (_activeImportPoll) {
-      try { if (_activeImportPoll._stopper) _activeImportPoll._stopper(); } catch (e) { /* */ }
       try { clearTimeout(_activeImportPoll); } catch (e) { /* */ }
       _activeImportPoll = null;
     }
+  }
+
+  function _finishImport(ok, message, inputEl, btnEl, statusEl) {
+    _cancelImportPoll();
     btnEl.disabled = false;
     inputEl.disabled = false;
     _setImportStatus(statusEl, message, ok ? 'success' : 'error');
@@ -367,9 +384,11 @@
       _renderEntries();
       return Promise.resolve();
     }
-    return fetch('/api/media-library/' + encodeURIComponent(_conversationId))
+    var conversationId = _conversationId;
+    return fetch('/api/media-library/' + encodeURIComponent(conversationId))
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (_conversationId !== conversationId) return;
         _entries = j.entries || [];
         _renderEntries();
       })
@@ -390,6 +409,7 @@
     }
     var fd = new FormData();
     fd.append('file', file, file.name);
+    fd.append('tag', _activeConversationTag());
     return fetch('/api/media-library/' + encodeURIComponent(_conversationId) + '/add',
       { method: 'POST', body: fd })
       .then(function (r) {
@@ -468,6 +488,24 @@
 
   // ── external plumbing ────────────────────────────────────────────────────
 
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    _cancelImportPoll();
+    _conversationId = null;
+    _entries = [];
+    var inputEl = _panelEl && _panelEl.querySelector('[data-role="import-url"]');
+    var btnEl = _panelEl && _panelEl.querySelector('[data-role="import-btn"]');
+    var statusEl = _panelEl && _panelEl.querySelector('[data-role="import-status"]');
+    if (inputEl) {
+      inputEl.value = '';
+      inputEl.disabled = false;
+    }
+    if (btnEl) btnEl.disabled = false;
+    _setImportStatus(statusEl, '', null);
+    _renderEntries();
+    return true;
+  }
+
   function setConversationId(id) {
     _conversationId = id || null;
     if (document.body.classList.contains('pane-mode-video')) {
@@ -486,6 +524,16 @@
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
       if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
 
     _connectCaptureSSE();

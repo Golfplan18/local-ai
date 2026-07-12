@@ -27,17 +27,25 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from collections.abc import Iterable
 
 import yaml
 
-ORA_HOME = os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
+try:
+    from orchestrator import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import context
+    import runtime_paths as _rp  # type: ignore
+
+ORA_HOME = str(_rp.ORA_HOME)
 if ORA_HOME not in sys.path:
     sys.path.insert(0, ORA_HOME)
 
-STAGING_DIR = os.path.expanduser("~/ora/data/extraction-staging/")
-PROMOTED_DIR = os.path.expanduser("~/ora/data/extraction-promoted/")
-VAULT_ENGRAMS = os.path.expanduser("~/Documents/vault/Engrams/")
+STAGING_DIR = os.path.join(_rp.DATA_DIR_STR, "extraction-staging")
+PROMOTED_DIR = os.path.join(_rp.DATA_DIR_STR, "extraction-promoted")
+VAULT_ENGRAMS = str(_rp.VAULT / "Engrams")
 TRUTHY = ("1", "on", "true", "yes")
+_PROMOTION_LOCK = threading.RLock()
 
 
 def _slug(text: str) -> str:
@@ -221,9 +229,15 @@ def _autocommit_promoted(results: list[dict], vault_engrams: str,
     return status
 
 
-def staging_note_to_engram(staging_path: str, *, vault_engrams: str = VAULT_ENGRAMS,
-                           promoted_dir: str = PROMOTED_DIR, index: bool = True,
-                           dry_run: bool = False) -> dict:
+def _staging_note_to_engram_unlocked(
+    staging_path: str,
+    *,
+    vault_engrams: str = VAULT_ENGRAMS,
+    promoted_dir: str = PROMOTED_DIR,
+    index: bool = True,
+    dry_run: bool = False,
+    chromadb_path: str | os.PathLike[str] | None = None,
+) -> dict:
     """Promote one staged note to a vault engram. Returns a dict with src/dest
     (and ``preview`` in dry-run). Raises only on unexpected I/O; the caller
     (runtime pipeline) wraps in try/except so a single bad note can't break the
@@ -245,7 +259,7 @@ def staging_note_to_engram(staging_path: str, *, vault_engrams: str = VAULT_ENGR
         try:
             from orchestrator.tools.knowledge_index import (
                 delete_file_records, get_knowledge_collection, index_file)
-            collection = get_knowledge_collection()
+            collection = get_knowledge_collection(chromadb_path)
             # The session pipeline's chromadb step may have indexed this note
             # under its staging path; that file is about to move, so drop the
             # staging entry (single-record OR chunked) — the engram written
@@ -271,11 +285,71 @@ def staging_note_to_engram(staging_path: str, *, vault_engrams: str = VAULT_ENGR
     return {"src": staging_path, "dest": dest, "indexed": indexed}
 
 
+def staging_note_to_engram(
+    staging_path: str,
+    *,
+    vault_engrams: str = VAULT_ENGRAMS,
+    promoted_dir: str = PROMOTED_DIR,
+    index: bool = True,
+    dry_run: bool = False,
+    chromadb_path: str | os.PathLike[str] | None = None,
+) -> dict:
+    """Promote one note while serializing destination allocation and writes."""
+    with _PROMOTION_LOCK:
+        return _staging_note_to_engram_unlocked(
+            staging_path,
+            vault_engrams=vault_engrams,
+            promoted_dir=promoted_dir,
+            index=index,
+            dry_run=dry_run,
+            chromadb_path=chromadb_path,
+        )
+
+
+def promote_staging_files(
+    staging_paths: Iterable[str | os.PathLike[str]],
+    *,
+    vault_engrams: str | None = None,
+    promoted_dir: str | None = None,
+    index: bool = True,
+    dry_run: bool = False,
+    chromadb_path: str | os.PathLike[str] | None = None,
+) -> dict:
+    """Promote only the explicitly-owned staged paths supplied by one run."""
+    vault_engrams = vault_engrams or VAULT_ENGRAMS
+    promoted_dir = promoted_dir or PROMOTED_DIR
+    paths = sorted({os.path.abspath(os.fspath(path)) for path in staging_paths})
+    results = []
+    with _PROMOTION_LOCK:
+        for path in paths:
+            if not path.endswith(".md") or not os.path.isfile(path):
+                continue
+            try:
+                results.append(staging_note_to_engram(
+                    path,
+                    vault_engrams=vault_engrams,
+                    promoted_dir=promoted_dir,
+                    index=index,
+                    dry_run=dry_run,
+                    chromadb_path=chromadb_path,
+                ))
+            except Exception as exc:  # noqa: BLE001 — one bad note must not abort the batch
+                print(f"[engram_promotion] promote failed for {os.path.basename(path)}: "
+                      f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        autocommit = _autocommit_promoted(
+            results, vault_engrams, dry_run=dry_run,
+        )
+    return {"promoted": len(results), "results": results,
+            "autocommit": autocommit}
+
+
 def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
                         vault_engrams: str | None = None,
                         promoted_dir: str | None = None,
                         index: bool = True, dry_run: bool = False,
-                        limit: int = 0) -> dict:
+                        limit: int = 0,
+                        chromadb_path: str | os.PathLike[str] | None = None,
+                        ) -> dict:
     """Promote every staged note in ``staging_dir`` to a vault engram. Returns
     ``{"promoted": n, "results": [...], "autocommit": {...}}``. A note that
     fails is logged and skipped (never aborts the batch). Dest dirs default to
@@ -284,24 +358,18 @@ def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
     if not os.path.isdir(staging_dir):
         return {"promoted": 0, "results": [],
                 "autocommit": _autocommit_promoted([], vault_engrams, dry_run=dry_run)}
-    promoted_dir = promoted_dir or PROMOTED_DIR
     files = sorted(f for f in os.listdir(staging_dir) if f.endswith(".md"))
     if limit:
         files = files[:limit]
-    results = []
-    for name in files:
-        try:
-            results.append(
-                staging_note_to_engram(os.path.join(staging_dir, name),
-                                       vault_engrams=vault_engrams,
-                                       promoted_dir=promoted_dir,
-                                       index=index, dry_run=dry_run))
-        except Exception as exc:  # noqa: BLE001 — one bad note must not abort the batch
-            print(f"[engram_promotion] promote failed for {name}: "
-                  f"{type(exc).__name__}: {exc}", file=sys.stderr)
-    return {"promoted": len(results), "results": results,
-            "autocommit": _autocommit_promoted(results, vault_engrams, dry_run=dry_run)}
+    return promote_staging_files(
+        (os.path.join(staging_dir, name) for name in files),
+        vault_engrams=vault_engrams,
+        promoted_dir=promoted_dir,
+        index=index,
+        dry_run=dry_run,
+        chromadb_path=chromadb_path,
+    )
 
 
-__all__ = ["staging_note_to_engram", "promote_staging_dir",
+__all__ = ["staging_note_to_engram", "promote_staging_files", "promote_staging_dir",
            "STAGING_DIR", "PROMOTED_DIR", "VAULT_ENGRAMS"]

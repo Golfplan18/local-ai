@@ -12,6 +12,8 @@ import json
 import os
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -63,6 +65,7 @@ class DailyNoteBase(unittest.TestCase):
             mock.patch.object(dn, "CONVERSATIONS_DIR", str(self.convs)),
             mock.patch.object(dn, "SESSIONS_DIR", str(self.sessions)),
             mock.patch.object(dn, "DATA_DIR", str(self.data)),
+            mock.patch.object(dn._rp, "DATA_DIR_STR", str(self.data)),
             mock.patch.dict(os.environ, {"ORA_VAULT_PATH": str(self.vault)}),
         ]
         for p in self.patches:
@@ -76,11 +79,12 @@ class DailyNoteBase(unittest.TestCase):
         (self.convs / name).write_text(
             CHUNK.format(date=date, panel=panel, gist=gist, turn=turn))
 
-    def _session(self, panel, display_name):
+    def _session(self, panel, display_name, tag=""):
         d = self.sessions / panel
         d.mkdir(parents=True, exist_ok=True)
         (d / "conversation.json").write_text(json.dumps(
-            {"conversation_id": panel, "display_name": display_name}))
+            {"conversation_id": panel, "display_name": display_name,
+             "tag": tag}))
 
 
 class ClassifyTimesTests(unittest.TestCase):
@@ -118,6 +122,26 @@ class CollectConversationsTests(DailyNoteBase):
         self.assertEqual(len(convs), 1)
         self.assertEqual(convs[0]["id"], "main")
 
+    def test_private_conversation_is_excluded(self):
+        self._chunk("2026-06-10", "09:15", "private-conv", "Private prompt")
+        self._session("private-conv", "Private title", tag="private")
+        self.assertEqual(dn.collect_conversations("2026-06-10"), [])
+
+    def test_stealth_conversation_is_excluded(self):
+        self._chunk("2026-06-10", "09:15", "stealth-conv", "Stealth prompt")
+        self._session("stealth-conv", "Stealth title", tag="stealth")
+        self.assertEqual(dn.collect_conversations("2026-06-10"), [])
+
+    def test_stealth_chunk_frontmatter_is_excluded_without_envelope(self):
+        (self.convs / "2026-06-10_09-15_stealth.md").write_text(
+            CHUNK.format(
+                date="2026-06-10", panel="stealth-conv",
+                gist="Stealth prompt", turn=1,
+            ).replace("tags:\n", "tags:\n  - stealth\n"),
+            encoding="utf-8",
+        )
+        self.assertEqual(dn.collect_conversations("2026-06-10"), [])
+
 
 class RenderNoteTests(unittest.TestCase):
     def test_full_note_shape(self):
@@ -132,6 +156,8 @@ class RenderNoteTests(unittest.TestCase):
         self.assertIn("[[2026-06-09]] · [[2026-06-11]]", body)
         self.assertIn("## Dialogues", body)
         self.assertIn("**Alpha** — 2 exchanges, 09:15–10:30", body)
+        self.assertIn("<!-- ora-managed-dialogue-summary:", body)
+        self.assertIn('"conversation_id":"a"', body)
         self.assertIn("[[New Note]]", body)
         self.assertIn("[[Old Note]]", body)
         self.assertIn("3× FrameworkComplete", body)
@@ -237,6 +263,207 @@ class GenerateTests(DailyNoteBase):
         res = dn.task_daily_note()
         for attr in ("success", "message", "stats", "alerts", "duration_seconds"):
             self.assertTrue(hasattr(res, attr))
+
+
+class ConversationSummaryLifecycleTests(DailyNoteBase):
+    def _generated_note(self):
+        self._chunk("2026-06-10", "09:15", "conv-a", "First question?")
+        self._session("conv-a", "Alpha planning")
+        result = dn.generate("2026-06-10")
+        self.assertTrue(result.success)
+        return self.vault / "Daily Notes" / "2026-06-10.md"
+
+    def test_delete_removes_only_exact_managed_summary(self):
+        target = self._generated_note()
+        target.write_text(
+            target.read_text() + "\nUser-authored reflection stays.\n",
+            encoding="utf-8",
+        )
+        result = dn.reconcile_conversation_summaries(
+            "conv-a", action="delete", daily_notes_dir=target.parent,
+        )
+        body = target.read_text(encoding="utf-8")
+        self.assertEqual(result["summaries_removed"], 1)
+        self.assertNotIn("Alpha planning", body)
+        self.assertIn("User-authored reflection stays.", body)
+        self.assertIn("conversations: 0", body)
+
+    def test_hide_recomputes_count_from_remaining_dialogue_summaries(self):
+        target = self._generated_note()
+        other = dn._conversation_summary_line({
+            "id": "conv-b", "name": "Beta", "exchanges": 1,
+            "first": "10:00", "last": "10:00", "gist": "Other question",
+        })
+        body = target.read_text(encoding="utf-8")
+        body = body.replace("conversations: 1", "conversations: 2")
+        alpha = next(
+            line for line in body.splitlines()
+            if '"conversation_id":"conv-a"' in line
+        )
+        body = body.replace(
+            alpha,
+            f"{alpha}\n{other}\n- **User-authored line** stays",
+        )
+        target.write_text(body, encoding="utf-8")
+
+        result = dn.reconcile_conversation_summaries(
+            "conv-a", action="hide_private", daily_notes_dir=target.parent,
+        )
+
+        reconciled = target.read_text(encoding="utf-8")
+        self.assertEqual(result["summaries_removed"], 1)
+        self.assertIn("conversations: 1", reconciled)
+        self.assertNotIn("Alpha planning", reconciled)
+        self.assertIn("**Beta**", reconciled)
+        self.assertIn("**User-authored line** stays", reconciled)
+
+    def test_rename_updates_exact_title_and_provenance(self):
+        target = self._generated_note()
+        result = dn.reconcile_conversation_summaries(
+            "conv-a",
+            action="rename",
+            new_display_name="New Alpha",
+            previous_display_name="Alpha planning",
+            daily_notes_dir=target.parent,
+        )
+        body = target.read_text(encoding="utf-8")
+        self.assertEqual(result["summaries_renamed"], 1)
+        self.assertIn("**New Alpha**", body)
+        self.assertNotIn("**Alpha planning**", body)
+        self.assertIn('"display_name":"New Alpha"', body)
+
+    def test_marker_payload_cannot_inject_html_comment_terminator(self):
+        line = dn._conversation_summary_line({
+            "id": "conv-a", "name": "Title --> injected", "exchanges": 1,
+            "first": "09:00", "last": "09:00", "gist": "question",
+        })
+        self.assertEqual(line.count("-->"), 2)  # visible title + real terminator
+        marker = line.split("ora-managed-dialogue-summary:", 1)[1]
+        self.assertEqual(marker.count("-->"), 1)
+        self.assertIn("\\u003e", marker)
+
+    def test_edited_managed_line_is_retained_and_reported(self):
+        target = self._generated_note()
+        body = target.read_text(encoding="utf-8")
+        target.write_text(
+            body.replace("**Alpha planning**", "**User edited title**"),
+            encoding="utf-8",
+        )
+        result = dn.reconcile_conversation_summaries(
+            "conv-a", action="delete", daily_notes_dir=target.parent,
+        )
+        self.assertTrue(result["errors"])
+        self.assertIn("User edited title", target.read_text(encoding="utf-8"))
+
+    def test_exact_legacy_line_migrates_at_runtime(self):
+        target = self._generated_note()
+        body = target.read_text(encoding="utf-8")
+        line = next(
+            item for item in body.splitlines()
+            if "ora-managed-dialogue-summary" in item
+        )
+        visible = line.split(" <!-- ora-managed-dialogue-summary:", 1)[0]
+        target.write_text(body.replace(line, visible), encoding="utf-8")
+        result = dn.reconcile_conversation_summaries(
+            "conv-a",
+            action="rename",
+            new_display_name="Migrated Alpha",
+            previous_display_name="Alpha planning",
+            daily_notes_dir=target.parent,
+        )
+        migrated = target.read_text(encoding="utf-8")
+        self.assertEqual(result["legacy_summaries_migrated"], 1)
+        self.assertIn("**Migrated Alpha**", migrated)
+        self.assertIn("ora-managed-dialogue-summary", migrated)
+
+    def test_edited_legacy_title_is_retained_and_reported_ambiguous(self):
+        target = self._generated_note()
+        body = target.read_text(encoding="utf-8")
+        line = next(
+            item for item in body.splitlines()
+            if "ora-managed-dialogue-summary" in item
+        )
+        visible = line.split(" <!-- ora-managed-dialogue-summary:", 1)[0]
+        target.write_text(
+            body.replace(line, visible.replace("Alpha planning", "User title")),
+            encoding="utf-8",
+        )
+        result = dn.reconcile_conversation_summaries(
+            "conv-a", action="delete", daily_notes_dir=target.parent,
+        )
+        self.assertTrue(result["errors"])
+        self.assertIn("User title", target.read_text(encoding="utf-8"))
+
+    def test_legacy_private_summary_is_still_exactly_deletable(self):
+        target = self._generated_note()
+        body = target.read_text(encoding="utf-8")
+        line = next(
+            item for item in body.splitlines()
+            if "ora-managed-dialogue-summary" in item
+        )
+        visible = line.split(" <!-- ora-managed-dialogue-summary:", 1)[0]
+        target.write_text(body.replace(line, visible), encoding="utf-8")
+        self._session("conv-a", "Alpha planning", tag="private")
+        result = dn.reconcile_conversation_summaries(
+            "conv-a", action="delete", daily_notes_dir=target.parent,
+        )
+        self.assertEqual(result["summaries_removed"], 1)
+        self.assertNotIn("Alpha planning", target.read_text(encoding="utf-8"))
+
+    def test_generate_and_delete_share_one_cross_process_lock(self):
+        collection_started = threading.Event()
+        release_collection = threading.Event()
+        delete_finished = threading.Event()
+        failures: list[BaseException] = []
+
+        conversations = [{
+            "id": "conv-race", "name": "Race title", "exchanges": 1,
+            "first": "09:00", "last": "09:00", "gist": "race",
+        }]
+
+        def blocked_collect(_date):
+            collection_started.set()
+            if not release_collection.wait(timeout=5):
+                raise TimeoutError("test collection release timed out")
+            return conversations
+
+        def run_generate():
+            try:
+                dn.generate("2026-06-10")
+            except BaseException as exc:  # pragma: no cover - assertion aid
+                failures.append(exc)
+
+        def run_delete():
+            try:
+                dn.reconcile_conversation_summaries(
+                    "conv-race", action="delete",
+                    daily_notes_dir=self.vault / "Daily Notes",
+                )
+            except BaseException as exc:  # pragma: no cover - assertion aid
+                failures.append(exc)
+            finally:
+                delete_finished.set()
+
+        with (
+            mock.patch.object(dn, "collect_conversations", side_effect=blocked_collect),
+            mock.patch.object(dn, "collect_vault_activity", return_value=([], [])),
+            mock.patch.object(dn, "collect_ora_activity", return_value=[]),
+        ):
+            generator = threading.Thread(target=run_generate)
+            generator.start()
+            self.assertTrue(collection_started.wait(timeout=3))
+            deleter = threading.Thread(target=run_delete)
+            deleter.start()
+            time.sleep(0.15)
+            self.assertFalse(delete_finished.is_set())
+            release_collection.set()
+            generator.join(timeout=5)
+            deleter.join(timeout=5)
+
+        self.assertEqual(failures, [])
+        self.assertTrue(delete_finished.is_set())
+        target = self.vault / "Daily Notes" / "2026-06-10.md"
+        self.assertNotIn("Race title", target.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

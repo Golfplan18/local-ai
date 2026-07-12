@@ -64,6 +64,7 @@ import os
 import shutil
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 try:
     import runtime_paths as _rp
@@ -133,29 +134,49 @@ def _gzip_file(src: str, dest_gz: str):
 
 
 def _sweep_traces(cutoff_days: int, now: float, dry_run: bool, summary: dict):
-    if cutoff_days <= 0 or not os.path.isdir(TRACES_DIR):
+    if cutoff_days <= 0:
+        return
+    configured = Path(TRACES_DIR)
+    try:
+        traces_root = _rp.safe_owned_subdir(
+            configured.parent, configured.name, create=False,
+        )
+    except Exception as exc:
+        summary["errors"].append(f"trace retention root: {exc}")
+        return
+    if not traces_root.is_dir():
         return
     cutoff = now - cutoff_days * 86400
-    for conv in sorted(os.listdir(TRACES_DIR)):
-        conv_dir = os.path.join(TRACES_DIR, conv)
-        if not os.path.isdir(conv_dir):
+    for conv in sorted(os.listdir(traces_root)):
+        conv_dir = traces_root / conv
+        if conv_dir.is_symlink() or not conv_dir.is_dir():
             continue
-        for turn in sorted(os.listdir(conv_dir)):
-            turn_dir = os.path.join(conv_dir, turn)
-            if not os.path.isdir(turn_dir):
-                continue
-            try:
-                if os.path.getmtime(turn_dir) < cutoff:
-                    if not dry_run:
-                        shutil.rmtree(turn_dir, ignore_errors=True)
-                    summary["traces_removed"] += 1
-            except OSError:
-                continue
         try:
-            if not dry_run and not os.listdir(conv_dir):
-                os.rmdir(conv_dir)
-        except OSError:
-            pass
+            with _rp.conversation_lifecycle_lock(conv):
+                # Recheck after taking the same cross-process lock used by
+                # Delete Forever/privacy mutation.
+                if conv_dir.is_symlink() or not conv_dir.is_dir():
+                    continue
+                for turn in sorted(os.listdir(conv_dir)):
+                    turn_dir = conv_dir / turn
+                    if turn_dir.is_symlink() or not turn_dir.is_dir():
+                        continue
+                    try:
+                        if os.stat(turn_dir, follow_symlinks=False).st_mtime < cutoff:
+                            if not dry_run:
+                                shutil.rmtree(turn_dir)
+                            summary["traces_removed"] += 1
+                    except OSError as exc:
+                        summary["errors"].append(
+                            f"trace retention {turn_dir}: {exc}"
+                        )
+                try:
+                    if not dry_run and not os.listdir(conv_dir):
+                        os.rmdir(conv_dir)
+                except OSError:
+                    pass
+        except Exception as exc:
+            summary["errors"].append(f"trace retention {conv}: {exc}")
 
 
 def _sweep_logs(cutoff_days: int, archive_days: int, now: float,
@@ -206,7 +227,14 @@ def _sweep_logs(cutoff_days: int, archive_days: int, now: float,
             try:
                 if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
                     if not dry_run:
-                        os.unlink(path)
+                        # Delete Forever rewrites these archives in place.
+                        # Share its per-archive sidecar lock so expiry cannot
+                        # unlink a file midway through that rewrite.
+                        with _rp.locked_file(path):
+                            if (not os.path.isfile(path)
+                                    or os.path.getmtime(path) >= cutoff):
+                                continue
+                            os.unlink(path)
                     summary["archives_deleted"] += 1
             except OSError:
                 continue
@@ -281,33 +309,71 @@ def _sweep_jsonl(max_mb: int, dry_run: bool, summary: dict):
         if size <= max_mb * 1024 * 1024:
             continue
         if not dry_run:
-            stem = os.path.basename(path).rsplit(".", 1)[0]
-            tmp = path + ".rotating"
-            os.replace(path, tmp)
-            _gzip_file(tmp, os.path.join(DATA_ARCHIVE_DIR, f"{stem}-{_stamp()}.jsonl.gz"))
-            os.unlink(tmp)
+            # Writers and Delete Forever use this same source sidecar lock.
+            # Recheck after acquisition because another sweep may have won.
+            with _rp.locked_file(path):
+                if not os.path.isfile(path):
+                    continue
+                size = os.path.getsize(path)
+                if size <= max_mb * 1024 * 1024:
+                    continue
+                stem = os.path.basename(path).rsplit(".", 1)[0]
+                tmp = path + ".rotating"
+                archive = os.path.join(
+                    DATA_ARCHIVE_DIR, f"{stem}-{_stamp()}.jsonl.gz"
+                )
+                # Closeout takes the archive-path lock before reading or
+                # replacing a rotated tool-event file. Hold it for creation so
+                # no reader can observe a partially-written gzip stream.
+                with _rp.locked_file(archive):
+                    os.replace(path, tmp)
+                    _gzip_file(tmp, archive)
+                    os.unlink(tmp)
         summary["jsonl_rotated"].append(os.path.basename(path))
         summary["bytes_freed"] += size
 
 
 def _sweep_sessions(cutoff_days: int, now: float, dry_run: bool, summary: dict):
-    if cutoff_days <= 0 or not os.path.isdir(SESSIONS_DIR):
+    if cutoff_days <= 0:
+        return
+    try:
+        sessions_root = _rp.safe_owned_subdir(
+            Path(SESSIONS_DIR), create=False,
+        )
+        if not sessions_root.is_dir():
+            return
+        archive_name = Path(SESSIONS_ARCHIVE_DIR).name
+        archive_root = _rp.safe_owned_subdir(
+            sessions_root, archive_name, create=not dry_run,
+        )
+    except Exception as exc:
+        summary["errors"].append(f"session retention root: {exc}")
         return
     cutoff = now - cutoff_days * 86400
-    os.makedirs(SESSIONS_ARCHIVE_DIR, exist_ok=True)
-    for name in sorted(os.listdir(SESSIONS_DIR)):
-        if name == "archived":
+    for name in sorted(os.listdir(sessions_root)):
+        if name == archive_name:
             continue
-        path = os.path.join(SESSIONS_DIR, name)
-        if not os.path.isdir(path):
+        path = sessions_root / name
+        if path.is_symlink() or not path.is_dir():
             continue
         try:
-            if os.path.getmtime(path) < cutoff:
+            with _rp.conversation_lifecycle_lock(name):
+                if path.is_symlink() or not path.is_dir():
+                    continue
+                if os.stat(path, follow_symlinks=False).st_mtime >= cutoff:
+                    continue
+                destination = archive_root / name
+                if destination.exists() or destination.is_symlink():
+                    raise FileExistsError(
+                        f"archive destination already exists: {destination}"
+                    )
                 if not dry_run:
-                    shutil.move(path, os.path.join(SESSIONS_ARCHIVE_DIR, name))
+                    # Same-filesystem atomic rename: never copy through or
+                    # follow a swapped session/archive symlink.
+                    os.replace(path, destination)
                 summary["sessions_archived"] += 1
-        except OSError:
-            continue
+        except Exception as exc:
+            summary["errors"].append(f"session retention {name}: {exc}")
 
 
 def sweep(dry_run: bool = False, now: float | None = None) -> dict:
@@ -323,6 +389,7 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
         "sessions_archived": 0,
         "bytes_freed": 0,
         "dry_run": dry_run,
+        "errors": [],
     }
     _sweep_traces(_env_int("ORA_RETENTION_TRACES_DAYS", 30), now, dry_run, summary)
     _sweep_logs(_env_int("ORA_RETENTION_LOGS_DAYS", 30),

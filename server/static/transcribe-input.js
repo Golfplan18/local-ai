@@ -17,7 +17,7 @@
  *
  * Public namespace: window.OraTranscribeInput
  *   .init()                          → call once at page load
- *   .acceptFile(file, hostEl)        → start transcription; renders a
+ *   .acceptFile(file, hostEl, opts)  → start transcription; renders a
  *                                       chip into hostEl
  *   .isMediaFile(file)               → boolean: matches audio/video MIME
  *   .getJobs()                       → snapshot for tests
@@ -65,13 +65,27 @@
       +   '</svg>'
       + '</span>'
       + '<div class="transcribe-chip__body">'
-      +   '<div class="transcribe-chip__name">' + (file ? file.name : transcriptionId) + '</div>'
+      +   '<div class="transcribe-chip__name"></div>'
       +   '<div class="transcribe-chip__status">Queued (' + _formatBytes(file ? file.size : 0) + ')</div>'
       +   '<div class="transcribe-chip__bar"><div class="transcribe-chip__fill"></div></div>'
       + '</div>'
       + '<button type="button" class="transcribe-chip__close" aria-label="Dismiss">×</button>';
+    chip.querySelector('.transcribe-chip__name').textContent = file
+      ? file.name
+      : transcriptionId;
     chip.querySelector('.transcribe-chip__close').addEventListener('click', function () {
       try { chip.remove(); } catch (e) { /* ignore */ }
+      // Dismiss is intentionally UI-only: the server may finish the job and
+      // its managed vault derivative. Stop retaining/polling the browser-side
+      // conversation correlation once there is no UI left to update.
+      if (_jobs[transcriptionId]) {
+        _jobs[transcriptionId].file = null;
+        _jobs[transcriptionId].hostEl = null;
+        _jobs[transcriptionId].chip = null;
+      }
+      delete _jobs[transcriptionId];
+      delete _pollLastSeen[transcriptionId];
+      _stopPollingIfIdle();
     });
     if (hostEl) hostEl.appendChild(chip);
     return chip;
@@ -93,7 +107,7 @@
     }
   }
 
-  function _setChipComplete(chip, vaultPath) {
+  function _setChipComplete(chip, vaultPath, vaultStatus, vaultError) {
     if (!chip) return;
     chip.dataset.state = 'complete';
     var nameEl = chip.querySelector('.transcribe-chip__name');
@@ -108,8 +122,13 @@
       link.textContent = 'Saved → ' + vaultPath.replace(/^.*\/vault\//, 'vault/');
       link.title = vaultPath;
       statusEl.appendChild(link);
+    } else if (statusEl && vaultStatus === 'skipped') {
+      statusEl.textContent = 'Transcribed (Stealth — vault save skipped)';
+    } else if (statusEl && vaultStatus === 'failed') {
+      statusEl.textContent = 'Transcribed; vault save failed'
+        + (vaultError ? ': ' + vaultError : '');
     } else if (statusEl) {
-      statusEl.textContent = 'Saved';
+      statusEl.textContent = 'Transcribed';
     }
   }
 
@@ -120,23 +139,45 @@
     if (statusEl) statusEl.textContent = 'Failed: ' + (error || 'unknown error');
   }
 
+  function _reportEnvelopeAvailability(payload, options) {
+    if (!options || !options.conversation_id || !payload) return;
+    if (payload.envelope_available !== true && payload.envelope_created !== true) return;
+    document.dispatchEvent(new CustomEvent('ora:conversation-envelope-created', {
+      detail: {
+        conversation_id: options.conversation_id,
+        source: 'transcribe',
+        envelope_created: !!payload.envelope_created,
+        envelope_available: true,
+      },
+    }));
+  }
+
   // ── lifecycle ────────────────────────────────────────────────────────────
 
-  function acceptFile(file, hostEl) {
+  function acceptFile(file, hostEl, options) {
     if (!isMediaFile(file)) return Promise.reject(new Error('not an audio/video file'));
 
+    options = options || {};
     var fd = new FormData();
     fd.append('file', file, file.name);
+    if (options.conversation_id) fd.append('conversation_id', options.conversation_id);
+    if (options.tag) fd.append('tag', options.tag);
 
     return fetch('/api/transcribe', { method: 'POST', body: fd })
       .then(function (r) {
-        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); });
-        return r.json();
+        return r.json().then(function (j) {
+          _reportEnvelopeAvailability(j, options);
+          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        });
       })
       .then(function (j) {
         _jobs[j.transcription_id] = {
-          file: file,
-          hostEl: hostEl,
+          // The upload is already staged server-side; retaining the browser
+          // File would keep a second content copy alive until page teardown.
+          file: null,
+          hostEl: null,
+          conversation_id: options.conversation_id || '',
           state: 'queued',
           chip: _ensureChip(j.transcription_id, file, hostEl),
         };
@@ -194,7 +235,12 @@
     if (!ids.length) { _stopPollingIfIdle(); return; }
     ids.forEach(function (tid) {
       fetch('/api/transcribe/' + encodeURIComponent(tid) + '/state')
-        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (r) {
+          if (r.status === 404 || r.status === 410) {
+            return { type: 'deleted', transcription_id: tid };
+          }
+          return r.ok ? r.json() : null;
+        })
         .then(function (state) {
           if (!state) return;
           // Skip duplicate dispatches when nothing changed.
@@ -233,13 +279,41 @@
           _setChipStatus(chip, 'Transcribing… ' + Math.round(ev.progress_pct) + '%', 'transcribing');
         }
         break;
+      case 'finalizing':
+        _setChipStatus(chip, 'Finalizing vault note…', 'finalizing');
+        if (job) job.state = 'finalizing';
+        break;
       case 'complete':
-        _setChipComplete(chip, ev.vault_path || '');
-        if (job) job.state = 'complete';
+        _setChipComplete(
+          chip,
+          ev.vault_path || '',
+          ev.vault_status || '',
+          ev.vault_error || ''
+        );
+        if (job) {
+          job.state = 'complete';
+          job.file = null;
+          job.hostEl = null;
+        }
         break;
       case 'failed':
         _setChipFailed(chip, ev.error || '');
-        if (job) job.state = 'failed';
+        if (job) {
+          job.state = 'failed';
+          job.file = null;
+          job.hostEl = null;
+        }
+        break;
+      case 'deleted':
+        if (chip && typeof chip.remove === 'function') chip.remove();
+        if (job) {
+          job.file = null;
+          job.hostEl = null;
+          job.chip = null;
+        }
+        delete _jobs[tid];
+        delete _pollLastSeen[tid];
+        _stopPollingIfIdle();
         break;
       default:
         break;
@@ -251,6 +325,22 @@
   function init() {
     _connectSSE();
   }
+
+  document.addEventListener('ora:conversation-lifecycle-completed', function (event) {
+    var detail = event && event.detail || {};
+    if (detail.action !== 'delete-forever' || !detail.conversation_id) return;
+    Object.keys(_jobs).forEach(function (tid) {
+      var job = _jobs[tid];
+      if (!job || job.conversation_id !== detail.conversation_id) return;
+      if (job.chip && typeof job.chip.remove === 'function') job.chip.remove();
+      job.file = null;
+      job.hostEl = null;
+      job.chip = null;
+      delete _jobs[tid];
+      delete _pollLastSeen[tid];
+    });
+    _stopPollingIfIdle();
+  });
 
   root.OraTranscribeInput = {
     init: init,

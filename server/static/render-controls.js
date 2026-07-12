@@ -43,6 +43,7 @@
   var _renderBtnEl = null;           // the Render button in the timeline ruler row
   var _ctxMenuEl = null;
   var _backgroundPillEl = null;      // mini pill shown when modal is dismissed mid-render
+  var _stateEpoch = 0;               // invalidates late responses after deletion/navigation
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -158,23 +159,32 @@
     _activePreset = presetKey;
     _lastUsedPreset = presetKey;
     _autoBackgroundChecked = false;
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
     _showProgressModal(presetKey);
-    fetch('/api/render/' + encodeURIComponent(_conversationId), {
+    fetch('/api/render/' + encodeURIComponent(conversationId), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: presetKey }),
+      body: JSON.stringify({
+        preset: presetKey,
+        tag: (root.OraConversation
+              && typeof root.OraConversation.getActiveTag === 'function')
+          ? (root.OraConversation.getActiveTag() || '') : '',
+      }),
     })
       .then(function (r) {
         if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); });
         return r.json();
       })
       .then(function (j) {
+        if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
         _activeRenderId = j.render_id;
         _setModalStatus('Preparing…', 'preparing');
         // V3 Backlog 2A Chunk 5 — start polling now that we have an id.
         _ensurePolling();
       })
       .catch(function (err) {
+        if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
         _setModalStatus('Failed to start: ' + err.message, 'failed');
         _showError('Failed to start render: ' + err.message);
         _hideProgressModal();
@@ -411,16 +421,29 @@
     _pollLastSeen = '';
   }
 
+  function _afterCurrentEpoch(callback, delayMs) {
+    var epoch = _stateEpoch;
+    setTimeout(function () {
+      if (_stateEpoch === epoch) callback();
+    }, delayMs);
+  }
+
   function _pollOnce() {
     if (!_activeRenderId) { _stopPolling(); return; }
-    fetch('/api/render/' + encodeURIComponent(_activeRenderId) + '/state')
+    var renderId = _activeRenderId;
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
+    fetch('/api/render/' + encodeURIComponent(renderId) + '/state')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (state) {
+        if (_stateEpoch !== requestEpoch
+            || _activeRenderId !== renderId
+            || _conversationId !== conversationId) return;
         if (!state) return;
         var key = state.type + ':' + (state.progress_pct || 0);
         if (_pollLastSeen === key) return;
         _pollLastSeen = key;
-        state.render_id = _activeRenderId;
+        state.render_id = renderId;
         _handleEvent(state);
         // Notify preview-monitor.js (which used to listen on the SSE
         // stream directly) so it can refresh proxy frames on render
@@ -494,7 +517,7 @@
           _backgroundPillEl.dataset.state = 'complete';
           var bgText = _backgroundPillEl.querySelector('[data-role="bg-text"]');
           if (bgText) bgText.textContent = 'Render saved';
-          setTimeout(_removeBackgroundPill, 4000);
+          _afterCurrentEpoch(_removeBackgroundPill, 4000);
         }
         break;
       case 'failed':
@@ -505,7 +528,7 @@
         break;
       case 'cancelled':
         _setModalStatus('Cancelled.', 'cancelled');
-        setTimeout(_hideProgressModal, 800);
+        _afterCurrentEpoch(_hideProgressModal, 800);
         _removeBackgroundPill();
         _activeRenderId = null;
         break;
@@ -537,8 +560,28 @@
 
   // ── external plumbing ────────────────────────────────────────────────────
 
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    _stateEpoch += 1;
+    _stopPolling();
+    _conversationId = null;
+    _activeRenderId = null;
+    _activePreset = null;
+    _autoBackgroundChecked = false;
+    if (_modalEl) {
+      try { _modalEl.remove(); } catch (e) { /* ignore */ }
+      _modalEl = null;
+    }
+    _removeBackgroundPill();
+    _hideErrorPopup();
+    _closeMenu();
+    return true;
+  }
+
   function setConversationId(id) {
-    _conversationId = id || null;
+    var next = id || null;
+    if (_conversationId !== next) _stateEpoch += 1;
+    _conversationId = next;
   }
 
   // Cmd+Shift+E (E for export). In-page only — same constraint as the
@@ -571,6 +614,16 @@
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
       if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
     document.addEventListener('keydown', _onKeydown, true);
 

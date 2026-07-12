@@ -92,6 +92,7 @@ OLLAMA_URL = EMBEDDING_BASE_URL if EMBEDDING_PROVIDER == "ollama" else _DEFAULT_
 EMBEDDING_FUNCTION_NAME = (_embedder_cfg.get("function_name") or "").strip() or None
 
 COLLECTIONS = {**_DEFAULT_COLLECTIONS, **(_CONFIG.get("collections") or {})}
+COLLECTION_HISTORY = _CONFIG.get("collection_history") or {}
 
 
 def resolve_collection(logical: str) -> str:
@@ -100,6 +101,87 @@ def resolve_collection(logical: str) -> str:
     Unknown logical names pass through unchanged.
     """
     return COLLECTIONS.get(logical, logical)
+
+
+def resolve_collection_copies(logical: str) -> tuple[str, ...]:
+    """Return active then retired physical names for one logical corpus.
+
+    Migration history is machine-specific and therefore lives beside the
+    active mapping in ``chromadb.json``.  Lifecycle callers can mutate every
+    rollback-visible copy without hardcoding version suffixes or model names.
+    """
+    active = resolve_collection(logical)
+    configured = COLLECTION_HISTORY.get(logical) or []
+    if isinstance(configured, str):
+        configured = [configured]
+    if not isinstance(configured, list):
+        configured = []
+    ordered: list[str] = []
+    for name in [active, *configured]:
+        if isinstance(name, str) and name and name not in ordered:
+            ordered.append(name)
+    return tuple(ordered)
+
+
+def _listed_collection_name_and_metadata(value: Any) -> tuple[str, dict]:
+    if isinstance(value, str):
+        return value, {}
+    name = getattr(value, "name", "")
+    metadata = getattr(value, "metadata", None)
+    return (
+        name if isinstance(name, str) else "",
+        metadata if isinstance(metadata, dict) else {},
+    )
+
+
+def discover_collection_copies(client, logical: str) -> tuple[str, ...]:
+    """Discover configured and legacy physical copies of a logical corpus.
+
+    New collections carry explicit logical provenance.  For installations
+    predating that metadata, candidates are assigned to the longest matching
+    configured/default physical-name family (``<base>`` or ``<base>_...``).
+    Hyphenated descendants require explicit provenance/config because they may
+    be distinct logical corpora (for example, ``knowledge-graph``).
+    Longest-family assignment prevents the conversations
+    corpus from claiming the more specific conversations-incognito corpus.
+    """
+    ordered = list(resolve_collection_copies(logical))
+    listed = list(client.list_collections())
+
+    family_roots = {
+        key: {
+            value
+            for value in (
+                _DEFAULT_COLLECTIONS.get(key),
+                COLLECTIONS.get(key),
+            )
+            if isinstance(value, str) and value
+        }
+        for key in set(_DEFAULT_COLLECTIONS) | set(COLLECTIONS)
+    }
+
+    for item in listed:
+        name, metadata = _listed_collection_name_and_metadata(item)
+        if not name:
+            continue
+        declared = (
+            metadata.get("ora:logical_collection")
+            or metadata.get("ora_logical_collection")
+            or metadata.get("logical_collection")
+        )
+        belongs = declared == logical
+        if not belongs and not declared:
+            matches: list[tuple[int, str]] = []
+            for candidate_logical, roots in family_roots.items():
+                for root in roots:
+                    if name == root or name.startswith(root + "_"):
+                        matches.append((len(root), candidate_logical))
+            if matches:
+                matches.sort(reverse=True)
+                belongs = matches[0][1] == logical
+        if belongs and name not in ordered:
+            ordered.append(name)
+    return tuple(ordered)
 
 
 # ---------------------------------------------------------------------------
@@ -511,9 +593,11 @@ def assert_embedding_ready(*, raise_on_error: bool = False) -> tuple[bool, list[
 
 def get_or_create_collection(client, name: str, *, metadata: Optional[dict] = None):
     """Idempotent collection accessor with Ora's active embedding function."""
+    collection_metadata = dict(metadata or {"hnsw:space": "cosine"})
+    collection_metadata.setdefault("ora:logical_collection", name)
     return client.get_or_create_collection(
         name=resolve_collection(name),
-        metadata=metadata or {"hnsw:space": "cosine"},
+        metadata=collection_metadata,
         embedding_function=get_embedding_function(),
     )
 
@@ -621,7 +705,10 @@ __all__ = [
     "EMBEDDING_BASE_URL",
     "OLLAMA_URL",
     "COLLECTIONS",
+    "COLLECTION_HISTORY",
     "resolve_collection",
+    "resolve_collection_copies",
+    "discover_collection_copies",
     "embed_texts",
     "get_embedding_function",
     "check_ollama_available",

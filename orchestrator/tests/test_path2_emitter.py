@@ -24,6 +24,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -35,6 +36,9 @@ from orchestrator.tools.path2_emitter import (  # noqa: E402
     Pair,
     pairs_from_messages,
     emit_path2_chunks,
+)
+from orchestrator.historical.path2_orchestrator import (  # noqa: E402
+    historical_conversation_id,
 )
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
@@ -135,13 +139,19 @@ class TestEmitPath2Chunks(unittest.TestCase):
             raw_path=self.raw_path,
             conversations_dir=self.conv_dir,
             chromadb_path=self.chroma_path,
+            manifest_path=os.path.join(
+                self.tmpdir, "data", "conversation-manifest.jsonl",
+            ),
             **kwargs,
         )
 
-    def _read_chroma(self, conversation_id="conv-historical-001"):
+    def _read_chroma(self, conversation_id=None):
         import chromadb
         client = chromadb.PersistentClient(path=self.chroma_path)
         col = client.get_collection("conversations")
+        conversation_id = conversation_id or historical_conversation_id(
+            self.raw_path
+        )
         return col.get(where={"conversation_id": conversation_id})
 
     def test_emits_one_chunk_per_pair(self):
@@ -173,6 +183,59 @@ class TestEmitPath2Chunks(unittest.TestCase):
         self.assertNotIn("session_id:", body)
         # Historical date in YAML.
         self.assertIn("date created: 2024-06-15", body)
+        self.assertIn(
+            '<!-- ora-conversation-id: "'
+            + historical_conversation_id(self.raw_path)
+            + '" -->',
+            body,
+        )
+
+    def test_index_failure_still_leaves_exact_delete_recovery(self):
+        class FailingCollection:
+            def add(self, **_kwargs):
+                raise RuntimeError("synthetic indexing failure")
+
+        from orchestrator import conversation_closeout, embedding, runtime_paths
+        from chromadb.errors import NotFoundError
+
+        data = Path(self.tmpdir) / "data"
+        with mock.patch.object(
+            embedding, "get_or_create_collection",
+            return_value=FailingCollection(),
+        ):
+            emitted = self._emit(
+                messages=SAMPLE_MESSAGES[:2], finalize=False, tag="stealth",
+            )
+        chunks = list(Path(self.conv_dir).glob("*.md"))
+        self.assertEqual(emitted["chunks_written"], 1)
+        self.assertEqual(emitted["chunks_indexed"], 0)
+        self.assertEqual(len(chunks), 1)
+        self.assertIn(
+            '<!-- ora-conversation-id: "'
+            + historical_conversation_id(self.raw_path)
+            + '" -->',
+            chunks[0].read_text(encoding="utf-8"),
+        )
+
+        with (
+            mock.patch.object(runtime_paths, "DATA_DIR_STR", str(data)),
+            mock.patch("chromadb.PersistentClient", return_value=object()),
+            mock.patch.object(
+                embedding, "get_collection",
+                side_effect=NotFoundError("collection absent"),
+            ),
+        ):
+            result = conversation_closeout._purge_stealth(
+                historical_conversation_id(self.raw_path),
+                sessions_root=Path(self.tmpdir) / "sessions",
+                conversations_dir=Path(self.conv_dir),
+                conversations_raw=Path(self.tmpdir) / "raw",
+                chromadb_path=Path(self.chroma_path),
+                vault_sessions=Path(self.tmpdir) / "vault" / "Sessions",
+            )
+        self.assertFalse(chunks[0].exists())
+        self.assertTrue(Path(self.raw_path).exists())
+        self.assertIn(str(chunks[0]), result["deleted"]["chunk_files"])
 
     def test_chromadb_metadata_uses_historical_temporal_fields(self):
         self._emit()
@@ -273,7 +336,8 @@ class TestEmitPath2Chunks(unittest.TestCase):
         records = self._read_chroma()
         for meta in records["metadatas"]:
             self.assertTrue(meta["chunk_path"].endswith(".md"))
-            self.assertEqual(meta["raw_path"], self.raw_path)
+            self.assertEqual(meta["raw_path"], "")
+            self.assertEqual(meta["source_path"], self.raw_path)
 
     def test_filename_collision_handled(self):
         # Two pairs with same minute + same first user keyword would
@@ -294,6 +358,24 @@ class TestEmitPath2Chunks(unittest.TestCase):
         self.assertEqual(len(files), 2)
         # All filenames distinct.
         self.assertEqual(len(set(files)), 2)
+
+    def test_preexisting_unowned_filename_is_never_overwritten(self):
+        Path(self.conv_dir).mkdir(parents=True, exist_ok=True)
+        expected = (
+            Path(self.conv_dir)
+            / "2024-06-15_10-00_consciousness-consciousness-subjective-experience.md"
+        )
+        expected.write_text("user-owned collision\n", encoding="utf-8")
+        result = self._emit(messages=SAMPLE_MESSAGES[:2], finalize=False)
+        self.assertEqual(expected.read_text(encoding="utf-8"),
+                         "user-owned collision\n")
+        self.assertEqual(result["chunks_written"], 1)
+        emitted = [
+            path for path in Path(self.conv_dir).glob("*.md")
+            if path != expected
+        ]
+        self.assertEqual(len(emitted), 1)
+        self.assertTrue(emitted[0].name.endswith("-pair001.md"))
 
 
 if __name__ == "__main__":

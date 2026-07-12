@@ -806,11 +806,8 @@ def record(event: dict) -> None:
                                                            errors="replace")
         path = _sink_path(ctx)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
-        try:
-            os.write(fd, encoded + b"\n")
-        finally:
-            os.close(fd)
+        with _rp.locked_file(path):
+            _rp.append_bytes_no_follow(path, encoded + b"\n", mode=0o644)
     except Exception as e:
         _note_failure(e, "record")
 

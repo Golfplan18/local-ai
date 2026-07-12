@@ -132,6 +132,26 @@ class TestPromoteStagingDir(unittest.TestCase):
         self.assertEqual(len([f for f in os.listdir(vault) if f.endswith(".md")]), 3)
         self.assertEqual(len([f for f in os.listdir(staging) if f.endswith(".md")]), 0)
 
+    def test_explicit_file_batch_leaves_other_conversations_staged(self):
+        tmp = tempfile.mkdtemp()
+        staging = os.path.join(tmp, "staging")
+        vault = os.path.join(tmp, "Engrams")
+        promoted = os.path.join(tmp, "promoted")
+        os.makedirs(staging)
+        owned = os.path.join(staging, "owned.md")
+        sibling = os.path.join(staging, "sibling.md")
+        for path, title in ((owned, "owned"), (sibling, "sibling")):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(STAGED.replace("A vetted claim about something", title))
+
+        res = ep.promote_staging_files(
+            [owned], vault_engrams=vault, promoted_dir=promoted, index=False,
+        )
+
+        self.assertEqual(res["promoted"], 1)
+        self.assertFalse(os.path.exists(owned))
+        self.assertTrue(os.path.exists(sibling))
+
     def test_autocommit_commits_and_pushes_promoted_files(self):
         tmp = tempfile.mkdtemp()
         repo = os.path.join(tmp, "vault")
@@ -225,18 +245,21 @@ class TestPromotionIndexing(unittest.TestCase):
         from orchestrator.tools import knowledge_index
 
         fake = _FakeCollection()
+        configured = os.path.join(self.tmp, "configured-chroma")
         with mock.patch.object(knowledge_index, "get_knowledge_collection",
-                               return_value=fake), \
+                               return_value=fake) as get_collection, \
              mock.patch.object(knowledge_index, "_nomic_embed",
                                return_value=None):
             r = ep.staging_note_to_engram(
                 self.note, vault_engrams=self.vault,
-                promoted_dir=self.promoted, index=True)
+                promoted_dir=self.promoted, index=True,
+                chromadb_path=configured)
 
         self.assertTrue(r["indexed"])
         self.assertIn(os.path.abspath(r["dest"]), fake.added_ids)
         # Staging-path entry dropped so the moved file leaves no dangling id.
         self.assertIn(os.path.abspath(self.note), fake.deleted_ids)
+        get_collection.assert_called_once_with(configured)
 
 
 class _FakeChunkedCollection:

@@ -40,21 +40,37 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
+
 # ── Module configuration ─────────────────────────────────────────────────────
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 WHISPER_MODELS_DIR = WORKSPACE_ROOT / "models" / "whisper"
 WHISPER_BINARY = shutil.which("whisper-cli") or "/opt/homebrew/bin/whisper-cli"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 
 DEFAULT_MODEL_FILENAME = "ggml-large-v3.bin"
 DEFAULT_LANGUAGE = "auto"  # whisper auto-detect
+# Provisional tuning constants: recalibrate from observed provider/process
+# shutdown latency. They bound Delete Forever without silently declaring a
+# still-running worker clean; timeout residue is returned as a loud error.
+PROCESS_CANCEL_GRACE_SECONDS = 3.0
+REMOTE_REQUEST_TIMEOUT_SECONDS = 30.0
+REMOTE_MAX_RETRIES = 0
+WORKER_JOIN_GRACE_SECONDS = REMOTE_REQUEST_TIMEOUT_SECONDS + 5.0
 
 STATE_QUEUED = "queued"
 STATE_EXTRACTING = "extracting"  # ffmpeg pulling audio out of video / normalizing
 STATE_TRANSCRIBING = "transcribing"
 STATE_COMPLETE = "complete"
 STATE_FAILED = "failed"
+
+
+class _TranscriptionCancelled(Exception):
+    """Expected internal control flow after a successfully reaped cancel."""
 
 
 # ── Per-transcription state ──────────────────────────────────────────────────
@@ -64,6 +80,8 @@ class _Transcription:
     transcription_id: str
     source_path: Path
     options: dict
+    conversation_id: str = ""
+    tag: str = ""
     state: str = STATE_QUEUED
     started_at: float = 0.0
     progress_pct: float = 0.0
@@ -78,6 +96,20 @@ class _Transcription:
     # surfaced via get_state for UI transparency. 0 when filtering is
     # disabled or no segments matched.
     hallucinations_filtered: int = 0
+    process: subprocess.Popen | None = field(default=None, repr=False)
+    worker: threading.Thread | None = field(default=None, repr=False)
+    temp_dir: Path | None = field(default=None, repr=False)
+    _deleted: bool = field(default=False, repr=False)
+    _operation_lock: threading.RLock = field(
+        default_factory=threading.RLock, repr=False,
+    )
+    _done_event: threading.Event = field(
+        default_factory=threading.Event, repr=False,
+    )
+    _cancel_event: threading.Event = field(
+        default_factory=threading.Event, repr=False,
+    )
+    _cleanup_errors: list[str] = field(default_factory=list, repr=False)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -198,7 +230,49 @@ def _resolve_model_path(options: dict) -> Path:
     )
 
 
-def _extract_to_wav(source: Path, target_wav: Path) -> None:
+def _terminate_and_reap(process: subprocess.Popen) -> None:
+    """Bounded terminate→kill sequence shared by every cancellation race."""
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=PROCESS_CANCEL_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=PROCESS_CANCEL_GRACE_SECONDS)
+
+
+def _atomic_write_text_no_follow(path: Path, text: str) -> None:
+    """Atomically replace a sidecar without following a planted symlink."""
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(tmp, flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            fd = -1
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # os.replace replaces a symlink directory entry itself; it never
+        # follows the target. The random exclusive temp prevents collision.
+        os.replace(tmp, path)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _extract_to_wav(
+    source: Path,
+    target_wav: Path,
+    *,
+    register_process: Callable[[subprocess.Popen], bool] | None = None,
+) -> None:
     """Run ffmpeg to produce a 16 kHz mono wav suitable for whisper-cli."""
     argv = [
         FFMPEG_BINARY,
@@ -211,11 +285,17 @@ def _extract_to_wav(source: Path, target_wav: Path) -> None:
         "-c:a", "pcm_s16le",
         str(target_wav),
     ]
-    result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode != 0:
+    process = subprocess.Popen(
+        argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if register_process is not None and not register_process(process):
+        _terminate_and_reap(process)
+        raise _TranscriptionCancelled
+    stdout, stderr = process.communicate()
+    if process.returncode != 0:
         raise RuntimeError(
-            f"ffmpeg extract failed (rc={result.returncode}): "
-            f"{result.stderr.decode('utf-8', 'replace')[-500:]}"
+            f"ffmpeg extract failed (rc={process.returncode}): "
+            f"{stderr.decode('utf-8', 'replace')[-500:]}"
         )
 
 
@@ -226,6 +306,7 @@ class TranscriptionManager:
 
     def __init__(self) -> None:
         self._jobs: dict[str, _Transcription] = {}
+        self._deleted_conversations: set[str] = set()
         self._lock = threading.Lock()
         self._subscribers: list[Callable[[dict], None]] = []
         WHISPER_MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -259,6 +340,8 @@ class TranscriptionManager:
     def start(self, source_path: str | Path, options: dict | None = None) -> str:
         """Begin a transcription. Runs in a background thread; returns immediately."""
         opts = dict(options or {})
+        conversation_id = str(opts.pop("_conversation_id", "") or "").strip()
+        tag = str(opts.pop("_conversation_tag", "") or "").strip()
         src = Path(source_path)
         if not src.exists():
             raise FileNotFoundError(f"source not found: {src}")
@@ -268,25 +351,42 @@ class TranscriptionManager:
             transcription_id=transcription_id,
             source_path=src,
             options=opts,
+            conversation_id=conversation_id,
+            tag=tag,
             started_at=time.time(),
         )
         with self._lock:
+            if (conversation_id
+                    and conversation_id.casefold() in self._deleted_conversations):
+                raise RuntimeError("conversation was permanently deleted")
             self._jobs[transcription_id] = job
 
         self._broadcast({
             "type": "queued",
             "transcription_id": transcription_id,
             "source_path": str(src),
+            "conversation_id": conversation_id,
+            "tag": tag,
         })
 
         # Run in a background thread so the API call returns immediately.
         t = threading.Thread(
-            target=self._run,
+            target=self._worker_entry,
             args=(job,),
             name=f"transcribe-{transcription_id}",
             daemon=True,
         )
-        t.start()
+        with job._operation_lock:
+            job.worker = t
+        try:
+            t.start()
+        except Exception:
+            with self._lock:
+                self._jobs.pop(transcription_id, None)
+            with job._operation_lock:
+                job.worker = None
+                job._done_event.set()
+            raise
         return transcription_id
 
     def get_state(self, transcription_id: str) -> dict:
@@ -294,23 +394,139 @@ class TranscriptionManager:
             job = self._jobs.get(transcription_id)
         if not job:
             raise KeyError(f"unknown transcription_id: {transcription_id}")
-        return {
-            "transcription_id": job.transcription_id,
-            "source_path": str(job.source_path),
-            "state": job.state,
-            "progress_pct": job.progress_pct,
-            "language": job.language,
-            "duration_ms": job.duration_ms,
-            "segment_count": len(job.segments),
-            "hallucinations_filtered": job.hallucinations_filtered,
-            "plain_text": job.plain_text,
-            "last_error": job.last_error,
-            "output_json_path": str(job.output_json_path) if job.output_json_path else None,
-        }
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                raise KeyError(f"unknown transcription_id: {transcription_id}")
+            provider = (job.options.get("provider") or "whisper_local").lower()
+            if provider == "openrouter":
+                transcription_model = "openrouter:" + str(
+                    job.options.get("openrouter_model") or "unspecified"
+                )
+            elif provider == "openrouter_audio":
+                transcription_model = "openrouter-audio:" + str(
+                    job.options.get("openrouter_audio_model") or "unspecified"
+                )
+            else:
+                transcription_model = "whisper-local:" + str(
+                    job.options.get("_resolved_model")
+                    or job.options.get("model")
+                    or DEFAULT_MODEL_FILENAME
+                )
+            return {
+                "transcription_id": job.transcription_id,
+                "source_path": str(job.source_path),
+                "state": job.state,
+                "progress_pct": job.progress_pct,
+                "language": job.language,
+                "duration_ms": job.duration_ms,
+                "segment_count": len(job.segments),
+                "hallucinations_filtered": job.hallucinations_filtered,
+                "last_error": job.last_error,
+                "output_json_path": (
+                    str(job.output_json_path) if job.output_json_path else None
+                ),
+                "conversation_id": job.conversation_id,
+                "tag": job.tag,
+                "provider": provider,
+                "transcription_model": transcription_model,
+            }
+
+    def forget_conversation(self, conversation_id: str) -> dict:
+        """Cancel, tombstone, and forget every transcription for a Dialogue."""
+        identity = str(conversation_id or "").strip().casefold()
+        if not identity:
+            raise ValueError("conversation_id required")
+        with self._lock:
+            self._deleted_conversations.add(identity)
+            jobs = [
+                job for job in self._jobs.values()
+                if job.conversation_id.casefold() == identity
+            ]
+            for job in jobs:
+                self._jobs.pop(job.transcription_id, None)
+        errors: list[str] = []
+        # Signal every job before waiting on any one worker. Otherwise a slow
+        # first provider could leave a later queued job free to dispatch its
+        # source to a remote provider after Delete Forever had begun.
+        for job in jobs:
+            job._cancel_event.set()
+        for job in jobs:
+            with job._operation_lock:
+                job._deleted = True
+                process = job.process
+                worker = job.worker
+                self._clear_deleted_job(job)
+                if process is not None and process.poll() is None:
+                    try:
+                        _terminate_and_reap(process)
+                    except Exception as exc:
+                        errors.append(f"{job.transcription_id}: {exc}")
+            # Delete Forever is a completion barrier, not a cancellation
+            # request. Wait until the worker has exited and its conversation-
+            # owned work directory has been removed. Remote provider calls
+            # cannot be killed safely from Python; they complete under the
+            # operation lock and are then scrubbed before this join returns.
+            if (worker is not None and worker is not threading.current_thread()
+                    and callable(getattr(worker, "is_alive", None))
+                    and worker.is_alive()):
+                worker.join(timeout=WORKER_JOIN_GRACE_SECONDS)
+            if (worker is not None and callable(getattr(worker, "is_alive", None))
+                    and worker.is_alive()):
+                errors.append(
+                    f"{job.transcription_id}: worker still running after "
+                    f"{WORKER_JOIN_GRACE_SECONDS:.0f}s provisional cleanup grace",
+                )
+            elif not job._done_event.is_set() and worker is not None:
+                errors.append(
+                    f"{job.transcription_id}: worker did not confirm cleanup",
+                )
+            with job._operation_lock:
+                self._clear_deleted_job(job)
+                errors.extend(job._cleanup_errors)
+                job._cleanup_errors.clear()
+        return {"transcriptions": len(jobs), "errors": errors}
+
+    @staticmethod
+    def _job_deleted(job: _Transcription) -> bool:
+        if job._cancel_event.is_set():
+            return True
+        with job._operation_lock:
+            return job._deleted
+
+    @staticmethod
+    def _clear_deleted_job(job: _Transcription) -> None:
+        with job._operation_lock:
+            job.segments.clear()
+            job.plain_text = ""
+            job.last_stderr_tail = ""
+            # Options can include the user's arbitrary audio-understanding
+            # question. Once cancellation is set no provider path may use it,
+            # so remove that second in-memory content copy as part of purge.
+            job.options.clear()
+            job.language = None
+            job.duration_ms = None
+            job.progress_pct = 0.0
+            job.hallucinations_filtered = 0
+            job.last_error = None
+            job.output_json_path = None
 
     # ── runner ───────────────────────────────────────────────────────────────
 
+    def _worker_entry(self, job: _Transcription) -> None:
+        try:
+            self._run(job)
+        finally:
+            with job._operation_lock:
+                job.process = None
+                job.temp_dir = None
+                job.worker = None
+                if job._deleted or job._cancel_event.is_set():
+                    self._clear_deleted_job(job)
+                job._done_event.set()
+
     def _run(self, job: _Transcription) -> None:
+        if self._job_deleted(job):
+            return
         provider = (job.options.get("provider") or "whisper_local").lower()
         if provider == "openrouter":
             self._run_openrouter(job)
@@ -324,6 +540,14 @@ class TranscriptionManager:
         except FileNotFoundError as e:
             self._fail(job, f"missing model: {e}")
             return
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                return
+            # The requested local model may be absent, in which case
+            # _resolve_model_path deliberately falls back to the installed
+            # default. Persist the resolved filename so the vault note reports
+            # what actually ran instead of the unavailable request.
+            job.options["_resolved_model"] = model_path.name
 
         # Step 1 — extract to wav
         job.state = STATE_EXTRACTING
@@ -331,13 +555,50 @@ class TranscriptionManager:
             "type": "extracting",
             "transcription_id": job.transcription_id,
         })
-        with tempfile.TemporaryDirectory(prefix="ora-whisper-") as tmpdir:
+        work_parent = job.source_path.parent if job.conversation_id else None
+        with tempfile.TemporaryDirectory(
+            prefix=f".ora-whisper-{job.transcription_id}-",
+            dir=str(work_parent) if work_parent else None,
+        ) as tmpdir:
             tmpdir_path = Path(tmpdir)
+            with job._operation_lock:
+                if job._deleted:
+                    return
+                job.temp_dir = tmpdir_path
             wav_path = tmpdir_path / "input.wav"
+            extract_process: subprocess.Popen | None = None
+
+            def register_extract_process(process: subprocess.Popen) -> bool:
+                nonlocal extract_process
+                extract_process = process
+                with job._operation_lock:
+                    if job._deleted or job._cancel_event.is_set():
+                        return False
+                    job.process = process
+                    return True
+
             try:
-                _extract_to_wav(job.source_path, wav_path)
+                _extract_to_wav(
+                    job.source_path,
+                    wav_path,
+                    register_process=register_extract_process,
+                )
+            except _TranscriptionCancelled:
+                return
             except Exception as e:
+                if self._job_deleted(job):
+                    with job._operation_lock:
+                        job._cleanup_errors.append(
+                            f"{job.transcription_id}: extraction cleanup: {e}",
+                        )
+                    return
                 self._fail(job, str(e))
+                return
+            finally:
+                with job._operation_lock:
+                    if job.process is extract_process:
+                        job.process = None
+            if self._job_deleted(job):
                 return
 
             # Step 2 — transcribe
@@ -370,6 +631,11 @@ class TranscriptionManager:
                     stderr=subprocess.PIPE,
                     bufsize=0,  # unbuffered binary; the drainer reads line-by-line
                 )
+                with job._operation_lock:
+                    if job._deleted or job._cancel_event.is_set():
+                        _terminate_and_reap(proc)
+                        return
+                    job.process = proc
 
                 # Drain stderr in a thread so progress updates flow live.
                 def _drain():
@@ -383,7 +649,7 @@ class TranscriptionManager:
                             if len(tail) > 80:
                                 tail.pop(0)
                             m = _PROGRESS_RE.search(line)
-                            if m:
+                            if m and not self._job_deleted(job):
                                 pct = float(m.group(1))
                                 job.progress_pct = pct
                                 self._broadcast({
@@ -401,6 +667,10 @@ class TranscriptionManager:
                 # may print results to stdout even with -np set).
                 stdout_data, _ = proc.communicate()
                 t_err.join(timeout=2.0)
+                with job._operation_lock:
+                    job.process = None
+                    if job._deleted or job._cancel_event.is_set():
+                        return
 
                 if proc.returncode != 0:
                     job.last_stderr_tail = "".join(tail)[-1500:]
@@ -410,6 +680,12 @@ class TranscriptionManager:
                     )
                     return
             except Exception as e:
+                if self._job_deleted(job):
+                    with job._operation_lock:
+                        job._cleanup_errors.append(
+                            f"{job.transcription_id}: whisper cleanup: {e}",
+                        )
+                    return
                 self._fail(job, f"whisper-cli exec: {e}")
                 return
 
@@ -430,25 +706,36 @@ class TranscriptionManager:
             # Persist the JSON next to the source for posterity (so the user
             # can re-run downstream processing without re-transcribing).
             persistent_json = job.source_path.with_suffix(".whisper.json")
-            try:
-                persistent_json.write_text(json.dumps(whisper_json, indent=2), encoding="utf-8")
-                job.output_json_path = persistent_json
-            except Exception:
-                # Non-fatal. Use the in-memory data.
-                job.output_json_path = None
+            with job._operation_lock:
+                if job._deleted or job._cancel_event.is_set():
+                    return
+                try:
+                    _atomic_write_text_no_follow(
+                        persistent_json,
+                        json.dumps(whisper_json, indent=2),
+                    )
+                    job.output_json_path = persistent_json
+                except Exception:
+                    # Non-fatal. Use the in-memory data.
+                    job.output_json_path = None
 
-        self._populate_from_whisper_json(job, whisper_json)
-
-        job.state = STATE_COMPLETE
-        self._broadcast({
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                return
+            self._populate_from_whisper_json(job, whisper_json)
+            job.state = STATE_COMPLETE
+            complete_event = {
             "type": "complete",
             "transcription_id": job.transcription_id,
+            "conversation_id": job.conversation_id,
+            "tag": job.tag,
             "language": job.language,
             "duration_ms": job.duration_ms,
             "segment_count": len(job.segments),
             "hallucinations_filtered": job.hallucinations_filtered,
             "plain_text_chars": len(job.plain_text),
-        })
+            }
+        self._broadcast(complete_event)
 
     # ── OpenRouter transcription ─────────────────────────────────────────────
     #
@@ -466,6 +753,8 @@ class TranscriptionManager:
     #     word-level confidence isn't returned by this endpoint.
 
     def _run_openrouter(self, job: _Transcription) -> None:
+        if self._job_deleted(job):
+            return
         try:
             import keyring
             key = (os.environ.get("OPENROUTER_API_KEY", "")
@@ -494,10 +783,17 @@ class TranscriptionManager:
             return
 
         try:
-            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            client = OpenAI(
+                api_key=key,
+                base_url="https://openrouter.ai/api/v1",
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                max_retries=REMOTE_MAX_RETRIES,
+            )
             language = (job.options.get("language") or "").strip()
             # OpenRouter's transcription endpoint mirrors OpenAI's; the
             # `language` field accepts ISO-639-1 codes or "auto".
+            if self._job_deleted(job):
+                return
             with open(job.source_path, "rb") as fh:
                 kwargs = {
                     "model": model,
@@ -510,6 +806,8 @@ class TranscriptionManager:
                 }
                 if language and language != "auto":
                     kwargs["language"] = language
+                if self._job_deleted(job):
+                    return
                 resp = client.audio.transcriptions.create(**kwargs)
         except Exception as e:
             self._fail(job, f"OpenRouter transcription failed: {e}")
@@ -520,29 +818,35 @@ class TranscriptionManager:
         lang     = getattr(resp, "language", None) or language or None
         duration = getattr(resp, "duration", None)
 
-        job.language    = lang
-        job.duration_ms = float(duration) * 1000 if duration else None
-        job.plain_text  = text.strip()
-        # Synthesize one segment so downstream code (vault writer, UI)
-        # has the same shape it expects from whisper-cli output.
-        job.segments = [{
-            "id":     0,
-            "start":  0,
-            "end":    job.duration_ms or 0,
-            "text":   job.plain_text,
-            "words":  [],
-        }]
-        job.progress_pct = 100.0
-        job.state = STATE_COMPLETE
-        self._broadcast({
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                return
+            job.language    = lang
+            job.duration_ms = float(duration) * 1000 if duration else None
+            job.plain_text  = text.strip()
+            # Synthesize one segment so downstream code (vault writer, UI)
+            # has the same shape it expects from whisper-cli output.
+            job.segments = [{
+                "id":     0,
+                "start":  0,
+                "end":    job.duration_ms or 0,
+                "text":   job.plain_text,
+                "words":  [],
+            }]
+            job.progress_pct = 100.0
+            job.state = STATE_COMPLETE
+            complete_event = {
             "type": "complete",
             "transcription_id": job.transcription_id,
+            "conversation_id": job.conversation_id,
+            "tag": job.tag,
             "language": job.language,
             "duration_ms": job.duration_ms,
             "segment_count": 1,
             "hallucinations_filtered": 0,
             "plain_text_chars": len(job.plain_text),
-        })
+            }
+        self._broadcast(complete_event)
 
     # ── OpenRouter audio understanding ──────────────────────────────────────
     #
@@ -554,6 +858,8 @@ class TranscriptionManager:
 
     def _run_openrouter_audio(self, job: _Transcription) -> None:
         import base64
+        if self._job_deleted(job):
+            return
         try:
             import keyring
             key = (os.environ.get("OPENROUTER_API_KEY", "")
@@ -580,8 +886,11 @@ class TranscriptionManager:
         })
 
         try:
-            with open(job.source_path, "rb") as fh:
-                audio_b64 = base64.b64encode(fh.read()).decode("ascii")
+            with job._operation_lock:
+                if job._deleted or job._cancel_event.is_set():
+                    return
+                with open(job.source_path, "rb") as fh:
+                    audio_b64 = base64.b64encode(fh.read()).decode("ascii")
         except Exception as e:
             self._fail(job, f"could not read audio file: {e}")
             return
@@ -598,7 +907,14 @@ class TranscriptionManager:
             return
 
         try:
-            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+            client = OpenAI(
+                api_key=key,
+                base_url="https://openrouter.ai/api/v1",
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                max_retries=REMOTE_MAX_RETRIES,
+            )
+            if self._job_deleted(job):
+                return
             resp = client.chat.completions.create(
                 model=model,
                 messages=[{
@@ -611,7 +927,10 @@ class TranscriptionManager:
                         }},
                     ],
                 }],
-                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+                extra_headers={
+                    "HTTP-Referer": "https://ora.local",
+                    "X-Title": "Ora",
+                },
             )
         except Exception as e:
             self._fail(job, f"OpenRouter audio-understanding failed: {e}")
@@ -627,36 +946,49 @@ class TranscriptionManager:
             )
         text = text.strip()
 
-        job.plain_text = text
-        job.segments = [{
-            "id":    0,
-            "start": 0,
-            "end":   0,
-            "text":  text,
-            "words": [],
-        }]
-        job.progress_pct = 100.0
-        job.state = STATE_COMPLETE
-        self._broadcast({
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                return
+            job.plain_text = text
+            job.segments = [{
+                "id":    0,
+                "start": 0,
+                "end":   0,
+                "text":  text,
+                "words": [],
+            }]
+            job.progress_pct = 100.0
+            job.state = STATE_COMPLETE
+            complete_event = {
             "type": "complete",
             "transcription_id": job.transcription_id,
+            "conversation_id": job.conversation_id,
+            "tag": job.tag,
             "language": None,
             "duration_ms": None,
             "segment_count": 1,
             "hallucinations_filtered": 0,
             "plain_text_chars": len(job.plain_text),
-        })
+            }
+        self._broadcast(complete_event)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
     def _fail(self, job: _Transcription, error: str) -> None:
-        job.state = STATE_FAILED
-        job.last_error = error
-        self._broadcast({
+        with job._operation_lock:
+            if job._deleted or job._cancel_event.is_set():
+                self._clear_deleted_job(job)
+                return
+            job.state = STATE_FAILED
+            job.last_error = error
+            event = {
             "type": "failed",
             "transcription_id": job.transcription_id,
+            "conversation_id": job.conversation_id,
+            "tag": job.tag,
             "error": error,
-        })
+            }
+        self._broadcast(event)
 
     def _populate_from_whisper_json(self, job: _Transcription, data: dict) -> None:
         """Extract the bits we need from whisper.cpp's JSON shape.

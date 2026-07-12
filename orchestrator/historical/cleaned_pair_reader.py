@@ -16,7 +16,7 @@ A cleaned-pair file has this shape (Phase 1.10 writer):
     next_pair: <filename or empty>
     processing_model: <model-id>
     processed_at: <ISO-8601>
-    tags: []
+    tags: [] | [private]
     ---
 
     ## Context
@@ -193,6 +193,14 @@ def load_cleaned_pair(path: str | Path) -> CleanedPairFile:
     prior_pair       = _strip_yaml_quotes(yaml.get("prior_pair", ""))
     next_pair        = _strip_yaml_quotes(yaml.get("next_pair", ""))
     processing_model = _strip_yaml_quotes(yaml.get("processing_model", ""))
+    raw_tags = str(yaml.get("tags", "") or "").strip()
+    if raw_tags.startswith("[") and raw_tags.endswith("]"):
+        raw_tags = raw_tags[1:-1]
+    tags = [
+        item.strip().strip("'\"")
+        for item in raw_tags.split(",")
+        if item.strip()
+    ]
 
     # Body sections — tolerant of missing User input or Assistant response
     # (Phase 1's empty-side success contract). Terminators are the EXACT
@@ -233,7 +241,7 @@ def load_cleaned_pair(path: str | Path) -> CleanedPairFile:
         next_pair           = next_pair,
         processing_model    = processing_model,
         processed_at        = processed_at,
-        tags                = [],   # Phase 1 always emits empty tags
+        tags                = tags,
         session_context     = session_context,
         pair_context        = pair_context,
         cleaned_user_input  = user_clean,

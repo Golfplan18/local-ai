@@ -66,6 +66,36 @@
 
   var _eventSource = null;
   var _jobs = Object.create(null);
+  var _deletedConversationIds = new Set();
+
+  function _dropJob(processingId, removeChip) {
+    var job = _jobs[processingId];
+    if (!job) return false;
+    if (job.pollTimer) {
+      try { clearTimeout(job.pollTimer); } catch (e) { /* ignore */ }
+      job.pollTimer = null;
+    }
+    job.file = null;
+    if (removeChip && job.chip) {
+      try { job.chip.remove(); } catch (e) { /* ignore */ }
+    }
+    delete _jobs[processingId];
+    return true;
+  }
+
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId) return 0;
+    _deletedConversationIds.add(conversationId);
+    var removed = 0;
+    Object.keys(_jobs).forEach(function (processingId) {
+      var job = _jobs[processingId];
+      if (job && job.conversation_id === conversationId
+          && _dropJob(processingId, true)) {
+        removed += 1;
+      }
+    });
+    return removed;
+  }
 
   function _formatBytes(bytes) {
     if (!bytes && bytes !== 0) return '';
@@ -97,13 +127,16 @@
       +   '</svg>'
       + '</span>'
       + '<div class="transcribe-chip__body">'
-      +   '<div class="transcribe-chip__name">' + (file ? file.name : processingId) + '</div>'
+      +   '<div class="transcribe-chip__name"></div>'
       +   '<div class="transcribe-chip__status">Queued (' + _formatBytes(file ? file.size : 0) + ')</div>'
       +   '<div class="transcribe-chip__bar"><div class="transcribe-chip__fill"></div></div>'
       + '</div>'
       + '<button type="button" class="transcribe-chip__close" aria-label="Dismiss">×</button>';
+    chip.querySelector('.transcribe-chip__name').textContent = file
+      ? file.name
+      : processingId;
     chip.querySelector('.transcribe-chip__close').addEventListener('click', function () {
-      chip.remove();
+      if (!_dropJob(processingId, true)) chip.remove();
     });
     if (hostEl) hostEl.appendChild(chip);
     return chip;
@@ -140,6 +173,19 @@
     _setStatus(chip, 'Failed: ' + (errorMessage || 'unknown error'));
   }
 
+  function _reportEnvelopeAvailability(payload, options) {
+    if (!options || !options.conversation_id || !payload) return;
+    if (payload.envelope_available !== true && payload.envelope_created !== true) return;
+    document.dispatchEvent(new CustomEvent('ora:conversation-envelope-created', {
+      detail: {
+        conversation_id: options.conversation_id,
+        source: 'document-process',
+        envelope_created: !!payload.envelope_created,
+        envelope_available: true,
+      },
+    }));
+  }
+
   // ── lifecycle ────────────────────────────────────────────────────────────
 
   function acceptFile(file, hostEl, options) {
@@ -154,29 +200,40 @@
 
     return fetch('/api/document/process', { method: 'POST', body: fd })
       .then(function (r) {
-        if (!r.ok) return r.json().then(function (j) {
-          throw new Error(j.error || ('HTTP ' + r.status));
+        return r.json().then(function (j) {
+          if (!_deletedConversationIds.has(options.conversation_id)) {
+            _reportEnvelopeAvailability(j, options);
+          }
+          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
         });
-        return r.json();
       })
       .then(function (j) {
+        if (_deletedConversationIds.has(options.conversation_id)) {
+          return j.processing_id;
+        }
         var chip = _ensureChip(j.processing_id, file, hostEl);
         _jobs[j.processing_id] = {
-          file: file,
+          file: null,
           hostEl: hostEl,
           state: 'queued',
           chip: chip,
+          conversation_id: options.conversation_id || null,
+          pollTimer: null,
         };
         // Race fix: format_convert on a markdown passthrough completes
         // in milliseconds, so all SSE state events can fire before our
         // EventSource is connected. One-shot poll catches the terminal
         // state if we missed it. SSE continues to handle slower jobs
         // (PDFs, .docx, etc.) where the events arrive in time.
-        setTimeout(function () {
+        _jobs[j.processing_id].pollTimer = setTimeout(function () {
+          var liveJob = _jobs[j.processing_id];
+          if (!liveJob) return;
+          liveJob.pollTimer = null;
           fetch('/api/document/' + j.processing_id + '/state')
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (state) {
-              if (!state) return;
+              if (!state || !_jobs[j.processing_id]) return;
               if (chip.dataset.state !== state.state) {
                 chip.dataset.state = state.state;
                 if (state.state === 'complete') {
@@ -198,7 +255,18 @@
         return j.processing_id;
       })
       .catch(function (err) {
-        var chip = _ensureChip('local-' + Date.now(), file, hostEl);
+        if (_deletedConversationIds.has(options.conversation_id)) throw err;
+        var localId = 'local-' + Date.now() + '-'
+          + Math.random().toString(36).slice(2, 8);
+        var chip = _ensureChip(localId, file, hostEl);
+        _jobs[localId] = {
+          file: null,
+          hostEl: hostEl,
+          state: 'failed',
+          chip: chip,
+          conversation_id: options.conversation_id || null,
+          pollTimer: null,
+        };
         _setFailed(chip, err.message);
         throw err;
       });
@@ -257,6 +325,12 @@
 
   function init() {
     _connectSSE();
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var detail = e.detail || {};
+      if (detail.action === 'delete-forever') {
+        _clearDeletedConversation(detail.conversation_id);
+      }
+    });
   }
 
   root.OraDocumentInput = {

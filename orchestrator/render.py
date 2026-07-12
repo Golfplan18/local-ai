@@ -66,7 +66,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import
+    import runtime_paths as _rp
+
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 DEFAULT_EXPORT_DIR = WORKSPACE_ROOT / "exports"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 FFPROBE_BINARY = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
@@ -992,6 +997,7 @@ def _assemble_command(
 class RenderManager:
     def __init__(self, default_export_dir: Path | None = None) -> None:
         self._renders: dict[str, _Render] = {}
+        self._deleted_conversations: set[str] = set()
         self._lock = threading.Lock()
         self._subscribers: list[Callable[[dict], None]] = []
         self._default_export_dir = default_export_dir or DEFAULT_EXPORT_DIR
@@ -1046,6 +1052,28 @@ class RenderManager:
             except Exception:
                 pass
 
+    def forget_conversation(self, conversation_id: str) -> dict:
+        """Cancel and drop all cached render jobs for a deleted conversation."""
+        identity = conversation_id.casefold()
+        with self._lock:
+            self._deleted_conversations.add(identity)
+            renders = [render for render in self._renders.values()
+                       if render.conversation_id.casefold() == identity]
+            for render in renders:
+                self._renders.pop(render.render_id, None)
+        errors: list[str] = []
+        for render in renders:
+            render.cancel_requested = True
+            proc = render.process
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.terminate()
+                except Exception as exc:
+                    errors.append(f"{render.render_id}: {exc}")
+                    print(f"[render purge] {render.render_id}: {exc}",
+                          flush=True)
+        return {"renders": len(renders), "errors": errors}
+
     def start(self, conversation_id: str, preset_name: str,
               timeline: dict, library_entries: list[dict],
               export_dir: Path | None = None) -> str:
@@ -1053,21 +1081,22 @@ class RenderManager:
             raise ValueError(f"unknown preset: {preset_name}")
         preset = PRESETS[preset_name]
 
-        render_id = uuid.uuid4().hex[:12]
-        ext = _output_extension(preset)
-        out_dir = (export_dir or self._default_export_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        output_path = out_dir / f"{render_id}{ext}"
-
-        r = _Render(
-            render_id=render_id,
-            conversation_id=conversation_id,
-            preset=preset_name,
-            output_path=output_path,
-            started_at=time.time(),
-            state=STATE_PREPARING,
-        )
         with self._lock:
+            if conversation_id.casefold() in self._deleted_conversations:
+                raise RuntimeError("conversation was permanently deleted")
+            render_id = uuid.uuid4().hex[:12]
+            ext = _output_extension(preset)
+            out_dir = (export_dir or self._default_export_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            output_path = out_dir / f"{render_id}{ext}"
+            r = _Render(
+                render_id=render_id,
+                conversation_id=conversation_id,
+                preset=preset_name,
+                output_path=output_path,
+                started_at=time.time(),
+                state=STATE_PREPARING,
+            )
             self._renders[render_id] = r
         self._broadcast({
             "type": "queued",

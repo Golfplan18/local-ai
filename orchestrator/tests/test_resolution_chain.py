@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -210,6 +211,58 @@ class TestStartResolution(unittest.TestCase):
         self.assertEqual(e.discussion_conversation_id, result["conversation_id"])
         self.assertEqual(e.engagement, "discussing")
 
+    def test_existing_envelope_collision_is_not_overwritten_or_linked(self):
+        import resolution_chain
+        from oversight_queue import find_paused_by_id
+
+        cid = resolution_chain._new_conversation_id(self.entry)
+        envelope = Path(self.paths["sessions"]) / cid / "conversation.json"
+        envelope.parent.mkdir(parents=True)
+        original = '{"conversation_id": "foreign", "messages": []}'
+        envelope.write_text(original, encoding="utf-8")
+
+        with self.assertRaises(RuntimeError):
+            resolution_chain.start_resolution(
+                self.entry.id, sessions_root=self.paths["sessions"],
+            )
+
+        self.assertEqual(envelope.read_text(encoding="utf-8"), original)
+        current = find_paused_by_id(self.entry.id)
+        self.assertIsNone(current.discussion_conversation_id)
+
+    def test_symlinked_session_is_not_followed_or_linked(self):
+        import resolution_chain
+        from oversight_queue import find_paused_by_id
+
+        cid = resolution_chain._new_conversation_id(self.entry)
+        outside = Path(self.tmp) / "outside"
+        outside.mkdir()
+        (Path(self.paths["sessions"]) / cid).symlink_to(
+            outside, target_is_directory=True,
+        )
+
+        with self.assertRaises(RuntimeError):
+            resolution_chain.start_resolution(
+                self.entry.id, sessions_root=self.paths["sessions"],
+            )
+
+        self.assertEqual(list(outside.iterdir()), [])
+        current = find_paused_by_id(self.entry.id)
+        self.assertIsNone(current.discussion_conversation_id)
+
+    def test_link_failure_removes_unadopted_child_envelope(self):
+        import resolution_chain
+
+        cid = resolution_chain._new_conversation_id(self.entry)
+        envelope = Path(self.paths["sessions"]) / cid / "conversation.json"
+        with mock.patch("oversight_queue.link_discussion", return_value=False):
+            with self.assertRaises(RuntimeError):
+                resolution_chain.start_resolution(
+                    self.entry.id, sessions_root=self.paths["sessions"],
+                )
+
+        self.assertFalse(envelope.exists())
+
 
 # ---------- continue_resolution ----------
 
@@ -320,8 +373,9 @@ class TestResolvedSuffix(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="ora-rc-resolve-")
         self.sessions_root = os.path.join(self.tmp, "sessions")
         os.makedirs(self.sessions_root, exist_ok=True)
-        # Override the resolution_chain default sessions root
-        self._patch = mock.patch.dict(os.environ, {"HOME": self.tmp})
+        # Override the call-time runtime root; no ~/ora convention is involved.
+        import runtime_paths
+        self._patch = mock.patch.object(runtime_paths, "ORA_HOME", Path(self.tmp))
         self._patch.start()
         # Create a conversation envelope to mark
         self.cid = "resolve-xyz"
@@ -336,14 +390,7 @@ class TestResolvedSuffix(unittest.TestCase):
                 "project_ids": ["general", "book"],
                 "messages": [],
             }, f)
-        # Move into a place the function will find — create the path
-        # ~/ora/sessions/<cid>/conversation.json
-        self.real_root = os.path.join(self.tmp, "ora", "sessions")
-        os.makedirs(self.real_root, exist_ok=True)
-        shutil.copytree(
-            os.path.join(self.sessions_root, self.cid),
-            os.path.join(self.real_root, self.cid),
-        )
+        self.real_root = self.sessions_root
 
     def tearDown(self):
         self._patch.stop()

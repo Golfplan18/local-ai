@@ -230,7 +230,7 @@ class URLImportEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S

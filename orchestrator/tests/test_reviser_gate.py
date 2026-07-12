@@ -25,6 +25,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,38 +126,47 @@ class ReviserHealthGate(unittest.TestCase):
 
 class UsageSelfDetection(unittest.TestCase):
     def test_finish_reason_and_step_hint_recorded(self):
-        d = tempfile.mkdtemp()
-        tok_dir = boot._TURN_TRACE_DIR_CV.set(d)
-        tok_step = boot._CURRENT_STEP_CV.set("reviser")
-        try:
-            boot._record_model_usage(
-                {"id": "ep-x", "model": "vendor/model", "service": "openrouter"},
-                prompt_tokens=100, completion_tokens=200, finish_reason="length",
-            )
-        finally:
-            boot._CURRENT_STEP_CV.reset(tok_step)
-            boot._TURN_TRACE_DIR_CV.reset(tok_dir)
-        with open(os.path.join(d, "usage.jsonl")) as fh:
-            rec = json.loads(fh.read().strip())
+        with tempfile.TemporaryDirectory() as root:
+            d = os.path.join(root, "usage-dialogue", "turn")
+            os.makedirs(d)
+            tok_dir = boot.set_turn_trace_context(d)
+            tok_step = boot._CURRENT_STEP_CV.set("reviser")
+            try:
+                with mock.patch.object(boot.pipeline_trace, "TRACE_ROOT", root):
+                    boot._record_model_usage(
+                        {"id": "ep-x", "model": "vendor/model",
+                         "service": "openrouter"},
+                        prompt_tokens=100, completion_tokens=200,
+                        finish_reason="length",
+                    )
+            finally:
+                boot._CURRENT_STEP_CV.reset(tok_step)
+                boot.reset_turn_trace_context(tok_dir)
+            with open(os.path.join(d, "usage.jsonl")) as fh:
+                rec = json.loads(fh.read().strip())
         self.assertEqual(rec["step_hint"], "reviser")   # CV fallback
         self.assertEqual(rec["finish_reason"], "length")
         self.assertEqual(rec["completion_tokens"], 200)
 
     def test_explicit_step_hint_overrides_cv(self):
-        d = tempfile.mkdtemp()
-        tok_dir = boot._TURN_TRACE_DIR_CV.set(d)
-        tok_step = boot._CURRENT_STEP_CV.set("reviser")
-        try:
-            boot._record_model_usage(
-                {"id": "ep-x", "model": "vendor/model", "service": "openai"},
-                prompt_tokens=1, completion_tokens=2,
-                step_hint="verifier", finish_reason="stop",
-            )
-        finally:
-            boot._CURRENT_STEP_CV.reset(tok_step)
-            boot._TURN_TRACE_DIR_CV.reset(tok_dir)
-        with open(os.path.join(d, "usage.jsonl")) as fh:
-            rec = json.loads(fh.read().strip())
+        with tempfile.TemporaryDirectory() as root:
+            d = os.path.join(root, "usage-dialogue", "turn")
+            os.makedirs(d)
+            tok_dir = boot.set_turn_trace_context(d)
+            tok_step = boot._CURRENT_STEP_CV.set("reviser")
+            try:
+                with mock.patch.object(boot.pipeline_trace, "TRACE_ROOT", root):
+                    boot._record_model_usage(
+                        {"id": "ep-x", "model": "vendor/model",
+                         "service": "openai"},
+                        prompt_tokens=1, completion_tokens=2,
+                        step_hint="verifier", finish_reason="stop",
+                    )
+            finally:
+                boot._CURRENT_STEP_CV.reset(tok_step)
+                boot.reset_turn_trace_context(tok_dir)
+            with open(os.path.join(d, "usage.jsonl")) as fh:
+                rec = json.loads(fh.read().strip())
         self.assertEqual(rec["step_hint"], "verifier")
 
 

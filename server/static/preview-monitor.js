@@ -61,6 +61,7 @@
   var _frameInflightController = null;
   var _eventSource = null;                       // legacy (Backlog 2A Chunk 5 retired SSE)
   var _renderEventListenerInstalled = false;     // V3 Backlog 2A Chunk 5
+  var _stateEpoch = 0;                           // invalidates late async responses
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -369,7 +370,9 @@
     }
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     _frameInflightController = ctrl;
-    var url = '/api/preview/' + encodeURIComponent(_conversationId) +
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
+    var url = '/api/preview/' + encodeURIComponent(conversationId) +
               '/frame?ms=' + encodeURIComponent(_playheadRequestedMs) +
               '&_=' + Date.now();
     fetch(url, { signal: ctrl ? ctrl.signal : undefined })
@@ -378,7 +381,11 @@
         return r.blob();
       })
       .then(function (blob) {
-        if (!blob || _displayMode !== 'frame' || !_imgEl) return;
+        if (!blob
+            || _stateEpoch !== requestEpoch
+            || _conversationId !== conversationId
+            || _displayMode !== 'frame'
+            || !_imgEl) return;
         var dataUrl = URL.createObjectURL(blob);
         var prev = _imgEl.dataset.objUrl;
         _imgEl.src = dataUrl;
@@ -394,6 +401,7 @@
   // ── Playback / proxy lifecycle ───────────────────────────────────────────
 
   function _enterPlaybackMode() {
+    if (!_conversationId) return;
     _displayMode = 'playback';
     if (_rootEl) _rootEl.classList.add('preview-monitor--playback');
     _videoEl.src = '/api/preview/' + encodeURIComponent(_conversationId) +
@@ -454,9 +462,14 @@
 
   function _refreshProxyState() {
     if (!_conversationId) return Promise.resolve(null);
-    return fetch('/api/preview/' + encodeURIComponent(_conversationId) + '/state')
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
+    return fetch('/api/preview/' + encodeURIComponent(conversationId) + '/state')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
+        if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) {
+          return null;
+        }
         _proxyState = j || null;
         _updateStatusFromProxyState();
         return j;
@@ -480,12 +493,15 @@
 
   function _startProxyRender() {
     if (!_conversationId) return;
+    var conversationId = _conversationId;
+    var requestEpoch = _stateEpoch;
     _showOverlay('Building preview…', 0);
     _setStatus('rendering', 'Rendering proxy…');
-    fetch('/api/preview/' + encodeURIComponent(_conversationId) + '/proxy/start',
+    fetch('/api/preview/' + encodeURIComponent(conversationId) + '/proxy/start',
           { method: 'POST' })
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
         if (j && j.render_id) {
           _activeProxyRenderId = j.render_id;
           _ensureRenderEventStream();
@@ -495,6 +511,7 @@
         }
       })
       .catch(function () {
+        if (_stateEpoch !== requestEpoch || _conversationId !== conversationId) return;
         _hideOverlay();
         _setStatus('error', 'Render failed to start');
       });
@@ -523,7 +540,9 @@
     } else if (t === 'complete') {
       _hideOverlay();
       _activeProxyRenderId = null;
-      _refreshProxyState().then(function () { _enterPlaybackMode(); });
+      _refreshProxyState().then(function (state) {
+        if (state && state.fresh && _conversationId) _enterPlaybackMode();
+      });
     } else if (t === 'failed' || t === 'cancelled') {
       _hideOverlay();
       _activeProxyRenderId = null;
@@ -563,8 +582,66 @@
 
   // ── External plumbing ────────────────────────────────────────────────────
 
+  function _clearFrameImage() {
+    if (!_imgEl) return;
+    var objectUrl = _imgEl.dataset.objUrl;
+    if (objectUrl && typeof URL !== 'undefined'
+        && typeof URL.revokeObjectURL === 'function') {
+      try { URL.revokeObjectURL(objectUrl); } catch (e) { /* ignore */ }
+    }
+    delete _imgEl.dataset.objUrl;
+    try { _imgEl.removeAttribute('src'); } catch (e) { /* ignore */ }
+  }
+
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    _stateEpoch += 1;
+    _conversationId = null;
+    if (_frameDebounce) {
+      try { clearTimeout(_frameDebounce); } catch (e) { /* ignore */ }
+      _frameDebounce = null;
+    }
+    if (_frameInflightController) {
+      try { _frameInflightController.abort(); } catch (e) { /* ignore */ }
+      _frameInflightController = null;
+    }
+    _proxyState = null;
+    _activeProxyRenderId = null;
+    _playheadRequestedMs = 0;
+    _dragState = null;
+    _setOverlayHandle(null);
+    _clearFrameImage();
+    _displayMode = 'frame';
+    if (_rootEl) _rootEl.classList.remove('preview-monitor--playback');
+    if (_videoEl) {
+      try { _videoEl.pause(); } catch (e) { /* ignore */ }
+      try {
+        _videoEl.removeAttribute('src');
+        _videoEl.load();
+      } catch (e) { /* ignore */ }
+    }
+    _hideOverlay();
+    _setStatus('', '');
+    _setTimecode(0);
+    _setPlayPauseGlyph('play');
+    return true;
+  }
+
   function setConversationId(id) {
-    _conversationId = id || null;
+    var next = id || null;
+    if (_conversationId !== next) {
+      _stateEpoch += 1;
+      if (_frameDebounce) {
+        try { clearTimeout(_frameDebounce); } catch (e) { /* ignore */ }
+        _frameDebounce = null;
+      }
+      if (_frameInflightController) {
+        try { _frameInflightController.abort(); } catch (e) { /* ignore */ }
+        _frameInflightController = null;
+      }
+      _clearFrameImage();
+    }
+    _conversationId = next;
     _activeProxyRenderId = null;
     _playheadRequestedMs = 0;
     _setTimecode(0);
@@ -589,6 +666,16 @@
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
       if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
     document.addEventListener('ora:timeline-playhead-changed', function (e) {
       var d = e.detail || {};

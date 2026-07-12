@@ -416,6 +416,11 @@ def _parse_decision_log(text: str) -> list[DecisionLogEntry]:
     current_date = ""
 
     for line in text.split("\n"):
+        # Lifecycle ownership markers are hidden Markdown comments, not
+        # Decision Log content. Keeping them out of ParsedPED also prevents
+        # owner hashes from entering Process Coherence context bundles.
+        if line.strip().startswith("<!-- ora:oversight-derivative:"):
+            continue
         date_match = _DECISION_DATE.match(line)
         if date_match:
             # Save previous entry

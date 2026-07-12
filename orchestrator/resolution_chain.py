@@ -108,7 +108,7 @@ def start_resolution(
 ) -> dict:
     """Begin a discussion thread for a Paused queue entry.
 
-    Creates a new conversation in ~/ora/sessions/<id>/conversation.json
+    Creates a new conversation under the configured runtime sessions root
     seeded with one assistant message containing the entry's context, the
     initial options block (1 and 2; option 3 emerges once a substantive
     alternative is formulated), and the marker.
@@ -138,14 +138,55 @@ def start_resolution(
     first_message = _build_seed_message(entry)
     display_name = _discussion_display_name(entry.name)
 
-    _create_conversation_envelope(
+    created_path = _create_conversation_envelope(
         conversation_id=conversation_id,
         display_name=display_name,
         first_assistant_message=first_message,
         sessions_root=sessions_root,
     )
+    if created_path is None:
+        # A concurrent opener may have created and linked the same deterministic
+        # child between our initial read and the exclusive create. Reuse only
+        # when the queue itself now proves that ownership; an unrelated or
+        # half-created envelope must never be adopted by merely linking it.
+        current = find_paused_by_id(queue_id)
+        if (
+            current is not None
+            and current.discussion_conversation_id == conversation_id
+        ):
+            return {
+                "conversation_id": conversation_id,
+                "queue_entry_id": entry.id,
+                "first_message": "",
+                "display_name": display_name,
+                "reused": True,
+            }
+        raise RuntimeError(
+            f"Unable to create resolution conversation {conversation_id!r}"
+        )
 
-    link_discussion(entry.id, conversation_id)
+    if not link_discussion(entry.id, conversation_id):
+        current = find_paused_by_id(queue_id)
+        if (
+            current is not None
+            and current.discussion_conversation_id == conversation_id
+        ):
+            return {
+                "conversation_id": conversation_id,
+                "queue_entry_id": entry.id,
+                "first_message": first_message,
+                "display_name": display_name,
+                "reused": False,
+            }
+        _remove_unlinked_conversation_envelope(
+            conversation_id,
+            created_path,
+            sessions_root=sessions_root,
+        )
+        raise RuntimeError(
+            f"Resolution conversation {conversation_id!r} was created but "
+            f"could not be linked to queue entry {entry.id!r}"
+        )
 
     return {
         "conversation_id": conversation_id,
@@ -228,20 +269,23 @@ def _create_conversation_envelope(
     display_name: str,
     first_assistant_message: str,
     sessions_root: Optional[str] = None,
-):
+) -> Path | None:
     """Write a fresh conversation.json with one seed assistant message.
 
-    If an envelope already exists at the target path, do not overwrite — the
-    discussion has already been opened (start_resolution handles this case
-    upstream by returning the existing conversation_id).
+    Uses the conversation-memory path validator, per-conversation lock, shared
+    cross-process sidecar lock, and exclusive file creation. Existing,
+    symlinked, unsafe, or otherwise unwritable targets are never overwritten.
+    Returns the created envelope path, or ``None`` on failure.
     """
     from datetime import datetime as _dt
-    root = os.path.expanduser(sessions_root or "~/ora/sessions/")
-    conv_dir = os.path.join(root, conversation_id)
-    env_path = os.path.join(conv_dir, "conversation.json")
-    if os.path.isfile(env_path):
-        return
-    os.makedirs(conv_dir, exist_ok=True)
+    import sys
+
+    try:
+        import conversation_memory as _memory
+    except ImportError:  # pragma: no cover - package-qualified import context
+        from orchestrator import conversation_memory as _memory
+
+    root = _sessions_root(sessions_root)
     now_iso = _dt.now().isoformat(timespec="seconds")
     envelope = {
         "conversation_id": conversation_id,
@@ -260,8 +304,78 @@ def _create_conversation_envelope(
             }
         ],
     }
-    with open(env_path, "w", encoding="utf-8") as f:
-        json.dump(envelope, f, indent=2, ensure_ascii=False)
+    try:
+        safe_id = _memory.validate_conversation_id(conversation_id)
+        env_path = _memory._conversation_path(
+            safe_id, root, create_parent=True,
+        )
+        with _memory._conversation_write_lock(safe_id):
+            with _memory._rp.locked_file(env_path):
+                fd = os.open(
+                    env_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600,
+                )
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(json.dumps(envelope, indent=2, ensure_ascii=False))
+                    stream.flush()
+                    os.fsync(stream.fileno())
+        return env_path
+    except (OSError, TimeoutError, ValueError) as exc:
+        print(
+            f"[resolution_chain] resolution envelope create failed for "
+            f"{conversation_id!r}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return None
+
+
+def _sessions_root(sessions_root: Optional[str | Path] = None) -> Path:
+    """Resolve the sessions root from explicit input or runtime paths now."""
+    if sessions_root is not None:
+        return Path(sessions_root).expanduser()
+    try:
+        import runtime_paths as _runtime_paths
+    except ImportError:  # pragma: no cover - package-qualified import context
+        from orchestrator import runtime_paths as _runtime_paths
+    return Path(_runtime_paths.ORA_HOME) / "sessions"
+
+
+def _remove_unlinked_conversation_envelope(
+    conversation_id: str,
+    created_path: Path,
+    *,
+    sessions_root: Optional[str | Path] = None,
+) -> None:
+    """Remove a just-created child that the queue could not adopt."""
+    try:
+        try:
+            import conversation_memory as _memory
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator import conversation_memory as _memory
+        safe_id = _memory.validate_conversation_id(conversation_id)
+        expected = _memory._conversation_path(
+            safe_id, _sessions_root(sessions_root), create_parent=False,
+        )
+        if expected != Path(created_path):
+            raise ValueError("created resolution envelope path changed")
+        with _memory._conversation_write_lock(safe_id):
+            with _memory._rp.locked_file(expected):
+                try:
+                    expected.unlink()
+                except FileNotFoundError:
+                    pass
+                try:
+                    expected.parent.rmdir()
+                except OSError:
+                    pass
+    except Exception as exc:
+        import sys
+        print(
+            f"[resolution_chain] unlinked resolution cleanup failed for "
+            f"{conversation_id!r}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 # ---------- continue_resolution ----------
@@ -283,6 +397,18 @@ def continue_resolution(
     """
     config = config or {}
     user_text = (latest_user_text or "").strip()
+
+    if user_text in {"1", "2", "3"}:
+        try:
+            from oversight_events import resolve_lifecycle_context
+        except ImportError:  # pragma: no cover
+            from orchestrator.oversight_events import resolve_lifecycle_context
+        stealth, _conversation_id = resolve_lifecycle_context()
+        if stealth:
+            return (
+                "[Resolution commits are suppressed in Stealth. "
+                "Continue this resolution from a Standard or Private Dialogue.]"
+            )
 
     if user_text == "1":
         return _commit_approve_as_proposed(ctx, conversation_id)
@@ -572,11 +698,15 @@ def _format_conversation_for_prompt(history: list, latest_user_text: str) -> str
 
 # ---------- post-resolution ----------
 
-def _mark_conversation_resolved(conversation_id: str):
+def _mark_conversation_resolved(
+    conversation_id: str,
+    sessions_root: Optional[str | Path] = None,
+):
     """Append "(resolved)" to the discussion conversation's display_name.
 
     Best-effort — failure here doesn't block resolution. Idempotent: if the
-    suffix is already present, leaves the name alone.
+    suffix is already present, leaves the name alone. The default root is
+    resolved from ``runtime_paths.ORA_HOME`` at call time.
     """
     if not conversation_id:
         return
@@ -587,10 +717,10 @@ def _mark_conversation_resolved(conversation_id: str):
             load_conversation_json,
             set_display_name,
         )
-    sessions_root = os.path.expanduser("~/ora/sessions/")
+    root = _sessions_root(sessions_root)
     env = load_conversation_json(
         conversation_id,
-        sessions_root=Path(sessions_root),
+        sessions_root=root,
     )
     if env is None:
         return
@@ -602,5 +732,5 @@ def _mark_conversation_resolved(conversation_id: str):
     set_display_name(
         conversation_id,
         (name + RESOLVED_SUFFIX).strip(),
-        sessions_root=Path(sessions_root),
+        sessions_root=root,
     )

@@ -923,9 +923,16 @@ class TestSticky(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
         self._patch = mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp)
+        self._sticky_patch = mock.patch.object(
+            rg, "_sticky_path", lambda: os.path.join(
+                self._tmp, "risk-sticky.json",
+            ),
+        )
         self._patch.start()
+        self._sticky_patch.start()
 
     def tearDown(self):
+        self._sticky_patch.stop()
         self._patch.stop()
 
     def test_set_get_clear(self):
@@ -934,6 +941,36 @@ class TestSticky(unittest.TestCase):
         self.assertEqual(rg.get_sticky("c1"), "high-risk")
         rg.set_sticky("c1", "auto")
         self.assertIsNone(rg.get_sticky("c1"))
+
+    def test_set_replaces_store_symlink_without_reading_or_writing_target(self):
+        sticky = rg._sticky_path()
+        os.makedirs(os.path.dirname(sticky), exist_ok=True)
+        outside = os.path.join(os.path.dirname(sticky), "outside.json")
+        with open(outside, "w", encoding="utf-8") as stream:
+            json.dump({"foreign": "irreversible"}, stream)
+        os.symlink(outside, sticky)
+
+        rg.set_sticky("c1", "standard")
+
+        with open(outside, encoding="utf-8") as stream:
+            self.assertEqual(json.load(stream), {"foreign": "irreversible"})
+        self.assertFalse(os.path.islink(sticky))
+        self.assertEqual(rg.get_sticky("c1"), "standard")
+        self.assertIsNone(rg.get_sticky("foreign"))
+
+    def test_set_ignores_predictable_legacy_temp_symlink(self):
+        sticky = rg._sticky_path()
+        os.makedirs(os.path.dirname(sticky), exist_ok=True)
+        outside = os.path.join(os.path.dirname(sticky), "outside.tmp")
+        with open(outside, "w", encoding="utf-8") as stream:
+            stream.write("sentinel")
+        os.symlink(outside, sticky + ".tmp")
+
+        rg.set_sticky("c1", "high-risk")
+
+        with open(outside, encoding="utf-8") as stream:
+            self.assertEqual(stream.read(), "sentinel")
+        self.assertEqual(rg.get_sticky("c1"), "high-risk")
 
     def test_handle_bare_command(self):
         msg = rg.handle_risk_command("/risk standard", "c1")
@@ -960,10 +997,15 @@ class TestAssignAndResolve(unittest.TestCase):
         self._p1 = mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp)
         self._p2 = mock.patch.object(
             te, "APPROVALS_PATH", os.path.join(self._tmp, "approvals.json"))
-        self._p1.start(); self._p2.start()
+        self._p3 = mock.patch.object(
+            rg, "_sticky_path", lambda: os.path.join(
+                self._tmp, "risk-sticky.json",
+            ),
+        )
+        self._p1.start(); self._p2.start(); self._p3.start()
 
     def tearDown(self):
-        self._p1.stop(); self._p2.stop()
+        self._p3.stop(); self._p2.stop(); self._p1.stop()
 
     def test_assign_records_task_tier(self):
         with mock.patch.object(rg._te, "record") as m_rec:

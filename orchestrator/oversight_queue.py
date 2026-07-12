@@ -83,6 +83,7 @@ class PausedEntry:
     queued_at: str
     engagement: str = ENGAGEMENT_UNSEEN
     discussion_conversation_id: Optional[str] = None
+    conversation_id: str = ""
     redefinition: bool = False
     forced_reason: str = ""
     # Entry type: "" = redefinition/escalation (legacy default);
@@ -101,6 +102,7 @@ class PausedEntry:
             "queued_at": self.queued_at,
             "engagement": self.engagement,
             "discussion_conversation_id": self.discussion_conversation_id,
+            "conversation_id": self.conversation_id,
             "redefinition": self.redefinition,
             "forced_reason": self.forced_reason,
             "kind": self.kind,
@@ -185,6 +187,15 @@ def add_entry(record: dict, config: Optional[dict] = None) -> PausedEntry:
 
     Returns the PausedEntry that was written.
     """
+    record = dict(record)
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, conversation_id = resolve_lifecycle_context(record)
+    if conversation_id:
+        record["conversation_id"] = conversation_id
+
     queued_at = record.get("queued_at") or _now_iso()
     record["queued_at"] = queued_at
 
@@ -192,6 +203,18 @@ def add_entry(record: dict, config: Optional[dict] = None) -> PausedEntry:
     # so retries don't double-write.
     entry_id = _synthesize_id(record, queued_at)
     record["id"] = entry_id
+
+    if stealth:
+        # The in-process caller can still receive a stable synthetic entry, but
+        # no naming-model call or durable queue write may receive Stealth data.
+        record.setdefault("name", _template_name_from_record(record))
+        record.setdefault("engagement", ENGAGEMENT_UNSEEN)
+        record.setdefault("discussion_conversation_id", None)
+        print(
+            "[oversight_queue] Paused persistence skipped (Stealth context)",
+            flush=True,
+        )
+        return _record_to_paused(record, -1)
 
     if "name" not in record or not record["name"]:
         record["name"] = _generate_name(record, config or {})
@@ -238,6 +261,17 @@ def link_discussion(entry_id: str, conversation_id: str) -> bool:
 
 def remove_by_id(entry_id: str) -> bool:
     """Remove an entry by id. Used after successful resolution."""
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, _conversation_id = resolve_lifecycle_context()
+    if stealth:
+        print(
+            "[oversight_queue] queue removal skipped (Stealth context)",
+            flush=True,
+        )
+        return False
     queue_path = _queue_path()
     if not os.path.isfile(queue_path):
         return False
@@ -299,6 +333,7 @@ def _record_to_paused(data: dict, raw_index: int) -> PausedEntry:
         queued_at=queued_at,
         engagement=data.get("engagement", ENGAGEMENT_UNSEEN),
         discussion_conversation_id=data.get("discussion_conversation_id"),
+        conversation_id=str(data.get("conversation_id") or ""),
         redefinition=bool(data.get("redefinition")),
         forced_reason=data.get("forced_reason", ""),
         kind=data.get("kind", ""),
@@ -395,6 +430,17 @@ def _generate_name(record: dict, config: dict) -> str:
 
 def _update_entry(entry_id: str, transform) -> bool:
     """Read-modify-write a single entry by id. Returns True on success."""
+    try:
+        from oversight_events import resolve_lifecycle_context
+    except ImportError:  # pragma: no cover
+        from orchestrator.oversight_events import resolve_lifecycle_context
+    stealth, _conversation_id = resolve_lifecycle_context()
+    if stealth:
+        print(
+            "[oversight_queue] queue mutation skipped (Stealth context)",
+            flush=True,
+        )
+        return False
     queue_path = _queue_path()
     if not os.path.isfile(queue_path):
         return False

@@ -91,12 +91,25 @@ def get_sidebar_window(panel_id: str = "sidebar") -> SidebarWindow:
         return _sidebar_windows[panel_id]
 
 
-def clear_sidebar_window(panel_id: str = "sidebar"):
-    """Clear a sidebar window (on session end or panel close)."""
+def clear_sidebar_window(panel_id: str = "sidebar") -> int:
+    """Forget one named window, including case-variant legacy keys.
+
+    Removing the object from the registry matters for Delete Forever: merely
+    emptying its turns leaves a conversation-correlated cache entry alive for
+    the rest of the server process.  Existing references are cleared before
+    they are retired so callers that already obtained the window cannot read
+    the deleted turn text afterward.
+    """
+    identity = str(panel_id or "").casefold()
     with _sidebar_windows_lock:
-        window = _sidebar_windows.get(panel_id)
-    if window is not None:
-        window.clear()
+        keys = [
+            key for key in _sidebar_windows
+            if str(key).casefold() == identity
+        ]
+        windows = [_sidebar_windows.pop(key) for key in keys]
+        for window in windows:
+            window.clear()
+    return len(windows)
 
 
 def clear_all_sidebar_windows():

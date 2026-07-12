@@ -136,7 +136,7 @@ class WaveformEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S
@@ -160,6 +160,8 @@ class WaveformEndpointTests(unittest.TestCase):
         ML.SESSIONS_ROOT = self._tmp_path / "sessions"
         ML.SESSIONS_ROOT.mkdir(parents=True, exist_ok=True)
         ML._libraries.clear()
+        self._saved_ora_home = self.S.rp.ORA_HOME
+        self.S.rp.ORA_HOME = self._tmp_path
 
         from media_library import get_library
         self._saved_server_getter = self.S._get_media_library
@@ -173,6 +175,7 @@ class WaveformEndpointTests(unittest.TestCase):
         if self.import_ok:
             self.S._get_media_library = self._saved_server_getter
             self.S._HAS_MEDIA_LIBRARY = self._saved_has_flag
+            self.S.rp.ORA_HOME = self._saved_ora_home
             self._ML.SESSIONS_ROOT = self._saved_sessions_root
             self._ML._libraries.clear()
             self._tmp.cleanup()

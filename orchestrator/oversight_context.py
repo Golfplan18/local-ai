@@ -26,11 +26,20 @@ import os
 from dataclasses import dataclass, field
 from typing import Optional
 
-from ped_parser import parse_ped_file, ParsedPED
-from corpus_parser import parse_corpus_file, ParsedCorpus
-from workflow_spec_parser import parse_workflow_spec_file, ParsedWorkflowSpec
-from ped_watcher import load_ped_path
-from corpus_watcher import load_workflow_pointer
+try:
+    from ped_parser import parse_ped_file, ParsedPED
+    from corpus_parser import parse_corpus_file, ParsedCorpus
+    from workflow_spec_parser import parse_workflow_spec_file, ParsedWorkflowSpec
+    from ped_watcher import load_ped_path
+    from corpus_watcher import load_workflow_pointer
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.ped_parser import parse_ped_file, ParsedPED
+    from orchestrator.corpus_parser import parse_corpus_file, ParsedCorpus
+    from orchestrator.workflow_spec_parser import (
+        parse_workflow_spec_file, ParsedWorkflowSpec,
+    )
+    from orchestrator.ped_watcher import load_ped_path
+    from orchestrator.corpus_watcher import load_workflow_pointer
 
 
 WORKSPACE = os.path.expanduser("~/ora/")

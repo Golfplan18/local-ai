@@ -124,13 +124,18 @@
 
   function _loadState() {
     if (!_conversationId) return Promise.resolve(null);
-    return fetch('/api/timeline/' + encodeURIComponent(_conversationId))
+    var conversationId = _conversationId;
+    return fetch('/api/timeline/' + encodeURIComponent(conversationId))
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (_conversationId !== conversationId) return null;
         if (j && j.timeline) _state = j.timeline;
         return _state;
       })
-      .catch(function () { _state = null; });
+      .catch(function () {
+        if (_conversationId === conversationId) _state = null;
+        return null;
+      });
   }
 
   // V3 Backlog 2A Phase 5 close-out — undo/redo history. Every successful
@@ -190,13 +195,20 @@
   function _saveStateNow() {
     _saveDebounce = null;
     if (!_conversationId || !_state) return;
-    fetch('/api/timeline/' + encodeURIComponent(_conversationId), {
+    var conversationId = _conversationId;
+    var payload = Object.assign({}, _state, {
+      _conversation_tag: (root.OraConversation
+        && typeof root.OraConversation.getActiveTag === 'function')
+        ? (root.OraConversation.getActiveTag() || '') : '',
+    });
+    fetch('/api/timeline/' + encodeURIComponent(conversationId), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(_state),
+      body: JSON.stringify(payload),
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (_conversationId !== conversationId) return;
         if (j && j.timeline) {
           _state = j.timeline;
           _render();
@@ -204,7 +216,7 @@
           // server-confirmed timeline changed — they invalidate caches
           // accordingly.
           document.dispatchEvent(new CustomEvent('ora:timeline-mutated', {
-            detail: { conversation_id: _conversationId },
+            detail: { conversation_id: conversationId },
           }));
         }
       })
@@ -1415,6 +1427,9 @@
     if (statusEl) statusEl.textContent = 'Uploading…';
     var fd = new FormData();
     fd.append('file', file, file.name);
+    fd.append('tag', (root.OraConversation
+      && typeof root.OraConversation.getActiveTag === 'function')
+      ? (root.OraConversation.getActiveTag() || '') : '');
     fetch('/api/watermark/' + encodeURIComponent(_conversationId) + '/upload', {
       method: 'POST',
       body: fd,
@@ -1673,14 +1688,18 @@
   // resolve correctly without N round-trips.
   function _refreshLibraryCache() {
     if (!_conversationId) return Promise.resolve();
-    return fetch('/api/media-library/' + encodeURIComponent(_conversationId))
+    var conversationId = _conversationId;
+    return fetch('/api/media-library/' + encodeURIComponent(conversationId))
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (_conversationId !== conversationId) return;
         var byId = {};
         (j.entries || []).forEach(function (e) { byId[e.id] = e; });
         _libraryEntriesCache = byId;
       })
-      .catch(function () { _libraryEntriesCache = {}; });
+      .catch(function () {
+        if (_conversationId === conversationId) _libraryEntriesCache = {};
+      });
   }
 
   // Ensure the library cache is current before placing a clip from a
@@ -1699,6 +1718,34 @@
   }
 
   // ── External plumbing ────────────────────────────────────────────────────
+
+  function _clearDeletedConversation(conversationId) {
+    if (!conversationId || _conversationId !== conversationId) return false;
+    if (_saveDebounce) {
+      try { clearTimeout(_saveDebounce); } catch (e) { /* ignore */ }
+      _saveDebounce = null;
+    }
+    _conversationId = null;
+    _state = null;
+    _selectedClipId = null;
+    _selectedTrackId = null;
+    _secondarySelection.clear();
+    _libraryEntriesCache = {};
+    _history = [];
+    _historyCursor = -1;
+    _closeContextMenu();
+    _closeOverlayInspector();
+    if (_tracksEl) _tracksEl.innerHTML = '';
+    if (_rulerEl) _rulerEl.innerHTML = '';
+    if (_playheadEl) _playheadEl.style.left = '0px';
+    if (_editorEl) {
+      var totalEl = _editorEl.querySelector('[data-role="total-duration"]');
+      var timecodeEl = _editorEl.querySelector('[data-role="timecode"]');
+      if (totalEl) totalEl.textContent = '00:00:00';
+      if (timecodeEl) timecodeEl.textContent = '00:00:00:00';
+    }
+    return true;
+  }
 
   function setConversationId(id) {
     _conversationId = id || null;
@@ -1733,6 +1780,16 @@
       var d = e.detail || {};
       var cid = d.conversation_id || d.id || null;
       if (cid) setConversationId(cid);
+    });
+    document.addEventListener('ora:conversation-lifecycle-completed', function (e) {
+      var d = e.detail || {};
+      if (d.action === 'delete-forever'
+          && _clearDeletedConversation(d.conversation_id)) {
+        var activeId = root.OraConversation
+          && typeof root.OraConversation.getActiveConversationId === 'function'
+          ? root.OraConversation.getActiveConversationId() : null;
+        if (activeId && activeId !== d.conversation_id) setConversationId(activeId);
+      }
     });
     // The preview monitor drives the playhead during proxy playback. We
     // mirror its position on the timeline so the user sees the cursor

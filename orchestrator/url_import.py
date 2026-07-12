@@ -43,6 +43,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import
+    import runtime_paths as _rp
+
 # ── locate yt-dlp ────────────────────────────────────────────────────────────
 
 YTDLP_BINARY = shutil.which("yt-dlp") or "/opt/homebrew/bin/yt-dlp"
@@ -79,6 +84,7 @@ class _Import:
     last_error: str | None = None
     started_at: float = field(default_factory=time.time)
     completed_at: float | None = None
+    process: subprocess.Popen | None = field(default=None, repr=False)
 
 
 # Captures lines like:
@@ -130,9 +136,10 @@ class URLImportManager:
         media_library_factory: Callable | None = None,
     ) -> None:
         self._jobs: dict[str, _Import] = {}
+        self._deleted_conversations: set[str] = set()
         self._lock = threading.Lock()
         self._subs: list[Callable[[dict], None]] = []
-        self._sessions_root = sessions_root or Path.home() / "ora" / "sessions"
+        self._sessions_root = sessions_root or _rp.ORA_HOME / "sessions"
         # Inject the media-library factory so tests can stub registration.
         self._lib_factory = media_library_factory
 
@@ -150,16 +157,21 @@ class URLImportManager:
             )
 
         import_id = uuid.uuid4().hex[:12]
-        output_dir = self._sessions_root / conversation_id / "imports"
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        job = _Import(
-            import_id=import_id,
-            conversation_id=conversation_id,
-            url=url,
-            output_dir=output_dir,
-        )
         with self._lock:
+            if conversation_id.casefold() in self._deleted_conversations:
+                raise RuntimeError("conversation was permanently deleted")
+            output_dir = _rp.safe_owned_subdir(
+                self._sessions_root,
+                conversation_id,
+                "imports",
+                create=True,
+            )
+            job = _Import(
+                import_id=import_id,
+                conversation_id=conversation_id,
+                url=url,
+                output_dir=output_dir,
+            )
             self._jobs[import_id] = job
         self._broadcast({
             "type": "queued",
@@ -185,9 +197,10 @@ class URLImportManager:
         return self._snapshot(job)
 
     def list_states(self, conversation_id: str) -> list[dict]:
+        identity = conversation_id.casefold()
         with self._lock:
             jobs = [j for j in self._jobs.values()
-                    if j.conversation_id == conversation_id]
+                    if j.conversation_id.casefold() == identity]
         return [self._snapshot(j) for j in jobs]
 
     def subscribe(self, callback: Callable[[dict], None]) -> Callable[[], None]:
@@ -200,6 +213,38 @@ class URLImportManager:
                     self._subs.remove(callback)
 
         return _unsubscribe
+
+    def forget_conversation(self, conversation_id: str) -> dict:
+        """Cancel and forget imports so they cannot recreate a deleted session."""
+        identity = conversation_id.casefold()
+        with self._lock:
+            self._deleted_conversations.add(identity)
+            jobs = [job for job in self._jobs.values()
+                    if job.conversation_id.casefold() == identity]
+            for job in jobs:
+                self._jobs.pop(job.import_id, None)
+        errors: list[str] = []
+        for job in jobs:
+            proc = job.process
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.terminate()
+                    # Provisional cancellation grace: long enough for yt-dlp
+                    # cleanup on current targets; tune from observed shutdowns.
+                    proc.wait(timeout=3)
+                except Exception as exc:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                    errors.append(f"{job.import_id}: {exc}")
+                    print(f"[url-import purge] {job.import_id}: {exc}",
+                          flush=True)
+        return {"imports": len(jobs), "errors": errors}
+
+    def _is_deleted(self, conversation_id: str) -> bool:
+        with self._lock:
+            return conversation_id.casefold() in self._deleted_conversations
 
     # ── internals ────────────────────────────────────────────────────────
 
@@ -256,6 +301,8 @@ class URLImportManager:
             except Exception as e:
                 self._fail(job, f"metadata: {e}")
                 return
+            if self._is_deleted(job.conversation_id):
+                return
 
             job.title = meta.get("title")
             job.video_id = meta.get("id")
@@ -286,6 +333,10 @@ class URLImportManager:
                 final_path = self._download(job)
             except Exception as e:
                 self._fail(job, f"download: {e}")
+                return
+
+            if self._is_deleted(job.conversation_id):
+                shutil.rmtree(job.output_dir, ignore_errors=True)
                 return
 
             if final_path is None or not final_path.exists():
@@ -367,22 +418,26 @@ class URLImportManager:
             text=True,
             bufsize=1,
         )
+        job.process = proc
         final_path: Path | None = None
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            line = line.rstrip("\n")
-            self._handle_progress_line(job, line)
-            # `--print after_move:filepath` writes the final path on its own
-            # line; it may be interleaved with download progress.
-            stripped = line.strip()
-            if stripped and (
-                stripped.startswith(str(job.output_dir))
-                or stripped.startswith(os.fspath(job.output_dir))
-            ):
-                p = Path(stripped)
-                if p.exists():
-                    final_path = p
-        proc.wait(timeout=10)
+        try:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                line = line.rstrip("\n")
+                self._handle_progress_line(job, line)
+                # `--print after_move:filepath` writes the final path on its own
+                # line; it may be interleaved with download progress.
+                stripped = line.strip()
+                if stripped and (
+                    stripped.startswith(str(job.output_dir))
+                    or stripped.startswith(os.fspath(job.output_dir))
+                ):
+                    p = Path(stripped)
+                    if p.exists():
+                        final_path = p
+            proc.wait(timeout=10)
+        finally:
+            job.process = None
         if proc.returncode != 0:
             raise RuntimeError(
                 f"yt-dlp exited with rc={proc.returncode}"

@@ -49,68 +49,6 @@ body.stealth-mode .bridge-mode-label {
 }
 
 
-/* V3 spec §8 — mutual exclusivity modal.
-   Shown when the user clicks one mode button while the other mode is
-   already active. The modal blocks until dismissed (OK button, backdrop
-   click, or Escape). Set by the inline JS in index-v3.html. */
-.mode-exclusivity-modal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-}
-
-.mode-exclusivity-modal.show {
-  display: flex;
-}
-
-.mode-exclusivity-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.mode-exclusivity-modal-card {
-  position: relative;
-  background: var(--background-secondary);
-  color: var(--text-normal);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  padding: 22px 26px;
-  max-width: 360px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
-}
-
-.mode-exclusivity-modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.mode-exclusivity-modal-body {
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 18px;
-  color: var(--text-muted);
-}
-
-.mode-exclusivity-modal-ok {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent, var(--text-normal));
-  border: none;
-  border-radius: 6px;
-  padding: 8px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.mode-exclusivity-modal-ok:hover {
-  filter: brightness(1.1);
-}
-
 /* V3 Phase 6.2 — bootstrap topic-prompt modal.
    Same shell shape as the mutual-exclusivity modal so they read as a
    pair of system overlays. */
@@ -268,6 +206,25 @@ body.stealth-mode .bridge-mode-label {
 }
 .mode-dropdown-item:active {
   filter: brightness(0.95);
+}
+
+.mode-dropdown-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mode-dropdown-item:disabled:hover {
+  color: var(--text-normal);
+  background: transparent;
+}
+
+.mode-dropdown-item.is-danger {
+  color: var(--text-error, #d4716e);
+}
+
+.mode-dropdown-item.is-danger:hover {
+  color: var(--text-error, #d4716e);
+  background: color-mix(in srgb, var(--text-error, #d4716e) 12%, transparent);
 }
 
 /* V3 Phase 7.2 — output pane turn rendering. User and assistant

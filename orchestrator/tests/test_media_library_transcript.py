@@ -39,7 +39,7 @@ class TranscriptEndpoint(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S
@@ -68,6 +68,8 @@ class TranscriptEndpoint(unittest.TestCase):
         self._saved_sessions_root = ML.SESSIONS_ROOT
         ML.SESSIONS_ROOT = self._tmp_path / "sessions"
         ML.SESSIONS_ROOT.mkdir(parents=True, exist_ok=True)
+        self._saved_server_ora_home = self.S.rp.ORA_HOME
+        self.S.rp.ORA_HOME = self._tmp_path
 
         # Drop any cached library so the next get_library() rebuilds
         # against the patched SESSIONS_ROOT.
@@ -87,6 +89,7 @@ class TranscriptEndpoint(unittest.TestCase):
     def tearDown(self):
         self.S._get_media_library = self._saved_server_getter
         self.S._HAS_MEDIA_LIBRARY = self._saved_has_flag
+        self.S.rp.ORA_HOME = self._saved_server_ora_home
         self._ML.SESSIONS_ROOT = self._saved_sessions_root
         self._ML._libraries.clear()
         self._tmp.cleanup()
@@ -158,6 +161,9 @@ class TranscriptEndpoint(unittest.TestCase):
         self.assertEqual(data.get("error"), "no transcript")
 
     def test_unknown_entry_returns_404(self):
+        # Establish the conversation session; the route now rejects a wholly
+        # missing session before invoking a factory that would recreate it.
+        self._ML.get_library(self.conv_id)
         resp = self.client.get(
             f"/api/media-library/{self.conv_id}/nonexistent_id/transcript"
         )

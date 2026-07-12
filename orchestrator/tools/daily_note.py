@@ -37,12 +37,15 @@ governed by ``Reference — Ora Periodic Maintenance.md``). Standalone:
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
 
 try:
     import runtime_paths as _rp
@@ -69,6 +72,15 @@ SKIP_DIRS = {".git", ".obsidian", ".trash", "Archive",
 _CONTEXT_RE = re.compile(
     r"panel '([^']+)'.*?(?:The user asked: (.*))?$", re.DOTALL)
 _FNAME_TIME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})_")
+_SUMMARY_MARKER_TOKEN = "<!-- ora-managed-dialogue-summary:"
+_SUMMARY_MARKER_RE = re.compile(
+    r"^(?P<visible>- .*?) "
+    r"<!-- ora-managed-dialogue-summary:(?P<payload>\{.*\}) -->$"
+)
+_SUMMARY_MARKER_VERSION = 1
+_CHUNK_OWNER_RE = re.compile(
+    r'<!-- ora-conversation-id: (?P<value>"(?:[^"\\]|\\.)*") -->'
+)
 
 
 @dataclass
@@ -87,6 +99,31 @@ def daily_dir() -> str:
         os.environ.get("ORA_VAULT_PATH", VAULT_PATH)), DAILY_DIR_NAME)
 
 
+def _validated_daily_root(value: str | Path, *, create: bool) -> Path:
+    root = Path(value).expanduser().absolute()
+    if create:
+        root.mkdir(parents=True, exist_ok=True)
+    if root.exists() and (root.is_symlink() or not root.is_dir()):
+        raise ValueError(f"refusing symlinked/non-directory Daily Notes root {root}")
+    return root
+
+
+def _daily_lifecycle_lock_target(root: Path) -> Path:
+    digest = hashlib.sha256(
+        _rp.norm_key(root).encode("utf-8")
+    ).hexdigest()
+    lock_root = _rp.safe_owned_subdir(
+        Path(_rp.DATA_DIR_STR), "lifecycle-locks", create=True,
+    )
+    return lock_root / f"daily-notes-{digest}"
+
+
+def _locked_daily_note_paths(root: Path):
+    """Yield note paths while holding the shared lifecycle lock."""
+    with _rp.locked_file(_daily_lifecycle_lock_target(root)):
+        yield from sorted(root.glob("*.md"))
+
+
 # ── Conversations ──────────────────────────────────────────────────────────
 
 def _display_name(conversation_id: str) -> str:
@@ -99,7 +136,41 @@ def _display_name(conversation_id: str) -> str:
         return conversation_id
 
 
-def collect_conversations(date_str: str) -> list[dict]:
+def _conversation_is_restricted(conversation_id: str, chunk_text: str) -> bool:
+    """Return the most protective broad-surface privacy answer available.
+
+    The envelope is authoritative for retained Dialogues. Historical imports
+    may not have one, so their chunk frontmatter is the compatibility source.
+    Any uncertainty remains visible (Standard); malformed input is not turned
+    into a silent privacy classification.
+    """
+    env_path = os.path.join(SESSIONS_DIR, conversation_id, "conversation.json")
+    try:
+        with open(env_path, encoding="utf-8") as stream:
+            envelope = json.load(stream)
+        if isinstance(envelope, dict):
+            if str(envelope.get("tag") or "").casefold() in {
+                "private", "stealth",
+            }:
+                return True
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    frontmatter = re.match(r"\A---\s*\n(?P<body>.*?)\n---(?:\s*\n|\Z)",
+                           chunk_text, re.DOTALL)
+    if frontmatter is None:
+        return False
+    body = frontmatter.group("body")
+    return bool(
+        re.search(r"(?mi)^\s*-\s*(?:private|stealth)\s*$", body)
+        or re.search(
+            r"(?mi)^\s*tags\s*:\s*\[[^\]]*\b(?:private|stealth)\b",
+            body,
+        )
+    )
+
+
+def collect_conversations(date_str: str, *, include_private: bool = False) -> list[dict]:
     """Group that day's chunk files by conversation panel. Returns
     [{id, name, exchanges, first, last, gist}] sorted by first time."""
     convs: dict[str, dict] = {}
@@ -114,11 +185,19 @@ def collect_conversations(date_str: str) -> list[dict]:
                 text = f.read(4000)
         except OSError:
             continue
+        owner_match = _CHUNK_OWNER_RE.search(text)
+        if owner_match is not None:
+            try:
+                owner = json.loads(owner_match.group("value"))
+                if isinstance(owner, str) and owner:
+                    panel = owner
+            except json.JSONDecodeError:
+                pass
         ctx = re.search(r"^## Context\s*\n+(.+?)(?:\n##|\Z)", text,
                         re.MULTILINE | re.DOTALL)
         if ctx:
             cm = re.search(r"panel '([^']+)'", ctx.group(1))
-            if cm:
+            if cm and panel is None:
                 panel = cm.group(1)
             gm = re.search(r"The user asked: (.+)", ctx.group(1))
             if gm:
@@ -128,14 +207,22 @@ def collect_conversations(date_str: str) -> list[dict]:
             ym = re.search(r"^conversation_id: (.+)$", text, re.MULTILINE)
             panel = ym.group(1).strip() if ym else "unknown"
         entry = convs.setdefault(panel, {
-            "id": panel, "exchanges": 0, "first": hhmm, "last": hhmm, "gist": gist,
+            "id": panel, "exchanges": 0, "first": hhmm, "last": hhmm,
+            "gist": gist, "private": False,
         })
         entry["exchanges"] += 1
         entry["last"] = hhmm
+        entry["private"] = bool(
+            entry["private"] or _conversation_is_restricted(panel, text)
+        )
         if not entry["gist"] and gist:
             entry["gist"] = gist
     out = []
     for entry in convs.values():
+        # Daily Notes are a broad temporal surface. Private and Stealth
+        # Dialogue titles, prompts, and timing do not belong there.
+        if entry.pop("private", False) and not include_private:
+            continue
         entry["name"] = _display_name(entry["id"])
         out.append(entry)
     out.sort(key=lambda e: e["first"])
@@ -280,6 +367,315 @@ def collect_ora_activity(date_str: str) -> list[str]:
 
 # ── Note assembly ──────────────────────────────────────────────────────────
 
+def _one_line(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _conversation_summary_visible(conversation: dict) -> str:
+    """Render the user-visible portion of one generated Dialogue summary."""
+    name = _one_line(conversation.get("name") or conversation.get("id"))
+    first = _one_line(conversation.get("first") or "?")
+    last = _one_line(conversation.get("last") or first)
+    span = first if first == last else f"{first}–{last}"
+    try:
+        count = int(conversation.get("exchanges") or 0)
+    except (TypeError, ValueError):
+        count = 0
+    line = f"- **{name}** — {count} exchange{'s' if count != 1 else ''}, {span}"
+    gist = _one_line(conversation.get("gist"))
+    if gist:
+        gist = gist[:140] + ("…" if len(gist) > 140 else "")
+        line += f" — *{gist}*"
+    return line
+
+
+def _conversation_summary_line(conversation: dict) -> str:
+    """Render one summary plus durable, exact lifecycle provenance."""
+    visible = _conversation_summary_visible(conversation)
+    payload = {
+        "conversation_id": str(conversation.get("id") or ""),
+        "display_name": _one_line(
+            conversation.get("name") or conversation.get("id")
+        ),
+        "version": _SUMMARY_MARKER_VERSION,
+        "visible_sha256": hashlib.sha256(visible.encode("utf-8")).hexdigest(),
+    }
+    encoded = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).replace("<", "\\u003c").replace(">", "\\u003e")
+    return f"{visible} {_SUMMARY_MARKER_TOKEN}{encoded} -->"
+
+
+def _parse_summary_line(line: str) -> tuple[str, dict] | None:
+    match = _SUMMARY_MARKER_RE.fullmatch(line)
+    if match is None:
+        return None
+    try:
+        payload = json.loads(match.group("payload"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return match.group("visible"), payload
+
+
+def _recompute_generated_conversation_count(text: str) -> str:
+    """Recompute a Daily Note's generated ``conversations`` property.
+
+    Lifecycle reconciliation removes only exact generated summaries. Count the
+    remaining generated-summary-shaped lines in the Dialogues section so the
+    frontmatter cannot retain a contribution from a hidden/deleted Dialogue.
+    This deliberately leaves every other frontmatter property and all user
+    prose byte-for-byte intact.
+    """
+    frontmatter = re.match(
+        r"\A---(?P<ending>\r?\n)(?P<body>.*?)(?P=ending)---(?:\r?\n|\Z)",
+        text,
+        re.DOTALL,
+    )
+    if frontmatter is None:
+        return text
+    body = frontmatter.group("body")
+    if re.search(r"(?m)^type:\s*daily-note\s*$", body) is None:
+        return text
+
+    in_dialogues = False
+    remaining = 0
+    for line in text.splitlines():
+        if line == "## Dialogues":
+            in_dialogues = True
+            continue
+        if in_dialogues and line.startswith("## "):
+            in_dialogues = False
+        if in_dialogues and _parse_summary_line(line) is not None:
+            remaining += 1
+
+    body, replacements = re.subn(
+        r"(?m)^conversations:\s*\d+\s*$",
+        f"conversations: {remaining}",
+        body,
+        count=1,
+    )
+    if replacements != 1:
+        return text
+    return text[:frontmatter.start("body")] + body + text[frontmatter.end("body"):]
+
+
+def reconcile_conversation_summaries(
+    conversation_id: str,
+    *,
+    action: str,
+    new_display_name: str = "",
+    previous_display_name: str = "",
+    daily_notes_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Delete, rename, or hide exact Ora-managed Daily Note summaries.
+
+    New summaries carry a versioned identity marker and a hash of the visible
+    generated text. A same-line user edit therefore causes a loud error rather
+    than being erased. Other lines and sections are never rewritten.
+
+    Pre-marker Daily Notes are migrated at runtime only when their line exactly
+    equals the summary deterministically reconstructed from the still-present
+    conversation chunks. A title-shaped but non-exact legacy line is reported
+    as ambiguous and retained. This is intentionally not a scheduled cleanup.
+    """
+    cid = str(conversation_id or "").strip()
+    if not cid:
+        raise ValueError("conversation_id must be non-empty")
+    if action not in {"delete", "rename", "hide_private"}:
+        raise ValueError("action must be delete, rename, or hide_private")
+    if action == "rename" and not _one_line(new_display_name):
+        raise ValueError("new_display_name must be non-empty for rename")
+
+    root = _validated_daily_root((
+        Path(daily_notes_dir).expanduser()
+        if daily_notes_dir is not None else Path(daily_dir())
+    ), create=False)
+    result: dict[str, Any] = {
+        "conversation_id": cid,
+        "action": action,
+        "files_updated": [],
+        "summaries_removed": 0,
+        "summaries_renamed": 0,
+        "legacy_summaries_migrated": 0,
+        "errors": [],
+    }
+    if not root.exists():
+        return result
+    if root.is_symlink() or not root.is_dir():
+        result["errors"].append(
+            f"daily-note lifecycle: refusing non-directory {root}"
+        )
+        return result
+
+    cid_key = cid.casefold()
+    for path in _locked_daily_note_paths(root):
+        if path.is_symlink() or not path.is_file():
+            result["errors"].append(
+                f"daily-note lifecycle: refusing non-regular file {path}"
+            )
+            continue
+        try:
+            with _rp.locked_file(path):
+                original = path.read_text(encoding="utf-8")
+                lines = original.splitlines(keepends=True)
+                changed = False
+                marker_found = False
+                removed_before = result["summaries_removed"]
+                output: list[str] = []
+
+                for raw_line in lines:
+                    ending = "\n" if raw_line.endswith("\n") else ""
+                    line = raw_line[:-1] if ending else raw_line
+                    parsed = _parse_summary_line(line)
+                    if parsed is None:
+                        if (_SUMMARY_MARKER_TOKEN in line
+                                and cid_key in line.casefold()):
+                            result["errors"].append(
+                                f"daily-note lifecycle {path}: malformed or "
+                                f"edited provenance marker for {cid}"
+                            )
+                        output.append(raw_line)
+                        continue
+                    visible, payload = parsed
+                    owner = payload.get("conversation_id")
+                    if not isinstance(owner, str) or owner.casefold() != cid_key:
+                        output.append(raw_line)
+                        continue
+                    marker_found = True
+                    expected_hash = payload.get("visible_sha256")
+                    actual_hash = hashlib.sha256(
+                        visible.encode("utf-8")
+                    ).hexdigest()
+                    if (payload.get("version") != _SUMMARY_MARKER_VERSION
+                            or expected_hash != actual_hash):
+                        result["errors"].append(
+                            f"daily-note lifecycle {path}: managed summary for "
+                            f"{cid} was edited; refusing to erase user text"
+                        )
+                        output.append(raw_line)
+                        continue
+
+                    if action in {"delete", "hide_private"}:
+                        changed = True
+                        result["summaries_removed"] += 1
+                        continue
+
+                    old_name = _one_line(payload.get("display_name"))
+                    expected_prefix = f"- **{old_name}**"
+                    if not old_name or not visible.startswith(expected_prefix):
+                        result["errors"].append(
+                            f"daily-note lifecycle {path}: managed title shape "
+                            f"for {cid} is invalid"
+                        )
+                        output.append(raw_line)
+                        continue
+                    replacement_visible = (
+                        f"- **{_one_line(new_display_name)}**"
+                        + visible[len(expected_prefix):]
+                    )
+                    replacement_payload = dict(payload)
+                    replacement_payload["display_name"] = _one_line(new_display_name)
+                    replacement_payload["visible_sha256"] = hashlib.sha256(
+                        replacement_visible.encode("utf-8")
+                    ).hexdigest()
+                    encoded = json.dumps(
+                        replacement_payload, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    ).replace("<", "\\u003c").replace(">", "\\u003e")
+                    output.append(
+                        f"{replacement_visible} {_SUMMARY_MARKER_TOKEN}"
+                        f"{encoded} -->{ending}"
+                    )
+                    changed = True
+                    result["summaries_renamed"] += 1
+
+                # Compatibility for pre-marker notes. Reconstruct the exact
+                # generated line while chunks still exist; never guess based
+                # on title alone.
+                if not marker_found:
+                    date_str = path.stem
+                    try:
+                        conversations = collect_conversations(
+                            date_str, include_private=True,
+                        )
+                    except Exception as exc:
+                        result["errors"].append(
+                            f"daily-note lifecycle {path}: legacy reconstruction "
+                            f"failed: {exc}"
+                        )
+                        conversations = []
+                    target = next(
+                        (entry for entry in conversations
+                         if str(entry.get("id") or "").casefold() == cid_key),
+                        None,
+                    )
+                    if target is not None:
+                        target = dict(target)
+                        if previous_display_name:
+                            target["name"] = previous_display_name
+                        expected = _conversation_summary_visible(target)
+                        current_lines = "".join(output).splitlines(keepends=True)
+                        exact_indexes = [
+                            index for index, item in enumerate(current_lines)
+                            if item.rstrip("\n") == expected
+                        ]
+                        title = _one_line(
+                            previous_display_name or target.get("name")
+                        )
+                        title_prefix = f"- **{title}** —"
+                        expected_title_prefix = f"- **{title}**"
+                        expected_tail = (
+                            expected[len(expected_title_prefix):]
+                            if expected.startswith(expected_title_prefix) else ""
+                        )
+                        ambiguous = [
+                            item for item in current_lines
+                            if (
+                                item.rstrip("\n").startswith(title_prefix)
+                                or (
+                                    expected_tail
+                                    and item.rstrip("\n").startswith("- **")
+                                    and item.rstrip("\n").endswith(expected_tail)
+                                )
+                            ) and item.rstrip("\n") != expected
+                        ]
+                        if len(exact_indexes) == 1:
+                            index = exact_indexes[0]
+                            legacy_ending = (
+                                "\n" if current_lines[index].endswith("\n") else ""
+                            )
+                            if action in {"delete", "hide_private"}:
+                                current_lines.pop(index)
+                                result["summaries_removed"] += 1
+                            else:
+                                target["name"] = _one_line(new_display_name)
+                                current_lines[index] = (
+                                    _conversation_summary_line(target) + legacy_ending
+                                )
+                                result["summaries_renamed"] += 1
+                            result["legacy_summaries_migrated"] += 1
+                            output = current_lines
+                            changed = True
+                        elif len(exact_indexes) > 1 or ambiguous:
+                            result["errors"].append(
+                                f"daily-note lifecycle {path}: ambiguous edited "
+                                f"legacy summary for {cid}; retained for manual review"
+                            )
+
+                replacement = "".join(output)
+                if result["summaries_removed"] > removed_before:
+                    replacement = _recompute_generated_conversation_count(
+                        replacement,
+                    )
+                if changed and replacement != original:
+                    _rp.atomic_write_text(path, replacement)
+                    result["files_updated"].append(str(path))
+        except Exception as exc:
+            result["errors"].append(f"daily-note lifecycle {path}: {exc}")
+    return result
+
 def render_note(date_str: str, conversations: list[dict],
                 created: list[str], modified: list[str],
                 ora_lines: list[str]) -> str:
@@ -305,13 +701,7 @@ def render_note(date_str: str, conversations: list[dict],
         out.append("## Dialogues")
         out.append("")
         for c in conversations:
-            span = c["first"] if c["first"] == c["last"] else f"{c['first']}–{c['last']}"
-            n = c["exchanges"]
-            line = f"- **{c['name']}** — {n} exchange{'s' if n != 1 else ''}, {span}"
-            if c["gist"]:
-                gist = c["gist"][:140] + ("…" if len(c["gist"]) > 140 else "")
-                line += f" — *{gist}*"
-            out.append(line)
+            out.append(_conversation_summary_line(c))
         out.append("")
     if created or modified:
         out.append("## Vault activity")
@@ -344,29 +734,33 @@ def generate(date_str: str | None = None, force: bool = False) -> NoteResult:
         result.message = f"invalid date: {date_str!r}"
         return result
 
-    target_dir = daily_dir()
-    target = os.path.join(target_dir, f"{date_str}.md")
-    if os.path.exists(target) and not force:
-        result.message = f"exists, skipped: {date_str}.md"
-        result.stats = {"skipped": True}
-        result.duration_seconds = time.time() - start
-        return result
-
     try:
-        conversations = collect_conversations(date_str)
-        created, modified = collect_vault_activity(date_str)
-        ora_lines = collect_ora_activity(date_str)
-        body = render_note(date_str, conversations, created, modified, ora_lines)
-        os.makedirs(target_dir, exist_ok=True)
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(body)
-        result.message = f"wrote {date_str}.md"
-        result.stats = {
-            "conversations": len(conversations),
-            "vault_created": len(created),
-            "vault_modified": len(modified),
-            "ora_lines": len(ora_lines),
-        }
+        target_dir = _validated_daily_root(daily_dir(), create=True)
+        target = target_dir / f"{date_str}.md"
+        # One lock spans collection, target revalidation, and replacement.
+        # Delete/rename/privacy reconciliation uses this same lock, so a
+        # generated summary cannot reappear after a concurrent lifecycle
+        # mutation completes.
+        with _rp.locked_file(_daily_lifecycle_lock_target(target_dir)):
+            if (target.exists() or target.is_symlink()) and not force:
+                result.message = f"exists, skipped: {date_str}.md"
+                result.stats = {"skipped": True}
+                result.duration_seconds = time.time() - start
+                return result
+            conversations = collect_conversations(date_str)
+            created, modified = collect_vault_activity(date_str)
+            ora_lines = collect_ora_activity(date_str)
+            body = render_note(
+                date_str, conversations, created, modified, ora_lines,
+            )
+            _rp.atomic_write_text(target, body)
+            result.message = f"wrote {date_str}.md"
+            result.stats = {
+                "conversations": len(conversations),
+                "vault_created": len(created),
+                "vault_modified": len(modified),
+                "ora_lines": len(ora_lines),
+            }
     except Exception as e:
         result.success = False
         result.message = f"generation failed: {e}"

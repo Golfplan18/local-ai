@@ -36,9 +36,10 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 import json
 import os
-import shutil
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -107,12 +108,11 @@ def ledger_sink_path() -> str:
 
 
 def _fs_safe(conversation_id: str) -> str:
-    """Filesystem-safe form of a conversation id, applied on BOTH the note-write AND the purge side so
-    they always agree (the write/purge invariant). A raw id can carry a Windows-invalid ``:`` or a path
-    separator; map unsafe characters to ``_``, trim Windows-invalid trailing dots/spaces, avoid DOS
-    device names, and leave room for generated suffixes. Deterministic; empty → ``unknown``.
-    A collision (two ids → same safe form) only ever OVER-purges, which is the safe direction for the
-    stealth zero-residue guarantee."""
+    """Windows-safe lossy slug for task filenames and old-dir recovery.
+
+    Conversation directories must use ``_conversation_dirname``; using this
+    transform for ownership caused punctuation IDs to collide.
+    """
     cid = str(conversation_id or "").strip()
     if not cid:
         return "unknown"
@@ -127,6 +127,31 @@ def _fs_safe(conversation_id: str) -> str:
         safe = "_" + safe
     # Leave room for the timestamp/suffix below Windows' component limit.
     return safe[:160].rstrip(" .") or "unknown"
+
+
+def _conversation_dirname(conversation_id: str) -> str:
+    """Return a collision-free, case-stable key for future durable writes."""
+    cid = str(conversation_id or "").strip().casefold()
+    if re.fullmatch(r"[a-z0-9_-]+", cid or "") and _fs_safe(cid) == cid:
+        return cid
+    digest = hashlib.sha256(cid.encode("utf-8")).hexdigest()
+    return f"legacy-{digest}"
+
+
+def _note_conversation_id(path: str) -> str | None:
+    """Read the exact ownership scalar from one legacy durable note."""
+    try:
+        with open(path, encoding="utf-8") as stream:
+            head = stream.read(8192)
+        match = re.search(r"(?m)^conversation_id\s*:\s*(.*?)\s*$", head)
+        if not match:
+            return None
+        value = match.group(1).strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        return value
+    except Exception:
+        return None
 
 
 # ── Stealth + conversation-id sourcing (the SAME machinery the tool-event sink uses) ──
@@ -452,16 +477,16 @@ def write_durable_note(redacted_packet: Any, *, conversation_id: str, stealth: b
     try:
         if stealth or _is_stealth():
             return None
-        subdir = os.path.join(execution_records_dir(), _fs_safe(conversation_id))
-        os.makedirs(subdir, exist_ok=True)
+        subdir = str(_rp.safe_owned_subdir(
+            execution_records_dir(),
+            _conversation_dirname(conversation_id),
+            create=True,
+        ))
         task_id = _fs_safe(str(getattr(redacted_packet, "task_id", "") or "task"))
         ts = _now_iso().replace(":", "").replace("-", "").replace(".", "")   # fs-safe timestamp
         path = os.path.join(subdir, f"{task_id}__{ts}.md")
         body = _render_note(redacted_packet, conversation_id)
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(body)
-        os.replace(tmp, path)
+        _rp.atomic_write_text(path, body)
         return path
     except Exception as e:
         _note_failure(e, "execution_persistence_note")
@@ -510,11 +535,12 @@ def append_ledger_line(line: dict, *, conversation_id: str, stealth: bool = Fals
         path = ledger_sink_path()
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         encoded = (json.dumps(rec, default=str) + "\n").encode("utf-8")
-        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
-        try:
-            os.write(fd, encoded)
-        finally:
-            os.close(fd)
+        with _rp.locked_file(path):
+            fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+            try:
+                os.write(fd, encoded)
+            finally:
+                os.close(fd)
         return True
     except Exception as e:
         _note_failure(e, "execution_persistence_ledger")
@@ -524,45 +550,75 @@ def append_ledger_line(line: dict, *, conversation_id: str, stealth: bool = Fals
 # ── Stealth-purge backstop (called by conversation_closeout) ──────────────────
 def purge_conversation(conversation_id: str) -> dict:
     """Stealth-purge backstop for the whole store (invoked by ``conversation_closeout._purge_stealth``).
-    Two actions, both keyed on the SAME ``_fs_safe`` transform used at write time: (1) ``rmtree`` the
-    per-conversation note subdir (TRUE zero-residue — the store is git-ignored, nothing survives in
-    history); (2) scrub the ledger jsonl, dropping lines whose ``conversation_id`` matches (Layer-9
-    atomic tmp+replace). NEVER raises; returns a per-action report."""
+    New writes use a collision-free directory key. All directories are still
+    scrubbed file-by-file by exact embedded conversation_id because a current
+    safe key may overlap a pre-migration legacy slug (``a_b`` vs ``a:b``).
+    Ownership comparisons use the casefold lifecycle identity without merging
+    punctuation-distinct ids. The ledger is rewritten by that same identity.
+    NEVER raises; returns a per-action report."""
     result: dict[str, Any] = {"note_dir_removed": False, "ledger_lines_removed": 0, "errors": []}
-    cid = str(conversation_id or "")
+    cid = str(conversation_id or "").strip()
+    identity = cid.casefold()
     try:
-        subdir = os.path.join(execution_records_dir(), _fs_safe(cid))
-        if os.path.isdir(subdir):
-            shutil.rmtree(subdir)
-            result["note_dir_removed"] = True
+        # Every durable note carries an exact embedded owner. Always scrub by
+        # that owner, even for today's canonical directory name: before this
+        # migration, a safe id such as ``a_b`` could share that directory with
+        # the lossy legacy slug for ``a:b``. Blind rmtree would delete the
+        # sibling's records when the safe conversation was removed.
+        old_exact_dirname = (
+            cid if re.fullmatch(r"[A-Za-z0-9_-]+", cid or "")
+            else f"legacy-{hashlib.sha256(cid.encode('utf-8')).hexdigest()}"
+        )
+        directory_names = {
+            _conversation_dirname(cid),
+            _fs_safe(cid),
+            _fs_safe(identity),
+            old_exact_dirname,
+        }
+        for directory_name in directory_names:
+            directory = os.path.join(execution_records_dir(), directory_name)
+            if not os.path.isdir(directory) or os.path.islink(directory):
+                continue
+            for name in os.listdir(directory):
+                path = os.path.join(directory, name)
+                if os.path.isfile(path) and not os.path.islink(path):
+                    owner = _note_conversation_id(path)
+                    if (isinstance(owner, str)
+                            and owner.casefold() == identity):
+                        os.unlink(path)
+            if not os.listdir(directory):
+                os.rmdir(directory)
+                result["note_dir_removed"] = True
     except Exception as e:
         result["errors"].append(f"note_dir: {e}")
     try:
         path = ledger_sink_path()
         if os.path.exists(path):
-            kept: list[str] = []
-            removed = 0
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.rstrip("\n")
-                    if not line.strip():
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except Exception:
+            with _rp.locked_file(path):
+                kept: list[str] = []
+                removed = 0
+                with open(path, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.rstrip("\n")
+                        if not line.strip():
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except Exception:
+                            kept.append(line)
+                            continue
+                        owner = rec.get("conversation_id")
+                        if (isinstance(owner, str)
+                                and owner.casefold() == identity):
+                            removed += 1
+                            continue
                         kept.append(line)
-                        continue
-                    if rec.get("conversation_id") == cid:
-                        removed += 1
-                        continue
-                    kept.append(line)
-            if removed:
-                tmp = path + ".tmp"
-                with open(tmp, "w", encoding="utf-8") as f:
-                    for line in kept:
-                        f.write(line + "\n")
-                os.replace(tmp, path)
-                result["ledger_lines_removed"] = removed
+                if removed:
+                    _rp.atomic_write_text(
+                        path,
+                        "".join(line + "\n" for line in kept),
+                    )
+                    result["ledger_lines_removed"] = removed
     except Exception as e:
         result["errors"].append(f"ledger: {e}")
     return result

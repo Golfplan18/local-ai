@@ -47,7 +47,7 @@ class WP_7_6_3_CancelEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Lazy server import — drags a lot of orchestrator code in.
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S

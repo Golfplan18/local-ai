@@ -203,6 +203,18 @@ class TestRecorder(ToolEventsBase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["action"], "file_read")
 
+    def test_refuses_symlinked_sink_without_touching_external_target(self):
+        outside = os.path.join(self.tmp.name, "outside.jsonl")
+        with open(outside, "w", encoding="utf-8") as stream:
+            stream.write("sentinel\n")
+        os.symlink(outside, self.sink)
+
+        tool_events.record(self._event())
+
+        with open(outside, encoding="utf-8") as stream:
+            self.assertEqual(stream.read(), "sentinel\n")
+        self.assertTrue(tool_events.get_telemetry_health()["incomplete"])
+
     def test_writes_to_trace_dir_when_turn_active(self):
         trace = os.path.join(self.tmp.name, "trace")
         os.makedirs(trace)

@@ -264,6 +264,15 @@ class TestSaveConversationLockstep(unittest.TestCase):
         self._save("Hello", "Hi", tag="private")
         body = self._read_chunk_file()
         self.assertIn("tags:\n  - private", body)
+        raw_files = [
+            os.path.join(self.raw_dir, name)
+            for name in os.listdir(self.raw_dir) if name.endswith(".md")
+        ]
+        self.assertEqual(len(raw_files), 1)
+        with open(raw_files[0], encoding="utf-8") as stream:
+            raw = stream.read()
+        self.assertIn("tag: private\n", raw)
+        self.assertIn("tag_private: true\n", raw)
 
     def test_stealth_tag_does_not_appear_in_yaml_tags(self):
         # Stealth is a conversation-level mode, not a content tag.

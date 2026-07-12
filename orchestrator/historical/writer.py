@@ -20,7 +20,7 @@ File format (per the architecture doc):
     next_pair: <filename or empty>
     processing_model: <model-id>
     processed_at: <ISO-8601>
-    tags: []
+    tags: [] | [private]
     ---
 
     ## Context
@@ -124,6 +124,13 @@ def build_yaml_frontmatter(
         processing_model = cleaned_pair.user_record.route.model_id
     elif cleaned_pair.ai_record and cleaned_pair.ai_record.route:
         processing_model = cleaned_pair.ai_record.route.model_id
+    private = (
+        str(raw_chat.metadata.yaml_frontmatter.get("tag") or "").casefold()
+        == "private"
+        or str(
+            raw_chat.metadata.yaml_frontmatter.get("tag_private") or ""
+        ).casefold() in {"true", "1", "yes"}
+    )
 
     lines = [
         "---",
@@ -140,7 +147,7 @@ def build_yaml_frontmatter(
         f"next_pair: {_yaml_escape(context_header.next_pair_file)}",
         f"processing_model: {_yaml_escape(processing_model)}",
         f"processed_at: {processed_at.strftime('%Y-%m-%dT%H:%M:%S')}",
-        "tags: []",
+        "tags: [private]" if private else "tags: []",
         "---",
     ]
     return "\n".join(lines) + "\n"

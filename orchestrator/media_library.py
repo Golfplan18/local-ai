@@ -54,7 +54,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import
+    import runtime_paths as _rp
+
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 FFPROBE_BINARY = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
@@ -172,8 +177,10 @@ class MediaLibrary:
     def __init__(self, conversation_id: str) -> None:
         self.conversation_id = conversation_id
         self._lock = threading.Lock()
-        self.session_dir = SESSIONS_ROOT / conversation_id
-        self.session_dir.mkdir(parents=True, exist_ok=True)
+        self._deleted = False
+        self.session_dir = _rp.safe_owned_subdir(
+            SESSIONS_ROOT, conversation_id, create=True,
+        )
         self.state_path = self.session_dir / "media-library.json"
         self.thumbnails_dir = self.session_dir / "thumbnails"
         self._entries: list[dict] = []
@@ -198,15 +205,14 @@ class MediaLibrary:
             self._entries = []
 
     def _save(self) -> None:
+        if self._deleted:
+            raise RuntimeError("conversation was permanently deleted")
         payload = {
             "conversation_id": self.conversation_id,
             "schema_version": 1,
             "entries": self._entries,
         }
-        # Atomic-ish write: tmp + replace.
-        tmp = self.state_path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        tmp.replace(self.state_path)
+        _rp.atomic_write_text(self.state_path, json.dumps(payload, indent=2))
 
     # ── public surface ─────────────────────────────────────────────────────
 
@@ -234,7 +240,13 @@ class MediaLibrary:
 
         meta = _probe_metadata(src) if kind in ("video", "audio", "image") else {}
         entry_id = uuid.uuid4().hex[:12]
-        thumb = self.thumbnails_dir / f"{entry_id}.jpg"
+        thumbnail_dir = _rp.safe_owned_subdir(
+            SESSIONS_ROOT,
+            self.conversation_id,
+            "thumbnails",
+            create=True,
+        )
+        thumb = thumbnail_dir / f"{entry_id}.jpg"
         thumb_made = _generate_thumbnail(src, thumb, kind)
 
         entry = {
@@ -251,6 +263,17 @@ class MediaLibrary:
             "thumbnail_path": str(thumb) if thumb_made else None,
         }
         with self._lock:
+            if self._deleted:
+                # Thumbnail generation happens outside the instance lock so
+                # unrelated library reads stay responsive.  A concurrent
+                # Delete Forever can tombstone the instance in that window;
+                # refuse the late commit and remove the unregistered thumb.
+                if thumb_made:
+                    try:
+                        thumb.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                raise RuntimeError("conversation was permanently deleted")
             self._entries.append(entry)
             self._save()
         return dict(entry)
@@ -260,6 +283,8 @@ class MediaLibrary:
         if not clean:
             raise ValueError("new_name cannot be empty")
         with self._lock:
+            if self._deleted:
+                raise RuntimeError("conversation was permanently deleted")
             for e in self._entries:
                 if e.get("id") == entry_id:
                     e["display_name"] = clean
@@ -270,6 +295,8 @@ class MediaLibrary:
     def remove(self, entry_id: str) -> bool:
         """Remove the library entry. Does NOT delete the source file."""
         with self._lock:
+            if self._deleted:
+                raise RuntimeError("conversation was permanently deleted")
             new_entries = []
             removed = None
             for e in self._entries:
@@ -293,6 +320,17 @@ class MediaLibrary:
                 pass
         return True
 
+    def mark_deleted(self) -> None:
+        """Serialize a tombstone after any in-flight mutation has drained.
+
+        Once this returns, a stale holder of this instance can still call a
+        public method, but every mutator will reject before writing.  The
+        lifecycle purge may therefore remove the session directory without a
+        late ``media-library.json`` or thumbnail recreating it afterward.
+        """
+        with self._lock:
+            self._deleted = True
+
     def get_thumbnail_path(self, entry_id: str) -> Path | None:
         e = self.get_entry(entry_id)
         if not e:
@@ -308,23 +346,40 @@ class MediaLibrary:
 
 _libraries: dict[str, MediaLibrary] = {}
 _libraries_lock = threading.Lock()
+_deleted_libraries: set[str] = set()
 
 
 def get_library(conversation_id: str) -> MediaLibrary:
     """Return the (cached) MediaLibrary for a conversation, creating on demand."""
     if not conversation_id:
         raise ValueError("conversation_id required")
+    identity = conversation_id.casefold()
     with _libraries_lock:
-        lib = _libraries.get(conversation_id)
+        if identity in _deleted_libraries:
+            raise RuntimeError("conversation was permanently deleted")
+        lib = _libraries.get(identity)
         if lib is None:
             lib = MediaLibrary(conversation_id)
-            _libraries[conversation_id] = lib
+            _libraries[identity] = lib
         return lib
+
+
+def forget_library(conversation_id: str) -> bool:
+    """Tombstone and drain one cached library before session purge."""
+    identity = conversation_id.casefold()
+    with _libraries_lock:
+        _deleted_libraries.add(identity)
+        library = _libraries.pop(identity, None)
+    if library is None:
+        return False
+    library.mark_deleted()
+    return True
 
 
 __all__ = [
     "MediaLibrary",
     "get_library",
+    "forget_library",
     "VIDEO_EXTS",
     "AUDIO_EXTS",
     "IMAGE_EXTS",

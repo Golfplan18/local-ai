@@ -27,6 +27,8 @@ import hashlib
 import json
 import os
 import re
+import stat
+import sys
 from datetime import datetime, timezone
 
 
@@ -658,11 +660,23 @@ def _sticky_path() -> str:
 
 
 def _load_sticky() -> dict:
+    fd = -1
     try:
-        with open(_sticky_path(), encoding="utf-8") as f:
-            return json.load(f)
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(_sticky_path(), flags)
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return {}
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            fd = -1
+            value = json.load(stream)
+        return value if isinstance(value, dict) else {}
     except Exception:
         return {}
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 def get_sticky(conversation_id: str | None) -> str | None:
@@ -677,18 +691,17 @@ def set_sticky(conversation_id: str | None, tier: str | None) -> None:
     if not conversation_id:
         return
     try:
-        data = _load_sticky()
-        if tier is None or tier == "auto" or tier not in _TIER_RANK:
-            data.pop(conversation_id, None)
-        else:
-            data[conversation_id] = tier
-        os.makedirs(os.path.dirname(_sticky_path()), exist_ok=True)
-        tmp = _sticky_path() + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-        os.replace(tmp, _sticky_path())
-    except Exception:
-        pass
+        path = _sticky_path()
+        with _rp.locked_file(path):
+            data = _load_sticky()
+            if tier is None or tier == "auto" or tier not in _TIER_RANK:
+                data.pop(conversation_id, None)
+            else:
+                data[conversation_id] = tier
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            _rp.atomic_write_text(path, json.dumps(data))
+    except Exception as exc:
+        print(f"[risk_gate] set_sticky failed: {exc}", file=sys.stderr)
 
 
 def handle_risk_command(user_input: str, conversation_id: str | None) -> str | None:

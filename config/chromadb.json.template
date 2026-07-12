@@ -25,5 +25,11 @@
     "conversations": "conversations",
     "atomics": "atomic_dedup",
     "conversations_incognito": "conversations-incognito"
+  },
+  "collection_history": {
+    "knowledge": ["knowledge"],
+    "conversations": ["conversations"],
+    "atomics": ["atomic_dedup"],
+    "conversations_incognito": ["conversations-incognito"]
   }
 }

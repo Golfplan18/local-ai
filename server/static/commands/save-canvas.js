@@ -583,6 +583,9 @@
     }
     var fd = new FormData();
     fd.append('conversation_id', conversationId || 'main');
+    fd.append('tag', (root.OraConversation
+      && typeof root.OraConversation.getActiveTag === 'function')
+      ? (root.OraConversation.getActiveTag() || '') : '');
     fd.append('reason', reason || 'autosave');
     // Gzip bytes as a Blob so multer/Werkzeug treat it as a file.
     var blob = new Blob([bytes], { type: 'application/gzip' });

@@ -160,16 +160,21 @@ class JobQueuePersistenceTests(unittest.TestCase):
         self.assertEqual(jobs[0]["status"], STATUS_IN_PROGRESS)
         self.assertIsNotNone(jobs[0]["started_at"])
 
-    def test_session_slug_strips_unsafe_chars(self):
-        """The slug rule mirrors server.py's _vision_retry_queue_path."""
+    def test_unsafe_id_is_rejected_instead_of_colliding(self):
+        """Path punctuation is never lossy-sanitized into another ID."""
         q = JobQueue(sessions_root=self.root)
-        q.dispatch("conv with/slash", "video_generates", {"prompt": "p"})
-        # Resulting directory must not contain forbidden chars.
-        contents = os.listdir(self.root)
-        self.assertEqual(len(contents), 1)
-        slug = contents[0]
-        for bad in [" ", "/"]:
-            self.assertNotIn(bad, slug)
+        for unsafe in ("conv with space", "conv:colon", "conv?query",
+                       "conv.with.dot", "conv/with/slash", "../escape"):
+            with self.assertRaises(ValueError, msg=unsafe):
+                q.dispatch(unsafe, "video_generates", {"prompt": "p"})
+        self.assertEqual(os.listdir(self.root), [])
+
+    def test_canonical_ids_are_stored_verbatim_without_prefix_collision(self):
+        q = JobQueue(sessions_root=self.root)
+        q.dispatch("a", "video_generates", {"prompt": "short"})
+        q.dispatch("a-b", "video_generates", {"prompt": "long"})
+        self.assertTrue((Path(self.root) / "a" / "jobs.json").exists())
+        self.assertTrue((Path(self.root) / "a-b" / "jobs.json").exists())
 
 
 # ---------------------------------------------------------------------------

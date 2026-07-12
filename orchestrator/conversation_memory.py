@@ -11,9 +11,10 @@ alongside the new input so the model sees the evolution of the user's
 arrangement — not just the latest snapshot.
 
 Conversation-level mode is carried on the envelope as ``tag`` (one of
-``CONVERSATION_TAGS``). Set at conversation creation, immutable for the
-life of the conversation. Used by close-out dispatch (purge / retain /
-flag) and by RAG queries to filter private content.
+``CONVERSATION_TAGS``). Stealth is fixed at creation; Standard and Private
+may be changed explicitly through the lifecycle API. Per-turn request payloads
+never retag an existing envelope. The value is used by close-out dispatch and
+by RAG queries to filter private content.
 
 Persistence surface
 -------------------
@@ -114,8 +115,9 @@ _conv_locks: dict[str, threading.Lock] = defaultdict(threading.Lock)
 
 def _conversation_write_lock(conversation_id: str) -> threading.Lock:
     """Return the per-conversation Lock, creating it on first access."""
+    identity = str(conversation_id or "").strip().casefold()
     with _conv_locks_guard:
-        return _conv_locks[conversation_id]
+        return _conv_locks[identity]
 
 
 # ---------------------------------------------------------------------------
@@ -138,8 +140,11 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 
 # Valid conversation-level tag values (V3 Phase 1.1). Empty string is the
 # default (standard mode); ``stealth`` and ``private`` carry the V3 mode
-# semantics. Set at conversation creation, immutable thereafter.
+# semantics. Stealth is creation-only. Standard/private may be changed later
+# through set_conversation_tag(); per-turn request payloads never retag an
+# existing envelope.
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
+MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
 
 
 def normalize_project_ids(project_ids: Any) -> list[str]:
@@ -169,28 +174,47 @@ def normalize_project_ids(project_ids: Any) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _conversation_path(conversation_id: str, sessions_root: Path) -> Path:
-    """Return the absolute path to the conversation.json for a given id."""
-    return Path(sessions_root) / conversation_id / "conversation.json"
+def validate_conversation_id(conversation_id: str) -> str:
+    """Return a safe direct-child session id or raise ``ValueError``."""
+    if not isinstance(conversation_id, str):
+        raise ValueError("conversation_id must be a string")
+    value = conversation_id.strip()
+    if (not value or value in {".", ".."} or len(value) > 255
+            or "/" in value or "\\" in value or "\x00" in value
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in value)):
+        raise ValueError("invalid conversation_id")
+    return value
+
+
+def _conversation_path(
+    conversation_id: str,
+    sessions_root: Path,
+    *,
+    create_parent: bool = False,
+) -> Path:
+    """Return an owned envelope path without following a session symlink."""
+    session_dir = _rp.safe_owned_subdir(
+        Path(sessions_root),
+        validate_conversation_id(conversation_id),
+        create=create_parent,
+    )
+    target = session_dir / "conversation.json"
+    if target.is_symlink():
+        raise ValueError(f"conversation envelope is a symlink: {target}")
+    if target.exists() and not target.is_file():
+        raise ValueError(f"conversation envelope is not a file: {target}")
+    return target
 
 
 def _atomic_write_envelope(path: Path, data: dict[str, Any]) -> bool:
     """Atomically replace an envelope while its sidecar lock is held."""
-    tmp_path = path.with_name(
-        f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
-    )
     try:
-        tmp_path.write_text(
+        _rp.atomic_write_text(
+            path,
             json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
         )
-        os.replace(tmp_path, path)
         return True
     except OSError:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
         return False
 
 
@@ -208,7 +232,10 @@ def _read_normalized_envelope(
     for both current callers and a later pre-rename rollback before the data is
     exposed through APIs or counts.
     """
-    path = _conversation_path(conversation_id, root)
+    try:
+        path = _conversation_path(conversation_id, root)
+    except (OSError, ValueError):
+        return None
     if not path.exists():
         return None
     try:
@@ -261,7 +288,10 @@ def _mutate_conversation_envelope(
     mutate,
 ) -> Path | None:
     """Normalize, mutate, and atomically rewrite one conversation envelope."""
-    path = _conversation_path(conversation_id, root)
+    try:
+        path = _conversation_path(conversation_id, root)
+    except (OSError, ValueError):
+        return None
     if not path.exists():
         return None
     with _conversation_write_lock(conversation_id):
@@ -299,6 +329,82 @@ def load_conversation_json(
         require_messages=True,
         persist_heal=True,
     )
+
+
+def ensure_conversation_envelope(
+    conversation_id: str,
+    *,
+    tag: str = "",
+    project_ids: list[str] | None = None,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Create a zero-turn envelope for a server-managed artifact if absent.
+
+    Canvas, document, capture, and media artifacts can exist before the first
+    chat turn. Giving them an envelope immediately makes their lifecycle and
+    privacy state durable across browser/server restarts. Existing readable
+    envelopes are never changed; existing unreadable envelopes are reported
+    and never overwritten.
+    """
+    from datetime import datetime as _dt
+    import sys as _sys
+
+    cid = validate_conversation_id(conversation_id)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    try:
+        path = _conversation_path(cid, root, create_parent=True)
+    except (OSError, ValueError) as exc:
+        print(
+            f"[conversation_memory] unsafe artifact envelope path for "
+            f"{cid}: {exc}",
+            file=_sys.stderr,
+            flush=True,
+        )
+        return None
+    envelope_tag = tag if tag in CONVERSATION_TAGS else ""
+    envelope = {
+        "conversation_id": cid,
+        "display_name": "",
+        "tag": envelope_tag,
+        "created": _dt.now().isoformat(timespec="seconds"),
+        "parent_conversation_id": None,
+        "fork_point_chunk_id": None,
+        "project_ids": normalize_project_ids(project_ids),
+        "messages": [],
+    }
+    with _conversation_write_lock(cid):
+        try:
+            with _rp.locked_file(path):
+                if path.exists() or path.is_symlink():
+                    existing = _read_normalized_envelope(
+                        cid,
+                        root,
+                        require_messages=True,
+                        persist_heal=False,
+                    )
+                    if existing is not None:
+                        return path
+                    print(
+                        f"[conversation_memory] refused to overwrite unreadable "
+                        f"envelope for artifact: {path}",
+                        file=_sys.stderr,
+                        flush=True,
+                    )
+                    return None
+                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(json.dumps(envelope, indent=2, ensure_ascii=False))
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                return path
+        except (OSError, TimeoutError) as exc:
+            print(
+                f"[conversation_memory] artifact envelope create failed for "
+                f"{cid}: {exc}",
+                file=_sys.stderr,
+                flush=True,
+            )
+            return None
 
 
 def save_turn_spatial_state(
@@ -353,10 +459,11 @@ def save_turn_spatial_state(
     persistence step must never break the conversation flow).
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError:
+        path = _conversation_path(
+            conversation_id, root, create_parent=True,
+        )
+    except (OSError, ValueError):
         return None
 
     # Per-conversation lock around the read-modify-write so concurrent
@@ -617,6 +724,46 @@ def get_conversation_tag(
     return tag
 
 
+def set_conversation_tag(
+    conversation_id: str,
+    tag: str,
+    *,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Change an existing envelope between Standard and Private.
+
+    Stealth is creation-only: neither assigning Stealth nor changing an
+    existing Stealth envelope is permitted here. Callers that need a Stealth
+    conversation must create a new envelope (including a fork).
+
+    Returns the written path, or None when the envelope is missing/unreadable.
+    Raises ValueError for an invalid target and PermissionError for any
+    attempted transition involving Stealth.
+    """
+    if tag not in MUTABLE_PRIVACY_TAGS:
+        raise ValueError("conversation tag mutation accepts only standard or private")
+
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    class _StealthMutationRequested(Exception):
+        pass
+
+    def mutate(data: dict[str, Any]) -> None:
+        current = data.get("tag", "")
+        if current == "stealth":
+            raise _StealthMutationRequested
+        if current not in MUTABLE_PRIVACY_TAGS:
+            current = ""
+        if current != tag:
+            data["tag"] = tag
+
+    try:
+        return _mutate_conversation_envelope(conversation_id, root, mutate)
+    except _StealthMutationRequested:
+        raise PermissionError(
+            "Stealth is creation-only and cannot be retagged",
+        ) from None
+
+
 # ---------------------------------------------------------------------------
 # Conversation enumeration + read tracking (V3 Phase 2)
 # ---------------------------------------------------------------------------
@@ -645,6 +792,20 @@ def _derive_title(messages: list, max_len: int = 60) -> str:
             return single_line
         return single_line[: max_len - 1].rstrip() + "…"
     return ""
+
+
+def effective_conversation_title(data: dict[str, Any], max_len: int = 60) -> str:
+    """Return the stored display name or the same derived fallback used by UI.
+
+    The default matches the sidebar's fallback exactly. A stored display name
+    remains authoritative (up to its 200-character envelope limit).
+    """
+    display_name = data.get("display_name")
+    if isinstance(display_name, str) and display_name.strip():
+        return display_name.strip()[:200]
+    if data.get("is_welcome"):
+        return "Welcome to Ora"
+    return _derive_title(data.get("messages") or [], max_len=max_len)
 
 
 def _last_activity_at(messages: list) -> str | None:
@@ -690,7 +851,9 @@ def iter_conversations(
 
     summaries: list[dict[str, Any]] = []
     for entry in root.iterdir():
-        if not entry.is_dir():
+        # Session children are Ora-owned directories, never pointers to an
+        # unrelated tree. Match the no-follow behavior of the read/write path.
+        if entry.is_symlink() or not entry.is_dir():
             continue
         data = _read_normalized_envelope(
             entry.name,
@@ -848,7 +1011,10 @@ def ensure_welcome_thread(
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    welcome_path = _conversation_path(WELCOME_CONVERSATION_ID, root)
+    try:
+        welcome_path = _conversation_path(WELCOME_CONVERSATION_ID, root)
+    except (OSError, ValueError):
+        return False
     if welcome_path.exists():
         _migrate_welcome_placeholder(welcome_path)
         return False
@@ -857,12 +1023,12 @@ def ensure_welcome_thread(
         # Check whether ANY conversation.json files exist in the sessions
         # directory. If yes, this isn't a first launch — bail.
         for entry in root.iterdir():
-            if not entry.is_dir():
+            if entry.is_symlink() or not entry.is_dir():
                 continue
-            if (entry / "conversation.json").exists():
+            candidate = entry / "conversation.json"
+            if not candidate.is_symlink() and candidate.is_file():
                 return False
 
-    welcome_path.parent.mkdir(parents=True, exist_ok=True)
     now_iso = _dt.now().isoformat(timespec="seconds")
     envelope = {
         "conversation_id":         WELCOME_CONVERSATION_ID,
@@ -886,11 +1052,19 @@ def ensure_welcome_thread(
     }
     with _conversation_write_lock(WELCOME_CONVERSATION_ID):
         try:
+            welcome_path = _conversation_path(
+                WELCOME_CONVERSATION_ID, root, create_parent=True,
+            )
             with _rp.locked_file(welcome_path):
-                if welcome_path.exists():
-                    return False
-                return _atomic_write_envelope(welcome_path, envelope)
-        except (OSError, TimeoutError):
+                fd = os.open(
+                    welcome_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600,
+                )
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(json.dumps(envelope, indent=2, ensure_ascii=False))
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                return True
+        except (OSError, TimeoutError, ValueError):
             return False
 
 
@@ -899,18 +1073,20 @@ def fork_conversation(
     new_id: str,
     *,
     fork_point_chunk_id: str | None = None,
+    creation_tag: str | None = None,
     sessions_root: Path | None = None,
     timestamp: str | None = None,
 ) -> dict | None:
-    """Create a child conversation that inherits the parent's tag + history.
+    """Create a child conversation with copied history and a creation tag.
 
     V3 spec §4.2 / §5.2 (fork from default) and §4.3 / §5.3 (fork from
     mode). The child conversation:
 
       * gets a fresh ``conversation_id`` (caller-supplied to keep the
         content-derived naming convention in the caller's hands)
-      * inherits the parent's ``tag`` (forks of stealth are stealth;
-        forks of private are private; forks of standard are standard)
+      * inherits the parent's ``tag`` unless ``creation_tag`` explicitly
+        selects a valid mode. This is a new envelope, so a Stealth override is
+        allowed without making Stealth mutable on the parent.
       * gets ``parent_conversation_id`` pointing at the parent (V3
         Backlog 2C field name; this is the unambiguous fork-ancestry key
         used by pipeline reconstruction in conversation_closeout)
@@ -939,6 +1115,7 @@ def fork_conversation(
     parent_tag = parent.get("tag", "")
     if not isinstance(parent_tag, str) or parent_tag not in CONVERSATION_TAGS:
         parent_tag = ""
+    child_tag = creation_tag if creation_tag in CONVERSATION_TAGS else parent_tag
     parent_messages = parent.get("messages") or []
     if not isinstance(parent_messages, list):
         parent_messages = []
@@ -958,7 +1135,7 @@ def fork_conversation(
     child = {
         "conversation_id":         new_id,
         "display_name":            derived_display,
-        "tag":                     parent_tag,
+        "tag":                     child_tag,
         "created":                 forked_at,
         "parent_conversation_id":  parent_id,
         "fork_point_chunk_id":     fork_point_chunk_id,
@@ -967,17 +1144,24 @@ def fork_conversation(
         "messages":                copy.deepcopy(parent_messages),
     }
 
-    child_path = _conversation_path(new_id, root)
     try:
-        child_path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError:
+        child_path = _conversation_path(new_id, root, create_parent=True)
+    except (OSError, ValueError):
         return None
     with _conversation_write_lock(new_id):
         try:
             with _rp.locked_file(child_path):
-                if not _atomic_write_envelope(child_path, child):
-                    return None
-        except (OSError, TimeoutError):
+                # Exclusive creation is the low-level backstop: direct callers
+                # and concurrent processes cannot overwrite an existing child
+                # envelope even if they bypass the server lifecycle preflight.
+                fd = os.open(
+                    child_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600,
+                )
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(json.dumps(child, indent=2, ensure_ascii=False))
+                    stream.flush()
+                    os.fsync(stream.fileno())
+        except (OSError, TimeoutError, ValueError):
             return None
     return child
 
@@ -1131,7 +1315,6 @@ def set_conversation_closed(
     Returns the path written, or None if the envelope is missing.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-
     def mutate(data: dict[str, Any]) -> None:
         if closed:
             data["closed"] = True
@@ -1170,13 +1353,18 @@ def set_conversation_projects(
 __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
+    "MUTABLE_PRIVACY_TAGS",
+    "validate_conversation_id",
     "WELCOME_CONVERSATION_ID",
     "WELCOME_PLACEHOLDER_BODY",
     "load_conversation_json",
+    "ensure_conversation_envelope",
     "save_turn_spatial_state",
     "get_prior_spatial_state",
     "get_prior_annotations",
     "get_conversation_tag",
+    "set_conversation_tag",
+    "effective_conversation_title",
     "iter_conversations",
     "mark_conversation_read",
     "mark_conversation_errored",

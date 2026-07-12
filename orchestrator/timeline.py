@@ -64,7 +64,12 @@ import threading
 import uuid
 from pathlib import Path
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import
+    import runtime_paths as _rp
+
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 
 VALID_TRACK_KINDS = {"video", "audio", "pip", "music", "overlay"}
@@ -369,8 +374,9 @@ class Timeline:
             raise ValueError("conversation_id required")
         self.conversation_id = conversation_id
         self._lock = threading.Lock()
-        self.session_dir = SESSIONS_ROOT / conversation_id
-        self.session_dir.mkdir(parents=True, exist_ok=True)
+        self.session_dir = _rp.safe_owned_subdir(
+            SESSIONS_ROOT, conversation_id, create=True,
+        )
         self.state_path = self.session_dir / "timeline.json"
 
     # ── public ──────────────────────────────────────────────────────────────
@@ -394,9 +400,9 @@ class Timeline:
     def save(self, state: dict) -> dict:
         normalized = _normalize_state(state or {}, self.conversation_id)
         with self._lock:
-            tmp = self.state_path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(normalized, indent=2), encoding="utf-8")
-            tmp.replace(self.state_path)
+            _rp.atomic_write_text(
+                self.state_path, json.dumps(normalized, indent=2),
+            )
         return normalized
 
     def create_default(self) -> dict:
@@ -408,22 +414,35 @@ class Timeline:
 
 _timelines: dict[str, Timeline] = {}
 _timelines_lock = threading.Lock()
+_deleted_timelines: set[str] = set()
 
 
 def get_timeline(conversation_id: str) -> Timeline:
     if not conversation_id:
         raise ValueError("conversation_id required")
+    identity = conversation_id.casefold()
     with _timelines_lock:
-        tl = _timelines.get(conversation_id)
+        if identity in _deleted_timelines:
+            raise RuntimeError("conversation was permanently deleted")
+        tl = _timelines.get(identity)
         if tl is None:
             tl = Timeline(conversation_id)
-            _timelines[conversation_id] = tl
+            _timelines[identity] = tl
         return tl
+
+
+def forget_timeline(conversation_id: str) -> bool:
+    """Drop one cached timeline after Delete Forever removes its session."""
+    identity = conversation_id.casefold()
+    with _timelines_lock:
+        _deleted_timelines.add(identity)
+        return _timelines.pop(identity, None) is not None
 
 
 __all__ = [
     "Timeline",
     "get_timeline",
+    "forget_timeline",
     "VALID_TRACK_KINDS",
     "VALID_TRANSITIONS_IN",
     "VALID_TRANSITIONS_OUT",

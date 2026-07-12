@@ -105,7 +105,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import threading
 import time
 import uuid
@@ -128,10 +127,25 @@ DEFAULT_SESSIONS_ROOT = _rp.ORA_HOME / "sessions"
 JOBS_FILENAME = "jobs.json"
 
 
-def _slug(conversation_id: str) -> str:
-    """Filesystem-safe slug for a conversation id (matches the
-    ``vision-retry-queue`` convention in ``server.py``)."""
-    return re.sub(r"[^A-Za-z0-9_-]", "_", conversation_id or "default") or "default"
+def _conversation_segment(conversation_id: str) -> str:
+    """Validate and return the canonical on-disk conversation segment.
+
+    Replacing punctuation with ``_`` made distinct IDs share one jobs.json
+    (for example ``a:b`` and ``a?b``). New persistent queue writes therefore
+    accept only the same portable ID alphabet as the server and use that ID
+    verbatim. Delete Forever's in-memory ``forget_conversation`` remains able
+    to tombstone a legacy safe path segment without touching the filesystem.
+    """
+    if not isinstance(conversation_id, str):
+        raise ValueError("conversation_id must be a string")
+    if not conversation_id or len(conversation_id) > 255:
+        raise ValueError("invalid conversation_id")
+    if conversation_id != conversation_id.strip():
+        raise ValueError("invalid conversation_id")
+    if not all(ch.isascii() and (ch.isdigit() or ch.islower() or ch in "_-")
+               for ch in conversation_id):
+        raise ValueError("invalid conversation_id")
+    return conversation_id
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +220,7 @@ class JobQueue:
         self._root = Path(sessions_root) if sessions_root else DEFAULT_SESSIONS_ROOT
         # conversation_id -> list[Job] in insertion order.
         self._jobs: dict[str, list[Job]] = {}
+        self._deleted_conversations: set[str] = set()
         # subscriber callables for the event bus.
         self._subscribers: list[Callable[[dict], None]] = []
         # one lock guards everything — the queue is low-volume, and Flask
@@ -215,7 +230,7 @@ class JobQueue:
     # --- Persistence ----------------------------------------------------
 
     def _jobs_path(self, conversation_id: str) -> Path:
-        return self._root / _slug(conversation_id) / JOBS_FILENAME
+        return self._root / _conversation_segment(conversation_id) / JOBS_FILENAME
 
     def _load(self, conversation_id: str) -> list[Job]:
         """Read the on-disk mirror for ``conversation_id``.
@@ -238,22 +253,28 @@ class JobQueue:
 
     def _persist(self, conversation_id: str) -> None:
         """Mirror the in-memory list to disk. Fail-open."""
-        path = self._jobs_path(conversation_id)
         try:
-            os.makedirs(path.parent, exist_ok=True)
-            entries = [job.to_dict() for job in self._jobs.get(conversation_id, [])]
-            tmp = path.with_suffix(".json.tmp")
-            with open(tmp, "w") as fh:
-                json.dump(entries, fh, indent=2)
-            os.replace(tmp, path)
+            path = _rp.safe_owned_subdir(
+                self._root,
+                _conversation_segment(conversation_id),
+                create=True,
+            ) / JOBS_FILENAME
+            entries = [
+                job.to_dict()
+                for job in self._jobs.get(conversation_id.casefold(), [])
+            ]
+            _rp.atomic_write_text(path, json.dumps(entries, indent=2))
         except Exception as exc:  # pragma: no cover — log only
             print(f"[job-queue] persist failed for {conversation_id}: {exc}")
 
     def _ensure_loaded(self, conversation_id: str) -> list[Job]:
         """Lazy-load the conversation's jobs from disk on first touch."""
-        if conversation_id not in self._jobs:
-            self._jobs[conversation_id] = self._load(conversation_id)
-        return self._jobs[conversation_id]
+        identity = conversation_id.casefold()
+        if identity in self._deleted_conversations:
+            return []
+        if identity not in self._jobs:
+            self._jobs[identity] = self._load(conversation_id)
+        return self._jobs[identity]
 
     # --- Event bus ------------------------------------------------------
 
@@ -308,7 +329,10 @@ class JobQueue:
         is the canvas's call). The queue does not interpret it — it
         round-trips to disk and back.
         """
+        conversation_id = _conversation_segment(conversation_id)
         with self._lock:
+            if conversation_id.casefold() in self._deleted_conversations:
+                raise RuntimeError("conversation was permanently deleted")
             jobs = self._ensure_loaded(conversation_id)
             job = Job(
                 id=str(uuid.uuid4()),
@@ -494,8 +518,29 @@ class JobQueue:
         external process (test harness, future maintenance script) has
         edited ``jobs.json`` directly."""
         with self._lock:
-            self._jobs.pop(conversation_id, None)
+            self._jobs.pop(conversation_id.casefold(), None)
             return [j.to_dict() for j in self._ensure_loaded(conversation_id)]
+
+    def forget_conversation(self, conversation_id: str) -> int:
+        """Drop a conversation's cached jobs without recreating its mirror.
+
+        Delete Forever removes the whole session directory separately. This
+        method prevents a later queue read from retaining stale in-process job
+        objects after that filesystem purge.
+        """
+        if not isinstance(conversation_id, str):
+            raise ValueError("conversation_id must be a string")
+        legacy_id = conversation_id.strip()
+        if (not legacy_id or legacy_id in {".", ".."}
+                or len(legacy_id) > 255 or "/" in legacy_id
+                or "\\" in legacy_id or "\x00" in legacy_id
+                or any(ord(ch) < 32 or ord(ch) == 127 for ch in legacy_id)):
+            raise ValueError("invalid conversation_id")
+        with self._lock:
+            identity = legacy_id.casefold()
+            self._deleted_conversations.add(identity)
+            jobs = self._jobs.pop(identity, [])
+            return len(jobs)
 
     def purge_terminal(self, conversation_id: str) -> int:
         """Drop terminal jobs from the on-disk + in-memory queue. Returns
@@ -506,7 +551,7 @@ class JobQueue:
             kept = [j for j in jobs if j.status not in TERMINAL_STATUSES]
             removed = len(jobs) - len(kept)
             if removed:
-                self._jobs[conversation_id] = kept
+                self._jobs[conversation_id.casefold()] = kept
                 self._persist(conversation_id)
             return removed
 

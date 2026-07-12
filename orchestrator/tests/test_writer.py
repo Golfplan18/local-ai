@@ -138,6 +138,16 @@ class TestYamlFrontmatter(unittest.TestCase):
         self.assertTrue(ym.startswith("---\n"))
         self.assertTrue("---\n" in ym[3:])  # closing fence
 
+    def test_private_raw_chat_emits_private_cleaned_pair_tag(self):
+        chat = _raw_chat()
+        chat.metadata.yaml_frontmatter.update({
+            "tag": "private", "tag_private": "true",
+        })
+        ym = build_yaml_frontmatter(
+            _cleaned_pair(), _context_header(), chat,
+        )
+        self.assertIn("tags: [private]", ym)
+
 
 # ---------------------------------------------------------------------------
 # Body

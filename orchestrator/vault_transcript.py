@@ -29,12 +29,21 @@ recording without re-transcribing.
 
 from __future__ import annotations
 
+import json
+import errno
 import os
 import re
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-VAULT_ROOT = Path(os.path.expanduser("~/Documents/vault")).resolve()
+try:
+    from orchestrator import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import context
+    import runtime_paths as _rp  # type: ignore
+
+VAULT_ROOT = _rp.VAULT.resolve()
+_WRITE_LOCK = threading.Lock()
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -97,18 +106,54 @@ def _build_filename(source_path: Path, transcribed_at: datetime) -> str:
     return f"Transcript — {stem} — {date_part}.md"
 
 
-def _ensure_unique(path: Path) -> Path:
-    """If ``path`` exists, append ``- 2``, ``- 3``, … until a free slot is found."""
-    if not path.exists():
+def _numbered_candidate(path: Path, counter: int) -> Path:
+    """Return the base path or its deterministic ``- N`` collision form."""
+    if counter == 1:
         return path
     base = path.with_suffix("")
     suffix = path.suffix or ".md"
-    counter = 2
+    return Path(f"{base} - {counter}{suffix}")
+
+
+def _write_unique(path: Path, text: str) -> Path:
+    """Create one unique note atomically without following a symlink slot."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    counter = 1
     while True:
-        candidate = Path(f"{base} - {counter}{suffix}")
-        if not candidate.exists():
-            return candidate
-        counter += 1
+        candidate = _numbered_candidate(path, counter)
+        try:
+            fd = os.open(candidate, flags, 0o644)
+        except OSError as exc:
+            # A real file, directory, or dangling symlink owns this slot.
+            # Never inspect/follow it; move deterministically to the next one.
+            if exc.errno in {errno.EEXIST, errno.ELOOP, errno.EISDIR}:
+                counter += 1
+                continue
+            raise
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(text)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except Exception:
+            try:
+                candidate.unlink()
+            except OSError:
+                pass
+            raise
+        return candidate
+
+
+def _yaml_string(value: object) -> str:
+    """Serialize one YAML string scalar without permitting key injection.
+
+    JSON string syntax is a strict subset of YAML string syntax.  Using it for
+    every caller-controlled scalar keeps newlines, quotes, colons, and leading
+    list markers inside the scalar instead of letting them become frontmatter.
+    """
+    return json.dumps(str(value), ensure_ascii=False)
 
 
 # ── public surface ───────────────────────────────────────────────────────────
@@ -122,6 +167,8 @@ def write_transcript_note(
     duration_ms: float | None,
     transcription_model: str = "whisper-large-v3-local",
     extra_tags: list[str] | None = None,
+    conversation_id: str = "",
+    private: bool = False,
     vault_root: str | Path | None = None,
 ) -> Path:
     """Render a transcript to a single vault markdown note and write it.
@@ -137,12 +184,13 @@ def write_transcript_note(
     transcribed_at = datetime.now(timezone.utc)
 
     filename = _build_filename(source, transcribed_at)
-    target = _ensure_unique(root / filename)
 
     # YAML — keep keys alphabetized within sections so future diffs are
     # readable. Quoting policy: paths and ISO timestamps use double quotes
     # because they may contain colons or other YAML-special characters.
     tags: list[str] = ["incubating"]
+    if private:
+        tags.append("private")
     if extra_tags:
         for t in extra_tags:
             t_clean = (t or "").strip()
@@ -155,14 +203,25 @@ def write_transcript_note(
         "tags:",
     ]
     for tag in tags:
-        yaml_lines.append(f"  - {tag}")
+        yaml_lines.append("  - " + _yaml_string(tag))
+    if conversation_id:
+        # Strict ownership triple consumed by conversation_closeout. A generic
+        # source_file alone is not deletion authority because explicit/user
+        # notes may legitimately carry source provenance too.
+        yaml_lines += [
+            "artifact_kind: conversation_transcript",
+            "managed_by: ora",
+            "source_file: " + _yaml_string(conversation_id),
+        ]
     yaml_lines += [
-        f'source_media: "{source}"',
-        f'transcribed_at: "{transcribed_at.isoformat(timespec="seconds")}"',
-        f"transcription_model: {transcription_model}",
+        "source_media: " + _yaml_string(source),
+        "transcribed_at: " + _yaml_string(
+            transcribed_at.isoformat(timespec="seconds")
+        ),
+        "transcription_model: " + _yaml_string(transcription_model),
     ]
     if language:
-        yaml_lines.append(f"language: {language}")
+        yaml_lines.append("language: " + _yaml_string(language))
     if duration_ms is not None:
         yaml_lines.append(f"duration_ms: {int(duration_ms)}")
     yaml_lines.append(f"segment_count: {len(segments)}")
@@ -196,7 +255,10 @@ def write_transcript_note(
         body_lines.append("")
 
     note_text = "\n".join(yaml_lines) + "\n" + "\n".join(body_lines)
-    target.write_text(note_text, encoding="utf-8")
+    # Different conversations can finish transcription concurrently. Keep the
+    # in-process loop compact; O_EXCL is the cross-process collision authority.
+    with _WRITE_LOCK:
+        target = _write_unique(root / filename, note_text)
     return target
 
 

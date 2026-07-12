@@ -62,15 +62,23 @@ from typing import Callable
 
 # ── Conversation-tag awareness for stealth routing ───────────────────────────
 try:
-    from conversation_memory import get_conversation_tag
+    from .conversation_memory import get_conversation_tag
 except Exception:  # pragma: no cover — defensive on import-order quirks
-    def get_conversation_tag(_conv_id: str) -> str:
-        return ""
+    try:
+        from conversation_memory import get_conversation_tag
+    except Exception:
+        def get_conversation_tag(_conv_id: str) -> str:
+            return ""
+
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # pragma: no cover - legacy top-level import
+    import runtime_paths as _rp
 
 
 # ── Module configuration ─────────────────────────────────────────────────────
 
-WORKSPACE_ROOT = Path(os.path.expanduser("~/ora")).resolve()
+WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 DEFAULT_CAPTURE_DIR = WORKSPACE_ROOT / "captures"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
@@ -105,6 +113,10 @@ class _Capture:
     final_file_path: Path | None = None
     _stderr_thread: threading.Thread | None = None
     _stdout_thread: threading.Thread | None = None
+    _deleted: bool = field(default=False, repr=False)
+    _operation_lock: threading.RLock = field(
+        default_factory=threading.RLock, repr=False,
+    )
 
 
 # ── Platform-specific FFmpeg input flags ─────────────────────────────────────
@@ -343,6 +355,7 @@ class CaptureManager:
 
     def __init__(self, default_capture_dir: Path | None = None) -> None:
         self._captures: dict[str, _Capture] = {}
+        self._deleted_conversations: set[str] = set()
         self._lock = threading.Lock()
         self._subscribers: list[Callable[[dict], None]] = []
         self._default_capture_dir = default_capture_dir or DEFAULT_CAPTURE_DIR
@@ -386,10 +399,21 @@ class CaptureManager:
         Returns the new ``capture_id``. Spawns the first FFmpeg segment.
         """
         opts = dict(options or {})
-        tag = (get_conversation_tag(conversation_id) or "").strip()
+        with self._lock:
+            if conversation_id.casefold() in self._deleted_conversations:
+                raise RuntimeError("conversation was permanently deleted")
+        if "_effective_conversation_tag" in opts:
+            tag = str(opts.pop("_effective_conversation_tag") or "").strip()
+        else:
+            tag = (get_conversation_tag(conversation_id) or "").strip()
 
         if tag == "stealth":
-            capture_dir = SESSIONS_ROOT / conversation_id / "captures"
+            capture_dir = _rp.safe_owned_subdir(
+                SESSIONS_ROOT,
+                conversation_id,
+                "captures",
+                create=True,
+            )
         else:
             capture_dir = self._default_capture_dir
             # Honor the Settings → Screen recording directory, read
@@ -408,20 +432,21 @@ class CaptureManager:
                     capture_dir = Path(_configured).expanduser()
             except Exception:
                 pass
-        capture_dir.mkdir(parents=True, exist_ok=True)
-
-        capture_id = uuid.uuid4().hex[:12]
-        capture = _Capture(
-            capture_id=capture_id,
-            conversation_id=conversation_id,
-            tag=tag,
-            options=opts,
-            capture_dir=capture_dir,
-        )
         with self._lock:
+            if conversation_id.casefold() in self._deleted_conversations:
+                raise RuntimeError("conversation was permanently deleted")
+            if tag != "stealth":
+                capture_dir.mkdir(parents=True, exist_ok=True)
+            capture_id = uuid.uuid4().hex[:12]
+            capture = _Capture(
+                capture_id=capture_id,
+                conversation_id=conversation_id,
+                tag=tag,
+                options=opts,
+                capture_dir=capture_dir,
+            )
             self._captures[capture_id] = capture
-
-        self._launch_segment(capture)
+            self._launch_segment(capture)
         self._broadcast({
             "type": "started",
             "capture_id": capture_id,
@@ -473,59 +498,68 @@ class CaptureManager:
 
     def pause_capture(self, capture_id: str) -> None:
         capture = self._require(capture_id)
-        if capture.state != STATE_RECORDING:
-            return
-        self._stop_segment_gracefully(capture)
-        capture.state = STATE_PAUSED
-        self._broadcast({
-            "type": "paused",
-            "capture_id": capture_id,
-            "duration_ms": capture.last_duration_ms,
-        })
+        with capture._operation_lock:
+            if capture._deleted:
+                raise RuntimeError("conversation was permanently deleted")
+            if capture.state != STATE_RECORDING:
+                return
+            self._stop_segment_gracefully(capture)
+            capture.state = STATE_PAUSED
+            self._broadcast({
+                "type": "paused",
+                "capture_id": capture_id,
+                "duration_ms": capture.last_duration_ms,
+            })
 
     def resume_capture(self, capture_id: str) -> None:
         capture = self._require(capture_id)
-        if capture.state != STATE_PAUSED:
-            return
-        self._launch_segment(capture)
-        self._broadcast({
-            "type": "resumed",
-            "capture_id": capture_id,
-        })
+        with capture._operation_lock:
+            if capture._deleted:
+                raise RuntimeError("conversation was permanently deleted")
+            if capture.state != STATE_PAUSED:
+                return
+            self._launch_segment(capture)
+            self._broadcast({
+                "type": "resumed",
+                "capture_id": capture_id,
+            })
 
     def stop_capture(self, capture_id: str) -> dict:
         """Finalize the capture and return ``{file_path, duration_ms}``."""
         capture = self._require(capture_id)
-        if capture.state == STATE_RECORDING:
-            self._stop_segment_gracefully(capture)
-        capture.state = STATE_STOPPING
+        with capture._operation_lock:
+            if capture._deleted:
+                raise RuntimeError("conversation was permanently deleted")
+            if capture.state == STATE_RECORDING:
+                self._stop_segment_gracefully(capture)
+            capture.state = STATE_STOPPING
 
-        try:
-            final_path = self._concat_segments(capture)
-            capture.final_file_path = final_path
-            capture.state = STATE_COMPLETE
-            self._broadcast({
-                "type": "complete",
-                "capture_id": capture_id,
-                "file_path": str(final_path),
-                "duration_ms": capture.last_duration_ms,
-            })
-            self._record_capture_event("stop", capture_id,
-                                       capture.conversation_id, capture.tag)
-            return {
-                "file_path": str(final_path),
-                "duration_ms": capture.last_duration_ms,
-                "tag": capture.tag,
-            }
-        except Exception as e:
-            capture.state = STATE_FAILED
-            capture.last_error = str(e)
-            self._broadcast({
-                "type": "failed",
-                "capture_id": capture_id,
-                "error": str(e),
-            })
-            raise
+            try:
+                final_path = self._concat_segments(capture)
+                capture.final_file_path = final_path
+                capture.state = STATE_COMPLETE
+                self._broadcast({
+                    "type": "complete",
+                    "capture_id": capture_id,
+                    "file_path": str(final_path),
+                    "duration_ms": capture.last_duration_ms,
+                })
+                self._record_capture_event("stop", capture_id,
+                                           capture.conversation_id, capture.tag)
+                return {
+                    "file_path": str(final_path),
+                    "duration_ms": capture.last_duration_ms,
+                    "tag": capture.tag,
+                }
+            except Exception as e:
+                capture.state = STATE_FAILED
+                capture.last_error = str(e)
+                self._broadcast({
+                    "type": "failed",
+                    "capture_id": capture_id,
+                    "error": str(e),
+                })
+                raise
 
     def get_state(self, capture_id: str) -> dict:
         capture = self._require(capture_id)
@@ -548,6 +582,33 @@ class CaptureManager:
         with self._lock:
             ids = list(self._captures.keys())
         return [self.get_state(cid) for cid in ids]
+
+    def forget_conversation(self, conversation_id: str) -> dict:
+        """Stop and forget every live capture associated with a conversation.
+
+        Source recordings in a user-configured capture directory are retained
+        as explicit outputs. Stealth segments live inside the session tree and
+        are removed by the caller's subsequent filesystem purge.
+        """
+        identity = conversation_id.casefold()
+        with self._lock:
+            self._deleted_conversations.add(identity)
+            captures = [capture for capture in self._captures.values()
+                        if capture.conversation_id.casefold() == identity]
+            for capture in captures:
+                self._captures.pop(capture.capture_id, None)
+        errors: list[str] = []
+        for capture in captures:
+            with capture._operation_lock:
+                capture._deleted = True
+                try:
+                    if capture.current_process is not None:
+                        self._stop_segment_gracefully(capture)
+                except Exception as exc:
+                    errors.append(f"{capture.capture_id}: {exc}")
+                    print(f"[media-capture purge] {capture.capture_id}: {exc}",
+                          flush=True)
+        return {"captures": len(captures), "errors": errors}
 
     # ── internals ────────────────────────────────────────────────────────────
 
