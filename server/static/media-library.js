@@ -112,7 +112,7 @@
       + '</div>'
       + '<div class="media-library__grid" data-role="grid"></div>'
       + '<div class="media-library__empty" data-role="empty">'
-      +   'Drop audio, video, or image files anywhere in the visual pane to add them here, '
+      +   'Drop audio, video, or image files anywhere in the Exhibits pane to add them here, '
       +   'or paste a URL above to import from YouTube, Vimeo, podcasts, and ~1500 other sites. '
       +   'Captured screen recordings appear automatically.'
       + '</div>';
@@ -159,7 +159,7 @@
     var url = (inputEl.value || '').trim();
     if (!url) return;
     if (!_conversationId) {
-      _setImportStatus(statusEl, 'Open a conversation first.', 'error');
+      _setImportStatus(statusEl, 'Open a Dialogue first.', 'error');
       return;
     }
     if (!/^https?:\/\//i.test(url)) {

@@ -298,10 +298,10 @@
     var visualHelp = iface.visual_help_enabled !== undefined
       ? iface.visual_help_enabled
       : (src.visual_help_enabled === true);
-    _appendField('Show visual pane help button',
+    _appendField('Show Exhibits pane help button',
       _checkboxInput('interface.visual_help_enabled', visualHelp));
     _appendNote(
-      'When on, a small help button appears inside the visual pane and opens '
+      'When on, a small help button appears inside the Exhibits pane and opens '
       + 'the specialty toolbar menu. Leave it off for the uncluttered canvas.'
     );
 
@@ -713,7 +713,7 @@
       '<strong>Project plugins</strong> extend Ora with a folder\'s custom tools, '
       + 'slash commands, and configs (a repo containing an <code>ora-project.json</code> '
       + 'manifest). Register the folder path below to load them.<br>'
-      + 'Looking to organize your conversations and files instead? Use '
+      + 'Looking to organize your Dialogues and files instead? Use '
       + '<strong>+ New project</strong> in the sidebar — that\'s a separate feature.';
     pane.appendChild(explain);
 
@@ -1019,8 +1019,8 @@
                    cap.default_directory || src.default_directory || ''));
       _appendNote(
         'Where finished recordings land. Applies from the next recording; '
-        + 'stealth conversations keep their recordings inside the '
-        + 'conversation\'s own folder regardless.'
+        + 'stealth Dialogues keep their recordings inside the '
+        + 'Dialogue\'s own folder regardless.'
       );
 
       _appendField('Frame rate',
@@ -1735,7 +1735,7 @@
     addBtn.addEventListener('click', function () {
       var input = document.querySelector('.input-pane textarea');
       if (!input) {
-        _setStatus('Could not find the input pane', 'error');
+        _setStatus('Could not find the Inquiry pane', 'error');
         return;
       }
       input.value = '/framework api-key-setup';
@@ -1780,7 +1780,7 @@
     );
     _appendNote(
       'Word and PDF document exports are not configured here — they run '
-      + 'from the Export toolbar above the output pane and save to '
+      + 'from the Export toolbar above the Findings pane and save to '
       + '~/Documents/Ora Exports.'
     );
   }

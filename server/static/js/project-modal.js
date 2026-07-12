@@ -24,7 +24,7 @@
 (() => {
   let modal = null;
   let els = {};
-  let current = { nexus: 'general', name: 'General' };
+  let current = { nexus: 'general', name: 'Commons' };
   let momRawMode = false;
   let momCache = null;
   let filesCache = null;
@@ -41,7 +41,7 @@
     { id: 'overview', label: 'Overview' },
     { id: 'mom',      label: 'Mission & Goals' },
     { id: 'files',    label: 'Files' },
-    { id: 'convos',   label: 'Conversations' },
+    { id: 'convos',   label: 'Dialogues' },
   ];
 
   // ── Build (once) ────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@
             <label class="project-modal__label">Privacy</label>
             <label class="project-modal__checkbox-field">
               <input type="checkbox" id="pmPrivate" />
-              Private — files &amp; conversations excluded from retrieval
+              Private — files &amp; Dialogues excluded from retrieval
             </label>
           </div>
         </div>
@@ -219,7 +219,7 @@
               </div>
               <button type="button" class="project-modal__btn" id="pmNexusPreview">Preview impact</button>
             </div>
-            <div class="project-modal__hint">Renaming the nexus rewrites it in every vault file's frontmatter and in conversation memberships. Preview the impact first; this cannot be auto-undone (the vault's git auto-commit is the safety net).</div>
+            <div class="project-modal__hint">Renaming the nexus rewrites it in every vault file's frontmatter and in Dialogue memberships. Preview the impact first; this cannot be auto-undone (the vault's git auto-commit is the safety net).</div>
             <div class="project-modal__status" id="pmNexusMsg"></div>
             <button type="button" class="project-modal__btn project-modal__btn--danger" id="pmNexusApply" style="display:none;margin-top:8px">Apply rename</button>
           </div>
@@ -295,9 +295,9 @@
         <div class="project-modal__convo-section-label">In this project</div>
         <div class="project-modal__convolist" id="pmConvoList"></div>
         <div id="pmConvoAddWrap">
-          <div class="project-modal__convo-section-label">Add a conversation</div>
+          <div class="project-modal__convo-section-label">Add a Dialogue</div>
           <input class="project-modal__input" id="pmConvoSearch" type="text"
-            placeholder="Search conversations by title to add…" autocomplete="off" spellcheck="false" />
+            placeholder="Search Dialogues by title to add…" autocomplete="off" spellcheck="false" />
           <div class="project-modal__convolist" id="pmConvoAddList"></div>
         </div>
       </div>`;
@@ -379,7 +379,7 @@
   async function open(nexus, name) {
     build();
     mode = 'edit';
-    current = { nexus: nexus || 'general', name: name || nexus || 'General' };
+    current = { nexus: nexus || 'general', name: name || nexus || 'Commons' };
     resetTransient();
     applyMode();
     els.titleName.textContent = current.name;
@@ -413,7 +413,7 @@
     if (els.nexus) els.nexus.value = general ? '' : current.nexus;
     [els.modelProfile, els.outputStyle, els.interactionStyle].forEach(s => { if (s) s.disabled = general; });
     if (general) {
-      setStatus(els.ovMsg, 'General is the built-in default project and can\'t be configured.');
+      setStatus(els.ovMsg, 'Commons is the built-in default project and can\'t be configured.');
       return;
     }
     try {
@@ -599,7 +599,7 @@
       pendingNexus = next;
       setStatus(els.nexusMsg,
         `Will rewrite ${rep.vault_file_count} vault file${rep.vault_file_count === 1 ? '' : 's'} `
-        + `and ${rep.conversation_count} conversation${rep.conversation_count === 1 ? '' : 's'}.`);
+        + `and ${rep.conversation_count} Dialogue${rep.conversation_count === 1 ? '' : 's'}.`);
       if (els.nexusApply) {
         els.nexusApply.style.display = '';
         els.nexusApply.textContent = `Apply rename → ${next}`;
@@ -614,7 +614,7 @@
   async function applyNexus() {
     if (!pendingNexus || isGeneral()) return;
     const from = current.nexus, to = pendingNexus;
-    if (!confirm(`Rename the internal id from "${from}" to "${to}"? This rewrites the nexus across the vault and conversation memberships and cannot be auto-undone.`)) {
+    if (!confirm(`Rename the internal id from "${from}" to "${to}"? This rewrites the nexus across the vault and Dialogue memberships and cannot be auto-undone.`)) {
       return;
     }
     els.nexusApply.disabled = true;
@@ -636,7 +636,7 @@
       const errs = (rep.errors || []).length;
       setStatus(els.nexusMsg,
         `Renamed — ${rep.vault_file_count} file${rep.vault_file_count === 1 ? '' : 's'}, `
-        + `${rep.conversation_count} conversation${rep.conversation_count === 1 ? '' : 's'}`
+        + `${rep.conversation_count} Dialogue${rep.conversation_count === 1 ? '' : 's'}`
         + (errs ? `, ${errs} error${errs === 1 ? '' : 's'}.` : '.'),
         errs ? 'error' : 'ok');
       // Re-point everything at the new id.
@@ -712,7 +712,7 @@
     if (isGeneral()) {
       momCache = {};
       setStatus(els.momNote, '');
-      els.momNote.textContent = 'General has no Operation-Matrix. Create a project to set a Mission, Objectives, and Milestones.';
+      els.momNote.textContent = 'Commons has no Operation-Matrix. Create a project to set a Mission, Objectives, and Milestones.';
       [els.mission, els.objectives, els.momRaw, els.momIntent].forEach(e => { if (e) { e.value = ''; e.disabled = true; } });
       if (els.momSave) els.momSave.disabled = true;
       if (els.momAddBtn) els.momAddBtn.disabled = true;
@@ -959,7 +959,7 @@
         restore.type = 'button';
         restore.className = 'project-modal__btn project-modal__btn--mini';
         restore.textContent = 'Restore';
-        restore.title = 'Restore this closed conversation to the sidebar';
+        restore.title = 'Restore this closed Dialogue to the sidebar';
         restore.addEventListener('click', () => restoreConvo(c.conversation_id));
         actions.appendChild(restore);
       }
@@ -968,7 +968,7 @@
         rm.type = 'button';
         rm.className = 'project-modal__btn project-modal__btn--mini project-modal__btn--danger';
         rm.textContent = 'Remove';
-        rm.title = 'Remove from this project (the conversation is kept)';
+        rm.title = 'Remove from this project (the Dialogue is kept)';
         rm.addEventListener('click', () => setMembership(c, current.nexus, false));
         actions.appendChild(rm);
       }
@@ -977,7 +977,7 @@
       add.type = 'button';
       add.className = 'project-modal__btn project-modal__btn--mini';
       add.textContent = 'Add';
-      add.title = 'Add this conversation to the project';
+      add.title = 'Add this Dialogue to the project';
       add.addEventListener('click', () => setMembership(c, current.nexus, true));
       actions.appendChild(add);
     }
@@ -1002,13 +1002,13 @@
       els.convoList.appendChild(frag);
       if (!rows.length) {
         setStatus(els.convosMsg, isGeneral()
-          ? 'No conversations yet.'
-          : 'No conversations in this project yet — add some below.');
+          ? 'No Dialogues yet.'
+          : 'No Dialogues in this project yet — add some below.');
       } else {
-        setStatus(els.convosMsg, rows.length + (rows.length === 1 ? ' conversation' : ' conversations'));
+        setStatus(els.convosMsg, rows.length + (rows.length === 1 ? ' Dialogue' : ' Dialogues'));
       }
     } catch (e) {
-      setStatus(els.convosMsg, 'Could not load conversations.', 'error');
+      setStatus(els.convosMsg, 'Could not load Dialogues.', 'error');
     }
   }
 
@@ -1029,7 +1029,7 @@
       const rows = (data && data.conversations) || [];
       els.convoAddList.innerHTML = '';
       if (!rows.length) {
-        els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">No matching conversations to add.</div>';
+        els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">No matching Dialogues to add.</div>';
         return;
       }
       const frag = document.createDocumentFragment();

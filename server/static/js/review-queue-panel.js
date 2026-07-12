@@ -229,7 +229,7 @@
       const open = document.createElement('button');
       open.type = 'button';
       open.className = 'ora-review-link';
-      open.textContent = 'Open discussion conversation';
+      open.textContent = 'Open discussion Dialogue';
       open.addEventListener('click', () => {
         openDiscussionConversation(entry.discussion_conversation_id, entry);
       });
@@ -255,7 +255,7 @@
     pre.textContent = JSON.stringify(entry.detail || {}, null, 2);
     wrap.appendChild(pre);
     if (entry.conversation_id) {
-      const open = actionButton('Open conversation', () => {
+      const open = actionButton('Open Dialogue', () => {
         document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
           detail: { conversation_id: entry.conversation_id, title: entry.name, tag: '' },
         }));

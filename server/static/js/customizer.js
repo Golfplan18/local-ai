@@ -119,9 +119,9 @@
       type: 'pane',
       selector: '.input-pane, .chat-input-pane, .output-pane, .chat-output-pane, .right-pane',
       label: (el) => {
-        const baseLabel = el.classList.contains('input-pane') || el.classList.contains('chat-input-pane') ? 'Input pane'
-          : el.classList.contains('right-pane') ? 'Visual canvas'
-          : 'Output pane';
+        const baseLabel = el.classList.contains('input-pane') || el.classList.contains('chat-input-pane') ? 'Inquiry pane'
+          : el.classList.contains('right-pane') ? 'Exhibits pane'
+          : 'Findings pane';
         if (state.previewMode === 'private') return `${baseLabel} (Private mode)`;
         if (state.previewMode === 'stealth') return `${baseLabel} (Stealth mode)`;
         return baseLabel;

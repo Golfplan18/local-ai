@@ -39,7 +39,7 @@
         </button>
         <div class="export-toolbar__menu" id="exportMenu" role="menu" hidden>
           <button type="button" class="export-toolbar__item" role="menuitem" data-action="output">Save output to Vault</button>
-          <button type="button" class="export-toolbar__item" role="menuitem" data-action="conversation">Save full conversation</button>
+          <button type="button" class="export-toolbar__item" role="menuitem" data-action="conversation">Save full Dialogue</button>
           <div class="export-toolbar__sep"></div>
           <button type="button" class="export-toolbar__item is-disabled" id="exportDocx" role="menuitem" disabled data-action="docx" title="Checking Pandoc…">Word (.docx)</button>
           <button type="button" class="export-toolbar__item is-disabled" id="exportPdf" role="menuitem" disabled data-action="pdf" title="Checking Pandoc…">PDF</button>
@@ -119,8 +119,8 @@
       await postExport({ scope: 'current_output', content, title: firstHeading(content) }, setStatus);
     } else if (action === 'conversation') {
       const cid = conv && typeof conv.getActiveConversationId === 'function' ? conv.getActiveConversationId() : null;
-      if (!cid) { setStatus('No conversation to save.'); return; }
-      setStatus('Saving conversation…');
+      if (!cid) { setStatus('No Dialogue to save.'); return; }
+      setStatus('Saving Dialogue…');
       await postExport({ scope: 'full_conversation', conversation_id: cid }, setStatus);
     } else if (action === 'docx' || action === 'pdf') {
       const turn = conv && typeof conv.getCurrentTurn === 'function' ? conv.getCurrentTurn() : null;

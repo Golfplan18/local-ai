@@ -71,7 +71,7 @@
   //   wpRef       — provenance string shown in small text (debugging aid)
   var STEPS = [
     {
-      title: 'Welcome to the visual pane',
+      title: 'Welcome to the Exhibits pane',
       body:  'This pane is where Ora draws diagrams and where you can sketch alongside it. ' +
              'A 60-second tour, then you’re free.',
       selector: null,

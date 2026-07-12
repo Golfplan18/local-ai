@@ -46,15 +46,15 @@
   // wires real conversation data into the page.
   const PLACEHOLDER_PROMPT = (
     'This is the prompt that generated the response currently shown in ' +
-    'the output pane below.\n\n' +
-    'When real conversation data is wired in via the 2B load endpoint, ' +
+    'the Findings pane below.\n\n' +
+    'When real Dialogue data is wired in via the 2B load endpoint, ' +
     'this overlay will display the actual prompt text from the chunk ' +
     'file, with image references rendering inline.\n\n' +
     'For now, this is placeholder text so the overlay show / hide / ' +
     'resize behavior is testable. The overlay is read-only — you ' +
     'cannot type into it.\n\n' +
     'Close with the ✕ button at the top right, the expander button in ' +
-    'the output pane header, or by pressing Esc.'
+    'the Findings pane header, or by pressing Esc.'
   );
 
   // Size the overlay to cover the input pane + bridge strip exactly.

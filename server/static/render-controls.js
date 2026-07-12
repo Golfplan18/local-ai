@@ -152,7 +152,7 @@
 
   function _startRender(presetKey) {
     if (!_conversationId) {
-      _showError('Open a conversation before rendering.');
+      _showError('Open a Dialogue before rendering.');
       return;
     }
     _activePreset = presetKey;

@@ -24,7 +24,7 @@
     modal.innerHTML = `
       <div class="bootstrap-modal-backdrop"></div>
       <div class="bootstrap-modal-card" role="dialog" aria-modal="true" aria-labelledby="bootstrapModalTitle">
-        <div class="bootstrap-modal-title" id="bootstrapModalTitle">New conversation</div>
+        <div class="bootstrap-modal-title" id="bootstrapModalTitle">New Dialogue</div>
         <div class="bootstrap-modal-prompt">What topic would you like to explore?</div>
         <input type="text" class="bootstrap-modal-input" placeholder="A short topic description..." />
         <div class="bootstrap-modal-status" aria-live="polite"></div>
@@ -79,7 +79,7 @@
     }
 
     modalSubmit.disabled    = true;
-    modalStatus.textContent = 'Assembling context from prior knowledge and conversations...';
+    modalStatus.textContent = 'Assembling context from prior knowledge and Dialogues...';
 
     try {
       const resp = await fetch('/api/bootstrap', {

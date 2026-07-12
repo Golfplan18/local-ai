@@ -438,7 +438,7 @@
           },
         }));
       });
-      card.title = 'Click to open the elicitation conversation';
+      card.title = 'Click to open the elicitation Dialogue';
     }
     return card;
   };
