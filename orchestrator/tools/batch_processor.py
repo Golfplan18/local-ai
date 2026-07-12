@@ -75,7 +75,7 @@ class BatchProcessor:
 
     SUPPORTED_EXTENSIONS = {
         ".pdf", ".docx", ".pptx", ".html", ".htm",
-        ".rtf", ".txt", ".md", ".json",
+        ".xlsx", ".rtf", ".txt", ".md",
     }
 
     def __init__(self, config: dict = None, call_fn=None,

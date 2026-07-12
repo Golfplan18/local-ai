@@ -8,6 +8,7 @@ Supported formats:
   - PDF (.pdf) — text extraction with heading detection
   - Word (.docx) — text, headings, tables, lists
   - PowerPoint (.pptx) — slide text and speaker notes
+  - Excel (.xlsx) — visible worksheets as Markdown tables
   - HTML (.html, .htm) — strip markup, preserve structure
   - RTF (.rtf) — strip formatting
   - Plain text (.txt) — passthrough with minimal cleanup
@@ -314,7 +315,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: format_convert.py <file_path>")
         print("Converts a document to clean markdown and prints to stdout.")
-        print(f"Supported formats: {', '.join(['.pdf', '.docx', '.pptx', '.html', '.rtf', '.txt', '.md'])}")
+        print(f"Supported formats: {', '.join(['.pdf', '.docx', '.pptx', '.xlsx', '.html', '.htm', '.rtf', '.txt', '.md'])}")
         sys.exit(1)
 
     file_path = sys.argv[1]

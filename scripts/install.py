@@ -57,6 +57,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -99,6 +100,28 @@ DEPLOYMENT_PROFILES = {
 
 PREFLIGHT_MIN_PYTHON = (3, 11)
 PREFLIGHT_MIN_DISK_GB = 5
+
+# Import name -> pip distribution.  The Solo source installer does not mutate
+# an existing Python environment; it fails preflight with one exact install
+# command instead of letting the runtime watcher discover a missing converter
+# after the user drops a document into Ora Resources.
+DOCUMENT_CONVERSION_DEPENDENCIES = {
+    "pdfplumber": "pdfplumber",
+    "docx": "python-docx",
+    "pptx": "python-pptx",
+    "openpyxl": "openpyxl",
+    "markdownify": "markdownify",
+    "bs4": "beautifulsoup4",
+    "striprtf": "striprtf",
+}
+
+
+def _missing_document_dependencies() -> list[str]:
+    return [
+        distribution
+        for module, distribution in DOCUMENT_CONVERSION_DEPENDENCIES.items()
+        if importlib.util.find_spec(module) is None
+    ]
 
 EXTERNAL_API_GROUPS = [
     {
@@ -345,6 +368,16 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
         ok = False
     else:
         log(f"  ✓ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+
+    missing_conversion = _missing_document_dependencies()
+    if missing_conversion:
+        log("  ✗ Missing document-conversion dependencies: "
+            + ", ".join(missing_conversion))
+        log("    Install with: " + sys.executable + " -m pip install "
+            + " ".join(missing_conversion))
+        ok = False
+    else:
+        log("  ✓ Document conversion dependencies importable")
 
     # Disk space
     try:

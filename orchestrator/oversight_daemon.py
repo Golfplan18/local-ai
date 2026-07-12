@@ -32,6 +32,10 @@ DEFAULT_WORKFLOW_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_WORKFLOW_SWEEPER
 DEFAULT_REVISIT_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_REVISIT_SWEEPER_SEC", "3600"))
 DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_RETENTION_SWEEPER_SEC", "21600"))
 DEFAULT_MAINTENANCE_SCHEDULER_INTERVAL_SEC = int(os.environ.get("ORA_MAINTENANCE_SCHEDULER_SEC", "3600"))
+# Finder/Obsidian writes to the external inbound folder do not pass through an
+# Ora API, so polling is the only runtime trigger available.  Provisional until
+# live volume/latency data supports calibration.
+DEFAULT_RESOURCES_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_RESOURCES_WATCHER_SEC", "300"))
 
 # Watchdog cadence + per-lane stall thresholds. The fast lane runs cheap
 # file-diff watchers and should never be busy for more than seconds; the
@@ -40,6 +44,7 @@ DEFAULT_MAINTENANCE_SCHEDULER_INTERVAL_SEC = int(os.environ.get("ORA_MAINTENANCE
 DEFAULT_WATCHDOG_CHECK_SEC = int(os.environ.get("ORA_DAEMON_WATCHDOG_SEC", "30"))
 DEFAULT_FAST_STALL_SEC = int(os.environ.get("ORA_DAEMON_FAST_STALL_SEC", "300"))
 DEFAULT_SLOW_STALL_SEC = int(os.environ.get("ORA_DAEMON_SLOW_STALL_SEC", "7200"))
+DEFAULT_RESOURCES_STALL_SEC = int(os.environ.get("ORA_DAEMON_RESOURCES_STALL_SEC", "7200"))
 
 # Vault path — the canonical location for PEDs and other oversight artifacts.
 _DEFAULT_VAULT_PATH = _rp.VAULT_STR
@@ -68,6 +73,7 @@ WATCHER_HEARTBEAT_MODULES = (
     "revisit_sweeper",
     "retention_sweeper",
     "maintenance_scheduler",
+    "resources_watcher",
 )
 
 
@@ -327,7 +333,7 @@ def _resolve_path(p: str, relative_to: str) -> str:
 class OversightDaemon:
     """Background scheduler for oversight watchers.
 
-    Sweeps run on two lanes so heavy housekeeping can never starve the
+    Sweeps run on three lanes so heavy housekeeping can never starve the
     heartbeats the health check watches:
 
       - **fast lane**: ped / corpus / workflow-spec / revisit watchers —
@@ -335,8 +341,11 @@ class OversightDaemon:
       - **slow lane**: retention sweeper + maintenance scheduler (vault-wide
         walks, can legitimately run for many minutes), plus the one-shot
         vault auto-registration scan.
+      - **resources lane**: external inbound conversion, HCP indexing, and
+        vault asset conformance.  Office/PDF parsing and embedding can block,
+        so none of it shares the fast heartbeat lane.
 
-    A watchdog thread monitors both lanes' iteration ticks. When a lane
+    A watchdog thread monitors all three lanes' iteration ticks. When a lane
     stalls past its threshold (a sweep wedged in a long computation or an
     unbounded call), the watchdog logs the stuck thread's Python stack and
     starts a replacement lane thread; the abandoned thread exits at its
@@ -350,6 +359,7 @@ class OversightDaemon:
         self._running = False
         self._fast_thread: threading.Thread | None = None
         self._slow_thread: threading.Thread | None = None
+        self._resources_thread: threading.Thread | None = None
         self._watchdog_thread: threading.Thread | None = None
         self._last_run: dict[str, float] = {}
         # Lane generations: bumped on every (re)start of a lane. A lane
@@ -357,9 +367,11 @@ class OversightDaemon:
         # watchdog restart can't leave two live loops racing each other.
         self._fast_gen = 0
         self._slow_gen = 0
+        self._resources_gen = 0
         # Last time each lane completed a loop iteration.
         self._fast_tick = 0.0
         self._slow_tick = 0.0
+        self._resources_tick = 0.0
         self._vault_scan_done = False
 
     def start(self):
@@ -386,11 +398,12 @@ class OversightDaemon:
         self._running = True
         self._start_fast_lane()
         self._start_slow_lane()
+        self._start_resources_lane()
         self._watchdog_thread = threading.Thread(
             target=self._watchdog, daemon=True, name="oversight-watchdog")
         self._watchdog_thread.start()
-        print("[oversight_daemon] Started (fast/slow sweep lanes + watchdog; "
-              "vault auto-registration on slow lane)")
+        print("[oversight_daemon] Started (fast/slow/resources sweep lanes + "
+              "watchdog; vault auto-registration on slow lane)")
 
     def _start_fast_lane(self):
         self._fast_gen += 1
@@ -407,6 +420,14 @@ class OversightDaemon:
             target=self._slow_loop, args=(self._slow_gen,), daemon=True,
             name=f"oversight-slow-{self._slow_gen}")
         self._slow_thread.start()
+
+    def _start_resources_lane(self):
+        self._resources_gen += 1
+        self._resources_tick = time.time()
+        self._resources_thread = threading.Thread(
+            target=self._resources_loop, args=(self._resources_gen,), daemon=True,
+            name=f"oversight-resources-{self._resources_gen}")
+        self._resources_thread.start()
 
     def _initial_vault_scan(self):
         """Auto-register PEDs and workflow specs found in the vault.
@@ -437,7 +458,8 @@ class OversightDaemon:
     def stop(self):
         """Stop the daemon."""
         self._running = False
-        for t in (self._fast_thread, self._slow_thread, self._watchdog_thread):
+        for t in (self._fast_thread, self._slow_thread,
+                  self._resources_thread, self._watchdog_thread):
             if t:
                 t.join(timeout=5)
         print("[oversight_daemon] Stopped")
@@ -451,6 +473,7 @@ class OversightDaemon:
         self._run_revisit_sweeper(emit)
         self._run_retention_sweeper()
         self._run_maintenance_scheduler()
+        self._run_resources_watcher()
 
     def _fast_loop(self, gen: int):
         """Fast lane — cheap file-diff watchers, once-per-5s due check."""
@@ -512,6 +535,26 @@ class OversightDaemon:
                 self._slow_tick = time.time()
             self._lane_sleep(5, lambda: self._slow_gen == gen)
 
+    def _resources_loop(self, gen: int):
+        """Dedicated document-conversion/indexing/conformance lane."""
+        while self._running and self._resources_gen == gen:
+            now = time.time()
+            try:
+                self._maybe_run(
+                    "resources_watcher",
+                    DEFAULT_RESOURCES_WATCHER_INTERVAL_SEC,
+                    now,
+                    self._run_resources_watcher,
+                )
+            except Exception as e:
+                import traceback
+                print(f"[oversight_daemon] resources-lane loop error: {e}\n"
+                      f"{traceback.format_exc()}")
+
+            if self._resources_gen == gen:
+                self._resources_tick = time.time()
+            self._lane_sleep(5, lambda: self._resources_gen == gen)
+
     def _lane_sleep(self, seconds: int, gen_is_current):
         """Sleep in 1-second increments so stop() and lane replacement
         take effect quickly."""
@@ -521,7 +564,7 @@ class OversightDaemon:
             time.sleep(1)
 
     def _watchdog(self):
-        """Monitor both lanes; restart a lane whose loop has stalled.
+        """Monitor all three lanes; restart a lane whose loop has stalled.
 
         A stalled lane means a sweep is stuck inside a long computation or
         an unbounded call. Python threads can't be killed, so the watchdog
@@ -540,6 +583,10 @@ class OversightDaemon:
                                  DEFAULT_FAST_STALL_SEC, self._start_fast_lane)
                 self._check_lane("slow", self._slow_thread, self._slow_tick,
                                  DEFAULT_SLOW_STALL_SEC, self._start_slow_lane)
+                self._check_lane(
+                    "resources", self._resources_thread, self._resources_tick,
+                    DEFAULT_RESOURCES_STALL_SEC, self._start_resources_lane,
+                )
             except Exception as e:
                 import traceback
                 print(f"[oversight_daemon] watchdog error: {e}\n{traceback.format_exc()}")
@@ -639,6 +686,23 @@ class OversightDaemon:
                 print(f"[oversight_daemon] maintenance: ran={summary['ran']} failed={summary['failed']}")
         except Exception as e:
             print(f"[oversight_daemon] maintenance_scheduler failed: {e}")
+
+    def _run_resources_watcher(self):
+        # External document conversion + vault conformance.  The module owns
+        # its audit events; this wrapper only keeps daemon failures loud.
+        try:
+            import resources_watcher
+            summary = resources_watcher.sweep()
+            if (summary["processed"] or summary["orphans_moved"]
+                    or summary["errors"]):
+                print(
+                    "[oversight_daemon] resources: "
+                    f"processed={summary['processed']} "
+                    f"orphans_moved={summary['orphans_moved']} "
+                    f"errors={len(summary['errors'])}",
+                )
+        except Exception as e:
+            print(f"[oversight_daemon] resources_watcher failed: {e}")
 
 
 # ---------- Module-level singleton ----------

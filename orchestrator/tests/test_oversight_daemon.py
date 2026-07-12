@@ -205,6 +205,39 @@ class LaneGenerationTests(unittest.TestCase):
         self.assertFalse(first_thread.is_alive(),
                          "superseded lane thread should exit after generation bump")
 
+    def test_stale_generation_resources_loop_exits_without_dispatch(self):
+        d = od.OversightDaemon()
+        d._running = True
+        d._resources_gen = 2
+        with mock.patch.object(d, "_run_resources_watcher") as run:
+            d._resources_loop(1)
+        run.assert_not_called()
+
+    def test_resources_watcher_has_dedicated_due_check(self):
+        d = od.OversightDaemon()
+        d._running = True
+        d._resources_gen = 1
+
+        def one_iteration(name, interval, now, fn):
+            self.assertEqual(name, "resources_watcher")
+            self.assertEqual(interval, od.DEFAULT_RESOURCES_WATCHER_INTERVAL_SEC)
+            fn()
+            d._running = False
+
+        with mock.patch.object(d, "_maybe_run", side_effect=one_iteration), \
+                mock.patch.object(d, "_run_resources_watcher") as run:
+            d._resources_loop(1)
+        run.assert_called_once()
+
+    def test_resources_watcher_heartbeat_and_health_are_registered(self):
+        import oversight_health
+
+        self.assertIn("resources_watcher", od.WATCHER_HEARTBEAT_MODULES)
+        self.assertEqual(
+            oversight_health.HEARTBEAT_INTERVALS["resources_watcher"],
+            od.DEFAULT_RESOURCES_WATCHER_INTERVAL_SEC,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
