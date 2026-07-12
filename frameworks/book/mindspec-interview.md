@@ -15,7 +15,7 @@ Produce complete agent, character, or self specifications through tiered interac
 
 *v0.2.3 2026-04-21: Library inventory in §II updated to 66 entries (42 primary + 24 character-spec) across 11 families. Primary additions KINDNESS, RESPECT, WARMTH; character-spec additions CONTEMPT, SELF-CONTEMPT, ARROGANCE, SCHADENFREUDE. Renames: HARM-AVERSION → HARMLESSNESS, IN-GROUP-LOYALTY → TRIBALISM, SELF-ABASEMENT → FALSE HUMILITY, Life-Orientation → VITALITY, Long-duration-affective-state → TEMPERAMENT.*
 
-*Single-file consolidation 2026-05-09: the framework lives in this single document. Library (§II), Three-Stage Assessment Instrument (§IV), Inference Layer (§V), Learning Architecture (§VI), Tier-Dependent Interview Flows (§VII), and Stage 2A Life-Context Direct Pass (§VIIA) are all internal sections — no external companion files required for operational use. Universality-audit methodology and per-entry rationale archived at `Old AI Working Files/Framework — MindSpec Universality Audit and Corrections.md` for provenance; corrections already applied throughout this document.*
+*Single-file consolidation 2026-05-09: the framework lives in this single document. Library (§II), Three-Stage Assessment Instrument (§IV), Inference Layer (§V), Learning Architecture (§VI), Tier-Dependent Interview Flows (§VII), and Stage 2A Life-Context Direct Pass (§VIIA) are all internal sections — no external companion files required for operational use. Universality-audit methodology and per-entry rationale archived at `Archive/Framework — MindSpec Universality Audit and Corrections.md` for provenance; corrections already applied throughout this document.*
 
 
 ## Setup Questions
@@ -129,7 +129,7 @@ Required reading:
 The 66-entry library (§II), Three-Stage Assessment Instrument (§IV), Inference Layer (§V), Learning Architecture (§VI), and tier-dependent interview flows (§VII) are all sections of this document.
 
 Supporting documents:
-- `Old AI Working Files/Framework — MindSpec Universality Audit and Corrections.md` — v0.2.2 universality-audit methodology, findings, and per-entry rationale (archived; corrections already applied throughout this document)
+- `Archive/Framework — MindSpec Universality Audit and Corrections.md` — v0.2.2 universality-audit methodology, findings, and per-entry rationale (archived; corrections already applied throughout this document)
 - `Framework — Process Formalization.md` — meta-framework for framework construction
 - `Reference — SoulSpec Defining Identity for AI Agents.md` — compatibility standard
 

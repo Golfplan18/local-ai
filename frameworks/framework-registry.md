@@ -329,7 +329,7 @@ These six frameworks are loaded into model context windows at specific pipeline 
 
 | Framework | Reason | Location |
 |---|---|---|
-| Boot Generation | Tier distinction collapsed; single boot.md serves all configs | ~/Documents/vault/Old AI Working Files/ |
-| Progressive Boot Specification | Full install replaces progressive boot | ~/Documents/vault/Old AI Working Files/ |
-| Boot Canonical A/B/C | Model interchangeability makes separate tier boots unnecessary | ~/Documents/vault/Old AI Working Files/ |
-| Mind Framework | Superseded by MindSpec Interview Framework v0.2.3 (richer single-file spec with commitments, governance, constitution, voice, communication patterns, relationships vs. the older 5-section mind.md). Old Mind Framework produces only a 5-section mind.md; MindSpec produces the full spec. | ~/Documents/vault/Old AI Working Files/Framework — Mind.md (vault); ~/Documents/vault/Old AI Working Files/mind-framework.md.archived-2026-04-27 (the ora deprecated copy was archived 2026-04-27 and the deprecated/ folder was removed) |
+| Boot Generation | Tier distinction collapsed; single boot.md serves all configs | ~/Documents/vault/Archive/ |
+| Progressive Boot Specification | Full install replaces progressive boot | ~/Documents/vault/Archive/ |
+| Boot Canonical A/B/C | Model interchangeability makes separate tier boots unnecessary | ~/Documents/vault/Archive/ |
+| Mind Framework | Superseded by MindSpec Interview Framework v0.2.3 (richer single-file spec with commitments, governance, constitution, voice, communication patterns, relationships vs. the older 5-section mind.md). Old Mind Framework produces only a 5-section mind.md; MindSpec produces the full spec. | ~/Documents/vault/Archive/Framework — Mind.md (vault); ~/Documents/vault/Archive/mind-framework.md.archived-2026-04-27 (the ora deprecated copy was archived 2026-04-27 and the deprecated/ folder was removed) |

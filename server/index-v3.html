@@ -411,7 +411,7 @@
           margin-top: 6px; padding-top: 8px;
         }
         /* Active Project + Model configuration are top-level section headers —
-           match the supergroup headers (Conversations / Automated Processes),
+           match the supergroup headers (Dialogues / Automated Processes),
            a tier above the muted Pinned/Unread sub-labels. */
         .sidebar-fixed-section .sidebar-group-label {
           font-size: 12px; font-weight: 600; color: var(--text-normal);
@@ -507,10 +507,10 @@
           <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
         </button>
       </div>
-      <!-- Sidebar accordion: three super-sections, mutually exclusive
-           expansion. Conversations starts expanded by default; clicking
-           Paused or Operating collapses Conversations and expands the
-           clicked section. Closes deferred handoff item #8. -->
+      <!-- Sidebar accordion: two super-sections with mutually exclusive
+           expansion. Dialogues starts expanded by default; clicking
+           Automated Processes collapses Dialogues and reveals the nested
+           Paused and Operating groups. Closes deferred handoff item #8. -->
       <div class="sidebar-accordion" data-active-super="conversations">
 
         <div class="sidebar-supergroup" data-super="conversations" data-expanded="true">
@@ -584,7 +584,7 @@
             <div class="sidebar-groups">
               <!-- Paused: queue entries waiting on user resolution. Mirrors
                    the Pinned/Unread/Active inner-group pattern used by
-                   Conversations above. -->
+                   Dialogues above. -->
               <div class="sidebar-group" data-group="paused">
                 <div class="sidebar-group-label">
                   Paused

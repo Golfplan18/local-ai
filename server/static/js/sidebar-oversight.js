@@ -1,8 +1,8 @@
-/* V3 sidebar — Paused + Operating panels (oversight).
+/* V3 sidebar — Automated Processes panels (oversight).
  *
- * Three-supergroup accordion: Conversations / Paused / Operating. Mutually
- * exclusive expansion. Clicking a header collapses the others. Conversations
- * starts expanded; the oversight panels expand on demand.
+ * Two-supergroup accordion: Dialogues / Automated Processes. Expansion is
+ * mutually exclusive. Dialogues starts expanded; Automated Processes contains
+ * the Paused and Operating inner groups and expands on demand.
  *
  * Data:
  *   GET /api/oversight/paused    — Paused entries for resolution
