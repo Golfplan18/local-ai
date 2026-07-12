@@ -199,7 +199,7 @@
 
   const renderHeader = () => {
     if (!displayName) return;
-    displayName.textContent = state.activeTitle || (state.activeConversationId || 'Conversation');
+    displayName.textContent = state.activeTitle || (state.activeConversationId || 'Dialogue');
     if (modeIcon) {
       modeIcon.textContent = modeIconSymbolFor(state.activeTag);
       modeIcon.dataset.tag = state.activeTag || '';
@@ -380,7 +380,7 @@
     const tag = detail.tag || activeTagFromBody();
     state.activeConversationId = id;
     state.activeTag = tag;
-    state.activeTitle = 'New conversation';
+    state.activeTitle = 'New Dialogue';
     state.messages = [];
     state.turns = [];
     state.currentTurnIndex = 0;
@@ -399,7 +399,7 @@
   const forkActive = async (detail = {}) => {
     const parentId = state.activeConversationId;
     if (!parentId) {
-      alert('Open a conversation before forking it.');
+      alert('Open a Dialogue before forking it.');
       return;
     }
     try {
@@ -656,7 +656,7 @@
     input.className = 'output-pane-display-name-input';
     input.value = original;
     input.maxLength = 200;
-    input.setAttribute('aria-label', 'Conversation name');
+    input.setAttribute('aria-label', 'Dialogue name');
 
     displayName.replaceChildren(input);
     input.focus();

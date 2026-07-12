@@ -324,7 +324,7 @@
     this.el.classList.add('visual-panel');
     this.el.setAttribute('tabindex', '0');
     this.el.setAttribute('role', 'application');
-    this.el.setAttribute('aria-label', 'Visual canvas');
+    this.el.setAttribute('aria-label', 'Exhibits pane');
 
     // WP-4.1 — camera capture is included in the toolbar when the browser is
     // mobile (UA test). Desktop browsers get the file-picker only. The
@@ -375,7 +375,7 @@
         '<div class="visual-panel__konva" id="vp-konva-' + id + '"></div>' +
         '<div class="visual-panel__drop-hint" id="vp-drop-hint-' + id + '" aria-hidden="true">Drop image to attach</div>' +
       '</div>' +
-      '<button type="button" class="visual-panel__help-button" id="vp-help-' + id + '" aria-label="Show visual pane tools" title="Show visual pane tools">?</button>' +
+      '<button type="button" class="visual-panel__help-button" id="vp-help-' + id + '" aria-label="Show Exhibits pane tools" title="Show Exhibits pane tools">?</button>' +
       '<div class="visual-panel__errorbar" id="vp-errorbar-' + id + '" hidden></div>' +
       '<div class="visual-panel__zoom-indicator" id="vp-zoom-' + id + '" aria-hidden="true">100%</div>' +
       '<div class="visual-panel__annotation-hint" id="vp-annot-hint-' + id + '" role="status" aria-live="polite" hidden></div>' +
@@ -410,7 +410,7 @@
         if (Selector && typeof Selector.toggle === 'function') {
           Selector.toggle(helpPanel._helpBtn, helpPanel);
         } else if (helpPanel._showErrorBar) {
-          helpPanel._showErrorBar('Visual pane tools are still loading.');
+          helpPanel._showErrorBar('Exhibits pane tools are still loading.');
         }
         e.stopPropagation();
       });

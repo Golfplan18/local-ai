@@ -316,18 +316,18 @@
   <!-- LEFT SIDEBAR — V3 Phase 4.1–4.4 — collapsed by default to icon-width
        dashboard; expands to a header-less panel with a new-thread command
        at the top and three groups (Unread / Active / Pending). -->
-  <aside class="left-sidebar" id="leftSidebar" aria-label="Conversations">
+  <aside class="left-sidebar" id="leftSidebar" aria-label="Dialogues">
 
     <div class="sidebar-collapsed-dashboard">
       <button class="sidebar-dash-icon" type="button" id="sidebarDashExpand"
-              aria-label="Expand conversations sidebar">
+              aria-label="Expand Dialogues sidebar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
           <polyline points="9 18 15 12 9 6"/>
         </svg>
       </button>
       <button class="sidebar-dash-icon" type="button" id="sidebarDashNewChat"
-              aria-label="Start new conversation">
+              aria-label="Start new Dialogue">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
           <path d="M21 11.5a8.38 8.38 0 0 1-9 8.38 8.5 8.5 0 0 1-7.6-3.8L3 21l1.92-2.4A8.38 8.38 0 1 1 21 11.5z"/>
@@ -338,7 +338,7 @@
       <span class="sidebar-dash-count" id="sidebarDashUnread"
             data-count="0" title="Unread outputs">0</span>
       <span class="sidebar-dash-count" id="sidebarDashActive"
-            data-count="0" title="Active conversations">0</span>
+            data-count="0" title="Active Dialogues">0</span>
       <span class="sidebar-dash-count" id="sidebarDashPending"
             data-count="0" title="Pending operations">0</span>
     </div>
@@ -468,7 +468,7 @@
         </div>
         <button class="sidebar-project-current" id="sidebarProjectBtn" type="button"
                 aria-haspopup="listbox" aria-expanded="false" title="Switch project">
-          <span class="sidebar-project-name" id="sidebarProjectName">General</span>
+          <span class="sidebar-project-name" id="sidebarProjectName">Commons</span>
           <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
         </button>
         <div class="sidebar-project-menu" id="sidebarProjectMenu" role="listbox" hidden>
@@ -518,22 +518,22 @@
                   data-super-toggle="conversations"
                   aria-expanded="true">
             <span class="sidebar-supergroup-arrow">▾</span>
-            <span class="sidebar-supergroup-label">Conversations</span>
+            <span class="sidebar-supergroup-label">Dialogues</span>
           </button>
           <div class="sidebar-supergroup-body">
             <div class="sidebar-top-row">
               <button class="sidebar-new-thread-cmd" type="button"
-                      aria-label="Start new conversation">
+                      aria-label="Start new Dialogue">
                 <span class="plus-glyph">+</span>
-                <span>New Conversation</span>
+                <span>New Dialogue</span>
               </button>
               <button class="sidebar-fork-thread-cmd" type="button"
-                      aria-label="Fork current conversation">
+                      aria-label="Fork current Dialogue">
                 Fork
               </button>
               <button class="sidebar-browse-cmd" type="button"
-                      aria-label="Browse conversations">
-                Browse
+                      aria-label="Open Library">
+                Library
               </button>
             </div>
             <div class="sidebar-groups">
@@ -628,7 +628,7 @@
            framework picker, analyses picker, image-generation intent toggle, attach.
            Click handlers dispatch `ora:input-toolbar:*` events; picker modules
            wire the framework and analysis dropdowns. -->
-      <div class="input-pane-toolbar" role="toolbar" aria-label="Input options">
+      <div class="input-pane-toolbar" role="toolbar" aria-label="Inquiry options">
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarFramework"
                 aria-label="Frameworks"
@@ -709,7 +709,7 @@
       </div>
     </div>
     <div class="bridge-strip" id="bridgeStrip" role="separator"
-         aria-orientation="horizontal" aria-label="Resize input">
+         aria-orientation="horizontal" aria-label="Resize Inquiry pane">
       <!-- V3 Input Handling Phase 5 — left-justified input-selection label.
            Set by framework / analysis picker events; empty when no explicit
            selection is set for the current input. -->
@@ -796,7 +796,7 @@
       <div class="output-pane-header">
         <div class="output-pane-header-left">
           <span class="output-pane-mode-icon" id="outputPaneModeIcon" aria-hidden="true"></span>
-          <span class="output-pane-display-name" id="outputPaneDisplayName">Conversation</span>
+          <span class="output-pane-display-name" id="outputPaneDisplayName">Dialogue</span>
         </div>
         <div class="output-pane-header-right">
           <button class="output-pane-nav-btn" type="button" id="outputPaneNavBack"
@@ -817,7 +817,7 @@
 
       <div class="output-content">
         <h1>Heading 1</h1>
-        <p>Body text demonstrates the default paragraph styling. The output pane uses the theme's text-normal color and base font size.</p>
+        <p>Body text demonstrates the default paragraph styling. The Findings pane uses the theme's text-normal color and base font size.</p>
 
         <h2>Heading 2</h2>
         <p>Each heading level uses a distinct color from the Dracula palette to make the hierarchy easy to scan. <a href="#">Sample hyperlink</a> renders in blue.</p>
@@ -897,7 +897,7 @@
       </g>
 
       <g id="logo-a" class="wordmark-letter wordmark-clickable"
-         role="button" tabindex="0" aria-label="Open conversations sidebar">
+         role="button" tabindex="0" aria-label="Open Dialogues sidebar">
         <circle cx="145" cy="742" r="100" fill="transparent" stroke="none"/>
         <rect x="227" y="642" width="18" height="200" class="wm-fill-base"/>
         <circle cx="145" cy="742" r="91"  class="wm-stroke-bright"/>
@@ -923,7 +923,7 @@
          so it composes with — does not conflict with — those modes. -->
     <div class="spine-bottom">
 
-      <button class="spine-button" type="button" aria-label="New thread"
+      <button class="spine-button" type="button" aria-label="New Dialogue"
               id="spineNewThread">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round">
@@ -990,7 +990,7 @@
       <div class="pane chat-input-pane">
         <textarea spellcheck="false"></textarea>
         <button type="button" class="chat-zone-minimize-btn" id="chatZoneMinimizeBtn"
-                aria-label="Minimize chat" title="Minimize chat">
+                aria-label="Minimize Aside" title="Minimize Aside">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
                stroke-width="1.5" stroke-linecap="round">
             <line x1="3" y1="10" x2="11" y2="10"/>
@@ -998,7 +998,7 @@
         </button>
       </div>
       <div class="chatbot-divider" id="chatbotDivider" role="separator"
-           aria-orientation="horizontal" aria-label="Resize chat input"></div>
+           aria-orientation="horizontal" aria-label="Resize Aside input"></div>
       <div class="pane chat-output-pane"></div>
     </div>
     <div class="bridge-strip-right" id="bridgeStripRight" role="separator"
@@ -1375,7 +1375,7 @@
     if (action === 'exit') {
       if (mode === 'stealth') {
         const ok = window.confirm(
-          'This stealth conversation will be permanently deleted. ' +
+          'This stealth Dialogue will be permanently deleted. ' +
           'This cannot be undone. Confirm exit?'
         );
         if (!ok) return;

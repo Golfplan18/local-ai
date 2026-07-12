@@ -34,7 +34,11 @@ _NEXUS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 GENERAL_NEXUS = "general"
 PROJECT_STATUSES = ("active", "inactive", "archived")
-RESERVED_NEXUS = {GENERAL_NEXUS, ""}
+# "commons" is reserved alongside the current sentinel: the default project
+# DISPLAYS as "Commons" (2026-07-11 nomenclature) while its internal nexus id
+# remains "general" until the planned id rename lands — a user-created
+# "Commons" project would collide with the default's displayed name.
+RESERVED_NEXUS = {GENERAL_NEXUS, "commons", ""}
 
 # Inert default slots added now (G1.33 decision 3): wired as the model-profile,
 # style, and persona sub-steps land. ``private`` and the profile are honored
@@ -68,7 +72,7 @@ def general_meta() -> dict[str, Any]:
     """The synthetic, all-inclusive default project."""
     return {
         "nexus": GENERAL_NEXUS,
-        "name": "General",
+        "name": "Commons",
         "status": "active",
         "is_default": True,
         "is_plugin": False,

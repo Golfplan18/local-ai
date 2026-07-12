@@ -507,7 +507,7 @@
 
   function _startCapture() {
     if (!_conversationId) {
-      _setStatus('Open a conversation before starting a capture.', 'warn');
+      _setStatus('Open a Dialogue before starting a capture.', 'warn');
       return;
     }
     _setStatus('Starting…', 'info');

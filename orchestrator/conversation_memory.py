@@ -630,7 +630,7 @@ Once it's ready, this thread will offer:
 - A place to ask Ora about itself, with answers that accumulate here
 
 For now, this is a placeholder. The thread is pinned to the top of your
-conversation list and won't be removed by automatic cleanup. You can
+Dialogue list and won't be removed by automatic cleanup. You can
 manually delete it from the sidebar if you don't want it.
 
 — Under construction —

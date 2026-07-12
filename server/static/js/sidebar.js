@@ -232,7 +232,7 @@
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'sidebar-row-close';
-      close.setAttribute('aria-label', 'Close conversation');
+      close.setAttribute('aria-label', 'Close Dialogue');
       close.textContent = '×';
       close.addEventListener('click', (ev) => {
         ev.stopPropagation();
@@ -243,7 +243,7 @@
         const pin = document.createElement('button');
         pin.type = 'button';
         pin.className = 'sidebar-row-pin';
-        pin.setAttribute('aria-label', row.pinned ? 'Unpin conversation' : 'Pin conversation');
+        pin.setAttribute('aria-label', row.pinned ? 'Unpin Dialogue' : 'Pin Dialogue');
         if (row.pinned) pin.classList.add('is-pinned');
         pin.textContent = row.pinned ? '\u{1F4CC}' : '\u{1F4CD}';
         pin.addEventListener('click', (ev) => {
@@ -363,7 +363,7 @@
 
   // ── G1.33 project switcher ──────────────────────────────────────────────
   const projectDisplayName = (nexus) =>
-    nexus === 'general' ? 'General' : nexus;
+    nexus === 'general' ? 'Commons' : nexus;
 
   const renderProjects = () => {
     if (!projectListEl) return;
@@ -472,11 +472,11 @@
       hasDraft = !!localStorage.getItem('ora-v3-draft-' + row.conversation_id);
     } catch (e) {}
     if (hasDraft) {
-      if (!confirm('This conversation has an unsent message in the input area. Close anyway?')) return;
+      if (!confirm('This Dialogue has an unsent message in the Inquiry pane. Close anyway?')) return;
       try { localStorage.removeItem('ora-v3-draft-' + row.conversation_id); } catch (e) {}
     }
     if (row.tag === 'stealth') {
-      if (!confirm('This stealth conversation will be permanently deleted. This cannot be undone. Confirm?')) return;
+      if (!confirm('This stealth Dialogue will be permanently deleted. This cannot be undone. Confirm?')) return;
     }
     try {
       await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/close`, {
@@ -508,7 +508,7 @@
       return;
     }
     if (!prompt) {
-      alert('Nothing to retry — no user prompt found in this conversation.');
+      alert('Nothing to retry — no user prompt found in this Dialogue.');
       return;
     }
     // Re-submit through /chat/multipart. We don't await SSE here;
@@ -572,7 +572,7 @@
       <div class="conversation-browser-panel">
         <div class="conversation-browser-top">
           <input class="conversation-browser-search" type="text"
-                 placeholder="Search conversations..."
+                 placeholder="Search Dialogues..."
                  spellcheck="true"
                  autocorrect="on"
                  autocapitalize="sentences"
@@ -582,14 +582,14 @@
             <option value="recency">Recency</option>
           </select>
           <button class="conversation-browser-search-btn" type="button">Search</button>
-          <button class="conversation-browser-close" type="button" aria-label="Close browser">×</button>
+          <button class="conversation-browser-close" type="button" aria-label="Close Library">×</button>
         </div>
         <div class="conversation-browser-summary">
           <div class="conversation-browser-status"></div>
           <div class="conversation-browser-filters">
             <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
               <input class="conversation-browser-filter-conversations" type="checkbox" checked>
-              Conversations
+              Dialogues
             </label>
             <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
               <input class="conversation-browser-filter-engrams" type="checkbox" checked>
@@ -814,7 +814,7 @@
     } else {
       browserStatus.textContent = removed
         ? `No visible results, ${removed} removed`
-        : 'No matching enabled conversations or engrams';
+        : 'No matching enabled Dialogues or engrams';
     }
   };
 
@@ -879,7 +879,7 @@
 
   const fetchRelated = async (conversationId) => {
     if (!conversationId) return;
-    browserStatus.textContent = 'Loading related conversations...';
+    browserStatus.textContent = 'Loading related Dialogues...';
     try {
       const params = new URLSearchParams();
       applyBrowserRequestFilters(params);

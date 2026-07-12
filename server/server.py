@@ -4623,7 +4623,7 @@ def api_projects_mom_set(nexus):
     if mom is None:
         return _json_response(
             {"ok": False, "error": "no matrix file (and could not create one — "
-             "General has none, or no name to create from)"}, 404)
+             "Commons has none, or no name to create from)"}, 404)
     return _json_response({"ok": True, "mom": mom})
 
 
@@ -4752,7 +4752,7 @@ def api_projects_mom_assist(nexus):
         return _json_response({"ok": False, "error": str(exc)}, 503)
     if (nexus or "").strip().lower() in ("", "general"):
         return _json_response(
-            {"ok": False, "error": "General has no Operation-Matrix."}, 400)
+            {"ok": False, "error": "Commons has no Operation-Matrix."}, 400)
     data = request.get_json(silent=True) or {}
     name = data.get("name") or None
     if name is None:
@@ -9366,7 +9366,7 @@ def _default_layout():
             {"id": "main",   "type": "chat",   "width_pct": 50, "model_slot": "breadth",
              "is_main_feed": True,  "bridge_subscribe_to": None,   "label": "Main Chat"},
             {"id": "visual", "type": "visual", "width_pct": 50, "model_slot": None,
-             "is_main_feed": False, "bridge_subscribe_to": "main", "label": "Visual"},
+             "is_main_feed": False, "bridge_subscribe_to": "main", "label": "Exhibits"},
         ]}, "theme": "default-light"}
 
 
