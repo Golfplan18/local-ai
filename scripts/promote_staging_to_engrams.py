@@ -34,7 +34,16 @@ def main() -> int:
           f"{'previewing' if a.dry_run else 'promoting'} "
           f"{limit or total}")
     res = promote_staging_dir(index=not a.dry_run, dry_run=a.dry_run, limit=limit)
-    for i, r in enumerate(res["results"], 1):
+    display_results = res["results"] + res.get("duplicate_results", [])
+    for i, r in enumerate(display_results, 1):
+        if r.get("duplicate"):
+            match = r.get("duplicate_of") or {}
+            print(
+                f"[{i}] duplicate -> {match.get('title') or match.get('id')} "
+                f"(similarity {float(match.get('similarity') or 0):.3f}); "
+                "existing engram preserved"
+            )
+            continue
         if a.dry_run:
             print("\n" + "=" * 96)
             print(f"[{i}] {os.path.basename(r['src'])}  ->  Engrams/{os.path.basename(r['dest'])}")
@@ -46,7 +55,10 @@ def main() -> int:
     auto = res.get("autocommit") or {}
     if auto.get("enabled"):
         print(f"\nautocommit: {auto.get('message', 'unknown')}")
-    print(f"\n{'previewed' if a.dry_run else 'promoted'} {res['promoted']} notes")
+    print(
+        f"\n{'previewed' if a.dry_run else 'promoted'} {res['promoted']} notes; "
+        f"duplicates {res.get('duplicates', 0)}"
+    )
     return 0
 
 

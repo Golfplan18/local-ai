@@ -23,6 +23,7 @@ pipeline's chromadb step uses).
 from __future__ import annotations
 
 import datetime
+import math
 import os
 import shutil
 import subprocess
@@ -46,6 +47,11 @@ PROMOTED_DIR = os.path.join(_rp.DATA_DIR_STR, "extraction-promoted")
 VAULT_ENGRAMS = str(_rp.VAULT / "Engrams")
 TRUTHY = ("1", "on", "true", "yes")
 _PROMOTION_LOCK = threading.RLock()
+
+# PROVISIONAL: judgment-set promotion boundary, pending calibration against
+# reviewed duplicate/non-duplicate engram pairs. Chroma's knowledge collection
+# uses cosine distance, so similarity is ``1 - distance``.
+SEMANTIC_DUPLICATE_THRESHOLD = 0.92
 
 
 def _slug(text: str) -> str:
@@ -101,6 +107,106 @@ def _dest_path(title: str, date_str: str, dest_dir: str) -> str:
         path = os.path.join(dest_dir, f"{date_str}_{slug}-{n}.md")
         n += 1
     return path
+
+
+def _archive_path(staging_path: str, promoted_dir: str) -> str:
+    """Allocate a collision-safe archive path for a consumed staged note."""
+    stem, suffix = os.path.splitext(os.path.basename(staging_path))
+    path = os.path.join(promoted_dir, stem + suffix)
+    n = 1
+    while os.path.exists(path):
+        path = os.path.join(promoted_dir, f"{stem}-{n}{suffix}")
+        n += 1
+    return path
+
+
+def _find_active_duplicate(
+    *,
+    fm: dict,
+    body: str,
+    title: str,
+    date_str: str,
+    vault_engrams: str,
+    chromadb_path: str | os.PathLike[str] | None,
+) -> tuple[object | None, dict | None]:
+    """Return the logical knowledge collection and its nearest duplicate.
+
+    Lookup failures are deliberately fail-open: they are emitted loudly and
+    the caller continues promotion. The collection is obtained through the
+    knowledge-index helper so configured storage and embedding bindings remain
+    authoritative; this module never names a physical Chroma collection.
+    """
+    collection = None
+    try:
+        from orchestrator.tools.knowledge_index import (
+            _build_embed_text,
+            get_knowledge_collection,
+        )
+
+        collection = get_knowledge_collection(chromadb_path)
+        query_text = _build_embed_text(
+            fm, body, filepath=f"{date_str}_{_slug(title)}.md")
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=1,
+            where={
+                "$and": [
+                    {"type": "engram"},
+                    {"tag_archived": False},
+                ]
+            },
+            include=["metadatas", "distances"],
+        )
+        ids = (results.get("ids") or [[]])[0]
+        distances = (results.get("distances") or [[]])[0]
+        if not ids or not distances:
+            return collection, None
+
+        distance = float(distances[0])
+        if not math.isfinite(distance):
+            raise ValueError(f"knowledge query returned non-finite distance {distance!r}")
+        similarity = max(-1.0, min(1.0, 1.0 - distance))
+        if similarity < SEMANTIC_DUPLICATE_THRESHOLD:
+            return collection, None
+
+        metadatas = (results.get("metadatas") or [[]])[0]
+        metadata = dict(metadatas[0] or {}) if metadatas else {}
+        match_path = os.path.realpath(str(metadata.get("path") or ""))
+        vault_root = os.path.realpath(vault_engrams)
+        try:
+            contained = os.path.commonpath([vault_root, match_path]) == vault_root
+        except ValueError:
+            contained = False
+        if not match_path or not contained or not os.path.isfile(match_path):
+            raise ValueError(
+                f"nearest indexed engram has no live canonical path: {match_path or '<missing>'}"
+            )
+        match_fm, _ = _parse(match_path)
+        match_tags = match_fm.get("tags") or []
+        if isinstance(match_tags, str):
+            match_tags = [match_tags]
+        if match_fm.get("type") != "engram" or "archived" in match_tags:
+            raise ValueError(
+                f"nearest indexed engram is not an active canonical engram: {match_path}"
+            )
+        duplicate = {
+            "id": str(ids[0]),
+            "path": match_path,
+            "title": str(metadata.get("title") or ids[0]),
+            "source": str(metadata.get("source") or ""),
+            "distance": distance,
+            "similarity": similarity,
+            "threshold": SEMANTIC_DUPLICATE_THRESHOLD,
+        }
+        return collection, duplicate
+    except Exception as exc:  # noqa: BLE001 - fail open is the promotion contract
+        print(
+            f"[engram_promotion] semantic duplicate lookup failed for "
+            f"{title!r}: {type(exc).__name__}: {exc}. "
+            "Proceeding with promotion.",
+            file=sys.stderr,
+        )
+        return collection, None
 
 
 def _env_truthy(name: str) -> bool:
@@ -246,11 +352,68 @@ def _staging_note_to_engram_unlocked(
     date_str = datetime.date.fromtimestamp(os.path.getmtime(staging_path)).isoformat()
     title = _title_from(fm, body, os.path.basename(staging_path).rsplit(".", 1)[0])
     eng_fm = _to_engram_fm(fm, date_str)
-    dest = _dest_path(title, date_str, vault_engrams)
     out = ("---\n" + yaml.dump(eng_fm, sort_keys=False, allow_unicode=True).rstrip()
            + "\n---\n\n" + body.rstrip() + "\n")
+
+    collection, duplicate = _find_active_duplicate(
+        fm=eng_fm,
+        body=body,
+        title=title,
+        date_str=date_str,
+        vault_engrams=vault_engrams,
+        chromadb_path=chromadb_path,
+    )
+    if duplicate is not None:
+        archived_to = _archive_path(staging_path, promoted_dir)
+        result = {
+            "src": staging_path,
+            "dest": None,
+            "indexed": False,
+            "duplicate": True,
+            "duplicate_of": duplicate,
+            "archived_to": archived_to,
+        }
+        print(
+            f"[engram_promotion] semantic duplicate skipped: {title!r} -> "
+            f"{duplicate['title']!r} ({duplicate['id']}, "
+            f"similarity={duplicate['similarity']:.4f}, "
+            f"threshold={SEMANTIC_DUPLICATE_THRESHOLD:.4f})",
+            file=sys.stderr,
+        )
+        if dry_run:
+            result["preview"] = out
+            return result
+
+        # The runtime pipeline may already have indexed the staged working
+        # note. Remove that transient identity while preserving the matching
+        # active engram. Failure is loud but does not strand the physical
+        # derivative in staging where it would be retried indefinitely.
+        if collection is not None:
+            try:
+                from orchestrator.tools.knowledge_index import delete_file_records
+                removed = delete_file_records(collection, staging_path)
+                if not removed:
+                    print(
+                        f"[engram_promotion] duplicate staging index had no "
+                        f"removable records for {os.path.basename(staging_path)}; "
+                        "the derivative will still be archived",
+                        file=sys.stderr,
+                    )
+            except Exception as exc:  # noqa: BLE001 - archive still proceeds
+                print(
+                    f"[engram_promotion] duplicate staging-index cleanup failed "
+                    f"for {os.path.basename(staging_path)}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
+        os.makedirs(promoted_dir, exist_ok=True)
+        shutil.move(staging_path, archived_to)
+        return result
+
+    dest = _dest_path(title, date_str, vault_engrams)
     if dry_run:
-        return {"src": staging_path, "dest": dest, "preview": out, "indexed": False}
+        return {"src": staging_path, "dest": dest, "preview": out,
+                "indexed": False, "duplicate": False}
     os.makedirs(vault_engrams, exist_ok=True)
     with open(dest, "w", encoding="utf-8") as f:
         f.write(out)
@@ -259,7 +422,8 @@ def _staging_note_to_engram_unlocked(
         try:
             from orchestrator.tools.knowledge_index import (
                 delete_file_records, get_knowledge_collection, index_file)
-            collection = get_knowledge_collection(chromadb_path)
+            if collection is None:
+                collection = get_knowledge_collection(chromadb_path)
             # The session pipeline's chromadb step may have indexed this note
             # under its staging path; that file is about to move, so drop the
             # staging entry (single-record OR chunked) — the engram written
@@ -277,12 +441,14 @@ def _staging_note_to_engram_unlocked(
         except Exception as exc:  # noqa: BLE001 — indexing is best-effort
             print(f"[engram_promotion] index failed for {os.path.basename(dest)}: "
                   f"{type(exc).__name__}: {exc}", file=sys.stderr)
+    archived_to = _archive_path(staging_path, promoted_dir)
     os.makedirs(promoted_dir, exist_ok=True)
     try:
-        shutil.move(staging_path, os.path.join(promoted_dir, os.path.basename(staging_path)))
+        shutil.move(staging_path, archived_to)
     except Exception:  # noqa: BLE001 — archival is best-effort; engram already written
         pass
-    return {"src": staging_path, "dest": dest, "indexed": indexed}
+    return {"src": staging_path, "dest": dest, "indexed": indexed,
+            "duplicate": False, "archived_to": archived_to}
 
 
 def staging_note_to_engram(
@@ -315,7 +481,12 @@ def promote_staging_files(
     dry_run: bool = False,
     chromadb_path: str | os.PathLike[str] | None = None,
 ) -> dict:
-    """Promote only the explicitly-owned staged paths supplied by one run."""
+    """Promote only the explicitly-owned staged paths supplied by one run.
+
+    ``results`` contains newly promoted engrams; semantic matches are returned
+    separately in ``duplicate_results`` so path-oriented legacy consumers do
+    not mistake a preserved existing engram for a newly written destination.
+    """
     vault_engrams = vault_engrams or VAULT_ENGRAMS
     promoted_dir = promoted_dir or PROMOTED_DIR
     paths = sorted({os.path.abspath(os.fspath(path)) for path in staging_paths})
@@ -336,10 +507,17 @@ def promote_staging_files(
             except Exception as exc:  # noqa: BLE001 — one bad note must not abort the batch
                 print(f"[engram_promotion] promote failed for {os.path.basename(path)}: "
                       f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        promoted_results = [result for result in results
+                            if not result.get("duplicate")]
+        duplicate_results = [result for result in results
+                             if result.get("duplicate")]
         autocommit = _autocommit_promoted(
-            results, vault_engrams, dry_run=dry_run,
+            promoted_results, vault_engrams, dry_run=dry_run,
         )
-    return {"promoted": len(results), "results": results,
+    return {"promoted": len(promoted_results),
+            "duplicates": len(duplicate_results),
+            "processed": len(results), "results": promoted_results,
+            "duplicate_results": duplicate_results,
             "autocommit": autocommit}
 
 
@@ -350,13 +528,16 @@ def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
                         limit: int = 0,
                         chromadb_path: str | os.PathLike[str] | None = None,
                         ) -> dict:
-    """Promote every staged note in ``staging_dir`` to a vault engram. Returns
-    ``{"promoted": n, "results": [...], "autocommit": {...}}``. A note that
-    fails is logged and skipped (never aborts the batch). Dest dirs default to
-    the module constants but are overridable (used by tests)."""
+    """Promote every staged note in ``staging_dir`` to a vault engram.
+
+    Returns promoted/duplicate/processed counts, separate result lists, and
+    autocommit status. A note that fails is logged and skipped (never aborts
+    the batch). Dest dirs default to module constants but are overridable.
+    """
     vault_engrams = vault_engrams or VAULT_ENGRAMS
     if not os.path.isdir(staging_dir):
-        return {"promoted": 0, "results": [],
+        return {"promoted": 0, "duplicates": 0, "processed": 0,
+                "results": [], "duplicate_results": [],
                 "autocommit": _autocommit_promoted([], vault_engrams, dry_run=dry_run)}
     files = sorted(f for f in os.listdir(staging_dir) if f.endswith(".md"))
     if limit:
@@ -372,4 +553,5 @@ def promote_staging_dir(staging_dir: str = STAGING_DIR, *,
 
 
 __all__ = ["staging_note_to_engram", "promote_staging_files", "promote_staging_dir",
-           "STAGING_DIR", "PROMOTED_DIR", "VAULT_ENGRAMS"]
+           "STAGING_DIR", "PROMOTED_DIR", "VAULT_ENGRAMS",
+           "SEMANTIC_DUPLICATE_THRESHOLD"]

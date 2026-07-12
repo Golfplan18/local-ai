@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -45,6 +46,12 @@ relationships:
 
 class TestStagingNoteToEngram(unittest.TestCase):
     def setUp(self):
+        # Transform tests are intentionally collection-free; semantic lookup
+        # behavior has dedicated tests below.
+        self.dedup_patch = mock.patch.object(
+            ep, "_find_active_duplicate", return_value=(None, None))
+        self.dedup_patch.start()
+        self.addCleanup(self.dedup_patch.stop)
         self.tmp = tempfile.mkdtemp()
         self.staging = os.path.join(self.tmp, "staging")
         self.vault = os.path.join(self.tmp, "Engrams")
@@ -117,6 +124,12 @@ class TestStagingNoteToEngram(unittest.TestCase):
 
 
 class TestPromoteStagingDir(unittest.TestCase):
+    def setUp(self):
+        self.dedup_patch = mock.patch.object(
+            ep, "_find_active_duplicate", return_value=(None, None))
+        self.dedup_patch.start()
+        self.addCleanup(self.dedup_patch.stop)
+
     def test_batch(self):
         tmp = tempfile.mkdtemp()
         staging = os.path.join(tmp, "staging")
@@ -208,9 +221,20 @@ class TestPromoteStagingDir(unittest.TestCase):
 class _FakeCollection:
     """Records add/delete calls; behaves like an empty knowledge collection."""
 
-    def __init__(self):
+    def __init__(self, query_result=None, query_error=None):
         self.added_ids = []
         self.deleted_ids = []
+        self.query_result = query_result or {
+            "ids": [[]], "metadatas": [[]], "distances": [[]],
+        }
+        self.query_error = query_error
+        self.query_calls = []
+
+    def query(self, **kwargs):
+        self.query_calls.append(kwargs)
+        if self.query_error is not None:
+            raise self.query_error
+        return self.query_result
 
     def get(self, ids):
         return {"ids": []}
@@ -220,6 +244,199 @@ class _FakeCollection:
 
     def add(self, ids, documents, metadatas, embeddings=None):
         self.added_ids.extend(ids)
+
+
+class TestSemanticPromotionDedup(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.staging = os.path.join(self.tmp, "staging")
+        self.vault = os.path.join(self.tmp, "Engrams")
+        self.promoted = os.path.join(self.tmp, "promoted")
+        os.makedirs(self.staging)
+        os.makedirs(self.vault)
+        self.existing = os.path.join(self.vault, "existing.md")
+        with open(self.existing, "w", encoding="utf-8") as f:
+            f.write(
+                "---\ntype: engram\ntags: [atomic, fact]\n---\n\n"
+                "# Existing durable engram\n\n- Existing evidence remains canonical.\n"
+            )
+        self.note = os.path.join(
+            self.staging, "A vetted claim about something.md")
+        with open(self.note, "w", encoding="utf-8") as f:
+            f.write(STAGED)
+
+    def _result(self, distance, *, path=None):
+        path = path or self.existing
+        return {
+            "ids": [[path]],
+            "metadatas": [[{
+                "path": path,
+                "title": "Existing durable engram",
+                "source": "existing.md",
+                "type": "engram",
+                "tag_archived": False,
+            }]],
+            "distances": [[distance]],
+        }
+
+    def _promote_with(self, fake, **kwargs):
+        from orchestrator.tools import knowledge_index
+
+        with mock.patch.object(
+            knowledge_index, "get_knowledge_collection", return_value=fake
+        ):
+            return ep.staging_note_to_engram(
+                self.note,
+                vault_engrams=self.vault,
+                promoted_dir=self.promoted,
+                index=False,
+                **kwargs,
+            )
+
+    def test_threshold_match_preserves_existing_and_archives_derivative(self):
+        fake = _FakeCollection(self._result(distance=0.08))
+
+        with mock.patch("sys.stderr") as stderr:
+            result = self._promote_with(fake)
+
+        self.assertTrue(result["duplicate"])
+        self.assertEqual(result["duplicate_of"]["similarity"], 0.92)
+        self.assertIsNone(result["dest"])
+        self.assertFalse(os.path.exists(self.note))
+        self.assertTrue(os.path.exists(result["archived_to"]))
+        self.assertTrue(os.path.exists(self.existing))
+        self.assertEqual(fake.added_ids, [])
+        self.assertIn(os.path.abspath(self.note), fake.deleted_ids)
+        self.assertTrue(stderr.write.called)
+
+        query = fake.query_calls[0]
+        self.assertEqual(query["n_results"], 1)
+        self.assertEqual(query["where"], {
+            "$and": [{"type": "engram"}, {"tag_archived": False}],
+        })
+        self.assertEqual(query["include"], ["metadatas", "distances"])
+
+    def test_below_threshold_promotes_new_engram(self):
+        fake = _FakeCollection(self._result(distance=0.080001))
+
+        result = self._promote_with(fake)
+
+        self.assertFalse(result["duplicate"])
+        self.assertTrue(os.path.exists(result["dest"]))
+        self.assertFalse(os.path.exists(self.note))
+
+    def test_lookup_failure_is_loud_and_fails_open(self):
+        fake = _FakeCollection(query_error=RuntimeError("knowledge offline"))
+
+        with mock.patch("sys.stderr") as stderr:
+            result = self._promote_with(fake)
+
+        self.assertFalse(result["duplicate"])
+        self.assertTrue(os.path.exists(result["dest"]))
+        emitted = "".join(str(call.args[0]) for call in stderr.write.call_args_list)
+        self.assertIn("semantic duplicate lookup failed", emitted)
+        self.assertIn("Proceeding with promotion", emitted)
+
+    def test_stale_missing_match_path_is_loud_and_fails_open(self):
+        missing = os.path.join(self.vault, "missing.md")
+        fake = _FakeCollection(self._result(distance=0.01, path=missing))
+
+        with mock.patch("sys.stderr") as stderr:
+            result = self._promote_with(fake)
+
+        self.assertFalse(result["duplicate"])
+        self.assertTrue(os.path.exists(result["dest"]))
+        emitted = "".join(str(call.args[0]) for call in stderr.write.call_args_list)
+        self.assertIn("no live canonical path", emitted)
+        self.assertIn("Proceeding with promotion", emitted)
+
+    def test_stale_active_metadata_for_archived_file_fails_open(self):
+        with open(self.existing, "w", encoding="utf-8") as f:
+            f.write(
+                "---\ntype: engram\ntags: [atomic, archived]\n---\n\n"
+                "# Existing archived engram\n"
+            )
+        fake = _FakeCollection(self._result(distance=0.01))
+
+        with mock.patch("sys.stderr") as stderr:
+            result = self._promote_with(fake)
+
+        self.assertFalse(result["duplicate"])
+        self.assertTrue(os.path.exists(result["dest"]))
+        emitted = "".join(str(call.args[0]) for call in stderr.write.call_args_list)
+        self.assertIn("not an active canonical engram", emitted)
+
+    def test_duplicate_dry_run_reports_without_mutating(self):
+        fake = _FakeCollection(self._result(distance=0.01))
+
+        result = self._promote_with(fake, dry_run=True)
+
+        self.assertTrue(result["duplicate"])
+        self.assertIn("preview", result)
+        self.assertTrue(os.path.exists(self.note))
+        self.assertFalse(os.path.exists(result["archived_to"]))
+        self.assertEqual(fake.deleted_ids, [])
+
+    def test_batch_counts_duplicate_separately_from_promotions(self):
+        second = os.path.join(self.staging, "second.md")
+        with open(second, "w", encoding="utf-8") as f:
+            f.write(STAGED.replace(
+                "A vetted claim about something", "A different claim"))
+
+        calls = [
+            (_FakeCollection(), {
+                "id": "/vault/Engrams/existing.md",
+                "path": "/vault/Engrams/existing.md",
+                "title": "Existing durable engram",
+                "source": "existing.md",
+                "distance": 0.01,
+                "similarity": 0.99,
+                "threshold": ep.SEMANTIC_DUPLICATE_THRESHOLD,
+            }),
+            (_FakeCollection(), None),
+        ]
+        with mock.patch.object(ep, "_find_active_duplicate", side_effect=calls):
+            result = ep.promote_staging_files(
+                [self.note, second],
+                vault_engrams=self.vault,
+                promoted_dir=self.promoted,
+                index=False,
+            )
+
+        self.assertEqual(result["processed"], 2)
+        self.assertEqual(result["promoted"], 1)
+        self.assertEqual(result["duplicates"], 1)
+        self.assertEqual(len(result["results"]), 1)
+        self.assertEqual(len(result["duplicate_results"]), 1)
+        self.assertTrue(result["duplicate_results"][0]["duplicate"])
+
+    def test_duplicate_only_batch_does_not_attempt_autocommit(self):
+        duplicate = {
+            "id": "/vault/Engrams/existing.md",
+            "path": "/vault/Engrams/existing.md",
+            "title": "Existing durable engram",
+            "source": "existing.md",
+            "distance": 0.01,
+            "similarity": 0.99,
+            "threshold": ep.SEMANTIC_DUPLICATE_THRESHOLD,
+        }
+        with mock.patch.object(
+            ep, "_find_active_duplicate",
+            return_value=(_FakeCollection(), duplicate),
+        ), mock.patch.dict(
+            os.environ, {"ORA_RUNTIME_ENGRAM_AUTOCOMMIT": "1"}
+        ):
+            result = ep.promote_staging_files(
+                [self.note],
+                vault_engrams=self.vault,
+                promoted_dir=self.promoted,
+                index=False,
+            )
+
+        self.assertEqual(result["promoted"], 0)
+        self.assertEqual(result["duplicates"], 1)
+        self.assertFalse(result["autocommit"]["attempted"])
+        self.assertEqual(result["autocommit"]["message"], "no promoted files")
 
 
 class TestPromotionIndexing(unittest.TestCase):
@@ -279,6 +496,9 @@ class _FakeChunkedCollection:
                 "metadata": {"path": abspath, "chunk_index": i,
                              "total_chunks": n_chunks},
             }
+
+    def query(self, **kwargs):
+        return {"ids": [[]], "metadatas": [[]], "distances": [[]]}
 
     def get(self, ids=None, where=None, include=None):
         if where:
