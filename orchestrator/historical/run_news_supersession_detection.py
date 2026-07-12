@@ -47,6 +47,20 @@ COLLECTION_NAME = "knowledge"
 DEFAULT_SIMILARITY = 0.80
 DEFAULT_LIMIT = 25
 
+# PROVISIONAL tuning constant (uncalibrated first guess — retune freely).
+# detect_topic_cluster does 2 ChromaDB round-trips per eligible Resources/
+# file; with no cap it scans the entire corpus every run regardless of
+# --limit. Once collected candidates reach limit * this factor, the scan
+# stops early — bounding per-run cost to a fixed ceiling as Resources/
+# grows (relevant now that the automated weekly sweep runs this
+# unattended, see supersession_sweep.py) at the cost of ranking only
+# among the first ~limit*factor found rather than a guaranteed global
+# top-N by similarity. Same oversample-then-truncate pattern detect_random
+# already uses in this file. Override: ORA_NEWS_OVERSAMPLE_FACTOR.
+CANDIDATE_OVERSAMPLE_FACTOR = int(
+    os.environ.get("ORA_NEWS_OVERSAMPLE_FACTOR", "20")
+)
+
 # Tag types eligible for supersession; the cross-tag-type guard keeps
 # each tag-type clustered separately (news doesn't supersede opinion).
 ELIGIBLE_TAG_TYPES = ("news", "opinion", "resource")
@@ -213,14 +227,27 @@ def detect_topic_cluster(
 
     try:
         import chromadb
-    except ImportError:
-        print("ERROR: chromadb not available. Install with:",
-              file=sys.stderr)
-        print("  pip install chromadb", file=sys.stderr)
-        sys.exit(1)
+    except ImportError as e:
+        # A normal exception, not sys.exit(1): this function is called both
+        # from the CLI (main() below, which prints and exits) and from the
+        # scheduled sweep (orchestrator/tools/supersession_sweep.py), whose
+        # fail-open contract needs a catchable Exception — sys.exit raises
+        # SystemExit, a BaseException that "except Exception" does not catch,
+        # so it would escape the sweep's per-task guard and abort the whole
+        # maintenance_scheduler.sweep() pass instead of just this task.
+        raise RuntimeError(
+            "chromadb not available. Install with: pip install chromadb"
+        ) from e
+
+    # Resolve the logical collection name through orchestrator.embedding —
+    # the physical collection is machine-specific (config/chromadb.json).
+    # Opening the physical "knowledge" collection directly reads the empty
+    # pre-2026-05-29-migration collection and silently reports 0 candidates.
+    sys.path.insert(0, os.path.expanduser("~/ora"))
+    from orchestrator.embedding import get_collection
 
     client = chromadb.PersistentClient(path=CHROMADB_PATH)
-    col = client.get_collection(COLLECTION_NAME)
+    col = get_collection(client, COLLECTION_NAME)
 
     candidates: list[dict] = []
     seen_pairs: set[tuple[str, str]] = set()
@@ -321,6 +348,12 @@ def detect_topic_cluster(
                 "entity_overlap": overlap,
                 "date_gap_days": date_gap,
             })
+
+        # Bound total scan cost — see CANDIDATE_OVERSAMPLE_FACTOR comment.
+        # Checked once per resource (outer loop), after that resource's
+        # full neighbor list has been processed.
+        if len(candidates) >= limit * CANDIDATE_OVERSAMPLE_FACTOR:
+            break
 
     # Sort by similarity descending; cap at limit
     candidates.sort(key=lambda c: c["similarity"], reverse=True)
@@ -486,13 +519,17 @@ def main():
     args = ap.parse_args()
 
     print(f"Building Resources/ index from {RESOURCES_DIR}...")
-    result = run_detection(
-        strategy=args.strategy,
-        limit=args.limit,
-        similarity=args.similarity,
-        write_queue=True,
-        include_resolved=args.include_resolved,
-    )
+    try:
+        result = run_detection(
+            strategy=args.strategy,
+            limit=args.limit,
+            similarity=args.similarity,
+            write_queue=True,
+            include_resolved=args.include_resolved,
+        )
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"  {result['resource_count']} eligible resources indexed")
     if not args.include_resolved:
         print(f"  Filtered {result['resolved_filtered_count']} previously-resolved pairs from log")

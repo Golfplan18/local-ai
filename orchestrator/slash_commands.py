@@ -767,7 +767,7 @@ def _cmd_cleaning(args: list[str]) -> str:
             "**Engram Cleaning Framework**\n\n"
             "- `/cleaning status` — queue state\n"
             "- `/cleaning detect [strategy] [limit] [--include-skipped]` — produce triage queue\n"
-            "    strategies: `bidirectional` (default), `random`\n"
+            "    strategies: `bidirectional` (default), `date-gap`, `random`\n"
             "    limit: max pairs to surface (default 25)\n"
             "    `--include-skipped`: re-surface previously-resolved pairs\n"
             "- `/cleaning resolve [--apply]` — apply marked resolutions\n"
@@ -798,9 +798,10 @@ def _cmd_cleaning(args: list[str]) -> str:
         positional = [a for a in args if not a.startswith("--")]
 
         strategy = positional[1] if len(positional) > 1 else "bidirectional"
-        if strategy not in ("bidirectional", "random"):
+        if strategy not in ("bidirectional", "date-gap", "random"):
             return (
-                f"[Unknown strategy `{strategy}`. Valid: `bidirectional`, `random`.]"
+                f"[Unknown strategy `{strategy}`. Valid: `bidirectional`, "
+                f"`date-gap`, `random`.]"
             )
         try:
             limit = int(positional[2]) if len(positional) > 2 else 25

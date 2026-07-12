@@ -19,6 +19,8 @@ dir with $ORA_VAULT_PATH). Its YAML frontmatter carries the live config:
       graph_density: monthly
       archive_cleanup: off
       daily_note: daily
+      news_supersession: weekly
+      engram_cleaning: weekly
 
 Editing the document changes behavior on the scheduler's next check (no
 restart): cadence values are ``daily`` / ``weekly`` / ``monthly`` /
@@ -76,6 +78,10 @@ DEFAULT_CONFIG = {
     # Auto-generated vault daily note (temporal index) — generates
     # yesterday's note once the day is complete.
     "daily_note": "daily",
+    # Automated supersession sweeps (2026-07-12): model-judged, bounded,
+    # fail-open. Set to "off" in the control doc to pause either sweep.
+    "news_supersession": "weekly",
+    "engram_cleaning": "weekly",
 }
 
 # Task name → (module, callable). Each callable returns a TaskResult-shaped
@@ -86,6 +92,8 @@ TASK_FUNCTIONS = {
     "graph_density": ("orchestrator.tools.periodic_maintenance", "task_3_graph_density"),
     "archive_cleanup": ("orchestrator.tools.periodic_maintenance", "task_4_archive_cleanup"),
     "daily_note": ("orchestrator.tools.daily_note", "task_daily_note"),
+    "news_supersession": ("orchestrator.tools.supersession_sweep", "task_news_supersession"),
+    "engram_cleaning": ("orchestrator.tools.supersession_sweep", "task_engram_cleaning"),
 }
 
 CADENCE_SECONDS = {
