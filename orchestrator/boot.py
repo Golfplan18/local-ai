@@ -9172,6 +9172,51 @@ def run_pipeline(user_input: str, history: list = None,
                  conversation_tag: str = "",
                  style_id: str | None = None,
                  style_register: str | None = None) -> str:
+    """Trace-manifest wrapper (Trace Walk Chunk 0). Owns the single
+    try/except/finally that finalizes the turn's trace-manifest.json on
+    every exit path — normal return, caught-error-and-return, and
+    uncaught exception — mirroring server.py's ``_pipeline_stream``
+    wrapper. The actual pipeline body is ``_run_pipeline_impl``; see its
+    docstring for the pipeline description. ``turn_state`` is the
+    branch-local kind/status channel the impl assigns at each early-return
+    site.
+    """
+    turn_state = {
+        "trace_dir": None, "kind": "unknown", "status": None,
+        "mode": None, "gear": None, "parent_ref": None,
+    }
+    try:
+        return _run_pipeline_impl(
+            user_input, history, output_target, execution_context,
+            conversation_id, ambiguity_mode, stealth, config_name,
+            conversation_tag, style_id, style_register,
+            turn_state=turn_state)
+    except BaseException:
+        turn_state["status"] = "error"
+        raise
+    finally:
+        if PIPELINE_TRACE_AVAILABLE:
+            try:
+                pipeline_trace.finalize_manifest(
+                    turn_state["trace_dir"], kind=turn_state["kind"],
+                    status_hint=turn_state["status"],
+                    mode=turn_state["mode"], gear=turn_state["gear"],
+                    parent_trace_ref=turn_state["parent_ref"])
+            except Exception as _fin_exc:
+                print(f"[boot trace] manifest finalize skipped: {_fin_exc}")
+
+
+def _run_pipeline_impl(user_input: str, history: list = None,
+                       output_target: str = "screen",
+                       execution_context: str = "interactive",
+                       conversation_id: str | None = None,
+                       ambiguity_mode: str = "assume",
+                       stealth: bool = False,
+                       config_name: str | None = None,
+                       conversation_tag: str = "",
+                       style_id: str | None = None,
+                       style_register: str | None = None,
+                       turn_state: dict | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
     For Gear 1-2: Single model with context package.
@@ -9201,6 +9246,11 @@ def run_pipeline(user_input: str, history: list = None,
     bug. Default False to preserve diagnostic coverage for normal
     conversations.
     """
+    if turn_state is None:
+        # Direct invocation (tests, future callers) — track locally so the
+        # branch assignments below never need a guard.
+        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
+                      "mode": None, "gear": None, "parent_ref": None}
     config = load_routing_config()
 
     # --- Pipeline forensic trace — open the per-turn directory now so
@@ -9217,7 +9267,9 @@ def run_pipeline(user_input: str, history: list = None,
             style_id=style_id,
             style_register=style_register,
             stealth=stealth,
+            conversation_tag=conversation_tag,
         )
+    turn_state["trace_dir"] = trace_dir
 
     # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
     # Handled BEFORE any slash dispatch (condition 5): a bare `/risk <tier>`
@@ -9229,12 +9281,14 @@ def run_pipeline(user_input: str, history: list = None,
         import risk_gate as _rgate
         _sticky_reply = _rgate.handle_risk_command(user_input, conversation_id)
         if _sticky_reply is not None:
+            turn_state["kind"] = "risk_hold"
             return _sticky_reply
         _tg_marker = _rgate.is_task_gate_continuation(history or [])
         if _tg_marker is not None:
             _tg_reply = _rgate.handle_task_gate_reply(
                 _tg_marker, user_input, conversation_id)
             if _tg_reply is not None:
+                turn_state["kind"] = "risk_hold"
                 return _tg_reply
         user_input, _risk_override = _rgate.strip_risk_prefix(user_input)
     except Exception as _rge:
@@ -9247,6 +9301,7 @@ def run_pipeline(user_input: str, history: list = None,
     # cheaper and more deterministic.
     from slash_commands import is_runtime_command, run_runtime_command
     if is_runtime_command(user_input):
+        turn_state["kind"] = "runtime_command"
         return run_runtime_command(user_input)
 
     # --- Mid-framework continuation short-circuit ---
@@ -9256,6 +9311,7 @@ def run_pipeline(user_input: str, history: list = None,
     import framework_elicitation
     continuation_ctx = framework_elicitation.is_continuation(history or [])
     if continuation_ctx is not None:
+        turn_state["kind"] = "framework_elicitation"
         return framework_elicitation.continue_elicitation(
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
@@ -9270,6 +9326,7 @@ def run_pipeline(user_input: str, history: list = None,
         run_framework_command, parse_framework_command,
     )
     if is_framework_command(user_input):
+        turn_state["kind"] = "framework_command"
         if framework_command_has_query(user_input):
             # Execution Review Phase 2 (condition 4): the /framework one-shot
             # runs the gear pipeline with tools — hold before it if the query
@@ -9285,6 +9342,7 @@ def run_pipeline(user_input: str, history: list = None,
                     prompt=user_input, surface="framework",
                     description=user_input)
                 if _fhold is not None:
+                    turn_state["kind"] = "risk_hold"
                     return _fhold
             except Exception as _frge:
                 print(f"[risk-gate] framework one-shot hold skipped: {_frge}")
@@ -9315,12 +9373,18 @@ def run_pipeline(user_input: str, history: list = None,
         try:
             framework_name, _, _ = parse_framework_command(user_input)
         except ValueError as exc:
+            turn_state["status"] = "error"
             return f"[Framework command error: {exc}]"
+        turn_state["kind"] = "framework_elicitation"
         return framework_elicitation.start_elicitation(
             framework_name, history or [], config,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
+    # From here the turn is headed into the analytical pipeline; terminal
+    # branches below refine the kind (risk_hold / error) and
+    # finalize_manifest refines "chat" to chat-gear<N> once gear is known.
+    turn_state["kind"] = "chat"
     # Build conversation context from recent history. Truncation stats are
     # captured for the trace so context-loss is visible when it matters.
     conv_context = ""
@@ -9351,6 +9415,14 @@ def run_pipeline(user_input: str, history: list = None,
     # gate reads a real value rather than defaulting to 'interactive'.
     context_pkg.setdefault("execution_context", execution_context)
     gear = context_pkg["gear"]
+    turn_state["mode"] = step1.get("mode")
+    # Pre-dispatch prediction only — run_gear3/run_gear4 may silently
+    # degrade to a lower gear internally (single-endpoint / unrecoverable-
+    # analyst fallback); finalize_manifest re-derives the ACTUAL gear from
+    # step-health.json (written last, by whichever gear function actually
+    # completed) when that file is present, so this hint only matters if
+    # the turn ends before any gear function writes one.
+    turn_state["gear"] = gear
 
     # --- WP-4.2 — capability-conditional vision routing gate ---
     # When an image_path rides along on context_pkg (via WP-3.3's
@@ -9376,6 +9448,7 @@ def run_pipeline(user_input: str, history: list = None,
         if deg_state.fallback_gear:
             gear = deg_state.fallback_gear
             context_pkg["gear"] = gear
+            turn_state["gear"] = gear
         degradation_signal = format_degradation_signal(deg_state)
 
     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
@@ -9407,6 +9480,7 @@ def run_pipeline(user_input: str, history: list = None,
         if _hold_reply is not None:
             _rgate.record_route_observed(
                 trace_dir or (conversation_id, _route_turn_ts), risk_tier=_tier)
+            turn_state["kind"] = "risk_hold"
             return _hold_reply
         try:
             import tool_events as _te_tier
@@ -9424,6 +9498,7 @@ def run_pipeline(user_input: str, history: list = None,
                 output_target=output_target, config_name=config_name or "",
                 stealth=stealth, description=_crit[5:])
             if _hr is not None:
+                turn_state["kind"] = "risk_hold"
                 return _hr
         elif _crit and _crit.startswith("WARN:"):
             _risk_warn = _crit[5:]
@@ -9491,6 +9566,7 @@ def run_pipeline(user_input: str, history: list = None,
                 or get_active_endpoint(config)
             )
         if endpoint is None:
+            turn_state["status"] = "error"
             return "[No AI endpoints configured.]"
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -9570,6 +9646,11 @@ def run_pipeline(user_input: str, history: list = None,
     except Exception:
         pass
 
+    # Explicit completion signal for the trace manifest — the only honest
+    # source for gear-1/2 turns, which write no step-health.json. A later
+    # exception on the way out overwrites this with "error" in the
+    # generator-level wrapper.
+    turn_state["status"] = "completed"
     return route_output(response, output_target, context_pkg)
 
 

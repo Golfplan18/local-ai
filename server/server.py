@@ -2722,7 +2722,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                              clarification_text="", images=None,
                              execution_context="interactive",
                              extra_context=None, trace_dir=None,
-                             config_name=None, conversation_tag=""):
+                             config_name=None, conversation_tag="",
+                             turn_state=None):
     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
 
     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
@@ -2819,6 +2820,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         yield _sse("visual_fallback", **fallback_frame)
 
     gear = context_pkg["gear"]
+    if turn_state is not None:
+        # Authoritative gear for the trace manifest. Gear 1/2 turns never
+        # write step-health.json, so without this explicit signal a
+        # completed gear-1/2 turn is indistinguishable on disk from a
+        # gear-3/4 turn abandoned after step 2.
+        turn_state["gear"] = gear
 
     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ----
     # This funnel is the single entry for every pipeline executor path
@@ -2854,6 +2861,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         if _hold_reply is not None:
             _rgate.record_route_observed(
                 trace_dir or (_conv_id, _route_turn_ts), risk_tier=_tier)
+            if turn_state is not None:
+                # The turn terminated at an intentional risk hold, not an
+                # abandoned pipeline run (design-gate condition 1).
+                turn_state["kind"] = "risk_hold"
             yield _sse("response", text=_hold_reply)
             return
         _te_srv.update_turn_risk_tier(_tier)
@@ -2867,6 +2878,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 config_name=config_name or "",
                 stealth=(conversation_tag == "stealth"), description=_crit[5:])
             if _hr is not None:
+                if turn_state is not None:
+                    turn_state["kind"] = "risk_hold"
                 yield _sse("response", text=_hr)
                 return
         elif _crit and _crit.startswith("WARN:"):
@@ -2906,6 +2919,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         if deg_state.fallback_gear:
             gear = deg_state.fallback_gear
             context_pkg["gear"] = gear
+            if turn_state is not None:
+                turn_state["gear"] = gear
         degradation_signal = format_degradation_signal(deg_state)
         if degradation_signal:
             yield _sse("pipeline_stage", stage="degradation",
@@ -2935,6 +2950,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
         ep = endpoint  # Gear 1/2: single model, use active endpoint
         if ep is None:
+            if turn_state is not None:
+                turn_state["status"] = "error"
             yield _sse("error", text="No active endpoint configured.")
             return
         messages = [{"role": "system", "content": system_prompt}]
@@ -2983,6 +3000,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         # Fail-open: never block legitimate prose on a hook bug.
         print(f"[server visual-hook] skipped due to error: {_vh_exc}")
 
+    if turn_state is not None:
+        # Explicit completion signal for the trace manifest — the only
+        # honest source for gear-1/2 turns, which write no step-health. A
+        # later exception on the way out overwrites this with "error" in
+        # the generator-level wrapper.
+        turn_state["status"] = "completed"
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
@@ -3032,6 +3055,58 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                        framework_selected="", config_name=None, conversation_tag=""):
     """Generator: run the full pipeline with SSE stage events.
 
+    Trace-manifest wrapper (Chunk 0). The turn body lives in
+    ``_pipeline_stream_impl``; this wrapper owns the single generator-level
+    ``try/finally`` that finalizes the turn's ``trace-manifest.json`` on
+    every exit path — normal return, caught-error-and-return, uncaught
+    exception, and ``GeneratorExit`` (client disconnect). ``turn_state`` is
+    the branch-local kind/status channel: the impl assigns
+    ``turn_state["kind"]`` one line at each branch entry and
+    ``turn_state["status"]`` on caught-error and pause exits; the finalizer
+    here is the only writer of the manifest's terminal fields.
+    """
+    turn_state = {
+        "trace_dir": None,   # set by impl right after start_trace
+        "kind": "unknown",   # honest default — a turn that dies pre-branch
+        "status": None,      # status hint: "error" | "paused" | "completed"
+        "mode": None,        # step1's mode once known
+        "gear": None,        # set at gear dispatch in _run_pipeline_from_step2
+        "parent_ref": None,  # paused-turn ref on clarification continuation
+    }
+    try:
+        yield from _pipeline_stream_impl(
+            user_input, history, panel_id=panel_id, images=images,
+            extra_context=extra_context,
+            manual_mode_selection=manual_mode_selection,
+            manual_lens_selection=manual_lens_selection,
+            framework_selected=framework_selected, config_name=config_name,
+            conversation_tag=conversation_tag, turn_state=turn_state)
+    except GeneratorExit:
+        # Client disconnect — not an error. The finalizer derives
+        # completed (step-health present / completed hint) vs abandoned.
+        raise
+    except BaseException:
+        turn_state["status"] = "error"
+        raise
+    finally:
+        try:
+            from orchestrator import pipeline_trace as _pt_fin
+            _pt_fin.finalize_manifest(
+                turn_state["trace_dir"], kind=turn_state["kind"],
+                status_hint=turn_state["status"], mode=turn_state["mode"],
+                gear=turn_state["gear"],
+                parent_trace_ref=turn_state["parent_ref"])
+        except Exception as _fin_exc:
+            print(f"[server trace] manifest finalize skipped: {_fin_exc}",
+                  flush=True)
+
+
+def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, extra_context=None,
+                            manual_mode_selection="", manual_lens_selection="",
+                            framework_selected="", config_name=None, conversation_tag="",
+                            turn_state=None):
+    """Generator: run the full pipeline with SSE stage events.
+
     Yields SSE events for each pipeline stage so the browser can display progress.
     For Tier 2/3 triage, pauses for clarification before proceeding.
 
@@ -3044,6 +3119,11 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     the pipeline continues regardless. The UI consumes the comparison data
     once Phase 3-6 land.
     """
+    if turn_state is None:
+        # Direct invocation (tests, future callers) — still track locally so
+        # the branch assignments below never need a guard.
+        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
+                      "mode": None, "gear": None, "parent_ref": None}
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
     framework_selected = (framework_selected or "").strip()
@@ -3075,10 +3155,19 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     # the *only* layer that prevents the write in the first place.
     try:
         from orchestrator.conversation_memory import get_conversation_tag as _gct
-        _conv_tag = _gct(panel_id) or ""
+        # An existing conversation's persisted envelope tag is authoritative
+        # (immutable after first save, matching save_turn_spatial_state's own
+        # convention) — but a BRAND NEW conversation has no envelope yet, so
+        # ``get_conversation_tag`` returns "" regardless of what the request
+        # actually asked for. Falling back to the request's own
+        # ``conversation_tag`` (the client's stealth/private choice for
+        # THIS submission) closes that gap: a first stealth/private turn
+        # in a new conversation is honoured instead of silently traced.
+        _conv_tag = _gct(panel_id) or conversation_tag or ""
     except Exception:
-        _conv_tag = ""
+        _conv_tag = conversation_tag or ""
     trace_dir = None
+    trace_ref_val = None
     try:
         from boot import PIPELINE_TRACE_AVAILABLE as _pta
         if _pta:
@@ -3088,9 +3177,21 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 raw_input=user_input,
                 ambiguity_mode="assume",
                 stealth=(_conv_tag == "stealth"),
+                conversation_tag=_conv_tag,
             )
+            trace_ref_val = _pt.trace_ref_for_dir(trace_dir)
     except Exception as _trace_exc:
         print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
+    turn_state["trace_dir"] = trace_dir
+
+    # Non-inferential trace_ref channel (design-gate condition 3): the
+    # generator owns trace_dir, but the conversation savers live in
+    # _invoke_pipeline, outside this generator. A dedicated event carries
+    # the ref in-band; _invoke_pipeline captures it and threads it through
+    # _save_conversation / _persist_turn_spatial_state. Stealth turns have
+    # no trace, emit no event, and save trace_ref: null by construction.
+    if trace_ref_val:
+        yield _sse("trace_ref", ref=trace_ref_val)
 
     # Set the thread-local stealth context so oversight events emitted
     # during this turn skip on-disk persistence (events.jsonl / actions.jsonl
@@ -3133,6 +3234,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         import risk_gate as _rgate_srv
         _sticky_reply = _rgate_srv.handle_risk_command(user_input, panel_id)
         if _sticky_reply is not None:
+            turn_state["kind"] = "risk_hold"
             yield _sse("response", text=_sticky_reply)
             return
         _tg_marker = _rgate_srv.is_task_gate_continuation(history or [])
@@ -3140,6 +3242,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             _tg_reply = _rgate_srv.handle_task_gate_reply(
                 _tg_marker, user_input, panel_id)
             if _tg_reply is not None:
+                turn_state["kind"] = "risk_hold"
                 yield _sse("response", text=_tg_reply)
                 return
         _clean_ui, _risk_ovr = _rgate_srv.strip_risk_prefix(user_input)
@@ -3158,11 +3261,13 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     # when no AI endpoint is configured.
     from slash_commands import is_runtime_command, run_runtime_command
     if is_runtime_command(user_input):
+        turn_state["kind"] = "runtime_command"
         yield _sse("pipeline_stage", stage="runtime_command",
                    label="Running runtime command…")
         try:
             yield _sse("response", text=run_runtime_command(user_input))
         except Exception as exc:
+            turn_state["status"] = "error"
             yield _sse("error", text=f"Runtime command error: {exc}")
         return
 
@@ -3170,6 +3275,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     endpoint = get_endpoint(config)
 
     if endpoint is None:
+        turn_state["kind"] = "no_endpoint_error"
+        turn_state["status"] = "error"
         yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
         return
 
@@ -3181,6 +3288,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     import resolution_chain
     resolution_ctx = resolution_chain.is_resolution_continuation(history or [])
     if resolution_ctx is not None:
+        turn_state["kind"] = "resolution_continuation"
         yield _sse("pipeline_stage", stage="resolution_continuation",
                    label="Continuing resolution discussion…")
         try:
@@ -3190,6 +3298,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 config=config,
             )
         except Exception as exc:
+            turn_state["status"] = "error"
             yield _sse("error", text=f"Resolution discussion error: {exc}")
             return
         yield _sse("response", text=text)
@@ -3205,6 +3314,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     import framework_elicitation
     continuation_ctx = framework_elicitation.is_continuation(history or [])
     if continuation_ctx is not None:
+        turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation",
                    label=f"Continuing {continuation_ctx.framework_id} / {continuation_ctx.mode}…")
         try:
@@ -3214,6 +3324,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 conversation_id=panel_id,
             )
         except Exception as exc:
+            turn_state["status"] = "error"
             yield _sse("error", text=f"Framework elicitation error: {exc}")
             return
         yield _sse("response", text=text)
@@ -3229,6 +3340,11 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     manual_pending = _pending_clarification.get(panel_id)
     if manual_pending and manual_pending.get("source") == "manual_mode_selection":
         pending = _pending_clarification.pop(panel_id)
+        turn_state["kind"] = "clarification_resume"
+        turn_state["mode"] = (pending.get("step1") or {}).get("mode")
+        # Lineage (design-gate condition 4): the paused turn stored its own
+        # trace ref when it returned; this resume turn records it as parent.
+        turn_state["parent_ref"] = pending.get("trace_ref")
         yield _sse("pipeline_stage", stage="analysis_mode_clarification",
                    label="Continuing selected analysis…")
         step1 = dict(pending["step1"])
@@ -3258,6 +3374,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 trace_dir=trace_dir,
                 config_name=config_name,
                 conversation_tag=pending.get("conversation_tag") or conversation_tag,
+                turn_state=turn_state,
             )
         finally:
             if trace_dir:
@@ -3280,6 +3397,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         run_framework_command, parse_framework_command,
     )
     if is_framework_command(user_input):
+        turn_state["kind"] = "framework_command"
         if framework_command_has_query(user_input):
             # Execution Review Phase 2 (condition 4): the /framework one-shot
             # runs the gear pipeline with tools — hold before it if the query
@@ -3296,6 +3414,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                     prompt=user_input, surface="framework",
                     stealth=(_conv_tag == "stealth"), description=user_input)
                 if _fhold is not None:
+                    turn_state["kind"] = "risk_hold"
                     yield _sse("response", text=_fhold)
                     return
             except Exception as _rge_fw:
@@ -3316,6 +3435,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             try:
                 result_text = run_framework_command(user_input, config)
             except Exception as exc:
+                turn_state["status"] = "error"
                 yield _sse("error", text=f"Framework execution error: {exc}")
                 # Finding 3: record what the failed framework run observed.
                 try:
@@ -3337,8 +3457,10 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         try:
             framework_name, _, _ = parse_framework_command(user_input)
         except ValueError as exc:
+            turn_state["status"] = "error"
             yield _sse("error", text=f"Framework command error: {exc}")
             return
+        turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation_start",
                    label=f"Starting interactive {framework_name} session…")
         try:
@@ -3346,12 +3468,17 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                 framework_name, history or [], config,
             )
         except Exception as exc:
+            turn_state["status"] = "error"
             yield _sse("error", text=f"Framework elicitation error: {exc}")
             return
         yield _sse("response", text=text)
         return
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
+    # From here the turn is headed into the analytical pipeline; terminal
+    # branches below refine the kind (clarification_pending / direct) and
+    # finalize_manifest refines "chat" to chat-gear<N> once gear is known.
+    turn_state["kind"] = "chat"
     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
 
     conv_context = ""
@@ -3494,6 +3621,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
     # residual disambiguation questions, and completeness gaps per
     # Decision I/J's expanded output format.
     pre_routing = step1.get("pre_routing", {}) or {}
+    turn_state["mode"] = step1.get("mode")
 
     confidence = step1.get("classification_confidence", "")
     conf_tag = f" ({confidence})" if confidence else ""
@@ -3514,6 +3642,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
 
     if (pre_routing.get("manual_override_applied")
         and pre_routing.get("pending_clarification")):
+        turn_state["kind"] = "clarification_pending"
+        turn_state["status"] = "paused"
         _pending_clarification[panel_id] = {
             "source": "manual_mode_selection",
             "step1": step1,
@@ -3524,6 +3654,9 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
             "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
+            # This paused turn's own trace ref — the eventual resume turn
+            # records it as parent_trace_ref (design-gate condition 4).
+            "trace_ref": trace_ref_val,
         }
         yield _sse("pipeline_stage", stage="analysis_mode_elicitation",
                    mode=step1["mode"],
@@ -3555,6 +3688,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         or pre_routing.get("pending_clarification")
     )
     if fallback_to_direct:
+        turn_state["kind"] = "direct"
         print(
             f"[pipeline-bypass] bypass_to_direct={pre_routing.get('bypass_to_direct_response')!r} "
             f"step1_mode={step1.get('mode')!r} pending_clar={bool(pre_routing.get('pending_clarification'))} "
@@ -3564,7 +3698,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         )
         yield from _direct_stream(user_input, history, images=images,
                                   panel_id=panel_id, conversation_tag=conversation_tag,
-                                  risk_override=(extra_context or {}).get("risk_override"))
+                                  risk_override=(extra_context or {}).get("risk_override"),
+                                  turn_state=turn_state)
         return
 
     # --- Phase 9: pre-routing pipeline question gate ---
@@ -3586,6 +3721,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         if pending_stage == "stage3" and pre_routing.get("lighter_sibling_mode_id"):
             questions[0]["lighter_sibling_mode_id"] = pre_routing["lighter_sibling_mode_id"]
 
+        turn_state["kind"] = "clarification_pending"
+        turn_state["status"] = "paused"
         _pending_clarification[panel_id] = {
             "step1": step1,
             "config": config,
@@ -3595,6 +3732,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
             "pre_routing_stage": pending_stage,
+            "trace_ref": trace_ref_val,
         }
 
         yield _sse("clarification_needed",
@@ -3623,6 +3761,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         questions = _generate_clarification_questions(step1, config)
 
         # Store pending state for resumption
+        turn_state["kind"] = "clarification_pending"
+        turn_state["status"] = "paused"
         _pending_clarification[panel_id] = {
             "step1": step1,
             "config": config,
@@ -3631,6 +3771,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "trace_ref": trace_ref_val,
         }
 
         yield _sse("clarification_needed",
@@ -3655,7 +3796,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                                             images=images, extra_context=extra_context,
                                             trace_dir=trace_dir,
                                             config_name=config_name,
-                                            conversation_tag=conversation_tag)
+                                            conversation_tag=conversation_tag,
+                                            turn_state=turn_state)
     finally:
         # 2026-05-28: aggregate per-turn token usage into cost-summary.json.
         # Runs even when the SSE consumer disconnects mid-stream (GeneratorExit)
@@ -3691,18 +3833,32 @@ def _tool_status_label(tool_name, params):
 
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
-                   conversation_tag="", risk_override=None):
+                   conversation_tag="", risk_override=None, turn_state=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher.
 
     ``risk_override`` (Execution Review Phase 2): an inline ``/risk`` tier
     threaded from the pipeline turn head when a turn falls back to direct
     mode — so ``/risk irreversible <trivial prompt>`` still holds here
-    instead of silently classifying light."""
+    instead of silently classifying light.
+
+    ``turn_state`` (Trace Walk Chunk 0): optional — set only by the
+    fallback_to_direct call site inside ``_pipeline_stream_impl``, which
+    already opened a trace for this turn. This function re-resolves its
+    own endpoint independently of that caller's earlier check; if it comes
+    up empty here (e.g. the active endpoint was removed in the window
+    between the two checks), the turn genuinely produced no response and
+    must finalize as an error, not the "direct" short-circuit its kind
+    already carries (design-gate condition 1). The other call site
+    (``agentic_loop_stream``'s ``/direct`` command path) never opens a
+    trace at all, so it passes no turn_state and this is a no-op there.
+    """
     config   = load_config()
     endpoint = get_endpoint(config)
 
     if endpoint is None:
+        if turn_state is not None:
+            turn_state["status"] = "error"
         yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
         return
 
@@ -3771,6 +3927,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
         if _hold_ds is not None:
             _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
                                             risk_tier=_r_ds["risk_tier"])
+            if turn_state is not None:
+                # The caller already stamped kind="direct" before invoking
+                # this generator; a held turn is an intentional stop, not
+                # the "direct" short-circuit — re-kind so the manifest
+                # reads risk_hold, matching every other risk-hold site.
+                turn_state["kind"] = "risk_hold"
             yield _sse("response", text=_hold_ds)
             return
         _te_ds.update_turn_risk_tier(_r_ds["risk_tier"])
@@ -5652,7 +5814,8 @@ def _resolve_chunk_destination(output_destination: str) -> str:
         return CONVERSATIONS_DIR
 
 
-def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination=""):
+def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination="",
+                       trace_ref=None):
     """
     Three steps, all inline, immediately after every response:
 
@@ -5680,6 +5843,12 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
     ``_resolve_chunk_destination``. The raw audit log stays at
     ``CONVERSATIONS_RAW`` regardless — that's audit infrastructure, not
     user-facing output.
+
+    Trace manifest (Chunk 0): ``trace_ref`` is the turn's trace-store ref
+    ("<conversation_id>/<turn_timestamp>", relative to the pipeline-traces
+    root), recorded on the conversation-manifest line so any saved turn
+    resolves mechanically to its trace dir. ``None`` for stealth/untraced
+    turns by construction.
     """
     chunk_dir = _resolve_chunk_destination(output_destination)
     os.makedirs(CONVERSATIONS_RAW, exist_ok=True)
@@ -5819,6 +5988,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
                 "chunk_path": chunk_path,
                 "raw_path": sess["raw_path"],
                 "tag": tag,
+                "trace_ref": trace_ref,
             }) + "\n")
     except Exception as _mf_exc:
         # Manifest is a defensive layer — failure to write it should NOT
@@ -6102,6 +6272,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
     failure_summary = None
     cfg            = None
     ep             = None
+    trace_ref      = None
 
     try:
         # MLX per-machine serialization lives inside call_model
@@ -6139,6 +6310,11 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                         active_mode = d["mode"]
                     if d.get("gear"):
                         active_gear = d["gear"]
+                elif t == "trace_ref":
+                    # Chunk 0: the pipeline generator's in-band trace-ref
+                    # channel — joins this turn's conversation records to
+                    # its trace dir. Absent (None) for stealth/untraced.
+                    trace_ref = d.get("ref")
                 elif t == "error":
                     failure_summary = d.get("text") or d.get("error") or "pipeline error"
         except Exception as e:
@@ -6213,7 +6389,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
                 chunk_id = _save_conversation(
                     clean_input, final_response, panel_id,
                     is_new_session, tag,
-                    output_destination=output_destination)
+                    output_destination=output_destination,
+                    trace_ref=trace_ref)
             except Exception as e:
                 failure_summary = f"_save_conversation failed: {e}"
                 print(f"[ERROR] _save_conversation: {e}")
@@ -6251,6 +6428,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
             threading.Thread(
                 target=_persist_turn_spatial_state,
                 args=(panel_id, clean_input, final_response, extra_context, tag),
+                kwargs={"trace_ref": trace_ref},
                 daemon=True,
             ).start()
 
@@ -9179,7 +9357,8 @@ def chat_queue_retry():
 _bridge_state = {}
 _pipeline_state = {"stage": None, "stages": [], "active": False}
 
-def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context, tag=""):
+def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context, tag="",
+                                trace_ref=None):
     """WP-5.3 — append this turn to conversation.json so subsequent turns
     can retrieve the prior spatial state.
 
@@ -9224,6 +9403,7 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
             timestamp=datetime.now().isoformat(timespec="seconds"),
             tag=tag,
             project_ids=_project_ids,
+            trace_ref=trace_ref,
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
@@ -10805,9 +10985,16 @@ def clarification_respond():
 
         # Open a fresh per-resume trace, honouring stealth tag.
         _resume_trace_dir = None
+        _resume_trace_ref = None
+        _resume_tag = ""
         try:
             from orchestrator.conversation_memory import get_conversation_tag as _gct_r
-            _resume_tag = _gct_r(panel_id) or ""
+            # Persisted envelope tag wins when present; a still-paused
+            # conversation may have no envelope yet, so fall back to the
+            # ORIGINAL turn's own tag (stashed in _pending_clarification at
+            # pause time) rather than silently tracing a stealth/private
+            # resume as standard.
+            _resume_tag = _gct_r(panel_id) or pending.get("conversation_tag") or ""
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
             if _pta_r:
                 from orchestrator import pipeline_trace as _pt_r
@@ -10816,9 +11003,19 @@ def clarification_respond():
                     raw_input=f"[clarification-resume] {user_input}",
                     ambiguity_mode="assume",
                     stealth=(_resume_tag == "stealth"),
+                    conversation_tag=_resume_tag,
                 )
+                _resume_trace_ref = _pt_r.trace_ref_for_dir(_resume_trace_dir)
         except Exception as _trace_exc:
             print(f"[server trace] clarification-resume start_trace skipped: {_trace_exc}", flush=True)
+
+        # Trace-manifest state for this resume turn. The paused turn stored
+        # its own trace ref when it returned; it becomes this turn's parent
+        # (design-gate condition 4).
+        turn_state = {"trace_dir": _resume_trace_dir,
+                      "kind": "clarification_resume", "status": None,
+                      "mode": step1.get("mode"), "gear": None,
+                      "parent_ref": pending.get("trace_ref")}
 
         yield _sse("start", endpoint="resumed", pipeline=True)
         yield _sse("pipeline_stage", stage="step2_context",
@@ -10828,27 +11025,55 @@ def clarification_respond():
         active_mode = [step1.get("mode")]
         active_gear = [None]
 
-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
-                                              images=pending.get("images"),
-                                              extra_context=pending.get("extra_context"),
-                                              trace_dir=_resume_trace_dir,
-                                              conversation_tag=pending.get("conversation_tag") or _resume_tag):
-            yield chunk
+        try:
+            for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
+                                                  images=pending.get("images"),
+                                                  extra_context=pending.get("extra_context"),
+                                                  trace_dir=_resume_trace_dir,
+                                                  conversation_tag=pending.get("conversation_tag") or _resume_tag,
+                                                  turn_state=turn_state):
+                yield chunk
+                try:
+                    d = json.loads(chunk[6:])
+                    if d.get("type") == "response":
+                        final_response[0] = d.get("text", "")
+                    elif d.get("type") == "pipeline_stage":
+                        if d.get("gear"):
+                            active_gear[0] = d["gear"]
+                except Exception:
+                    pass
+        except GeneratorExit:
+            raise
+        except BaseException:
+            turn_state["status"] = "error"
+            raise
+        finally:
+            # Q2 (design-gate): the resume path previously never computed a
+            # cost summary — same best-effort behavior as _pipeline_stream.
+            if _resume_trace_dir:
+                try:
+                    from boot import compute_cost_summary as _ccs_r
+                    _ccs_r(_resume_trace_dir)
+                except Exception as _cs_exc:
+                    print(f"[cost-summary] clarification-resume computation "
+                          f"failed: {_cs_exc}", flush=True)
             try:
-                d = json.loads(chunk[6:])
-                if d.get("type") == "response":
-                    final_response[0] = d.get("text", "")
-                elif d.get("type") == "pipeline_stage":
-                    if d.get("gear"):
-                        active_gear[0] = d["gear"]
-            except Exception:
-                pass
+                from orchestrator import pipeline_trace as _pt_fin_r
+                _pt_fin_r.finalize_manifest(
+                    _resume_trace_dir, kind=turn_state["kind"],
+                    status_hint=turn_state["status"],
+                    mode=turn_state["mode"], gear=turn_state["gear"],
+                    parent_trace_ref=turn_state["parent_ref"])
+            except Exception as _fin_exc:
+                print(f"[server trace] clarification-resume manifest "
+                      f"finalize skipped: {_fin_exc}", flush=True)
 
         if final_response[0] is not None:
             is_new_session = len(history) == 0
             threading.Thread(
                 target=_save_conversation,
                 args=(user_input, final_response[0], panel_id, is_new_session),
+                kwargs={"trace_ref": _resume_trace_ref},
                 daemon=True,
             ).start()
 
@@ -10890,9 +11115,13 @@ def clarification_skip():
 
         # Open a fresh per-skip trace, honouring stealth tag.
         _skip_trace_dir = None
+        _skip_trace_ref = None
+        _skip_tag = ""
         try:
             from orchestrator.conversation_memory import get_conversation_tag as _gct_s
-            _skip_tag = _gct_s(panel_id) or ""
+            # Same precedence as the resume endpoint: persisted envelope tag
+            # first, else the original turn's own tag from pending state.
+            _skip_tag = _gct_s(panel_id) or pending.get("conversation_tag") or ""
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
             if _pta_s:
                 from orchestrator import pipeline_trace as _pt_s
@@ -10901,32 +11130,69 @@ def clarification_skip():
                     raw_input=f"[clarification-skip] {user_input}",
                     ambiguity_mode="assume",
                     stealth=(_skip_tag == "stealth"),
+                    conversation_tag=_skip_tag,
                 )
+                _skip_trace_ref = _pt_s.trace_ref_for_dir(_skip_trace_dir)
         except Exception as _trace_exc:
             print(f"[server trace] clarification-skip start_trace skipped: {_trace_exc}", flush=True)
+
+        # Trace-manifest state — same lineage semantics as the resume
+        # endpoint (a skip is a resume without answers).
+        turn_state = {"trace_dir": _skip_trace_dir,
+                      "kind": "clarification_resume", "status": None,
+                      "mode": step1.get("mode"), "gear": None,
+                      "parent_ref": pending.get("trace_ref")}
 
         yield _sse("start", endpoint="resumed", pipeline=True)
         yield _sse("pipeline_stage", stage="step2_context",
                     label="Assembling context (clarification skipped)…")
 
         final_response = [None]
-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
-                                              images=pending.get("images"),
-                                              extra_context=pending.get("extra_context"),
-                                              trace_dir=_skip_trace_dir,
-                                              conversation_tag=pending.get("conversation_tag") or _skip_tag):
-            yield chunk
+        try:
+            for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
+                                                  images=pending.get("images"),
+                                                  extra_context=pending.get("extra_context"),
+                                                  trace_dir=_skip_trace_dir,
+                                                  conversation_tag=pending.get("conversation_tag") or _skip_tag,
+                                                  turn_state=turn_state):
+                yield chunk
+                try:
+                    d = json.loads(chunk[6:])
+                    if d.get("type") == "response":
+                        final_response[0] = d.get("text", "")
+                except Exception:
+                    pass
+        except GeneratorExit:
+            raise
+        except BaseException:
+            turn_state["status"] = "error"
+            raise
+        finally:
+            # Q2 (design-gate): best-effort cost summary, as on the
+            # resume endpoint and _pipeline_stream.
+            if _skip_trace_dir:
+                try:
+                    from boot import compute_cost_summary as _ccs_s
+                    _ccs_s(_skip_trace_dir)
+                except Exception as _cs_exc:
+                    print(f"[cost-summary] clarification-skip computation "
+                          f"failed: {_cs_exc}", flush=True)
             try:
-                d = json.loads(chunk[6:])
-                if d.get("type") == "response":
-                    final_response[0] = d.get("text", "")
-            except Exception:
-                pass
+                from orchestrator import pipeline_trace as _pt_fin_s
+                _pt_fin_s.finalize_manifest(
+                    _skip_trace_dir, kind=turn_state["kind"],
+                    status_hint=turn_state["status"],
+                    mode=turn_state["mode"], gear=turn_state["gear"],
+                    parent_trace_ref=turn_state["parent_ref"])
+            except Exception as _fin_exc:
+                print(f"[server trace] clarification-skip manifest "
+                      f"finalize skipped: {_fin_exc}", flush=True)
 
         if final_response[0] is not None:
             threading.Thread(
                 target=_save_conversation,
                 args=(user_input, final_response[0], panel_id, len(history) == 0),
+                kwargs={"trace_ref": _skip_trace_ref},
                 daemon=True,
             ).start()
 
