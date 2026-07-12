@@ -1424,9 +1424,10 @@ def media_library_suggest_edits(conversation_id, entry_id):
 
 # ── A/V Phase 9 — user settings endpoints ────────────────────────────────────
 #
-# Four endpoints:
+# Five endpoint shapes:
 #   GET    /api/settings                  — current settings + API key status
 #   POST   /api/settings                  — partial update, returns merged state
+#   POST   /api/settings/api-key/verify   — verify where possible
 #   POST   /api/settings/api-key          — store a key in keyring
 #   DELETE /api/settings/api-key/<provider> — remove a key from keyring
 #
@@ -2210,7 +2211,12 @@ def _verify_provider_key(entry: dict, key: str):
             return True, "Key is valid but rate-limited / over quota — check billing."
         if e.code == 400 and pid == "gemini":
             return False, "Key was rejected by Google. Double-check you copied it correctly."
-        return False, f"Verification failed (HTTP {e.code})."
+        # A non-auth HTTP failure does not prove the credential is bad. It may
+        # be a transient provider outage, a moved probe endpoint, or a request
+        # contract change. Keep the result inconclusive so Settings can store
+        # the key with an honest "couldn't verify" disclosure instead of
+        # blocking a possibly valid credential.
+        return None, f"Couldn't confirm the key (HTTP {e.code}). Try verification again later."
     except Exception as e:
         # Scrub the key from the message — some urllib/http exceptions
         # (e.g. InvalidURL on a key with a stray space) embed the full URL,
@@ -6764,9 +6770,11 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
        (YAML frontmatter + contextual header + exchange body, one file per pair)
        Filename: YYYY-MM-DD_HH-MM_session-[id]_pair-[NNN]_[topic-slug].md
 
-    3. Index the processed chunk into ChromaDB "conversations" collection
-       using nomic-embed-text-v1.5 (embedding = header + user prompt only,
-       per Conversation Processing Pipeline spec)
+    3. Index the processed chunk into the ChromaDB "conversations" collection
+       through the machine-specific embedding profile in config/chromadb.json
+       (tracked fresh-install fallback: Ollama BGE-M3 at 1,024 dimensions;
+       embedding input = header + user prompt only, per the Conversation
+       Processing Pipeline spec)
 
     V3 Phase 1.2: ``tag`` (one of CONVERSATION_TAGS — empty / stealth /
     private) is denormalized into the chunk's ChromaDB metadata under the
@@ -14661,9 +14669,12 @@ _reach_probe_lock = threading.Lock()
 
 @app.route("/api/model-registry", methods=["GET"])
 def model_registry_get():
-    """Return the curated registry as JSON.
+    """Return the active serving registry as JSON.
 
-    Reads ``config/model-registry.json``. When the file is missing,
+    Reads ``config/model-registry.json`` as the base. In default-on
+    vendor-authoritative mode, a present generated
+    ``config/model-registry.vendor-authoritative.json`` replaces that serving
+    view later in this handler. When the base file is missing,
     returns an empty registry shape ({models: {}}) with status=200 —
     the UI handles "no models known yet" gracefully and prompts a
     sync.
@@ -14740,7 +14751,7 @@ def model_registry_get():
                    or _d > _reach_counts["newest_probed_at"]):
             _reach_counts["newest_probed_at"] = _d
 
-    # Vendor-catalogue-authoritative inventory (flag-gated, default off): when on
+    # Vendor-catalogue-authoritative inventory (flag-gated, default on): when on
     # and the preview registry exists, serve each keyed vendor's OWN catalogue
     # (native ids) instead of its OpenRouter entries. Native entries carry
     # dispatch="direct" → surface direct_dispatch so the pane paints the DIRECT chip.
@@ -15438,7 +15449,7 @@ def model_registry_refresh():
         # filter still guards picks until the next successful rebuild).
         if ok:
             if _run_refresh_step(summary, "catalog", "refresh-catalog.py", 120):
-                # Vendor-catalogue-authoritative build (PR-D, default on): fetch
+                # Vendor-catalogue-authoritative build (default on): fetch
                 # each keyed vendor's own /models and write the authoritative
                 # registry that both the endpoint sync (below) and the picker
                 # read. Must run after the catalog rebuild (it reads the

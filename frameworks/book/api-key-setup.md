@@ -4,727 +4,130 @@
 API Key Setup
 
 ## Display Description
-Acquire and securely store API keys for commercial AI providers and free-tier search/metadata providers, then register endpoints where applicable. Use when adding a new external provider (Anthropic, OpenAI, Google, OpenRouter, Stability, Replicate, Tavily, Brave, Exa, Artificial Analysis) for the orchestrator to call.
+Help the user add an external API provider — open the right signup / key page, store the key securely in the system keychain, and confirm it works. Covers OpenRouter (strongly recommended but optional), eligible direct PAYG AI vendors, OpenRouter-served Meta/NVIDIA access, web search (Tavily, Brave, Exa), model intelligence (Artificial Analysis), economic data (FRED), transcription, speech, and image providers.
 
-
-*Guided Setup for Commercial AI API Access*
+*Guided, conversational setup for a non-technical user.*
 
 ---
 
 ## PURPOSE
 
-This framework walks the user through obtaining API keys from commercial AI providers, storing them securely, and verifying they work. Two provider categories are covered:
+Most people should set keys directly in **Settings → External APIs** — that panel lists every provider in two columns, links straight to each key console, validates the key format as you type, and verifies where possible when **Save** is pressed. Run this framework when the user wants a hand walking through it conversationally, or asks you to set a provider up for them.
 
-- **Evaluation providers** (Anthropic, OpenAI, Google) — text-generation and reasoning APIs. These feed routing-config.json's `premium` / `mid` / `fast` buckets and are the commercial channel for analyst / evaluator / consolidator slots when the user opts in.
-- **Image-generation providers** (OpenAI gpt-image-1, Stability AI, Replicate) — image-generation APIs used by the visual pane (Phase 7). The fallback chain is preferred → fallback → unavailable.
+The live provider catalogue, signup and console URLs, key prefixes, and activation metadata live in one place in code — `orchestrator/provider_registry.py`. Settings reads that registry at runtime. This framework summarizes it for the conversational path but is not itself code-generated, so when details disagree the live Settings row and registry are authoritative.
 
-Commercial AI access in Ora is via these vendor APIs and OpenRouter. Local MLX models cover the no-cost baseline; API keys add stronger commercial models when the user wants them. Setup is optional — Ora runs fully on local models alone.
+Ora runs with no external keys when local models are configured, and the installer can complete with no keys. Keys are optional add-ons. **OpenRouter** is the practical gateway to commercial and hosted open-weight models (one key, hundreds of models), so recommend it early, but do not describe it as a hard install prerequisite. Free OpenRouter models are rate-limited and sometimes unavailable; paid models require credits/payment.
 
-The framework is designed for non-technical users who have never created an API account. The local AI runs this framework through the orchestrator, opening browser pages and storing credentials without requiring the user to interact with a terminal or understand technical infrastructure.
+## HOW KEYS ARE USED
 
-## INPUT CONTRACT
+- **OpenRouter** — the gateway. One key reaches almost every model, and is the simplest way to move beyond free/local capacity.
+- **Eligible direct PAYG vendors** — after the key is saved **and the Models registry is refreshed**, the vendor's own `/models` catalogue becomes authoritative for that vendor. Ora creates exact native direct endpoints and avoids OpenRouter's ~5.5% markup on those routes. Native authoritative endpoints do not promise an automatic same-model OpenRouter retry; the configured model fallback chain owns availability. Eligible today: Anthropic, OpenAI, Google Gemini, xAI, Mistral, DeepSeek, Qwen, Moonshot, MiniMax, and Xiaomi.
+- **Meta and NVIDIA** — their current individual programs do not provide the same self-serve PAYG contract, so the default authoritative build keeps their models OpenRouter-served. Saving these keys does not convert the Models menu to native direct routes.
+- **Flag-off fallback** — with `ORA_VENDOR_CATALOG_AUTHORITATIVE=0`, the OpenRouter inventory stays primary and the catalogue-aware `ORA_PREFER_DIRECT` path can try the exact same model directly, then reactively fall back to OpenRouter on error. `ORA_PREFER_DIRECT=0` disables that runtime rewrite; legacy OpenAI/Anthropic/Gemini direct endpoints already generated from stored keys remain direct until the endpoint universe is regenerated without those keys.
+- **Auto-activating keys** — search (Tavily/Brave/Exa), Artificial Analysis, and FRED turn on from key presence with no separate toggle. Direct-vendor model keys still require the registry refresh boundary above.
+- **Explicit-choice keys** — transcription (AssemblyAI/Deepgram), speech (ElevenLabs), and image (Stability/Replicate/Tensor.Art) only take effect when you also select that provider in the relevant Settings tab — local Whisper / macOS say are free defaults and are never silently overridden.
 
-Required:
-- This framework loaded into the local AI system. Source: user tells the AI to read and execute this file, or the AI loads it when the user needs API access.
+## STORAGE CONVENTION
 
-Optional:
-- **Provider preference:** User states which provider(s) they want (Anthropic, OpenAI, Google, or all). Source: user provides during execution. Default if absent: framework presents all three and asks.
-- **Existing API keys:** User already has one or more keys. Source: user provides during execution. Default if absent: framework guides full acquisition process.
-- **Use case context:** Whether the user needs API keys for overflow, reliability, or autonomous operations. Source: user provides or framework infers from conversation. Default if absent: framework assumes general-purpose overflow.
-
-## OUTPUT CONTRACT
-
-Primary outputs:
-- API key(s) stored securely in the system credential store (macOS Keychain, Windows Credential Manager, or Linux SecretService via the `keyring` library).
-- Verification result for each stored key (confirmed working or failed with explanation).
-
-Secondary outputs:
-- API configuration summary written to `[workspace]/config/api-providers.md` documenting which providers are configured, their verification status, and the fallback chain order.
-- Updated endpoint registry (`[workspace]/config/endpoints.json`) with API endpoint entries for each configured provider.
-
-## EXECUTION TIER
-
-Agent: This framework executes through the local orchestrator with tool access. It uses browser_open to open signup pages, credential_store to save keys, and web-based API calls to verify keys. The local AI guides the user conversationally through each step.
-
-The single milestone covers Layers 1-7 (seven processing layers) for one configured provider. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the atomicity of provider configuration: the Configured API Provider Access state is only verifiable at end-of-pipeline (provider selection → signup → key extraction → store → verify), and intermediate states represent partial configuration unsafe to commit because an unverified key in the credential store would cause silent runtime failures.
-
----
-
-## MILESTONES DELIVERED
-
-This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
-
-### Milestone 1: Configured API Provider Access
-
-- **Endpoint produced:** One or more commercial AI API keys (Anthropic, OpenAI, Google) stored in the system credential store under `ora-[provider]`; corresponding endpoint entries added to `[workspace]/config/endpoints.json` with `credential_key`, model, and verification timestamp; evaluation fallback chain documented in `[workspace]/config/api-providers.md`.
-- **Verification criterion:** (a) each configured provider has a key stored in the system credential store (no plaintext file, no log value); (b) each configured provider has a verification result recorded — either a successful minimal API call (200 response with generated text) or an explicit stored-but-unverified status with reason (auth error, quota error, or network error); (c) `endpoints.json` contains one active entry per configured provider with `credential_key` matching the credential-store key name; (d) `api-providers.md` documents the fallback chain (API primary → API secondary → local-only) with primary/secondary selection recorded; (e) no key value appears in any log, session file, or persisted artifact.
-- **Layers covered:** 1, 2, 3, 4, 5, 6, 7
-- **Required prior milestones:** None
-- **Gear:** 4
-- **Output format:** Credential-store entries plus updated endpoints.json plus api-providers.md documentation file.
-- **Drift check question:** Are all configured provider keys stored only in the credential store (never in plaintext or logs), and does the fallback chain documented in api-providers.md match the actual primary/secondary selection in endpoints.json?
-
----
-
-## EVALUATION CRITERIA
-
-1. **Key Acquisition Success:** At least one API key successfully obtained and stored.
-   - 5: All requested providers configured and verified working.
-   - 4: All requested providers configured. One required a second attempt.
-   - 3: At least one provider configured and verified. Others declined or failed with clear explanation.
-   - 2: Keys entered but verification failed for all providers.
-   - 1: No keys obtained.
-
-2. **User Comprehension:** The user understands what an API key is, why it costs money, and what it will be used for before entering any financial information.
-   - 5: User confirmed understanding at each explanation checkpoint. Cost / per-token billing model clear. No confusion expressed.
-   - 4: User confirmed understanding. One clarifying question asked and answered.
-   - 3: User proceeded with setup. Minor confusion resolved during the process.
-   - 2: User expressed confusion that was not fully resolved.
-   - 1: User entered financial information without understanding what they were signing up for.
-
-3. **Security:** Keys are stored in the system credential store, not in plaintext files. No key is displayed in logs or terminal output after storage.
-   - 5: All keys stored via credential_store tool. Session log records that keys were stored, not the key values. No plaintext exposure.
-   - 4: Keys stored securely. One key briefly visible in conversation before storage.
-   - 3: Keys stored securely after initial storage.
-   - 2: Key stored in a plaintext file rather than credential store.
-   - 1: Key visible in logs, terminal output, or plaintext file.
-
-4. **Fallback Configuration:** The evaluation fallback chain is configured and documented so the system knows which channel to try first.
-   - 5: Fallback chain configured (API primary → API secondary → local-only). Documented in api-providers.md. Endpoint registry updated.
-   - 4: Fallback chain configured and documented. Endpoint registry updated.
-   - 3: At least one API provider configured. Fallback chain is partial.
-   - 2: Provider configured but fallback chain not documented or endpoint registry not updated.
-   - 1: No configuration file produced.
+Every key lives in the system keychain under service `ora`, using the registry's `keyring_username` (generally `<provider>-api-key`; e.g. `ora/openrouter-api-key`, `ora/deepseek-api-key`, with `ora/aa-api-key` for Artificial Analysis). The Settings panel and `set_api_key()` write there; never store a key in a plaintext file or echo it into a log.
 
 ---
 
 ## NAMED FAILURE MODES
 
-**The One-Chance Key Trap:** API keys are displayed exactly once when created. If the user navigates away, closes the tab, or fails to copy the key, it is gone. A new key must be generated. The framework must warn the user about this at least twice — once before opening the signup page and once immediately before the key generation step.
+**The One-Chance Key Trap:** most providers show a new key exactly once. Warn the user to copy it before leaving the page — twice: once before opening the page, once at the generation step. If lost, they generate a new one (the old one is invalidated).
 
-**The Sticker Shock Trap:** The user encounters a credit card requirement during signup and panics, thinking they will be charged a large amount. The framework must explain the actual cost (roughly $1–50/month for typical usage, often less) before the user reaches the payment page. Specific per-model pricing should be provided.
+**The Sticker-Shock Trap:** the credit-card prompt panics people. Set expectations first: paid model APIs are pay-per-use and vary by use; the cheapest models can be very inexpensive, but users should expect usage-based billing instead of a fixed subscription. Search providers often offer free tiers or credits, then usage-based plans. Artificial Analysis has a free model-benchmark API with commercial data separately. FRED remains free but is not part of the public install recommendation.
 
-**The Wrong Page Trap:** Provider websites change their layouts. The framework provides specific URLs, but the signup flow may differ from what the instructions describe. The framework must tell the user what they are looking for (a section called "API Keys" or "Developer Console"), not just which buttons to click.
+**The Wrong-Page Trap:** layouts change. Tell the user *what* to look for ("a section called API Keys / Developer console"), not just buttons. Use the key page from the table below.
 
-**The Key Format Trap:** Users may copy extra whitespace, quotation marks, or partial keys when pasting. The framework must trim whitespace and validate the key format before storing. Anthropic keys start with `sk-ant-`. OpenAI keys start with `sk-`. Google keys are longer alphanumeric strings. Stability AI keys start with `sk-` (same prefix shape as OpenAI — verify the key goes to the right `ora-` keychain entry, not the wrong one). Replicate tokens start with `r8_`.
-
-**The Verification Failure Trap:** A correctly entered key fails verification because the user's account requires payment method confirmation, email verification, or has a usage limit of $0 until billing is activated. The framework must distinguish between "key is invalid" and "key is valid but account is not yet activated" and guide the user accordingly.
+**The Key-Format Trap:** users paste whitespace, quotes, or a partial key. Trim it, and sanity-check the prefix in the table. Prefixes are a hint, not a hard gate — store what the user insists on.
 
 ---
 
-## LAYER 1: EXPLANATION AND CONTEXT
+## PROVIDER CATALOGUE
 
-**Stage Focus:** Explain what an API key is, what it will be used for, and what it costs, before any action is taken.
+Each row: provider — key page · expected key prefix · activation.
+`direct after refresh` = eligible for the default vendor-authoritative menu after a Models refresh. `OpenRouter-served` = the key does not replace the model menu under the current individual-access contract. `auto` = on when the key is present. `choice` = also pick it in the matching Settings tab.
 
-### Processing Instructions
+### Gateway
+- **OpenRouter** — https://openrouter.ai/settings/keys · `sk-or-` · auto · **strongly recommended for broad hosted model access**
 
-Present the following explanation conversationally, not as a wall of text. Pause after each section for the user to acknowledge or ask questions.
+### US AI providers
+- **Anthropic (Claude)** — https://platform.claude.com/settings/keys · `sk-ant-` · direct after refresh
+- **OpenAI** — https://platform.openai.com/api-keys · `sk-` · direct after refresh (same key serves chat, vision, OpenAI TTS)
+- **Google Gemini** — https://aistudio.google.com/app/apikey · `AIza` · direct after refresh (free tier in AI Studio)
+- **xAI (Grok)** — https://console.x.ai/team/default/api-keys · `xai-` · direct after refresh
+- **Meta (Llama API)** — https://llama.developer.meta.com/api-keys · `LLM|` · OpenRouter-served (waitlisted free preview; no individual PAYG)
+- **NVIDIA NIM** — https://build.nvidia.com/settings/api-keys · `nvapi-` · OpenRouter-served (free dev key; no individual PAYG)
+- **Mistral AI** — https://console.mistral.ai/api-keys · (opaque) · direct after refresh
 
-**Section 1 — What an API key is:**
+### Chinese AI providers
+- **DeepSeek** — https://platform.deepseek.com/api_keys · `sk-` · direct after refresh
+- **Alibaba Qwen (DashScope)** — https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key · `sk-` · direct after refresh (international endpoint)
+- **Moonshot AI (Kimi)** — https://platform.kimi.ai/console/api-keys · `sk-` · direct after refresh (international endpoint)
+- **MiniMax** — https://platform.minimax.io/user-center/basic-information/interface-key · `eyJ` · direct after refresh (international endpoint)
+- **Xiaomi (MiMo)** — https://platform.xiaomimimo.com/#/console/api-keys · `sk-` · direct after refresh
 
-"An API key is a credential that lets your system call a commercial AI provider's servers directly. Once configured, your local AI can dispatch analysis tasks to Claude, GPT, Gemini, or other commercial models through their official APIs.
+### Web search (free tiers; auto-activate)
+- **Tavily** — https://app.tavily.com/home · `tvly-` · auto (keyword cascade tier 1)
+- **Brave Search** — https://api-dashboard.search.brave.com/app/keys · (opaque) · auto (cascade tier 2; subscribe the Free plan)
+- **Exa** — https://dashboard.exa.ai/api-keys · (UUID) · auto (semantic search tier)
 
-Ora runs fully on local models alone — API keys are optional. They give you access to stronger commercial models (Claude Opus, GPT-5, etc.) for analyses where local model capability isn't enough."
+### Model intelligence & data (free; auto-activate)
+- **Artificial Analysis** — https://artificialanalysis.ai/api-key-management-redirect · (bearer) · auto (live model intelligence; optional installer recommendation, improves model selector)
+- **FRED (St. Louis Fed)** — https://fredaccount.stlouisfed.org/apikeys · (32-char hex) · auto (economic time-series; specialized, not part of the public install recommendation)
 
-**Section 2 — When you need API keys:**
-
-"Set up API keys if you want any of:
-
-1. **Stronger reasoning** — Frontier commercial models for analytical work where local model capability is insufficient.
-2. **Specific provider preference** — You want to use Claude / GPT / Gemini directly, with usage tracking on the vendor's dashboard.
-3. **Autonomous overnight runs** — Pre-authorized API access for unattended pipelines.
-4. **OpenRouter coverage** — A single OpenRouter key gives you a wide catalog of commercial and free models through one provider.
-
-If none of these apply right now, you can skip this setup and return to it later. Ora will keep working on local models alone."
-
-**Section 3 — What it costs:**
-
-"API access is pay-per-use. Two cost regimes:
-
-**Evaluation providers (Anthropic, OpenAI text, Google, OpenRouter)** — billed per token of text. Typical usage:
-
-- Light use: $1–5 per month
-- Moderate use (dozens of evaluations): $10–30 per month
-- Heavy use or autonomous runs: $30–50 per month
-
-The cheapest options (Google Gemini Flash, OpenAI GPT-4o-mini) cost roughly six hundredths of a cent per evaluation. Even the most capable models (Claude Opus, GPT-5) cost about one to two cents per evaluation. OpenRouter also exposes free variants of several capable models (Llama 3.3 70B, DeepSeek, NVIDIA Nemotron) — these have rate limits but no per-token charge.
-
-**Image-generation providers (OpenAI gpt-image-1, Stability AI, Replicate)** — billed per image, not per token. Per-image pricing varies widely by provider, model, and resolution — roughly a few cents per standard-resolution image at the cheap end and tens of cents at the expensive end. There is no usage tier inside the visual pane that previews or estimates per-call costs before generation; charges land where they land. You can monitor spending on each provider's billing dashboard. If you want a hard ceiling, set a monthly spending cap inside the provider's billing settings — Ora itself does not enforce one.
-
-You will need to provide a credit card during signup."
-
-**Section 4 — What happens next:**
-
-"I'll walk you through setting up one or more API providers. For each one, I'll open the signup page in your browser. You'll create an account, add a payment method, and generate an API key. The key is a long string of characters — like a password for your system.
-
-The critical thing to know: the key is shown exactly once when you create it. If you close the page without copying it, it's gone and you'll need to generate a new one. I'll remind you again when we get to that step."
-
-AFTER presenting all sections, ask: "Would you like to set up API keys now, or are you happy with local models for the time being?"
-
-IF the user wants to proceed, THEN ask: "Which providers would you like to set up?"
-
-Present the options:
-
-**Evaluation providers (text/reasoning):**
-
-1. **Anthropic (Claude)** — Recommended as primary API evaluator. Strong analytical and reasoning capability.
-2. **OpenAI (GPT)** — Widely used. Good general capability. Same key also serves DALL-E image generation if you select option 6.
-3. **Google (Gemini)** — Lowest cost option. Gemini Flash is extremely inexpensive.
-4. **All three evaluation providers** — Provides maximum fallback coverage for evaluation. Recommended if budget allows.
-
-**Image-generation providers (visual pane):**
-
-5. **OpenAI image (DALL-E)** — Reuses the OpenAI key from option 2. If you've already configured OpenAI, no additional setup is needed; the same `ora/openai-api-key` keychain entry serves DALL-E.
-6. **Stability AI** — Stable Diffusion family models (SDXL, SD3). Quality control via image-to-image, ControlNet, and style references. Pay-per-image.
-7. **Replicate** — Aggregator hosting hundreds of community image models, plus video and style-training. Long-tail fallback for capabilities the other two image providers don't cover.
-8. **All image providers** — Configure all three for maximum image-generation fallback coverage.
-
-**Search and metadata providers (free tier — recommended):**
-
-9. **Tavily search** — Free tier ~1,000 searches/month. LLM-friendly snippet shape. First tier of Ora's web-search cascade when configured. Optional but recommended.
-10. **Brave Search** — Free tier ~2,000 queries/month. Larger free tier than Tavily; survives heavy production search bursts that DDG silently rate-limits. Optional but recommended.
-11. **Exa neural search** — Free tier ~1,000 searches/month. Embedding-based / semantic retrieval — different result shape from the keyword tiers, useful for concept-style queries. Opt-in to the cascade by adding `"exa"` to `search_cascade_order` in `config/routing-config.json` once configured. Optional.
-12. **Artificial Analysis** — Free key. Improves the automated model selector by giving Ora structured access to live model intelligence / latency / cost data instead of falling back to a public-page scrape that can break when the page layout changes. Recommended.
-13. **All four search and metadata providers** — Configure all four for maximum search coverage and reliable live model metadata.
-
-**Other:**
-
-14. **I already have one or more API keys** — Skip to key entry.
-
-Record the user's selection. Process each selected provider through Layers 2–4 sequentially.
-
-IF the user decides to skip, THEN: "No problem. Your system will continue using local models for evaluation. You can set up API keys anytime by telling your AI: 'Read and execute frameworks/api-key-setup.md'"
+### Transcription · speech · image (choice — also select in Settings)
+- **AssemblyAI** — https://www.assemblyai.com/dashboard/api-keys · transcription
+- **Deepgram** — https://console.deepgram.com/ · transcription
+- **ElevenLabs** — https://elevenlabs.io/app/settings/api-keys · `sk_` · speech
+- **Stability AI** — https://platform.stability.ai/account/keys · `sk-` · image (pay-per-image)
+- **Replicate** — https://replicate.com/account/api-tokens · `r8_` · image / video
+- **Tensor.Art** — https://tams.tensor.art/apps · image
 
 ---
 
-## LAYER 2: PROVIDER SIGNUP (repeat for Each Selected provider)
+## STEPS
 
-**Stage Focus:** Guide the user through creating an account and navigating to the API key section for one provider.
-
-### Processing Instructions
-
-**IF provider is Anthropic:**
-
-1. Tell the user: "I'm going to open the Anthropic console in your browser. You'll need to create an account with your email address and add a payment method."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://console.anthropic.com/</url>
-   </tool_call>
-   ```
-
-3. Guide: "Once you're logged into the Anthropic console, look for a section called 'API Keys' in the left sidebar or settings menu. Click 'Create Key' to generate a new API key."
-4. **Critical warning (first delivery):** "IMPORTANT: The key will be shown exactly ONCE. Do NOT close this page until you've copied the key. It starts with `sk-ant-` and is a long string of letters and numbers."
-
-**IF provider is OpenAI:**
-
-1. Tell the user: "I'm going to open the OpenAI platform in your browser."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://platform.openai.com/api-keys</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in or create an account. You should see the API Keys page. Click 'Create new secret key.' Give it a name like 'ora' so you can identify it later."
-4. **Critical warning (first delivery):** Same as above, noting OpenAI keys start with `sk-`.
-5. **Image-generation note:** "The OpenAI API key you just created serves both the chat completions endpoint (used for evaluation) AND the image-generation endpoints (DALL-E 3 / DALL-E 2). One key, both capabilities. The credential store entry `ora/openai-api-key` is what the visual pane will look up when it routes to DALL-E. You do not need to create a separate key for image generation."
-
-**IF provider is Google:**
-
-1. Tell the user: "I'm going to open Google AI Studio in your browser."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://aistudio.google.com/app/apikey</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in with your Google account. Click 'Create API Key.' Select a Google Cloud project (if you don't have one, Google will create a default project for you)."
-4. **Critical warning (first delivery):** Same as above.
-
-**IF provider is Stability AI:**
-
-1. Tell the user: "I'm going to open the Stability AI platform in your browser. Stability hosts the Stable Diffusion family of image-generation models — SDXL, SD3, and related variants. Image generation is billed per image (typically a few cents per standard image, more for higher resolutions). There is no monthly minimum and no upfront commitment, but you will need to add a payment method or buy credits to use the API."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://platform.stability.ai/</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in or create a Stability AI account. Once you're in the platform, look for 'Account' or 'API Keys' in the navigation — Stability typically presents it as part of the account settings rather than a separate developer console. Click to generate a new API key. You may also need to add a payment method or purchase credits before the key will work for live generation calls."
-4. **Critical warning (first delivery):** "IMPORTANT: The key will be shown exactly ONCE. Do NOT close this page until you've copied the key. Stability AI keys typically start with `sk-` and are a long string of letters and numbers. Note: this prefix is the same shape as an OpenAI key — make sure you keep them separate, since they go to different services and to different keychain entries (`ora/stability-api-key` vs `ora/openai-api-key`)."
-5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Stability AI's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Stability's billing settings — Ora itself does not enforce one.
-
-**IF provider is Replicate:**
-
-1. Tell the user: "I'm going to open Replicate's API tokens page in your browser. Replicate is an aggregator — it hosts hundreds of community-built image, video, and audio models behind a single API, and serves as a long-tail fallback for capabilities that OpenAI and Stability don't cover. Replicate is billed by GPU time per run; per-image cost varies by model from fractions of a cent to tens of cents."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://replicate.com/account/api-tokens</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in or create a Replicate account (you can sign in with GitHub if you have one). The API tokens page should appear directly after sign-in. Click 'Create token' and give it a name like 'ora' so you can identify it later. Replicate will also ask for a payment method before runs will execute, even though the token itself is created without one."
-4. **Critical warning (first delivery):** "IMPORTANT: The token will be shown exactly ONCE. Do NOT close this page until you've copied it. Replicate tokens start with `r8_` and are a long string of letters and numbers."
-5. **Pricing transparency:** Per the architectural decision in §11.13 of the visual-pane plan, the framework does not preview or estimate per-call costs. You can monitor spending on Replicate's billing dashboard at any time. If you want a hard ceiling, set a monthly spending cap inside Replicate's billing settings — Ora itself does not enforce one.
-
-**IF provider is Tavily:**
-
-1. Tell the user: "I'm going to open Tavily in your browser. Tavily is a web-search API designed for LLM workflows — it returns clean snippet text rather than raw HTML. The free tier covers about 1,000 searches per month, which is more than enough for personal use. No payment method is required to start."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://app.tavily.com/</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in or sign up — you can use Google, GitHub, or email. Once you're in the dashboard, find 'API Keys' (it's usually in the left sidebar or under your account menu). Copy the default key that's already there, or click 'Create new key' to generate a fresh one."
-4. **Critical warning (first delivery):** "IMPORTANT: Tavily keys typically start with `tvly-` followed by a long alphanumeric string. Copy the full key before you leave the page."
-5. **Cascade note:** "Tavily is the first tier of Ora's web search cascade. Once configured, search queries automatically route through Tavily before falling back to Brave or DDG. No additional configuration required."
-
-**IF provider is Brave:**
-
-1. Tell the user: "I'm going to open Brave Search API in your browser. Brave is a keyword search API with a generous free tier — about 2,000 queries per month. It's reliable for production search workloads and complements Tavily as a fallback tier. Free tier requires signing up but does not require a payment method."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://api-dashboard.search.brave.com/app/keys</url>
-   </tool_call>
-   ```
-
-3. Guide: "Sign up or log in (Brave Account works). You'll need to subscribe to the 'Free' plan if you haven't already — it's $0 and requires no card. Once subscribed, click 'API Keys' in the sidebar and 'Add API Key' to generate one."
-4. **Critical warning (first delivery):** "IMPORTANT: The key is shown once at creation time. Copy the full string before you leave the page. Brave keys are typically a long alphanumeric token without a fixed prefix."
-5. **Cascade note:** "Brave is the second tier of Ora's web search cascade. It activates automatically once configured."
-
-**IF provider is Exa:**
-
-1. Tell the user: "I'm going to open Exa in your browser. Exa is a neural search API that uses embeddings to find conceptually relevant documents — a different retrieval shape from the keyword search providers (Tavily, Brave, DDG). The free tier covers about 1,000 searches per month."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://dashboard.exa.ai/api-keys</url>
-   </tool_call>
-   ```
-
-3. Guide: "Sign up or log in (Google sign-in works). The API Keys page should appear directly after sign-in. Click 'Create new API key' and give it a name like 'ora' so you can identify it later. No payment method required for the free tier."
-4. **Critical warning (first delivery):** "IMPORTANT: Exa keys are UUID-shaped — a long string of hex digits separated by dashes, like `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. Copy the full key before you leave the page."
-5. **Opt-in note:** "Exa is registered as a cascade provider but is **not** in the default cascade order (Tavily → Brave → DDG). To use Exa, edit `config/routing-config.json` and add `\"exa\"` to the `search_cascade_order` list at the position you want it — typically first, since neural results complement the keyword tiers."
-
-**IF provider is Artificial Analysis:**
-
-1. Tell the user: "I'm going to open Artificial Analysis in your browser. Artificial Analysis publishes benchmarks for hundreds of language models (intelligence index, latency, tokens-per-second, per-token cost). Ora uses this data to populate the Models pane and to power the automated model selector. Without a key, Ora falls back to scraping the public pages — which works but breaks when the page layout changes. The API key is free and removes that fragility."
-2. Open the browser:
-   ```xml
-   <tool_call>
-   <n>browser_open</n>
-   <url>https://artificialanalysis.ai/</url>
-   </tool_call>
-   ```
-
-3. Guide: "Log in or create an account (top-right of the page). Once signed in, look for the API section in your account menu — Artificial Analysis presents API key management as part of the user profile rather than a separate developer console. Generate a new API key."
-4. **Critical warning (first delivery):** "IMPORTANT: The key is shown once at creation time. Copy the full string before you leave the page. Artificial Analysis keys are typically a long alphanumeric bearer token."
-5. **Recommendation note:** "Configuring this key is recommended. The automated model selector compares your prompt against current model benchmarks to choose the right tier (premium / mid / fast). Live data via the API is more reliable than the fallback scrape, especially when Artificial Analysis updates their model rankings."
+1. **Offer the panel first.** "The quickest way is Settings → External APIs — it links straight to each provider's key page, and Save verifies where possible. Want to do it there, or shall I walk you through it here?"
+2. **Pick the provider.** If they're just starting, recommend the install starter package: **OpenRouter + Tavily + Artificial Analysis**. If they already use an eligible PAYG vendor and want native routing, set that vendor's key and plan a Models refresh after storage.
+3. **Open the key page** for the chosen provider (table above). Deliver the One-Chance-Key warning. For paid model vendors, set cost expectations before the card prompt.
+4. **Receive and clean the key** — trim whitespace and surrounding quotes; sanity-check the prefix; warn (don't block) if it looks off.
+5. **Verify** — the panel's Save button performs the cheapest available verification before storage. In a guided flow, make the same cheapest authenticated call. A confirmed 401/403 rejection stops here; providers with no free probe and transient network failures are explicitly inconclusive. Image/TTS providers have no free verification call, so first use confirms them.
+6. **Store** — after a success or disclosed inconclusive result, write the key to the system keychain under service `ora` and the provider registry's username. Confirm presence without echoing the value.
+7. **Confirm activation.** Search/data auto-activating keys are live from key presence. For an eligible model vendor, open Models and press ↻ to rebuild the native inventory, endpoints, aliases, and presets; confirm the expected rows show **DIRECT**. Transcription/speech/image keys need the matching Settings selection or capability slot.
 
 ---
 
-## LAYER 3: KEY ENTRY AND STORAGE (repeat for Each provider)
+## RECOVERY
 
-**Stage Focus:** Receive the API key from the user, validate its format, and store it securely.
-
-### Processing Instructions
-
-1. **Critical warning (second delivery):** "Before you paste the key: confirm you've copied it. After this step, you won't need to see the key again — I'll store it securely and your system will retrieve it automatically when needed."
-2. Ask: "Please paste your [provider] API key."
-3. Receive and validate the key:
-   - Trim any leading/trailing whitespace.
-   - Remove any quotation marks surrounding the key.
-   - IF provider is Anthropic AND key does not start with `sk-ant-`, THEN warn: "This doesn't look like an Anthropic API key — they typically start with 'sk-ant-'. Check that you copied the full key."
-   - IF provider is OpenAI AND key does not start with `sk-`, THEN warn: "This doesn't look like an OpenAI API key — they typically start with 'sk-'. Check that you copied the full key."
-   - IF provider is Stability AI AND key does not start with `sk-`, THEN warn: "This doesn't look like a Stability AI API key — they typically start with 'sk-' (the same prefix shape as OpenAI; verify it's the Stability key, not an OpenAI key pasted by mistake). Check that you copied the full key."
-   - IF provider is Replicate AND key does not start with `r8_`, THEN warn: "This doesn't look like a Replicate API token — they typically start with 'r8_'. Check that you copied the full token."
-   - IF provider is Tavily AND key does not start with `tvly-`, THEN warn: "This doesn't look like a Tavily API key — they typically start with 'tvly-'. Check that you copied the full key."
-   - IF provider is Exa AND key does not match the UUID pattern (8-4-4-4-12 hex), THEN warn: "This doesn't look like an Exa API key — they're typically UUID-shaped (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). Check that you copied the full key."
-   - IF provider is Brave OR provider is Artificial Analysis, THEN no specific prefix check applies — both providers issue opaque bearer tokens. Fall through to the length check.
-   - IF key is shorter than 20 characters, THEN warn: "This seems too short for an API key. Did you copy the full string?"
-
-4. **Store the key securely** under the canonical Ora keychain convention — service `ora`, username `<provider>-api-key`. This matches what `scripts/sync_model_registry.py`, `orchestrator/boot.py::_export_search_keys_to_env`, and the V3 settings panel all read from. Per the v1.4 normalization (see CHANGELOG), no provider uses a `ora-<provider>` service namespace anymore.
-   ```xml
-   <tool_call>
-   <n>credential_store</n>
-   <action>store</action>
-   <service>ora</service>
-   <username>[provider]-api-key</username>
-   <key>[the pasted key]</key>
-   </tool_call>
-   ```
-
-   Username slug per provider: `anthropic-api-key`, `openai-api-key`, `google-api-key`, `openrouter-api-key`, `stability-api-key`, `replicate-api-key`, `tavily-api-key`, `brave-api-key`, `exa-api-key`, `aa-api-key`.
-
-5. Confirm: "Key stored securely in your system's credential manager. It is not saved in any file or log. Your system can retrieve it when needed without you entering it again."
-6. **Log the event (without the key value):**
-   Log to the session file: "API key stored for [provider]. Key verified format. Stored in credential manager." NEVER log the key value itself.
+- **Key page closed before copying:** generate a new key; the old one is dead.
+- **Confirmed authentication rejection:** do not store the key; recopy it, check account/billing state, and retry. A 429 means the key is valid but rate-limited or over quota. An inconclusive network result may be stored with the uncertainty disclosed; local models cover the gap.
+- **User stops partway:** store whatever was completed; they can rerun this anytime or finish in Settings → External APIs.
 
 ---
 
-## LAYER 4: VERIFICATION (repeat for Each provider)
-
-**Stage Focus:** Make a minimal API call to verify the key works.
-
-### Processing Instructions
-
-1. Retrieve the stored key (canonical convention — service `ora`, username `<provider>-api-key`):
-   ```xml
-   <tool_call>
-   <n>credential_store</n>
-   <action>retrieve</action>
-   <service>ora</service>
-   <username>[provider]-api-key</username>
-   </tool_call>
-   ```
-
-2. Make a minimal verification call. The orchestrator sends a tiny API request:
-
-   **Anthropic:** POST to `https://api.anthropic.com/v1/messages` with the smallest possible request — model `claude-haiku-4-5-20251001`, max_tokens 10, message "Say hello." Expected cost: <$0.001.
-
-   **OpenAI:** POST to `https://api.openai.com/v1/chat/completions` with model `gpt-4o-mini`, max_tokens 10, message "Say hello." Expected cost: <$0.001.
-
-   **Google:** POST to the Gemini API with model `gemini-2.0-flash`, max_tokens 10, message "Say hello." Expected cost: <$0.001.
-
-   **Stability AI:** POST to `https://api.stability.ai/v2beta/stable-image/generate/sd3` (or the smallest currently-current SDXL endpoint) with the smallest viable request — prompt `"hi"`, output_format `jpeg`, dimensions 256×256 (or the smallest supported). The verification call generates one real image; expected cost is on the order of a few cents (Stability does not currently expose a free-tier ping endpoint). The framework warns the user before running the call: "Verifying the Stability AI key requires generating one small image, which will incur a charge of a few cents on your account. Proceed?" Expected cost: ~$0.01–0.05 depending on model and resolution.
-
-   **Replicate:** POST to `https://api.replicate.com/v1/predictions` invoking a known fast, cheap model (e.g., a small SDXL or Stable Diffusion variant) with prompt `"hi"` and the lowest supported step count and resolution. The verification call generates one real image; expected cost is on the order of fractions of a cent to a few cents depending on the model and GPU class. The framework warns the user before running the call: "Verifying the Replicate token requires running one small model, which will incur a charge of typically less than a cent on your account. Proceed?" Expected cost: ~$0.001–0.02 depending on the model selected.
-
-   **Note on image-provider verification:** Unlike text providers, image providers have no genuinely free verification endpoint — listing models is sometimes available without auth and so doesn't actually verify the key. The framework therefore performs a real (smallest-possible) generation. This is consistent with the §11.13 cost-transparency design: charges land where they land, and the user is informed before the call so the small verification charge isn't a surprise.
-
-   **Tavily:** POST to `https://api.tavily.com/search` with body `{"api_key": <key>, "query": "ping", "max_results": 1, "search_depth": "basic"}`. A 200 response with a `results` array (possibly empty) confirms the key works. Counts as one free-tier query.
-
-   **Brave:** GET to `https://api.search.brave.com/res/v1/web/search?q=ping&count=1` with header `X-Subscription-Token: <key>`. A 200 response with a `web.results` array confirms the key works. Counts as one free-tier query.
-
-   **Exa:** POST to `https://api.exa.ai/search` with header `x-api-key: <key>` and body `{"query": "ping", "numResults": 1}`. A 200 response with a `results` array confirms the key works. Counts as one free-tier query.
-
-   **Artificial Analysis:** GET to `https://artificialanalysis.ai/api/v2/data/llms/models` with header `Authorization: Bearer <key>`. A 200 response with a model envelope confirms the key works. The endpoint is metered but the free tier is generous; one ping is negligible.
-
-3. **Interpret the result:**
-
-   IF the API returns a successful response with generated text:
-   - Report: "Verified — your [provider] API key is working. The service responded successfully."
-
-   IF the API returns an authentication error (401/403):
-   - Report: "The key was rejected by [provider]. This usually means one of three things: the key was copied incorrectly, your account's billing is not yet activated, or the key has been revoked. Would you like to try entering the key again, or check your billing setup on the provider's website?"
-
-   IF the API returns a rate limit or quota error (429):
-   - Report: "Your key is valid, but [provider] is reporting a rate limit or quota issue. This often happens with new accounts that have a $0 spending limit. Check your billing settings — you may need to add credits or increase your usage limit."
-   - Open the billing page for the relevant provider.
-
-   IF the API returns a network error:
-   - Report: "I couldn't reach [provider]'s servers. This may be a temporary network issue. The key has been stored — we can verify it later. For now, let's continue with the next provider."
-
----
-
-## LAYER 5: CONFIGURATION AND SUMMARY
-
-**Stage Focus:** Configure the evaluation fallback chain, update the endpoint registry, and produce documentation.
-
-### Processing Instructions
-
-1. **Determine the fallback chain order.** The evaluation fallback chain is:
-
-   - **Layer 1 — API primary**: The user's preferred API provider for commercial evaluation.
-   - **Layer 2 — API secondary** (backup): Second API provider, if configured.
-   - **Layer 3 — Local-only mode** (degraded): No external evaluation. Quality warnings applied to un-reviewed output.
-
-   IF the user configured multiple API providers, THEN ask: "Which API provider would you like as your primary? The others will be used as backups if the primary is unavailable."
-
-   IF the user has no preference, THEN recommend based on capability and cost:
-   - API Primary: Anthropic Claude (strongest analytical capability for evaluation)
-   - API Secondary: Google Gemini Flash (lowest cost, good for routine evaluations)
-   - API Tertiary: OpenAI GPT-4o-mini (backup)
-
-2. **Update the endpoint registry** at `[workspace]/config/endpoints.json`:
-
-   For each configured **evaluation** API provider, add an endpoint entry:
-
-   ```json
-   {
-     "name": "[provider]-api",
-     "type": "api",
-     "service": "[anthropic|openai|google]",
-     "model": "[recommended model for evaluation]",
-     "status": "active",
-     "verified": "[ISO date]",
-     "credential_key": "ora/[provider]-api-key"
-   }
-   ```
-
-   For each configured **image-generation** API provider, add an endpoint entry of type `image-api`:
-
-   ```json
-   {
-     "name": "stability-api",
-     "type": "image-api",
-     "service": "stability",
-     "model": "[default model — e.g., sd3 or sdxl]",
-     "status": "active",
-     "verified": "[ISO date]",
-     "credential_key": "ora/stability-api-key"
-   }
-   ```
-
-   ```json
-   {
-     "name": "replicate-api",
-     "type": "image-api",
-     "service": "replicate",
-     "model": "[default model identifier — e.g., a stable-diffusion variant]",
-     "status": "active",
-     "verified": "[ISO date]",
-     "credential_key": "ora/replicate-api-key"
-   }
-   ```
-
-   For OpenAI image generation: do **not** add a separate endpoint entry — the existing `openai-api` entry already references the `ora/openai-api-key` credential, and that same key serves the DALL-E endpoints. Image-routing logic looks up the OpenAI service and calls the appropriate endpoint (chat completions or images) based on the requested capability.
-
-   Do not modify existing browser or local endpoint entries.
-
-3. **Write the configuration file:**
-
-   ```xml
-   <tool_call>
-   <n>file_write</n>
-   <path>config/api-providers.md</path>
-   <content>
-   # API Provider Configuration
-
-   Generated: [date]
-
-   ## Role in the System
-
-   API keys are the commercial-AI evaluation channel. Configured keys
-   feed routing-config.json's premium / mid / fast buckets alongside
-   local MLX models. Set up only the providers you want to use; Ora
-   runs fully on local models alone.
-
-   ## Configured Providers
-
-   [For each provider:]
-   ### [Provider Name]
-   - Status: [Verified / Stored but unverified / Not configured]
-   - Credential store key: ora-[provider]
-   - Recommended model for evaluation: [model name]
-   - Approximate cost per evaluation: [amount]
-
-   ## Evaluation Fallback Chain
-
-   1. [API Primary provider and model]
-   2. [API Secondary provider and model] (backup)
-   3. Local-only mode (no external evaluation — quality warnings applied)
-
-   ## Operational Context Rules
-
-   - Interactive work: local + API channels available.
-   - Autonomous overnight: local only by default. API available if
-     explicitly pre-authorized in the task specification.
-   - Agent operations: local only by default.
-
-   ## Updating Keys
-
-   To update or replace a key, tell your AI:
-   "Read and execute frameworks/api-key-setup.md"
-   and select the provider you want to update.
-   </content>
-   </tool_call>
-   ```
-
-   IF one or more **image-generation** providers were configured during this session, THEN ALSO write the sibling configuration file `[workspace]/config/Reference — API Image Providers.md` documenting the image-generation fallback chain. The shape of this file is fixed by the sibling-document spec at `[workspace]/config/Reference — API Image Providers.md` (template included with Ora) — it lists configured image providers, their default models, and the preferred → fallback ordering. The framework writes the per-session status (configured / verified / unverified-with-reason) into the existing template; it does not author a new template each run.
-
-4. **Present the summary:**
-
-   "Here's what we set up:
-
-   [List each configured API provider with verification status]
-
-   Your evaluation fallback chain:
-   1. [API primary]
-   2. [API secondary] (backup, if configured)
-   3. Local-only mode (last resort)
-
-   For autonomous overnight runs, only local and pre-authorized API channels are used.
-
-   You don't need to do anything else — your boot.md specification knows how to use these keys through the orchestrator. The keys are stored securely and will be available whenever your system needs them."
-
----
-
-## LAYER 6: SELF-EVALUATION
-
-**Stage Focus**: Evaluate the output produced in Layers 1 through 5 against the 4 Evaluation Criteria (Key Acquisition Success, User Comprehension, Security, Fallback Configuration).
-
-**Calibration warning**: Self-evaluation scores are systematically inflated. Research finds LLMs are overconfident in 84.3% of scenarios. A self-score of 4/5 likely corresponds to 3/5 by external evaluation standards. Score conservatively. Articulate specific uncertainties alongside scores.
-
-### Processing Instructions
-
-For each of the 4 criteria:
-
-1. State the criterion name and number.
-2. Wait — verify the current output against this specific criterion's rubric descriptions before scoring.
-3. Identify specific evidence in the output that supports or undermines each score level.
-4. Assign a score (1–5) with cited evidence from the output.
-5. IF the score is below 3, THEN:
-   a. Identify the specific deficiency with a direct quote or reference to the deficient passage (e.g., which provider failed verification, which security check was missed, which fallback chain step is incomplete).
-   b. State the specific modification required to raise the score.
-   c. Apply the modification where possible — retry verification against the provider endpoint; re-run credential store write if plaintext exposure was detected; update endpoint registry if fallback chain is incomplete.
-   d. Re-score after modification.
-6. IF the score meets or exceeds 3, confirm and proceed.
-
-After all criteria are evaluated:
-
-- IF all scores meet or exceed 3, proceed to Layer 7.
-- IF any score remains below 3 after one modification attempt, flag the deficiency explicitly with the label UNRESOLVED DEFICIENCY and state what additional input or iteration would be needed to resolve it.
-
-**Confidence assessment requirement**: For each criterion score, state confidence (High / Medium / Low) and one sentence explaining what drives the confidence level. Low-confidence scores on criterion 3 (Security) or criterion 4 (Fallback Configuration) indicate that the credential store write or the api-providers.md configuration file should be re-verified before the session closes.
-
-### Output Formatting for This Layer
-
-```
-SELF-EVALUATION
-Criterion 1 — Key Acquisition Success: [Score 1-5]
-  Evidence: [cited evidence from Layers 2-4 — which providers configured, verification results]
-  Confidence: [High | Medium | Low] — [rationale]
-
-Criterion 2 — User Comprehension: [Score 1-5]
-  Evidence: [cited user acknowledgments at Layer 1 explanation checkpoints, confusion points if any]
-  Confidence: [High | Medium | Low] — [rationale]
-
-Criterion 3 — Security: [Score 1-5]
-  Evidence: [credential store storage method confirmed per provider, plaintext exposure check, log inspection]
-  Confidence: [High | Medium | Low] — [rationale]
-
-Criterion 4 — Fallback Configuration: [Score 1-5]
-  Evidence: [api-providers.md written, endpoint registry updated, fallback chain documented]
-  Confidence: [High | Medium | Low] — [rationale]
-
-Modifications applied: [list of corrections made during self-evaluation — retries, re-writes, security remediations]
-Unresolved deficiencies: [list of criteria remaining below 3, with specific gap and what would resolve it]
-```
-
----
-
-## LAYER 7: ERROR CORRECTION AND OUTPUT FORMATTING
-
-**Stage Focus**: Final verification, mechanical error correction, variable fidelity check, and output formatting for delivery including the user-facing summary and configuration artifact writes.
-
-**Input**: All output from Layers 1 through 6 including the SELF-EVALUATION block.
-
-**Output**: Corrected, final, formatted deliverable — user-facing summary per Layer 5 Step 4 format, configuration artifacts (api-providers.md file, endpoint registry updates, credential store entries), plus Missing Information Declaration and Recovery Declaration.
-
-### Error Correction Protocol
-
-1. **Verify factual consistency** across all output sections. Confirm provider names, pricing figures, and URLs are consistent between Layer 1 explanations and Layer 5 summary. Flag and correct any contradictions.
-2. **Verify terminology consistency.** Confirm that "API primary," "API secondary," "local-only fallback," and the three-layer fallback chain labels (API primary → API secondary → local-only) are used with their defined meanings throughout.
-3. **Verify structural completeness.** Confirm all required output components per OUTPUT CONTRACT are present:
-   - API key(s) stored in the system credential store (macOS Keychain, Windows Credential Manager, or Linux SecretService via the `keyring` library).
-   - Verification result for each stored key (confirmed working or failed with explanation).
-   - `api-providers.md` configuration file written to the user's configuration directory.
-   - Endpoint registry updated with configured providers.
-   - Fallback chain specification present in `api-providers.md`.
-4. **Verify variable fidelity.** Confirm that all named variables established during processing are still present and accurately represented: the user's selected providers, the use case context (overflow / reliability / autonomous operations), existing keys if provided, and the fallback chain ordering. IF any variable has been silently dropped or simplified, THEN restore it.
-5. Document all corrections made in a Corrections Log appended to the session output.
-
-### Output Formatting
-
-Final user-facing summary per Layer 5 Step 4 format. Configuration artifacts written to their destinations:
-
-- Credential store entries via the `credential_store` tool (one per provider).
-- `api-providers.md` written to the user's configuration directory with the three-layer fallback chain documented.
-- Endpoint registry entries updated with the configured providers.
-
-No plaintext key values appear in session logs or user-visible output after storage. The session log records that keys were stored, not the key values themselves.
-
-### Missing Information Declaration
-
-Before finalizing output, explicitly state:
-
-- Any provider the user declined to configure (with reason if stated — e.g., sticker shock, time constraint, preference for local-only operation).
-- Any verification that failed or was skipped (with reason — e.g., billing not yet activated, endpoint not reachable, key entered but verification deferred).
-- Any fallback chain position left unfilled (e.g., only one API provider configured; secondary fallback position remains empty).
-- Any assumptions made when input was ambiguous (e.g., defaulting to general-purpose overflow when use case was not stated).
-
-A response that acknowledges missing configuration is always preferable to a response that fills gaps with assumptions.
-
-### Recovery Declaration
-
-IF the Self-Evaluation layer flagged any UNRESOLVED DEFICIENCY, THEN restate each deficiency here with:
-
-- The specific criterion that was not met (1 Key Acquisition Success / 2 User Comprehension / 3 Security / 4 Fallback Configuration).
-- What additional input, iteration, or human judgment would resolve it.
-- Whether the deficiency affects downstream system operation — specifically whether the evaluation pipeline has a working API-backed fallback chain or whether it will run local-only.
-
-For operational runtime failures encountered during framework execution (key paste failures, verification failures after retries, user abandonment partway through), see the OPERATIONAL RECOVERY section below. That section covers failures that occur *during* framework execution; this Recovery Declaration covers unresolved deficiencies detected *at the end* of framework execution by the Self-Evaluation layer.
-
----
-
-## OPERATIONAL RECOVERY
-
-### Key Entry Failures
-
-WHEN the user cannot successfully paste a key:
-- Suggest: "Try right-clicking and selecting 'Paste' rather than using the keyboard shortcut."
-- IF the user reports the key page has closed: "You'll need to generate a new key. Go back to the API Keys page on [provider]'s website and create another one. The old key is automatically invalidated."
-
-### Verification Failures
-
-WHEN verification fails for all providers after retries:
-- Store the keys anyway (they may work once billing is activated).
-- Write the configuration file with "Stored but unverified" status.
-- Explain: "Your keys are stored and your system is configured to use them. If the verification issue was about billing activation, they should start working once your account is fully set up. Your system will automatically attempt to use them and report any errors. If verification keeps failing, your local models continue to handle evaluation in the meantime."
-
-### User Abandonment
-
-WHEN the user wants to stop partway through:
-- Store any keys already obtained.
-- Write the configuration file with whatever providers were completed.
-- Update the endpoint registry with completed providers.
-- Explain: "I've saved what we set up so far. Your local models continue to handle evaluation. You can add more API providers anytime by telling me to run this framework again."
-
----
-
-## EXECUTION COMMANDS
-
-1. Confirm you have fully processed this framework.
-2. Begin with Layer 1 (Explanation and Context). Do not skip the explanation even if the user seems technical — the cost regime, the optional-add-on positioning, and the one-chance key warning are essential.
-3. Process Layers 2–4 for each provider the user selects.
-4. Complete Layer 5 (Configuration and Summary) after all providers are processed.
-5. Run Layer 6 (Self-Evaluation) scoring each of the 4 Evaluation Criteria against the output with cited evidence and confidence assessment. Apply modifications for any below-threshold scores.
-6. Complete Layer 7 (Error Correction and Output Formatting) including Error Correction Protocol, Missing Information Declaration, and Recovery Declaration. For operational runtime failures encountered during execution, consult the OPERATIONAL RECOVERY section.
-
----
-
-*End of API Key Setup Framework v1.3*
-
----
+*End of API Key Setup Framework v2.2 — simplified, registry-driven, inline-UI-first.*
 
 **VERSION HISTORY**
 
-v1.0 (2026/03/23): Initial version. API keys positioned as the primary evaluation channel.
+v2.2 (2026/07/12): Corrected provider and routing claims for the default-on vendor-authoritative architecture. Direct PAYG keys take effect at the Models refresh boundary; native authoritative endpoints do not promise automatic same-model OpenRouter fallback; Meta/NVIDIA remain OpenRouter-served under their current individual-access contracts; panel Save is verify-before-store with explicit inconclusive handling.
 
-v1.1 (2026/03/24): Repositioned API keys as the overflow/reliability channel behind browser automation via Playwright. Added Layer 1 context explaining the relationship between browser automation and API access. Added four-layer evaluation fallback chain (browser → API primary → API secondary → local-only). Added operational context rules for autonomous work. Added endpoint registry integration. Added the Unnecessary Expense Trap to Named Failure Modes. Updated evaluation criteria to include fallback chain completeness and browser automation context in user comprehension.
+v2.1 (2026/06/16): Reconciled with the source installer. OpenRouter is strongly recommended but optional, the install starter package is OpenRouter + Tavily + Artificial Analysis, FRED is explicitly specialized/non-public-install, and cost language now distinguishes free tiers/credits from usage-based plans instead of implying all search/model-intelligence keys are simply free.
 
-v1.3 (2026/05/16): Subscription / browser-automation path fully deprecated and removed from Ora. This framework now positions API keys as the commercial-AI access channel (the previous "overflow / reliability" framing is gone). Layer 1 rewritten — Sections 1, 2, 3 reframe API access as an optional add-on to local models. Four-layer fallback chain collapsed to three layers (API primary → API secondary → local-only). Unnecessary Expense Trap removed. References to Playwright, browser sessions, and existing subscriptions stripped throughout. api-providers.md template updated to match.
+v2.0 (2026/06/14): Rewritten to match the all-encompassing External APIs settings panel. Provider catalogue, signup and console URLs, prefixes, and activation behaviour are now sourced from `orchestrator/provider_registry.py` (single source of truth) and surfaced inline in the panel (signup links, console links, format validation, Verify button) — so this framework is the conversational fallback, not the primary path. Added the full provider set (OpenRouter gateway; direct US + Chinese AI vendors with markup-bypass routing; auto-activating search / model-intelligence / economic-data keys; explicit-choice transcription / speech / image). Collapsed the prior 7-layer PFF scaffolding to a short STEPS + RECOVERY flow appropriate to a UI-assisted task. Kept the four key-safety traps.
 
-v1.2 (2026/04/23): Added Layer 6 (Self-Evaluation) in penultimate position and Layer 7 (Error Correction and Output Formatting) in final position per Process Formalization Framework v2.0 Anatomy. Layer 6 scores each of the 4 Evaluation Criteria 1–5 with cited evidence, calibration warning, and remediation protocol for below-threshold scores. Layer 7 adds Error Correction Protocol (factual consistency, terminology, structural completeness, variable fidelity), Output Formatting, Missing Information Declaration, and Recovery Declaration. Renamed the existing RECOVERY section to OPERATIONAL RECOVERY to distinguish runtime-failure recovery (during execution) from the PFF Recovery Declaration (for unresolved deficiencies at end-of-execution). EXECUTION COMMANDS updated with steps 5 and 6 covering the new layers.
+v1.5 (2026/05/29): Added Tavily / Brave / Exa / Artificial Analysis free-tier keys; normalised keychain naming to `service="ora", username="<provider>-api-key"`.
 
-v1.3 (2026/04/29): Extended Layer 2 with image-generation providers per WP-7.3.5 and §11.13 of the visual-pane plan. Added Stability AI section (signup `https://platform.stability.ai/`, key prefix `sk-`, keychain entry `ora-stability`) and Replicate section (signup `https://replicate.com/account/api-tokens`, key prefix `r8_`, keychain entry `ora-replicate`). Added a note under the existing OpenAI section confirming that the same `ora-openai` key serves DALL-E 3 / DALL-E 2 alongside chat completions — no separate setup required. Layer 1 Section 3 split into evaluation-cost regime (per-token) and image-generation-cost regime (per-image), and the provider-selection menu split into evaluation / image-generation / other groups. Layer 3 validation extended with prefix checks for Stability and Replicate. Layer 4 verification calls added for Stability (smallest viable SDXL/SD3 generation, ~$0.01–0.05) and Replicate (smallest viable model run, ~$0.001–0.02), with a note that image providers have no genuinely free verification endpoint and the user is informed before the small charge lands. Layer 5 endpoint-registry guidance extended with `type: image-api` entries for Stability and Replicate, plus a note that OpenAI image generation reuses the existing `openai-api` entry. Layer 5 also writes a sibling `[workspace]/config/Reference — API Image Providers.md` when image providers are configured; the template/spec lives in vault root as `Reference — API Image Providers.md`. Named Failure Modes Key Format Trap extended with the new prefixes.
+v1.4 (2026/05/10): Keychain naming normalised (Stability / Replicate moved to the canonical pattern).
 
-v1.4 (2026/05/10): Keychain naming normalized. Stability and Replicate previously used a per-provider service namespace (`ora-stability` / `ora-replicate` with account `api-key`) — every other provider used the canonical pattern (service `ora`, account `<provider>-api-key`). The divergence meant keys saved through the user-settings panel never landed where the integrations looked. Resolved by moving Stability and Replicate to the canonical pattern: keychain service `ora`, accounts `stability-api-key` and `replicate-api-key`. Code touched: `orchestrator/integrations/stability.py`, `orchestrator/integrations/replicate.py` (constants), `orchestrator/user_settings.py` (added both providers to PROVIDER_KEYRING_USERNAME and PROVIDER_LABELS), `server/server.py::_try_keychain_stability_key` (call site), `config/models.json` (display credential_key fields). Endpoint-registry credential_key fields now read `ora/stability-api-key` and `ora/replicate-api-key` to make the canonical pattern explicit on inspection. Operators with existing keys under the old service names need to re-save via the settings panel; the panel writes to the canonical address.
+v1.3 (2026/04/29): Added image-generation providers (Stability, Replicate) and split the cost regimes.
 
-v1.5 (2026/05/29): Added four search and metadata providers as free-tier optional keys: Tavily (Tier 1 of the web-search cascade), Brave (Tier 2), Exa (neural / semantic search, opt-in addition to the cascade), and Artificial Analysis (live model intelligence / latency / cost metadata; supersedes a fragile public-page scrape in `scripts/sync_model_registry.py`). Layer 1 provider menu extended with a new "Search and metadata providers (free tier — recommended)" group (options 9–13). Layer 2 grew per-provider signup blocks for the four. Layer 3 validation added key-format hints (`tvly-` prefix for Tavily, UUID shape for Exa; Brave and Artificial Analysis are opaque bearer tokens). Layer 4 verification calls added for all four — all free-tier, no payment-method warning required. Layer 3 storage template and Layer 4 retrieve template were also normalized to the canonical `service="ora", username="<provider>-api-key"` pattern documented in v1.4 — the templates had stayed in the pre-v1.4 `service="ora-[provider]"` form even though the per-provider integrations had moved. The bridge function `orchestrator/boot.py::_export_search_keys_to_env` reads `ora/tavily-api-key`, `ora/brave-api-key`, `ora/exa-api-key` and exports to `TAVILY_API_KEY` / `BRAVE_API_KEY` / `EXA_API_KEY` at module load so `tools/web_search.py` sees them. The AA path is consumed directly via `scripts/sync_model_registry.py::_load_aa_api_key` (no env-var bridge needed). The Exa provider is registered in `tools/web_search.py::_PROVIDERS` but is **not** in the default `search_cascade_order` — users opt in by adding `"exa"` to that list in `config/routing-config.json`.
+v1.3 (2026/05/16): Subscription / browser-automation path removed; API keys positioned as the commercial-AI channel.
+
+v1.2 (2026/04/23): Added self-evaluation + error-correction layers (since removed in v2.0).
+
+v1.1 (2026/03/24): Overflow/reliability framing (since superseded).
+
+v1.0 (2026/03/23): Initial version.

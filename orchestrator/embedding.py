@@ -509,6 +509,29 @@ def get_embedding_function(
     )
 
 
+def embed_text(text: str) -> list[float]:
+    """Embed one text with the active configured model and dimension.
+
+    Historical pipelines sometimes need an explicit vector because they
+    query and update Chroma with ``query_embeddings`` / ``embeddings``.
+    Routing those calls through the same configured embedding function used
+    to open the collection prevents provider, model, and dimension drift.
+    """
+    vectors = get_embedding_function()([str(text or "")])
+    if not isinstance(vectors, (list, tuple)) or len(vectors) != 1:
+        count = len(vectors) if isinstance(vectors, (list, tuple)) else "no"
+        raise RuntimeError(
+            f"Configured embedder returned {count} vectors for one input"
+        )
+    vector = list(vectors[0])
+    if len(vector) != EMBEDDING_DIM:
+        raise RuntimeError(
+            f"Configured embedder returned vector dim {len(vector)}, "
+            f"expected {EMBEDDING_DIM} for {EMBEDDING_MODEL}"
+        )
+    return vector
+
+
 # ---------------------------------------------------------------------------
 # Health checks (used at startup)
 # ---------------------------------------------------------------------------
@@ -710,6 +733,7 @@ __all__ = [
     "resolve_collection_copies",
     "discover_collection_copies",
     "embed_texts",
+    "embed_text",
     "get_embedding_function",
     "check_ollama_available",
     "check_embedding_model_available",

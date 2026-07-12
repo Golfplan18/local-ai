@@ -548,9 +548,11 @@ def _save_manifest(manifest: dict, path: str) -> None:
 
 
 def _open_dedup_collection(chromadb_path: str, name: str):
-    """Open (or create) the dedup collection. Uses the canonical Ollama
-    nomic-embed-text embedding function, same as the conversations
-    collection."""
+    """Open the dedup collection with the active configured embedder.
+
+    The same logical atomic collection and provider/model/dimension profile
+    are shared by the historical extraction pipelines.
+    """
     import chromadb
     from orchestrator.embedding import get_or_create_collection
     client = chromadb.PersistentClient(path=str(chromadb_path))

@@ -825,9 +825,9 @@ def index_path(
         except Exception:
             pass
 
-    # Bind the embedding_function to the collection so all add/query
-    # operations route through Ollama nomic-embed-text. No silent
-    # fallback to chromadb's default embedder.
+    # Bind the active configured embedding function to the collection so all
+    # add/query operations use the selected provider, model, and dimension.
+    # Never fall back silently to ChromaDB's default embedder.
     collection = get_or_create_collection(client, "knowledge")
 
     stats = {"indexed": 0, "skipped": 0, "errors": 0}

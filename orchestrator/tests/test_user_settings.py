@@ -17,6 +17,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
@@ -337,6 +338,76 @@ class SettingsEndpointTests(unittest.TestCase):
         text = resp.get_data(as_text=True)
         self.assertNotIn("secret-leaks-bad", text,
                          "API key values must never appear in /api/settings response")
+
+    @staticmethod
+    def _http_error(code: int) -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(
+            "https://provider.example/models", code, "failure", {}, None
+        )
+
+    def test_api_key_verification_rejects_confirmed_auth_failure(self):
+        entry = {
+            "id": "anthropic",
+            "dispatch": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+        }
+        with mock.patch(
+            "urllib.request.urlopen", side_effect=self._http_error(401)
+        ):
+            ok, message = self.S._verify_provider_key(entry, "bad-key")
+        self.assertIs(ok, False)
+        self.assertIn("rejected", message)
+
+    def test_api_key_verification_preserves_rate_limit_as_valid(self):
+        entry = {
+            "id": "anthropic",
+            "dispatch": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+        }
+        with mock.patch(
+            "urllib.request.urlopen", side_effect=self._http_error(429)
+        ):
+            ok, message = self.S._verify_provider_key(entry, "limited-key")
+        self.assertIs(ok, True)
+        self.assertIn("rate-limited", message)
+
+    def test_api_key_verification_treats_transient_http_failure_as_inconclusive(self):
+        entry = {
+            "id": "anthropic",
+            "dispatch": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+        }
+        with mock.patch(
+            "urllib.request.urlopen", side_effect=self._http_error(503)
+        ):
+            ok, message = self.S._verify_provider_key(entry, "possibly-valid")
+        self.assertIsNone(ok)
+        self.assertIn("Couldn't confirm", message)
+
+    def test_api_key_verification_treats_non_auth_400_as_inconclusive(self):
+        entry = {
+            "id": "openai",
+            "dispatch": "openai_compatible",
+            "base_url": "https://api.openai.com/v1",
+        }
+        with mock.patch(
+            "urllib.request.urlopen", side_effect=self._http_error(400)
+        ):
+            ok, _message = self.S._verify_provider_key(entry, "possibly-valid")
+        self.assertIsNone(ok)
+
+    def test_gemini_400_remains_confirmed_auth_rejection(self):
+        entry = {
+            "id": "gemini",
+            "dispatch": "gemini",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+        }
+        with mock.patch(
+            "urllib.request.urlopen", side_effect=self._http_error(400)
+        ):
+            ok, message = self.S._verify_provider_key(entry, "bad-google-key")
+        self.assertIs(ok, False)
+        self.assertIn("rejected", message)
 
 
 if __name__ == "__main__":  # pragma: no cover

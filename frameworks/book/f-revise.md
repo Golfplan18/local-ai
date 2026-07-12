@@ -66,7 +66,7 @@ The discipline:
 
 - If the analyst's mode declares `claim_suppression:`, the evaluator should have suppressed flagging — but if a substantive disputed claim still appears in the FLAGGED CLAIMS list, the reviser recognizes the tier (Tier 3 from F-Evaluate's discipline) and resolves as `disputed`, never as `wrong`.
 - A `disputed` resolution preserves the analyst's claim. The reviser may add a hedge or contested-status framing, but does not contradict the position.
-- When the line between Tier 2 (interpretive) and Tier 3 (substantive disputed) is unclear, the reviser errs toward `disputed`. False `wrong` resolutions on Tier 3 claims corrupt the analysis irrecoverably; false `disputed` resolutions on Tier 1 claims are caught by Step 8's final verification scan.
+- When the line between Tier 2 (interpretive) and Tier 3 (substantive disputed) is unclear, the reviser errs toward `disputed`. False `wrong` resolutions on Tier 3 claims corrupt the analysis irrecoverably; false `disputed` resolutions on Tier 1 claims are caught by Step 6's per-stream verifier through its claim-resolution audit before consolidation.
 
 ### Draft action mapping
 

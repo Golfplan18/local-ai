@@ -4,9 +4,9 @@ Every external service Ora can talk to is declared exactly once here:
 its display label, category, where its key lives in the keyring, which
 env var consumers read, the signup / key-console URLs the settings panel
 links to, the key-format hint used for inline validation, and — for the
-LLM providers — the dispatch metadata that lets Ora call the vendor
-*directly* (bypassing OpenRouter's markup) when the user has stored that
-vendor's own key.
+LLM providers — the dispatch metadata used to build eligible vendors'
+native endpoint universe after a registry refresh and by the OpenRouter-first
+prefer-direct fallback when authoritative mode is disabled.
 
 Consumers
 ---------
@@ -15,7 +15,8 @@ Consumers
   settings panel renders.
 * ``orchestrator/boot.py`` — (a) bridges every stored key into its
   conventional env var at boot; (b) the generic ``openai_compatible``
-  dispatch branch reads ``base_url`` here; (c) the *prefer-direct* rewrite
+  dispatch branch reads ``base_url`` here; (c) the flag-off *prefer-direct*
+  rewrite
   maps an OpenRouter ``vendor/model`` id back to the vendor's own API via
   ``or_prefix`` when that vendor's key is present.
 * ``server/server.py`` — ``/api/settings`` returns the enriched rows;
@@ -24,16 +25,21 @@ Consumers
   presence.
 * ``server/static/settings-panel.js`` — renders the two-column grouped
   UI purely from the server payload (no metadata duplicated in JS).
+* ``scripts/build_vendor_authoritative_registry.py`` and
+  ``scripts/sync_endpoints_from_catalog.py`` — select keyed, self-serve PAYG
+  vendors and build their native model inventory/endpoints.
 
 Design rules
 ------------
 * Keys live ONLY in the system keyring (service ``ora``, username
   ``<keyring_username>``). Nothing here stores a secret.
-* ``auto_activate`` providers need no toggle — presence of the key is the
-  enable signal (search cascade, AA path, model prefer-direct routing).
+* ``auto_activate`` providers need no separate enable toggle. Key presence is
+  the enable signal, although model-menu and endpoint changes take effect on
+  the next registry refresh rather than at key-save time.
 * Adding a provider is a one-entry edit here; no consumer needs touching
-  for the key to be storable, linkable, bridged-to-env, and (for
-  OpenAI-compatible LLMs) directly routable.
+  for the key to be storable, linkable, and bridged-to-env. Eligible
+  OpenAI-compatible PAYG vendors also enter the authoritative direct-routing
+  build automatically.
 """
 from __future__ import annotations
 
@@ -418,6 +424,9 @@ def ui_rows() -> list[dict]:
             "auto_activate": p.get("auto_activate", False),
             "verifiable": p.get("verifiable", False),
             "direct": bool(p.get("dispatch")),
+            "catalog_authoritative": bool(
+                p.get("dispatch") and p.get("direct_payg", True)
+            ),
             "note": p.get("note", ""),
         })
     return rows

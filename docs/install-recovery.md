@@ -234,10 +234,10 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama --version
 ```
 
-If the install script errors, follow ollama's documentation. The `nomic-embed-text` pull happens separately:
+If the install script errors, follow ollama's documentation. The `bge-m3` pull happens separately and restores Ora's 1,024-dimensional fresh-install embedding profile:
 
 ```bash
-ollama pull nomic-embed-text
+ollama pull bge-m3
 ```
 
 You can re-run `install-server.sh` after this — the `command -v ollama` check skips re-install.

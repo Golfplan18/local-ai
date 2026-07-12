@@ -8,9 +8,9 @@ Covers the bounded-redo gate ported from MSI into the base engine:
     carries a ``PROBLEM:`` line still parses to the right verdict.
   * Gear 3: a real FAIL fires exactly one reviser re-run carrying the gate's
     REQUIRED FIXES; PASS and BROKEN ship the reviser's draft unchanged.
-  * Gear 4: a FAIL routes the single redo by problem type — FORMATTING re-runs
+  * Gear 4: a FAIL routes a bounded redo by problem type — FORMATTING re-runs
     the step-8 formatter; ANALYSIS re-runs the step-7 consolidator then
-    re-formats; one redo per problem type, then ship.
+    re-formats; one redo per problem type across at most three gate passes.
   * Doc/source backstops: the framework spec exists (ora + vault pair) and the
     gate stays wired into both gears.
 
@@ -340,6 +340,14 @@ class TestGateWiredAndDocumented(unittest.TestCase):
         self.assertIn("step8_6-quality-gate", text)   # gear 4
         self.assertIn('slot="verification"', text)    # dedicated judge slot
         self.assertIn("_parse_quality_gate_problem", text)
+
+    def test_runtime_spec_describes_actual_redo_bounds(self):
+        text = (
+            ORCH_DIR.parent / "frameworks" / "book" / "f-quality-gate.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("one redo per problem type", text)
+        self.assertIn("at most three gate passes", text)
+        self.assertIn("Gear 3 runs one gate pass", text)
 
 
 if __name__ == "__main__":

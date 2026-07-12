@@ -8,14 +8,14 @@ This is the **minimal viable** server install — it gets MSI's publication cycl
 
 - Ora source tree in `~/ora/`, cloned from `ora-commons/ora`.
 - Python venv at `~/ora/.venv/` with the Linux subset of Ora's deps (no `mlx-lm`).
-- Ollama with `nomic-embed-text` pulled, for ChromaDB embeddings.
+- Ollama with `bge-m3` pulled for 1,024-dimensional ChromaDB embeddings, matching the tracked fresh-install profile in `config/chromadb.json.template` and the runtime fallback when no machine-specific `config/chromadb.json` exists.
 - `routing-config.json` with API-only slot assignments — `qwen/qwen3.6-35b-a3b` for utility slots, `qwen/qwen3.6-plus` for analysis slots, all routed through OpenRouter so the server only needs one API key. MSI's article generator picks its own model via the `MSI_AUTHOR_MODEL` env var (Sonnet forward, Haiku backfill) — independent of these slot picks.
 - `OPENROUTER_API_KEY` saved to `~/.config/ora-server.env` with `600` perms. `ANTHROPIC_API_KEY` is optional (only needed if MSI's worker is configured to call Anthropic direct rather than via OpenRouter).
 - A smoke test that confirms the install is functional.
 
 ## What it does NOT give you
 
-- **Local model files** — no GPU on a server, no MLX, no HuggingFace downloads.
+- **Local generative model files** — no GPU on the server, no MLX, and no HuggingFace model downloads. The BGE-M3 embedding model pulled through Ollama is the sole local model artifact.
 - **Worker pool / multi-process concurrency** — single-process. Fine for MSI's once-a-day cadence; insufficient for high-concurrency request serving.
 - **Public Flask exposure** — the chat UI is intentionally not bound on the server.
 - **systemd / cron configuration** — the MSI publication cycle is configured separately. Add a cron entry or systemd timer per your operational plan (see `Working — Project — Cloud Ora Implementation Plan.md` phase (d)).
@@ -78,6 +78,7 @@ Exits non-zero on any failure.
 |---|---|
 | `~/ora/config/routing-config.json` | Capability + endpoint config. Rewritten by `scripts/install_server_config.py` during install to use API-only slots. |
 | `~/ora/config/routing-config.json.pre-server-install` | Backup of the upstream Mac-flavor file, created once during install. |
+| `~/ora/config/chromadb.json.template` | Tracked fresh-install embedding profile: local `bge-m3` through Ollama at 1,024 dimensions. Copy to the gitignored `config/chromadb.json` only when this machine needs an explicit or different profile. |
 | `~/.config/ora-server.env` | API keys (mode `600`). Sourced by anything that needs to call models. |
 | `~/ora/.venv/` | Python virtualenv. |
 

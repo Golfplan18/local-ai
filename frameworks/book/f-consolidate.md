@@ -60,7 +60,7 @@ The corpus carries no markers that would reveal two streams produced its inputs.
 
 ## Anti-confabulation
 
-- **No injection.** If you produce a claim, finding, qualification, or evidence attribution not present in either revised stream, remove it. The corpus is what the streams established, not what consolidation invented. Step 8's downstream verification catches consolidation injection; surface and remove it yourself rather than emit silently.
+- **No injection.** If you produce a claim, finding, qualification, or evidence attribution not present in either revised stream, remove it. The corpus is what the streams established, not what consolidation invented. Step 8 is a formatter and must not be expected to detect analytical injection; the post-format quality gate may catch a leak and route one bounded analytical redo, but the primary defense is to surface and remove it here rather than emit it.
 
 - **No interpretive expansion.** If a divergence between the two streams cannot be resolved from the available content (and the mode's `## CONSOLIDATION GUIDANCE` does not dictate a resolution), record the divergence as a surfaced tension in the corpus. Do not fabricate a resolution.
 

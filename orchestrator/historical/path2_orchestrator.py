@@ -71,12 +71,12 @@ DEFAULT_CONVERSATIONS_DIR = "/Users/oracle/Documents/conversations"
 # RAG queries hit.
 DEFAULT_CHROMADB_PATH     = "/Users/oracle/ora/chromadb"
 
-# nomic-embed-text-v1.5 has an 8192-token context. Conservative cap on
-# embedded text so we don't blow it on long pairs (Bible quotes, book
-# outlines, etc.). 10K chars handles dense content (code, non-ASCII,
-# repeated tokens) that hits ~2 chars/token in the tokenizer. The chunk
-# MARKDOWN file still carries the full text; only the EMBEDDED text
-# used for RAG retrieval is truncated.
+# The tracked BGE-M3 install default has an 8,192-token context, and alternate
+# configured embedders may impose their own bound. Keep a conservative common
+# cap for long pairs (Bible quotes, book outlines, etc.). 10K chars handles
+# dense content (code, non-ASCII, repeated tokens) that can approach ~2
+# chars/token. The chunk MARKDOWN file still carries the full text; only the
+# EMBEDDED retrieval text is truncated.
 MAX_EMBED_CHARS = 10_000
 
 _OWNERSHIP_ID_RE = re.compile(

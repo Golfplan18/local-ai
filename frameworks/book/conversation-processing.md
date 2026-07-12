@@ -6,11 +6,13 @@ Conversation Processing (CPP)
 
 ## Display Description
 
-Processes raw conversation exports (Claude, ChatGPT, Gemini) and live Ora exchanges into structured turn-pair chunks indexed in ChromaDB. Batch mode also produces a persistent cleaned-pair archive at ~/Documents/Commercial AI archives/ with per-pair semantic cleanup, pasted-segment classification, and engagement-wrapper stripping. Use for fresh chats from phone, web, or any commercial AI service.
+Processes raw conversation exports (Claude, ChatGPT, Gemini) and live Ora exchanges into durable knowledge surfaces. The default batch path is a four-stage chain: cleaned-pair archive → Phase 3 source-note extraction → conversation chunks/index → Phase 5 atomic engrams. Use for fresh chats from phone, web, or any commercial AI service.
 
-_v2.1 update (2026-07-10, second revision same day): Unified single-command batch entry — `python3 -m orchestrator.historical.ingest` chains cleanup → chunks → engrams with per-stage resume manifests and stage-skip flags; the three-CLI relay of the historical run is retired as the primary invocation (per-stage CLIs remain for repairs). Also: Refusal Leak remediation tooling (`repair_refusal_pairs.py`) and the modernized dedup-index rebuilder._
+_v2.2 update (2026-07-12): Reconciled the framework to the complete `orchestrator/historical/` subsystem. `python3 -m orchestrator.historical.ingest` runs four manifest-guarded stages in the actual order: cleanup → Phase 3 pasted-source extraction → chunk emission/indexing → Phase 5 engram extraction. Added the privacy propagation contract, repair/reclassification paths, all four manifests, and the Phase B/Phase C reuse boundary._
 
-_v2.1 update (2026-07-10): Model-agnostic execution + cleanup hardening. All model references removed from this framework — cleanup calls route by size to a "light" or "heavy" tier, and a pluggable backend (selected at invocation: `api`, `claude-cli`, or `ora-slots`) resolves tiers to whatever the routing configuration serves; this framework never names models. Cleanup prompts v2: a never-refuse rule (any input the model is unsure about is returned verbatim), dictation word-lock correction (similar-sounding wrong words fixed from context), and explicit pronoun-referent resolution. New deterministic Refusal Guard after every cleanup call: output that reads as model commentary about the input (rather than the cleaned input itself) is discarded, the original text is preserved, and the event is logged to `~/ora/data/cleanup-guard.log`. Closes the Refusal Leak failure mode discovered 2026-07-10 (~700 archive pairs corrupted by persisted refusals during the historical run). Historical raw exports now live at `~/Documents/Raw Chat Archive/raw/` (relocated after the one-time run); `~/Documents/conversations/raw/` remains the live input directory for new imports._
+_v2.1 update (2026-07-10, second revision same day): Unified single-command batch entry — `python3 -m orchestrator.historical.ingest` retired the multi-CLI relay as the primary invocation; per-stage CLIs remain for targeted repairs._
+
+_v2.1 update (2026-07-10): Model-agnostic cleanup execution + cleanup hardening. Cleanup calls route by size to a "light" or "heavy" tier, and a pluggable backend (`api`, `claude-cli`, or `ora-slots`) resolves that tier. Phase 3 and Phase 5 are separate heavy-extraction stages and retain the implementation's explicit heavy model hint (documented below). Cleanup prompts v2: a never-refuse rule (any input the model is unsure about is returned verbatim), dictation word-lock correction (similar-sounding wrong words fixed from context), and explicit pronoun-referent resolution. New deterministic Refusal Guard after every cleanup call: output that reads as model commentary about the input (rather than the cleaned input itself) is discarded, the original text is preserved, and the event is logged to `~/ora/data/cleanup-guard.log`. Closes the Refusal Leak failure mode discovered 2026-07-10 (~700 archive pairs corrupted by persisted refusals during the historical run). Historical raw exports now live at `~/Documents/Raw Chat Archive/raw/` (relocated after the one-time run); `~/Documents/conversations/raw/` remains the live input directory for new imports._
 
 _v2.0 update (2026-05-17): Batch mode overhauled to match the historical-reprocessing architectural pivot of 2026-04-30. Cleaned-pair layer is now the primary batch deliverable; chunk extraction is a downstream consumer. Adds per-pair semantic cleanup with model routing, pasted-segment 4-bucket classification with vault-index lookup, and the strict engagement-wrapper strip rule. New Layer 2.5 inserted between format normalization and chunking. Inline mode unchanged. Runnable implementation already exists in `~/ora/orchestrator/historical/` and was used for the one-time historical archive run (39,081 pairs, $510 cost, 99.9% success)._
 
@@ -32,17 +34,17 @@ Required for batch mode. Either the default directory (`~/Documents/conversation
 
 Optional. `--from-date YYYY-MM-DD` and/or `--to-date YYYY-MM-DD` to scope processing to a date range based on parsed chat metadata. Defaults to all unprocessed files in the input directory.
 
-### Cleanup tier — for batch mode
+### Cleanup behavior — for batch mode
 
-Optional. `full` (default — runs the full apparatus: pasted-segment classification + per-pair semantic cleanup + engagement strip + cleaned-pair archive write) or `light` (engagement strip only; no cleanup pass; legacy CPP v1.x behavior). Defaults to `full`.
+The unified ingest runs the full cleanup apparatus: pasted-segment classification, per-pair semantic cleanup, Refusal Guard, engagement strip, context headers, and cleaned-pair archive write. The current `ingest` and cleanup CLIs do not expose the former v1.x `light` tier; use stage-skip flags only for the three downstream stages, not as a substitute for cleanup.
 
 ### Backend — for batch mode
 
-Optional. Which model-call path serves the cleanup tiers: `api` (metered API access via stored key — default), `claude-cli` (billed to the operator's chat subscription via the local CLI), or `ora-slots` (Ora's own slot routing; the routing configuration decides what serves each tier). This framework is backend-agnostic and never names models — tier-to-model resolution belongs entirely to the selected backend. The `claude-cli` backend runs fully disarmed: no tools, no settings or hooks loaded, no session persistence, neutral working directory — archive text is adversarial by construction (it is full of literal instructions), so the call must be a pure text transform with no agentic surface.
+Optional. Which model-call path serves the run: `api` (metered Anthropic API access via stored key — default), `claude-cli` (billed to the operator's chat subscription via the local CLI), or `ora-slots` (Ora's slot routing). Cleanup is tier-driven and backend-agnostic. Phase 3 and Phase 5 pass the heavy extraction hint `claude-sonnet-4-5`: the API backend uses that id, while CLI and Ora-slots map it to their heavy tier. The `claude-cli` backend runs fully disarmed: no tools, no settings or hooks loaded, no session persistence, neutral working directory — archive text is adversarial by construction, so the call must be a pure text transform with no agentic surface.
 
 ### Concurrency — for batch mode
 
-Optional. `--max-workers` (per-file parallelism) and `--file-workers` (cross-file parallelism). Default values are the ones locked during the historical run: `--max-workers 8 --file-workers 12`. Override only if rate-limit telemetry indicates different capacity. The `claude-cli` backend caps per-file workers at 3 automatically — higher parallelism only thrashes subscription rate windows.
+Optional. `--max-workers` (per-file pair-call parallelism) and `--file-workers` (cross-file parallelism). Current defaults are `--max-workers 8 --file-workers 1`. Override only if rate-limit telemetry supports it. The `claude-cli` backend caps the **total** in-flight product (`file_workers × max_workers`) at 3 automatically; higher concurrency only thrashes subscription rate windows.
 
 ---
 
@@ -58,11 +60,11 @@ Before processing:
 
 1. **Restate the scope.** Confirm the input directory and date range. State the expected file count and pair count estimate.
 
-2. **Confirm cleanup tier and backend.** State whether full apparatus or light mode will run, which backend serves the model calls, and the cost model (per-token for `api` — ~$0.013 per pair at the historical run's rates; subscription-billed for `claude-cli`; the slot endpoint's own accounting for `ora-slots`; near-zero at light tier on any backend).
+2. **Confirm stages and backend.** State that cleanup always runs; say whether Phase 3 extraction, chunks, or engrams will be skipped with `--no-extraction`, `--no-chunks`, or `--no-engrams`. Name the backend and cost model (per-token for `api`; subscription-billed for `claude-cli`; the slot endpoint's own accounting for `ora-slots`).
 
 3. **Confirm concurrency.** State the worker counts. Flag if rate-limit capacity has changed since the last run.
 
-4. **Verify environment.** Confirm `~/Documents/Commercial AI archives/` exists, the manifest at `~/ora/data/cleanup-manifest.json` is loadable, the vault index at `~/ora/data/vault-index.json` is fresh (rebuild if vault content has changed since last index build), and the selected backend's access resolves (stored key for `api`; logged-in CLI for `claude-cli`; configured slots for `ora-slots`).
+4. **Verify environment.** Confirm `~/Documents/Commercial AI archives/` and the vault destinations are writable; the four resume manifests (`cleanup-manifest.json`, `phase3-manifest.json`, `path2-manifest.json`, `phase5-manifest.json`) are loadable or can be created under `~/ora/data/`; the vault index at `~/ora/data/vault-index.json` is fresh; and the selected backend resolves (stored key for `api`; logged-in CLI for `claude-cli`; configured slots for `ora-slots`).
 
 5. **Announce the plan.** Get explicit user approval before launching, especially for runs >100 files or >$5 estimated cost.
 
@@ -80,7 +82,7 @@ This pipeline is distinct from the Data Formulation Pipeline / Document Processi
 
 - **Inline mode (primary, automatic):** Processes each prompt-response pair immediately after the model delivers its response, as part of the output delivery step. The exchange is appended to the session's raw log, written as a processed chunk file, and indexed into ChromaDB before the system accepts the next user input. This means conversation RAG has access to every exchange in the current session — including the one that just completed. Inline mode does not run the cleanup apparatus — live exchanges are already structured and well-formed.
 
-- **Batch mode (imports, on demand):** Processes files dropped into `~/Documents/conversations/raw/` — commercial AI exports (Claude, ChatGPT, Gemini) and any other captured chats from phone, web, or external sessions. Batch mode runs the full cleanup apparatus by default, producing cleaned-pair files in `~/Documents/Commercial AI archives/` and then chunk files in `~/Documents/conversations/`. The runnable implementation is `python3 -m orchestrator.historical.cli` (see `~/ora/orchestrator/historical/` subpackage). Batch invocation is always manual; there is no automatic overnight batch.
+- **Batch mode (imports, on demand):** Processes files dropped into `~/Documents/conversations/raw/` — commercial AI exports (Claude, ChatGPT, Gemini) and any other captured chats from phone, web, or external sessions. The primary invocation is `python3 -m orchestrator.historical.ingest`, which runs the four-stage Batch Ingest Lifecycle below. Batch invocation is manual; there is no automatic overnight batch.
 
 ## INPUT CONTRACT
 
@@ -91,9 +93,9 @@ This pipeline is distinct from the Data Formulation Pipeline / Document Processi
 
 **Batch mode inputs:**
 - Unprocessed conversation files in `~/Documents/conversations/raw/` (or explicit input path). Source: user export from commercial AI services (Claude.ai JSON or Web Clipper markdown, ChatGPT export, Gemini export), or local-Ora session logs.
-- Processing manifest: `~/ora/data/cleanup-manifest.json` (created and maintained by this pipeline). Resumable — files marked complete in the manifest are skipped on re-runs.
+- Four processing manifests under `~/ora/data/`: `cleanup-manifest.json` (raw files), `phase3-manifest.json` (pasted segments), `path2-manifest.json` (sessions/chunks), and `phase5-manifest.json` (cleaned pairs/engrams). Each stage resumes independently.
 - Vault index: `~/ora/data/vault-index.json` (built by `orchestrator.tools.vault_indexer`). Used during Layer 2.5 pasted-segment classification to detect earlier-draft material.
-- Model access for the cleanup pass at `full` tier — one of, per the selected backend: a stored API key (macOS keyring `ora` / `anthropic-api-key`) for `api`; a logged-in local CLI for `claude-cli`; configured Ora slots for `ora-slots`.
+- Model access for cleanup, Phase 3, and Phase 5 — one of, per the selected backend: a stored API key for `api`; a logged-in local CLI for `claude-cli`; configured Ora slots for `ora-slots`.
 
 Optional (both modes):
 - Existing ChromaDB conversations collection. Source: `~/ora/chromadb/`. Default behavior if absent: pipeline creates the collection and indexes all processed chunks.
@@ -102,29 +104,33 @@ Optional (both modes):
 
 Primary outputs:
 
-- **(Batch mode, full tier)** Cleaned-pair markdown files written to `~/Documents/Commercial AI archives/`. One file per turn pair, flat directory, filename convention `YYYY-MM-DD_HH-MM_keyword-keyword-keyword.md`. Each file carries `type: cleaned-pair` YAML frontmatter with source provenance (source_chat, source_pair_num, source_platform, source_timestamp, thread_id, prior_pair, next_pair, processing_model, processed_at). Body contains multi-level context header (session + pair), cleaned user input with pasted-segment classification annotations, cleaned assistant response with engagement-strip log. **This is the primary batch-mode deliverable** — raw exports can eventually be deleted once the cleaned archive is validated.
+- **(Batch Stage 1)** Cleaned-pair markdown files written to `~/Documents/Commercial AI archives/`. One file per turn pair, flat directory, filename convention `YYYY-MM-DD_HH-MM_keyword-keyword-keyword.md`. Each file carries `type: cleaned-pair` YAML frontmatter with source provenance (source_chat, source_pair_num, source_platform, source_timestamp, thread_id, prior_pair, next_pair, processing_model, processed_at). Body contains multi-level context header, cleaned user input with pasted-segment classifications, cleaned assistant response, and engagement-strip log. **This is the durable intermediate and primary archive deliverable; raw exports remain the audit/recovery source.**
 
-- **(Both modes)** Processed turn-pair chunk files written to `~/Documents/conversations/`. Each file contains one prompt-response pair with contextual header, topic metadata, timestamps, and provenance tag. Format: Markdown with YAML frontmatter. Quality threshold: every chunk is self-contained — a reader or retrieval system encountering the chunk in isolation can understand the exchange without needing the full conversation.
+- **(Batch Stage 2)** Structured source notes for pasted `news`, `opinion`, and `resource` segments, written flat under the vault's `Resources/` directory by `phase3_extraction.py` and indexed into ChromaDB `knowledge`. Earlier drafts and unrelated/uncertain paste classes are not minted as source notes.
 
-Secondary outputs (both modes):
-- Updated ChromaDB conversations collection with embeddings for all new chunks. Each entry carries timestamp metadata for recency queries and semantic content for similarity queries.
+- **(Batch Stage 3; both modes)** Processed turn-pair chunk files written to `~/Documents/conversations/`. Each file contains one prompt-response pair with contextual header, topic metadata, timestamps, and provenance tag. Format: Markdown with YAML frontmatter. Quality threshold: every chunk is self-contained — a reader or retrieval system encountering the chunk in isolation can understand the exchange without needing the full conversation.
+
+- **(Batch Stage 4)** Atomic engram notes written by `phase5_atomic_extraction.py` under `Engrams/Historical Atomics/`, newest pairs first, with semantic duplicate suppression through ChromaDB `atomic_dedup`.
+
+Secondary index outputs:
+- ChromaDB `conversations` receives every emitted chunk; `knowledge` receives new Phase 3 source notes; `atomic_dedup` records new Phase 5 atomics and increments metadata for near-duplicate sightings.
 
 Additional outputs (inline mode):
 - Updated session raw log at `~/Documents/conversations/raw/[session-id].md` with the new exchange appended.
 
 Additional outputs (batch mode):
-- Updated cleanup manifest at `~/ora/data/cleanup-manifest.json` recording every file processed, pair-level success/failure counts, model used per pair, and cumulative cost in USD.
+- Updated `cleanup-manifest.json`, `phase3-manifest.json`, `path2-manifest.json`, and `phase5-manifest.json`, plus deterministic `chain-index.json`. Each stage records its own completion unit so a later stage can resume without invalidating earlier work.
 - Engagement-strip audit log appended at `~/ora/data/engagement-strips.log` (JSONL — one record per stripped paragraph with source_path, pair_num, paragraph text, length, sanitized prefix).
-- Processing summary: count of files processed, pairs succeeded / errored, total cost.
+- One JSON summary from `ingest` containing cleanup, chain, extraction, chunk, and engram results.
 
 **Not produced by default:**
-- News outlines, resource notes, or atomic notes. These are downstream consumers of the cleaned-pair layer, owned by their own frameworks or pipelines (see Downstream Consumers below).
+- Privacy propagation, post-hoc reclassification/repair, arbitrary-vault-document extraction (Phase B), relationship extraction (Phase C), and news/engram supersession maintenance. These are explicit follow-up tools over the four-stage outputs (§§ Downstream Consumers and Implementation Pointer).
 
 ## EXECUTION TIER
 
 **Inline mode:** Orchestrator. This pipeline executes as part of the orchestrator's output delivery step — after the model produces a response and before the system accepts the next user input. Processing a single exchange inline must complete in under two seconds to avoid perceptible delay. The inline path runs Layers 3 and 4 only (semantic chunking, header generation, write, and indexing) because the prompt-response pair is already normalized — it comes directly from the orchestrator, not from a file that needs format detection and parsing, and not from a commercial export that needs cleanup.
 
-**Batch mode:** Agent. This pipeline runs on demand for processing imported conversation files. The runnable implementation lives in `~/ora/orchestrator/historical/`. **The single-command entry point is `python3 -m orchestrator.historical.ingest`**, which chains all three batch stages — cleanup (Layers 1–2.5), chunk emission + indexing (Layers 3–4), and downstream engram extraction — behind one invocation with per-stage resume manifests; `--no-chunks` / `--no-engrams` skip stages, and `--backend` selects the model-call path for every stage. The per-stage CLIs (`orchestrator.historical.cli`, `path2_cli`, `phase5_atomic_extraction`) remain individually runnable for targeted re-runs and repairs. Stage boundaries represent actual context window resets to prevent context debt accumulation across many files.
+**Batch mode:** Agent. This pipeline runs on demand for processing imported conversation files. The runnable implementation lives in `~/ora/orchestrator/historical/`. **The single-command entry point is `python3 -m orchestrator.historical.ingest`**, which chains four stages — cleanup (Layers 1–2.5), Phase 3 source-note extraction, chunk emission + conversation indexing (Layers 3–4), and Phase 5 atomic-engram extraction. `--no-extraction`, `--no-chunks`, and `--no-engrams` skip the three downstream stages; `--backend` selects the model-call path used by model-bearing stages. Per-stage CLIs (`cli`, `phase3_extraction`, `path2_cli`, `phase5_atomic_extraction`) remain available for targeted reruns and repair. Stage boundaries are disk/manifests handoffs rather than one ever-growing model context.
 
 Available tools (batch mode):
 - file_read: Read raw conversation files, cleaned-pair files, and existing chunk files.
@@ -142,15 +148,15 @@ The single batch-mode milestone covers Layers 1–6 (now seven processing layers
 
 This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision. Inline mode is invoked automatically by the orchestrator on every session turn and is not PEF-selectable; it behaves as a pipeline stage per the exemption in PFF Section II subsection 2.3. Only batch mode produces a project-level milestone and is declared below.
 
-### Milestone 1: Cleaned-Pair Archive with Chunk Extraction and ChromaDB Indexing
+### Milestone 1: Four-Stage Historical Conversation Import
 
 - **Mode:** batch
 - **Endpoint produced:**
   (a) A set of cleaned-pair markdown files in `~/Documents/Commercial AI archives/`, one per turn pair, with `type: cleaned-pair` frontmatter, multi-level context header, semantically-preserved cleaned user input (pasted segments classified into 4 buckets and annotated), and cleaned assistant response (engagement wrapper stripped per the strict 5-step rule).
-  (b) A set of processed turn-pair chunk files in `~/Documents/conversations/` derived from the cleaned-pair files (or directly from normalized turn pairs at `light` tier), each with YAML frontmatter (source_file, source_platform, model_used, timestamp, conversation_title, turn_range, topics, chunk_id, agent_id), a 2–4 sentence contextual header, and the full user/assistant exchange.
-  (c) Corresponding entries in the ChromaDB conversations collection (document content, metadata, embedding derived from contextual header + user prompt).
-  (d) Updated cleanup manifest at `~/ora/data/cleanup-manifest.json` recording every file processed in the run.
-  (e) Appended engagement-strip audit log at `~/ora/data/engagement-strips.log`.
+  (b) Structured source notes for qualifying pasted news/opinion/resource segments plus `knowledge` index entries.
+  (c) Processed turn-pair chunks in `~/Documents/conversations/` plus corresponding `conversations` index entries.
+  (d) Atomic engram notes plus the shared `atomic_dedup` index.
+  (e) Four resume manifests, `chain-index.json`, the engagement-strip audit log, and one aggregate run summary.
 
 - **Verification criterion:**
   (a) every raw file in the batch's input set is either represented in the updated manifest as completed (with cleaned-pair file count and chunk count), or listed as errored with a reason (unrecognized format, parser failure, or API exhaustion);
@@ -221,21 +227,21 @@ This framework's output is evaluated against these 10 criteria. Each criterion i
    - 2: Noticeable information loss — substantive exchanges are missing from the output.
    - 1: Significant portions of the conversation are not represented in any output chunk.
 
-8. **Cleanup Fidelity (batch mode, full tier)**
+8. **Cleanup Fidelity (batch mode)**
    - 5: Cleaned user input preserves 100% of thought content from the original. Words, phrases, and grammar are freely changed; implied items made explicit; filler, transcription errors, and rambling stream-of-consciousness tightened. No semantic loss; the cleaned input may bear no surface resemblance to the original wording — only the thought survives.
    - 4: Faithful preservation. Rare cases where a nuance is reduced.
    - 3: Generally faithful. Occasional minor compression of a tangent.
    - 2: Multiple cases of semantic loss — thoughts dropped or distorted.
    - 1: Cleanup is summarization, not preservation.
 
-9. **Pasted-Segment Classification (batch mode, full tier)**
+9. **Pasted-Segment Classification (batch mode)**
    - 5: Every pasted segment correctly classified into one of the four buckets (news-article / opinion-piece / resource / earlier-draft). Vault-index lookup correctly catches earlier-draft material. Vault override correctly reclassifies misflagged personal segments.
    - 4: Classification accurate with rare misclassifications that don't affect downstream routing.
    - 3: Most segments correctly classified. Occasional borderline calls on the news-vs-opinion or resource-vs-other boundaries.
    - 2: Multiple misclassifications that affect downstream extraction routing.
    - 1: Classification is random or systematically wrong.
 
-10. **Engagement-Strip Precision (batch mode, full tier)**
+10. **Engagement-Strip Precision (batch mode)**
     - 5: All trailing engagement wrappers stripped per the strict 5-step rule; URL/code pre-stripping prevents false positives from query-string or code `?` characters; every removal logged to the audit JSONL.
     - 4: Aggressive stripping per the locked rule; rare false positives accepted per user policy.
     - 3: Engagement strip applied per rule. Some borderline strips on responses ending with rhetorical questions.
@@ -313,7 +319,7 @@ The three-step inline sequence must complete in under two seconds total. The bot
 
 ## BATCH MODE PROCESSING
 
-The following layers (1 through 6, including the inserted Layer 2.5) describe the batch processing path for imported conversation files — commercial AI exports and any captured chats from phone, web, or external sessions. Batch mode is triggered manually when the user drops files into `~/Documents/conversations/raw/` (or a specified input directory) and runs `python3 -m orchestrator.historical.cli`. It is not an automatic overnight process.
+The following layers (1 through 6, including the inserted Layer 2.5) specify the cleanup and chunk portions of the four-stage batch lifecycle for imported conversation files. Batch mode is triggered manually when the user drops files into `~/Documents/conversations/raw/` (or a specified input directory) and runs `python3 -m orchestrator.historical.ingest`. `python3 -m orchestrator.historical.cli` remains the targeted Stage 1 cleanup-only entry point. There is no automatic overnight batch.
 
 ---
 
@@ -400,7 +406,7 @@ For each file in the processing queue:
 
 ### Output Formatting for This Layer
 
-Normalized turn-pair sequence as a structured list. Each entry contains all fields enumerated above. This intermediate representation is consumed by Layer 2.5 (full tier) or directly by Layer 3 (light tier), and discarded after processing completes.
+Normalized turn-pair sequence as a structured list. Each entry contains all fields enumerated above. This intermediate representation is consumed by Layer 2.5 and discarded after the cleaned-pair write completes.
 
 Before proceeding: confirm that the number of extracted turn pairs is plausible given the source file size. IF zero turns were extracted from a non-empty file, THEN the parser failed — flag the file and skip to the next file in the queue.
 
@@ -563,7 +569,7 @@ Filename convention: `YYYY-MM-DD_HH-MM_keyword-keyword-keyword.md` (matches live
 
 **Named failure mode — The Stream-of-Consciousness Stall (batch mode):** Sending a 100K+-word personal segment to a single model call exhausts output-token budget and produces a 30-minute stall (observed during pilot 2026-05-01). *Recovery:* the per-segment chunker added 2026-05-01 splits any personal segment exceeding ~30K tokens (~120K chars) on paragraph boundaries into ~10K-token chunks, cleans each independently with full preservation prompt, concatenates the results.
 
-**Named failure mode — The Refusal Leak (batch mode, full tier):** The cleanup model, handed input that looks like a template, an instruction, or a short command ("Describe this image."), refuses to clean and emits commentary about its role instead — and that commentary gets persisted as the cleaned content, destroying the original text. Discovered 2026-07-10: ~700 pairs from the historical run carried persisted refusals, which propagated into chunks, ChromaDB embeddings, and a couple dozen engrams. *Recovery:* (a) prompt v2's never-refuse rule with verbatim fallback; (b) the deterministic Refusal Guard — signature-matched output falls back to the original text and logs to `~/ora/data/cleanup-guard.log`. The guard makes this failure structurally impossible: worst case is uncleaned-but-intact text.
+**Named failure mode — The Refusal Leak (batch mode):** The cleanup model, handed input that looks like a template, an instruction, or a short command ("Describe this image."), refuses to clean and emits commentary about its role instead — and that commentary gets persisted as the cleaned content, destroying the original text. Discovered 2026-07-10: ~700 pairs from the historical run carried persisted refusals, which propagated into chunks, ChromaDB embeddings, and a couple dozen engrams. *Recovery:* (a) prompt v2's never-refuse rule with verbatim fallback; (b) the deterministic Refusal Guard — signature-matched output falls back to the original text and logs to `~/ora/data/cleanup-guard.log`. The guard makes this failure structurally impossible: worst case is uncleaned-but-intact text.
 
 **Named failure mode — The Rate-Limit Cascade (batch mode, `api` backend):** Metered-API 429 responses include a `retry-after` header. Exponential backoff alone (1.5^attempt) fires retries before the rate-limit window refills, causing 429 cascades. *Recovery:* parse `retry-after` from the exception's response headers, sleep that exact duration before retry. Falls back to exponential backoff if header absent. Fix landed in `api_client.py::call` per the Full Archive Handoff Step 1a. (The `claude-cli` backend instead backs off ~60s on rate-window pushback; the batch manifest's resume logic makes any interruption safe.)
 
@@ -581,15 +587,15 @@ Before proceeding to Layer 3: confirm the cleaned-pair file count for this sourc
 
 ## LAYER 3: SEMANTIC CHUNKING AND CONTEXTUAL HEADER GENERATION
 
-**Stage Focus**: Group consecutive turn pairs into semantically coherent chunks and generate a contextual header for each chunk. **In batch mode at `full` tier, Layer 3 consumes cleaned-pair files from Layer 2.5 (via `orchestrator.historical.cleaned_pair_reader`) rather than raw turn pairs from Layer 2.** The cleaned-pair files already carry multi-level context headers; Layer 3 produces the chunk file specifically formatted for RAG retrieval, which is a different output with different metadata.
+**Stage Focus**: Group consecutive turn pairs into semantically coherent chunks and generate a contextual header for each chunk. **In batch mode, Layer 3 consumes cleaned-pair files from Layer 2.5 via `orchestrator.historical.cleaned_pair_reader`.** The cleaned-pair files already carry multi-level context headers; Layer 3 produces the chunk file specifically formatted for RAG retrieval, which is a different output with different metadata.
 
-**This layer executes once per file's cleaned-pair set (full tier) or normalized output (light tier). Context window resets between files.**
+**This layer executes once per file's cleaned-pair set. Context window resets between files.**
 
 ### Processing Instructions
 
 **Chunking strategy:**
 
-1. Process the cleaned-pair set (or normalized turn-pair sequence at light tier) in order.
+1. Process the cleaned-pair set in order.
 2. The default unit is one turn pair = one chunk. This is the correct granularity for most exchanges.
 3. MERGE consecutive turn pairs into a single chunk IF:
    - The subsequent turn pair is a direct continuation of the same topic with no shift in subject or intent (e.g., a follow-up question that refines the previous exchange).
@@ -666,7 +672,7 @@ Before proceeding: confirm that every turn pair from the input (cleaned-pair set
       - Embedding: generated from the contextual header + user prompt (not the full assistant response, which would dilute the embedding toward the response's topic rather than the query's topic)
 
 2. After all chunks for a file are written:
-   a. Update the cleanup manifest with the file's name, processing date, number of cleaned-pair files produced (full tier), number of chunks produced, chunk_ids generated, and per-pair cost.
+   a. Update the stage manifests with file/session identity, cleaned-pair and chunk counts, chunk ids, errors, and model-call accounting owned by each stage.
    b. Proceed to the next file in the queue.
 
 3. After all files are processed:
@@ -679,13 +685,13 @@ Before proceeding: confirm that every turn pair from the input (cleaned-pair set
 
 Processing summary:
 - Files processed: [count]
-- Cleaned-pair files written: [count] (full tier only)
+- Cleaned-pair files written: [count]
 - Chunks generated: [count]
 - Chunks skipped (duplicates): [count]
 - Files skipped (unrecognized format): [count] [list filenames]
 - Errors: [count] [list with file and error description]
 - ChromaDB conversations collection: [total entries after update]
-- Total cost (USD): [amount] (full tier only)
+- Total model-call cost (USD): [amount]
 
 ---
 
@@ -715,12 +721,12 @@ After all criteria are evaluated:
 
 ### Error Correction Protocol
 
-1. Verify every cleaned-pair file in `~/Documents/Commercial AI archives/` has valid YAML frontmatter that parses correctly (full tier only).
+1. Verify every cleaned-pair file in `~/Documents/Commercial AI archives/` has valid YAML frontmatter that parses correctly.
 2. Verify every chunk file in `~/Documents/conversations/` has valid YAML frontmatter that parses correctly.
 3. Verify the cleanup manifest accurately reflects all files processed in this run, with correct pair counts and per-file cost attributions.
 4. Verify ChromaDB entry count matches the number of new chunks written.
 5. Verify no chunk_id collision — every chunk has a unique identifier.
-6. Verify cleaned-pair prior_pair / next_pair links form coherent threads with no orphans or cycles (full tier only).
+6. Verify cleaned-pair prior_pair / next_pair links form coherent threads with no orphans or cycles.
 
 ### Recovery Declaration
 
@@ -750,15 +756,15 @@ This section consolidates failure modes named throughout the layers above, plus 
 
 **The Cross-File Bleed.** Letting context from one file's processing leak into another file's contextual headers or topic tags. Context window resets between files prevent this. (Batch mode only.)
 
-**The Stream-of-Consciousness Stall (batch mode, full tier).** Sending a 100K+-word personal segment to a single model call exhausts output-token budget and produces a 30-minute stall. *Recovery:* per-segment chunker splits any personal segment exceeding ~30K tokens on paragraph boundaries into ~10K-token chunks, cleans each independently, concatenates.
+**The Stream-of-Consciousness Stall (batch mode).** Sending a 100K+-word personal segment to a single model call exhausts output-token budget and produces a 30-minute stall. *Recovery:* per-segment chunker splits any personal segment exceeding ~30K tokens on paragraph boundaries into ~10K-token chunks, cleans each independently, concatenates.
 
-**The Refusal Leak (batch mode, full tier).** The cleanup model comments on the input ("I'm a text-cleanup tool...") instead of returning it, and the commentary is persisted as cleaned content — original text destroyed. *Recovery:* prompt v2 never-refuse rule + the deterministic Refusal Guard (signature match → original text preserved, event logged to `~/ora/data/cleanup-guard.log`). Structurally impossible since 2026-07-10; worst case is uncleaned-but-intact text.
+**The Refusal Leak (batch mode).** The cleanup model comments on the input ("I'm a text-cleanup tool...") instead of returning it, and the commentary is persisted as cleaned content — original text destroyed. *Recovery:* prompt v2 never-refuse rule + the deterministic Refusal Guard (signature match → original text preserved, event logged to `~/ora/data/cleanup-guard.log`). Structurally impossible since 2026-07-10; worst case is uncleaned-but-intact text.
 
-**The Rate-Limit Cascade (batch mode, full tier, `api` backend).** Metered-API 429 responses include a `retry-after` header; exponential backoff alone fires retries before the window refills, cascading 429s. *Recovery:* parse `retry-after` from the exception, sleep that exact duration before retry. Fix landed in `api_client.py::call`.
+**The Rate-Limit Cascade (batch mode, `api` backend).** Metered-API 429 responses include a `retry-after` header; exponential backoff alone fires retries before the window refills, cascading 429s. *Recovery:* parse `retry-after` from the exception, sleep that exact duration before retry. Fix landed in `api_client.py::call`.
 
-**The Cleanup Summarization Drift (batch mode, full tier).** Cleanup model summarizes instead of cleaning — drops thoughts that look tangential or repetitive. *Recovery:* cleanup prompt explicitly instructs preservation of 100% of thought content; spot-check on 50 random cleaned-pair files vs raw sources.
+**The Cleanup Summarization Drift (batch mode).** Cleanup model summarizes instead of cleaning — drops thoughts that look tangential or repetitive. *Recovery:* cleanup prompt explicitly instructs preservation of 100% of thought content; spot-check on 50 random cleaned-pair files vs raw sources.
 
-**The Misclassified Paste (batch mode, full tier).** Pasted segment classified into the wrong bucket. *Recovery:* vault-index lookup catches earlier-drafts deterministically; for the other three buckets, run the LLM reclassifier (`orchestrator.historical.llm_reclassify`) post-hoc.
+**The Misclassified Paste (batch mode).** Pasted segment classified into the wrong bucket. *Recovery:* vault-index lookup catches earlier-drafts deterministically; for the other three buckets, run the LLM reclassifier (`orchestrator.historical.llm_reclassify`) post-hoc.
 
 **The Engagement-Strip False Positive (batch mode).** Engagement strip removes substantive content because the final paragraph contained a `?` that was a rhetorical question or a question the user posed back. *Recovery:* policy accepted — the audit log allows post-hoc detection; user explicitly preferred aggressive stripping over conservatism.
 
@@ -766,15 +772,37 @@ This section consolidates failure modes named throughout the layers above, plus 
 
 ---
 
-## DOWNSTREAM CONSUMERS
+## BATCH INGEST LIFECYCLE
 
-CPP produces cleaned-pair files (batch mode, full tier) and chunk files (both modes). Downstream frameworks and pipelines consume these for further extraction. CPP's responsibility ends at the cleaned-pair archive + chunk files + ChromaDB index; downstream extraction is out of scope.
+`python3 -m orchestrator.historical.ingest` is the canonical batch entry point. Its order is load-bearing:
 
-- **News + opinion outlines** — pasted segments classified as `news-article` or `opinion-piece` are extracted by the news/opinion extraction pipeline. News articles get fact-filtered outlines; opinion pieces preserve the user's reaction (the cleaned user input) as context. Algorithm spec deferred until the cleanup pipeline is stable for ongoing imports.
-- **Resource notes** — pasted segments classified as `resource` route through the Document Processing framework's HCP mode (`~/ora/orchestrator/tools/hcp.py`).
-- **Atomic notes** — cleaned-pair files are walked in reverse chronological order by `orchestrator.historical.phase5_atomic_extraction`, which uses the dedup index at `~/ora/data/atomic-dedup-index.json` to avoid minting duplicates of atomic claims already extracted.
-- **Engram cleaning detection / resolution** — `orchestrator.historical.run_engram_cleaning_detection` + `run_engram_cleaning_resolver` operate on the produced atomic notes per the Engram Cleaning framework.
-- **News supersession detection / resolution** — `orchestrator.historical.run_news_supersession_detection` + `run_news_supersession_resolver` operate on news-derived atomic notes for the MSI publication.
+1. **Cleanup (Layers 1–2.5).** `cli.run_batch` parses raw exports, pairs turns, detects/classifies pasted segments, semantically cleans personal text, applies Refusal Guard and engagement stripping, writes the cleaned-pair archive, and records each raw file in `cleanup-manifest.json`.
+2. **Phase 3 source extraction.** After deterministic chain detection writes `chain-index.json`, `phase3_extraction.run_phase3` reads the persisted paste annotations, extracts qualifying news/opinion/resource segments into flat vault `Resources/` notes, enriches them with chain provenance, indexes them into `knowledge`, and records each segment in `phase3-manifest.json`. Fiction/self-report guards prevent known junk-note classes while failing open on guard errors.
+3. **Conversation chunks.** `path2_cli.run_chunk_emission` consumes the cleaned pairs and chain map, writes one retrievable chunk per pair, upserts `conversations`, and records each completed session in `path2-manifest.json`. Chain detection is deterministic and re-runs over the archive; session emission is resumable.
+4. **Phase 5 engrams.** `phase5_atomic_extraction.run_phase5` walks cleaned pairs newest-first, extracts atomic claims, checks the shared ChromaDB `atomic_dedup` collection at the 0.92 similarity threshold, writes novel notes under `Engrams/Historical Atomics/`, increments sightings for duplicates, and records each pair in `phase5-manifest.json`.
+
+Cleanup always runs. `--no-extraction`, `--no-chunks`, and `--no-engrams` independently skip Stages 2–4. A completed upstream manifest is not erased when a downstream stage is skipped or interrupted; re-running resumes at each stage's own unit of completion.
+
+**Extraction-model provenance:** Phase 3 and Phase 5 currently pass `claude-sonnet-4-5` as the heavy-model hint and write that value to `extraction_model` frontmatter. It names the exact served model only on the `api` backend; on `claude-cli` and `ora-slots` it is a requested-tier hint mapped to the backend's heavy model/slot.
+
+### Privacy propagation (explicit post-ingest pass)
+
+`python3 -m orchestrator.historical.privacy_tagging` is intentionally separate from ingest because privacy policy may require user-supplied names and review. It combines keyword detection with an optional model scan of session titles/opening pairs, always propagates a positive result through the same thread, and propagates across a detected chain only when at least 50% of that chain's pairs were independently flagged. `--detection-only` previews without writes; `--skip-llm-scan` runs deterministic signals only.
+
+Application is cross-layer: cleaned-pair YAML, conversation-chunk YAML, `conversations` Chroma metadata, matching atomic engrams, and matching Phase 3 source notes receive the private marker together. This avoids the dangerous state where a file is private but its retrieval record remains public. The CLI writes a JSON report; privacy tagging is idempotent rather than part of the four resume manifests.
+
+### Repair and reclassification
+
+- `reclassify_pastes.py` deterministically reruns the current paste detector and rewrites annotation metadata without changing exchange text. `llm_reclassify.py` is the bounded model-assisted follow-up for long `other` segments.
+- `repair_refusal_pairs.py --scan` compares refusal signatures against relocated raw sources; `--repair` re-cleans only confirmed damage while preserving pair/thread identity; `--fix-chunks` regenerates affected chunk files and `conversations` records. The raw archive is therefore a required repair source, not disposable input.
+- `phase3_provenance_migration.py` and `phase3_chromadb_refresh.py` repair source-note provenance and mirror metadata changes into `knowledge` without re-embedding.
+- `rebuild_atomic_dedup.py` reconstructs `atomic_dedup` from vault engrams after embedder migrations, deletions, or atomics created outside Phase 5.
+
+## POST-INGEST CONSUMERS AND REUSE
+
+- **Phase B — arbitrary vault documents.** `phase_b_vault_extraction.py` reuses Phase 5 loaders/writer/dedup primitives to extract atomics from Markdown, DOCX, DOC, RTF, or text into the flat `Engrams/` corpus. It shares `atomic_dedup` but has its own `phase-b-manifest.json`; it is not a fifth conversation-ingest stage.
+- **Phase C — relationships.** `phase_c_relationship_extraction.py` retrieves nearest atomic neighbours from the same dedup collection, classifies the 13 relationship types, and writes `relationships:` into engram YAML under its own `phase-c-manifest.json`. It operates on the resulting atomic corpus, not on raw chats.
+- **Engram cleaning and news supersession.** Detection/resolution CLIs, including the shared `supersession_judge.py`, operate on the produced notes under `Framework — Engram Cleaning.md` and `Framework — News Supersession.md`. They are periodic corpus maintenance, not ingest stages.
 
 ---
 
@@ -784,13 +812,17 @@ The batch-mode pipeline is implemented in the `~/ora/orchestrator/historical/` s
 
 | Module | Layer / Step |
 |---|---|
-| `ingest.py` | **Unified entry point**: `python3 -m orchestrator.historical.ingest` — chains cleanup → chunks → engrams with per-stage resume |
+| `ingest.py` | **Unified entry point**: cleanup → Phase 3 extraction → chunks/index → Phase 5 engrams, with four independent resume manifests |
 | `cli.py` | Cleanup-stage entry point: `python3 -m orchestrator.historical.cli` |
+| `phase3_extraction.py` | Stage 2 — annotated news/opinion/resource pastes → flat `Resources/` notes + `knowledge` index |
+| `path2_orchestrator.py` / `path2_cli.py` | Stage 3 / Layers 3–4 — chain-aware chunk emission + `conversations` indexing |
+| `phase5_atomic_extraction.py` | Stage 4 — newest-first atomic engrams + shared `atomic_dedup` |
+| `privacy_tagging.py` | Explicit post-ingest five-layer privacy detection/propagation pass |
 | `repair_refusal_pairs.py` | Refusal Leak remediation: `--scan` (detect damage with retroactive immunity), `--repair` (re-clean in place), `--fix-chunks` (regenerate downstream chunks + index) |
 | `rebuild_atomic_dedup.py` | Rebuild the atomic-dedup index from vault engrams under the canonical embedder (run after embedder migrations, engram deletions, or runtime-promotion catch-up) |
 | `parser.py` | Layer 2 — format detection + Web-Clipper / live-Ora / ChatGPT / Gemini parsing |
 | `paste_detection.py` | Layer 2.5 Steps 1 + 2 — segment + classify (with vault-index lookup) |
-| `llm_reclassify.py` | Post-hoc bucket reclassification (Layer 2.5 Step 2 retroactive fix) |
+| `reclassify_pastes.py` / `llm_reclassify.py` | Deterministic annotation refresh + bounded model-assisted `other` reclassification |
 | `pair_cleanup.py` | Layer 2.5 Steps 3 + 4 — per-pair cleanup orchestration + Refusal Guard integration |
 | `prompts.py` | Layer 2.5 Step 3 — cleanup prompt templates (v2: never-refuse, word-locks, pronoun resolution) with XML prompt-injection defense + refusal-signature detection |
 | `model_router.py` | Layer 2.5 Step 3 — token-threshold tier routing (light ≤30K, heavy >30K) |
@@ -800,8 +832,9 @@ The batch-mode pipeline is implemented in the `~/ora/orchestrator/historical/` s
 | `context_header.py` | Layer 2.5 Steps 6 + 7 — thread continuity + multi-level context header |
 | `writer.py` | Layer 2.5 Step 8 — cleaned-pair file write with collision handling |
 | `file_orchestrator.py` | Per-file parallel cleanup with error-budget abort |
-| `cleaned_pair_reader.py` | Layer 3 input adapter (full tier) — reads cleaned-pair files for chunking |
-| `path2_orchestrator.py` / `path2_cli.py` | Layer 3 + 4 — chunk emission and ChromaDB indexing |
+| `cleaned_pair_reader.py` | Layer 3 input adapter — reads cleaned-pair files for chunking |
+| `phase_b_vault_extraction.py` / `phase_c_relationship_extraction.py` | Post-ingest reuse of Phase 5/dedup primitives for arbitrary documents and relationship enrichment |
+| `run_*_detection.py` / `run_*_resolver.py` / `supersession_judge.py` | Engram-cleaning/news-supersession maintenance; specified by their own frameworks |
 
 Supporting infrastructure outside `historical/`:
 - `~/ora/orchestrator/tools/vault_indexer.py` — Phase 0 vault index builder; produces `~/ora/data/vault-index.json` consumed by Layer 2.5 Step 2.
@@ -824,7 +857,9 @@ The inline path is not a staged pipeline — it is a three-step procedure execut
 
 Total inline processing budget: under 2 seconds. If Step 2 exceeds budget, write chunk with placeholder header and backfill asynchronously.
 
-### Batch Mode Stage Boundaries
+### Stage 1 Cleanup Internal Boundaries
+
+These six boundaries preserve the framework's legacy Layer 1–6 description; they are not an alternative to the four executable stages in Batch Ingest Lifecycle. At runtime, Layers 1–2.5 form executable Stage 1, Layers 3–4 form executable Stage 3 after Phase 3 extraction, and Layers 5–6 are their verification contract.
 
 Stage 1: Layer 1 (inventory and manifest check)
   Handoff to Stage 2: processing queue with file list, source formats, and file sizes.
@@ -835,7 +870,7 @@ Stage 2: Layer 2 (format normalization) — executes once per file, context wind
 Stage 3: **Layer 2.5 (per-pair cleanup and classification)** — executes once per turn pair, context resets between pairs. Skipped at `light` tier except for Step 5.
   Handoff to Stage 4: cleaned-pair files written to disk; manifest updated.
 
-Stage 4: Layer 3 (semantic chunking and header generation) — executes once per file (full tier: consumes cleaned-pair files; light tier: consumes normalized turn pairs). Context window resets between files.
+Stage 4: Layer 3 (semantic chunking and header generation) — executes once per cleaned-pair session. Context window resets between sessions.
   Handoff to Stage 5: complete chunk file contents ready for writing.
 
 Stage 5: Layer 4 (deduplication, write, and indexing) — executes once per file.
@@ -858,8 +893,11 @@ extraction by news, resource, and atomic-note pipelines.
 SOURCE: ~/Documents/conversations/raw/ (or --input path)
 CLEANED ARCHIVE: ~/Documents/Commercial AI archives/
 CHUNK DESTINATION: ~/Documents/conversations/
-INDEX: ~/ora/chromadb/ (conversations collection)
-MANIFEST: ~/ora/data/cleanup-manifest.json
+SOURCE-NOTE DESTINATION: ~/Documents/vault/Resources/
+ENGRAM DESTINATION: ~/Documents/vault/Engrams/Historical Atomics/
+INDEXES: ~/ora/chromadb/ (knowledge, conversations, atomic_dedup)
+MANIFESTS: ~/ora/data/{cleanup,phase3,path2,phase5}-manifest.json
+CHAIN INDEX: ~/ora/data/chain-index.json
 VAULT INDEX: ~/ora/data/vault-index.json
 ENGAGEMENT AUDIT LOG: ~/ora/data/engagement-strips.log
 
@@ -873,7 +911,7 @@ CONSTRAINTS:
 - Pasted segments preserved verbatim, never sent to cleanup model
 - Engagement-wrapper strip is aggressive (any final paragraph
   with a ? after URL/code stripping)
-- One cleaned-pair file per turn pair (full tier)
+- One cleaned-pair file per turn pair
 - One turn pair per chunk (default); merge only for direct
   continuations
 - Maximum chunk size: 2,000 words
@@ -897,7 +935,7 @@ Tool: file_write
 
 Tool: file_list
   Description: List files in a directory.
-  Trigger: During inventory (Layer 1), during cleaned-pair reading (Layer 3 full tier), and during deduplication check (Layer 4).
+  Trigger: During inventory (Layer 1), cleaned-pair reading (Layer 3), and deduplication check (Layer 4).
 
 Tool: chromadb_index
   Description: Add entries to the conversations collection in ChromaDB.
@@ -905,7 +943,7 @@ Tool: chromadb_index
 
 Tool: model_client
   Description: Per-segment cleanup calls through the selected backend (light or heavy tier based on routing; the backend resolves tiers to models).
-  Trigger: Layer 2.5 Step 3 for each personal segment of each turn pair (full tier).
+  Trigger: Layer 2.5 Step 3 for each personal segment of each turn pair.
 
 Tool: local_endpoint_dispatch
   Description: Fallback dispatch to local slot endpoints via `orchestrator.boot.call_local_endpoint`.

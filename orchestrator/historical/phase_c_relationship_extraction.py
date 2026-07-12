@@ -25,7 +25,6 @@ import os
 import re
 import sys
 import time
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -113,19 +112,15 @@ def write_note_with_relationships(
 
 
 # ---------------------------------------------------------------------------
-# Embedding (reuse Phase B's via Ollama)
+# Embedding (shared configured provider/model/dimension)
 # ---------------------------------------------------------------------------
 
 
-def embed_via_ollama(text: str) -> list[float]:
-    payload = json.dumps({"model": "nomic-embed-text", "prompt": text}).encode("utf-8")
-    req = urllib.request.Request(
-        "http://localhost:11434/api/embeddings",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())["embedding"]
+def embed_configured(text: str) -> list[float]:
+    """Embed with the active provider, model, and dimension configuration."""
+    from orchestrator.embedding import embed_text
+
+    return embed_text(text)
 
 
 # ---------------------------------------------------------------------------
@@ -282,7 +277,7 @@ def process_one_note(
     # Use title + first part of body as the embedding query
     query_text = f"{title}\n\n{body[:2000]}"
     try:
-        emb = embed_via_ollama(query_text)
+        emb = embed_configured(query_text)
     except Exception as e:
         res.error = f"embed: {e}"
         return res
@@ -386,7 +381,10 @@ def _save_manifest(manifest: dict, path: str) -> None:
 
 def _open_collection(chromadb_path: str, name: str):
     import chromadb
-    return chromadb.PersistentClient(path=chromadb_path).get_collection(name)
+    from orchestrator.embedding import get_collection
+
+    client = chromadb.PersistentClient(path=chromadb_path)
+    return get_collection(client, name)
 
 
 def run_phase_c(

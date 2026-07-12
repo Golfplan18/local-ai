@@ -1,5 +1,5 @@
 /**
- * settings-panel.js — Audio/Video Phase 9
+ * settings-panel.js — Ora Settings modal shell
  *
  * Standalone centered modal with tabbed sections for user-configurable
  * defaults. Backed by /api/settings (non-secret) and /api/settings/api-key
@@ -31,15 +31,15 @@
   var _apiKeys = [];
   var _asideModels = null;
   var _providerGroups = [];   // [[category, group label], …] render order
-  var _dirty = {};       // pending changes, applied on Save
+  var _dirty = {};       // pending non-secret changes, applied by autosave
   var _recordingShortcutId = null;
   var _recordingShortcutButton = null;
   var _globalShortcutHandlerInstalled = false;
 
   // Tabs declared in display order. The Buckets tab was retired with
   // install Chunk 10 step 2 — the bucket abstraction has been dissolved
-  // by the configuration architecture (Premium / Optimum / Budget /
-  // Free + named customs replace bucket-based slot assignment). The
+  // by the configuration architecture (Free / Budget / Speed /
+  // Premium + named customs replace bucket-based slot assignment). The
   // Models tab hosts OraModelsPane (server/static/models-pane.js); the
   // Visual tab hosts OraVisualSlotsPane (server/static/visual-slots-pane.js)
   // — the classic ConfigPanel embed was retired with install Chunk 11.
@@ -1727,11 +1727,14 @@
       + 'Windows, Secret Service on Linux) — never shown back in the browser. '
       + 'Click a provider’s name (<span class="ora-settings-apikey-extlink">↗</span>) '
       + 'to open its key page; hover it for details. <strong>Save</strong> checks the '
-      + 'key with the provider and stores it only if it works. <strong>OpenRouter</strong> '
+      + 'key where a free probe exists; confirmed rejections are not stored, while '
+      + 'providers without a probe can be saved as unverified. <strong>OpenRouter</strong> '
       + 'is the recommended gateway key — one key reaches hundreds of models; adding a '
-      + 'vendor’s own key routes that vendor directly, skipping OpenRouter’s ~5.5% '
-      + 'markup (same model, automatic fallback). Search & data keys turn on as '
-      + 'soon as they’re saved.';
+      + 'eligible pay-as-you-go vendor’s own key makes that vendor’s native model '
+      + 'catalogue available after the next Models refresh, skipping OpenRouter’s '
+      + '~5.5% markup for those native routes. OpenRouter still serves unkeyed '
+      + 'vendors and retained supplements. Search & data keys turn on as soon as '
+      + 'they’re saved.';
     topR.appendChild(rdesc);
     top.appendChild(topR);
 
@@ -1848,7 +1851,7 @@
   }
 
   // One provider per row, single line: name (links to its key page) ·
-  // key input · Save · Verify · status · Remove. The provider's one-line
+  // key input · Save (verify-before-store) · status · Remove. The provider's one-line
   // note + install-critical/Direct hints live in the name's tooltip so the row
   // stays compact. A feedback line wraps underneath only when there's a
   // validation hint or a Save/Verify result. Tagged data-provider so
@@ -1865,7 +1868,9 @@
     // Required-for-install / Direct hints we no longer spend a row on.
     var tip = [];
     if (row.essential) tip.push('Required for install');
-    if (row.direct) tip.push('Direct — bypasses OpenRouter markup');
+    if (row.catalog_authoritative) {
+      tip.push('Native direct catalogue after the next Models refresh');
+    }
     if (row.note) tip.push(row.note);
     var label;
     if (row.console_url) {

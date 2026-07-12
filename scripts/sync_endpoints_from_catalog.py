@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Sync routing-config.json endpoints from model-catalog.json.
 
-For each text-output catalog model:
-  - Generate one endpoint with id == catalog id.
-  - If provider in (openai, anthropic, google) AND vendor API key in keyring,
-    use direct service with stripped model name + openrouter_fallback_model_id.
-  - Else use openrouter.
+For each text-output catalog model, first generate the OpenRouter-first endpoint
+universe (with legacy direct+fallback endpoints for keyed OpenAI, Anthropic, and
+Google). When ORA_VENDOR_CATALOG_AUTHORITATIVE is enabled (the default), then
+overlay the generated vendor-authoritative artifact: keyed PAYG vendors receive
+native direct endpoints; unreferenced OpenRouter duplicates are removed; saved
+legacy references and explicit OpenRouter supplements are retained.
 
 Overwrites any existing routing-config entry with the same ID (catalog is
 canonical). Preserves all other entries (legacy flat IDs, local MLX).
 
-Run after the Models pane changes the catalog so the pipeline's endpoint
+Run after the Models registry/catalog refresh so the pipeline's endpoint
 universe stays in sync with what the UI offers.
 """
 import argparse
@@ -197,7 +198,7 @@ def build_direct_endpoint(entry: dict) -> dict:
     else:
         ep["service"] = vid                    # generic openai_compatible service id
         ep["base_url"] = p.get("base_url")
-    # carry display metadata the picker (PR-C) will surface
+    # carry display metadata the picker surfaces
     if entry.get("pricing"):
         ep["vendor_pricing"] = entry["pricing"]
     if entry.get("intelligence_index") is not None:
@@ -374,7 +375,7 @@ def main() -> int:
             openrouter_count += 1
         by_id[cid] = new_ep
 
-    # Vendor-catalogue-authoritative inversion (flag-gated, default off): replace
+    # Vendor-catalogue-authoritative inversion (flag-gated, default on): replace
     # each keyed authoritative vendor's OpenRouter endpoints with its native
     # direct endpoints. No-op unless ORA_VENDOR_CATALOG_AUTHORITATIVE is on.
     va = {"skipped": "flag off"}

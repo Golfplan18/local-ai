@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build a vendor-catalogue-authoritative model registry and report the diff.
 
-PR-A tool. Reads the current OpenRouter+AA registry (config/model-registry.json),
+Reads the current OpenRouter+AA registry (config/model-registry.json),
 the OpenRouter catalog (config/openrouter-catalog.json), and live-fetches each
 keyed, pay-as-you-go direct vendor's own /models. It then produces a
 vendor-authoritative registry (vendor catalogues replace those vendors'
 OpenRouter entries; AA/OpenRouter metadata matched on field-by-field) and writes
-it to a SEPARATE file plus prints an old-vs-new diff. It does NOT modify the live
-registry — wiring that in is a later, flag-gated PR.
+it to a SEPARATE generated serving artifact plus prints an old-vs-new diff. It
+does not overwrite the base registry: when ORA_VENDOR_CATALOG_AUTHORITATIVE is
+enabled (the default), the Models inventory and endpoint sync consume the
+artifact directly.
 
     python scripts/build_vendor_authoritative_registry.py [--out PATH] [--json]
 """
@@ -147,7 +149,7 @@ def main() -> int:
               f"{r['intelligence_coverage']:>3}/{r['count']:<3} "
               f"{r['price_coverage']:>3}/{r['count']:<3}")
     print(f"\n  wrote {args.out}")
-    print("  (live registry untouched — this is a preview artifact)")
+    print("  (base registry untouched — this is the generated serving artifact)")
     return 0
 
 

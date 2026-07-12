@@ -13760,16 +13760,16 @@ def compute_cost_summary(trace_dir: str) -> dict:
 
 
 def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
-    """Dispatch an API call with direct-vendor preference + OpenRouter fallback.
+    """Dispatch an API call, including legacy direct-to-OpenRouter retry.
 
     The endpoint's ``service`` field selects the dispatch path. When a
     direct-vendor call (claude / openai / gemini) returns an ``[Error ...``
     string AND the endpoint carries an ``openrouter_fallback_model_id``
     field, retry once through OpenRouter under the canonical id. Lets the
-    registry generator wire direct endpoints optimistically (saving the
-    OpenRouter markup when the direct API accepts the model name) without
-    sacrificing safety when the direct model name doesn't match the
-    vendor's actual API.
+    registry generator's flag-off path wire direct endpoints optimistically
+    without sacrificing safety when an adapted model name misses the vendor's
+    API. Default-on vendor-authoritative endpoints use native catalogue ids and
+    normally carry no same-model OpenRouter retry field.
     """
     result = _call_api_endpoint_inner(messages, endpoint, images=images)
     if not isinstance(result, str) or not result.lstrip().startswith("[Error"):
@@ -14039,7 +14039,7 @@ try:
 except Exception:
     _direct_catalog = None
 
-# Vendor-catalogue-authoritative inversion (default on, PR-D). When active,
+# Vendor-catalogue-authoritative inversion (default on). When active,
 # models are already native direct endpoints, so the runtime prefer-direct
 # rewrite below is dormant; prefer-direct stays as the inversion-OFF fallback.
 try:

@@ -41,7 +41,7 @@
    [full assistant response]
    ```
 
-   **Step 3 — ChromaDB index.** Add the chunk to the `"conversations"` collection (separate from `"knowledge"`). Embedding input: contextual header + user prompt only — not the assistant response (embedding the response dilutes the vector toward the AI's topic rather than the query). Use nomic-embed-text-v1.5 via ollama (`POST http://localhost:11434/api/embeddings`). Fall back to chromadb's default embedding if ollama is unavailable.
+   **Step 3 — ChromaDB index.** Add the chunk to the `"conversations"` collection (separate from `"knowledge"`). Embedding input: contextual header + user prompt only — not the assistant response (embedding the response dilutes the vector toward the AI's topic rather than the query). Open the collection through `orchestrator.embedding`, which binds the machine-specific provider/model/dimension profile explicitly (tracked fresh-install default: Ollama BGE-M3 at 1,024 dimensions). Never fall back silently to ChromaDB's default embedder.
 
 2. **Track session state** in a per-panel `_session_data` dict: `{raw_path, session_id, pair_count, model, start}`. Detect new session when `len(history) == 0`.
 
@@ -59,7 +59,7 @@ The Conversation Processing Pipeline spec's multi-layer batch process applies on
 CONVERSATION AUTO-SAVE INSTALLED
 Raw logs:       ~/Documents/conversations/raw/  (one file per session)
 Processed chunks: ~/Documents/conversations/    (one file per pair)
-ChromaDB:       "conversations" collection — nomic-embed-text-v1.5 (or default fallback)
+ChromaDB:       "conversations" collection — active configured embedding profile (BGE-M3/1024 fresh-install default)
 Embedding input: contextual header + user prompt only
 Trigger:        every completed exchange, all panels, inline background thread
 Session behavior: browser reloads start fresh (by design); full history on disk

@@ -518,7 +518,8 @@ def _format_evidence_block(
 
 _EXTRACT_UNFLAGGED_SYSTEM_PROMPT = """\
 You are scanning a revised analysis for high-risk factual claims that the \
-evaluator did NOT flag for verification. The verifier (Step 8) will use \
+evaluator did NOT flag for verification. The per-stream verifier \
+(Step 6) will use \
 your extracted claims to issue last-gate verification queries.
 
 A claim qualifies for extraction if ALL of these hold:

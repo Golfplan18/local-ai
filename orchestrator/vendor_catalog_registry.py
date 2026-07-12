@@ -10,9 +10,10 @@ the vendor's own native id, so there is no id translation at call time and no
 
 This module is the pure transform (data in → data out), unit-tested with stubs.
 Live fetching + file I/O + the old-vs-new diff live in
-``scripts/build_vendor_authoritative_registry.py``. Wiring it into the live
-registry/endpoint generation is gated by ORA_VENDOR_CATALOG_AUTHORITATIVE and
-happens in later PRs; this module changes no live behaviour on its own.
+``scripts/build_vendor_authoritative_registry.py``. The generated artifact is
+consumed by the Models inventory and endpoint generator when
+ORA_VENDOR_CATALOG_AUTHORITATIVE is enabled (the default); this module itself
+still performs no I/O.
 """
 from __future__ import annotations
 
@@ -30,7 +31,7 @@ FLAG = "ORA_VENDOR_CATALOG_AUTHORITATIVE"
 def enabled() -> bool:
     """Whether the live system treats vendor catalogues as authoritative.
 
-    Default ON (PR-D). Set ORA_VENDOR_CATALOG_AUTHORITATIVE=0 to fall back to the
+    Default ON. Set ORA_VENDOR_CATALOG_AUTHORITATIVE=0 to fall back to the
     OpenRouter-sourced inventory + the runtime prefer-direct rewrite.
     """
     v = (os.environ.get(FLAG, "1") or "").strip().lower()

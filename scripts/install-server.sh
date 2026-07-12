@@ -2,7 +2,8 @@
 #
 # scripts/install-server.sh — minimal API-only Ora server install for Linux.
 #
-# Stands up a headless Ora install for cloud / server use. No local models,
+# Stands up a headless Ora install for cloud / server use. No local
+# generative models (the BGE-M3 embedder is the sole local model artifact),
 # no Flask exposure beyond localhost, no worker pool. Designed for the
 # MSI publication cadence on a small Linux box (tested on Hetzner CX33,
 # Ubuntu 24.04, 8 GB RAM).
@@ -12,7 +13,8 @@
 #      if missing.
 #   2. Creates a virtualenv at .venv/ and installs the Linux subset of
 #      Ora's Python deps (no mlx-lm).
-#   3. Installs ollama and pulls nomic-embed-text for ChromaDB embeddings.
+#   3. Installs ollama and pulls bge-m3 (1024 dimensions), matching Ora's
+#      tracked fresh-install ChromaDB profile.
 #   4. Rewrites config/routing-config.json's slot_assignments + default
 #      endpoint to OpenRouter-routed picks (qwen3.6-plus for analysis,
 #      qwen3.6-35b-a3b for utility) so nothing references a local MLX model
@@ -23,7 +25,7 @@
 #      and reports the install state.
 #
 # What it does NOT do:
-#   - HuggingFace local-model downloads (no GPU).
+#   - HuggingFace local generative-model downloads (no GPU).
 #   - MLX setup (Apple Silicon only).
 #   - Worker pool / concurrency primitives (gated on the concurrency
 #     architecture thread — single-process is fine for MSI's cadence).
@@ -171,8 +173,8 @@ else
   else
     log "  ✓ ollama already installed"
   fi
-  log "Pulling nomic-embed-text embedding model"
-  run "ollama pull nomic-embed-text"
+  log "Pulling bge-m3 embedding model (1024 dimensions)"
+  run "ollama pull bge-m3"
 fi
 
 # ─── 4. rewrite routing-config.json to API-only slots ─────────────────

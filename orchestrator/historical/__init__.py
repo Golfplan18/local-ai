@@ -1,6 +1,8 @@
-"""Historical chat reprocessing pipeline (Phase 1+ of the architecture).
+"""Historical conversation ingest and corpus-maintenance subsystem.
 
-Subpackage layout:
+Primary ingest path:
+    ingest.py            — four-stage cleanup → extraction → chunks → engrams
+    cli.py               — Stage 1 cleanup + cleanup-manifest tracking
     parser.py            — raw chat format parser (Web-Clipper + live-Ora)
     paste_detection.py   — segment user input + classify pasted content
     engagement.py        — AI response engagement-wrapper strip
@@ -9,14 +11,25 @@ Subpackage layout:
     prompts.py           — cleanup prompt templates
     context_header.py    — multi-level context generation
     writer.py            — cleaned-pair file writer
-    orchestrator.py      — per-pair + per-file orchestration
-    cli.py               — command-line entry
+    file_orchestrator.py — per-pair + per-file cleanup orchestration
+    phase3_extraction.py — Stage 2 pasted sources → Resources + knowledge
+    path2_cli.py         — Stage 3 chain detection + chunk emission
+    path2_orchestrator.py— Stage 3 chunk files + conversations index
+    phase5_atomic_extraction.py — Stage 4 atomics + shared dedup index
+
+Post-ingest tools include privacy tagging, paste reclassification, Refusal Leak
+repair, Phase B arbitrary-document extraction, Phase C relationship extraction,
+and news/engram supersession maintenance. Their contracts and manifest boundaries
+are catalogued in the canonical framework below.
 
 Canonical spec:
-    ~/Documents/vault/Working — Framework — Historical Chat Reprocessing Architecture.md
+    ~/Documents/vault/Framework — Conversation Processing Pipeline.md
 
-Progress tracker:
-    ~/Documents/vault/Working — Framework — Historical Chat Reprocessing Progress.md
+Archived design/progress records (historical only):
+    ~/Documents/vault/Archive/Working — Framework — Historical Chat
+        Reprocessing Architecture.md.archived-2026-05-17
+    ~/Documents/vault/Archive/Working — Framework — Historical Chat
+        Reprocessing Progress.md.archived-2026-05-17
 """
 
 from __future__ import annotations

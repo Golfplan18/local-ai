@@ -415,18 +415,11 @@ class DocResult:
     errors: list[str] = field(default_factory=list)
 
 
-def _embedder_via_ollama(text: str) -> list[float]:
-    """Embed via local nomic-embed-text through Ollama HTTP API."""
-    import urllib.request
-    payload = json.dumps({"model": "nomic-embed-text", "prompt": text}).encode("utf-8")
-    req = urllib.request.Request(
-        "http://localhost:11434/api/embeddings",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        body = json.loads(r.read())
-    return body["embedding"]
+def _embedder_configured(text: str) -> list[float]:
+    """Embed with the active provider, model, and dimension configuration."""
+    from orchestrator.embedding import embed_text
+
+    return embed_text(text)
 
 
 def process_one_document(
@@ -564,7 +557,7 @@ def run_phase_b(
                 vault_root=vault_root,
                 client=client,
                 collection=collection,
-                embedder=_embedder_via_ollama,
+                embedder=_embedder_configured,
                 source_label=(label_provider(p) if label_provider else None),
             ): p
             for p in todo

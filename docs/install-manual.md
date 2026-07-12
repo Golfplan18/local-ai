@@ -187,8 +187,10 @@ pip install flask flask-cors requests pyyaml jsonschema referencing pydantic \
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull nomic-embed-text
+ollama pull bge-m3
 ```
+
+`bge-m3` at 1,024 dimensions is the tracked fresh-install profile in `config/chromadb.json.template` and the runtime fallback when no machine-specific `config/chromadb.json` exists. If you select another embedder, its vector dimension and physical collection names must change with it.
 
 ### 5. Rewrite routing config for server use
 

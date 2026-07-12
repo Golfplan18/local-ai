@@ -1,4 +1,4 @@
-"""User settings persistence — Audio/Video Phase 9.
+"""Non-secret user-settings persistence for the Ora Settings modal.
 
 Single source of truth for user-configurable defaults that don't
 belong in env vars or per-conversation state. Read/written through
@@ -11,9 +11,10 @@ Sections
 * ``whisper`` — model size, default language
 * ``export`` — default directory, default render preset, background-render threshold
 * ``keyboard`` — per-command shortcut overrides used by the browser UI
-* ``external_apis`` — provider enable flags + non-secret routing (the
-  actual keys live in keyring; this section just records "do we want
-  to attempt this provider at runtime")
+* ``external_apis`` — non-secret provider choices (keys live in keyring)
+* ``interface`` — tooltip/help affordances
+* ``aside`` — dedicated scratchpad model choice
+* ``styles`` — active output-style id + personal-values toggle
 
 Schema is forward-compatible: unknown keys are preserved on round-trip
 so older clients can't accidentally truncate fields newer servers

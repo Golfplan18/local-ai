@@ -59,7 +59,6 @@ DEFAULT_ARCHIVE_DIR     = "/Users/oracle/Documents/Commercial AI archives"
 DEFAULT_CONVERSATIONS_DIR = "/Users/oracle/Documents/conversations"
 DEFAULT_VAULT_ROOT      = "/Users/oracle/Documents/vault"
 DEFAULT_CHROMADB_PATH   = "/Users/oracle/ora/chromadb"
-DEFAULT_MANIFEST_PATH   = "/Users/oracle/ora/data/privacy-manifest.json"
 DEFAULT_REPORT_PATH     = "/Users/oracle/ora/data/privacy-report.json"
 
 # Propagate chain → all-private when this fraction of the chain's
@@ -419,18 +418,31 @@ def propagate_within_threads(
 def propagate_within_chains(
     detections: dict[str, PairDetection],
     *,
+    independently_private: Optional[set[str] | frozenset[str]] = None,
     min_fraction: float = MIN_PRIVATE_FRACTION_OF_CHAIN,
 ) -> tuple[int, list[str]]:
-    """For each chain, compute fraction of pairs marked private. If
-    fraction ≥ min_fraction, mark ALL pairs in the chain as private.
-    Returns (newly_flagged_count, chain_ids_propagated)."""
+    """Propagate privacy when independently detected pairs meet the threshold.
+
+    ``independently_private`` is a frozen snapshot of private pair UIDs taken
+    before thread or chain propagation. Callers that omit it retain the
+    historical standalone behavior of treating the current private set as the
+    baseline, but the top-level privacy pass always supplies the snapshot.
+
+    Returns ``(newly_flagged_count, chain_ids_propagated)``.
+    """
+    if independently_private is None:
+        independently_private = {
+            uid for uid, detection in detections.items()
+            if detection.is_private
+        }
+
     by_chain_total: Counter[str] = Counter()
     by_chain_private: Counter[str] = Counter()
-    for d in detections.values():
+    for uid, d in detections.items():
         if not d.chain_id:
             continue
         by_chain_total[d.chain_id] += 1
-        if d.is_private:
+        if uid in independently_private:
             by_chain_private[d.chain_id] += 1
 
     propagated_chains: list[str] = []
@@ -731,8 +743,17 @@ def run_privacy_tagging(
         print(f"[privacy] {n_initial:,} pairs flagged before propagation",
               file=sys.stderr, flush=True)
 
+    # Freeze the independent detections before either propagation pass. Thread
+    # propagation must not inflate the numerator used by the chain threshold.
+    independently_private = frozenset(
+        uid for uid, detection in detections.items()
+        if detection.is_private
+    )
     thread_added = propagate_within_threads(detections)
-    chain_added, chains = propagate_within_chains(detections)
+    chain_added, chains = propagate_within_chains(
+        detections,
+        independently_private=independently_private,
+    )
     if progress_to_stderr:
         print(f"[privacy] propagation: +{thread_added:,} via thread, "
               f"+{chain_added:,} via {len(chains)} chains "
@@ -742,6 +763,7 @@ def run_privacy_tagging(
     n_final = sum(1 for d in detections.values() if d.is_private)
     summary = {
         **detect_summary,
+        "pairs_independently_detected": len(independently_private),
         "pairs_flagged_after_propagation": n_final,
         "thread_propagation_added":  thread_added,
         "chain_propagation_added":   chain_added,
@@ -776,7 +798,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--vault-root", default=DEFAULT_VAULT_ROOT)
     parser.add_argument("--chromadb-path", default=DEFAULT_CHROMADB_PATH)
     parser.add_argument("--chain-index", default=CHAIN_INDEX_DEFAULT)
-    parser.add_argument("--manifest", default=DEFAULT_MANIFEST_PATH)
+    # Compatibility-only retirement: older invocations may still pass this
+    # option, but privacy tagging is intentionally idempotent and has no resume
+    # manifest. Hide it from help and make its no-op status explicit below.
+    parser.add_argument("--manifest", help=argparse.SUPPRESS)
     parser.add_argument("--report", default=DEFAULT_REPORT_PATH)
     parser.add_argument("--max-workers", type=int, default=8)
     parser.add_argument("--skip-llm-scan", action="store_true",
@@ -785,6 +810,13 @@ def main(argv: Optional[list[str]] = None) -> int:
                           help="Detect + propagate but DON'T apply tags")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.manifest:
+        print(
+            "[privacy] warning: --manifest is retired and ignored; privacy "
+            "tagging is idempotent and writes only --report.",
+            file=sys.stderr,
+        )
 
     summary = run_privacy_tagging(
         archive_dir=args.archive_dir,
