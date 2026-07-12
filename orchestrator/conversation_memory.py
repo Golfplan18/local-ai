@@ -86,6 +86,17 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    from active_project import (
+        DEFAULT as _DEFAULT_PROJECT_ID,
+        canonicalize_project_nexus,
+    )
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator.active_project import (
+        DEFAULT as _DEFAULT_PROJECT_ID,
+        canonicalize_project_nexus,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Per-conversation write locks
@@ -131,6 +142,28 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 
 
+def normalize_project_ids(project_ids: Any) -> list[str]:
+    """Normalize explicit project memberships while preserving order.
+
+    Commons is a universal view, not a stored membership.  Both its current
+    and legacy sentinels therefore collapse out of an envelope, along with
+    empty/non-string entries and duplicates.
+    """
+    if not isinstance(project_ids, (list, tuple)):
+        return []
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for project_id in project_ids:
+        if not isinstance(project_id, str):
+            continue
+        slug = canonicalize_project_nexus(project_id)
+        if slug == _DEFAULT_PROJECT_ID or slug in seen:
+            continue
+        seen.add(slug)
+        cleaned.append(slug)
+    return cleaned
+
+
 # ---------------------------------------------------------------------------
 # Conversation JSON I/O
 # ---------------------------------------------------------------------------
@@ -141,17 +174,40 @@ def _conversation_path(conversation_id: str, sessions_root: Path) -> Path:
     return Path(sessions_root) / conversation_id / "conversation.json"
 
 
-def load_conversation_json(
-    conversation_id: str,
-    sessions_root: Path | None = None,
-) -> dict[str, Any] | None:
-    """Read the conversation.json for a conversation_id, or None if missing.
+def _atomic_write_envelope(path: Path, data: dict[str, Any]) -> bool:
+    """Atomically replace an envelope while its sidecar lock is held."""
+    tmp_path = path.with_name(
+        f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+    )
+    try:
+        tmp_path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.replace(tmp_path, path)
+        return True
+    except OSError:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
 
-    Returns the raw dict including the ``messages`` list. Never raises on
-    parse error — corrupted files return ``None``, so callers can fall back
-    to the in-memory ``history`` arg without blowing up the pipeline.
+
+def _read_normalized_envelope(
+    conversation_id: str,
+    root: Path,
+    *,
+    require_messages: bool,
+    persist_heal: bool = True,
+) -> dict[str, Any] | None:
+    """Read one envelope and remove explicit Commons memberships.
+
+    The targeted runtime heal is performed under the conversation's write
+    lock and uses an atomic replace.  This makes a mixed-version envelope safe
+    for both current callers and a later pre-rename rollback before the data is
+    exposed through APIs or counts.
     """
-    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     path = _conversation_path(conversation_id, root)
     if not path.exists():
         return None
@@ -161,9 +217,88 @@ def load_conversation_json(
         return None
     if not isinstance(data, dict):
         return None
-    if not isinstance(data.get("messages"), list):
+    if require_messages and not isinstance(data.get("messages"), list):
         return None
-    return data
+    normalized = normalize_project_ids(data.get("project_ids"))
+    needs_heal = "project_ids" in data and data.get("project_ids") != normalized
+    data["project_ids"] = normalized
+    if not (needs_heal and persist_heal):
+        return data
+
+    # Only the rare mixed/default-sentinel case pays for a sidecar lock. Reread
+    # after acquiring it so an intervening turn or metadata mutation cannot be
+    # replaced by the stale pre-lock snapshot.
+    with _conversation_write_lock(conversation_id):
+        try:
+            with _rp.locked_file(path):
+                try:
+                    current = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    return data
+                if not isinstance(current, dict):
+                    return data
+                if require_messages and not isinstance(current.get("messages"), list):
+                    return data
+                current_normalized = normalize_project_ids(current.get("project_ids"))
+                current_needs_heal = (
+                    "project_ids" in current
+                    and current.get("project_ids") != current_normalized
+                )
+                current["project_ids"] = current_normalized
+                if current_needs_heal:
+                    _atomic_write_envelope(path, current)
+                return current
+        except (OSError, TimeoutError):
+            # Persistence is best-effort. The pre-lock snapshot was already
+            # parsed and normalized, so never turn lock contention into a
+            # transient API 404/list omission.
+            return data
+
+
+def _mutate_conversation_envelope(
+    conversation_id: str,
+    root: Path,
+    mutate,
+) -> Path | None:
+    """Normalize, mutate, and atomically rewrite one conversation envelope."""
+    path = _conversation_path(conversation_id, root)
+    if not path.exists():
+        return None
+    with _conversation_write_lock(conversation_id):
+        try:
+            with _rp.locked_file(path):
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    return None
+                if not isinstance(data, dict):
+                    return None
+                data["project_ids"] = normalize_project_ids(data.get("project_ids"))
+                mutate(data)
+                return path if _atomic_write_envelope(path, data) else None
+        except (OSError, TimeoutError):
+            return None
+
+
+def load_conversation_json(
+    conversation_id: str,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Read the conversation.json for a conversation_id, or None if missing.
+
+    Returns the canonical dict including the ``messages`` list. Explicit
+    ``commons`` / legacy ``general`` memberships are removed from the outward
+    value and persisted through a best-effort atomic heal. Never raises on
+    parse error — corrupted files return ``None``, so callers can fall back to
+    the in-memory ``history`` arg without blowing up the pipeline.
+    """
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    return _read_normalized_envelope(
+        conversation_id,
+        root,
+        require_messages=True,
+        persist_heal=True,
+    )
 
 
 def save_turn_spatial_state(
@@ -202,8 +337,10 @@ def save_turn_spatial_state(
     memberships (by nexus slug) to stamp on a NEW envelope, sourced from the
     active-project pointer at the call site. Like ``tag`` it is honored on
     FIRST save only — an existing envelope's ``project_ids`` is preserved
-    verbatim (membership is edited via the project modal, not per turn).
-    ``None`` / empty means the default ``General`` project.
+    semantically (membership is edited via the project modal, not per turn),
+    while malformed/default sentinels are normalized on write.
+    ``None`` / empty means the default ``Commons`` project.  Default
+    sentinels are discarded rather than stored as explicit membership.
 
     The ``trace_ref`` argument (trace manifest, Chunk 0) is the turn's
     pipeline-trace ref ("<conversation_id>/<turn_timestamp>", relative to
@@ -224,12 +361,18 @@ def save_turn_spatial_state(
 
     # Per-conversation lock around the read-modify-write so concurrent
     # writes to the SAME conversation can't last-writer-wins each other.
-    # Different conversations still write in parallel.
+    # The advisory sidecar lock extends that serialization across duplicate
+    # module identities and processes; different conversations still write in
+    # parallel.
     with _conversation_write_lock(conversation_id):
-        return _do_write(path, conversation_id, user_input, ai_response,
-                          tag, timestamp, spatial_representation,
-                          annotations, vision_extraction_result,
-                          project_ids, trace_ref)
+        try:
+            with _rp.locked_file(path):
+                return _do_write(path, conversation_id, user_input, ai_response,
+                                 tag, timestamp, spatial_representation,
+                                 annotations, vision_extraction_result,
+                                 project_ids, trace_ref)
+        except (OSError, TimeoutError):
+            return None
 
 
 def _do_write(
@@ -305,7 +448,7 @@ def _do_write(
             "created":                 timestamp or _dt.now().isoformat(timespec="seconds"),
             "parent_conversation_id":  None,
             "fork_point_chunk_id":     None,
-            "project_ids":             list(project_ids) if project_ids else [],
+            "project_ids":             normalize_project_ids(project_ids),
             "messages":                [],
         }
     else:
@@ -321,8 +464,9 @@ def _do_write(
             existing["parent_conversation_id"] = None
         if "fork_point_chunk_id" not in existing:
             existing["fork_point_chunk_id"] = None
-        if "project_ids" not in existing:
-            existing["project_ids"] = []
+        # Preserve real memberships, but lazily heal legacy/default sentinels
+        # and malformed values whenever an envelope is written.
+        existing["project_ids"] = normalize_project_ids(existing.get("project_ids"))
 
     # Normalize annotations payload: accept either wrapper dict or bare list.
     annotations_normalized: Any
@@ -357,20 +501,7 @@ def _do_write(
     existing["messages"].append(user_turn)
     existing["messages"].append(assistant_turn)
 
-    # Atomic write: stage the new content in a sibling .tmp file, then
-    # rename onto the canonical path. A crash mid-write leaves the prior
-    # conversation.json intact instead of producing a truncated file.
-    # `os.replace` is atomic on POSIX.
-    try:
-        tmp_path = path.with_suffix(path.suffix + ".tmp")
-        tmp_path.write_text(
-            json.dumps(existing, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        os.replace(tmp_path, path)
-    except OSError:
-        return None
-    return path
+    return path if _atomic_write_envelope(path, existing) else None
 
 
 # ---------------------------------------------------------------------------
@@ -546,7 +677,7 @@ def iter_conversations(
           "message_count": <int>,
           "last_activity_at": "<iso timestamp>" | None,
           "last_read_at": "<iso timestamp>" | None,
-          "project_ids": ["<nexus slug>", ...],   # [] == General (G1.33)
+          "project_ids": ["<nexus slug>", ...],   # [] == Commons (G1.33)
         }
 
     Conversations whose conversation.json is missing or unreadable are
@@ -561,14 +692,13 @@ def iter_conversations(
     for entry in root.iterdir():
         if not entry.is_dir():
             continue
-        conv_path = entry / "conversation.json"
-        if not conv_path.exists():
-            continue
-        try:
-            data = json.loads(conv_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(data, dict):
+        data = _read_normalized_envelope(
+            entry.name,
+            root,
+            require_messages=False,
+            persist_heal=True,
+        )
+        if data is None:
             continue
         is_closed = data.get("closed") is True
         if is_closed and not include_closed:
@@ -615,22 +745,19 @@ def iter_conversations(
                 data.get("fork_point_chunk_id")
                 if isinstance(data.get("fork_point_chunk_id"), str) else None
             ),
-            "project_ids": (
-                [p for p in data.get("project_ids", []) if isinstance(p, str)]
-                if isinstance(data.get("project_ids"), list) else []
-            ),
+            "project_ids": list(data.get("project_ids") or []),
         })
     return summaries
 
 
-# V3 spec §6.2 — WELCOME thread reserved id and envelope marker. The
-# thread is created on first launch when the sessions directory has no
-# existing conversations, pinned to the top of the sidebar regardless of
+# V3 spec §6.2 — WELCOME Dialogue reserved id and envelope marker. The
+# Dialogue is created on first launch when the sessions directory has no
+# existing Dialogues, pinned to the top of the sidebar regardless of
 # recency, and exempt from automatic cleanup. The user can manually
 # delete it.
 WELCOME_CONVERSATION_ID = "welcome"
 
-WELCOME_PLACEHOLDER_BODY = """**Welcome to Ora**
+_WELCOME_PLACEHOLDER_LEGACY_BODY = """**Welcome to Ora**
 
 This is your orientation thread. The full help system is under construction.
 
@@ -646,6 +773,60 @@ manually delete it from the sidebar if you don't want it.
 — Under construction —
 """
 
+WELCOME_PLACEHOLDER_BODY = """**Welcome to Ora**
+
+This is your orientation Dialogue. The full help system is under construction.
+
+Once it's ready, this Dialogue will offer:
+- A guided introduction to Ora's interface and the eight-step pipeline
+- Searchable answers about how modes, gears, and frameworks work
+- A place to ask Ora about itself, with answers that accumulate here
+
+For now, this is a placeholder. The Dialogue is pinned to the top of your
+Dialogue list and won't be removed by automatic cleanup. You can
+manually delete it from the sidebar if you don't want it.
+
+— Under construction —
+"""
+
+
+def _migrate_welcome_placeholder(welcome_path: Path) -> bool:
+    """Upgrade only the exact pre-nomenclature WELCOME placeholder.
+
+    User-edited WELCOME content is deliberately left untouched. The migration
+    runs at startup through :func:`ensure_welcome_thread`, so existing installs
+    self-heal without a scheduled or one-off cleanup job.
+    """
+    with _conversation_write_lock(WELCOME_CONVERSATION_ID):
+        try:
+            with _rp.locked_file(welcome_path):
+                try:
+                    envelope = json.loads(welcome_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    return False
+                if not isinstance(envelope, dict) or not envelope.get("is_welcome"):
+                    return False
+                messages = envelope.get("messages")
+                if not isinstance(messages, list):
+                    return False
+                changed = False
+                for message in messages:
+                    if (
+                        isinstance(message, dict)
+                        and message.get("role") == "assistant"
+                        and message.get("content") == _WELCOME_PLACEHOLDER_LEGACY_BODY
+                    ):
+                        message["content"] = WELCOME_PLACEHOLDER_BODY
+                        changed = True
+                if not changed:
+                    return False
+                envelope["project_ids"] = normalize_project_ids(
+                    envelope.get("project_ids")
+                )
+                return _atomic_write_envelope(welcome_path, envelope)
+        except (OSError, TimeoutError):
+            return False
+
 
 def ensure_welcome_thread(
     sessions_root: Path | None = None,
@@ -660,14 +841,16 @@ def ensure_welcome_thread(
     even if the user has prior conversations (used by tests or by an
     explicit "restore the welcome thread" UI action).
 
-    Returns True if the WELCOME envelope was created on this call,
-    False if it already existed or first-launch gating prevented it.
+    Returns True if the WELCOME envelope was created on this call. An existing
+    untouched legacy placeholder is upgraded in place but still returns False;
+    user-edited content is never rewritten.
     """
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     welcome_path = _conversation_path(WELCOME_CONVERSATION_ID, root)
     if welcome_path.exists():
+        _migrate_welcome_placeholder(welcome_path)
         return False
 
     if only_if_first_launch and root.exists() and root.is_dir():
@@ -689,6 +872,7 @@ def ensure_welcome_thread(
         "parent_conversation_id":  None,
         "fork_point_chunk_id":     None,
         "is_welcome":              True,
+        "project_ids":             [],
         "messages": [
             {
                 "role":                      "assistant",
@@ -700,14 +884,14 @@ def ensure_welcome_thread(
             }
         ],
     }
-    try:
-        welcome_path.write_text(
-            json.dumps(envelope, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return False
-    return True
+    with _conversation_write_lock(WELCOME_CONVERSATION_ID):
+        try:
+            with _rp.locked_file(welcome_path):
+                if welcome_path.exists():
+                    return False
+                return _atomic_write_envelope(welcome_path, envelope)
+        except (OSError, TimeoutError):
+            return False
 
 
 def fork_conversation(
@@ -769,9 +953,7 @@ def fork_conversation(
     forked_at = timestamp or _dt.now().isoformat(timespec="seconds")
 
     # A fork stays in the same projects as its parent (G1.33).
-    parent_projects = [
-        p for p in (parent.get("project_ids") or []) if isinstance(p, str)
-    ]
+    parent_projects = normalize_project_ids(parent.get("project_ids"))
 
     child = {
         "conversation_id":         new_id,
@@ -788,12 +970,15 @@ def fork_conversation(
     child_path = _conversation_path(new_id, root)
     try:
         child_path.parent.mkdir(parents=True, exist_ok=True)
-        child_path.write_text(
-            json.dumps(child, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
     except OSError:
         return None
+    with _conversation_write_lock(new_id):
+        try:
+            with _rp.locked_file(child_path):
+                if not _atomic_write_envelope(child_path, child):
+                    return None
+        except (OSError, TimeoutError):
+            return None
     return child
 
 
@@ -821,28 +1006,13 @@ def mark_conversation_errored(
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
 
-    data["last_status"]        = "errored"
-    data["last_error_summary"] = summary or ""
-    data["last_errored_at"]    = timestamp or _dt.now().isoformat(timespec="seconds")
+    def mutate(data: dict[str, Any]) -> None:
+        data["last_status"] = "errored"
+        data["last_error_summary"] = summary or ""
+        data["last_errored_at"] = timestamp or _dt.now().isoformat(timespec="seconds")
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def clear_conversation_error(
@@ -859,32 +1029,12 @@ def clear_conversation_error(
     if present; leaves the envelope otherwise untouched.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
 
-    changed = False
-    for key in ("last_status", "last_error_summary", "last_errored_at"):
-        if key in data:
+    def mutate(data: dict[str, Any]) -> None:
+        for key in ("last_status", "last_error_summary", "last_errored_at"):
             data.pop(key, None)
-            changed = True
-    if not changed:
-        return path  # idempotent; nothing to write
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def mark_conversation_read(
@@ -906,26 +1056,11 @@ def mark_conversation_read(
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
 
-    data["last_read_at"] = timestamp or _dt.now().isoformat(timespec="seconds")
+    def mutate(data: dict[str, Any]) -> None:
+        data["last_read_at"] = timestamp or _dt.now().isoformat(timespec="seconds")
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def set_display_name(
@@ -945,30 +1080,15 @@ def set_display_name(
     Returns the path written, or None if the envelope is missing.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
-
     cleaned = (display_name or "").strip()
-    if cleaned:
-        data["display_name"] = cleaned[:200]
-    else:
-        data.pop("display_name", None)
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    def mutate(data: dict[str, Any]) -> None:
+        if cleaned:
+            data["display_name"] = cleaned[:200]
+        else:
+            data.pop("display_name", None)
+
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def set_conversation_pinned(
@@ -986,29 +1106,14 @@ def set_conversation_pinned(
     Returns the path written, or None if the envelope is missing.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
 
-    if pinned:
-        data["pinned"] = True
-    else:
-        data.pop("pinned", None)
+    def mutate(data: dict[str, Any]) -> None:
+        if pinned:
+            data["pinned"] = True
+        else:
+            data.pop("pinned", None)
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def set_conversation_closed(
@@ -1026,29 +1131,14 @@ def set_conversation_closed(
     Returns the path written, or None if the envelope is missing.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
 
-    if closed:
-        data["closed"] = True
-    else:
-        data.pop("closed", None)
+    def mutate(data: dict[str, Any]) -> None:
+        if closed:
+            data["closed"] = True
+        else:
+            data.pop("closed", None)
 
-    try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def set_conversation_projects(
@@ -1070,43 +1160,11 @@ def set_conversation_projects(
     Returns the path written, or None if the envelope is missing.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
-    path = _conversation_path(conversation_id, root)
-    if not path.exists():
-        return None
-    with _conversation_write_lock(conversation_id):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return None
-        if not isinstance(data, dict):
-            return None
 
-        cleaned: list[str] = []
-        seen: set[str] = set()
-        for pid in project_ids or []:
-            if not isinstance(pid, str):
-                continue
-            slug = pid.strip()
-            # Commons is the implicit baseline (empty list) — never stored,
-            # and therefore never removable. Its legacy id "general" is
-            # honored the same way.
-            if not slug or slug.lower() in ("commons", "general"):
-                continue
-            if slug not in seen:
-                seen.add(slug)
-                cleaned.append(slug)
-        data["project_ids"] = cleaned
+    def mutate(data: dict[str, Any]) -> None:
+        data["project_ids"] = normalize_project_ids(project_ids)
 
-        try:
-            tmp_path = path.with_suffix(path.suffix + ".tmp")
-            tmp_path.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            os.replace(tmp_path, path)
-        except OSError:
-            return None
-    return path
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 __all__ = [

@@ -1,4 +1,4 @@
-**Status as of 2026-06-16: legacy natural-language installer appendix, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This appendix is retained as architecture/specification material until the G3.32 natural-language installer update.
+**Status as of 2026-07-12: legacy natural-language installer appendix, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This appendix is retained as architecture/specification material until the G3.32 natural-language installer update. The former Layer 10 interface framework is retained only as a retirement record and must not recreate its config-driven layouts or legacy themes.
 
 ### How File Access Actually Works
 
@@ -84,8 +84,8 @@ PHASE 2 — ADDITIVE LOCAL CAPABILITY (hardware permitting)
   Layer 7: Desktop Launcher Generation
   Layer 8: Documentation and Verification
   Layer 9: Model Switcher Module (Tier C only — multi-model pipeline slot configuration)
-  Layer 10: Interface Customization Framework (all tiers — layouts, themes, layout generator)
-  Layer 11: App Bundle + Custom Icon (macOS only — ai.app with Python launcher and lettermark icon)
+  Layer 10: Interface Customization retirement verification (all tiers — preserve hardcoded V3 layout and V3 Theme Library; do not recreate legacy layouts/themes)
+  Layer 11: App Bundle + Custom Icon (macOS only — in-place Ora.app with tracked launcher shim and generated ◎ icon variants)
   Layer 12: Conversation Auto-Save + RAG Indexing (all tiers — markdown logs + ChromaDB indexing)
 
   Local Endpoint Registration
@@ -162,7 +162,7 @@ PHASE 2 (hardware permitting — 8GB+ RAM):
 14. Create a desktop launcher
 15. Generate documentation and run final verification
 16. Install the Model Switcher Module (Tier C only — configure which model fills each pipeline slot)
-17. Install the Interface Customization Framework (all tiers — layout presets, themes, layout generator)
+17. Verify the retired Interface Customization boundary (all tiers — keep the code-defined V3 workspace and `/api/v3-themes/*`; do not recreate layout presets, generator, `config/interface.json`, or legacy themes)
 
 After Phase 1, you'll have a working AI interface at localhost:5000
 with cloud-API access (OpenRouter and optionally direct provider APIs)

@@ -12,6 +12,7 @@ import tempfile
 import unittest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault("ORA_HOME", _REPO)
 for _p in (_REPO, os.path.join(_REPO, "server"), os.path.join(_REPO, "orchestrator")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -35,7 +36,10 @@ class ModalEndpointTests(unittest.TestCase):
         from orchestrator import project_meta as pm
         self._pm = pm
         self._orig_projects_dir = pm.DEFAULT_VAULT_PROJECTS_DIR
+        self._orig_pointer_dir = pm.POINTER_DIR
         pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
+        pm.POINTER_DIR = self.vault / "project-pointers"
+        pm.create_project("My Book")
 
         self.sess = pathlib.Path(self._tmp.name) / "sessions"
         self.sess.mkdir()
@@ -52,6 +56,7 @@ class ModalEndpointTests(unittest.TestCase):
         else:
             os.environ["ORA_VAULT_PATH"] = self._orig_env
         self._pm.DEFAULT_VAULT_PROJECTS_DIR = self._orig_projects_dir
+        self._pm.POINTER_DIR = self._orig_pointer_dir
         cm._DEFAULT_SESSIONS_ROOT = self._orig_root
         self._tmp.cleanup()
 
@@ -74,6 +79,32 @@ class ModalEndpointTests(unittest.TestCase):
         body = json.loads(r.data)
         self.assertTrue(body["ok"])
         self.assertFalse(body["exists"])
+
+    def test_files_index_keeps_original_folder_after_display_rename(self):
+        self._pm.update_project_meta("my-book", {"name": "Book of Law"})
+        r = self.client.get("/api/projects/my-book/files?name=Book of Law")
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data)
+        self.assertTrue(body["exists"])
+        self.assertEqual(pathlib.Path(body["folder"]), self.vault / "Projects" / "My Book")
+        self.assertIn("draft.md", {f["name"] for f in body["files"]})
+
+    def test_commons_files_index_uses_vault_root_not_projects_commons(self):
+        (self.vault / "commons-output.md").write_text("root output", encoding="utf-8")
+        fictional = self.vault / "Projects" / "Commons"
+        fictional.mkdir()
+        (fictional / "wrong.md").write_text("wrong", encoding="utf-8")
+
+        r = self.client.get("/api/projects/general/files?name=Commons")
+
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data)
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["is_vault_root"])
+        self.assertEqual(pathlib.Path(body["folder"]), self.vault)
+        self.assertIn("commons-output.md", {f["name"] for f in body["files"]})
+        self.assertNotIn("wrong.md", {f["name"] for f in body["files"]})
+        self.assertIsNone(body["matrix"])
 
     # ── conversations ──────────────────────────────────────────────────────
     def test_project_conversations_filter(self):

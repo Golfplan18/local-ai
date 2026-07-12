@@ -2,7 +2,7 @@
 
 This system was designed to be forked. Not as a courtesy — as the point.
 
-The premise of this project is that natural language is source code. The installer that builds this system is written in natural language. The specification that describes the system is written in natural language. If you fork this repository, customize the system, and run the reconciliation framework, your fork produces its own specification and its own installer — both in natural language. Your version becomes a complete, self-describing system that anyone can install from your instructions.
+The premise of this project is that natural language is source code. The specification that describes the system is written in natural language, and the natural-language installer layer set is retained as an architecture/specification target. The current public install, however, is a source install driven by `scripts/install.py`. If you fork this repository, customize the system, and run the reconciliation framework, your fork should keep both the executable installer and the natural-language specifications aligned.
 
 There is no one-size-fits-all version of this system. There is a base version, and there are as many forks as there are people with ideas about how it should work.
 
@@ -10,7 +10,7 @@ There is no one-size-fits-all version of this system. There is a base version, a
 
 - A GitHub account
 - Two repositories: one **public** (your fork of this system), one **private** (your personal data)
-- The system installed and running (see the book, Chapter 1, or `installer/install-manifest.md`)
+- The system installed and running (see [[Installer — Ora]] or the repo's `docs/install-guide.md`)
 
 ## Repository Architecture
 
@@ -20,13 +20,13 @@ Everything the system needs to run on any machine:
 
 | Directory | Contents |
 |---|---|
-| `installer/` | Natural language installer layers — execute these to build the system |
+| `installer/` | Legacy natural-language installer layers — retained for architecture/specification and future G3.32 update |
 | `orchestrator/` | Pipeline engine and tool implementations |
-| `server/` | Chat interface (Flask + browser UI) |
+| `server/` | V3 interface (Flask, browser UI, component styles/scripts, and theme packages) |
 | `frameworks/` | Framework library (thinking tools for AI) |
 | `modes/` | Analysis modes (18 ways to approach a problem) |
 | `modules/` | Thinking tools and question banks |
-| `config/` | Configuration templates and theme files |
+| `config/` | Runtime configuration templates |
 | `boot/` | System prompt |
 
 These files are tracked in git. When you customize them, your fork diverges from the original. That's the point.
@@ -56,9 +56,11 @@ The `.gitignore` already excludes all of these from the public repo. To back the
 ```
 # Fork on GitHub, then:
 git clone https://github.com/YOUR-USERNAME/ora.git ~/ora
+cd ~/ora
+python3 scripts/install.py --profile solo
 ```
 
-Follow the installer manifest (`installer/install-manifest.md`) to build the system. The installer is written in natural language — load it into Claude Code and it builds everything.
+Follow `docs/install-guide.md` for the source-install path. The `installer/install-manifest.md` layer set is not the live installer today; it is a legacy natural-language specification target scheduled for G3.32 reconciliation.
 
 ### 2. Use It
 
@@ -70,12 +72,15 @@ This is where your fork becomes yours. Ideas that make the system better for you
 
 - **New modes** — add analysis modes in `modes/` for domains you work in
 - **New frameworks** — create frameworks in `frameworks/user/` for problems you solve repeatedly
-- **UI changes** — modify `server/index.html` and themes in `config/themes/`
+- **UI changes** — modify the V3 shell in `server/index-v3.html`, component styles under `server/static/styles/`, and behavior under `server/static/js/` (including `v3-layout.js`)
+- **Theme changes** — use the V3 Theme Library, or add a fork-bundled package under `server/static/themes/<theme-id>/` with `manifest.json` and `theme.css`; theme operations are exposed through `/api/v3-themes/*`
 - **New tools** — add orchestrator tools in `orchestrator/tools/`
 - **Pipeline changes** — modify `orchestrator/boot.py` to change how queries are processed
 - **New thinking tools** — add question banks in `modules/tools/`
 
-Every change you make creates drift between the installer (which describes the old system) and the filesystem (which contains your system). That drift is expected. It's the raw material for the next step.
+Every change you make can create drift between the executable installer, the natural-language specifications, and the filesystem that contains your system. That drift is expected. It's the raw material for the next step.
+
+The V3 workspace layout is intentionally defined in the interface code. Do not recreate the retired `config/interface.json`, `config/layouts/` presets, layout APIs, or natural-language layout generator when customizing a fork. A changed layout is a cohesive V3 shell/style/script change; a changed visual theme belongs in the V3 Theme Library rather than the retired `config/themes/` directory.
 
 ### 4. Reconcile
 

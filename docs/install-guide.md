@@ -57,10 +57,40 @@ Claude Code is not required. Claude Code, Codex, Copilot, OpenCode, Cursor, Cont
 git clone https://github.com/ora-commons/ora.git ~/ora
 cd ~/ora
 python3 scripts/install.py --profile solo
-./start.sh
+./scripts/ora-launchd.sh install
 ```
 
-Open <http://localhost:5000> after the launcher starts the server.
+The launchd installer starts Ora immediately, verifies that the expected
+checkout answers its health check, and installs a per-user `RunAtLoad` /
+`KeepAlive` service for restart and login recovery. It also updates an existing
+local `Ora.app` launcher to delegate to the same tracked startup path. Inspect it
+with:
+
+```bash
+./scripts/ora-launchd.sh status
+```
+
+Use the port in the exact `Health:` URL printed by the installer and open that
+origin (normally `http://localhost:5000`, but 5001–5010 may be selected if a
+lower port is occupied). Logs are written to `logs/ora-server.stdout.log` and
+`logs/ora-server.stderr.log` and are bounded by Ora's retention sweeper.
+
+For a one-session, unsupervised start instead, use `./start.sh` before installing
+the service. If an unsupervised Ora process is already running when you decide to
+enable supervision, run `./stop.sh` first, then the install command above.
+
+Service controls:
+
+```bash
+./start.sh                              # start the installed service if needed and open Ora
+./stop.sh                               # stop it; keep the plist installed
+./scripts/ora-launchd.sh restart
+./scripts/ora-launchd.sh uninstall      # stop it and remove the plist
+```
+
+The label is user-global. Management commands refuse to stop or uninstall a
+service installed from a different checkout; `--force-target-mismatch` exists
+only for deliberate recovery after checking the installed plist target.
 
 ### Optional local models
 
@@ -168,6 +198,7 @@ See `cloud-ora-install.md` for the full operator guide.
 | Free model reliability | Free models may be rate-limited or unavailable | Add OpenRouter credits or direct provider keys for daily use |
 | API provider costs | Most providers vary by usage | Start with free tiers/credits where available; avoid fixed cost assumptions |
 | Python version | macOS and Windows may point to older Python | Install Python 3.11+ and run the installer with that binary |
+| macOS vault access under launchd | Health can pass while Documents access is denied | Inspect `logs/ora-server.stderr.log`; in System Settings → Privacy & Security, grant the selected Python/Ora process Files & Folders or Full Disk Access |
 | Local model downloads | Large downloads and RAM-dependent fit | Skip at first; run `python3 scripts/install.py models` later |
 
 ---

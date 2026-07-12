@@ -1,9 +1,9 @@
 """Retention sweeper — bounded housekeeping for Ora's append-only artifacts.
 
 Ora accumulates several unbounded sinks: per-turn pipeline traces, the
-root server.log (appended by the Ora.app launcher's detached server
-process), dated logs under ~/ora/logs/, and append-only JSONL changelogs
-under ~/ora/data/. Nothing rotated any of them before this module; the
+root server.log (appended by the unsupervised launcher), launchd's active
+stdout/stderr logs, dated logs under ~/ora/logs/, and append-only JSONL
+changelogs under ~/ora/data/. Nothing rotated any of them before this module; the
 2026-06-11 repo audit found 80 MB of traces and a 13 MB server.log.
 
 Sweep targets (each governed by an env knob; 0 disables the target):
@@ -22,6 +22,8 @@ Sweep targets (each governed by an env knob; 0 disables the target):
                                         holds a long-lived O_APPEND fd, so
                                         rename would not detach the writer
                                         but truncation is append-safe
+  logs/ora-server.{stdout,stderr}.log    same size limit and copy/truncate
+                                        behavior for launchd's live fds
   data/model-catalog-changes.jsonl      when larger than
   data/compaction-events.jsonl          ORA_RETENTION_JSONL_MB (10):
                                         atomic-rename to a temp name, gzip
@@ -79,6 +81,10 @@ LOGS_DIR = os.path.join(ORA_DIR, "logs")
 LOG_ARCHIVE_DIR = os.path.join(LOGS_DIR, "archive")
 DATA_ARCHIVE_DIR = os.path.join(DATA_DIR, "archive")
 SERVER_LOG = os.path.join(ORA_DIR, "server.log")
+LAUNCHD_SERVER_LOGS = (
+    os.path.join(LOGS_DIR, "ora-server.stdout.log"),
+    os.path.join(LOGS_DIR, "ora-server.stderr.log"),
+)
 SESSIONS_DIR = os.path.join(ORA_DIR, "sessions")
 SESSIONS_ARCHIVE_DIR = os.path.join(SESSIONS_DIR, "archived")
 OVERSIGHT_DATA_DIR = os.path.join(DATA_DIR, "oversight")
@@ -156,8 +162,17 @@ def _sweep_logs(cutoff_days: int, archive_days: int, now: float,
                 dry_run: bool, summary: dict):
     if cutoff_days > 0 and os.path.isdir(LOGS_DIR):
         cutoff = now - cutoff_days * 86400
+        launchd_live_names = {
+            os.path.basename(path) for path in LAUNCHD_SERVER_LOGS
+        }
         for name in sorted(os.listdir(LOGS_DIR)):
             if not name.endswith(".log"):
+                continue
+            # launchd may hold these descriptors open through long quiet
+            # periods. Unlinking by age would strand future writes on an
+            # invisible inode; the size-based copy/truncate pass below is the
+            # only safe rotation policy for them.
+            if name in launchd_live_names:
                 continue
             path = os.path.join(LOGS_DIR, name)
             try:
@@ -218,6 +233,41 @@ def _sweep_server_log(max_mb: int, dry_run: bool, summary: dict):
     summary["bytes_freed"] += size
 
 
+def _sweep_launchd_server_logs(max_mb: int, dry_run: bool, summary: dict):
+    """Size-bound launchd's continuously-active stdout/stderr files.
+
+    Age-based rotation never selects an active log because each write refreshes
+    its mtime. Copy-then-truncate preserves launchd's long-lived file descriptor
+    in the same way as the root ``server.log`` rotation above. This check cannot
+    run synchronously at each application write: launchd owns the descriptors,
+    and native/third-party stderr writes bypass Python logging entirely. Reusing
+    the already-running oversight retention pass bounds those external sinks
+    without introducing another scheduled process.
+    """
+    if max_mb <= 0:
+        return
+    for path in LAUNCHD_SERVER_LOGS:
+        if not os.path.isfile(path):
+            continue
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            continue
+        if size <= max_mb * 1024 * 1024:
+            continue
+        name = os.path.basename(path)
+        stem = name[:-4] if name.endswith(".log") else name
+        if not dry_run:
+            _gzip_file(
+                path,
+                os.path.join(LOG_ARCHIVE_DIR, f"{stem}-{_stamp()}.log.gz"),
+            )
+            with open(path, "w"):
+                pass
+        summary["launchd_logs_rotated"].append(name)
+        summary["bytes_freed"] += size
+
+
 def _sweep_jsonl(max_mb: int, dry_run: bool, summary: dict):
     if max_mb <= 0:
         return
@@ -268,6 +318,7 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
         "logs_archived": 0,
         "archives_deleted": 0,
         "server_log_rotated": False,
+        "launchd_logs_rotated": [],
         "jsonl_rotated": [],
         "sessions_archived": 0,
         "bytes_freed": 0,
@@ -276,7 +327,9 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
     _sweep_traces(_env_int("ORA_RETENTION_TRACES_DAYS", 30), now, dry_run, summary)
     _sweep_logs(_env_int("ORA_RETENTION_LOGS_DAYS", 30),
                 _env_int("ORA_RETENTION_ARCHIVE_DAYS", 180), now, dry_run, summary)
-    _sweep_server_log(_env_int("ORA_RETENTION_SERVERLOG_MB", 50), dry_run, summary)
+    server_log_limit = _env_int("ORA_RETENTION_SERVERLOG_MB", 50)
+    _sweep_server_log(server_log_limit, dry_run, summary)
+    _sweep_launchd_server_logs(server_log_limit, dry_run, summary)
     _sweep_jsonl(_env_int("ORA_RETENTION_JSONL_MB", 10), dry_run, summary)
     _sweep_sessions(_env_int("ORA_RETENTION_SESSIONS_DAYS", 0), now, dry_run, summary)
     if not dry_run:

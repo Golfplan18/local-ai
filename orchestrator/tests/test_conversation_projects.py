@@ -19,6 +19,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import threading
 import unittest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -49,6 +50,16 @@ class ProjectMembershipTests(unittest.TestCase):
     def test_new_envelope_defaults_empty(self):
         cm.save_turn_spatial_state("c2", "hello", "hi", sessions_root=self.root)
         self.assertEqual(self._read("c2")["project_ids"], [])
+
+    def test_new_envelope_strips_default_aliases_and_duplicates(self):
+        cm.save_turn_spatial_state(
+            "c2b",
+            "hello",
+            "hi",
+            project_ids=["book", " Commons ", "GENERAL", "book", " law "],
+            sessions_root=self.root,
+        )
+        self.assertEqual(self._read("c2b")["project_ids"], ["book", "law"])
 
     def test_existing_envelope_preserves_membership(self):
         cm.save_turn_spatial_state(
@@ -105,6 +116,192 @@ class ProjectMembershipTests(unittest.TestCase):
         rows = {r["conversation_id"]: r for r in cm.iter_conversations(self.root)}
         self.assertEqual(rows["c6"]["project_ids"], ["book", "law"])
 
+    def test_iter_conversations_filters_mixed_explicit_sentinels(self):
+        conv_dir = self.root / "c6b"
+        conv_dir.mkdir(parents=True)
+        (conv_dir / "conversation.json").write_text(
+            json.dumps({
+                "conversation_id": "c6b",
+                "messages": [],
+                "project_ids": ["commons", "book", "general", "book"],
+            }),
+            encoding="utf-8",
+        )
+        rows = {r["conversation_id"]: r for r in cm.iter_conversations(self.root)}
+        self.assertEqual(rows["c6b"]["project_ids"], ["book"])
+        healed = json.loads((conv_dir / "conversation.json").read_text(encoding="utf-8"))
+        self.assertEqual(healed["project_ids"], ["book"])
+
+    def test_full_envelope_load_heals_mixed_memberships_on_disk(self):
+        conv_dir = self.root / "c6-load"
+        conv_dir.mkdir(parents=True)
+        path = conv_dir / "conversation.json"
+        path.write_text(
+            json.dumps({
+                "conversation_id": "c6-load",
+                "messages": [],
+                "project_ids": ["commons", "book", "general", "book"],
+            }),
+            encoding="utf-8",
+        )
+        loaded = cm.load_conversation_json("c6-load", sessions_root=self.root)
+        self.assertEqual(loaded["project_ids"], ["book"])
+        self.assertEqual(json.loads(path.read_text())["project_ids"], ["book"])
+
+    def test_non_membership_mutations_also_heal_mixed_memberships(self):
+        mutations = (
+            lambda cid: cm.mark_conversation_read(cid, sessions_root=self.root),
+            lambda cid: cm.mark_conversation_errored(cid, "x", sessions_root=self.root),
+            lambda cid: cm.clear_conversation_error(cid, sessions_root=self.root),
+            lambda cid: cm.set_display_name(cid, "Renamed", sessions_root=self.root),
+            lambda cid: cm.set_conversation_pinned(cid, True, sessions_root=self.root),
+            lambda cid: cm.set_conversation_closed(cid, True, sessions_root=self.root),
+        )
+        for index, mutate in enumerate(mutations):
+            cid = f"c6-mutate-{index}"
+            conv_dir = self.root / cid
+            conv_dir.mkdir(parents=True)
+            path = conv_dir / "conversation.json"
+            path.write_text(
+                json.dumps({
+                    "conversation_id": cid,
+                    "messages": [],
+                    "project_ids": ["general", "book", "commons", "book"],
+                }),
+                encoding="utf-8",
+            )
+            with self.subTest(mutation=index):
+                self.assertIsNotNone(mutate(cid))
+                self.assertEqual(json.loads(path.read_text())["project_ids"], ["book"])
+
+    def test_cross_module_heal_cannot_erase_concurrent_turn(self):
+        orchestrator_dir = str(pathlib.Path(_REPO) / "orchestrator")
+        if orchestrator_dir not in sys.path:
+            sys.path.insert(0, orchestrator_dir)
+        import conversation_memory as top_level_cm
+
+        self.assertIsNot(top_level_cm, cm)
+        cid = "c6-race"
+        conv_dir = self.root / cid
+        conv_dir.mkdir(parents=True)
+        path = conv_dir / "conversation.json"
+        path.write_text(
+            json.dumps({
+                "conversation_id": cid,
+                "messages": [],
+                "project_ids": ["commons"],
+            }),
+            encoding="utf-8",
+        )
+
+        heal_at_write = threading.Event()
+        release_heal = threading.Event()
+        turn_done = threading.Event()
+        errors: list[BaseException] = []
+        original_write = top_level_cm._atomic_write_envelope
+
+        def delayed_heal_write(target, data):
+            heal_at_write.set()
+            release_heal.wait(timeout=5)
+            return original_write(target, data)
+
+        def heal():
+            try:
+                top_level_cm.load_conversation_json(cid, sessions_root=self.root)
+            except BaseException as exc:  # pragma: no cover - regression diagnostics
+                errors.append(exc)
+
+        def append_turn():
+            try:
+                cm.save_turn_spatial_state(
+                    cid, "new user turn", "new assistant turn", sessions_root=self.root
+                )
+            except BaseException as exc:  # pragma: no cover - regression diagnostics
+                errors.append(exc)
+            finally:
+                turn_done.set()
+
+        top_level_cm._atomic_write_envelope = delayed_heal_write
+        try:
+            heal_thread = threading.Thread(target=heal)
+            heal_thread.start()
+            self.assertTrue(heal_at_write.wait(timeout=5))
+            turn_thread = threading.Thread(target=append_turn)
+            turn_thread.start()
+            # The append must wait rather than write underneath the stale heal.
+            self.assertFalse(turn_done.wait(timeout=0.2))
+            release_heal.set()
+            heal_thread.join(timeout=5)
+            turn_thread.join(timeout=5)
+        finally:
+            release_heal.set()
+            top_level_cm._atomic_write_envelope = original_write
+
+        self.assertFalse(errors)
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(stored["project_ids"], [])
+        self.assertEqual(
+            [message["content"] for message in stored["messages"]],
+            ["new user turn", "new assistant turn"],
+        )
+
+    def test_missing_project_ids_is_canonical_outward_without_disk_churn(self):
+        cid = "c6-missing"
+        conv_dir = self.root / cid
+        conv_dir.mkdir(parents=True)
+        path = conv_dir / "conversation.json"
+        original = json.dumps({"conversation_id": cid, "messages": []})
+        path.write_text(original, encoding="utf-8")
+
+        loaded = cm.load_conversation_json(cid, sessions_root=self.root)
+        self.assertEqual(loaded["project_ids"], [])
+        self.assertEqual(path.read_text(encoding="utf-8"), original)
+        self.assertFalse(pathlib.Path(str(path) + ".lock").exists())
+
+    def test_heal_lock_timeout_still_returns_canonical_snapshot(self):
+        cid = "c6-lock-timeout"
+        conv_dir = self.root / cid
+        conv_dir.mkdir(parents=True)
+        path = conv_dir / "conversation.json"
+        raw = {
+            "conversation_id": cid,
+            "messages": [],
+            "project_ids": ["commons", "book", "general"],
+        }
+        path.write_text(json.dumps(raw), encoding="utf-8")
+
+        class TimedOutLock:
+            def __enter__(self):
+                raise TimeoutError("busy")
+
+            def __exit__(self, *_args):
+                return False
+
+        original_locked_file = cm._rp.locked_file
+        cm._rp.locked_file = lambda _path: TimedOutLock()
+        try:
+            loaded = cm.load_conversation_json(cid, sessions_root=self.root)
+        finally:
+            cm._rp.locked_file = original_locked_file
+
+        self.assertEqual(loaded["project_ids"], ["book"])
+        # The failed best-effort heal leaves disk untouched for a later retry.
+        self.assertEqual(json.loads(path.read_text()), raw)
+
+    def test_existing_envelope_lazily_heals_default_sentinels_on_save(self):
+        conv_dir = self.root / "c6c"
+        conv_dir.mkdir(parents=True)
+        (conv_dir / "conversation.json").write_text(
+            json.dumps({
+                "conversation_id": "c6c",
+                "messages": [],
+                "project_ids": ["general", "book", "commons"],
+            }),
+            encoding="utf-8",
+        )
+        cm.save_turn_spatial_state("c6c", "u", "a", sessions_root=self.root)
+        self.assertEqual(self._read("c6c")["project_ids"], ["book"])
+
     def test_fork_inherits_project_ids(self):
         cm.save_turn_spatial_state(
             "parent", "u", "a", project_ids=["book"], sessions_root=self.root
@@ -114,6 +311,17 @@ class ProjectMembershipTests(unittest.TestCase):
         )
         self.assertIsNotNone(new_id)
         self.assertEqual(self._read("child")["project_ids"], ["book"])
+
+    def test_fork_filters_legacy_default_memberships(self):
+        cm.save_turn_spatial_state(
+            "parent-mixed", "u", "a", project_ids=["book"], sessions_root=self.root
+        )
+        parent_path = self.root / "parent-mixed" / "conversation.json"
+        parent = json.loads(parent_path.read_text(encoding="utf-8"))
+        parent["project_ids"] = ["general", "book", "commons"]
+        parent_path.write_text(json.dumps(parent), encoding="utf-8")
+        cm.fork_conversation("parent-mixed", "child-mixed", sessions_root=self.root)
+        self.assertEqual(self._read("child-mixed")["project_ids"], ["book"])
 
 
 class MasterMatrixPathTests(unittest.TestCase):

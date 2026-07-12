@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ora.server</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__ORA_HOME__/run-ora-server.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__ORA_HOME__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__USER_HOME__</string>
+    <key>ORA_HOME</key>
+    <string>__ORA_HOME__</string>
+    <key>PATH</key>
+    <string>__USER_HOME__/.local/bin:__USER_HOME__/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+
+  <key>StandardOutPath</key>
+  <string>__ORA_HOME__/logs/ora-server.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>__ORA_HOME__/logs/ora-server.stderr.log</string>
+</dict>
+</plist>

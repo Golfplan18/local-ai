@@ -16,7 +16,7 @@ Recognized commands:
 
   /render <off-spec> <instance> [<output-dir>]
       Render a corpus instance through a bespoke OFF spec.
-      Default output-dir: ~/Documents/vault/Outputs/
+      Default output-dir: the vault root.
 
   /queue
       List pending entries in the human-review queue.
@@ -77,7 +77,7 @@ except Exception:  # pragma: no cover - defensive
     ORA_DIR = os.path.join(_ORA_ROOT, "")
     VAULT_DIR = os.path.expanduser("~/Documents/vault/")
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
-DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
+DEFAULT_OUTPUT_DIR = os.path.normpath(VAULT_DIR)
 
 
 KNOWN_COMMANDS = runtime_command_names()

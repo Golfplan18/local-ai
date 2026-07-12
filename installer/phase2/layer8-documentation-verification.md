@@ -1,6 +1,9 @@
 ### PHASE 2, LAYER 8: DOCUMENTATION AND VERIFICATION
 
-**Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
+**Status 2026-07-12: legacy natural-language installer layer with its launcher
+and runtime-verification contract reconciled.** Do not execute this file as the
+live installer. Use `scripts/install.py --profile solo`; this layer is retained
+as a G3.32 specification target.
 
 **Stage Focus**: Generate documentation files and perform final end-to-end verification.
 
@@ -75,25 +78,32 @@
    # Your Local AI System
 
    ## Starting
-   Double-click the [LocalAI] icon on your Desktop.
-   Your browser will open to http://localhost:5000 — your AI chat interface.
+   On macOS, install durable supervision once with:
+   `[workspace]/scripts/ora-launchd.sh install --ora-home "[workspace]"`.
+   Then double-click the in-place `Ora.app` or run `[workspace]/start.sh`.
+   The launcher prints and opens the exact healthy localhost origin selected
+   from ports 5000–5010. Do not assume port 5000 is always free.
 
    ## Stopping
-   Run the stop script at [workspace]/stop.[sh|bat],
-   or close the terminal window that appeared when you started.
+   Run `[workspace]/stop.sh` (or `stop.bat` on Windows). On macOS this unloads
+   the matching supervised service; the unsupervised fallback targets only this
+   checkout's exact Python server process. Closing a terminal is not the service
+   stop mechanism.
 
    ## How This Works
 
-   Your AI interface runs at localhost:5000 — a small server on your
-   machine that keeps Python in the loop between you and the AI model.
+   Your AI interface runs at the localhost origin printed by the launcher — a
+   small server on your machine that keeps Python in the loop between you and
+   the AI model.
 
    This matters because your AI can use tools — web search, file access,
    knowledge search — and those tools run in Python. The browser interface
-   at localhost:5000 IS the orchestrator interface. Tool calls execute
-   automatically, invisibly, before you see the final response.
+   at that reported localhost origin IS the orchestrator interface. Tool calls
+   execute automatically, invisibly, before you see the final response.
 
    Do not use claude.ai, ChatGPT, or Gemini directly for work that requires
-   tools. Those interfaces have no Python in the loop. Use localhost:5000.
+   tools. Those interfaces have no Python in the loop. Use the reported Ora
+   localhost origin.
 
    ## Your System Files
 
@@ -147,10 +157,10 @@
    - If the browser opens but shows "No AI endpoints configured": the
      endpoint registry may need to be rebuilt. Run this framework again.
    - If the browser opens but shows "connection refused": the server
-     isn't running. Click the launcher.
+     isn't running. Run the launcher and use the exact URL it reports.
    - If tool calls don't execute (you see <tool_call> tags in the response):
      you may be connected to a commercial AI directly rather than going
-     through localhost:5000. Always use the launcher.
+     through Ora's reported localhost origin. Always use the launcher.
    - If the local model responds with garbled text: the chat template
      may need updating. Run this framework again.
 
@@ -162,14 +172,21 @@
    ```
 
 3. Perform final end-to-end verification:
-   a. Execute the launcher.
-   b. Wait for the browser to open to localhost:5000.
+   a. On macOS, run `[workspace]/scripts/ora-launchd.sh install --ora-home
+      "[workspace]"`; on Linux/WSL run `[workspace]/start.sh`.
+   b. Capture the exact health URL printed by the launcher (port 5000–5010),
+      open that origin, and verify `/health` reports the canonical physical
+      `[workspace]` path in `ora_home`.
    c. Send a test message through the browser interface.
    d. Verify a response is received and coherent.
    e. Send a second test message requiring web search.
    f. Verify the tool executes and returns a real result.
-   g. Execute the stop script.
-   h. Verify clean shutdown.
+   g. Execute `[workspace]/stop.sh`.
+   h. Verify clean shutdown of this checkout and confirm that a server from a
+      different worktree, if present, was not stopped.
+   i. If `Ora.app` exists, verify `Contents/MacOS/ai` is executable and
+      byte-identical to `installer/macos/ora-app-launcher.sh`, then confirm an
+      app launch opens the same checkout-specific origin.
 
 4. Additional verification steps:
    a. Verify Python packages: `python3 -c "import chromadb; import keyring; from playwright.sync_api import sync_playwright; print('OK')"`
@@ -189,15 +206,17 @@
    Model: [name] ([X]B parameters, [quantization])
    Estimated RAM usage: ~[X] GB
    Inference engine: [MLX / Ollama] (version [X])
-   Interface: http://localhost:5000
-   Launcher: [Desktop icon name] on your Desktop
+   Interface: [exact reported http://localhost:<port> origin; port 5000–5010]
+   Foreground launcher: [workspace]/run-ora-server.sh
+   macOS service: com.ora.server [installed / n-a]
+   App launcher: [workspace]/Ora.app [verified / absent / n-a]
    Workspace: [full path]
 
    Commercial AI connections: [list]
    Tool access: web_search, file_read, file_write, knowledge_search, +more
 
-   To start: double-click [icon name] on your Desktop.
-   The browser will open to http://localhost:5000.
+   To start: double-click the in-place Ora.app or run [workspace]/start.sh.
+   The browser will open to the exact healthy localhost origin the launcher reports.
    Type your question. Tools execute automatically.
 
    Everything runs on your machine. No data leaves your computer.

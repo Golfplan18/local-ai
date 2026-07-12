@@ -48,6 +48,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 
@@ -250,6 +251,7 @@ def _create_conversation_envelope(
         "parent_conversation_id": None,
         "fork_point_chunk_id": None,
         "is_welcome": False,
+        "project_ids": [],
         "messages": [
             {
                 "role": "assistant",
@@ -578,21 +580,27 @@ def _mark_conversation_resolved(conversation_id: str):
     """
     if not conversation_id:
         return
-    sessions_root = os.path.expanduser("~/ora/sessions/")
-    env_path = os.path.join(sessions_root, conversation_id, "conversation.json")
-    if not os.path.isfile(env_path):
-        return
     try:
-        with open(env_path) as f:
-            env = json.load(f)
-    except (OSError, json.JSONDecodeError):
+        from conversation_memory import load_conversation_json, set_display_name
+    except ImportError:  # pragma: no cover - package-qualified import context
+        from orchestrator.conversation_memory import (
+            load_conversation_json,
+            set_display_name,
+        )
+    sessions_root = os.path.expanduser("~/ora/sessions/")
+    env = load_conversation_json(
+        conversation_id,
+        sessions_root=Path(sessions_root),
+    )
+    if env is None:
         return
     name = env.get("display_name", "") or ""
     if name.endswith(RESOLVED_SUFFIX):
         return
-    env["display_name"] = (name + RESOLVED_SUFFIX).strip()
-    try:
-        with open(env_path, "w") as f:
-            json.dump(env, f, indent=2, ensure_ascii=False)
-    except OSError:
-        pass
+    # Route through the canonical envelope mutation seam so project-membership
+    # sentinels are normalized and the update shares its cross-process lock.
+    set_display_name(
+        conversation_id,
+        (name + RESOLVED_SUFFIX).strip(),
+        sessions_root=Path(sessions_root),
+    )

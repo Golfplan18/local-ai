@@ -60,14 +60,18 @@ class RouterProjectProfileTests(unittest.TestCase):
         self.assertNotEqual(got, "no-such-config-xyz")
 
     def test_commons_ignores_project(self):
-        self._patch("commons", {"default_model_profile": "user-pipeline"})
+        # Use a real profile that is distinct from the normal interactive
+        # fallback (often ``user-pipeline``), so the assertion proves the
+        # Commons record was ignored rather than accidentally matching the
+        # account-wide selection.
+        self._patch("commons", {"default_model_profile": "background-speed"})
         got = self.router._resolve_config_name(None, "interactive")
-        self.assertNotEqual(got, "user-pipeline")
+        self.assertNotEqual(got, "background-speed")
 
     def test_legacy_general_ignores_project(self):
-        self._patch("general", {"default_model_profile": "user-pipeline"})
+        self._patch("general", {"default_model_profile": "background-speed"})
         got = self.router._resolve_config_name(None, "interactive")
-        self.assertNotEqual(got, "user-pipeline")
+        self.assertNotEqual(got, "background-speed")
 
     def test_no_profile_falls_through(self):
         self._patch("proj", {"default_model_profile": ""})

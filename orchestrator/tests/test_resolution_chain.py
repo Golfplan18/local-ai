@@ -333,6 +333,7 @@ class TestResolvedSuffix(unittest.TestCase):
                 "display_name": "Resolve: my entry",
                 "tag": "",
                 "created": "...",
+                "project_ids": ["general", "book"],
                 "messages": [],
             }, f)
         # Move into a place the function will find — create the path
@@ -355,6 +356,7 @@ class TestResolvedSuffix(unittest.TestCase):
         with open(env_path) as f:
             env = json.load(f)
         self.assertEqual(env["display_name"], "Resolve: my entry (resolved)")
+        self.assertEqual(env["project_ids"], ["book"])
 
     def test_idempotent(self):
         import resolution_chain

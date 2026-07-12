@@ -24,7 +24,7 @@ ran. ``source`` is ``"structured"`` or ``"llm"`` for telemetry.
 
 Canvas-claim recognition: the system prompt instructs the model to treat
 ``"it's on the canvas"`` (and synonyms) as valid evidence that an input
-was provided via the visual pane. This is the user's lever to override
+was provided via the Exhibits pane. This is the user's lever to override
 AI's blindness to canvas content during input checking.
 """
 from __future__ import annotations
@@ -50,7 +50,7 @@ _CANVAS_HINT = (
     "\"it's on the canvas\", \"see the canvas\", \"I drew it\", \"I sketched it\", "
     "\"the diagram shows it\"), treat that input as PROVIDED with "
     "evidence: \"on canvas (user assertion)\". Do NOT mark such inputs as "
-    "missing — the user is asserting the data exists in the visual pane "
+    "missing — the user is asserting the data exists in the Exhibits pane "
     "even if you cannot directly read it."
 )
 

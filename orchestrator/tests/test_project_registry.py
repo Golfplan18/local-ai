@@ -556,6 +556,73 @@ class TestPointerFileLifecycle(unittest.TestCase):
         p = pr.get_project("myproject", pointer_dir=self.pointer_dir)
         self.assertEqual(p.root, moved.resolve())
 
+    def test_register_preserves_shared_container_and_future_fields(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "myproject.json"
+        preserved = {
+            "nexus": "myproject",
+            "name": "MyProject Folder",
+            "display_name": "Editable Label",
+            "folder_name": "MyProject Folder",
+            "status": "inactive",
+            "future_field": {"kept": True},
+        }
+        pf.write_text(json.dumps(preserved), encoding="utf-8")
+
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+
+        data = json.loads(pf.read_text(encoding="utf-8"))
+        for key, value in preserved.items():
+            self.assertEqual(data[key], value)
+        self.assertEqual(Path(data["root"]).resolve(), self.proj_root.resolve())
+
+    def test_register_refuses_to_clobber_malformed_shared_pointer(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "myproject.json"
+        pf.write_text("{broken", encoding="utf-8")
+
+        with self.assertRaises(pr.ProjectError):
+            pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+
+        self.assertEqual(pf.read_text(encoding="utf-8"), "{broken")
+
+    def test_unregister_preserves_container_metadata_and_removes_only_root(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "myproject.json"
+        pf.write_text(json.dumps({
+            "nexus": "myproject",
+            "root": str(self.proj_root),
+            "name": "MyProject Folder",
+            "display_name": "Editable Label",
+            "folder_name": "MyProject Folder",
+            "status": "active",
+            "future_field": "kept",
+        }), encoding="utf-8")
+
+        self.assertTrue(pr.unregister_project("myproject", pointer_dir=self.pointer_dir))
+
+        self.assertTrue(pf.exists())
+        data = json.loads(pf.read_text(encoding="utf-8"))
+        self.assertNotIn("root", data)
+        self.assertEqual(data["display_name"], "Editable Label")
+        self.assertEqual(data["folder_name"], "MyProject Folder")
+        self.assertEqual(data["future_field"], "kept")
+        self.assertIsNone(pr.get_project("myproject", pointer_dir=self.pointer_dir))
+        self.assertFalse(pr.unregister_project("myproject", pointer_dir=self.pointer_dir))
+
+    def test_unregister_deletes_plugin_only_pointer_with_future_fields(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pf = Path(self.pointer_dir) / "myproject.json"
+        pf.write_text(json.dumps({
+            "nexus": "myproject",
+            "root": str(self.proj_root),
+            "plugin_schema_version": 2,
+            "plugin_future_field": {"opaque": True},
+        }), encoding="utf-8")
+
+        self.assertTrue(pr.unregister_project("myproject", pointer_dir=self.pointer_dir))
+        self.assertFalse(pf.exists())
+
 
 # ---------------------------------------------------------------------------
 # Tool invocation tests (real subprocesses against in-tree scripts)

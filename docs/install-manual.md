@@ -111,11 +111,16 @@ Free models are rate-limited and sometimes unavailable. A valid key with an unav
 
 ### 8. Start the server
 
+On macOS, the recommended durable start installs and verifies the per-user
+launchd service:
+
 ```bash
-./start.sh
+./scripts/ora-launchd.sh install
 ```
 
-Open <http://localhost:5000>.
+On Linux/WSL, or for a deliberately unsupervised macOS session, use
+`./start.sh`. Open the origin for the exact health port it reports (5000–5010),
+rather than assuming port 5000 is free.
 
 ---
 

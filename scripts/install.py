@@ -763,7 +763,12 @@ def main():
 
     log(COMPLETION_MARKER)
     log("")
-    log("Next: start the chat server with `./start.sh` and open localhost:5000.")
+    if sys.platform == "darwin":
+        log("Next (recommended on macOS): install supervised auto-start with "
+            "`./scripts/ora-launchd.sh install`, then open the origin for its printed Health URL.")
+        log("For one unsupervised session instead, run `./start.sh`.")
+    else:
+        log("Next: run `./start.sh` and open the exact localhost port it reports.")
     log("Then open Settings → External APIs to paste any keys you created during setup.")
 
 

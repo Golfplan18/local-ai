@@ -149,6 +149,12 @@ class TestRiskPrefix(unittest.TestCase):
         self.assertIsNone(rg.parse_sticky_risk("/risk high-risk do it"))
         self.assertTrue(rg.is_risk_command("/risk light"))
 
+    def test_sticky_confirmation_uses_dialogue_terminology(self):
+        with mock.patch.object(rg, "set_sticky"):
+            reply = rg.handle_risk_command("/risk standard", "dialogue-1")
+        self.assertIn("for this Dialogue", reply)
+        self.assertNotIn("for this conversation", reply)
+
 
 class TestFingerprint(unittest.TestCase):
     def test_same_task_same_fp(self):
@@ -279,6 +285,15 @@ class TestTierAliases(unittest.TestCase):
         self.assertEqual(t1, "irreversible")
         _, t2 = rg.strip_risk_prefix("/risk low chat")
         self.assertEqual(t2, "light")
+
+
+class TestTaskGateCopy(unittest.TestCase):
+    def test_approval_uses_dialogue_terminology(self):
+        record = {"event": {"fingerprint": "fp", "conversation_id": "d1"}}
+        with mock.patch.object(rg, "grant_task_token"):
+            reply = rg.resolve_task_gate_entry(record, approve=True)
+        self.assertIn("origin Dialogue", reply)
+        self.assertNotIn("origin conversation", reply)
 
 
 class TestStageABroadened(unittest.TestCase):

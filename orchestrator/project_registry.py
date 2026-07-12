@@ -21,12 +21,20 @@ import json
 import os
 import re
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import runtime_paths as _rp
 
-POINTER_DIR = os.path.expanduser("~/ora/data/projects/")
+# Keep the plugin view and project-container view on the same ORA_HOME-aware
+# pointer store.  Default arguments below intentionally capture this value at
+# import, after the launcher has established ORA_HOME.
+POINTER_DIR = str(_rp.DATA_DIR / "projects")
 MANIFEST_FILENAME = "ora-project.json"
 DEFAULT_TOOL_TIMEOUT_SECS = 120
 
@@ -769,6 +777,42 @@ def _pointer_path(nexus: str, pointer_dir: str = POINTER_DIR) -> Path:
     return Path(os.path.expanduser(pointer_dir)) / f"{nexus}.json"
 
 
+def _atomic_write_pointer(path: Path, data: dict[str, Any]) -> None:
+    """Replace one shared plugin/container pointer while its lock is held."""
+    tmp = path.with_name(
+        f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+    )
+    try:
+        tmp.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def _read_pointer_for_mutation(path: Path) -> dict[str, Any]:
+    """Read a shared pointer without discarding fields owned by another view."""
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProjectError(
+            f"Cannot safely update malformed project pointer {path}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ProjectError(
+            f"Cannot safely update project pointer {path}: expected a JSON object"
+        )
+    return data
+
+
 def list_projects(pointer_dir: str = POINTER_DIR) -> list[Project]:
     """Read all pointer files in pointer_dir and return loaded projects.
 
@@ -834,7 +878,9 @@ def register_project(root_path, pointer_dir: str = POINTER_DIR) -> Project:
     """Register a project by writing a pointer file at <pointer_dir>/<nexus>.json.
 
     Validates the manifest before writing the pointer. Idempotent: re-registering
-    the same nexus overwrites the existing pointer (use case: project root moved).
+    the same nexus updates only ``nexus`` and ``root`` (use case: project root
+    moved). Container metadata and unknown future/plugin fields in the shared
+    pointer are preserved.
 
     Returns the loaded Project.
     """
@@ -842,20 +888,48 @@ def register_project(root_path, pointer_dir: str = POINTER_DIR) -> Project:
     pdir = Path(os.path.expanduser(pointer_dir))
     pdir.mkdir(parents=True, exist_ok=True)
     pf = _pointer_path(project.nexus, pointer_dir)
-    pf.write_text(
-        json.dumps({"nexus": project.nexus, "root": str(project.root)}, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    try:
+        with _rp.locked_file(pf):
+            data = _read_pointer_for_mutation(pf)
+            data["nexus"] = project.nexus
+            data["root"] = str(project.root)
+            _atomic_write_pointer(pf, data)
+    except (OSError, TimeoutError) as exc:
+        raise ProjectError(f"Could not register project {project.nexus!r}: {exc}") from exc
     return project
 
 
 def unregister_project(nexus: str, pointer_dir: str = POINTER_DIR) -> bool:
-    """Delete the pointer file for a project. Returns True if a file was deleted."""
+    """Remove a pointer's plugin binding without deleting container metadata.
+
+    A pure ``{nexus, root}`` plugin pointer is deleted. A shared pointer keeps
+    every other field and only loses ``root``. Returns ``True`` when an active
+    plugin binding was removed, otherwise ``False``.
+    """
     pf = _pointer_path(nexus, pointer_dir)
-    if pf.is_file():
-        pf.unlink()
-        return True
-    return False
+    if not pf.is_file():
+        return False
+    try:
+        with _rp.locked_file(pf):
+            if not pf.is_file():
+                return False
+            data = _read_pointer_for_mutation(pf)
+            if not data.get("root"):
+                return False
+            try:
+                from project_meta import pointer_has_container_metadata
+            except ImportError:  # pragma: no cover - package import context
+                from orchestrator.project_meta import pointer_has_container_metadata
+            keep_container = pointer_has_container_metadata(data)
+            data.pop("root", None)
+            if not keep_container:
+                pf.unlink()
+            else:
+                data.setdefault("nexus", nexus)
+                _atomic_write_pointer(pf, data)
+            return True
+    except (OSError, TimeoutError) as exc:
+        raise ProjectError(f"Could not unregister project {nexus!r}: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------

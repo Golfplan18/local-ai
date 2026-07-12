@@ -11,8 +11,8 @@ Scope:
   the final response survives through the hook pipeline and appears in the
   SSE payload unchanged (for a schema-valid envelope).
 * The Python-side visual validator accepts the embedded envelope as valid.
-* The ``_default_layout`` retune returns an active preset (solo / studio)
-  and resolves ``default_bucket`` annotations onto any declaring panel.
+* V3 owns its panel structure directly and does not expose the retired
+  config-driven layout/theme routes.
 * The ``/api/bridge/<panel>`` endpoint accepts and persists
   ``ora_visual_blocks`` as part of its cached state.
 
@@ -158,138 +158,48 @@ class VisualE2ESseTests(unittest.TestCase):
                         f"envelope failed validation: {[e.message for e in result.errors]}")
 
 
-class DefaultLayoutRetuneTests(unittest.TestCase):
-    """_default_layout() must resolve to solo/studio and never to legacy."""
+class V3LayoutContractTests(unittest.TestCase):
+    """V3's hardcoded workspace replaces the retired configuration path."""
 
     def setUp(self) -> None:
         import server  # noqa: WPS433
         self.server = server
 
-    def test_default_layout_base_is_solo(self) -> None:
-        """With no mid+premium buckets populated, default is solo."""
-        with mock.patch.object(self.server, "_load_routing_config",
-                               return_value={"buckets": {}}):
-            layout = self.server._default_layout()
-        self.assertEqual(layout["layout"]["preset_base"], "solo")
-
-    def test_default_layout_upgrades_to_studio(self) -> None:
-        """When both local-mid and local-premium have entries, upgrade."""
-        buckets = {
-            "buckets": {
-                "local-mid":     ["model-mid"],
-                "local-premium": ["model-premium-a", "model-premium-b"],
-            },
+    def test_legacy_layout_and_theme_routes_are_retired(self) -> None:
+        rules = {rule.rule for rule in self.server.app.url_map.iter_rules()}
+        retired = {
+            "/api/layout",
+            "/api/layouts",
+            "/api/layouts/<name>",
+            "/api/generate-layout",
+            "/api/theme",
+            "/api/themes",
         }
-        with mock.patch.object(self.server, "_load_routing_config",
-                               return_value=buckets):
-            layout = self.server._default_layout()
-        self.assertEqual(layout["layout"]["preset_base"], "studio")
+        self.assertTrue(retired.isdisjoint(rules))
+        # The active V3 theme library is a separate subsystem and remains live.
+        self.assertIn("/api/v3-themes/list", rules)
 
-    def test_default_layout_never_returns_legacy(self) -> None:
-        """Fail-closed: exceptions in routing config fall back to solo."""
-        with mock.patch.object(self.server, "_load_routing_config",
-                               side_effect=RuntimeError("simulated")):
-            layout = self.server._default_layout()
-        self.assertEqual(layout["layout"]["preset_base"], "solo")
-        self.assertIn(layout["layout"]["preset_base"], self.server._ACTIVE_LAYOUTS)
-        # No panel should reference a legacy `simple` or `workbench` layout.
-        for panel in layout["layout"]["panels"]:
-            self.assertIn(panel["type"],
-                          {"chat", "visual", "vault", "pipeline", "clarification",
-                           "switcher", "config"})
+    def test_v3_declares_workspace_structure_without_config_fetches(self) -> None:
+        html = (WORKSPACE / "server" / "index-v3.html").read_text()
+        layout_js = (WORKSPACE / "server" / "static" / "js" /
+                     "v3-layout.js").read_text()
 
+        self.assertIn('/static/js/v3-layout.js', html)
+        self.assertIn('class="left-column"', html)
+        self.assertIn('class="right-column"', html)
+        self.assertIn('class="chat-zone"', html)
+        self.assertIn('class="pane right-pane"', html)
 
-class DefaultBucketResolutionTests(unittest.TestCase):
-    """_resolve_default_buckets honors default_bucket on layout panels."""
-
-    def setUp(self) -> None:
-        import server  # noqa: WPS433
-        self.server = server
-
-    def _sample_layout(self) -> dict:
-        return {
-            "layout": {
-                "preset_base": "studio",
-                "panels": [
-                    {"id": "main", "type": "chat", "width_pct": 40,
-                     "model_slot": "breadth", "is_main_feed": True,
-                     "bridge_subscribe_to": None, "label": "Main Chat"},
-                    {"id": "visual", "type": "visual", "width_pct": 40,
-                     "model_slot": None, "is_main_feed": False,
-                     "bridge_subscribe_to": "main", "label": "Visual"},
-                    {"id": "sidebar", "type": "chat", "width_pct": 20,
-                     "model_slot": "sidebar",
-                     "default_bucket": "local-fast",
-                     "is_main_feed": False, "bridge_subscribe_to": "main",
-                     "label": "Sidebar"},
-                ],
-            },
-            "theme": "default-light",
-        }
-
-    def test_default_bucket_resolves_to_bucket_entry(self) -> None:
-        """Panel with default_bucket gets resolved_slot_assignment set."""
-        layout = self._sample_layout()
-        routing = {"buckets": {"local-fast": ["fast-a", "fast-b"]}}
-        models = {"local_models": [{"id": "fast-a"}, {"id": "fast-b"}],
-                  "commercial_models": []}
-        with mock.patch.object(self.server, "_load_routing_config",
-                               return_value=routing), \
-             mock.patch.object(self.server, "load_models",
-                               return_value=models), \
-             mock.patch.object(self.server, "load_config",
-                               return_value={"slot_assignments": {}}):
-            resolved = self.server._resolve_default_buckets(layout)
-
-        sidebar = resolved["layout"]["panels"][2]
-        self.assertIn("resolved_slot_assignment", sidebar)
-        self.assertEqual(sidebar["resolved_slot_assignment"]["source"], "default_bucket")
-        self.assertEqual(sidebar["resolved_slot_assignment"]["model_id"], "fast-a")
-        self.assertEqual(sidebar["resolved_slot_assignment"]["bucket"], "local-fast")
-        # Main chat has no default_bucket — no annotation.
-        self.assertNotIn("resolved_slot_assignment", resolved["layout"]["panels"][0])
-
-    def test_explicit_slot_assignment_wins_over_default_bucket(self) -> None:
-        """User-pinned slot assignments take precedence."""
-        layout = self._sample_layout()
-        routing = {"buckets": {"local-fast": ["fast-a"]}}
-        models = {"local_models": [{"id": "fast-a"}, {"id": "user-pinned"}],
-                  "commercial_models": []}
-        with mock.patch.object(self.server, "_load_routing_config",
-                               return_value=routing), \
-             mock.patch.object(self.server, "load_models",
-                               return_value=models), \
-             mock.patch.object(self.server, "load_config",
-                               return_value={"slot_assignments": {"sidebar": "user-pinned"}}):
-            resolved = self.server._resolve_default_buckets(layout)
-
-        sidebar = resolved["layout"]["panels"][2]
-        self.assertEqual(sidebar["resolved_slot_assignment"]["source"],
-                         "user_slot_assignment")
-        self.assertEqual(sidebar["resolved_slot_assignment"]["model_id"],
-                         "user-pinned")
-
-    def test_empty_bucket_falls_back_gracefully(self) -> None:
-        """Empty bucket → fallback annotation, does not block layout."""
-        layout = self._sample_layout()
-        routing = {"buckets": {"local-fast": []}}
-        models = {"local_models": [{"id": "some-other-model"}],
-                  "commercial_models": []}
-        with mock.patch.object(self.server, "_load_routing_config",
-                               return_value=routing), \
-             mock.patch.object(self.server, "load_models",
-                               return_value=models), \
-             mock.patch.object(self.server, "load_config",
-                               return_value={"slot_assignments": {}}):
-            resolved = self.server._resolve_default_buckets(layout)
-
-        sidebar = resolved["layout"]["panels"][2]
-        self.assertIn("resolved_slot_assignment", sidebar)
-        self.assertEqual(sidebar["resolved_slot_assignment"]["source"],
-                         "empty_bucket_fallback")
-        self.assertIn("fallback_reason", sidebar["resolved_slot_assignment"])
-        # Layout still has 3 panels — no dropout on misconfiguration.
-        self.assertEqual(len(resolved["layout"]["panels"]), 3)
+        legacy_paths = (
+            "/api/layout",
+            "/api/layouts",
+            "/api/generate-layout",
+            "/api/theme",
+            "/api/themes",
+        )
+        for path in legacy_paths:
+            self.assertNotIn(path, html)
+            self.assertNotIn(path, layout_js)
 
 
 class BridgeVisualBlocksTests(unittest.TestCase):

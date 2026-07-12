@@ -130,6 +130,7 @@ class RenderNoteTests(unittest.TestCase):
         self.assertIn("type: daily-note", body)
         self.assertIn("date: 2026-06-10", body)
         self.assertIn("[[2026-06-09]] · [[2026-06-11]]", body)
+        self.assertIn("## Dialogues", body)
         self.assertIn("**Alpha** — 2 exchanges, 09:15–10:30", body)
         self.assertIn("[[New Note]]", body)
         self.assertIn("[[Old Note]]", body)
@@ -137,7 +138,7 @@ class RenderNoteTests(unittest.TestCase):
 
     def test_empty_sections_omitted(self):
         body = dn.render_note("2026-06-10", [], [], [], [])
-        self.assertNotIn("## Conversations", body)
+        self.assertNotIn("## Dialogues", body)
         self.assertNotIn("## Vault activity", body)
         self.assertNotIn("## Ora activity", body)
         self.assertIn("[[2026-06-09]]", body)  # nav always present

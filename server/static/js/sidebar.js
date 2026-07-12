@@ -59,11 +59,30 @@
   const outputStyleName = sidebar.querySelector('#sidebarOutputStyleName');
 
   const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
-  // "general" was the pre-2026-07-11 id; a browser that stored it before the
-  // rename keeps working — every comparison below accepts both values.
+  const canonicalProjectId = (nexus) => {
+    const slug = String(nexus || '').trim();
+    return (!slug || ['commons', 'general'].includes(slug.toLowerCase())) ? 'commons' : slug;
+  };
+  const canonicalProjectRecordId = (project) =>
+    canonicalProjectId(project && (project.canonical_nexus || project.nexus));
+  const compatibleProjectId = (nexus) =>
+    canonicalProjectId(nexus) === 'commons' ? '' : canonicalProjectId(nexus);
+  // "general" was the pre-2026-07-11 id. Canonicalize and lazily heal a
+  // browser that stored it before the rename.
   let activeProjectId = 'commons';
-  try { activeProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'commons'; } catch (e) {}
+  try {
+    const storedProjectId = localStorage.getItem(ACTIVE_PROJECT_KEY);
+    activeProjectId = canonicalProjectId(storedProjectId);
+    const compatibleStoredId = compatibleProjectId(activeProjectId);
+    if (storedProjectId !== compatibleStoredId) {
+      localStorage.setItem(ACTIVE_PROJECT_KEY, compatibleStoredId);
+    }
+  } catch (e) {}
   let projectsCache = [];
+  let activeProjectSyncGeneration = 0;
+  let activeProjectMutationInFlight = false;
+  let pendingActiveProjectSelection = null;
+  let activeProjectSelectionSequence = 0;
 
   let lastSnapshot = { pinned: [], errored: [], pending: [], unread: [], active: [] };
   let activeConvId = null;
@@ -85,6 +104,7 @@
   let browserMinRelevance = 0;
   let browserFetchTimer = null;
   let browserFilterTimer = null;
+  let browserReturnFocus = null;
 
   const setExpanded = (on) => {
     sidebar.classList.toggle('expanded', !!on);
@@ -354,7 +374,7 @@
 
   const fetchList = async () => {
     try {
-      const r = await fetch('/api/conversations?project_id=' + encodeURIComponent(activeProjectId));
+      const r = await fetch('/api/conversations?project_id=' + encodeURIComponent(compatibleProjectId(activeProjectId)));
       if (!r.ok) return;
       const data = await r.json();
       render(data);
@@ -365,7 +385,7 @@
 
   // ── G1.33 project switcher ──────────────────────────────────────────────
   const projectDisplayName = (nexus) =>
-    (nexus === 'commons' || nexus === 'general') ? 'Commons' : nexus;
+    canonicalProjectId(nexus) === 'commons' ? 'Commons' : nexus;
 
   const renderProjects = () => {
     if (!projectListEl) return;
@@ -376,7 +396,7 @@
       .forEach(p => {
         const row = document.createElement('button');
         row.type = 'button';
-        row.className = 'sidebar-project-row' + (p.nexus === activeProjectId ? ' is-active' : '');
+        row.className = 'sidebar-project-row' + (canonicalProjectRecordId(p) === activeProjectId ? ' is-active' : '');
         row.setAttribute('role', 'option');
         const name = document.createElement('span');
         name.className = 'sidebar-project-row-name';
@@ -388,7 +408,7 @@
         badge.setAttribute('data-zero', unread ? '0' : '1');
         row.appendChild(name);
         row.appendChild(badge);
-        row.addEventListener('click', () => setActiveProject(p.nexus, p.name || p.nexus));
+        row.addEventListener('click', () => setActiveProject(canonicalProjectRecordId(p), p.name || p.nexus));
         projectListEl.appendChild(row);
       });
   };
@@ -399,12 +419,42 @@
       if (!r.ok) return;
       const data = await r.json();
       projectsCache = (data && data.projects) || [];
-      const cur = projectsCache.find(p => p.nexus === activeProjectId);
+      const cur = projectsCache.find(p => canonicalProjectRecordId(p) === activeProjectId);
       if (projectNameEl) {
         projectNameEl.textContent = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
       }
       renderProjects();
     } catch (e) {}
+  };
+
+  const persistActiveProjectId = (nexus) => {
+    try { localStorage.setItem(ACTIVE_PROJECT_KEY, compatibleProjectId(nexus)); } catch (e) {}
+  };
+
+  const reconcileActiveProject = async () => {
+    if (activeProjectMutationInFlight) return false;
+    const generation = ++activeProjectSyncGeneration;
+    try {
+      const r = await fetch('/api/active-project');
+      if (!r.ok) return false;
+      const data = await r.json();
+      if (!data || data.ok === false) return false;
+      const supplied = (typeof data.canonical_nexus === 'string' && data.canonical_nexus.trim())
+        ? data.canonical_nexus
+        : data.nexus;
+      if (typeof supplied !== 'string') return false;
+      if (activeProjectMutationInFlight || generation !== activeProjectSyncGeneration) return false;
+      activeProjectId = canonicalProjectId(supplied);
+      persistActiveProjectId(activeProjectId);
+      const cur = projectsCache.find(p => canonicalProjectRecordId(p) === activeProjectId);
+      if (projectNameEl) {
+        projectNameEl.textContent = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
+      }
+      renderProjects();
+      return true;
+    } catch (e) {
+      return false;
+    }
   };
 
   const closeProjectMenu = () => {
@@ -424,20 +474,88 @@
     else closeProjectMenu();
   };
 
-  const setActiveProject = async (nexus, name) => {
-    activeProjectId = nexus || 'commons';
-    try { localStorage.setItem(ACTIVE_PROJECT_KEY, activeProjectId); } catch (e) {}
-    if (projectNameEl) projectNameEl.textContent = name || projectDisplayName(activeProjectId);
-    closeProjectMenu();
-    // Persist server-side so NEW conversations bind to this project.
+  const drainActiveProjectSelections = async () => {
+    if (activeProjectMutationInFlight || !pendingActiveProjectSelection) return;
+    const selection = pendingActiveProjectSelection;
+    pendingActiveProjectSelection = null;
+    activeProjectMutationInFlight = true;
+    ++activeProjectSyncGeneration; // invalidate any GET that began before this selection
+    const requestedId = selection.nexus;
+    const compatibleId = compatibleProjectId(requestedId);
+    let confirmedId = null;
+    let succeeded = false;
+    // The server pointer is authoritative for NEW-Dialogue membership. Do not
+    // commit browser/UI state until it confirms the write.
     try {
-      await fetch('/api/active-project', {
+      const r = await fetch('/api/active-project', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nexus: activeProjectId }),
+        body: JSON.stringify({ nexus: compatibleId }),
       });
-    } catch (e) {}
-    fetchList();      // refetch the sidebar filtered to this project
-    renderProjects(); // refresh the active highlight
+      if (!r.ok) throw new Error('active-project write failed');
+      const data = await r.json();
+      if (!data || data.ok === false) throw new Error('active-project write rejected');
+      const supplied = (typeof data.canonical_nexus === 'string' && data.canonical_nexus.trim())
+        ? data.canonical_nexus
+        : data.nexus;
+      if (typeof supplied !== 'string') throw new Error('active-project response missing nexus');
+      confirmedId = canonicalProjectId(supplied);
+      succeeded = true;
+    } catch (e) {
+      succeeded = false;
+    } finally {
+      activeProjectMutationInFlight = false;
+    }
+
+    // A later click supersedes this result. The server may briefly hold the
+    // earlier value, but the browser must not paint it or lose the last intent;
+    // immediately drain the newest queued selection instead.
+    const superseded = !!(
+      pendingActiveProjectSelection
+      && pendingActiveProjectSelection.sequence > selection.sequence
+    );
+    if (succeeded && !superseded) {
+      activeProjectId = confirmedId;
+      persistActiveProjectId(activeProjectId);
+      if (projectNameEl) {
+        projectNameEl.textContent = activeProjectId === requestedId
+          ? (selection.name || projectDisplayName(activeProjectId))
+          : projectDisplayName(activeProjectId);
+      }
+      closeProjectMenu();
+      fetchList();      // refetch the sidebar filtered to this project
+      renderProjects(); // refresh the active highlight
+    } else if (!succeeded && !superseded) {
+      // A superseded write may already have changed the server before the
+      // latest write failed. Re-read authority now so UI/localStorage cannot
+      // remain on the pre-queue project until the next poll.
+      await reconcileActiveProject();
+      await fetchList();
+    }
+    selection.resolve(succeeded && !superseded);
+    if (pendingActiveProjectSelection) drainActiveProjectSelections();
+  };
+
+  const setActiveProject = (nexus, name) => {
+    const selection = {
+      nexus: canonicalProjectId(nexus),
+      name,
+      sequence: ++activeProjectSelectionSequence,
+      resolve: null,
+    };
+    const promise = new Promise((resolve) => { selection.resolve = resolve; });
+    // Only the newest not-yet-started choice matters. Resolve an older queued
+    // promise as superseded so callers never hang.
+    if (pendingActiveProjectSelection) {
+      pendingActiveProjectSelection.resolve(false);
+    }
+    pendingActiveProjectSelection = selection;
+    drainActiveProjectSelections();
+    return promise;
+  };
+
+  const refreshProjectScopedList = async () => {
+    await reconcileActiveProject();
+    await fetchList();
   };
 
   const onRowClick = async (row) => {
@@ -569,12 +687,16 @@
     browserOverlay = document.createElement('div');
     browserOverlay.className = 'conversation-browser-overlay';
     browserOverlay.setAttribute('role', 'dialog');
+    // The Library is docked beside the workspace and intentionally leaves the
+    // rest of Ora interactive, so it must not claim modal semantics.
     browserOverlay.setAttribute('aria-modal', 'false');
+    browserOverlay.setAttribute('aria-label', 'Library');
     browserOverlay.innerHTML = `
       <div class="conversation-browser-panel">
         <div class="conversation-browser-top">
           <input class="conversation-browser-search" type="text"
                  placeholder="Search Dialogues..."
+                 aria-label="Search Dialogues"
                  spellcheck="true"
                  autocorrect="on"
                  autocapitalize="sentences"
@@ -587,7 +709,7 @@
           <button class="conversation-browser-close" type="button" aria-label="Close Library">×</button>
         </div>
         <div class="conversation-browser-summary">
-          <div class="conversation-browser-status"></div>
+          <div class="conversation-browser-status" aria-live="polite"></div>
           <div class="conversation-browser-filters">
             <label class="conversation-browser-filter-chip conversation-browser-filter-chip-on">
               <input class="conversation-browser-filter-conversations" type="checkbox" checked>
@@ -621,6 +743,12 @@
       .addEventListener('click', closeBrowser);
     browserOverlay.querySelector('.conversation-browser-search-btn')
       .addEventListener('click', () => fetchBrowser(browserSearch.value));
+    browserOverlay.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeBrowser();
+    });
     if (browserSort) {
       browserSort.addEventListener('change', () => fetchBrowser(browserSearch.value));
     }
@@ -641,8 +769,6 @@
       if (e.key === 'Enter') {
         e.preventDefault();
         fetchBrowser(browserSearch.value);
-      } else if (e.key === 'Escape') {
-        closeBrowser();
       }
     });
     return browserOverlay;
@@ -743,6 +869,10 @@
     ensureBrowser();
     if (!browserOverlay.classList.contains('is-open')) {
       browserDismissedIds = new Set();
+      const active = document.activeElement;
+      browserReturnFocus = active && active !== document.body && typeof active.focus === 'function'
+        ? active
+        : browseCmd;
     }
     browserOverlay.classList.add('is-open');
     updateBrowserFilterUI();
@@ -755,8 +885,17 @@
   };
 
   const closeBrowser = () => {
+    const wasOpen = !!(browserOverlay && browserOverlay.classList.contains('is-open'));
     if (browserOverlay) browserOverlay.classList.remove('is-open');
     stopBrowserPositioning();
+    if (!wasOpen) return;
+    const focusTarget = browserReturnFocus && browserReturnFocus.isConnected
+      ? browserReturnFocus
+      : browseCmd;
+    browserReturnFocus = null;
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      try { focusTarget.focus(); } catch (e) {}
+    }
   };
 
   const fetchBrowser = async (query) => {
@@ -831,23 +970,36 @@
       item.dataset.conversationId = row.conversation_id;
       item.dataset.sourceKind = row.source_kind || 'live';
 
+      const rowTitle = row.title || row.conversation_id || '(untitled)';
+      const rowKind = row.source_kind === 'engram' ? 'Engram' : 'Dialogue';
+      item.setAttribute('role', 'group');
+      item.setAttribute('aria-label', `${rowKind}: ${rowTitle}`);
+
       const check = document.createElement('input');
       check.type = 'checkbox';
       check.className = 'conversation-browser-check';
       check.checked = false;
+      check.setAttribute('aria-label', `Select ${rowKind}: ${rowTitle}`);
       check.addEventListener('click', (e) => e.stopPropagation());
       item.appendChild(check);
 
-      const title = document.createElement('div');
+      const title = document.createElement('button');
+      title.type = 'button';
       title.className = 'conversation-browser-title';
-      title.textContent = row.title || row.conversation_id || '(untitled)';
+      title.textContent = rowTitle;
       title.title = title.textContent;
+      title.setAttribute('aria-label', `Open ${rowKind}: ${rowTitle}`);
+      title.addEventListener('click', (e) => {
+        e.stopPropagation();
+        activateBrowserRow(row);
+      });
       item.appendChild(title);
 
       const related = document.createElement('button');
       related.type = 'button';
       related.className = 'conversation-browser-related';
       related.textContent = 'Related';
+      related.setAttribute('aria-label', `Show items related to ${rowTitle}`);
       related.addEventListener('click', (e) => {
         e.stopPropagation();
         fetchRelated(row.conversation_id);
@@ -859,7 +1011,7 @@
       dismiss.className = 'conversation-browser-dismiss';
       dismiss.textContent = '×';
       dismiss.title = 'Remove from these results';
-      dismiss.setAttribute('aria-label', 'Remove from these results');
+      dismiss.setAttribute('aria-label', `Remove ${rowTitle} from these results`);
       dismiss.addEventListener('click', (e) => {
         e.stopPropagation();
         browserDismissedIds.add(row.conversation_id);
@@ -983,6 +1135,16 @@
     setExpanded(false);
   });
   document.addEventListener('keydown', (e) => {
+    // The Library is non-modal, so focus may legitimately be elsewhere in
+    // the workspace. Escape still closes it before any sidebar shortcut runs.
+    if (e.key === 'Escape'
+        && browserOverlay
+        && browserOverlay.classList.contains('is-open')) {
+      e.preventDefault();
+      closeBrowser();
+      return;
+    }
+
     const shortcuts = window.OraKeyboardShortcuts;
     const cmd = e.metaKey || e.ctrlKey;
     const k   = e.key.toLowerCase();
@@ -1093,7 +1255,7 @@
   // project (⚙ on the Active-Project row + 'Manage current project' in the
   // switcher dropdown).
   const openProjectModal = () => {
-    const cur = projectsCache.find(p => p.nexus === activeProjectId);
+    const cur = projectsCache.find(p => canonicalProjectRecordId(p) === activeProjectId);
     const name = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
     try {
       if (window.OraProjectModal && typeof window.OraProjectModal.open === 'function') {
@@ -1107,8 +1269,6 @@
   if (projectManageItem) projectManageItem.addEventListener('click', (e) => {
     e.stopPropagation(); closeProjectMenu(); openProjectModal();
   });
-
-  fetchProjects();
 
   // ── G1.33 model-configuration section ────────────────────────────────
   // Shows the active configuration name; the per-project / per-run selector
@@ -1155,20 +1315,24 @@
   fetchOutputStyle();
 
   // ── Polling ─────────────────────────────────────────────────────────
-  fetchList();
-  let pollHandle = window.setInterval(fetchList, REFRESH_INTERVAL_MS);
+  let pollHandle = window.setInterval(refreshProjectScopedList, REFRESH_INTERVAL_MS);
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      fetchList();
+      refreshProjectScopedList();
       if (!pollHandle) {
-        pollHandle = window.setInterval(fetchList, REFRESH_INTERVAL_MS);
+        pollHandle = window.setInterval(refreshProjectScopedList, REFRESH_INTERVAL_MS);
       }
     } else {
       if (pollHandle) {
         window.clearInterval(pollHandle);
         pollHandle = null;
       }
+    }
+  });
+  window.addEventListener('storage', (event) => {
+    if (event && event.key === ACTIVE_PROJECT_KEY) {
+      refreshProjectScopedList();
     }
   });
 
@@ -1179,7 +1343,18 @@
     isExpanded,
     getActiveConversation: () => activeConvId,
     getActiveProject: () => activeProjectId,
+    syncActiveProject: reconcileActiveProject,
+    refreshProjectScope: refreshProjectScopedList,
     refreshProjects: fetchProjects,
     setActiveProject: (nexus, name) => setActiveProject(nexus, name),
   };
+
+  // The server pointer determines where NEW Dialogues are stamped. Reconcile
+  // it before the first project/list paint so localStorage cannot present a
+  // stale project as authoritative.
+  (async () => {
+    await reconcileActiveProject();
+    await fetchProjects();
+    await fetchList();
+  })();
 })();
