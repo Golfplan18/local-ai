@@ -3471,6 +3471,9 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
         "mode": None,        # step1's mode once known
         "gear": None,        # set at gear dispatch in _run_pipeline_from_step2
         "parent_ref": None,  # paused-turn ref on clarification continuation
+        "framework_id": None,
+        "milestone_id": None,
+        "child_refs": [],
     }
     # Scope every invocation, including tests and future direct callers that
     # bypass ``agentic_loop_stream``.  The implementation intentionally sets
@@ -3526,7 +3529,10 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
                         turn_state["trace_dir"], kind=turn_state["kind"],
                         status_hint=turn_state["status"], mode=turn_state["mode"],
                         gear=turn_state["gear"],
-                        parent_trace_ref=turn_state["parent_ref"])
+                        parent_trace_ref=turn_state["parent_ref"],
+                        framework_id=turn_state["framework_id"],
+                        milestone_id=turn_state["milestone_id"],
+                        child_trace_refs=turn_state["child_refs"])
                 except Exception as _fin_exc:
                     print(f"[server trace] manifest finalize skipped: {_fin_exc}",
                           flush=True)
@@ -3861,7 +3867,16 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             yield _sse("pipeline_stage", stage="framework_execution",
                        label="Running framework via layered milestone executor…")
             try:
-                result_text = run_framework_command(user_input, config)
+                turn_state["kind"] = "framework-run"
+                _trace_ctx = {"conversation_tag": _conv_tag}
+                result_text = run_framework_command(
+                    user_input, config, trace_dir=trace_dir,
+                    conversation_tag=_conv_tag,
+                    trace_context=_trace_ctx)
+                turn_state["status"] = _trace_ctx.get("status") or "completed"
+                turn_state["framework_id"] = _trace_ctx.get("framework_id")
+                turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
+                turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
             except Exception as exc:
                 turn_state["status"] = "error"
                 yield _sse("error", text=f"Framework execution error: {exc}")
