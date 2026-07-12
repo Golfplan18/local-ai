@@ -1736,7 +1736,7 @@ Named Failure Modes:
 
 ## Section X: Integration with CFF and OFF
 
-PFF is one of three sibling meta-frameworks. The Corpus Formalization Framework (CFF) formalizes the knowledge corpus where information accumulates across a workflow. The Output Formalization Framework (OFF) formalizes the rendered artifacts that express corpus content. The full three-framework integration is specified in `Framework — PFF-CFF-OFF Integration Architecture.md`. This section provides PFF's perspective on that architecture.
+PFF is one of three sibling meta-frameworks. The Corpus Formalization Framework (CFF) formalizes the knowledge corpus where information accumulates across a workflow. The Output Formalization Framework (OFF) formalizes the rendered artifacts that express corpus content. The full three-framework integration is specified in `Reference — PFF-CFF-OFF Integration Architecture.md`. This section provides PFF's perspective on that architecture.
 
 ### Detection trigger built into PFF design
 
@@ -1771,7 +1771,7 @@ The write contract becomes part of the corpus's source assignment in CFF Layer 4
 
 ### Reference
 
-Full architecture: `Framework — PFF-CFF-OFF Integration Architecture.md`. Sibling specifications: `Framework — Corpus Formalization.md` and `Framework — Output Formalization.md`.
+Full architecture: `Reference — PFF-CFF-OFF Integration Architecture.md`. Sibling specifications: `Framework — Corpus Formalization.md` and `Framework — Output Formalization.md`.
 
 ---
 
