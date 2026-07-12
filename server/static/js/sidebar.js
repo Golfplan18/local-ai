@@ -842,12 +842,6 @@
       title.title = title.textContent;
       item.appendChild(title);
 
-      const snippet = document.createElement('div');
-      snippet.className = 'conversation-browser-snippet';
-      snippet.textContent = row.snippet || '';
-      snippet.title = snippet.textContent;
-      item.appendChild(snippet);
-
       const related = document.createElement('button');
       related.type = 'button';
       related.className = 'conversation-browser-related';

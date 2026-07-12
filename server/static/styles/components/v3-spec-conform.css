@@ -254,10 +254,10 @@
 
 .conversation-browser-row {
   display: grid;
-  grid-template-columns: 20px minmax(320px, 0.85fr) minmax(360px, 1.35fr) auto auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
   gap: 8px;
-  align-items: start;
-  min-height: 42px;
+  align-items: center;
+  min-height: 28px;
   border-radius: 4px;
   padding: 4px;
   cursor: pointer;
@@ -283,19 +283,18 @@
 }
 
 .conversation-browser-related {
-  grid-column: 4;
+  grid-column: 3;
 }
 
 .conversation-browser-dismiss {
-  grid-column: 5;
+  grid-column: 4;
   min-width: 28px;
   color: var(--text-muted);
   font-size: 14px;
   line-height: 1;
 }
 
-.conversation-browser-title,
-.conversation-browser-snippet {
+.conversation-browser-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -305,16 +304,6 @@
 .conversation-browser-title {
   font-weight: 600;
   white-space: nowrap;
-}
-
-.conversation-browser-snippet {
-  color: var(--text-muted);
-  display: -webkit-box;
-  line-height: 1.25;
-  max-height: 2.5em;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 /* Body class set by sidebar.js when pinned. Reserved for any layout
