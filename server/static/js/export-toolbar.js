@@ -64,7 +64,7 @@
         a.type = 'button';
         a.className = 'export-toolbar__reveal';
         a.textContent = 'Reveal';
-        a.addEventListener('click', () => revealInFinder(revealPath));
+        a.addEventListener('click', () => revealInFileManager(revealPath));
         statusEl.appendChild(a);
       }
       if (statusTimer) clearTimeout(statusTimer);
@@ -139,7 +139,7 @@
       });
       const data = await r.json();
       if (data && data.ok && data.path) {
-        const name = data.path.split('/').pop();
+        const name = data.path.split(/[\\/]/).pop();
         setStatus('Saved ' + name, data.path);
       } else {
         setStatus((data && data.error) || 'Export failed.');
@@ -149,7 +149,7 @@
     }
   }
 
-  async function revealInFinder(path) {
+  async function revealInFileManager(path) {
     try {
       await fetch('/api/fs/reveal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

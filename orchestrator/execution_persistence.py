@@ -109,13 +109,24 @@ def ledger_sink_path() -> str:
 def _fs_safe(conversation_id: str) -> str:
     """Filesystem-safe form of a conversation id, applied on BOTH the note-write AND the purge side so
     they always agree (the write/purge invariant). A raw id can carry a Windows-invalid ``:`` or a path
-    separator; map any char outside ``[A-Za-z0-9._-]`` to ``_``. Deterministic; empty → ``unknown``.
+    separator; map unsafe characters to ``_``, trim Windows-invalid trailing dots/spaces, avoid DOS
+    device names, and leave room for generated suffixes. Deterministic; empty → ``unknown``.
     A collision (two ids → same safe form) only ever OVER-purges, which is the safe direction for the
     stealth zero-residue guarantee."""
     cid = str(conversation_id or "").strip()
     if not cid:
         return "unknown"
-    return "".join(c if (c.isalnum() or c in "._-") else "_" for c in cid)
+    safe = "".join(c if (c.isalnum() or c in "._-") else "_" for c in cid)
+    safe = safe.rstrip(" .")
+    if not safe or safe in (".", ".."):
+        return "unknown"
+    reserved = {"CON", "PRN", "AUX", "NUL"}
+    reserved.update(f"COM{i}" for i in range(1, 10))
+    reserved.update(f"LPT{i}" for i in range(1, 10))
+    if safe.split(".", 1)[0].upper() in reserved:
+        safe = "_" + safe
+    # Leave room for the timestamp/suffix below Windows' component limit.
+    return safe[:160].rstrip(" .") or "unknown"
 
 
 # ── Stealth + conversation-id sourcing (the SAME machinery the tool-event sink uses) ──

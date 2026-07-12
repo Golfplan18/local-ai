@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from unittest import mock
 
 from pathlib import Path
 _ORCH = Path(__file__).resolve().parent.parent
@@ -26,7 +27,25 @@ _TOOLS = _ORCH / "tools"
 if str(_TOOLS) not in sys.path:
     sys.path.append(str(_TOOLS))
 
+import bash_execute  # noqa: E402
 from bash_execute import classify_command, resolve_shell_profile  # noqa: E402
+
+
+_shell_capability_patch = None
+
+
+def setUpModule():
+    """Exercise grammar matching on Windows without requiring Git Bash."""
+    global _shell_capability_patch
+    if os.name == "nt":
+        _shell_capability_patch = mock.patch.object(
+            bash_execute, "_posix_shell_available", return_value=True)
+        _shell_capability_patch.start()
+
+
+def tearDownModule():
+    if _shell_capability_patch is not None:
+        _shell_capability_patch.stop()
 
 
 class TestReadProfiles(unittest.TestCase):

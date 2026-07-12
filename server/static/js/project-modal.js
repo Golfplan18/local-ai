@@ -12,7 +12,7 @@
  * Tabs:
  *   Overview        — name, status, private + inert model/style/persona slots.
  *   Mission & Goals — MOM read/write against the vault Operation-Matrix (+ AI draft).
- *   Files           — read-only index of the project vault folder → Obsidian / Finder.
+ *   Files           — read-only index of the project vault folder → Obsidian / OS file manager.
  *   Conversations   — membership (add/remove), restore closed.
  *
  * Endpoints: GET /api/projects/meta, POST /api/projects/<nexus>,
@@ -841,7 +841,7 @@
     }
   }
 
-  // ── Files (read-only index → Obsidian / Finder) ──────────────────────────
+  // ── Files (read-only index → Obsidian / OS file manager) ─────────────────
   const fmtBytes = (n) => {
     if (!n && n !== 0) return '';
     if (n < 1024) return n + ' B';
@@ -887,8 +887,8 @@
       const rev = document.createElement('button');
       rev.type = 'button';
       rev.className = 'project-modal__btn project-modal__btn--mini';
-      rev.textContent = 'Finder';
-      rev.title = 'Reveal in Finder';
+      rev.textContent = 'Folder';
+      rev.title = 'Show in folder';
       rev.addEventListener('click', () => revealFile(f.abs_path, rev));
       actions.appendChild(rev);
     }

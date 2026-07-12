@@ -508,10 +508,10 @@
     { shortcut: 'Mod+F', label: 'Find in page', source: 'browser', severity: 'warn' },
     { shortcut: 'Mod+G', label: 'Find next', source: 'browser', severity: 'warn' },
     { shortcut: 'Mod+D', label: 'Bookmark page', source: 'browser', severity: 'warn' },
-    { shortcut: 'Mod+H', label: 'Hide app on macOS', source: 'macOS', severity: 'block' },
-    { shortcut: 'Mod+M', label: 'Minimize window on macOS', source: 'macOS', severity: 'block' },
-    { shortcut: 'Mod+Space', label: 'Spotlight search', source: 'macOS', severity: 'block' },
-    { shortcut: 'Mod+Alt+Escape', label: 'Force Quit Applications', source: 'macOS', severity: 'block' },
+    { shortcut: 'Mod+H', label: 'Browser history / hide app', source: 'browser / OS', severity: 'block' },
+    { shortcut: 'Mod+M', label: 'Minimize window on macOS', source: 'macOS', severity: 'block', platform: 'mac' },
+    { shortcut: 'Mod+Space', label: 'Spotlight search', source: 'macOS', severity: 'block', platform: 'mac' },
+    { shortcut: 'Mod+Alt+Escape', label: 'Force Quit Applications', source: 'macOS', severity: 'block', platform: 'mac' },
     { shortcut: 'Mod+Alt+I', label: 'Open developer tools', source: 'browser', severity: 'warn' },
     { shortcut: 'Mod+Alt+J', label: 'Open developer console', source: 'browser', severity: 'warn' },
     { shortcut: 'Mod+Shift+C', label: 'Element picker / developer tools', source: 'browser', severity: 'warn' },
@@ -715,6 +715,7 @@
       else result.warnings.push(message);
     });
     RESERVED.forEach(function (row) {
+      if (row.platform === 'mac' && !isMac) return;
       if (normalizeShortcut(row.shortcut) !== norm) return;
       var message = row.source + ': ' + row.label + '.';
       if (row.severity === 'block') result.errors.push(message);
@@ -747,7 +748,9 @@
   }
 
   function reservedRows() {
-    return RESERVED.map(function (row) {
+    return RESERVED.filter(function (row) {
+      return row.platform !== 'mac' || isMac;
+    }).map(function (row) {
       return {
         shortcut: normalizeShortcut(row.shortcut),
         display: displayShortcut(row.shortcut),

@@ -481,11 +481,14 @@ def _declared_wrapper() -> list[str] | None:
     if not parts:
         return None
     exe = parts[0]
-    if os.path.isabs(exe):
-        if not os.path.isfile(exe):
-            return None
-    elif shutil.which(exe) is None:
+    resolved = shutil.which(exe)
+    if resolved is None and os.path.isabs(exe) and os.path.isfile(exe):
+        resolved = exe
+    if resolved is None:
         return None
+    # Preserve the executable actually validated above. This matters on
+    # Windows when PATHEXT resolves a declared name to a .cmd/.bat shim.
+    parts[0] = resolved
     return parts
 
 

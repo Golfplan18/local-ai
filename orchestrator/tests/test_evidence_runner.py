@@ -32,6 +32,13 @@ import evidence_runner as er  # noqa: E402
 from evidence_runner import Check, Runner, Catalog, CheckResult  # noqa: E402
 
 
+_PYTHON_PASSTHROUGH_WRAPPER = [
+    sys.executable,
+    "-c",
+    "import subprocess,sys; raise SystemExit(subprocess.call(sys.argv[1:]))",
+]
+
+
 def _reset_probe():
     er._unshare_probe_cache = None
     er._wrapper_probe_cache.clear()
@@ -196,7 +203,8 @@ class TestEnforceOrRefuse(unittest.TestCase):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             self.assertEqual(er.enforcement_backend("deny"), "ora-evidence-sandbox")
             res = er.run_check(Check(name="ok", argv=["python", "-c", "print('hi')"]),
                                Runner(), repo)
@@ -213,7 +221,8 @@ class TestEnforceOrRefuse(unittest.TestCase):
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_linux_unshare_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=True), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             self.assertIsNone(er.enforcement_backend("deny"))
             res = er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
                                Runner(), tempfile.mkdtemp())
@@ -226,7 +235,8 @@ class TestEnforceOrRefuse(unittest.TestCase):
         # baseline OPEN + wrapped DENIED → wrapper blocked → not a passthrough (False).
         # baseline DENIED (offline/egress-filtered) → un-attributable → False (the
         #   false-positive the re-check found; must NOT be read as enforcement).
-        with mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+        with mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             for baseline, wrapped, expected in [("OPEN", "OPEN", True),
                                                 ("OPEN", "DENIED", False),
                                                 ("DENIED", "OPEN", False),
@@ -242,7 +252,8 @@ class TestEnforceOrRefuse(unittest.TestCase):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             res = er.run_check(Check(name="bad", argv=["python", "-c", "import sys; sys.exit(3)"]),
                                Runner(), repo)
             self.assertFalse(res.passed)
@@ -253,7 +264,8 @@ class TestEnforceOrRefuse(unittest.TestCase):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             res = er.run_check(
                 Check(name="slow", argv=["python", "-c", "import time; time.sleep(5)"], timeout=1),
                 Runner(), repo)
@@ -381,7 +393,8 @@ class TestObservability(unittest.TestCase):
         with mock.patch.object(er._te, "record") as rec, \
              mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             er.run_check(Check(name="ok", argv=["python", "-c", "print(1)"]),
                          Runner(), tempfile.mkdtemp())
         evs = [c.args[0] for c in rec.call_args_list
@@ -429,7 +442,8 @@ class TestMutatesTrue(unittest.TestCase):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             res = er.run_check(Check(name="m", argv=["python", "-c", "print('ok')"], mutates=True),
                                Runner(), repo, mode="clean_worktree")
             self.assertFalse(res.skipped)
@@ -443,7 +457,8 @@ class TestMutatesTrue(unittest.TestCase):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
-             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
             res = er.run_check(Check(name="sh", cmd="echo hi", shell=True), Runner(), repo)
             self.assertFalse(res.skipped)
             self.assertTrue(res.passed)
@@ -630,13 +645,13 @@ class TestPortabilityWindowsSim(unittest.TestCase):
         # — must not be mangled, on BOTH POSIX (posix=True strips quotes) and
         # simulated-Windows (posix=False keeps quotes → the runner strips a balanced
         # surrounding pair; the re-check catch). Uses a real space-containing exe.
-        import tempfile as tf, shutil as sh
+        import tempfile as tf
         d = tf.mkdtemp(prefix="Program Files ")   # a dir with a space
         exe = os.path.join(d, "wrap")
-        sh.copy(sh.which("env") or "/usr/bin/env", exe)
-        os.chmod(exe, 0o755)
+        Path(exe).touch()
         for simulated in ("posix", "nt"):
             with mock.patch.object(os, "name", simulated), \
+                 mock.patch.object(er.shutil, "which", return_value=exe), \
                  mock.patch.dict(os.environ, {er._ENV_SANDBOX: f'"{exe}" --flag'}):
                 parts = er._declared_wrapper()
                 self.assertIsNotNone(parts, f"os.name={simulated}")
@@ -646,6 +661,13 @@ class TestPortabilityWindowsSim(unittest.TestCase):
     def test_wrapper_malformed_returns_none_not_crash(self):
         with mock.patch.dict(os.environ, {er._ENV_SANDBOX: 'unbalanced "quote'}):
             self.assertIsNone(er._declared_wrapper())
+
+    def test_wrapper_keeps_pathext_resolved_executable(self):
+        resolved = r"C:\Program Files\Ora Sandbox\sandbox.cmd"
+        with mock.patch.object(os, "name", "nt"), \
+             mock.patch.object(er.shutil, "which", return_value=resolved), \
+             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "sandbox"}):
+            self.assertEqual(er._declared_wrapper(), [resolved])
 
     def test_unshare_cache_is_platform_gated(self):
         # PORT-2: a cached True unshare probe must NOT leak across platforms — the

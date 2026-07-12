@@ -24,11 +24,11 @@ function assert(name, cond) {
   console.log('PASS: ' + name);
 }
 
-function makeContext() {
+function makeContext(platform) {
   var listeners = {};
   var ctx = {
     console: console,
-    navigator: { platform: 'MacIntel' },
+    navigator: { platform: platform || 'MacIntel' },
     document: {
       readyState: 'loading',
       addEventListener: function (type, fn) {
@@ -97,5 +97,17 @@ assert('zoom in matches shifted plus alias',
 K.refresh({ keyboard: { shortcuts: { visual_zoom_in: '' } } });
 assert('empty override preserves default aliases',
   K.matches('visual_zoom_in', evt('=')));
+
+var winCtx = makeContext('Win32');
+vm.runInNewContext(fs.readFileSync(SRC, 'utf8'), winCtx, { filename: SRC });
+var WinK = winCtx.OraKeyboardShortcuts;
+var winMinimize = WinK.validateShortcut('app_new_conversation', 'Mod+M', {});
+assert('macOS-only reserved shortcut does not block Windows Ctrl+M',
+  winMinimize.ok === true);
+var winHistory = WinK.validateShortcut('app_new_conversation', 'Mod+H', {});
+assert('browser-reserved Windows Ctrl+H remains blocked',
+  winHistory.ok === false && winHistory.errors.length > 0);
+assert('macOS-only reserved rows are hidden on Windows',
+  !WinK.reserved().some(function (row) { return row.shortcut === 'Mod+Space'; }));
 
 console.log('keyboard-shortcuts tests passed');
