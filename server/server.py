@@ -8557,7 +8557,7 @@ def conversations_fork(conversation_id):
     )
     if new_envelope is None:
         return json.dumps({
-            "error":           "parent conversation not found or unreadable",
+            "error":           "parent Dialogue not found or unreadable",
             "conversation_id": parent_id,
         }), 404
 

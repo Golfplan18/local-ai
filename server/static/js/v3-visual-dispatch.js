@@ -28,7 +28,7 @@
   // tagged ora-visual, JSON payload, closing fence on its own line.
   const FENCE_RE = /```ora-visual\s*\n([\s\S]*?)\n[ \t]*```/g;
 
-  const PLACEHOLDER = '*\u{1F4CA} Diagram rendered in the visual pane.*';
+  const PLACEHOLDER = '*\u{1F4CA} Diagram rendered in the Exhibits pane.*';
 
   let _lastKey = null;
 

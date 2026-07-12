@@ -122,7 +122,7 @@
 
     const header = document.createElement('div');
     header.className = 'bootstrap-context-block-header';
-    header.textContent = 'Context assembled for this thread';
+    header.textContent = 'Context assembled for this Dialogue';
     block.appendChild(header);
 
     const subhead = document.createElement('div');
