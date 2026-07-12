@@ -121,6 +121,7 @@
     activeConversationId: null,
     activeTag:            '',
     activeTitle:          '',
+    readOnlySource:       false, // Library-backed engrams/archives are not mutable Dialogues.
     messages:             [],   // raw conversation.json messages[]
     turns:                [],   // grouped: [{user, assistant}, ...]
     currentTurnIndex:     0,    // -1 if no turns
@@ -200,6 +201,10 @@
   const renderHeader = () => {
     if (!displayName) return;
     displayName.textContent = state.activeTitle || (state.activeConversationId || 'Dialogue');
+    const renameable = !!state.activeConversationId && !state.readOnlySource;
+    displayName.classList.toggle('is-clickable', renameable);
+    if (renameable) displayName.title = 'Click to rename';
+    else displayName.removeAttribute('title');
     if (modeIcon) {
       modeIcon.textContent = modeIconSymbolFor(state.activeTag);
       modeIcon.dataset.tag = state.activeTag || '';
@@ -226,6 +231,19 @@
       }
       timestampEl.textContent = formatTimestamp(iso);
     }
+  };
+
+  const updateForkAvailability = () => {
+    const forkButton = document.querySelector('.sidebar-fork-thread-cmd');
+    if (!forkButton) return;
+    const enabled = !!state.activeConversationId
+      && !state.readOnlySource
+      && state.turns.length > 0;
+    forkButton.disabled = !enabled;
+    forkButton.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    forkButton.title = enabled
+      ? 'Fork current Dialogue'
+      : 'Fork becomes available after the first turn';
   };
 
   const renderTurn = () => {
@@ -278,6 +296,7 @@
     if (outputPane) outputPane.classList.remove('has-content');
     renderHeader();
     renderTurn();
+    updateForkAvailability();
   };
 
   const activeTagFromBody = () => {
@@ -381,6 +400,7 @@
     state.activeConversationId = id;
     state.activeTag = tag;
     state.activeTitle = 'New Dialogue';
+    state.readOnlySource = false;
     state.messages = [];
     state.turns = [];
     state.currentTurnIndex = 0;
@@ -398,8 +418,8 @@
 
   const forkActive = async (detail = {}) => {
     const parentId = state.activeConversationId;
-    if (!parentId) {
-      alert('Open a Dialogue before forking it.');
+    if (!parentId || state.readOnlySource || state.turns.length === 0) {
+      alert('A Dialogue needs at least one turn before it can be forked.');
       return;
     }
     try {
@@ -434,6 +454,8 @@
   const load = async (conversation_id, opts = {}) => {
     if (!conversation_id) return;
     refreshDOMRefs();
+    const forkButton = document.querySelector('.sidebar-fork-thread-cmd');
+    if (forkButton) forkButton.disabled = true;
 
     // Save draft for the conversation we're leaving.
     if (state.activeConversationId && leftInput) {
@@ -452,6 +474,7 @@
     // submits go to the right place.
     state.activeConversationId = conversation_id;
     state.activeTag            = (envelope && envelope.tag) || '';
+    state.readOnlySource       = !!(envelope && envelope.archived_source);
     state.messages             = (envelope && envelope.messages) || [];
     state.turns                = groupTurns(state.messages);
     state.currentTurnIndex     = Math.max(0, state.turns.length - 1);
@@ -461,12 +484,16 @@
       state.currentTurnIndex = opts.turnIndex;
     }
 
-    // Title derivation. The /api/conversation/<id> endpoint returns the
-    // raw envelope without a derived title, so we derive it here:
+    // Title derivation. A persisted display_name is authoritative; otherwise:
     //   * is_welcome envelopes → fixed "Welcome to Ora"
     //   * otherwise → first user message content, trimmed to 60 chars
     //   * fallback → conversation_id
-    if (envelope && envelope.is_welcome) {
+    const storedDisplayName = envelope && typeof envelope.display_name === 'string'
+      ? envelope.display_name.trim()
+      : '';
+    if (storedDisplayName) {
+      state.activeTitle = storedDisplayName;
+    } else if (envelope && envelope.is_welcome) {
       state.activeTitle = 'Welcome to Ora';
     } else {
       let derived = '';
@@ -646,6 +673,7 @@
   const beginRenameDisplayName = () => {
     if (!displayName) return;
     if (!state.activeConversationId) return;
+    if (state.readOnlySource) return;
     if (displayName.classList.contains('is-renaming')) return;
 
     const original = state.activeTitle || '';
@@ -726,8 +754,6 @@
         if (!state.activeConversationId) return;
         beginRenameDisplayName();
       });
-      displayName.classList.add('is-clickable');
-      displayName.title = 'Click to rename';
     }
 
     if (leftInput) {
