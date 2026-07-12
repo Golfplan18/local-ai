@@ -201,7 +201,7 @@
     if (!node) return Promise.resolve({ ok: false, reason: 'no image' });
     var conversationId = _resolveConversationId(panel);
     if (!conversationId) {
-      return Promise.resolve({ ok: false, reason: 'no active conversation' });
+      return Promise.resolve({ ok: false, reason: 'no active Dialogue' });
     }
     return _extractSourceBlob(node).then(function (extract) {
       if (!extract.ok) return extract;

@@ -10,9 +10,9 @@ target (Export §1.9). This module owns:
     look. The vault itself stays markdown-only.
   * **Save-to-Vault (markdown).** A single rendered output is saved as a vault
     markdown note. When a project is active the note lands in that project's
-    folder (``<vault>/Projects/<name>/``, the G1.33 binding); otherwise in a
-    shared ``<vault>/Outputs/`` folder. (Full-conversation export already lives
-    in ``vault_export.export_session_to_vault``; this is the per-output scope.)
+    folder (``<vault>/Projects/<name>/``, the G1.33 binding); Commons output
+    lands at the vault root. (Full-Dialogue export already lives in
+    ``vault_export.export_session_to_vault``; this is the per-output scope.)
 
   * **Render targets (docx / pdf).** When Pandoc is on the machine, a rendered
     output is converted from its canonical markdown and written to
@@ -43,9 +43,10 @@ from orchestrator.operation_matrix import vault_root
 EXPORTS_DIR = Path.home() / "Documents" / "Ora Exports"
 RESOURCES_DIR = Path.home() / "Documents" / "Ora Resources"
 
-# Where non-project ("General") output notes land inside the vault.
+# Deprecated compatibility constant for out-of-tree callers that explicitly
+# request the former folder. It is intentionally no longer the function
+# default: an omitted ``outputs_subdir`` now means the vault root.
 DEFAULT_OUTPUTS_SUBDIR = "Outputs"
-
 
 def ensure_export_dirs(
     exports_dir: Path | None = None, resources_dir: Path | None = None
@@ -107,22 +108,29 @@ def save_output_to_vault(
     title: str | None = None,
     project_nexus: str | None = None,
     project_name: str | None = None,
+    project_folder_name: str | None = None,
     vault: Path | None = None,
-    outputs_subdir: str = DEFAULT_OUTPUTS_SUBDIR,
+    outputs_subdir: str | None = None,
 ) -> Path | None:
     """Save one rendered output as a canonical vault markdown note.
 
-    Lands in ``<vault>/Projects/<project_name>/`` when a project is given,
-    else ``<vault>/<outputs_subdir>/``. Returns the written path, or None if the
-    vault is unavailable (never raises)."""
+    Lands in ``<vault>/Projects/<project_folder_name>/`` when a project is
+    given. ``project_name`` remains a compatibility alias for callers that do
+    not yet pass the project's immutable folder identity. Otherwise, output
+    lands at the vault root. ``outputs_subdir`` remains as an explicit
+    compatibility override for callers that intentionally request a subfolder;
+    it has no default. Returns the written path, or None if the vault is
+    unavailable (never raises)."""
     if content is None:
         return None
     root = vault or vault_root()
-    folder = (
-        root / "Projects" / _safe_folder(project_name)
-        if project_name
-        else root / outputs_subdir
-    )
+    folder_name = project_folder_name or project_name
+    if folder_name:
+        folder = root / "Projects" / _safe_folder(folder_name)
+    elif outputs_subdir:
+        folder = root / _safe_folder(outputs_subdir)
+    else:
+        folder = root
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -153,7 +161,7 @@ def save_output_to_vault(
 
 def _safe_folder(name: str | None) -> str:
     cleaned = re.sub(r"[\\/]+", " ", (name or "").strip()).strip()
-    return cleaned or "Untitled"
+    return cleaned if cleaned and cleaned not in (".", "..") else "Untitled"
 
 
 # ---------------------------------------------------------------------------

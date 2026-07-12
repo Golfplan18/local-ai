@@ -281,7 +281,7 @@
         emit(panel, 'tool-activation-error', {
           source: this.id,
           reason: 'panel-not-ready',
-          message: 'Visual pane not initialised; cannot activate lasso.',
+          message: 'Exhibits pane not initialised; cannot activate lasso.',
         });
         return false;
       }

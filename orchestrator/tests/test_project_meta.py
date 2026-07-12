@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -35,9 +36,130 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertEqual(meta["name"], "My Book")
         self.assertEqual(meta["status"], "active")
         self.assertFalse(meta["is_default"])
+        self.assertEqual(meta["folder_name"], "My Book")
         self.assertIsNotNone(meta["created"])
         again = pm.read_project_meta("my-book", pointer_dir=self.d)
         self.assertEqual(again["name"], "My Book")
+
+    def test_display_name_change_preserves_immutable_folder(self):
+        pm.create_project("My Book", pointer_dir=self.d)
+        changed = pm.update_project_meta(
+            "my-book",
+            {"name": "Book of Law", "folder_name": "Should Not Move"},
+            pointer_dir=self.d,
+        )
+        self.assertEqual(changed["name"], "Book of Law")
+        self.assertEqual(changed["folder_name"], "My Book")
+        raw = json.loads((self.d / "my-book.json").read_text(encoding="utf-8"))
+        self.assertEqual(raw["name"], "My Book")
+        self.assertEqual(raw["display_name"], "Book of Law")
+        self.assertEqual(raw["folder_name"], "My Book")
+
+    def test_legacy_name_change_freezes_old_folder_before_mutation(self):
+        (self.d / "legacy.json").write_text(
+            json.dumps({"nexus": "legacy", "name": "Legacy Folder"}),
+            encoding="utf-8",
+        )
+        changed = pm.update_project_meta(
+            "legacy", {"name": "New Label"}, pointer_dir=self.d
+        )
+        self.assertEqual(changed["name"], "New Label")
+        self.assertEqual(changed["folder_name"], "Legacy Folder")
+        raw = json.loads((self.d / "legacy.json").read_text(encoding="utf-8"))
+        self.assertEqual(raw["name"], "Legacy Folder")
+        self.assertEqual(raw["display_name"], "New Label")
+        self.assertEqual(raw["folder_name"], "Legacy Folder")
+
+    def test_rollback_reader_keeps_folder_and_current_display_remains_authoritative(self):
+        pm.create_project("My Book", pointer_dir=self.d)
+        pm.update_project_meta(
+            "my-book", {"name": "Book of Law"}, pointer_dir=self.d
+        )
+        pointer = self.d / "my-book.json"
+        rolled_back = json.loads(pointer.read_text(encoding="utf-8"))
+
+        # The prior release knows only `name`; immediately after rollback it
+        # therefore continues deriving the original folder.
+        self.assertEqual(rolled_back["name"], "My Book")
+        self.assertEqual(rolled_back["folder_name"], "My Book")
+
+        # Rewriting that same legacy value (including an attempted rename back
+        # to the original label) carries no semantic signal that can safely
+        # override the additive display-only field.
+        pointer.write_text(json.dumps(rolled_back), encoding="utf-8")
+        self.assertEqual(
+            pm.read_project_meta("my-book", pointer_dir=self.d)["name"],
+            "Book of Law",
+        )
+
+        # Simulate an unsafe display-name edit made by that prior release. It
+        # cannot distinguish display label from folder identity. On the next
+        # forward upgrade, current code restores the folder-bearing field and
+        # retains the additive current display label rather than guessing.
+        rolled_back["name"] = "Legacy Edited Label"
+        pointer.write_text(json.dumps(rolled_back), encoding="utf-8")
+
+        current = pm.read_project_meta("my-book", pointer_dir=self.d)
+        repaired = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertEqual(current["name"], "Book of Law")
+        self.assertEqual(current["folder_name"], "My Book")
+        self.assertEqual(repaired["name"], "My Book")
+        self.assertEqual(repaired["display_name"], "Book of Law")
+        self.assertEqual(repaired["folder_name"], "My Book")
+
+    def test_startup_folder_migration_is_idempotent_and_preserves_plugin_fields(self):
+        pointer = self.d / "legacy.json"
+        pointer.write_text(
+            json.dumps({
+                "nexus": "legacy",
+                "name": "Legacy Folder",
+                "root": "/plugin/root",
+                "future_field": {"kept": True},
+            }),
+            encoding="utf-8",
+        )
+
+        self.assertEqual(pm.migrate_project_folder_names(self.d), 1)
+        self.assertEqual(pm.migrate_project_folder_names(self.d), 0)
+        raw = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertEqual(raw["name"], "Legacy Folder")
+        self.assertEqual(raw["display_name"], "Legacy Folder")
+        self.assertEqual(raw["folder_name"], "Legacy Folder")
+        self.assertEqual(raw["root"], "/plugin/root")
+        self.assertEqual(raw["future_field"], {"kept": True})
+
+    def test_startup_folder_migration_leaves_pure_plugin_pointer_minimal(self):
+        pointer = self.d / "plugin-only.json"
+        original = {"nexus": "plugin-only", "root": "/plugin/root"}
+        pointer.write_text(json.dumps(original), encoding="utf-8")
+
+        self.assertEqual(pm.migrate_project_folder_names(self.d), 0)
+        self.assertEqual(json.loads(pointer.read_text(encoding="utf-8")), original)
+
+    def test_pointer_stores_follow_relocated_ora_home(self):
+        relocated = self.d / "relocated ora"
+        env = os.environ.copy()
+        env["ORA_HOME"] = str(relocated)
+        env["PYTHONPATH"] = _REPO
+        script = (
+            "from orchestrator import active_project, project_meta, project_registry; "
+            "print(active_project.DATA_DIR); print(project_meta.POINTER_DIR); "
+            "print(project_registry.POINTER_DIR)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=_REPO,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        lines = result.stdout.strip().splitlines()
+        expected_data = relocated / "data"
+        expected_projects = expected_data / "projects"
+        self.assertEqual(pathlib.Path(lines[0]), expected_data)
+        self.assertEqual(pathlib.Path(lines[1]), expected_projects)
+        self.assertEqual(pathlib.Path(lines[2]), expected_projects)
 
     def test_create_reserved_and_collision(self):
         with self.assertRaises(pm.ProjectMetaError):
@@ -61,6 +183,29 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertEqual(g["nexus"], "commons")
         self.assertTrue(g["is_default"])
         self.assertFalse((self.d / "general.json").exists())
+
+    def test_deprecated_aliases_remain_import_compatible(self):
+        self.assertEqual(pm.GENERAL_NEXUS, "general")
+        self.assertEqual(pm.general_meta(), pm.default_project_meta())
+        self.assertEqual(pm.general_meta()["nexus"], "commons")
+
+    def test_default_inputs_are_canonicalized(self):
+        for nexus in (" General ", "COMMONS", " commons "):
+            self.assertEqual(
+                pm.read_project_meta(nexus, pointer_dir=self.d)["nexus"],
+                "commons",
+            )
+
+    def test_reserved_pointer_files_never_duplicate_commons(self):
+        for nexus in ("commons", "general"):
+            (self.d / f"{nexus}.json").write_text(
+                json.dumps({"nexus": nexus, "name": f"stale {nexus}", "root": "/x"}),
+                encoding="utf-8",
+            )
+        listed = pm.list_project_meta(pointer_dir=self.d)
+        self.assertEqual([m["nexus"] for m in listed], ["commons"])
+        self.assertEqual(listed[0]["name"], "Commons")
+        self.assertFalse(listed[0]["is_plugin"])
 
     def test_read_missing_returns_none(self):
         self.assertIsNone(pm.read_project_meta("nope", pointer_dir=self.d))
@@ -131,6 +276,9 @@ class ProjectMetaTests(unittest.TestCase):
         f2 = pm.ensure_project_folder("a/b", vault_projects_dir=proj_dir)
         self.assertTrue(f2.is_dir())
         self.assertNotIn("/", f2.name)
+        for traversal in (".", ".."):
+            safe = pm.ensure_project_folder(traversal, vault_projects_dir=proj_dir)
+            self.assertEqual(safe, proj_dir / "Untitled")
 
     def test_list_project_files_missing_folder(self):
         idx = pm.list_project_files("Nope", vault_projects_dir=self.d / "vp")
@@ -152,6 +300,21 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertEqual(names, {"draft.md", "ideas.md"})
         rels = {f["rel_path"] for f in idx["files"]}
         self.assertIn(os.path.join("notes", "ideas.md"), rels)
+
+    def test_list_commons_files_uses_only_direct_vault_root_files(self):
+        vault = self.d / "vault"
+        projects_dir = vault / "Projects"
+        project_folder = projects_dir / "My Book"
+        project_folder.mkdir(parents=True)
+        (vault / "commons-output.md").write_text("root", encoding="utf-8")
+        (project_folder / "project-output.md").write_text("project", encoding="utf-8")
+
+        idx = pm.list_project_files(None, vault_projects_dir=projects_dir)
+
+        self.assertTrue(idx["exists"])
+        self.assertTrue(idx["is_vault_root"])
+        self.assertEqual(pathlib.Path(idx["folder"]), vault)
+        self.assertEqual({f["name"] for f in idx["files"]}, {"commons-output.md"})
 
     def test_list_project_files_truncation(self):
         proj_dir = self.d / "vp"

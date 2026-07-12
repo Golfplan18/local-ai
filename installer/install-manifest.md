@@ -1,6 +1,6 @@
 # Local AI First Boot — Installer Manifest
 
-**Status as of 2026-06-16: legacy natural-language installer specification, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This layer set is retained as architecture/specification material and is scheduled for a G3.32 reconciliation into a current natural-language installer.
+**Status as of 2026-07-12: legacy natural-language installer specification, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This layer set is retained as architecture/specification material and is scheduled for a G3.32 reconciliation into a current natural-language installer. Layer 10 now records the retirement boundary for the superseded config-driven interface rather than specifying installable work.
 
 *Original shape: orchestrated installer. Each layer is a separate file loaded and executed sequentially by a coding agent. Layers must execute in order within each phase. Phase 2 is conditional on the Hardware Evaluation Gate.*
 
@@ -60,8 +60,8 @@ Phase 2 adds local model inference on top of the Phase 1 system. The Phase 1 sys
 | 7 | `phase2/layer7-desktop-launcher.md` | Desktop Launcher | Create desktop launcher for the chat server |
 | 8 | `phase2/layer8-documentation-verification.md` | Documentation + Verification | Hardware report, README, final verification tests |
 | 9 | `phase2/layer9-model-switcher.md` | Model Switcher | UI for switching between models/endpoints |
-| 10 | `phase2/layer10-interface-customization.md` | Interface Customization | Multi-panel UI, mode selector, display settings |
-| 11 | `phase2/layer11-app-bundle.md` | App Bundle + Icon | macOS .app bundle with custom icon |
+| 10 | `phase2/layer10-interface-customization.md` | Interface Customization (retired) | Retirement record: do not recreate layout config/presets/generator or legacy themes; use the hardcoded V3 interface and Theme Library |
+| 11 | `phase2/layer11-app-bundle.md` | App Bundle + Icon | In-place macOS Ora.app shell delegating to the tracked launcher/service path, with generated icon variants |
 | 12 | `phase2/layer12-conversation-autosave.md` | Conversation Auto-Save | Session logging and ChromaDB indexing |
 
 ## Appendix

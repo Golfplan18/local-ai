@@ -37,11 +37,12 @@ There is no packaged one-click installer. The install is a source install: you c
    python3 scripts/install.py --profile solo
    ```
    The installer runs seven steps (preflight → profile → catalog refresh → registry sync → auto-populate → smoke test → API orientation). It is safe to re-run.
-3. Start the server:
+3. Install the recommended per-user supervised service:
    ```bash
-   ./start.sh
+   ./scripts/ora-launchd.sh install
    ```
-4. Open <http://localhost:5000> in your browser.
+   The installer starts Ora immediately and configures macOS `launchd` to keep it available across logins. It also verifies that the responding server belongs to this checkout and updates an existing Ora.app launcher to delegate to the same service.
+4. Open the exact `Health:` URL printed by the command. Ora normally uses port 5000 but may select the first available port through 5010. Check the installed service at any time with `./scripts/ora-launchd.sh status`.
 
 Solo is the only supported profile today. Hybrid and Organization are reserved — the installer refuses them with a clear message.
 
@@ -92,11 +93,27 @@ The flow detects your RAM, recommends matching options, and asks before download
 
 ## Start and stop the server
 
-**Start** `[macOS]` (tested) · `[WSL]` `[Linux-desktop — untested/best-effort]`:
+**Recommended supervised setup** `[macOS]` (run once):
+```bash
+./scripts/ora-launchd.sh install
+```
+The command starts Ora immediately, installs a per-user `launchd` service with `RunAtLoad` and `KeepAlive`, verifies the expected checkout, and prints the exact `Health:` URL. Use that reported URL: the server binds the first free port in 5000–5010.
+
+After supervision is installed, `./start.sh` starts the service if needed and opens Ora at its reported port. `./stop.sh` stops the service but keeps it installed. For explicit service control:
+
+```bash
+./scripts/ora-launchd.sh status
+./scripts/ora-launchd.sh restart
+./scripts/ora-launchd.sh uninstall
+```
+
+For a one-session, unsupervised macOS launch, run `./start.sh` before installing the service. If an unmanaged server is already running when you decide to install supervision, stop it with `./stop.sh` first, then run the install command above.
+
+**Start** `[WSL]` `[Linux-desktop — untested/best-effort]`:
 ```bash
 ./start.sh
 ```
-Then open <http://localhost:5000>. The server binds the first free port in 5000–5010. `start.sh` is verified on macOS only; on WSL and Linux desktop it is untested.
+Open the exact URL that `start.sh` prints. The script is verified on macOS only; on WSL and Linux desktop it is untested.
 
 **Start** `[Windows-native]`: run `start.bat` (see the caveat above).
 
@@ -104,7 +121,7 @@ Then open <http://localhost:5000>. The server binds the first free port in 5000�
 ```bash
 ~/ora/stop.sh
 ```
-Or close the terminal window the server started in.
+On macOS this delegates to the installed service when present; otherwise it stops only the Ora process belonging to this checkout. Use `./stop.sh` on every POSIX platform: `start.sh` backgrounds the unsupervised server, so closing the terminal is not a reliable stop.
 
 **Stop** `[Windows-native]`: run `stop.bat`.
 
@@ -114,7 +131,7 @@ Or close the terminal window the server started in.
 
 You need at least one working model endpoint before Ora can answer. The core install completes without keys, so this is usually your first step after installing.
 
-1. Open the interface at <http://localhost:5000>.
+1. Open the interface at the exact URL printed by the launchd install, or rerun `./start.sh` to print and open the current URL (port 5000–5010). The `status` action inspects service state; it does not report the health URL.
 2. Open **Settings → External APIs**.
 3. Add a key. OpenRouter is the broadest single choice; direct provider keys (Anthropic, OpenAI, Google, and others) skip OpenRouter's gateway markup for those providers' own models.
 4. Save. On macOS desktop, keys go into the system keychain, not a plaintext file.
@@ -142,7 +159,7 @@ If you pick Free, expect the trade-off up front: free models are rate-limited an
 
 ## Do work
 
-1. Type your question or task in the Inquiry pane at <http://localhost:5000> and submit.
+1. Open Ora at the exact reported URL (port 5000–5010), type your question or task in the Inquiry pane, and submit.
 2. Wait. Ora is async by design — for serious work it runs the full pipeline server-side and does not stream a live progress bar. Submit, leave, come back. The interface reconciles what finished while you were gone.
 3. Read the result in the Findings pane — the response side of the Dialogue. When Ora produces a diagram, it appears in the Exhibits pane, the canvas beside the text.
 
@@ -152,7 +169,7 @@ If you pick Free, expect the trade-off up front: free models are rate-limited an
 ```
 Invoke a framework with no input to have Ora walk you through it one question at a time.
 
-**Use tools without leaving the loop.** Do your tool-using work at <http://localhost:5000>, not at claude.ai or ChatGPT directly. The reason is mechanical: tools (web search, file access, knowledge search) run in the Python server between you and the model. A direct commercial chat interface has no Python in the loop, so the tools do not run.
+**Use tools without leaving the loop.** Do your tool-using work at the exact local Ora URL reported by the launcher, not at claude.ai or ChatGPT directly. The reason is mechanical: tools (web search, file access, knowledge search) run in the Python server between you and the model. A direct commercial chat interface has no Python in the loop, so the tools do not run.
 
 ---
 
@@ -200,20 +217,23 @@ For a script that is broken at the source level, `docs/install-manual.md` reprod
 
 | What you see | What it means | What to do |
 |---|---|---|
-| Browser: "connection refused" | The server isn't running | Start it: `./start.sh` `[macOS]` (verified on macOS only; WSL/Linux-desktop untested) or `start.bat` `[Windows-native — untested, flag-incomplete]` |
-| "No AI endpoints configured" | No working model key | Start the server (`./start.sh` `[macOS]`, `start.bat` `[Windows-native — untested]`), then add a key in **Settings → External APIs** |
-| `<tool_call>` tags in the response | You're connected to a commercial AI directly, not to localhost | Use <http://localhost:5000>, not claude.ai / ChatGPT |
+| Browser: "connection refused" | The server isn't running | On macOS install supervision with `./scripts/ora-launchd.sh install`, or run `./start.sh`; use the exact URL either command reports. On Windows-native, run `start.bat` `[untested, flag-incomplete]` |
+| "No AI endpoints configured" | No working model key | Start the server, open its reported local URL, then add a key in **Settings → External APIs** |
+| `<tool_call>` tags in the response | You're connected to a commercial AI directly, not to Ora's local server | Use the exact local URL Ora reports, not claude.ai / ChatGPT |
+| Health passes, but Ora cannot read `~/Documents` | macOS privacy controls denied the supervised process access | Inspect `logs/ora-server.stderr.log`. In **System Settings → Privacy & Security**, grant the selected Python/Ora process **Files & Folders** access or **Full Disk Access**, then restart the service |
 | Garbled output from a local model | The chat template needs a re-check | Switch models, or re-run the model setup |
 | Output repeats itself | The Dialogue has grown too long | Start a new Dialogue |
 | Free model unavailable or rate-limited | Expected on the Free configuration | Add OpenRouter credits or a direct provider key |
 
 If a command in this guide fails on Windows or Linux, that is consistent with the platform status: macOS is the tested target. Check the platform label on the step before assuming a defect.
 
+On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.log` and `logs/ora-server.stderr.log`. An unsupervised `start.sh` launch uses the root `server.log`. Both log families are retention-bounded and rotated by Ora's retention sweeper.
+
 ---
 
 ## Try this now
 
-- Install on macOS, run `./start.sh`, open <http://localhost:5000>, add one OpenRouter key in **Settings → External APIs**, and submit a real question you have been putting off.
+- Install on macOS, run `./scripts/ora-launchd.sh install`, open the exact `Health:` URL it prints, add one OpenRouter key in **Settings → External APIs**, and submit a real question you have been putting off.
 - Compare what comes back to what you would have written yourself in the same fifteen minutes.
 
 ---
@@ -228,6 +248,8 @@ If a command in this guide fails on Windows or Linux, that is consistent with th
 
 ## Changelog
 
+- **2026-07-12** — macOS operation now follows the consolidated supervision contract: `ora-launchd.sh install` is the recommended setup, `start.sh` and `stop.sh` delegate when supervision is installed, every operational step uses the exact reported port in the 5000–5010 range, and troubleshooting covers launchd logs plus the Documents/TCC permission caveat. The repository mirror remains body-identical.
+- **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (both unassigned and project-assigned Dialogues appear there); Commons saves now land at the vault root; and V3 uses one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
 - **2026-07-11** — Interface strings caught up to the nomenclature (ora PR #211): the running UI now shows these names, so the earlier "interface may still show older labels" caveat was removed. Still terminology-only; content remains pinned to `7a5e8f40`.
 - **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this guide — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
 - **2026-07-11** — Code-level rename landed (ora PR #218, commit `062b67a7`, well after this document's `7a5e8f40` pin): the default project's internal nexus id is now `commons`, with the legacy id `general` still recognized everywhere, permanently — not a one-time migration. This guide names no internal ids, so no body text changed. A currency note only; this document's pinned content is not re-audited against `062b67a7`.

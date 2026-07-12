@@ -1758,7 +1758,7 @@
   //
   //     [Response to: <question name>]
   //     <free-typed text, if any>
-  //     [Asserted on canvas: yes — see the visual pane.]   (when checked)
+  //     [Asserted on canvas: yes — see the Exhibits pane.]   (when checked)
   //
   // The whole augmented prompt then enters submitToMainPipeline like any
   // other text input.
@@ -1828,7 +1828,7 @@
     for (const name of names) {
       const lines = [`[Response to: ${name}]`];
       if (responses[name]) lines.push(responses[name]);
-      if (onCanvas[name]) lines.push('[Asserted on canvas: yes — see the visual pane.]');
+      if (onCanvas[name]) lines.push('[Asserted on canvas: yes — see the Exhibits pane.]');
       blocks.push(lines.join('\n'));
     }
     return basePrompt.replace(/\s+$/, '') + '\n\n' + blocks.join('\n\n');
@@ -1961,7 +1961,7 @@
       bubbles: true,
     });
     document.body.dispatchEvent(evt);
-    renderAssistantTurn('[Generating image in the visual pane.]');
+    renderAssistantTurn('[Generating image in the Exhibits pane.]');
   };
 
   // V3 Backlog 6 — Right-column Aside. /api/scratchpad uses the dedicated

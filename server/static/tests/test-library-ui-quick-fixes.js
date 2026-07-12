@@ -46,6 +46,7 @@ var dom = new jsdom.JSDOM(
 var w = dom.window;
 var forkRequests = 0;
 var browserRequests = 0;
+var envelopeRequests = 0;
 var envelopes = {
   'named-live': {
     conversation_id: 'named-live',
@@ -102,7 +103,10 @@ w.fetch = function (url, opts) {
   if (/\/api\/conversation\/[^/]+\/mark-read$/.test(decoded)) return response(true, { ok: true });
   if (decoded.indexOf('/api/canvas/load/') === 0) return response(false, {}, 404);
   var match = decoded.match(/^\/api\/conversation\/(.+)$/);
-  if (match && !opts) return response(!!envelopes[match[1]], envelopes[match[1]], envelopes[match[1]] ? 200 : 404);
+  if (match && !opts) {
+    envelopeRequests += 1;
+    return response(!!envelopes[match[1]], envelopes[match[1]], envelopes[match[1]] ? 200 : 404);
+  }
   return response(false, {}, 404);
 };
 
@@ -181,6 +185,87 @@ async function run() {
     !!w.document.querySelector('.conversation-browser-row .conversation-browser-title'));
   record('Library row omits snippet element',
     w.document.querySelector('.conversation-browser-snippet') === null);
+
+  var library = w.document.querySelector('.conversation-browser-overlay');
+  var search = w.document.querySelector('.conversation-browser-search');
+  var row = w.document.querySelector('.conversation-browser-row');
+  var check = row.querySelector('.conversation-browser-check');
+  var related = row.querySelector('.conversation-browser-related');
+  var dismiss = row.querySelector('.conversation-browser-dismiss');
+  record('Library dialog has an accessible name',
+    library.getAttribute('aria-label') === 'Library');
+  record('Library exposes non-modal dialog semantics',
+    library.getAttribute('role') === 'dialog' &&
+    library.getAttribute('aria-modal') === 'false');
+  record('Library search has a programmatic label',
+    search.getAttribute('aria-label') === 'Search Dialogues');
+  var titleButton = row.querySelector('.conversation-browser-title');
+  record('Library row exposes a labelled group',
+    row.getAttribute('role') === 'group' &&
+    row.getAttribute('aria-label') === 'Dialogue: Saved Dialogue Name');
+  record('Library title is a keyboard-focusable open control',
+    titleButton.tagName === 'BUTTON' &&
+    titleButton.getAttribute('aria-label') === 'Open Dialogue: Saved Dialogue Name');
+  record('Library row controls have specific accessible names',
+    check.getAttribute('aria-label') === 'Select Dialogue: Saved Dialogue Name' &&
+    related.getAttribute('aria-label') === 'Show items related to Saved Dialogue Name' &&
+    dismiss.getAttribute('aria-label') === 'Remove Saved Dialogue Name from these results');
+
+  var requestsBeforeTitleOpen = envelopeRequests;
+  titleButton.click();
+  await flush();
+  record('Library title control opens its row',
+    envelopeRequests > requestsBeforeTitleOpen,
+    'requests=' + envelopeRequests);
+
+  var browseButton = w.document.querySelector('.sidebar-browse-cmd');
+  var escapeTargets = [
+    ['search', '.conversation-browser-search'],
+    ['sort', '.conversation-browser-sort'],
+    ['Search button', '.conversation-browser-search-btn'],
+    ['Close button', '.conversation-browser-close'],
+    ['Dialogue filter', '.conversation-browser-filter-conversations'],
+    ['Engram filter', '.conversation-browser-filter-engrams'],
+    ['relevance slider', '.conversation-browser-relevance-slider'],
+    ['row checkbox', '.conversation-browser-check'],
+    ['row title', '.conversation-browser-title'],
+    ['Related button', '.conversation-browser-related'],
+    ['row dismiss button', '.conversation-browser-dismiss'],
+  ];
+  var escapeFailures = [];
+  for (var i = 0; i < escapeTargets.length; i += 1) {
+    browseButton.focus();
+    browseButton.click();
+    await flush();
+    await flush();
+    var escapeTarget = w.document.querySelector(escapeTargets[i][1]);
+    if (!escapeTarget) {
+      escapeFailures.push(escapeTargets[i][0] + ': missing control');
+      continue;
+    }
+    escapeTarget.focus();
+    escapeTarget.dispatchEvent(new w.KeyboardEvent('keydown', {
+      key: 'Escape', bubbles: true, cancelable: true,
+    }));
+    if (library.classList.contains('is-open')) {
+      escapeFailures.push(escapeTargets[i][0] + ': Library stayed open');
+    } else if (w.document.activeElement !== browseButton) {
+      escapeFailures.push(escapeTargets[i][0] + ': focus was not restored');
+    }
+  }
+  record('Escape closes Library from every control and restores focus',
+    escapeFailures.length === 0, escapeFailures.join('; '));
+
+  browseButton.focus();
+  browseButton.click();
+  await flush();
+  var workspaceInput = w.document.querySelector('.input-pane textarea');
+  workspaceInput.focus();
+  workspaceInput.dispatchEvent(new w.KeyboardEvent('keydown', {
+    key: 'Escape', bubbles: true, cancelable: true,
+  }));
+  record('Escape closes non-modal Library when focus is elsewhere',
+    !library.classList.contains('is-open') && w.document.activeElement === browseButton);
 
   var passed = results.filter(function (r) { return r.ok; }).length;
   console.log('\n' + passed + ' / ' + results.length + ' tests passed');

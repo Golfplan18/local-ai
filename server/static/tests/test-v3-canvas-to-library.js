@@ -298,7 +298,7 @@ chain = chain.then(function () { return test('send rejects when no node provided
   });
 }); });
 
-chain = chain.then(function () { return test('send rejects when no active conversation', function () {
+chain = chain.then(function () { return test('send rejects when no active Dialogue', function () {
   // Boot a fresh sandbox without the OraConversation getter.
   var b2 = boot();
   b2.sandbox.window.OraConversation = null;
@@ -306,7 +306,7 @@ chain = chain.then(function () { return test('send rejects when no active conver
   var node = makeImageNode({ image: { src: 'data:image/png;base64,iVB' } });
   return b2.Lib.send(makePanel(), node).then(function (r) {
     assertEqual(r.ok, false);
-    assertEqual(r.reason, 'no active conversation');
+    assertEqual(r.reason, 'no active Dialogue');
   });
 }); });
 

@@ -35,8 +35,19 @@
   let mode = 'edit';  // 'edit' | 'create'
   let pendingNexus = null;  // a previewed nexus rename awaiting Apply
 
+  const canonicalProjectId = (nexus) => {
+    const slug = String(nexus || '').trim();
+    return (!slug || ['commons', 'general'].includes(slug.toLowerCase())) ? 'commons' : slug;
+  };
+  // Project ids embedded in URL path segments cannot use the version-neutral
+  // blank representation. Both current and pre-rename servers recognize the
+  // legacy default id, so use `general` for Commons on the wire.
+  const compatibleProjectPathId = (nexus) =>
+    canonicalProjectId(nexus) === 'commons' ? 'general' : canonicalProjectId(nexus);
+  const canonicalProjectRecordId = (project) =>
+    canonicalProjectId(project && (project.canonical_nexus || project.nexus));
   // "general" was the pre-2026-07-11 id; still recognized permanently.
-  const isCommons = () => ['commons', 'general'].includes((current.nexus || '').toLowerCase());
+  const isCommons = () => canonicalProjectId(current.nexus) === 'commons';
 
   const TABS = [
     { id: 'overview', label: 'Overview' },
@@ -380,7 +391,8 @@
   async function open(nexus, name) {
     build();
     mode = 'edit';
-    current = { nexus: nexus || 'commons', name: name || nexus || 'Commons' };
+    const canonicalNexus = canonicalProjectId(nexus);
+    current = { nexus: canonicalNexus, name: name || (canonicalNexus === 'commons' ? 'Commons' : canonicalNexus) };
     resetTransient();
     applyMode();
     els.titleName.textContent = current.name;
@@ -420,7 +432,7 @@
     try {
       const r = await fetch('/api/projects/meta');
       const data = await r.json();
-      const rec = (data.projects || []).find(p => p.nexus === current.nexus);
+      const rec = (data.projects || []).find(p => canonicalProjectRecordId(p) === current.nexus);
       if (rec) {
         els.name.value = rec.name || current.nexus;
         els.status.value = rec.status || 'active';
@@ -504,7 +516,7 @@
     els.ovSave.disabled = true;
     setStatus(els.ovMsg, 'Saving…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus), {
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -545,7 +557,7 @@
       // Apply the private flag if the user set it at creation.
       if (els.priv.checked) {
         try {
-          await fetch('/api/projects/' + encodeURIComponent(current.nexus), {
+          await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)), {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ private: true }),
           });
@@ -587,7 +599,7 @@
     els.nexusPreview.disabled = true;
     setStatus(els.nexusMsg, 'Checking impact…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus) + '/rename-nexus', {
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/rename-nexus', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ new_nexus: next, dry_run: true }),
       });
@@ -727,7 +739,7 @@
     if (els.momAssist) els.momAssist.disabled = false;
     setStatus(els.momMsg, 'Loading…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
         + '/mom?name=' + encodeURIComponent(current.name));
       const data = await r.json();
       const mom = (data && data.mom) || {};
@@ -762,7 +774,7 @@
     els.momAssist.textContent = 'Drafting…';
     setStatus(els.momMsg, 'Drafting with AI…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus) + '/mom-assist', {
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/mom-assist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: current.name,
@@ -808,7 +820,7 @@
     els.momSave.disabled = true;
     setStatus(els.momMsg, 'Saving…');
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus) + '/mom', {
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)) + '/mom', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -889,7 +901,7 @@
     els.fileList.innerHTML = '';
     els.filesNote.textContent = 'Loading…';
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
         + '/files?name=' + encodeURIComponent(current.name));
       const data = await r.json();
       filesCache = data;
@@ -990,11 +1002,11 @@
     convosCache = {};
     els.convoList.innerHTML = '';
     setStatus(els.convosMsg, 'Loading…');
-    // The "add" section is meaningless for General (it contains everything).
+    // The "add" section is meaningless for Commons (it contains everything).
     if (els.convoAddWrap) els.convoAddWrap.style.display = isCommons() ? 'none' : '';
     const includeClosed = !!(els.convosClosed && els.convosClosed.checked);
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
         + '/conversations?include_closed=' + (includeClosed ? '1' : '0'));
       const data = await r.json();
       const rows = (data && data.conversations) || [];
@@ -1024,7 +1036,7 @@
     if (!q) { els.convoAddList.innerHTML = ''; return; }
     els.convoAddList.innerHTML = '<div class="project-modal__hint" style="padding:6px 2px">Searching…</div>';
     try {
-      const r = await fetch('/api/projects/' + encodeURIComponent(current.nexus)
+      const r = await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus))
         + '/conversations?candidates=1&limit=40&q=' + encodeURIComponent(q));
       const data = await r.json();
       const rows = (data && data.conversations) || [];
@@ -1042,7 +1054,7 @@
   }
 
   async function setMembership(c, nexus, add) {
-    const existing = (c.project_ids || []).filter(p => p && p !== 'commons' && p !== 'general');
+    const existing = (c.project_ids || []).filter(p => canonicalProjectId(p) !== 'commons');
     let next;
     if (add) next = existing.includes(nexus) ? existing : [...existing, nexus];
     else next = existing.filter(p => p !== nexus);

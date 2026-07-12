@@ -47,7 +47,7 @@ Markdown shape (Phase 5.7, Schema §12 chunk template)
   ---
   # <title>
 
-  **Conversation ID:** <id>
+  **Dialogue ID:** <id>
   **Exported:** <iso>
 
   ## Exchanges
@@ -375,7 +375,7 @@ def _load_conversation(
         return raw
 
     raise FileNotFoundError(
-        f"No conversation found for id '{conversation_id}'. "
+        f"No Dialogue found for id '{conversation_id}'. "
         f"Looked under {sessions_root}/{conversation_id}/conversation.json "
         f"and {raw_conversations_dir}/*.md (by panel_id)."
     )
@@ -920,7 +920,7 @@ def export_session_to_vault(
     now_iso = datetime.now().isoformat(timespec="seconds")
     heading = f"# {resolved_title}\n"
     meta_block = (
-        f"\n**Conversation ID:** `{conversation_id}`\n"
+        f"\n**Dialogue ID:** `{conversation_id}`\n"
         f"**Exported:** {now_iso}\n"
         f"**Source:** {convo.get('_source_path') or 'structured conversation.json'}\n"
     )

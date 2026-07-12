@@ -702,7 +702,7 @@ def handle_risk_command(user_input: str, conversation_id: str | None) -> str | N
         set_sticky(conversation_id, None)
         return "Risk tier override cleared — tiers now auto-classified per turn."
     set_sticky(conversation_id, val)
-    return (f"Risk tier floor set to **{val}** for this conversation. "
+    return (f"Risk tier floor set to **{val}** for this Dialogue. "
             f"It raises the tier when auto-classification would be lower, but "
             f"never lowers a deterministic high-risk/irreversible floor. "
             f"Use `/risk auto` to clear.")
@@ -799,7 +799,7 @@ def resolve_task_gate_entry(record_dict: dict, approve: bool,
     if approve:
         grant_task_token(fp, conv, granted_via="paused-queue")
         return ("✅ Task approved. Re-send the task (or say 'continue') in the "
-                "origin conversation and it will proceed without another hold.")
+                "origin Dialogue and it will proceed without another hold.")
     try:
         _te.record({"event": "gate", "action": TASK_ACTION,
                     "category": "execute", "mutability": "irreversible",

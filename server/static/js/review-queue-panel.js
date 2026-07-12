@@ -229,7 +229,7 @@
       const open = document.createElement('button');
       open.type = 'button';
       open.className = 'ora-review-link';
-      open.textContent = 'Open discussion Dialogue';
+      open.textContent = 'Open Dialogue';
       open.addEventListener('click', () => {
         openDiscussionConversation(entry.discussion_conversation_id, entry);
       });

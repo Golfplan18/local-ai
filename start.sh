@@ -1,115 +1,176 @@
-#!/bin/bash
-# Local AI — Start Script
-WORKSPACE="$HOME/ora"
+#!/usr/bin/env bash
+# Interactive Ora launcher. The actual server environment and command live in
+# run-ora-server.sh so manual, app-bundle, and launchd starts cannot drift.
 
-# Export a robust Ora root for the whole server process tree. Every
-# orchestrator module prefers $ORA_HOME over os.path.expanduser("~/ora"),
-# so exporting it here guarantees correct path resolution even if HOME (or
-# the passwd-db lookup) is transiently unavailable in a child process.
-# Root cause of the stray "~/ora/..." directories: a path helper fell back
-# to a literal "~" when expanduser could not resolve HOME (fixed 2026-05-30).
-export HOME
-export ORA_HOME="$WORKSPACE"
+set -u
 
-# RAG selection layer (Process 13): wider retrieval + similarity floor +
-# relevance fit-gate + dedup, applied to every retrieval lane. The pipeline
-# behaves as before without this var. See Book — RAG Architecture Report v2.0
-# §"Process 13". Enabled 2026-06-04.
-export ORA_RAG_SELECTION=1
-export ORA_RAG_FIT_GATE_SLOT=sidebar
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+WORKSPACE="${ORA_HOME:-$SCRIPT_DIR}"
+if [[ ! -d "$WORKSPACE" ]]; then
+  echo "ERROR: ORA_HOME is not a directory: $WORKSPACE" >&2
+  exit 1
+fi
+WORKSPACE="$(cd -- "$WORKSPACE" && pwd -P)"
+if [[ -z "${HOME:-}" ]]; then
+  HOME="$(cd ~ && pwd -P)"
+  export HOME
+fi
+SERVER_LAUNCHER="$WORKSPACE/run-ora-server.sh"
+SERVER_LOG="$WORKSPACE/server.log"
+LAUNCHD_LABEL="com.ora.server"
+LAUNCHD_TARGET="gui/$(id -u)/$LAUNCHD_LABEL"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/$LAUNCHD_LABEL.plist"
+SERVICE_MANAGER="$WORKSPACE/scripts/ora-launchd.sh"
+START_TIMEOUT="${ORA_START_TIMEOUT:-30}"
 
-# Extraction escalation (Process 14): when a high-trust Step-2 web snippet is
-# too thin to carry the needed detail, deep-fetch the full page, chunk it,
-# fit-gate the passages, and fold survivors into WEB CONTEXT. Bounded
-# (<=3 fetches/turn) + fail-closed. See Book — RAG Architecture Report v2.0
-# §"Process 14". Enabled 2026-06-05.
-export ORA_WEB_EXTRACTION=1
+case "$START_TIMEOUT" in
+  ''|*[!0-9]*|0)
+    echo "ERROR: ORA_START_TIMEOUT must be a positive integer." >&2
+    exit 2
+    ;;
+esac
 
-# Conversation→engram loop: after each session, promote the runtime-extracted,
-# quality-gated atomic notes from staging into the vault as engrams (the
-# previously-missing final step). See engram_promotion.py + Working — RAG
-# Sources and Provenance Rework 2026-06-05 §7. Enabled 2026-06-05.
-export ORA_RUNTIME_ENGRAM_PROMOTION=1
-
-# Runtime engram persistence: when promotion writes new Engrams into the vault,
-# stage exactly those generated files, commit them, and push the vault repo.
-# This keeps the conversation→engram loop from leaving approved notes as
-# untracked git files. Enabled 2026-06-17.
-export ORA_RUNTIME_ENGRAM_AUTOCOMMIT=1
-
-# Deliverable scrub (Step 8.5): after the gear-4 formatter writes the final
-# answer, a deterministic zero-model pass strips any leaked internal pipeline
-# scaffolding (stray contract headings, VERDICT: lines, provider/truncation
-# error markers). High-precision — only removes exact internal jargon, never
-# normal answer content; logs anything stripped to the per-turn
-# deliverable-scrub.jsonl trace sidecar. See boot.py::_scrub_pipeline_leaks.
-# Enabled 2026-06-05.
-export ORA_DELIVERABLE_SCRUB=1
-
-# OpenRouter per-provider latency (the Speed preset's primary speed
-# signal): the registry sync pulls time-to-first-token + throughput from
-# OpenRouter's public frontend stats API (no key, no credit) and writes
-# or_ttft_ms / or_throughput_tps per model, with AA median latency as the
-# fallback. The layer is a no-op without this flag, so a break in the
-# undocumented endpoint can't wedge the sync. Populates on the next
-# registry refresh (Models-pane Refresh / scheduled sync) after restart.
-# See sync_model_registry.py::layer_openrouter_stats. Enabled 2026-06-29.
-export ORA_OR_STATS=1
-
-# Execution Review loop + tiered persistence (spec §15 Phases 6-7): on turns
-# that touch reality (a file mutation or a source-grounding read), the terminal
-# builds the ExecutionPacket, runs the evidence Capture + different-family
-# verify loop, converges or escalates to the Paused queue, and persists per the
-# §14 tier rule (git_only default; durable records only for escalated /
-# non-converged / plan-level-finding turns, in data/execution-records/).
-# Ordinary self-evidencing chat turns are unaffected (no extra model calls).
-# The revision actuator is not yet wired (actuator=None): a failed verify
-# escalates rather than self-revising. See orchestrator/execution_loop.py +
-# execution_persistence.py. Enabled 2026-07-05.
-export ORA_EXECUTION_LOOP=1
-
-# Kill any stale server process
-pkill -f "server/server.py" 2>/dev/null
-sleep 1
-
-# Find Python: Homebrew (macOS), then system python3
-if [ -x "/opt/homebrew/bin/python3" ]; then
-  PYTHON="/opt/homebrew/bin/python3"
-elif command -v python3 &>/dev/null; then
-  PYTHON="python3"
-else
-  echo "ERROR: python3 not found. Install Python 3.10+ first."
+if [[ ! -x "$SERVER_LAUNCHER" ]]; then
+  echo "ERROR: Foreground launcher is missing or not executable: $SERVER_LAUNCHER" >&2
   exit 1
 fi
 
-# Start server with meta-layer oversight daemon enabled by default.
-# The daemon watches PEDs, corpora, and workflow specs; per CLAUDE.md
-# Meta-Layer Oversight Subsystem. Pass --no-oversight to disable.
-if [[ " $* " == *" --no-oversight "* ]]; then
-  CLEAN_ARGS=$(echo " $@ " | sed 's/ --no-oversight / /g' | sed 's/^ *//;s/ *$//')
-  "$PYTHON" "$WORKSPACE/server/server.py" $CLEAN_ARGS &
-else
-  "$PYTHON" "$WORKSPACE/server/server.py" --oversight "$@" &
-fi
-
-# Wait up to 30s for server on any port 5000-5010
-for i in $(seq 1 30); do
-  for port in $(seq 5000 5010); do
-    if curl -sf "http://localhost:$port/health" >/dev/null 2>&1; then
-      echo "Local AI ready at http://localhost:$port"
-      # Open browser (cross-platform)
-      if command -v open &>/dev/null; then
-        open "http://localhost:$port"
-      elif command -v xdg-open &>/dev/null; then
-        xdg-open "http://localhost:$port"
-      elif command -v start &>/dev/null; then
-        start "http://localhost:$port"
+find_ora_port() {
+  local port payload reported_home python
+  for port in {5000..5010}; do
+    payload="$(curl -sf --max-time 2 "http://localhost:$port/health" 2>/dev/null)" || continue
+    reported_home=""
+    if command -v plutil >/dev/null 2>&1; then
+      reported_home="$(printf '%s' "$payload" \
+        | plutil -extract ora_home raw -o - - 2>/dev/null || true)"
+    else
+      python="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
+      if [[ -n "$python" ]]; then
+        reported_home="$(ORA_HEALTH_PAYLOAD="$payload" "$python" -c \
+          'import json, os; v=json.loads(os.environ["ORA_HEALTH_PAYLOAD"]).get("ora_home", ""); print(os.path.realpath(v) if v else "")' \
+          2>/dev/null || true)"
       fi
-      exit 0
+    fi
+    if [[ "$reported_home" == "$WORKSPACE" ]]; then
+      printf '%s\n' "$port"
+      return 0
     fi
   done
+  return 1
+}
+
+owned_server_pids() {
+  # Match only a Python interpreter whose next argv is this checkout's exact
+  # server file. This catches a still-running pre-identity server (whose
+  # /health response has no ora_home) without treating path mentions in an
+  # editor, test, or similarly-prefixed backup as an Ora process.
+  ORA_START_SERVER_TARGET="$WORKSPACE/server/server.py"
+  export ORA_START_SERVER_TARGET
+  ps -axww -o pid=,command= | awk '
+    {
+      pid = $1
+      line = $0
+      sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", line)
+      target = ENVIRON["ORA_START_SERVER_TARGET"]
+      pos = index(line, target)
+      if (!pos) next
+      before = substr(line, 1, pos - 1)
+      after = substr(line, pos + length(target))
+      if (after != "" && substr(after, 1, 1) != " ") next
+      sub(/[[:space:]]+$/, "", before)
+      count = split(before, parts, "/")
+      exe = parts[count]
+      # Legacy launchers sometimes inserted interpreter flags (notably -u)
+      # before the script path. Permit flag tokens, but never another script
+      # argument, between the Python executable and the exact target.
+      if (exe ~ /^[Pp]ython([0-9]+([.][0-9]+)*)?([[:space:]]+-[^[:space:]]+)*$/) print pid
+    }'
+}
+
+open_ora() {
+  local url="$1"
+  [[ "${ORA_NO_BROWSER:-0}" == "1" ]] && return 0
+  if command -v open >/dev/null 2>&1; then
+    open "$url"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url"
+  elif command -v start >/dev/null 2>&1; then
+    start "$url"
+  fi
+}
+
+launchd_state="none"
+if command -v launchctl >/dev/null 2>&1; then
+  if launchctl print "$LAUNCHD_TARGET" >/dev/null 2>&1; then
+    launchd_state="loaded"
+  elif [[ -f "$LAUNCHD_PLIST" ]]; then
+    launchd_state="stopped"
+  fi
+fi
+
+if port="$(find_ora_port)"; then
+  if [[ "$launchd_state" == "stopped" ]]; then
+    cat >&2 <<EOF
+ERROR: Ora is responding, but its installed launchd service is stopped.
+This usually means an unmanaged server is running. Run ./stop.sh once to
+stop that process, then run ./start.sh again to restore supervision.
+EOF
+    exit 1
+  fi
+  echo "Ora is already ready at http://localhost:$port"
+  open_ora "http://localhost:$port"
+  exit 0
+fi
+
+started_pid=""
+if [[ "$launchd_state" != "none" ]]; then
+  if (( $# > 0 )); then
+    cat >&2 <<EOF
+ERROR: Ora is managed by launchd, so per-run server arguments cannot be
+forwarded. Use ./scripts/ora-launchd.sh uninstall before running manually
+with arguments, or configure the supervised launcher itself.
+EOF
+    exit 2
+  fi
+  echo "Starting supervised Ora service ($LAUNCHD_LABEL)..."
+  if [[ ! -x "$SERVICE_MANAGER" ]] \
+    || ! "$SERVICE_MANAGER" start --ora-home "$WORKSPACE"; then
+    echo "ERROR: launchd could not start $LAUNCHD_LABEL." >&2
+    exit 1
+  fi
+else
+  legacy_pids="$(owned_server_pids)"
+  if [[ -n "$legacy_pids" ]]; then
+    cat >&2 <<EOF
+ERROR: An unsupervised Ora server from this checkout is already running
+(PID(s): $legacy_pids), but it did not report this checkout identity.
+It may be a pre-upgrade server. Run ./stop.sh once, then run ./start.sh
+again so only one process can write to this Ora installation.
+EOF
+    exit 1
+  fi
+  echo "Starting Ora in the background..."
+  nohup "$SERVER_LAUNCHER" "$@" >>"$SERVER_LOG" 2>&1 &
+  started_pid=$!
+fi
+
+for ((attempt = 0; attempt < START_TIMEOUT; attempt++)); do
+  if port="$(find_ora_port)"; then
+    echo "Ora ready at http://localhost:$port"
+    open_ora "http://localhost:$port"
+    exit 0
+  fi
+  if [[ -n "$started_pid" ]] && ! kill -0 "$started_pid" 2>/dev/null; then
+    echo "ERROR: Ora exited before becoming healthy. Check $SERVER_LOG" >&2
+    exit 1
+  fi
   sleep 1
 done
 
-echo "ERROR: Server did not start. Run: $PYTHON $WORKSPACE/server/server.py"
+echo "ERROR: Ora did not become healthy within ${START_TIMEOUT}s." >&2
+if [[ -n "$started_pid" ]]; then
+  echo "Check $SERVER_LOG for startup errors." >&2
+else
+  echo "Inspect with: ./scripts/ora-launchd.sh status" >&2
+fi
 exit 1

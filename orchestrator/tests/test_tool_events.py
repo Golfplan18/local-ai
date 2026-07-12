@@ -29,6 +29,13 @@ if str(_TOOLS) not in sys.path:
 
 import tool_events  # noqa: E402
 
+_WORKSPACE = Path(tool_events.WORKSPACE)
+
+
+def _workspace_path(*parts: str) -> str:
+    """Build a path inside the checkout selected by ORA_HOME."""
+    return str(_WORKSPACE.joinpath(*parts))
+
 
 def _read_events(path):
     if not os.path.exists(path):
@@ -100,55 +107,62 @@ class TestPathResolution(ToolEventsBase):
     def test_tokenizer_is_not_secret(self):
         # Boundary-anchored patterns: 'token' must not match 'tokenizer'.
         self.assertNotEqual(tool_events.resolve_path_sensitivity(
-            os.path.expanduser("~/ora/models/x/tokenizer.json")), "secret")
+            _workspace_path("models", "x", "tokenizer.json")), "secret")
 
     def test_key_material_is_secret(self):
-        for p in ("~/ora/server.pem", "~/ora/server.key", "~/ora/prod.pem.txt",
-                  "~/ora/x.p12", "~/ora/x.pfx", "~/ora/env.local",
-                  "~/ora/.env.production", "~/ora/private_keys/a",
-                  "~/ora/.ssh2/known_hosts", "~/ora/id_dsa"):
+        for p in (_workspace_path("server.pem"), _workspace_path("server.key"),
+                  _workspace_path("prod.pem.txt"), _workspace_path("x.p12"),
+                  _workspace_path("x.pfx"), _workspace_path("env.local"),
+                  _workspace_path(".env.production"),
+                  _workspace_path("private_keys", "a"),
+                  _workspace_path(".ssh2", "known_hosts"),
+                  _workspace_path("id_dsa")):
             self.assertEqual(tool_events.resolve_path_sensitivity(p), "secret",
                              p)
 
     def test_key_material_false_positives_stay_private(self):
         # Boundary-anchored: these must NOT be classed secret.
-        for p in ("~/ora/monkey.txt", "~/ora/tokenizer.json",
-                  "~/ora/src/keyboard.py", "~/ora/secrets_of_success.md",
-                  "~/ora/secret_santa_list.md"):
+        for p in (_workspace_path("monkey.txt"),
+                  _workspace_path("tokenizer.json"),
+                  _workspace_path("src", "keyboard.py"),
+                  _workspace_path("secrets_of_success.md"),
+                  _workspace_path("secret_santa_list.md")):
             self.assertEqual(tool_events.resolve_path_sensitivity(p), "private",
                              p)
 
     def test_keys_dir_and_creds_are_sensitive(self):
-        for p in ("~/ora/keys/priv.txt", "~/ora/creds.txt"):
+        for p in (_workspace_path("keys", "priv.txt"),
+                  _workspace_path("creds.txt")):
             self.assertIn(tool_events.resolve_path_sensitivity(p),
                           ("secret", "sensitive"), p)
 
     def test_capture_dirs_are_sensitive(self):
         self.assertEqual(tool_events.resolve_path_sensitivity(
-            os.path.expanduser("~/ora/captures/x.mov")), "sensitive")
+            _workspace_path("captures", "x.mov")), "sensitive")
         self.assertEqual(tool_events.resolve_path_sensitivity(
-            os.path.expanduser("~/ora/sessions/conv-1/captures/x.mov")),
+            _workspace_path("sessions", "conv-1", "captures", "x.mov")),
             "sensitive")
 
     def test_workspace_is_private_unknown_is_sensitive(self):
         self.assertEqual(tool_events.resolve_path_sensitivity(
-            os.path.expanduser("~/ora/orchestrator/boot.py")), "private")
+            _workspace_path("orchestrator", "boot.py")), "private")
         self.assertEqual(tool_events.resolve_path_sensitivity(
             "/opt/somewhere/else.txt"), "sensitive")
 
     def test_protected_config_paths(self):
-        for p in ("~/ora/config/hooks/evil.json",
-                  "~/ora/config/mcp-servers.json",
-                  "~/ora/orchestrator/tool_events.py",
-                  "~/ora/server/server.py",
-                  "~/ora/data/projects/msi.json",
+        for p in (_workspace_path("config", "hooks", "evil.json"),
+                  _workspace_path("config", "mcp-servers.json"),
+                  _workspace_path("orchestrator", "tool_events.py"),
+                  _workspace_path("server", "server.py"),
+                  _workspace_path("data", "projects", "msi.json"),
                   "~/sites/x/ora-project.json",
-                  "~/ora/.ora/evidence.yaml"):
+                  _workspace_path(".ora", "evidence.yaml")):
             self.assertTrue(tool_events.is_protected_config_path(p), p)
 
     def test_normal_paths_not_protected(self):
-        for p in ("~/ora/modes/synthesis.md", "~/Documents/vault/note.md",
-                  "~/ora/config/interface.json"):
+        for p in (_workspace_path("modes", "synthesis.md"),
+                  "~/Documents/vault/note.md",
+                  _workspace_path("config", "mode-to-visual.json")):
             self.assertFalse(tool_events.is_protected_config_path(p), p)
 
 

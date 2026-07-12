@@ -187,6 +187,12 @@ ALLOWED_MAC_ONLY_FILES = {
     "orchestrator/tests/test_visual_extraction.py",
     "start.sh",
     "stop.sh",
+    # Explicitly macOS-only launchd service manager. It fails closed on other
+    # platforms; Linux server supervision remains scripts/install-server.sh's
+    # deployment concern.
+    "scripts/ora-launchd.sh",
+    # Hermetic launchctl/plist regression tests for that macOS-only manager.
+    "orchestrator/tests/test_server_launchers.py",
 }
 
 

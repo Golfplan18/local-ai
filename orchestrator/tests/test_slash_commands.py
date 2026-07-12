@@ -161,6 +161,12 @@ class TestResolveInputPath(unittest.TestCase):
 
 class TestResolveOutputDir(unittest.TestCase):
 
+    def test_render_default_is_vault_root(self):
+        self.assertEqual(
+            slash_commands.DEFAULT_OUTPUT_DIR,
+            os.path.normpath(slash_commands.VAULT_DIR),
+        )
+
     def test_blank_returns_default(self):
         default = "/tmp/some-default"
         self.assertEqual(_resolve_output_dir("", default), default)

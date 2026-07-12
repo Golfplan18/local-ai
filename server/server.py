@@ -21,9 +21,6 @@ import requests
 # trailing-separator semantics the rest of this module relies on.
 WORKSPACE         = os.path.join(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"), "")
 MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
-INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
-LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
-THEMES_DIR   = os.path.join(WORKSPACE, "config/themes/")
 MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
 MAX_ITERATIONS = 10
 
@@ -87,17 +84,15 @@ try:
 except ImportError:
     SIDEBAR_WINDOW_AVAILABLE = False
 
-# V3 Phase 1.3 — incognito module retired. Stealth/private modes are now
-# carried as a ``tag`` field on the conversation envelope (Phase 1.1) with
-# tag-aware close-out dispatch handling purge for stealth (Phase 1.5). The
-# privacy caveat string is preserved here because it is still surfaced to
-# the user when stealth or private threads route through commercial API
-# endpoints — local deletion does not affect what remote providers received.
+# Retained for extensions that imported the former incognito-mode warning.
+# Stealth/private behavior now lives on the Dialogue envelope, but the remote-
+# provider limitation remains true even though core routes no longer consume
+# this constant directly.
 PRIVACY_CAVEAT = (
     "This mode removes the local record. Anything sent to commercial API "
-    "endpoints during this session was received by the provider and is not "
+    "endpoints during this Dialogue was received by the provider and is not "
     "affected by local deletion. True privacy requires local models for "
-    "the conversation."
+    "the Dialogue."
 )
 
 try:
@@ -4061,7 +4056,16 @@ def index_v3():
 def health():
     config   = load_config()
     endpoint = get_endpoint(config)
-    return json.dumps({"status":"ok","endpoint": endpoint.get("name") if endpoint else None})
+    # Include the canonical checkout root so launchers can distinguish the
+    # supervised Ora instance from another development worktree that happens
+    # to answer on one of the fallback ports.  The service is localhost-only;
+    # this field is operational identity, not a remotely exposed machine id.
+    ora_home = os.path.realpath(WORKSPACE)
+    return json.dumps({
+        "status": "ok",
+        "endpoint": endpoint.get("name") if endpoint else None,
+        "ora_home": ora_home,
+    })
 
 
 _ANALYSIS_TERRITORIES = {
@@ -4579,16 +4583,21 @@ def api_projects_list():
 def api_active_project_get():
     """Return the active project nexus that new conversations bind to (G1.33).
 
-    ``"commons"`` is the synthetic default (empty project_ids / empty nexus).
-    Its legacy id ``"general"`` (pre-2026-07-11) is still accepted wherever a
-    nexus is read in, permanently — not a one-time migration.
+    The expand-phase response carries a legacy-safe ``nexus`` plus the runtime
+    ``canonical_nexus``. Commons therefore serializes as ``general`` / ``commons``.
     """
     try:
-        from orchestrator.active_project import get_active_project
-        return _json_response({"ok": True, "nexus": get_active_project()})
+        from orchestrator.active_project import get_active_project, project_nexus_fields
+        return _json_response({"ok": True, **project_nexus_fields(get_active_project())})
     except Exception as exc:
         return _json_response(
-            {"ok": False, "error": str(exc), "nexus": "commons"}, 503
+            {
+                "ok": False,
+                "error": str(exc),
+                "nexus": "general",
+                "canonical_nexus": "commons",
+            },
+            503,
         )
 
 
@@ -4596,13 +4605,22 @@ def api_active_project_get():
 def api_active_project_set():
     """Set the active project. Body: ``{"nexus": "..."}`` ("commons"/legacy "general"/empty resets)."""
     try:
-        from orchestrator.active_project import set_active_project, get_active_project
+        from orchestrator.active_project import (
+            get_active_project,
+            project_nexus_fields,
+            set_active_project,
+        )
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
     data = request.get_json(silent=True) or {}
-    nexus = data.get("nexus")
+    canonical_nexus = data.get("canonical_nexus")
+    nexus = (
+        canonical_nexus
+        if isinstance(canonical_nexus, str) and canonical_nexus.strip()
+        else data.get("nexus")
+    )
     set_active_project(nexus if isinstance(nexus, str) else "")
-    return _json_response({"ok": True, "nexus": get_active_project()})
+    return _json_response({"ok": True, **project_nexus_fields(get_active_project())})
 
 
 @app.route("/api/projects/meta", methods=["GET"])
@@ -4612,6 +4630,7 @@ def api_projects_meta():
     activity (Commons == all-inclusive). Pass ``?status=active`` to filter."""
     try:
         from orchestrator import project_meta as _pm
+        from orchestrator.active_project import project_nexus_fields
         projects = _pm.list_project_meta()
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc), "projects": []}, 503)
@@ -4637,9 +4656,11 @@ def api_projects_meta():
     except Exception:
         counts = {}
     for p in projects:
-        c = counts.get(p["nexus"], {"conversation_count": 0, "unread_count": 0})
+        canonical_nexus = p["nexus"]
+        c = counts.get(canonical_nexus, {"conversation_count": 0, "unread_count": 0})
         p["conversation_count"] = c["conversation_count"]
         p["unread_count"] = c["unread_count"]
+        p.update(project_nexus_fields(canonical_nexus))
     return _json_response({"ok": True, "projects": projects})
 
 
@@ -4659,7 +4680,7 @@ def api_projects_create():
         meta = _pm.create_project(name)
     except _pm.ProjectMetaError as exc:
         return _json_response({"ok": False, "error": str(exc)}, 400)
-    folder = _pm.ensure_project_folder(meta["name"])  # best-effort
+    folder = _pm.ensure_project_folder(meta["folder_name"])  # best-effort
     return _json_response({
         "ok": True,
         "project": meta,
@@ -4995,45 +5016,50 @@ def _obsidian_uri_for(abs_path: str):
 
 @app.route("/api/projects/<nexus>/files", methods=["GET"])
 def api_projects_files(nexus):
-    """Read-only index of a project's vault output folder (G1.33 sub-step 5).
+    """Read-only index of a project's vault output destination (G1.33).
 
     File management defers to Obsidian (Q2 LOCKED) — each entry carries an
     ``obsidian_uri`` (open in Obsidian) and ``abs_path`` (reveal in Finder via
     POST /api/fs/reveal). The Operation-Matrix file is prepended as a pinned
-    entry. ``?name=`` overrides the display name used to locate the folder."""
+    entry. ``?name=`` supplies the current display name for Operation-Matrix
+    lookup; a real project's output folder always comes from the record's
+    immutable ``folder_name``. Commons is synthetic and saves at the vault
+    root, so its index is the vault root's direct files rather than a fictional
+    ``Projects/Commons`` folder."""
     try:
         from orchestrator import project_meta as _pm
         from orchestrator import operation_matrix as _om
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
-    name = request.args.get("name") or None
-    if name is None:
-        rec = _pm.read_project_meta(nexus)
-        name = rec.get("name") if rec else nexus
+    rec = _pm.read_project_meta(nexus)
+    name = request.args.get("name") or (rec.get("name") if rec else nexus)
+    is_commons = bool(rec and rec.get("is_default"))
+    folder_name = None if is_commons else (rec.get("folder_name") if rec else name)
     try:
-        index = _pm.list_project_files(name)
+        index = _pm.list_project_files(None if is_commons else (folder_name or name))
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
     for f in index.get("files", []):
         f["obsidian_uri"] = _obsidian_uri_for(f["abs_path"])
     # Prepend the Operation-Matrix file as a pinned entry, if it exists.
     matrix = None
-    try:
-        mpath = _om.resolve_matrix_path(nexus, name)
-        if mpath is not None:
-            st = mpath.stat()
-            from datetime import datetime as _dt
-            matrix = {
-                "name": mpath.name,
-                "rel_path": mpath.name,
-                "abs_path": str(mpath),
-                "size": st.st_size,
-                "mtime": _dt.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
-                "obsidian_uri": _obsidian_uri_for(str(mpath)),
-                "is_matrix": True,
-            }
-    except Exception:
-        matrix = None
+    if not is_commons:
+        try:
+            mpath = _om.resolve_matrix_path(nexus, name)
+            if mpath is not None:
+                st = mpath.stat()
+                from datetime import datetime as _dt
+                matrix = {
+                    "name": mpath.name,
+                    "rel_path": mpath.name,
+                    "abs_path": str(mpath),
+                    "size": st.st_size,
+                    "mtime": _dt.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
+                    "obsidian_uri": _obsidian_uri_for(str(mpath)),
+                    "is_matrix": True,
+                }
+        except Exception:
+            matrix = None
     return _json_response({"ok": True, "matrix": matrix, **index})
 
 
@@ -5042,11 +5068,11 @@ def api_projects_conversations(nexus):
     """List conversations for the project modal (membership + restore + add).
 
     Two modes:
-      * **members** (default) — the project's own threads. ``?include_closed=1``
-        includes closed ones (the restore-closed browser). General (empty nexus)
-        is the all-inclusive view.
-      * **candidates** (``?candidates=1``) — threads NOT in this project, for the
-        "add a conversation" search: title-filtered by ``?q=`` (case-insensitive
+      * **members** (default) — the project's own Dialogues. ``?include_closed=1``
+        includes closed ones (the restore-closed browser). Commons (empty or
+        legacy ``general`` nexus) is the all-inclusive view.
+      * **candidates** (``?candidates=1``) — Dialogues NOT in this project, for the
+        "add a Dialogue" search: title-filtered by ``?q=`` (case-insensitive
         substring), excludes closed, capped by ``?limit=`` (default 50, max 200),
         so the client never receives the full ~39k corpus.
 
@@ -5064,7 +5090,7 @@ def api_projects_conversations(nexus):
     if candidates:
         # Threads to ADD: not already in this project, not closed, title-matched.
         if all_projects:
-            # General contains everything — nothing to add.
+            # Commons contains everything — nothing to add.
             return _json_response({"ok": True, "conversations": []})
         q = (request.args.get("q") or "").strip().lower()
         try:
@@ -8470,7 +8496,7 @@ def conversations_restore(conversation_id):
         return _json_response({"error": f"conversation restore import failed: {e}"}, status=500)
     path = set_conversation_closed(conversation_id, False)
     if path is None:
-        return _json_response({"error": "conversation not found", "conversation_id": conversation_id}, status=404)
+        return _json_response({"error": "Dialogue not found", "conversation_id": conversation_id}, status=404)
     data = load_conversation_json(conversation_id) or {}
     return _json_response({
         "ok": True,
@@ -8501,7 +8527,7 @@ def conversations_set_projects(conversation_id):
     path = set_conversation_projects(conversation_id, project_ids)
     if path is None:
         return _json_response(
-            {"error": "conversation not found", "conversation_id": conversation_id},
+            {"error": "Dialogue not found", "conversation_id": conversation_id},
             status=404)
     stored = load_conversation_json(conversation_id) or {}
     return _json_response({
@@ -8574,7 +8600,7 @@ def conversations_related(conversation_id):
     by_id = {r.get("conversation_id"): r for r in rows}
     current = by_id.get(conversation_id)
     if current is None:
-        return _json_response({"error": "conversation not found", "conversation_id": conversation_id}, status=404)
+        return _json_response({"error": "Dialogue not found", "conversation_id": conversation_id}, status=404)
     parent_id = current.get("parent_conversation_id")
     related: list[dict] = []
 
@@ -8627,7 +8653,7 @@ def conversations_fetch(conversation_id):
     if data is None:
         data = _browser_memory_envelope(conversation_id)
     if data is None:
-        return json.dumps({"error": "conversation not found", "conversation_id": conversation_id}), 404
+        return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
 
     # Annotate with the in-memory pending flag so the client doesn't have to
     # cross-reference the list endpoint.
@@ -8663,7 +8689,7 @@ def conversations_mark_read(conversation_id):
 
     path = mark_conversation_read(conversation_id, timestamp=ts if isinstance(ts, str) else None)
     if path is None:
-        return json.dumps({"error": "conversation not found or unwriteable", "conversation_id": conversation_id}), 404
+        return json.dumps({"error": "Dialogue not found or unwriteable", "conversation_id": conversation_id}), 404
 
     # Read back the new value so the client doesn't have to compute it.
     try:
@@ -8849,7 +8875,7 @@ def api_bootstrap():
     if not matches:
         return json.dumps({
             "topic":        topic,
-            "summary":      f"No prior knowledge or conversations on this topic.\n\nStarting fresh on: **{topic}**",
+            "summary":      f"No prior knowledge or Dialogues on this topic.\n\nStarting fresh on: **{topic}**",
             "match_count":  0,
             "sources_used": [],
         })
@@ -8962,7 +8988,7 @@ def conversations_mark_errored(conversation_id):
         timestamp=ts if isinstance(ts, str) else None,
     )
     if path is None:
-        return json.dumps({"error": "conversation not found", "conversation_id": conversation_id}), 404
+        return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
     return json.dumps({
         "ok":                 True,
         "last_status":        "errored",
@@ -8988,7 +9014,7 @@ def conversations_dismiss_error(conversation_id):
         return json.dumps({"error": f"clear_conversation_error import failed: {e}"}), 500
     path = clear_conversation_error(conversation_id)
     if path is None:
-        return json.dumps({"error": "conversation not found", "conversation_id": conversation_id}), 404
+        return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
     return json.dumps({"ok": True})
 
 
@@ -9016,7 +9042,7 @@ def conversations_retry(conversation_id):
 
     data = load_conversation_json(conversation_id)
     if data is None:
-        return json.dumps({"error": "conversation not found", "conversation_id": conversation_id}), 404
+        return json.dumps({"error": "Dialogue not found", "conversation_id": conversation_id}), 404
 
     # V3 Backlog 2A Chunk 1 — orphan recovery: if this conversation was
     # flagged errored because the server was interrupted before the
@@ -9127,7 +9153,7 @@ def conversation_rename(conversation_id):
     path = set_display_name(conversation_id, new_name)
     if path is None:
         return json.dumps({
-            "error": "conversation not found or unwriteable",
+            "error": "Dialogue not found or unwriteable",
             "conversation_id": conversation_id,
         }), 404
 
@@ -9178,7 +9204,7 @@ def conversation_pin(conversation_id):
     path = set_conversation_pinned(conversation_id, target_pinned)
     if path is None:
         return json.dumps({
-            "error": "conversation not found or unwriteable",
+            "error": "Dialogue not found or unwriteable",
             "conversation_id": conversation_id,
         }), 404
 
@@ -9537,246 +9563,6 @@ def serve_static(filename):
     if not safe.startswith(os.path.join(WORKSPACE, "server", "static")):
         return "Forbidden", 403
     return send_from_directory(os.path.join(WORKSPACE, "server", "static"), filename)
-
-# ── layout API ───────────────────────────────────────────────────────────────
-
-# WP-2.3 — Active layout presets. Keep in sync with the on-disk preset set
-# enumerated at /api/layouts (listdir LAYOUTS_DIR top level). Legacy files
-# live under LAYOUTS_DIR/legacy/ and are not included in the active set.
-_ACTIVE_LAYOUTS = ("solo", "studio")
-
-
-def _default_layout():
-    """Return tier-appropriate default layout.
-
-    WP-2.3 retune: picks from the active-layouts set {solo, studio}.
-      - Base default: ``solo`` (two-pane chat + visual).
-      - Upgrade to ``studio`` (three-pane: chat + visual + sidebar chat) when
-        BOTH local-mid AND local-premium buckets are populated — this is when
-        there is spare compute for a second concurrent conversation stream.
-      - Fail-closed: if the resolved preset falls outside ``_ACTIVE_LAYOUTS``
-        (e.g. stale endpoints/bucket config), log a warning and fall back to
-        ``solo`` rather than returning a retired layout.
-    """
-    preset = "solo"
-    try:
-        router_cfg = _load_routing_config() or {}
-        buckets = router_cfg.get("buckets", {}) or {}
-        has_mid     = len(buckets.get("local-mid", []) or []) > 0
-        has_premium = len(buckets.get("local-premium", []) or []) > 0
-        if has_mid and has_premium:
-            preset = "studio"
-    except Exception:
-        preset = "solo"
-
-    if preset not in _ACTIVE_LAYOUTS:
-        # Fail-closed: never return a retired layout name.
-        try:
-            print(f"[_default_layout] resolved preset '{preset}' not in "
-                  f"active set {_ACTIVE_LAYOUTS}; falling back to 'solo'.")
-        except Exception:
-            pass
-        preset = "solo"
-
-    layout_path = os.path.join(LAYOUTS_DIR, f"{preset}.json")
-    try:
-        with open(layout_path) as f:
-            d = json.load(f)
-        d["theme"] = "default-light"
-        # Resolve default_bucket → slot_assignments for panels that declare one.
-        d = _resolve_default_buckets(d)
-        return d
-    except Exception:
-        # Hard-wire the solo fallback if the file itself is missing / malformed.
-        return {"layout": {"preset_base": "solo", "panels": [
-            {"id": "main",   "type": "chat",   "width_pct": 50, "model_slot": "breadth",
-             "is_main_feed": True,  "bridge_subscribe_to": None,   "label": "Main Chat"},
-            {"id": "visual", "type": "visual", "width_pct": 50, "model_slot": None,
-             "is_main_feed": False, "bridge_subscribe_to": "main", "label": "Exhibits"},
-        ]}, "theme": "default-light"}
-
-
-def _resolve_default_buckets(layout_cfg):
-    """WP-2.3 — honor ``default_bucket`` on layout panels.
-
-    For every panel in ``layout_cfg['layout']['panels']`` that declares a
-    ``default_bucket`` field AND a ``model_slot``, look up the slot's
-    current assignment. If the slot is unassigned (no explicit user choice
-    via the model switcher), prefer a model from the declared bucket. If
-    the bucket is empty, fall back to any available model and log the
-    fallback — never block layout resolution on bucket misconfiguration.
-
-    The resolution is annotated back onto the panel under
-    ``resolved_slot_assignment`` for client diagnostics (non-authoritative;
-    the server's slot-assignment layer remains the source of truth).
-    """
-    if not isinstance(layout_cfg, dict):
-        return layout_cfg
-    layout = layout_cfg.get("layout") or {}
-    panels = layout.get("panels") or []
-    if not isinstance(panels, list):
-        return layout_cfg
-
-    try:
-        cfg = load_config()
-    except Exception:
-        cfg = {}
-    slot_assignments = (cfg.get("slot_assignments") or {}) if isinstance(cfg, dict) else {}
-
-    try:
-        router_cfg = _load_routing_config() or {}
-        buckets = router_cfg.get("buckets", {}) or {}
-    except Exception:
-        buckets = {}
-
-    try:
-        models_cfg = load_models()
-        known_ids = {m.get("id") for m in models_cfg.get("local_models", [])} | \
-                    {m.get("id") for m in models_cfg.get("commercial_models", [])}
-    except Exception:
-        known_ids = set()
-
-    for panel in panels:
-        if not isinstance(panel, dict):
-            continue
-        default_bucket = panel.get("default_bucket")
-        slot_name = panel.get("model_slot")
-        if not default_bucket or not slot_name:
-            continue
-        # If user has already assigned a model to the slot, respect it.
-        explicit = slot_assignments.get(slot_name)
-        if explicit:
-            panel["resolved_slot_assignment"] = {
-                "source": "user_slot_assignment",
-                "model_id": explicit,
-                "bucket": default_bucket,
-            }
-            continue
-        # Otherwise pick the first entry of the declared bucket.
-        bucket_list = buckets.get(default_bucket) or []
-        chosen = None
-        for mid in bucket_list:
-            if not known_ids or mid in known_ids:
-                chosen = mid
-                break
-        if chosen:
-            panel["resolved_slot_assignment"] = {
-                "source": "default_bucket",
-                "model_id": chosen,
-                "bucket": default_bucket,
-            }
-            continue
-        # Empty bucket — degrade gracefully: any known model OR just log.
-        any_model = next(iter(known_ids)) if known_ids else None
-        try:
-            print(f"[_resolve_default_buckets] bucket '{default_bucket}' empty "
-                  f"for slot '{slot_name}' on panel '{panel.get('id')}'; "
-                  f"falling back to '{any_model or '(none)'}'.")
-        except Exception:
-            pass
-        panel["resolved_slot_assignment"] = {
-            "source": "empty_bucket_fallback",
-            "model_id": any_model,
-            "bucket": default_bucket,
-            "fallback_reason": f"bucket '{default_bucket}' has no registered models",
-        }
-
-    return layout_cfg
-
-@app.route("/api/layout")
-def layout_get():
-    try:
-        with open(INTERFACE_JSON) as f:
-            return f.read(), 200, {"Content-Type": "application/json"}
-    except FileNotFoundError:
-        return json.dumps(_default_layout()), 200, {"Content-Type": "application/json"}
-
-@app.route("/api/layout", methods=["POST"])
-def layout_post():
-    data = request.get_json(force=True)
-    try:
-        # Preserve theme from current config
-        try:
-            with open(INTERFACE_JSON) as f:
-                current = json.load(f)
-            data.setdefault("theme", current.get("theme", "default-light"))
-        except Exception:
-            data.setdefault("theme", "default-light")
-        with open(INTERFACE_JSON, "w") as f:
-            json.dump(data, f, indent=2)
-        return json.dumps({"ok": True})
-    except Exception as e:
-        return json.dumps({"error": str(e)}), 500
-
-@app.route("/api/layouts")
-def layouts_list():
-    try:
-        names = [f[:-5] for f in os.listdir(LAYOUTS_DIR) if f.endswith(".json")]
-        return json.dumps({"layouts": sorted(names)})
-    except Exception:
-        return json.dumps({"layouts": []})
-
-@app.route("/api/layouts/<name>")
-def layout_load(name):
-    path = os.path.normpath(os.path.join(LAYOUTS_DIR, f"{name}.json"))
-    if not path.startswith(LAYOUTS_DIR):
-        return "Forbidden", 403
-    try:
-        with open(path) as f:
-            return f.read(), 200, {"Content-Type": "application/json"}
-    except FileNotFoundError:
-        return json.dumps({"error": "not found"}), 404
-
-@app.route("/api/layouts/<name>", methods=["POST"])
-def layout_save(name):
-    data = request.get_json(force=True)
-    path = os.path.normpath(os.path.join(LAYOUTS_DIR, f"{name}.json"))
-    if not path.startswith(LAYOUTS_DIR):
-        return "Forbidden", 403
-    try:
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
-        return json.dumps({"ok": True})
-    except Exception as e:
-        return json.dumps({"error": str(e)}), 500
-
-# ── theme API ─────────────────────────────────────────────────────────────────
-
-@app.route("/api/theme")
-def theme_get():
-    try:
-        with open(INTERFACE_JSON) as f:
-            cfg = json.load(f)
-        theme_name = cfg.get("theme", "default-light")
-    except Exception:
-        theme_name = "default-light"
-    path = os.path.normpath(os.path.join(THEMES_DIR, f"{theme_name}.css"))
-    if not path.startswith(THEMES_DIR) or not os.path.exists(path):
-        return Response("", mimetype="text/css")
-    with open(path) as f:
-        return Response(f.read(), mimetype="text/css")
-
-@app.route("/api/theme", methods=["POST"])
-def theme_set():
-    data = request.get_json(force=True)
-    theme = data.get("theme", "default-light")
-    try:
-        with open(INTERFACE_JSON) as f:
-            cfg = json.load(f)
-        cfg["theme"] = theme
-        with open(INTERFACE_JSON, "w") as f:
-            json.dump(cfg, f, indent=2)
-        return json.dumps({"ok": True})
-    except Exception as e:
-        return json.dumps({"error": str(e)}), 500
-
-@app.route("/api/themes")
-def themes_list():
-    try:
-        names = [f[:-4] for f in os.listdir(THEMES_DIR) if f.endswith(".css")]
-        return json.dumps({"themes": sorted(names)})
-    except Exception:
-        return json.dumps({"themes": ["default-light", "default-dark"]})
 
 # ── V3 theme library API ──────────────────────────────────────────────────
 # Folder-per-theme structure used by /v3 — each theme is a directory under
@@ -10908,8 +10694,8 @@ def bridge_update(panel_id):
         "pipeline_stage": data.get("pipeline_stage", existing.get("pipeline_stage")),
         "updated_at":     time.time(),
     }
-    # WP-2.3 — Preserve ora-visual blocks on the bridge so subscribed
-    # visual panels (solo/studio layouts) can pick them up on the next poll.
+    # Preserve ora-visual blocks on the bridge so the V3 Exhibits surface can
+    # pick them up on the next poll.
     if "ora_visual_blocks" in data:
         merged["ora_visual_blocks"] = data.get("ora_visual_blocks") or []
     elif "ora_visual_blocks" in existing:
@@ -11217,157 +11003,6 @@ def clarification_pending():
         })
     return json.dumps({"pending": False})
 
-
-# ── vision detection ──────────────────────────────────────────────────────────
-
-def _has_vision_endpoint():
-    config = load_config()
-    ep_by_name = {e["name"]: e for e in config.get("endpoints", [])}
-    for name in ["gemini-api", "anthropic-api", "openai-api"]:
-        ep = ep_by_name.get(name, {})
-        if ep.get("status") == "active":
-            return True, name
-    return False, None
-
-def _call_vision_generate_layout(description, image_b64, endpoint_name):
-    """Call a vision-capable API model to generate interface.json from image + description."""
-    config     = load_config()
-    ep_by_name = {e["name"]: e for e in config.get("endpoints", [])}
-    ep = ep_by_name.get(endpoint_name, {})
-    service = ep.get("service", "")
-    model   = ep.get("model", "")
-
-    schema = json.dumps({
-        "layout": {"preset_base": "custom", "panels": [
-            {"id": "main", "type": "chat", "width_pct": 65, "model_slot": "breadth",
-             "is_main_feed": True, "bridge_subscribe_to": None, "label": "Main Chat"},
-            {"id": "sidebar", "type": "chat", "width_pct": 35, "model_slot": "sidebar",
-             "is_main_feed": False, "bridge_subscribe_to": "main", "label": "Sidebar"}
-        ]},
-        "theme": "default-light"
-    }, indent=2)
-
-    prompt = (f"Generate a valid interface.json configuration for this layout.\n\n"
-              f"Description: {description or '(see image)'}\n\n"
-              f"Rules:\n"
-              f"- Panel types: chat, vault, pipeline, clarification, switcher\n"
-              f"- Model slots: breadth, depth, evaluator, sidebar, step1_cleanup, consolidator\n"
-              f"- width_pct values must sum to 100\n"
-              f"- Exactly one panel must have is_main_feed: true (chat panels only)\n"
-              f"- bridge_subscribe_to references another panel id or null\n"
-              f"- Max 6 panels\n"
-              f"- Available themes: default-dark, default-light, high-contrast, terminal, warm\n\n"
-              f"Output ONLY the JSON, no explanation:\n{schema}")
-
-    try:
-        if service == "gemini":
-            import keyring
-            from google import genai
-            from google.genai import types as gtypes
-            key = os.environ.get("GEMINI_API_KEY", "") or keyring.get_password("ora", "gemini-api-key") or ""
-            client = genai.Client(api_key=key)
-            parts = []
-            if image_b64:
-                import base64
-                parts.append(gtypes.Part.from_bytes(
-                    data=base64.b64decode(image_b64),
-                    mime_type="image/jpeg"
-                ))
-            parts.append(prompt)
-            resp = client.models.generate_content(
-                model=model or "models/gemini-2.5-flash", contents=parts)
-            return resp.text
-        elif service == "claude":
-            import anthropic, keyring
-            key = os.environ.get("ANTHROPIC_API_KEY", "") or keyring.get_password("ora", "anthropic-api-key") or ""
-            client = anthropic.Anthropic(api_key=key)
-            content = []
-            if image_b64:
-                content.append({"type": "image", "source": {
-                    "type": "base64", "media_type": "image/jpeg", "data": image_b64}})
-            content.append({"type": "text", "text": prompt})
-            resp = client.messages.create(
-                model=model or "claude-opus-4-6", max_tokens=2048,
-                messages=[{"role": "user", "content": content}])
-            return resp.content[0].text
-        elif service == "openai":
-            from openai import OpenAI
-            import keyring
-            key = os.environ.get("OPENAI_API_KEY", "") or keyring.get_password("ora", "openai-api-key") or ""
-            client = OpenAI(api_key=key)
-            content = [{"type": "text", "text": prompt}]
-            if image_b64:
-                content.insert(0, {"type": "image_url",
-                                   "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}})
-            resp = client.chat.completions.create(
-                model=model or "gpt-4o",
-                messages=[{"role": "user", "content": content}], max_tokens=2048)
-            return resp.choices[0].message.content
-    except Exception as e:
-        return f"[vision error: {e}]"
-
-@app.route("/api/generate-layout", methods=["POST"])
-def generate_layout():
-    data        = request.get_json(force=True)
-    description = data.get("description", "").strip()
-    image_b64   = data.get("image")
-
-    if not description and not image_b64:
-        return json.dumps({"error": "Provide a description or image"}), 400
-
-    has_vision, vision_ep = _has_vision_endpoint()
-
-    if image_b64 and not has_vision:
-        return json.dumps({"error": "No vision-capable endpoint active. "
-                           "Activate Gemini API, Claude API, or OpenAI API to use image-based layout generation."}), 422
-
-    raw_response = None
-    if image_b64 and has_vision:
-        raw_response = _call_vision_generate_layout(description, image_b64, vision_ep)
-    else:
-        # Text-only: route to current breadth model
-        config   = load_config()
-        endpoint = get_endpoint(config)
-        schema   = json.dumps({
-            "layout": {"preset_base": "custom", "panels": [
-                {"id": "main", "type": "chat", "width_pct": 65, "model_slot": "breadth",
-                 "is_main_feed": True, "bridge_subscribe_to": None, "label": "Main Chat"}
-            ]},
-            "theme": "default-light"
-        }, indent=2)
-        prompt = (f"Generate a valid interface.json for this layout description:\n\n"
-                  f"{description}\n\n"
-                  f"Panel types: chat, vault, pipeline, clarification, switcher\n"
-                  f"Model slots: breadth, depth, evaluator, sidebar, step1_cleanup, consolidator\n"
-                  f"width_pct values must sum to 100. One panel must have is_main_feed: true.\n"
-                  f"Available themes: default-dark, default-light, high-contrast, terminal, warm\n\n"
-                  f"Output ONLY the JSON:\n{schema}")
-        if endpoint:
-            raw_response = call_model([{"role": "user", "content": prompt}], endpoint)
-
-    if not raw_response:
-        return json.dumps({"error": "No response from model"}), 503
-
-    # Extract JSON
-    match = re.search(r'\{[\s\S]*\}', raw_response)
-    if not match:
-        return json.dumps({"error": "Model did not return valid JSON", "raw": raw_response[:500]}), 422
-    try:
-        layout_cfg = json.loads(match.group())
-    except json.JSONDecodeError as e:
-        return json.dumps({"error": f"JSON parse error: {e}", "raw": raw_response[:500]}), 422
-
-    # Basic validation
-    panels = layout_cfg.get("layout", {}).get("panels", [])
-    if not panels:
-        return json.dumps({"error": "No panels in generated layout"}), 422
-    total_w = sum(p.get("width_pct", 0) for p in panels)
-    if total_w and abs(total_w - 100) > 5:
-        # Auto-fix: normalize widths
-        for p in panels:
-            p["width_pct"] = round(p.get("width_pct", 0) * 100 / total_w)
-
-    return json.dumps({"layout": layout_cfg, "vision_used": bool(image_b64 and has_vision)})
 
 # ── capability slot dispatch ─────────────────────────────────────────────────
 # /api/capability/image_generates — server-side bridge for the `image_generates`
@@ -14813,8 +14448,8 @@ def api_export():
 
     Markdown is canonical (Export §1.9). ``current_output`` saves the rendered
     output as a vault markdown note — in the active project's folder when set,
-    else ``<vault>/Outputs/``. ``full_conversation`` delegates to the existing
-    canonical session export. ``docx`` / ``pdf`` render the output's markdown via
+    else at the vault root for Commons. ``full_conversation`` delegates to the
+    existing canonical session export. ``docx`` / ``pdf`` render the output's markdown via
     Pandoc into ``~/Documents/Ora Exports/`` when Pandoc (+ a PDF engine) is
     present; otherwise they return ``deferred``."""
     try:
@@ -14876,18 +14511,19 @@ def api_export():
             project_nexus = get_active_project()
         except Exception:
             project_nexus = "commons"
-    project_name = None
+    project_folder_name = None
     if project_nexus and project_nexus.lower() not in ("commons", "general"):
         try:
             from orchestrator import project_meta as _pm
             rec = _pm.read_project_meta(project_nexus)
-            project_name = rec.get("name") if rec else project_nexus
+            project_folder_name = rec.get("folder_name") if rec else project_nexus
         except Exception:
-            project_name = project_nexus
+            project_folder_name = project_nexus
     try:
         path = _export.save_output_to_vault(
             content, title=data.get("title"),
-            project_nexus=project_nexus, project_name=project_name)
+            project_nexus=project_nexus,
+            project_folder_name=project_folder_name)
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 500)
     if path is None:
@@ -15120,6 +14756,28 @@ if __name__ == "__main__":
     parser.add_argument("--scheduler", action="store_true", help="Start task scheduler")
     parser.add_argument("--oversight", action="store_true", help="Start meta-layer oversight daemon (PED watcher, corpus watcher, workflow spec sweeper, revisit sweeper)")
     args, _ = parser.parse_known_args()
+
+    # Expand the active-project pointer before any worker threads or HTTP
+    # requests can race it.  The normal getter is intentionally read-only;
+    # startup is the safe migration boundary for adding the legacy-safe
+    # ``nexus`` field alongside the canonical one.
+    try:
+        from orchestrator.active_project import migrate_active_project_pointer
+        if migrate_active_project_pointer():
+            print("[startup] active-project pointer expanded for old/new readers")
+    except Exception as _active_project_exc:
+        print(f"[startup] active-project pointer migration skipped: {_active_project_exc}")
+
+    try:
+        from orchestrator.project_meta import migrate_project_folder_names
+        _folder_pointer_count = migrate_project_folder_names()
+        if _folder_pointer_count:
+            print(
+                f"[startup] expanded {_folder_pointer_count} project pointer(s) "
+                "with immutable folder identity"
+            )
+    except Exception as _project_folder_exc:
+        print(f"[startup] project-folder pointer migration skipped: {_project_folder_exc}")
 
     port = 5000
     for p in range(5000, 5011):

@@ -372,6 +372,9 @@ _SECRET_PATH_PATTERNS = [re.compile(p) for p in (
     r"(^|/)private[_-]?keys?(/|$)",
 )]
 _SENSITIVE_PATH_PATTERNS = [re.compile(p) for p in (
+    # Legacy/default checkout spelling. Relocatable ORA_HOME capture roots are
+    # handled structurally below so a custom checkout does not weaken the
+    # sensitivity classification.
     r"(^|/)ora/captures(/|$)",
     r"(^|/)ora/sessions/[^/]+/captures(/|$)",
     # A path component literally named 'key(s)' or 'creds', or a 'creds'
@@ -379,6 +382,8 @@ _SENSITIVE_PATH_PATTERNS = [re.compile(p) for p in (
     # 'translation_keys.json' / 'monkey' don't match.
     r"(^|/)keys?(/|$)", r"(^|/)creds?($|/|\.)",
 )]
+_WORKSPACE_CAPTURES = _cmp_key(os.path.join(WORKSPACE, "captures"))
+_WORKSPACE_SESSIONS = _cmp_key(os.path.join(WORKSPACE, "sessions"))
 # Private roots as normalized, forward-slashed comparison keys, plus the
 # env-resolved vault/conversations from runtime_paths so a relocated vault
 # still classifies private.
@@ -400,6 +405,12 @@ def resolve_path_sensitivity(path: str) -> str:
             return "secret"
     for pat in _SENSITIVE_PATH_PATTERNS:
         if pat.search(matchable):
+            return "sensitive"
+    if key == _WORKSPACE_CAPTURES or key.startswith(_WORKSPACE_CAPTURES + "/"):
+        return "sensitive"
+    if key.startswith(_WORKSPACE_SESSIONS + "/"):
+        session_relative = key[len(_WORKSPACE_SESSIONS) + 1:].split("/")
+        if len(session_relative) >= 2 and session_relative[1] == "captures":
             return "sensitive"
     for root in _PRIVATE_ROOTS:
         if key == root or key.startswith(root + "/"):

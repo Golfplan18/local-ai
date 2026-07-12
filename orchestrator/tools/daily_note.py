@@ -8,7 +8,7 @@ that would be empty are omitted entirely (template bloat is the #1
 reported failure mode). There is no journal section by user decision.
 
 Sections:
-  Conversations   — every conversation touched that day, grouped from the
+  Dialogues       — every Dialogue touched that day, grouped from the
                     verbatim chunk files at ~/Documents/conversations/
                     (filenames are date-prefixed). Display names resolved
                     from ~/ora/sessions/<id>/conversation.json; gist is
@@ -302,7 +302,7 @@ def render_note(date_str: str, conversations: list[dict],
         "",
     ]
     if conversations:
-        out.append("## Conversations")
+        out.append("## Dialogues")
         out.append("")
         for c in conversations:
             span = c["first"] if c["first"] == c["last"] else f"{c['first']}–{c['last']}"

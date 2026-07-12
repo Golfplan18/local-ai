@@ -41,6 +41,8 @@ class RetentionSweeperBase(unittest.TestCase):
         self.log_archive = self.logs / "archive"
         self.data_archive = root / "data" / "archive"
         self.server_log = root / "server.log"
+        self.launchd_stdout = self.logs / "ora-server.stdout.log"
+        self.launchd_stderr = self.logs / "ora-server.stderr.log"
         self.sessions = root / "sessions"
         self.sessions_archive = self.sessions / "archived"
         self.oversight = root / "data" / "oversight"
@@ -54,6 +56,11 @@ class RetentionSweeperBase(unittest.TestCase):
             mock.patch.object(retention_sweeper, "LOG_ARCHIVE_DIR", str(self.log_archive)),
             mock.patch.object(retention_sweeper, "DATA_ARCHIVE_DIR", str(self.data_archive)),
             mock.patch.object(retention_sweeper, "SERVER_LOG", str(self.server_log)),
+            mock.patch.object(
+                retention_sweeper,
+                "LAUNCHD_SERVER_LOGS",
+                (str(self.launchd_stdout), str(self.launchd_stderr)),
+            ),
             mock.patch.object(retention_sweeper, "SESSIONS_DIR", str(self.sessions)),
             mock.patch.object(retention_sweeper, "SESSIONS_ARCHIVE_DIR", str(self.sessions_archive)),
             mock.patch.object(retention_sweeper, "OVERSIGHT_DATA_DIR", str(self.oversight)),
@@ -164,6 +171,46 @@ class ServerLogTests(RetentionSweeperBase):
         writer.write("post-rotation line\n")
         writer.flush()
         self.assertIn("post-rotation line", self.server_log.read_text())
+
+    def test_active_launchd_log_is_size_rotated_and_fd_survives(self):
+        self.launchd_stdout.write_bytes(b"x" * (2 * 1024 * 1024))
+        writer = open(self.launchd_stdout, "a")
+        self.addCleanup(writer.close)
+
+        with mock.patch.dict(os.environ, {"ORA_RETENTION_SERVERLOG_MB": "1"}):
+            summary = retention_sweeper.sweep()
+
+        self.assertEqual(summary["launchd_logs_rotated"], ["ora-server.stdout.log"])
+        self.assertEqual(self.launchd_stdout.stat().st_size, 0)
+        archives = list(self.log_archive.glob("ora-server.stdout-*.log.gz"))
+        self.assertEqual(len(archives), 1)
+        with gzip.open(archives[0], "rb") as handle:
+            self.assertEqual(len(handle.read()), 2 * 1024 * 1024)
+        writer.write("post-launchd-rotation\n")
+        writer.flush()
+        self.assertIn("post-launchd-rotation", self.launchd_stdout.read_text())
+
+    def test_launchd_log_size_rotation_honors_disabled_limit(self):
+        self.launchd_stderr.write_bytes(b"x" * (2 * 1024 * 1024))
+        with mock.patch.dict(os.environ, {"ORA_RETENTION_SERVERLOG_MB": "0"}):
+            summary = retention_sweeper.sweep()
+        self.assertEqual(summary["launchd_logs_rotated"], [])
+        self.assertEqual(self.launchd_stderr.stat().st_size, 2 * 1024 * 1024)
+
+    def test_quiet_launchd_log_is_not_unlinked_by_age_sweep(self):
+        self.launchd_stdout.write_text("quiet but still open\n")
+        old = time.time() - 45 * 86400
+        os.utime(self.launchd_stdout, (old, old))
+
+        with mock.patch.dict(
+            os.environ,
+            {"ORA_RETENTION_LOGS_DAYS": "30", "ORA_RETENTION_SERVERLOG_MB": "50"},
+        ):
+            summary = retention_sweeper.sweep(now=time.time())
+
+        self.assertTrue(self.launchd_stdout.exists())
+        self.assertEqual(self.launchd_stdout.read_text(), "quiet but still open\n")
+        self.assertEqual(summary["logs_archived"], 0)
 
 
 class JsonlRotationTests(RetentionSweeperBase):

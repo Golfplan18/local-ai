@@ -299,6 +299,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 13px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .conversation-browser-title {

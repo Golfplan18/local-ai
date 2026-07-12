@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault("ORA_HOME", _REPO)
 for _p in (_REPO, os.path.join(_REPO, "server"), os.path.join(_REPO, "orchestrator")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -37,14 +38,14 @@ class ExportModuleTests(unittest.TestCase):
         self.assertTrue(ex_dir.is_dir())
         self.assertTrue(res_dir.is_dir())
 
-    def test_save_general_goes_to_outputs(self):
+    def test_save_commons_goes_to_vault_root(self):
         path = ex.save_output_to_vault("# Hello\n\nbody", title="My Note", vault=self.vault)
         self.assertIsNotNone(path)
-        self.assertEqual(path.parent.name, "Outputs")
+        self.assertEqual(path.parent, self.vault)
         text = path.read_text(encoding="utf-8")
         self.assertIn("type: output", text)
         self.assertIn("title: My Note", text)
-        self.assertIn("nexus:\n", text)  # General → bare nexus
+        self.assertIn("nexus:\n", text)  # Commons → bare nexus
         self.assertNotIn("nexus:\n  -", text)
         self.assertIn("# Hello", text)
 
@@ -55,6 +56,30 @@ class ExportModuleTests(unittest.TestCase):
         self.assertEqual(path.parent.name, "My Book")
         self.assertEqual(path.parent.parent.name, "Projects")
         self.assertIn("nexus:\n  - my-book", path.read_text(encoding="utf-8"))
+
+    def test_immutable_folder_name_takes_precedence_over_display_name(self):
+        path = ex.save_output_to_vault(
+            "content", title="Draft", project_nexus="my-book",
+            project_name="Book of Law", project_folder_name="My Book",
+            vault=self.vault)
+        self.assertEqual(path.parent, self.vault / "Projects" / "My Book")
+
+    def test_explicit_compatibility_subdir_is_honored(self):
+        path = ex.save_output_to_vault(
+            "content", title="Legacy", vault=self.vault,
+            outputs_subdir=ex.DEFAULT_OUTPUTS_SUBDIR)
+        self.assertEqual(path.parent, self.vault / "Outputs")
+
+    def test_exact_dot_folders_cannot_escape_intended_directory(self):
+        for traversal in (".", ".."):
+            project_path = ex.save_output_to_vault(
+                "project", title="Project", vault=self.vault,
+                project_nexus="x", project_folder_name=traversal)
+            self.assertEqual(project_path.parent, self.vault / "Projects" / "Untitled")
+            subdir_path = ex.save_output_to_vault(
+                "subdir", title="Subdir", vault=self.vault,
+                outputs_subdir=traversal)
+            self.assertEqual(subdir_path.parent, self.vault / "Untitled")
 
     def test_filename_collision(self):
         p1 = ex.save_output_to_vault("a", title="Same", vault=self.vault)
@@ -129,7 +154,7 @@ class ExportEndpointTests(unittest.TestCase):
         body = json.loads(r.data)
         self.assertTrue(body["ok"])
         self.assertTrue(pathlib.Path(body["path"]).is_file())
-        self.assertIn("Outputs", body["path"])
+        self.assertEqual(pathlib.Path(body["path"]).parent.resolve(), self.vault.resolve())
 
     def test_current_output_saves_markdown_legacy_general(self):
         r = self.client.post("/api/export", json={
@@ -139,7 +164,30 @@ class ExportEndpointTests(unittest.TestCase):
         body = json.loads(r.data)
         self.assertTrue(body["ok"])
         self.assertTrue(pathlib.Path(body["path"]).is_file())
-        self.assertIn("Outputs", body["path"])
+        self.assertEqual(pathlib.Path(body["path"]).parent.resolve(), self.vault.resolve())
+
+    def test_project_rename_keeps_export_in_original_folder(self):
+        from orchestrator import project_meta as pm
+        original_pointer_dir = pm.POINTER_DIR
+        pm.POINTER_DIR = pathlib.Path(self._tmp.name) / "projects"
+        try:
+            pm.create_project("My Book")
+            pm.update_project_meta("my-book", {"name": "Book of Law"})
+            r = self.client.post("/api/export", json={
+                "scope": "current_output",
+                "content": "# Renamed project output",
+                "title": "Renamed",
+                "project": "my-book",
+            })
+            self.assertEqual(r.status_code, 200)
+            path = pathlib.Path(json.loads(r.data)["path"])
+            self.assertEqual(
+                path.parent.resolve(),
+                (self.vault / "Projects" / "My Book").resolve(),
+            )
+            self.assertFalse((self.vault / "Projects" / "Book of Law").exists())
+        finally:
+            pm.POINTER_DIR = original_pointer_dir
 
     def test_empty_content_400(self):
         r = self.client.post("/api/export", json={"scope": "current_output", "content": "  "})
