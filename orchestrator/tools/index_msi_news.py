@@ -194,20 +194,25 @@ def index_msi_news(
 
 
 def remove_paths(paths: list[str], *, collection=None) -> int:
-    """Delete the given files' docs from knowledge_v2 (id = absolute path).
+    """Delete the given files' docs from knowledge_v2.
 
     Used by the sync hook to drop articles that the rsync `--delete`
     removed from the mirror, so knowledge_v2 doesn't retain orphans.
-    Returns the count of ids requested for deletion.
+    Deletes by PATH via knowledge_index.delete_file_records — not by
+    bare id — so a long article indexed as HCP chunk records
+    (<abspath>#chunk-N) is fully removed too. Returns the count of ids
+    requested for deletion.
     """
+    from orchestrator.tools.knowledge_index import delete_file_records
     col = collection if collection is not None else _collection()
-    ids = [os.path.abspath(p) for p in paths]
-    if ids:
+    requested = 0
+    for p in paths:
         try:
-            col.delete(ids=ids)
+            requested += delete_file_records(col, p)
         except Exception as e:
-            print(f"  remove error: {type(e).__name__}: {e}", file=sys.stderr)
-    return len(ids)
+            print(f"  remove error for {p}: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+    return requested
 
 
 def main(argv: list[str]) -> None:
