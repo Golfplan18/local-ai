@@ -264,15 +264,28 @@ def rename_nexus(
     if dry_run:
         return report
 
-    # 1) Vault frontmatter.
+    # 1) Vault frontmatter. A Matrix rewrite is load-bearing: changing the
+    # pointer nexus while its Matrix still claims the old nexus would make the
+    # Matrix unresolvable. Keep the old pointer authoritative if that rewrite
+    # fails; the report remains explicit about the partial vault-file work.
+    matrix_dir = vroot / "Matrix"
+    matrix_rewrite_failed = False
     for p in vault_files:
+        is_matrix = p.parent == matrix_dir
         try:
             text = p.read_text(encoding="utf-8")
             rewritten = rewrite_frontmatter_nexus(text, old, new)
             if rewritten is not None:
                 _atomic_write(p, rewritten)
+            elif is_matrix:
+                matrix_rewrite_failed = True
+                report["errors"].append(
+                    f"{p}: Matrix frontmatter no longer claims nexus {old!r}"
+                )
         except OSError as exc:
             report["errors"].append(f"{p}: {exc}")
+            if is_matrix:
+                matrix_rewrite_failed = True
 
     # 2) Conversation memberships.
     from conversation_memory import set_conversation_projects
@@ -284,20 +297,25 @@ def rename_nexus(
             report["errors"].append(f"conversation {cid}: {exc}")
 
     # 3) Project pointer rename (old.json → new.json, internal nexus updated).
-    try:
-        data = json.loads(old_pointer.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            data["nexus"] = new
-        _atomic_write(new_pointer, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-        old_pointer.unlink()
-        report["pointer_renamed"] = True
-    except (OSError, json.JSONDecodeError) as exc:
-        report["errors"].append(f"pointer: {exc}")
+    if matrix_rewrite_failed:
+        report["errors"].append(
+            "pointer: not renamed because a Matrix frontmatter rewrite failed"
+        )
+    else:
+        try:
+            data = json.loads(old_pointer.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                data["nexus"] = new
+            _atomic_write(new_pointer, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+            old_pointer.unlink()
+            report["pointer_renamed"] = True
+        except (OSError, json.JSONDecodeError) as exc:
+            report["errors"].append(f"pointer: {exc}")
 
     # 4) Active-project pointer.
     try:
         from orchestrator.active_project import get_active_project, set_active_project
-        if get_active_project() == old:
+        if report["pointer_renamed"] and get_active_project() == old:
             set_active_project(new)
             report["active_updated"] = True
     except Exception as exc:

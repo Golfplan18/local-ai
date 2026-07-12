@@ -28,10 +28,12 @@ migration — because it is already live in on-disk pointer files, browser
 
 from __future__ import annotations
 
+import argparse
 import json
 import hashlib
 import os
 import re
+import sys
 import threading
 import unicodedata
 from datetime import datetime
@@ -1223,6 +1225,109 @@ def apply_windows_project_storage_migration(
     return {"ok": not errors, "applied": applied, "errors": errors}
 
 
+def _migration_cli(argv: list[str] | None = None) -> int:
+    """Expose report-first Windows storage remediation as an explicit CLI.
+
+    ``report`` only scans and prints JSON.  ``apply`` either consumes that
+    saved JSON verbatim or regenerates the current report for an exact
+    fingerprint, and requires the operator to repeat the reviewed fingerprint
+    through an intentionally explicit confirmation flag.
+    """
+    parser = argparse.ArgumentParser(
+        prog="python -m orchestrator.project_meta",
+        description="Inspect or explicitly apply Windows project-storage migration.",
+    )
+    commands = parser.add_subparsers(dest="command")
+    migration = commands.add_parser("windows-storage-migration")
+    actions = migration.add_subparsers(dest="action")
+
+    report = actions.add_parser(
+        "report", help="print a write-free migration report as JSON"
+    )
+    report.add_argument("--pointer-dir", type=Path)
+    report.add_argument("--vault-projects-dir", type=Path)
+
+    apply_cmd = actions.add_parser(
+        "apply", help="apply a saved or exact-fingerprint migration report"
+    )
+    source = apply_cmd.add_mutually_exclusive_group()
+    source.add_argument(
+        "--plan", type=Path, help="saved JSON emitted by the report command"
+    )
+    source.add_argument(
+        "--fingerprint",
+        help="exact fingerprint of the current report (which is regenerated)",
+    )
+    apply_cmd.add_argument("--pointer-dir", type=Path)
+    apply_cmd.add_argument("--vault-projects-dir", type=Path)
+    apply_cmd.add_argument(
+        "--confirm-apply-fingerprint",
+        help="repeat the reviewed report fingerprint to authorize filesystem writes",
+    )
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command != "windows-storage-migration" or args.action not in {
+            "report", "apply",
+        }:
+            raise ProjectStorageError(
+                "choose 'windows-storage-migration report' or "
+                "'windows-storage-migration apply'"
+            )
+
+        if args.action == "report":
+            result = plan_windows_project_storage_migration(
+                pointer_dir=args.pointer_dir,
+                vault_projects_dir=args.vault_projects_dir,
+            )
+            print(json.dumps(result, sort_keys=True, ensure_ascii=False))
+            return 0
+
+        if bool(args.plan) == bool(args.fingerprint):
+            raise ProjectStorageError(
+                "apply requires exactly one of --plan or --fingerprint"
+            )
+        if args.plan:
+            try:
+                loaded = json.loads(args.plan.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ProjectStorageError(
+                    f"could not read migration plan {args.plan}: {exc}"
+                ) from exc
+            if not isinstance(loaded, dict):
+                raise ProjectStorageError("saved migration plan is not a JSON object")
+            plan = loaded
+        else:
+            plan = plan_windows_project_storage_migration(
+                pointer_dir=args.pointer_dir,
+                vault_projects_dir=args.vault_projects_dir,
+            )
+            if args.fingerprint != plan.get("fingerprint"):
+                raise ProjectStorageError(
+                    "current migration report does not match --fingerprint; "
+                    "generate and review a fresh report"
+                )
+
+        reviewed_fingerprint = plan.get("fingerprint")
+        if (
+            not isinstance(reviewed_fingerprint, str)
+            or args.confirm_apply_fingerprint != reviewed_fingerprint
+        ):
+            raise ProjectStorageError(
+                "--confirm-apply-fingerprint must exactly match the reviewed "
+                "migration report fingerprint"
+            )
+        result = apply_windows_project_storage_migration(plan, confirmed=True)
+        print(json.dumps(result, sort_keys=True, ensure_ascii=False))
+        return 0 if result.get("ok") else 1
+    except (ProjectMetaError, NexusValidationError, ValueError) as exc:
+        print(
+            json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False),
+            file=sys.stderr,
+        )
+        return 2
+
+
 __all__ = [
     "POINTER_DIR",
     "DEFAULT_NEXUS",
@@ -1259,3 +1364,7 @@ __all__ = [
     "plan_windows_project_storage_migration",
     "apply_windows_project_storage_migration",
 ]
+
+
+if __name__ == "__main__":
+    raise SystemExit(_migration_cli())

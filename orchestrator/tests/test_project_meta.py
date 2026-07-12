@@ -594,6 +594,108 @@ class ProjectMetaTests(unittest.TestCase):
         raw = json.loads(pointer.read_text(encoding="utf-8"))
         self.assertEqual(raw["folder_name"], "Bad:Folder")
 
+    def test_windows_storage_migration_cli_reports_without_writes_and_applies_saved_plan(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad:Folder"
+        source.mkdir(parents=True)
+        (source / "draft.md").write_text("keep", encoding="utf-8")
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Folder",
+            "display_name": "Book", "folder_name": "Bad:Folder",
+        }), encoding="utf-8")
+        pointer_before = pointer.read_bytes()
+        command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "report",
+            "--pointer-dir", str(pdir),
+            "--vault-projects-dir", str(projects),
+        ]
+
+        reported = subprocess.run(
+            command, cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(reported.returncode, 0, reported.stderr)
+        plan = json.loads(reported.stdout)
+        self.assertTrue(plan["can_apply"])
+        self.assertEqual(pointer.read_bytes(), pointer_before)
+        self.assertTrue(source.is_dir())
+
+        plan_path = self.d / "reviewed-plan.json"
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        apply_command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "apply", "--plan", str(plan_path),
+        ]
+        unconfirmed = subprocess.run(
+            apply_command, cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(unconfirmed.returncode, 2)
+        self.assertFalse(json.loads(unconfirmed.stderr)["ok"])
+        self.assertEqual(pointer.read_bytes(), pointer_before)
+        self.assertTrue(source.is_dir())
+
+        applied = subprocess.run(
+            [
+                *apply_command,
+                "--confirm-apply-fingerprint", plan["fingerprint"],
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue(json.loads(applied.stdout)["ok"])
+        migrated = json.loads(pointer.read_text(encoding="utf-8"))
+        self.assertNotEqual(migrated["folder_name"], "Bad:Folder")
+        self.assertTrue((projects / migrated["folder_name"] / "draft.md").is_file())
+
+    def test_windows_storage_migration_cli_can_apply_exact_current_fingerprint(self):
+        pdir = self.d / "pointers"
+        projects = self.d / "vault" / "Projects"
+        pdir.mkdir(parents=True)
+        source = projects / "Bad:Folder"
+        source.mkdir(parents=True)
+        pointer = pdir / "book.json"
+        pointer.write_text(json.dumps({
+            "nexus": "book", "name": "Bad:Folder",
+            "display_name": "Book", "folder_name": "Bad:Folder",
+        }), encoding="utf-8")
+        plan = pm.plan_windows_project_storage_migration(
+            pointer_dir=pdir, vault_projects_dir=projects,
+        )
+        base_command = [
+            sys.executable, "-m", "orchestrator.project_meta",
+            "windows-storage-migration", "apply",
+            "--pointer-dir", str(pdir),
+            "--vault-projects-dir", str(projects),
+        ]
+
+        stale = subprocess.run(
+            [
+                *base_command, "--fingerprint", "0" * 64,
+                "--confirm-apply-fingerprint", "0" * 64,
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(stale.returncode, 2)
+        self.assertIn("fresh report", json.loads(stale.stderr)["error"])
+        self.assertTrue(source.is_dir())
+
+        applied = subprocess.run(
+            [
+                *base_command, "--fingerprint", plan["fingerprint"],
+                "--confirm-apply-fingerprint", plan["fingerprint"],
+            ],
+            cwd=_REPO, text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue(json.loads(applied.stdout)["ok"])
+        self.assertFalse(source.exists())
+
     def test_list_project_files_missing_folder(self):
         idx = pm.list_project_files("Nope", vault_projects_dir=self.d / "vp")
         self.assertFalse(idx["exists"])

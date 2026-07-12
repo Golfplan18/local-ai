@@ -23,6 +23,9 @@ from orchestrator.historical import ingest  # noqa: E402
 from orchestrator import runtime_paths as _rp  # noqa: E402
 from orchestrator.historical import path2_cli, path2_orchestrator  # noqa: E402
 from orchestrator.historical import phase3_extraction, phase5_atomic_extraction  # noqa: E402
+from orchestrator.historical import privacy_tagging  # noqa: E402
+from orchestrator.historical import phase_b_vault_extraction  # noqa: E402
+from orchestrator.historical import phase_c_relationship_extraction  # noqa: E402
 from orchestrator.historical import rebuild_atomic_dedup, repair_refusal_pairs  # noqa: E402
 from orchestrator.historical import writer  # noqa: E402
 
@@ -70,6 +73,16 @@ class TestRunIngest(unittest.TestCase):
                          str(_rp.DATA_DIR / "refusal-repair-report.json"))
         self.assertEqual(writer.DEFAULT_OUTPUT_DIR,
                          str(_rp.historical_archive_dir()))
+        self.assertEqual(privacy_tagging.DEFAULT_VAULT_ROOT,
+                         str(_rp.vault_dir()))
+        self.assertEqual(privacy_tagging.DEFAULT_ARCHIVE_DIR,
+                         str(_rp.historical_archive_dir()))
+        self.assertEqual(phase_b_vault_extraction.DEFAULT_VAULT_ROOT_FLAT,
+                         str(_rp.vault_dir() / "Engrams"))
+        self.assertEqual(phase_c_relationship_extraction.DEFAULT_VAULT_ROOT,
+                         str(_rp.vault_dir() / "Engrams"))
+        self.assertEqual(phase_c_relationship_extraction.DEFAULT_CHROMADB_PATH,
+                         str(_rp.chromadb_dir()))
 
     def test_all_stages_run_in_order(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()

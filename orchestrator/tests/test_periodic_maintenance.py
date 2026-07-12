@@ -74,6 +74,13 @@ class Task1TestBase(unittest.TestCase):
 
 
 class TestTask1Wiring(Task1TestBase):
+    def test_default_vault_resolves_at_call_time(self):
+        relocated = os.path.join(self.tmp, "relocated-vault")
+        os.makedirs(relocated)
+        with mock.patch.object(pm, "VAULT_PATH", pm._DEFAULT_VAULT_PATH), \
+             mock.patch.dict(os.environ, {"ORA_VAULT": relocated}, clear=True):
+            self.assertEqual(pm._vault_path(), relocated)
+
     def test_no_orphans_runs_sync_only(self):
         graph = FakeGraph()
         result = task_1_orphan_cleanup(graph=graph)

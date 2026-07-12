@@ -25,6 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 from orchestrator.historical.phase5_atomic_extraction import (
     _slugify,
@@ -44,9 +45,9 @@ from orchestrator.historical.phase5_atomic_extraction import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_VAULT_ROOT_FLAT = "/Users/oracle/Documents/vault/Engrams"
-DEFAULT_MANIFEST_PATH = "/Users/oracle/ora/data/phase-b-manifest.json"
-DEFAULT_REPORT_PATH = "/Users/oracle/ora/data/phase-b-report.json"
+DEFAULT_VAULT_ROOT_FLAT = str(_rp.vault_dir() / "Engrams")
+DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "phase-b-manifest.json")
+DEFAULT_REPORT_PATH = str(_rp.DATA_DIR / "phase-b-report.json")
 
 # Extraction sizing for vault docs. Chapters and white papers are larger
 # than chat pairs; we send up to ~24K chars per call (~6K tokens) and

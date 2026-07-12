@@ -10,6 +10,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 for _p in (_REPO, os.path.join(_REPO, "orchestrator")):
@@ -157,6 +158,29 @@ class RenameCascadeTests(unittest.TestCase):
         self.assertEqual(pointer["folder_name"], "Book Folder")
         self.assertEqual(pointer["display_name"], "Book")
         self.assertTrue(rep["pointer_renamed"])
+
+    def test_matrix_rewrite_failure_keeps_old_pointer_authoritative(self):
+        matrix = self.vault / "Matrix" / "Project Matrix Book.md"
+        original_atomic_write = nr._atomic_write
+
+        def fail_matrix(path, text):
+            if pathlib.Path(path) == matrix:
+                raise OSError("simulated Matrix write failure")
+            return original_atomic_write(path, text)
+
+        with mock.patch.object(nr, "_atomic_write", side_effect=fail_matrix):
+            report = self._report(dry_run=False)
+
+        self.assertFalse(report["pointer_renamed"])
+        self.assertTrue((self.pdir / "book.json").is_file())
+        self.assertFalse((self.pdir / "memoir.json").exists())
+        self.assertIn("  - book\n", matrix.read_text(encoding="utf-8"))
+        self.assertTrue(
+            any("Matrix write failure" in error for error in report["errors"])
+        )
+        self.assertTrue(
+            any("not renamed because" in error for error in report["errors"])
+        )
 
     def test_validation(self):
         with self.assertRaises(nr.NexusRenameError):

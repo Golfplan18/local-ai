@@ -59,9 +59,12 @@ def _windows_documents_dir() -> Path:
 
     class _GUID(ctypes.Structure):
         _fields_ = [
-            ("Data1", wintypes.DWORD),
-            ("Data2", wintypes.WORD),
-            ("Data3", wintypes.WORD),
+            # Fixed-width fields keep the ABI exact even when this helper is
+            # exercised by cross-platform tests (host c_ulong is 64-bit on
+            # some POSIX systems, while Windows DWORD is always 32-bit).
+            ("Data1", ctypes.c_uint32),
+            ("Data2", ctypes.c_uint16),
+            ("Data3", ctypes.c_uint16),
             ("Data4", ctypes.c_ubyte * 8),
         ]
 

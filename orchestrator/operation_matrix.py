@@ -162,7 +162,9 @@ def resolve_matrix_path(
     if not nexus_l or nexus_l in ("commons", "general"):
         return None
     if folder_name:
-        _matrix_filename(folder_name, vault=mdir.parent)
+        # Load-bearing validation: even though resolution is nexus-based, reject
+        # a stored physical identity that cannot form a portable Matrix path.
+        _ = _matrix_filename(folder_name, vault=mdir.parent)
     matches: list[Path] = []
     for pf in sorted(mdir.glob("*.md")):
         try:

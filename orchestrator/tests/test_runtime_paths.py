@@ -5,6 +5,7 @@ import ctypes
 import os
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -209,7 +210,15 @@ class KnownFolderCtypesTests(unittest.TestCase):
 
         freed = []
 
-        def get_path(_guid, _flags, _token, out):
+        captured_guid_bytes = []
+
+        def get_path(guid, _flags, _token, out):
+            guid_object = guid._obj
+            captured_guid_bytes.append(
+                ctypes.string_at(
+                    ctypes.addressof(guid_object), ctypes.sizeof(guid_object)
+                )
+            )
             out._obj.value = target
             return 0
 
@@ -224,6 +233,19 @@ class KnownFolderCtypesTests(unittest.TestCase):
         with mock.patch.object(ctypes, "WinDLL", create=True, side_effect=dll):
             self.assertEqual(str(rp._windows_documents_dir()), target)
         self.assertEqual(len(freed), 1)
+        self.assertEqual(
+            captured_guid_bytes,
+            [uuid.UUID(rp._FOLDERID_DOCUMENTS).bytes_le],
+        )
+        argtypes = shell.SHGetKnownFolderPath.argtypes
+        self.assertEqual(len(argtypes), 4)
+        self.assertEqual(
+            [field_name for field_name, _field_type in argtypes[0]._type_._fields_],
+            ["Data1", "Data2", "Data3", "Data4"],
+        )
+        self.assertIs(argtypes[1], ctypes.wintypes.DWORD)
+        self.assertIs(argtypes[2], ctypes.wintypes.HANDLE)
+        self.assertIs(argtypes[3]._type_, ctypes.c_wchar_p)
 
     def test_ctypes_binding_frees_buffer_on_failing_hresult(self):
         class FakeFunction:

@@ -8726,7 +8726,7 @@ def _browser_row_from_chroma_hit(
         if not source_path:
             source = metadata.get("source")
             if source:
-                source_path = os.path.join(os.path.expanduser("~/Documents/vault/Engrams"), source)
+                source_path = str(rp.vault_dir() / "Engrams" / str(source))
         source_id = source_path or embedding_id
         row_id = _browser_encode_source_id("engram", str(source_id))
         title = _browser_source_title(metadata, doc)
@@ -8925,7 +8925,7 @@ def _browser_chroma_fuzzy_rows(
 def _browser_vault_markdown_rows(query: str, limit: int = 40) -> list[dict]:
     if not (query or "").strip():
         return []
-    vault_root = os.path.expanduser("~/Documents/vault")
+    vault_root = str(rp.vault_dir())
     if not os.path.isdir(vault_root):
         return []
     terms = _browser_match_terms(query)
