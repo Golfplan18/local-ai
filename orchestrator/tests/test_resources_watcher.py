@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -446,6 +447,17 @@ class ResourcesWatcherTests(unittest.TestCase):
         self.assertTrue((vault / "Resources").is_dir())
         self.assertTrue(state.is_dir())
         indexer.assert_not_called()
+
+    def test_direct_cli_bootstraps_repo_package_imports(self):
+        result = subprocess.run(
+            [sys.executable, str(ORCHESTRATOR / "resources_watcher.py"), "--help"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--dry-run", result.stdout)
 
 
 class AllowlistContractTests(unittest.TestCase):
