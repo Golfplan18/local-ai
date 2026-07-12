@@ -28,6 +28,9 @@ exit /b 1
 
 :have_python
 
+REM Execution Review loop + tiered persistence (mirrors start.sh).
+set "ORA_EXECUTION_LOOP=1"
+
 REM Start server in background.
 start "Ora Server" /B %PYTHON% "%WORKSPACE%\server\server.py" %*
 

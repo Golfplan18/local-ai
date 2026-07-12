@@ -24,6 +24,7 @@ network or model dependency.
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -321,8 +322,11 @@ class TestGateWiredAndDocumented(unittest.TestCase):
     def test_framework_spec_present_ora_and_vault(self):
         ora_spec = ORCH_DIR.parent / "frameworks" / "book" / "f-quality-gate.md"
         self.assertTrue(ora_spec.is_file(), "runtime f-quality-gate.md missing")
-        vault_spec = Path(
-            "/Users/oracle/Documents/vault/Specification — F-Quality-Gate.md")
+        vault_root = Path(
+            os.environ.get("ORA_VAULT_PATH")
+            or os.environ.get("ORA_VAULT")
+            or (Path.home() / "Documents" / "vault"))
+        vault_spec = vault_root / "Specification — F-Quality-Gate.md"
         # The vault is the canonical source; skip rather than fail if the vault
         # is not mounted in this environment.
         if vault_spec.parent.is_dir():

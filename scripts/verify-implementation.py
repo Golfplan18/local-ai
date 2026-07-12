@@ -44,8 +44,14 @@ from typing import Optional
 # Paths
 # ---------------------------------------------------------------------------
 
-VAULT_ROOT = Path("/Users/oracle/Documents/vault")
-ORA_ROOT = Path("/Users/oracle/ora")
+ORA_ROOT = Path(
+    os.environ.get("ORA_HOME") or Path(__file__).resolve().parents[1]
+).expanduser().resolve()
+VAULT_ROOT = Path(
+    os.environ.get("ORA_VAULT_PATH")
+    or os.environ.get("ORA_VAULT")
+    or (Path.home() / "Documents" / "vault")
+).expanduser().resolve()
 
 MODES_DIR = VAULT_ROOT / "Modes"
 LENSES_DIR = VAULT_ROOT / "Lenses"
@@ -459,6 +465,45 @@ def check_drift_parity(verbose: bool = False) -> CheckResult:
     return result
 
 
+def _markdown_files_matching(
+        searches: list[tuple[str, bool]], *,
+        excluded_paths: Optional[set[str]] = None) -> dict[str, list[str]]:
+    """Find vault Markdown matching several searches in one filesystem pass.
+
+    The debt check concerns vault Markdown, so binary resources and repository
+    internals are deliberately excluded. This also keeps the check available on
+    a stock Windows install where ``grep`` is not present. Reading each note
+    once matters on large or synced vaults, especially on Windows.
+    """
+    matchers = [
+        (pattern, re.compile(pattern) if regex else None)
+        for pattern, regex in searches
+    ]
+    matches = {pattern: [] for pattern, _regex in searches}
+    for path in VAULT_ROOT.rglob("*.md"):
+        normalized_path = path.as_posix()
+        # The caller would discard these matches anyway. Avoid opening large
+        # archived or otherwise excluded trees just to filter them afterward.
+        if excluded_paths and any(
+                excluded in normalized_path for excluded in excluded_paths):
+            continue
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for pattern, matcher in matchers:
+            if (matcher.search(content) if matcher else pattern in content):
+                # Downstream exclusion rules use repository-style forward
+                # slashes; normalize so they match native Windows paths.
+                matches[pattern].append(normalized_path)
+    return matches
+
+
+def _markdown_files_containing(pattern: str, *, regex: bool = False) -> list[str]:
+    """Single-search convenience wrapper used by focused verification."""
+    return _markdown_files_matching([(pattern, regex)])[pattern]
+
+
 def check_architectural_debt(verbose: bool = False) -> CheckResult:
     """Verify no remaining references to retired Mode Classification Directory,
     catch-all modes, or old T19 name (outside archival locations)."""
@@ -501,46 +546,36 @@ def check_architectural_debt(verbose: bool = False) -> CheckResult:
         "Reference — Pipeline Routing Test Corpus.md",  # 200-prompt corpus; tests behavior including legacy mentions
     }
 
+    catch_all_patterns = {
+        catch_all: rf"\b{re.escape(catch_all)}\.md\b"
+        for catch_all in sorted(CATCH_ALL_MODES)
+    }
+    searches = [(pattern, False) for pattern, _description in stale_patterns]
+    searches.extend((pattern, True) for pattern in catch_all_patterns.values())
+    matches = _markdown_files_matching(searches, excluded_paths=excluded_paths)
+
     for pattern, description in stale_patterns:
         # Search vault root + Modes + Lenses
-        try:
-            search_result = subprocess.run(
-                ["grep", "-r", "-l", pattern, str(VAULT_ROOT)],
-                capture_output=True, text=True, timeout=30
-            )
-            for line in search_result.stdout.strip().split("\n"):
-                if not line:
-                    continue
-                if any(excl in line for excl in excluded_paths):
-                    continue
-                # Allow references in cross-reference audit / archival files
-                if "Reference — Analytical Territories" in line:
-                    # Notes about renaming are expected
-                    continue
-                result.passed = False
-                result.details.append(f"Stale reference '{pattern}' in: {line}")
-        except subprocess.TimeoutExpired:
-            result.details.append(f"WARN: grep timeout searching for '{pattern}'")
+        for line in matches[pattern]:
+            if any(excl in line for excl in excluded_paths):
+                continue
+            # Allow references in cross-reference audit / archival files
+            if "Reference — Analytical Territories" in line:
+                # Notes about renaming are expected
+                continue
+            result.passed = False
+            result.details.append(f"Stale reference '{pattern}' in: {line}")
 
     # Check for retired catch-all mode references in mode files / framework files
-    for catch_all in CATCH_ALL_MODES:
-        try:
-            search_result = subprocess.run(
-                ["grep", "-r", "-l", f"\\b{catch_all}\\.md\\b", str(VAULT_ROOT)],
-                capture_output=True, text=True, timeout=30
-            )
-            for line in search_result.stdout.strip().split("\n"):
-                if not line:
-                    continue
-                if any(excl in line for excl in excluded_paths):
-                    continue
-                if f"Modes/{catch_all}.md" in line:
-                    continue  # the file itself is allowed during transition
-                if f"Archive" in line:
-                    continue
-                result.details.append(f"WARN: reference to catch-all '{catch_all}' in: {line}")
-        except subprocess.TimeoutExpired:
-            pass
+    for catch_all, pattern in catch_all_patterns.items():
+        for line in matches[pattern]:
+            if any(excl in line for excl in excluded_paths):
+                continue
+            if f"Modes/{catch_all}.md" in line:
+                continue  # the file itself is allowed during transition
+            if "Archive" in line:
+                continue
+            result.details.append(f"WARN: reference to catch-all '{catch_all}' in: {line}")
 
     return result
 
@@ -559,7 +594,7 @@ def check_routing_accuracy(verbose: bool = False) -> CheckResult:
         return result
     try:
         run = subprocess.run(
-            ["/opt/homebrew/bin/python3", str(harness)],
+            [sys.executable, str(harness)],
             capture_output=True, text=True, timeout=300
         )
     except subprocess.TimeoutExpired:
@@ -597,7 +632,7 @@ def check_test_suites(verbose: bool = False) -> CheckResult:
     # Python tests
     try:
         py_result = subprocess.run(
-            ["/opt/homebrew/bin/python3", "-m", "unittest", "discover", "-s", "orchestrator/tests"],
+            [sys.executable, "-m", "unittest", "discover", "-s", "orchestrator/tests"],
             capture_output=True, text=True, cwd=str(ORA_ROOT), timeout=600
         )
         if py_result.returncode != 0:

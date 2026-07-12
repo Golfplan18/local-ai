@@ -435,6 +435,14 @@ class TestPortability(unittest.TestCase):
         self.assertEqual(epx._fs_safe("a:b/c\\d e"), "a_b_c_d_e")
         self.assertEqual(epx._fs_safe(""), "unknown")
         self.assertEqual(epx._fs_safe("UUID-hex_123.ok"), "UUID-hex_123.ok")  # already safe
+        self.assertEqual(epx._fs_safe("CON"), "_CON")
+        self.assertEqual(epx._fs_safe("con.txt"), "_con.txt")
+        self.assertEqual(epx._fs_safe("COM1"), "_COM1")
+        self.assertEqual(epx._fs_safe("LPT9.log"), "_LPT9.log")
+        self.assertEqual(epx._fs_safe("."), "unknown")
+        self.assertEqual(epx._fs_safe(".."), "unknown")
+        self.assertEqual(epx._fs_safe("name. "), "name")
+        self.assertLessEqual(len(epx._fs_safe("x" * 300)), 160)
 
     def test_store_path_derives_from_runtime_paths(self):
         # No hardcoded mac/user path; env override respected. Fixture root is tempfile-derived

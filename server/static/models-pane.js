@@ -2021,7 +2021,7 @@
     opts = opts || {};
     var chips = [];
     if (model.vendor === 'Local' || model._local_endpoint === true) {
-      chips.push('<span class="ora-models-chip ora-models-chip-local" title="Runs on this Mac via MLX. Free, no remote vendor, no rate limits.">LOCAL</span>');
+      chips.push('<span class="ora-models-chip ora-models-chip-local" title="Runs locally on this machine. Free, no remote vendor, no rate limits.">LOCAL</span>');
     }
     if (_picksSet && _picksSet.has(model.id)) {
       chips.push('<span class="ora-models-pick-chip">PICK</span>');

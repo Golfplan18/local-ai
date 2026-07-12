@@ -365,7 +365,7 @@
         '<span class="vp-tool-spacer"></span>' +
         // WP-7.4.5 \u2014 zoom-to-extents + zoom-to-selection commands.
         '<button class="vp-tool-btn" data-tool="zoom-extents"   aria-label="Zoom to extents (F)"            title="Zoom to extents (F)">\u26F6</button>' +
-        '<button class="vp-tool-btn" data-tool="zoom-selection" aria-label="Zoom to selection (Cmd+Shift+F)" title="Zoom to selection (Cmd+Shift+F)">\u2750</button>' +
+        '<button class="vp-tool-btn" data-tool="zoom-selection" aria-label="Zoom to selection (Ctrl/Cmd+Shift+F)" title="Zoom to selection (Ctrl/Cmd+Shift+F)">\u2750</button>' +
         '<button class="vp-tool-btn" data-tool="reset"    aria-label="Reset view"             title="Reset view">\u27F2</button>' +
       '</div>' +
       '<input type="file" class="vp-hidden-file" id="vp-file-input-' + id + '" accept="image/*" hidden>' +
@@ -4038,7 +4038,7 @@
     if (annotNode) {
       var aid = annotNode.getAttr('userAnnotationId');
       if (!aid) return;
-      var amulti = e.evt && (e.evt.shiftKey || e.evt.metaKey);
+      var amulti = e.evt && (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey);
       if (amulti) {
         var aidx = this._selectedAnnotIds.indexOf(aid);
         if (aidx >= 0) this._selectedAnnotIds.splice(aidx, 1);
@@ -4060,7 +4060,7 @@
     }
     var id = shapeNode.getAttr('userShapeId');
     if (!id) return;
-    var multi = e.evt && (e.evt.shiftKey || e.evt.metaKey);
+    var multi = e.evt && (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey);
     if (multi) {
       var idx = this._selectedShapeIds.indexOf(id);
       if (idx >= 0) this._selectedShapeIds.splice(idx, 1);
@@ -4094,7 +4094,7 @@
   VisualPanel.prototype._beginSelectionDrag = function (e) {
     this._cancelSelectionDrag();
     var start = this._stagePoint();
-    var additive = !!(e && e.evt && (e.evt.shiftKey || e.evt.metaKey));
+    var additive = !!(e && e.evt && (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey));
     var preview = null;
     if (typeof Konva !== 'undefined' && this.selectionLayer) {
       preview = new Konva.Rect({

@@ -155,9 +155,11 @@ class TestWindowsShellFailsClosed(unittest.TestCase):
              mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ORA_POSIX_SHELL", None)
             self.assertFalse(bash_execute._posix_shell_available())
-        # A real shell executable is a valid declaration…
+        # A resolved shell path makes the capability available…
+        declared_shell = r"C:\Git\bin\bash.exe"
         with mock.patch.object(os, "name", "nt"), \
-             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "/bin/sh"}):
+             mock.patch.object(bash_execute, "_posix_shell_path",
+                               return_value=declared_shell):
             self.assertTrue(bash_execute._posix_shell_available())
         # …but a flag-style or nonexistent value is NOT: the declared shell
         # must be executable, because execute_command runs commands under it.
@@ -169,10 +171,11 @@ class TestWindowsShellFailsClosed(unittest.TestCase):
     def test_posix_shell_path_resolves_names_via_which(self):
         import bash_execute
         with mock.patch.object(os, "name", "nt"), \
-             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "sh"}):
+             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "bash"}), \
+             mock.patch.object(bash_execute.shutil, "which",
+                               return_value=r"C:\Git\bin\bash.exe"):
             resolved = bash_execute._posix_shell_path()
-            self.assertIsNotNone(resolved)
-            self.assertTrue(os.path.isabs(resolved))
+            self.assertEqual(resolved, r"C:\Git\bin\bash.exe")
 
 
 class TestWindowsExecutionShell(unittest.TestCase):
@@ -206,26 +209,32 @@ class TestWindowsExecutionShell(unittest.TestCase):
         self.assertIn("NOT run", r["status"])
 
     def test_windows_with_shell_executes_under_declared_shell(self):
-        # Real end-to-end run: os.name simulated as nt, /bin/sh declared —
-        # the command must execute via ['/bin/sh', '-c', ...], shell=False.
+        # Real end-to-end run when this host has a POSIX shell: os.name is
+        # simulated as nt and the command runs via [shell, '-c', ...].
         import bash_execute
+        shell = bash_execute.shutil.which("sh")
+        if not shell:
+            self.skipTest("no POSIX shell available for end-to-end fixture")
         with mock.patch.object(os, "name", "nt"), \
-             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "/bin/sh"}):
+             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": shell}):
             r = bash_execute.execute_command("echo posix-shell-ok")
         self.assertEqual(r["returncode"], 0)
         self.assertIn("posix-shell-ok", r["stdout"])
 
     def test_windows_with_shell_never_uses_shell_true(self):
         import bash_execute
+        shell = r"C:\Git\bin\bash.exe"
         fake = mock.MagicMock()
         fake.stdout, fake.stderr, fake.returncode = "", "", 0
         with mock.patch.object(os, "name", "nt"), \
-             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "/bin/sh"}), \
+             mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": shell}), \
+             mock.patch.object(bash_execute, "_posix_shell_path",
+                               return_value=shell), \
              mock.patch.object(bash_execute.subprocess, "run",
                                return_value=fake) as m_run:
             bash_execute.execute_command("echo hi")
         args, kwargs = m_run.call_args
-        self.assertEqual(args[0], ["/bin/sh", "-c", "echo hi"])
+        self.assertEqual(args[0], [shell, "-c", "echo hi"])
         self.assertFalse(kwargs.get("shell"))
 
     def test_windows_background_uses_declared_shell(self):
@@ -233,15 +242,18 @@ class TestWindowsExecutionShell(unittest.TestCase):
         fake_proc = mock.MagicMock()
         fake_proc.pid = 4242
         fake_proc.poll.return_value = None
+        shell = r"C:\Git\bin\bash.exe"
         before = list(bash_execute.MANAGED_PROCESSES)
         try:
             with mock.patch.object(os, "name", "nt"), \
-                 mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": "/bin/sh"}), \
+                 mock.patch.dict(os.environ, {"ORA_POSIX_SHELL": shell}), \
+                 mock.patch.object(bash_execute, "_posix_shell_path",
+                                   return_value=shell), \
                  mock.patch.object(bash_execute.subprocess, "Popen",
                                    return_value=fake_proc) as m_popen:
                 r = bash_execute.execute_command("sleep 5", background=True)
             args, kwargs = m_popen.call_args
-            self.assertEqual(args[0], ["/bin/sh", "-c", "sleep 5"])
+            self.assertEqual(args[0], [shell, "-c", "sleep 5"])
             self.assertFalse(kwargs.get("shell"))
             self.assertEqual(r["pid"], 4242)
         finally:
@@ -249,6 +261,8 @@ class TestWindowsExecutionShell(unittest.TestCase):
 
     def test_posix_execution_unchanged(self):
         # On the real (POSIX) platform the pre-existing shell=True path runs.
+        if os.name == "nt":
+            self.skipTest("POSIX-only execution path")
         import bash_execute
         r = bash_execute.execute_command("echo posix-default-ok")
         self.assertEqual(r["returncode"], 0)

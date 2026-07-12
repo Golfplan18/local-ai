@@ -87,7 +87,7 @@
     {
       title: 'Drawing',
       body:  'Pick rectangle, ellipse, arrow, text, sticky, pen. Click to place, drag to size. ' +
-             'Cmd+Z undoes; the X clears your input layer without touching Ora’s drawing.',
+             'Ctrl/Cmd+Z undoes; the X clears your input layer without touching Ora’s drawing.',
       selector: '.vp-tool-btn[data-tool="rect"]',
       wpRef: 'Phases 1-6 + WP-7.5.1'
     },
@@ -100,7 +100,7 @@
     },
     {
       title: 'Save & export',
-      body:  'Cmd+S saves the canvas (autosave runs every 30 s in the background). ' +
+      body:  'Ctrl/Cmd+S saves the canvas (autosave runs every 30 s in the background). ' +
              'Export gives you SVG / PNG / canvas-file for sharing.',
       selector: '.vp-tool-btn[data-tool="upload-image"]',
       wpRef: 'WP-7.4.8 + WP-7.4.9'
