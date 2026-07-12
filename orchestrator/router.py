@@ -237,6 +237,52 @@ class Router:
         return self._endpoint_aliases.get(ep_id.lower(), ep_id)
 
     @staticmethod
+    def _supports_explicit_interactive(endpoint: dict | None) -> bool:
+        return bool(
+            endpoint
+            and endpoint.get("enabled") is not False
+            and endpoint.get("status", "active") == "active"
+            and endpoint.get("type") in ("local", "api")
+        )
+
+    def resolve_endpoint_by_id(self, endpoint_id: str) -> dict | None:
+        """Resolve one explicit interactive model preference.
+
+        Unlike slot resolution this does not walk a fallback chain. It still
+        enforces the runtime eligibility floor so a saved preference cannot
+        dispatch to a disabled, inactive, unsupported, or cooling endpoint.
+        """
+        if not isinstance(endpoint_id, str) or not endpoint_id.strip():
+            return None
+        resolved_id = self._resolve_endpoint_id(endpoint_id.strip())
+        endpoint = self._endpoints.get(resolved_id)
+        # call_model supports local and API transports. Browser-session models
+        # require a different invocation surface and are not valid here.
+        if not self._supports_explicit_interactive(endpoint):
+            return None
+        try:
+            import endpoint_health
+        except ImportError:
+            from orchestrator import endpoint_health
+        if endpoint_health.is_in_cooldown(resolved_id):
+            return None
+        return endpoint
+
+    def list_interactive_endpoints(self) -> list[dict]:
+        """List configured interactive choices without mutating health state.
+
+        Cooldown is intentionally checked only by resolve_endpoint_by_id at
+        dispatch time. Calling is_in_cooldown while rendering Settings can
+        consume a half-open circuit-breaker probe before any model call occurs.
+        """
+        return [
+            self._endpoints[endpoint_id]
+            for endpoint_id in sorted(self._endpoints)
+            if self._supports_explicit_interactive(
+                self._endpoints[endpoint_id])
+        ]
+
+    @staticmethod
     def _local_tier_for_models_json_entry(model: dict) -> str:
         roles = set(model.get("recommended_roles") or [])
         if roles.intersection({"breadth", "depth", "evaluator", "consolidator"}):

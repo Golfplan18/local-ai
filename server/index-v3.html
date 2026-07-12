@@ -1964,11 +1964,10 @@
     renderAssistantTurn('[Generating image in the visual pane.]');
   };
 
-  // V3 Backlog 6 — Right-column scratchpad. Streams from /api/scratchpad
-  // (local-fast, no save). Client-side autopurging history keeps the
-  // last SCRATCHPAD_MAX_PAIRS query/answer pairs visible; older pairs
-  // are removed from the DOM as new ones land. History clears on tab
-  // refresh — nothing is persisted to disk or ChromaDB.
+  // V3 Backlog 6 — Right-column Aside. /api/scratchpad uses the dedicated
+  // Aside model setting and a five-turn in-memory context window. Nothing is
+  // persisted; client-side autopurging separately keeps the last
+  // SCRATCHPAD_MAX_PAIRS query/answer pairs visible.
   const chatOutputPane = document.querySelector('.chat-output-pane');
   const SCRATCHPAD_MAX_PAIRS = 10;
 
@@ -2074,10 +2073,9 @@
       trimScratchpadHistory();
       return;
     }
-    // V3 Backlog 2A Chunk 4 — /api/scratchpad now replies with plain
-    // JSON {answer, ...} after the local-fast model completes. No
-    // streaming. The user sees the answer pushed to the right-column
-    // output as soon as it's ready.
+    // V3 Backlog 2A Chunk 4 — /api/scratchpad replies with plain JSON
+    // {answer, ...} after the configured Aside model completes. The user
+    // sees the answer pushed to the right-column output when it is ready.
     let payload = null;
     try {
       payload = await resp.json();

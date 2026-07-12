@@ -713,6 +713,39 @@ class TestMinContext1mToggle(_Fixture):
         self.module.bake_missing_presets(force=True)
         self.assertIsNone(captured["min_context"])
 
+    def test_bake_threads_vendor_canonical_aliases(self):
+        captured = {}
+
+        class _FakeAP:
+            def registry_crossref(self, *a, **k):
+                return {
+                    "routing_endpoint_ids": {
+                        "gemini/gemini-3.1-flash-lite",
+                    },
+                    "canonical_aliases": {
+                        "google/gemini-3.1-flash-lite":
+                            "gemini/gemini-3.1-flash-lite",
+                    },
+                }
+
+            def populate_configuration(self, preset_name, catalog,
+                                       presets_config, **kwargs):
+                captured["canonical_aliases"] = kwargs.get("canonical_aliases")
+                captured["routing_endpoint_ids"] = kwargs.get(
+                    "routing_endpoint_ids")
+                return {"name": preset_name, "cells": {}, "toggles": {}}
+
+        self._patch_bake(_FakeAP())
+        self.module.bake_missing_presets(force=True)
+        self.assertEqual(
+            captured["canonical_aliases"]["google/gemini-3.1-flash-lite"],
+            "gemini/gemini-3.1-flash-lite",
+        )
+        self.assertEqual(
+            captured["routing_endpoint_ids"],
+            {"gemini/gemini-3.1-flash-lite"},
+        )
+
     def _patch_bake(self, fake_ap):
         """Wire bake_missing_presets to use a fake auto-populate module +
         in-temp catalog/presets so we can capture the threaded args without

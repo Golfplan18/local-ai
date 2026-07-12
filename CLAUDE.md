@@ -78,7 +78,7 @@ Ora is a multi-model orchestrator for local LLMs on Apple Silicon. It runs an 8-
 4. **Output routing** — Screen, file (with vault YAML frontmatter), or both
 
 ### Model Slots
-Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `depth`, `evaluator`, `consolidator`, `step1_cleanup`, `classification`. Any model can fill any slot via the UI model switcher. The `classification` slot resolves from the `local-fast` bucket, enabling a 4B model to handle Phase A.5 at ~10s per call.
+Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `depth`, `evaluator`, `consolidator`, `step1_cleanup`, `classification`. Any model can fill any slot via the UI model switcher. The `classification` slot resolves from the active configuration's named utility cell. Aside is intentionally independent: its model is selected in General settings and falls back loudly to the active configuration's SMALL/utility chain when unavailable.
 
 ### Server (server.py — Flask + SSE)
 - Imports all pipeline functions from `orchestrator/boot.py` (no duplicate code)
@@ -103,7 +103,7 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - **Server validation**: `orchestrator/visual_validator.py` (schema + structural invariants) + `orchestrator/visual_adversarial.py` (Tufte T-rules + LLM-prior-inversion checks) hook into `boot.py` at the emission point. Block on Critical, warn on Major.
 - **Vault export**: `orchestrator/vault_export.py` writes canonical markdown with `![[fig-N.svg]]` sidecars to `~/Documents/vault/Sessions/`. Node CLI at `ora-visual-compiler/tools/render-envelope.js` does server-side envelope→SVG rendering via jsdom-booted compiler.
 - **Spatial continuity**: `orchestrator/conversation_memory.py` persists per-turn `spatial_representation` + `annotations` in conversation.json; prior state injected into next turn's prompt with a layout-preservation instruction.
-- **Active layouts**: `solo` (chat 50% + visual 50%) is default; `studio` (chat 40% + visual 40% + sidebar 20% on `local-fast` bucket) when both `local-mid` and `local-premium` have entries. Legacy `simple.json` and `workbench.json` archived under `config/layouts/legacy/`.
+- **Active layouts**: `solo` (chat 50% + visual 50%) is default; `studio` (chat 40% + visual 40% + Aside 20%) is the three-pane layout. Aside has a dedicated General-settings model preference and a five-turn, memory-only context window. Legacy `simple.json` and `workbench.json` are archived under `config/layouts/legacy/`.
 
 ### Meta-Layer Oversight Subsystem (2026-05-04)
 

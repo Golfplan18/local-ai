@@ -1598,6 +1598,35 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
     return None
 
 
+def get_endpoint_by_id(endpoint_id: str) -> dict | None:
+    """Resolve an explicit interactive model preference by endpoint id.
+
+    This is the public v1-shaped wrapper for Router.resolve_endpoint_by_id;
+    callers can pass the result straight to call_model().
+    """
+    router = _get_router()
+    if not router:
+        return None
+    endpoint = router.resolve_endpoint_by_id(endpoint_id)
+    return router._to_v1_endpoint(endpoint) if endpoint else None
+
+
+def list_interactive_endpoints() -> list[dict]:
+    """List model choices accepted by get_endpoint_by_id()."""
+    router = _get_router()
+    if not router:
+        return []
+    return [
+        {
+            "id": endpoint["id"],
+            "display_name": endpoint.get("display_name") or endpoint["id"],
+            "type": endpoint.get("type", ""),
+            "provider": endpoint.get("provider") or endpoint.get("service") or "",
+        }
+        for endpoint in router.list_interactive_endpoints()
+    ]
+
+
 def resolve_gear4_endpoints(config: dict, execution_context: str = "interactive",
                             config_name: str | None = None) -> tuple:
     """Resolve Gear 4 endpoints with bucket-based routing.

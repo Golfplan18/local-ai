@@ -29,6 +29,7 @@
   var _settings = null;
   var _retrieval = null;
   var _apiKeys = [];
+  var _asideModels = null;
   var _providerGroups = [];   // [[category, group label], …] render order
   var _dirty = {};       // pending changes, applied on Save
   var _recordingShortcutId = null;
@@ -60,7 +61,7 @@
 
   // 2026-07-01 consolidation: six low-traffic tabs became sections on
   // two pages — Audio & Video (Transcription · Speech · Screen
-  // recording · Media export) and General (Retrieval · Interface).
+  // recording · Media export) and General (Retrieval · Aside · Interface).
   // Old tab ids stay routable so open({tab}) callers and open-settings
   // deep links keep working; the alias also targets the section anchor.
   var TAB_ALIASES = {
@@ -70,6 +71,7 @@
     export:        { tab: 'avmedia', section: 'export' },
     whisper:       { tab: 'avmedia', section: 'transcription' },  // pre-rename id
     retrieval:     { tab: 'general', section: 'retrieval' },
+    aside:         { tab: 'general', section: 'aside' },
     interface:     { tab: 'general', section: 'interface' },
   };
 
@@ -272,12 +274,72 @@
         'How Ora\'s memory is encoded and searched. These two choices '
         + 'shape what context every answer retrieves — they matter more '
         + 'than they look.'));
+    _renderAsideSection(
+      _sectionInto(grid, 'aside', 'Aside',
+        'The quick-question pane uses its own model and a five-turn '
+        + 'in-memory context window.'));
     _withTarget(
       _sectionInto(grid, 'interface', 'Interface',
         'Small interface preferences.'),
       _renderInterfaceTab);
 
     _scrollToPendingSection();
+  }
+
+  function _renderAsideSection(container) {
+    var aside = (_dirty.aside || _settings.aside || {});
+    var src = _settings.aside || {};
+    var current = aside.model_id !== undefined
+      ? aside.model_id
+      : (src.model_id || 'gemini/gemini-3.1-flash-lite');
+
+    function draw(models) {
+      container.innerHTML = '';
+      var options = [{ id: '', label: 'Use SMALL / utility fallback' }];
+      Object.keys(models || {}).forEach(function (id) {
+        var model = models[id] || {};
+        if (model.reachable === false) return;
+        options.push({
+          id: id,
+          label: model.display_name || model.name || id,
+        });
+      });
+      options.sort(function (a, b) {
+        if (!a.id) return -1;
+        if (!b.id) return 1;
+        return a.label.localeCompare(b.label);
+      });
+      if (current && !options.some(function (opt) { return opt.id === current; })) {
+        options.splice(1, 0, { id: current, label: current + ' (currently selected)' });
+      }
+      _withTarget(container, function () {
+        _appendField('Model', _selectInput('aside.model_id', options, current));
+        _appendNote(
+          'This choice is independent of the active model configuration. '
+          + 'If it is unavailable, Ora logs the problem and falls back to '
+          + 'the configuration\'s SMALL / utility chain for that request.'
+        );
+      });
+    }
+
+    if (_asideModels !== null) {
+      draw(_asideModels);
+      return;
+    }
+    container.textContent = 'Loading models…';
+    fetch('/api/aside/models')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        _asideModels = {};
+        ((data && data.models) || []).forEach(function (model) {
+          if (model && model.id) _asideModels[model.id] = model;
+        });
+      })
+      .catch(function (err) {
+        console.warn('[settings] Aside model inventory failed to load:', err);
+        _asideModels = {};
+      })
+      .then(function () { draw(_asideModels); });
   }
 
   function _renderInterfaceTab() {

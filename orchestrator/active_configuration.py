@@ -359,6 +359,12 @@ def bake_missing_presets(force: bool = False) -> list:
     # show. .get with default so a version-skewed scripts/ copy lacking the key
     # degrades to no VA restriction (base-registry filter still applies).
     va_resolvable_ids: set = xref.get("va_resolvable_ids") or set()
+    # Hard identity floor: only catalog ids that serialize to an actual
+    # routing endpoint may enter a generated primary/fallback chain.
+    routing_endpoint_ids: set = xref.get("routing_endpoint_ids") or set()
+    # Serialize native endpoint ids, not the legacy OpenRouter aliases that
+    # may have supplied pricing/intelligence data to the catalog picker.
+    canonical_aliases: dict = xref.get("canonical_aliases") or {}
 
     baked: list = []
     for preset_name in PRESET_ORDER:
@@ -379,6 +385,8 @@ def bake_missing_presets(force: bool = False) -> list:
                 registry_ids=registry_ids,
                 vision_verified_ids=vision_verified_ids,
                 va_resolvable_ids=va_resolvable_ids,
+                routing_endpoint_ids=routing_endpoint_ids,
+                canonical_aliases=canonical_aliases,
                 min_context=min_context)
             config["name"] = preset_name
             # Adversarial OFF: top model fills both Big AND Fast pairs.

@@ -13,6 +13,7 @@ or write the real macOS Keychain.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -21,6 +22,7 @@ from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
+REPO = ORCHESTRATOR.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
 
@@ -74,6 +76,8 @@ class UserSettingsModuleTests(unittest.TestCase):
         s = self._mod.load_settings()
         self.assertEqual(s["whisper"]["model_size"], "large-v3")
         self.assertEqual(s["capture"]["frame_rate"], 30)
+        self.assertEqual(
+            s["aside"]["model_id"], "gemini/gemini-3.1-flash-lite")
 
     def test_save_then_load_roundtrip(self):
         self._mod.save_settings({
@@ -124,6 +128,15 @@ class UserSettingsModuleTests(unittest.TestCase):
             self._mod.save_settings({
                 "export": {"background_render_threshold_seconds": 99999},
             })
+
+    def test_aside_model_roundtrip_and_validation(self):
+        self._mod.save_settings({"aside": {"model_id": "local-model"}})
+        self.assertEqual(
+            self._mod.load_settings()["aside"]["model_id"], "local-model")
+        with self.assertRaises(self._mod.SettingsError):
+            self._mod.save_settings({"aside": {"model_id": 42}})
+        with self.assertRaises(self._mod.SettingsError):
+            self._mod.save_settings({"aside": "not-an-object"})
 
     def test_no_aa_path_default(self):
         # Regression guard (2026-07-01): an "aa_path" DEFAULT here is
@@ -206,7 +219,11 @@ class SettingsEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        sys.path.insert(0, str(Path.home() / "ora" / "server"))
+        # Resolve server.py from this checkout/worktree, not ~/ora. The latter
+        # made endpoint tests preload the main checkout's user_settings module
+        # and invalidated every worktree-side default/validation assertion.
+        os.environ["ORA_HOME"] = str(REPO)
+        sys.path.insert(0, str(REPO / "server"))
         try:
             import server as S  # type: ignore
             cls.S = S
