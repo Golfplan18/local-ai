@@ -676,10 +676,19 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
                        framework_id: Optional[str] = None,
                        selected_mode: Optional[str] = None) -> dict:
     """Build the minimal context_pkg that run_gear3/4 expect."""
+    try:
+        from boot import load_mode
+        mode_text = load_mode("synthesis")
+    except Exception:
+        mode_text = ""
     pkg = {
         "cleaned_prompt": handoff_packet,
+        "raw_prompt": handoff_packet,
+        "natural_language_prompt": handoff_packet,
         "operational_notation": handoff_packet,
         "mode": "synthesis",  # MVP default; layer instructions dominate
+        "mode_name": "synthesis",
+        "mode_text": mode_text,
         "gear": milestone.gear,
         "triage_tier": 1,
         "conversation_rag": "",

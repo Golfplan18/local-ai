@@ -833,6 +833,36 @@ class TestMilestoneChildLifecycle(TraceManifestBase):
             self.assertEqual(child["milestone_id"], "m1")
         self.assertEqual(statuses, ["error", "completed"])
 
+    def test_framework_gear_pipeline_passes_mode_text_to_gear4(self):
+        import boot
+        import milestone_executor
+        seen = {}
+
+        def _fake_run_gear4(context_pkg, _config, **_kwargs):
+            seen.update(context_pkg)
+            return "ok"
+
+        milestone = self._fake_milestone()
+        milestone.gear = 4
+        with mock.patch.object(boot, "run_gear4", side_effect=_fake_run_gear4):
+            result = milestone_executor._run_through_gear_pipeline(
+                "handoff", milestone, {},
+                trace_dir="/tmp/trace",
+                parent_trace_ref="parent/ref",
+                framework_id="fw-a",
+                selected_mode="all",
+            )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(seen["mode_name"], "synthesis")
+        self.assertEqual(seen["mode"], "synthesis")
+        self.assertIn("mode_text", seen)
+        self.assertTrue(seen["mode_text"])
+        self.assertEqual(seen["raw_prompt"], "handoff")
+        self.assertEqual(seen["natural_language_prompt"], "handoff")
+        self.assertEqual(seen["parent_trace_ref"], "parent/ref")
+        self.assertEqual(seen["framework_id"], "fw-a")
+
 
 class TestPhysicalModelCallConfig(TraceManifestBase):
     def setUp(self):
