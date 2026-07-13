@@ -255,6 +255,22 @@
     });
     actions.appendChild(discussBtn);
 
+    if (entry.trace_ref) {
+      const traceBtn = document.createElement('button');
+      traceBtn.type = 'button';
+      traceBtn.textContent = 'Open trace';
+      traceBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (window.OraTraceWalk && typeof window.OraTraceWalk.open === 'function') {
+          window.OraTraceWalk.open({
+            trace_ref: entry.trace_ref,
+            step: entry.trace_step || '',
+          });
+        }
+      });
+      actions.appendChild(traceBtn);
+    }
+
     det.appendChild(actions);
     return det;
   };

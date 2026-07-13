@@ -217,6 +217,16 @@
     const actions = document.createElement('div');
     actions.className = 'ora-review-actions';
     actions.appendChild(actionButton('Discuss', () => startDiscussion(entry)));
+    if (entry.trace_ref) {
+      actions.appendChild(actionButton('Open trace', () => {
+        if (window.OraTraceWalk && typeof window.OraTraceWalk.open === 'function') {
+          window.OraTraceWalk.open({
+            trace_ref: entry.trace_ref,
+            step: entry.trace_step || '',
+          });
+        }
+      }));
+    }
     actions.appendChild(actionButton('Approve', () => quickAction(entry, 'approve'), 'primary'));
     actions.appendChild(actionButton('Deny', () => {
       const reason = window.prompt('Reason for denial (optional):', '') || '';
