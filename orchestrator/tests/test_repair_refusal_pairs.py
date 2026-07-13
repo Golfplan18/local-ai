@@ -120,6 +120,55 @@ class ResolveRawPathTests(unittest.TestCase):
             with self.subTest(source_chat=source_chat):
                 self.assertIsNone(repair.resolve_raw_path(source_chat))
 
+    def test_ntfs_quote_bridge_resolves_renamed_file(self):
+        """After renaming '"' → '\'' on disk, provenance tokens that
+        still carry '"' resolve through the bridge in resolve_raw_path."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            documents = root / "Documents"
+            archive_raw = documents / "Raw Chat Archive" / "raw"
+            subdir = archive_raw / "Raw Chats 2025-4-17"
+            subdir.mkdir(parents=True)
+            renamed_file = subdir / "Analyzing '#We Too' Book Outline.md"
+            renamed_file.write_text("test content", encoding="utf-8")
+            # The provenance token uses the OLD form with ".
+            source_chat = (
+                '~/Documents/conversations/raw/Raw Chats 2025-4-17/'
+                'Analyzing "#We Too" Book Outline.md'
+            )
+            env = {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_DOCUMENTS": str(documents),
+                "ORA_HOME": str(root / "ora"),
+            }
+            with mock.patch.dict(os.environ, env, clear=True):
+                resolved = repair.resolve_raw_path(source_chat)
+
+            self.assertIsNotNone(resolved)
+            self.assertEqual(resolved, str(renamed_file))
+
+    def test_ntfs_quote_bridge_returns_none_when_no_renamed_file(self):
+        """Bridge returns None when neither the original '"' file nor the
+        renamed '\'' file exists at the canonical location."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            documents = root / "Documents"
+            env = {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_DOCUMENTS": str(documents),
+                "ORA_HOME": str(root / "ora"),
+            }
+            source_chat = (
+                '~/Documents/conversations/raw/Raw Chats 2025-4-17/'
+                'Analyzing "#We Too" Book Outline.md'
+            )
+            with mock.patch.dict(os.environ, env, clear=True):
+                resolved = repair.resolve_raw_path(source_chat)
+
+            self.assertIsNone(resolved)
+
 
 class RepairCliRuntimePathTests(unittest.TestCase):
 
