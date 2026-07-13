@@ -400,7 +400,7 @@ def refresh_chromadb(slugs: set[str]):
             "missing_source_files": 0,
             "errors": 0,
         }
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     from orchestrator.tools.knowledge_index import (
         _parse_frontmatter,
         _compose_chroma_metadata,
