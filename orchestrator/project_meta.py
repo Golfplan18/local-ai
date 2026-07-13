@@ -517,6 +517,22 @@ def _write_pointer(nexus: str, data: dict, pointer_dir: Path | None = None) -> P
     return pf
 
 
+def _read_pointer_for_update(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProjectMetaError(
+            f"cannot safely update malformed project pointer {path}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ProjectMetaError(
+            f"cannot safely update project pointer {path}: expected a JSON object"
+        )
+    return data
+
+
 def migrate_project_folder_names(pointer_dir: Path | None = None) -> int:
     """Expand legacy container pointers for old/new-reader compatibility.
 
@@ -600,6 +616,96 @@ def create_project(
                 **dict(_DEFAULT_SLOTS),
             }
             _write_pointer(nexus, data, pointer_dir)
+    return _normalize_meta(nexus, data)
+
+
+def register_existing_container_project(
+    nexus: str,
+    display_name: str,
+    folder_name: str,
+    pointer_dir: Path | None = None,
+    *,
+    vault_projects_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Register an already-existing vault project folder as a container.
+
+    This is the legacy Matrix/vault migration path: the canonical nexus is
+    supplied explicitly rather than derived from the display name, and the
+    folder must already exist under ``Projects/``. Existing plugin bindings
+    (``root``) and unknown future fields are preserved. A conflicting pointer
+    or frozen folder identity is rejected rather than repointed.
+    """
+    try:
+        validate_nexus(nexus)
+    except NexusValidationError as exc:
+        raise ProjectMetaError(str(exc)) from exc
+    if not isinstance(display_name, str) or not display_name.strip():
+        raise ProjectMetaError("display_name must be a non-empty string")
+    display_name = display_name.strip()
+    try:
+        folder_name = validate_folder_identity(
+            folder_name,
+            vault_root=Path(vault_projects_dir or _default_vault_projects_dir()).parent,
+        )
+    except ProjectStorageError as exc:
+        raise ProjectMetaError(str(exc)) from exc
+    folder = project_folder_path(folder_name, vault_projects_dir)
+    if not folder.is_dir():
+        raise ProjectMetaError(f"project folder does not exist: {folder}")
+
+    pdir = pointer_dir or POINTER_DIR
+    with _lock:
+        pf = _pointer_path(nexus, pdir)
+        with _rp.locked_file(pf):
+            data = _read_pointer_for_update(pf)
+            wanted_key = _portable_collision_key(folder_name)
+            if Path(pdir).is_dir():
+                for other in Path(pdir).glob("*.json"):
+                    if other == pf:
+                        continue
+                    try:
+                        other_data = _read_pointer_for_update(other)
+                    except ProjectMetaError:
+                        continue
+                    if not pointer_has_container_metadata(other_data):
+                        continue
+                    other_folder = _pointer_folder_identity(other.stem, other_data)
+                    if (
+                        isinstance(other_folder, str)
+                        and _portable_collision_key(other_folder) == wanted_key
+                    ):
+                        raise ProjectMetaError(
+                            f"project folder {folder_name!r} is already owned by "
+                            f"{other.stem!r}"
+                        )
+            existing_nexus = data.get("nexus")
+            if (
+                isinstance(existing_nexus, str)
+                and existing_nexus.strip()
+                and existing_nexus.strip() != nexus
+            ):
+                raise ProjectMetaError(
+                    f"pointer {pf.name} declares conflicting nexus {existing_nexus!r}"
+                )
+            if pointer_has_container_metadata(data):
+                existing_folder = _pointer_folder_identity(nexus, data)
+                if existing_folder != folder_name:
+                    raise ProjectMetaError(
+                        f"project {nexus!r} already points at folder "
+                        f"{existing_folder!r}, not {folder_name!r}"
+                    )
+            now = datetime.now().isoformat(timespec="seconds")
+            data["nexus"] = nexus
+            data["name"] = folder_name
+            data["display_name"] = display_name
+            data["folder_name"] = folder_name
+            if data.get("status") not in PROJECT_STATUSES:
+                data["status"] = "active"
+            data.setdefault("created", now)
+            data.setdefault("last_accessed_at", now)
+            for key, default in _DEFAULT_SLOTS.items():
+                data.setdefault(key, default)
+            _write_pointer(nexus, data, pdir)
     return _normalize_meta(nexus, data)
 
 
@@ -1355,6 +1461,7 @@ __all__ = [
     "read_project_meta",
     "list_project_meta",
     "create_project",
+    "register_existing_container_project",
     "set_project_status",
     "touch_project",
     "update_project_meta",

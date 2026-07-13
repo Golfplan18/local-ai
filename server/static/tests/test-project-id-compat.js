@@ -34,7 +34,9 @@ var dom = new jsdom.JSDOM(
   '    <span id="sidebarProjectName"></span>' +
   '    <div id="sidebarProjectMenu" hidden>' +
   '      <input id="sidebarProjectSearch">' +
-  '      <div id="sidebarProjectList"></div>' +
+  '      <div class="sidebar-project-list" id="sidebarProjectList"></div>' +
+  '      <button id="sidebarProjectManageItem">Manage projects</button>' +
+  '      <button id="sidebarProjectNew"></button>' +
   '    </div>' +
   '  </div>' +
   '</div>' +
@@ -43,6 +45,15 @@ var dom = new jsdom.JSDOM(
 );
 
 var w = dom.window;
+var resolvedIcons = [];
+w.OraIconResolver = {
+  resolve: function (name) {
+    resolvedIcons.push(name);
+    return '<svg class="lucide lucide-' + String(name).replace(/[^a-z0-9-]/g, '') +
+      '" data-resolved-icon="' + String(name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') +
+      '" viewBox="0 0 24 24"></svg>';
+  },
+};
 var activePosts = [];
 var conversationUrls = [];
 var projectPathUrls = [];
@@ -52,8 +63,10 @@ var holdNextActivePost = false;
 var releaseHeldActivePost = null;
 var activeGetPayload = { ok: true, nexus: 'general', canonical_nexus: 'commons' };
 var projectRows = [{
-  nexus: 'general', canonical_nexus: 'commons', name: 'Commons', unread_count: 0,
+  nexus: 'general', canonical_nexus: 'commons', name: 'Commons', status: 'active', unread_count: 0,
 }];
+var projectRowsByStatus = null;
+var statusPosts = [];
 
 function response(payload, ok, status) {
   return Promise.resolve({
@@ -65,8 +78,12 @@ function response(payload, ok, status) {
 
 w.fetch = function (url, opts) {
   var target = String(url);
-  if (target === '/api/projects/meta?status=active') {
-    return response({ projects: projectRows });
+  if (target.indexOf('/api/projects/meta?status=') === 0) {
+    var status = decodeURIComponent(target.split('=')[1] || 'active');
+    if (projectRowsByStatus) return response({ projects: projectRowsByStatus[status] || [] });
+    return response({ projects: projectRows.filter(function (p) {
+      return p.is_default || !p.status || p.status === status;
+    }) });
   }
   if (target === '/api/projects/meta') {
     return response({ projects: projectRows });
@@ -107,6 +124,23 @@ w.fetch = function (url, opts) {
   }
   if (target.indexOf('/api/projects/') === 0) {
     projectPathUrls.push(target);
+    if (target.indexOf('/status') !== -1 && opts && opts.method === 'POST') {
+      var bits = target.split('/');
+      var projectId = decodeURIComponent(bits[3]);
+      var body = JSON.parse(opts.body || '{}');
+      statusPosts.push({ nexus: projectId, status: body.status });
+      if (projectRowsByStatus) {
+        Object.keys(projectRowsByStatus).forEach(function (key) {
+          projectRowsByStatus[key] = projectRowsByStatus[key].filter(function (p) {
+            return p.nexus !== projectId && p.canonical_nexus !== projectId;
+          });
+        });
+        var moved = { nexus: projectId, canonical_nexus: projectId, name: projectId, status: body.status, unread_count: 0 };
+        projectRowsByStatus[body.status] = projectRowsByStatus[body.status] || [];
+        projectRowsByStatus[body.status].push(moved);
+      }
+      return response({ ok: true, project: { nexus: projectId, status: body.status } });
+    }
     if (target.indexOf('/conversations?') !== -1) {
       return response({ ok: true, conversations: [] });
     }
@@ -173,7 +207,7 @@ async function run() {
 
   // The current frontend must also tolerate an old server row that has no
   // canonical_nexus yet.
-  projectRows = [{ nexus: 'general', name: 'Commons', unread_count: 0 }];
+  projectRows = [{ nexus: 'general', name: 'Commons', status: 'active', unread_count: 0 }];
   await w.OraSidebar.refreshProjects();
   await flush();
   defaultRow = w.document.querySelector('.sidebar-project-row');
@@ -183,8 +217,8 @@ async function run() {
   // GET is authoritative on startup/reconciliation; stale browser state must
   // not determine where a new Dialogue is stamped.
   projectRows = [
-    { nexus: 'general', name: 'Commons', unread_count: 0 },
-    { nexus: 'book', name: 'Book', unread_count: 0 },
+    { nexus: 'general', name: 'Commons', status: 'active', unread_count: 0 },
+    { nexus: 'book', name: 'Book', status: 'active', unread_count: 0 },
   ];
   activeGetPayload = { ok: true, nexus: 'book' }; // pre-218 response shape
   await w.OraSidebar.syncActiveProject();
@@ -259,7 +293,7 @@ async function run() {
   // Another tab/client can change the global pointer after startup. The
   // storage signal (and the same periodic/visibility refresh path) must pull
   // server authority before this tab continues filtering.
-  projectRows.push({ nexus: 'law', name: 'Law', unread_count: 0 });
+  projectRows.push({ nexus: 'law', name: 'Law', status: 'active', unread_count: 0 });
   activeGetPayload = { ok: true, nexus: 'law' };
   w.dispatchEvent(new w.StorageEvent('storage', {
     key: 'ora-sidebar-project', newValue: 'law', storageArea: w.localStorage,
@@ -297,11 +331,105 @@ async function run() {
     projectPathUrls.some(function (url) { return url.indexOf('/api/projects/general/conversations?') === 0; }),
     JSON.stringify(projectPathUrls));
   record('Commons modal files use legacy-safe path id',
-    projectPathUrls.some(function (url) { return url.indexOf('/api/projects/general/files?') === 0; }),
+    projectPathUrls.some(function (url) { return url.indexOf('/api/projects/general/files') === 0; }),
     JSON.stringify(projectPathUrls));
   record('Commons modal never sends canonical sentinel to old path routes',
     !projectPathUrls.some(function (url) { return url.indexOf('/api/projects/commons/') === 0; }),
     JSON.stringify(projectPathUrls));
+
+  projectRowsByStatus = {
+    active: [
+      { nexus: 'general', canonical_nexus: 'commons', name: 'Commons', status: 'active', unread_count: 0, is_default: true },
+      { nexus: 'p1', name: 'Project 1', status: 'active', unread_count: 0 },
+      { nexus: 'p2', name: 'Project 2', status: 'active', unread_count: 0 },
+      { nexus: 'p3', name: 'Project 3', status: 'active', unread_count: 0 },
+      { nexus: 'p4', name: 'Project 4', status: 'active', unread_count: 0 },
+      { nexus: 'p5', name: 'Project 5', status: 'active', unread_count: 0 },
+      { nexus: 'p6', name: 'Project 6', status: 'active', unread_count: 0 },
+      { nexus: 'p7', name: 'Project 7', status: 'active', unread_count: 0 },
+      { nexus: 'p8', name: 'Project 8', status: 'active', unread_count: 0 },
+      { nexus: 'p9', name: 'Project 9', status: 'active', unread_count: 0 },
+    ],
+    inactive: [
+      { nexus: 'sleeping-book', name: 'Sleeping Book', status: 'inactive', unread_count: 0 },
+      { nexus: 'resting-site', name: 'Resting Site', status: 'inactive', unread_count: 0 },
+    ],
+    archived: [
+      { nexus: 'old-book', name: 'Old Book', status: 'archived', unread_count: 0 },
+    ],
+  };
+  await w.OraSidebar.refreshProjects();
+  await flush();
+  var projectMenu = w.document.querySelector('#sidebarProjectMenu');
+  var projectBtn = w.document.querySelector('#sidebarProjectBtn');
+  projectBtn.click();
+  await flush();
+  var activeRows = w.document.querySelectorAll('.sidebar-project-row');
+  var projectList = w.document.querySelector('#sidebarProjectList');
+  record('active switcher renders long active-only project list in row region',
+    activeRows.length === 10 && !!projectList && projectList.className.indexOf('sidebar-project-list') !== -1,
+    String(activeRows.length));
+  record('active switcher rows do not expose lifecycle controls',
+    !w.document.querySelector('.sidebar-project-row-action') &&
+    !w.document.querySelector('.project-manager-action'));
+  record('search remains outside row region',
+    !!projectMenu && projectMenu.firstElementChild.id === 'sidebarProjectSearch');
+  record('footer commands remain outside row region',
+    !!projectMenu && projectMenu.lastElementChild.id === 'sidebarProjectNew');
+
+  var search = w.document.querySelector('#sidebarProjectSearch');
+  search.value = 'Project 9';
+  search.dispatchEvent(new w.Event('input'));
+  await flush();
+  record('active project search filters long list',
+    w.document.querySelectorAll('.sidebar-project-row').length === 1 &&
+    w.document.querySelector('.sidebar-project-row').textContent.indexOf('Project 9') !== -1);
+
+  w.document.querySelector('#sidebarProjectManageItem').click();
+  await flush();
+  await flush();
+  record('manage projects opens separate management surface',
+    !!w.document.querySelector('.project-manager-overlay.is-open') &&
+    !!w.document.querySelector('[data-project-manager-status="active"]'));
+  record('manager active view exposes icon lifecycle controls',
+    !!w.document.querySelector('.project-manager-action[title="Pause project"]') &&
+    !!w.document.querySelector('.project-manager-action[title="Archive project"]'));
+  record('manager lifecycle controls use OraIconResolver icons',
+    !!w.document.querySelector('[data-resolved-icon="pause"]') &&
+    !!w.document.querySelector('[data-resolved-icon="archive"]') &&
+    resolvedIcons.indexOf('pause') !== -1 &&
+    resolvedIcons.indexOf('archive') !== -1,
+    JSON.stringify(resolvedIcons));
+
+  w.document.querySelector('[data-project-manager-status="inactive"]').click();
+  await flush();
+  record('inactive management view is searchable and non-selecting',
+    w.document.querySelectorAll('.project-manager-row').length === 2 &&
+    !!w.document.querySelector('.project-manager-action[title="Reactivate project"]'));
+  w.document.querySelector('.project-manager-action[title="Reactivate project"]').dispatchEvent(
+    new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+  );
+  record('lifecycle control keyboard event does not select project',
+    w.OraSidebar.getActiveProject() === 'book', w.OraSidebar.getActiveProject());
+  w.document.querySelector('.project-manager-action[title="Reactivate project"]').click();
+  await flush();
+  record('reactivate posts active status without deleting data',
+    statusPosts.some(function (p) { return p.nexus === 'sleeping-book' && p.status === 'active'; }),
+    JSON.stringify(statusPosts));
+
+  w.document.querySelector('[data-project-manager-status="archived"]').click();
+  await flush();
+  record('archived management view exposes restore',
+    !!w.document.querySelector('.project-manager-action[title="Restore project to inactive"]'));
+  record('restore/reactivate use resolver-backed Lucide names',
+    !!w.document.querySelector('[data-resolved-icon="rotate-ccw"]') &&
+    !!w.document.querySelector('[data-resolved-icon="check"]'),
+    JSON.stringify(resolvedIcons));
+  w.document.querySelector('.project-manager-action[title="Restore project to inactive"]').click();
+  await flush();
+  record('restore posts inactive status',
+    statusPosts.some(function (p) { return p.nexus === 'old-book' && p.status === 'inactive'; }),
+    JSON.stringify(statusPosts));
 
   var passed = results.filter(function (r) { return r.ok; }).length;
   console.log('\n' + passed + ' / ' + results.length + ' tests passed');

@@ -365,7 +365,8 @@
           background: var(--background-primary);
           border: 1px solid var(--background-modifier-border);
           border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.28); padding: 6px;
-          max-height: 360px; overflow-y: auto;
+          max-height: 420px; overflow: hidden;
+          display: flex; flex-direction: column;
         }
         .sidebar-project-menu[hidden] { display: none; }
         .sidebar-project-search {
@@ -375,6 +376,11 @@
           border-radius: var(--radius-s, 6px); color: var(--text-normal); font-size: 15px;
         }
         .sidebar-project-search::placeholder { color: var(--text-faint); }
+        .sidebar-project-list {
+          overflow-y: auto;
+          max-height: 304px;
+          padding-right: 2px;
+        }
         .sidebar-project-row {
           display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px;
           border: none; background: transparent; cursor: pointer;
@@ -441,6 +447,83 @@
         .sidebar-modelconfig-current:hover { border-color: var(--background-modifier-border-hover, var(--interactive-accent)); }
         .sidebar-modelconfig-name { flex: 1; text-align: left; overflow: hidden;
           text-overflow: ellipsis; white-space: nowrap; }
+        .project-manager-overlay {
+          position: fixed; inset: 0; z-index: 120;
+          display: none; align-items: flex-start; justify-content: flex-start;
+          background: rgba(0,0,0,0.18); padding: 78px 0 0 312px;
+        }
+        .project-manager-overlay.is-open { display: flex; }
+        .project-manager-card {
+          width: min(420px, calc(100vw - 32px));
+          max-height: min(620px, calc(100vh - 110px));
+          display: flex; flex-direction: column;
+          background: var(--background-primary);
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 14px;
+          box-shadow: 0 18px 50px rgba(0,0,0,0.32);
+          padding: 12px;
+        }
+        .project-manager-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .project-manager-head > div { flex: 1; min-width: 0; }
+        .project-manager-kicker {
+          font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+          color: var(--text-faint); font-weight: 700;
+        }
+        .project-manager-title { font-size: 18px; color: var(--text-normal); font-weight: 700; }
+        .project-manager-close {
+          border: none; background: transparent; color: var(--text-muted);
+          font-size: 24px; cursor: pointer; border-radius: var(--radius-s, 6px);
+        }
+        .project-manager-close:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+        .project-manager-search {
+          width: 100%; box-sizing: border-box; padding: 8px 10px; margin-bottom: 8px;
+          background: var(--background-modifier-form-field);
+          border: 1px solid var(--background-modifier-border);
+          border-radius: var(--radius-s, 6px); color: var(--text-normal); font-size: 15px;
+        }
+        .project-manager-tabs {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;
+        }
+        .project-manager-tab {
+          border: 1px solid var(--background-modifier-border);
+          border-radius: var(--radius-s, 6px); background: transparent;
+          color: var(--text-muted); padding: 7px 6px; cursor: pointer;
+        }
+        .project-manager-tab:hover,
+        .project-manager-tab.is-active {
+          background: var(--background-modifier-hover); color: var(--text-normal);
+        }
+        .project-manager-tab.is-active { font-weight: 700; }
+        .project-manager-rows { overflow-y: auto; min-height: 80px; }
+        .project-manager-row {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 8px; border-radius: var(--radius-s, 6px);
+        }
+        .project-manager-row:hover { background: var(--background-modifier-hover); }
+        .project-manager-row-main { flex: 1; min-width: 0; }
+        .project-manager-row-name {
+          color: var(--text-normal); font-size: 15px; white-space: nowrap;
+          overflow: hidden; text-overflow: ellipsis;
+        }
+        .project-manager-row-meta {
+          color: var(--text-faint); font-size: 12px; white-space: nowrap;
+          overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+        }
+        .project-manager-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .project-manager-action {
+          width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+          border: 1px solid var(--background-modifier-border); border-radius: 999px;
+          background: var(--background-primary); color: var(--text-muted); cursor: pointer;
+        }
+        .project-manager-action:hover { color: var(--text-normal); border-color: var(--interactive-accent); }
+        .project-manager-action svg {
+          width: 15px; height: 15px; fill: none; stroke: currentColor;
+          stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .project-manager-empty { padding: 18px 8px; color: var(--text-muted); font-size: 14px; }
+        @media (max-width: 720px) {
+          .project-manager-overlay { padding: 72px 12px 0; justify-content: center; }
+        }
       </style>
       <div class="sidebar-fixed-section sidebar-project-section" id="sidebarProjectSwitcher">
         <div class="sidebar-group-label sidebar-project-label">
@@ -482,7 +565,7 @@
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
-            <span>Manage current project</span>
+            <span>Manage projects</span>
           </button>
           <button class="sidebar-project-new" id="sidebarProjectNew" type="button">
             <span class="plus-glyph">+</span><span>New project</span>

@@ -41,6 +41,119 @@ class ProjectMetaTests(unittest.TestCase):
         again = pm.read_project_meta("my-book", pointer_dir=self.d)
         self.assertEqual(again["name"], "My Book")
 
+    def test_register_existing_container_project_adopts_folder_with_custom_nexus(self):
+        projects = self.d / "Projects"
+        (projects / "We Too").mkdir(parents=True)
+        meta = pm.register_existing_container_project(
+            "wetoo",
+            "We Too",
+            "We Too",
+            pointer_dir=self.d / "pointers",
+            vault_projects_dir=projects,
+        )
+        self.assertEqual(meta["nexus"], "wetoo")
+        self.assertEqual(meta["name"], "We Too")
+        self.assertEqual(meta["folder_name"], "We Too")
+        raw = json.loads((self.d / "pointers" / "wetoo.json").read_text(encoding="utf-8"))
+        self.assertNotIn("root", raw)
+        self.assertEqual(raw["folder_name"], "We Too")
+
+        again = pm.register_existing_container_project(
+            "wetoo",
+            "We Too",
+            "We Too",
+            pointer_dir=self.d / "pointers",
+            vault_projects_dir=projects,
+        )
+        self.assertEqual(again["folder_name"], "We Too")
+
+    def test_register_existing_container_project_preserves_plugin_and_unknown_fields(self):
+        projects = self.d / "Projects"
+        (projects / "Main Street Independent").mkdir(parents=True)
+        pointers = self.d / "pointers"
+        pointers.mkdir()
+        (pointers / "main-street-independent.json").write_text(
+            json.dumps({
+                "nexus": "main-street-independent",
+                "root": "/plugin/root",
+                "future": {"kept": True},
+            }),
+            encoding="utf-8",
+        )
+
+        pm.register_existing_container_project(
+            "main-street-independent",
+            "Main Street Independent",
+            "Main Street Independent",
+            pointer_dir=pointers,
+            vault_projects_dir=projects,
+        )
+        raw = json.loads((pointers / "main-street-independent.json").read_text(encoding="utf-8"))
+        self.assertEqual(raw["root"], "/plugin/root")
+        self.assertEqual(raw["future"], {"kept": True})
+        self.assertEqual(raw["folder_name"], "Main Street Independent")
+
+    def test_register_existing_container_project_rejects_conflicts(self):
+        projects = self.d / "Projects"
+        (projects / "American King").mkdir(parents=True)
+        (projects / "Other Folder").mkdir()
+        pointers = self.d / "pointers"
+        pointers.mkdir()
+        pm.register_existing_container_project(
+            "american_king",
+            "American King",
+            "American King",
+            pointer_dir=pointers,
+            vault_projects_dir=projects,
+        )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "american_king",
+                "American King",
+                "Other Folder",
+                pointer_dir=pointers,
+                vault_projects_dir=projects,
+            )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "ai_writing_method",
+                "AI Assisted Writing",
+                "AI Assisted Writing",
+                pointer_dir=pointers,
+                vault_projects_dir=projects,
+            )
+
+    def test_register_existing_container_project_rejects_folder_owned_by_other_nexus(self):
+        projects = self.d / "Projects"
+        (projects / "Shared").mkdir(parents=True)
+        (projects / "shared").mkdir(exist_ok=True)
+        pointers = self.d / "pointers"
+
+        pm.register_existing_container_project(
+            "alpha", "Alpha", "Shared",
+            pointer_dir=pointers, vault_projects_dir=projects,
+        )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "beta", "Beta", "Shared",
+                pointer_dir=pointers, vault_projects_dir=projects,
+            )
+
+    def test_register_existing_container_project_rejects_case_insensitive_folder_collision(self):
+        projects = self.d / "Projects"
+        (projects / "Shared").mkdir(parents=True)
+        pointers = self.d / "pointers"
+
+        pm.register_existing_container_project(
+            "alpha", "Alpha", "Shared",
+            pointer_dir=pointers, vault_projects_dir=projects,
+        )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "beta", "Beta", "shared",
+                pointer_dir=pointers, vault_projects_dir=projects,
+            )
+
     def test_display_name_change_preserves_immutable_folder(self):
         pm.create_project("My Book", pointer_dir=self.d)
         changed = pm.update_project_meta(

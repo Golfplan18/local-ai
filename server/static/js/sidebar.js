@@ -80,6 +80,8 @@
     }
   } catch (e) {}
   let projectsCache = [];
+  let projectManagerEl = null;
+  let projectManagerStatus = 'active';
   let activeProjectSyncGeneration = 0;
   let activeProjectMutationInFlight = false;
   let pendingActiveProjectSelection = null;
@@ -401,24 +403,40 @@
     if (!projectListEl) return;
     const q = ((projectSearch && projectSearch.value) || '').trim().toLowerCase();
     projectListEl.innerHTML = '';
-    projectsCache
+    const visible = projectsCache
       .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q))
-      .forEach(p => {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'sidebar-project-row' + (canonicalProjectRecordId(p) === activeProjectId ? ' is-active' : '');
+      .filter(p => p && (p.is_default || p.status === 'active'));
+    if (!visible.length) {
+      const empty = document.createElement('div');
+      empty.className = 'sidebar-group-empty';
+      empty.textContent = q ? 'No matching projects.' : 'No projects in this view.';
+      projectListEl.appendChild(empty);
+      return;
+    }
+    visible.forEach(p => {
+        const row = document.createElement('div');
+        const rowId = canonicalProjectRecordId(p);
+        row.className = 'sidebar-project-row'
+          + (rowId === activeProjectId ? ' is-active' : '');
         row.setAttribute('role', 'option');
+        row.tabIndex = 0;
         const name = document.createElement('span');
         name.className = 'sidebar-project-row-name';
         name.textContent = p.name || p.nexus;
+        row.appendChild(name);
         const badge = document.createElement('span');
         badge.className = 'sidebar-project-badge';
         const unread = p.unread_count || 0;
         badge.textContent = String(unread);
         badge.setAttribute('data-zero', unread ? '0' : '1');
-        row.appendChild(name);
         row.appendChild(badge);
-        row.addEventListener('click', () => setActiveProject(canonicalProjectRecordId(p), p.name || p.nexus));
+        row.addEventListener('click', () => setActiveProject(rowId, p.name || p.nexus));
+        row.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            setActiveProject(rowId, p.name || p.nexus);
+          }
+        });
         projectListEl.appendChild(row);
       });
   };
@@ -435,6 +453,144 @@
       }
       renderProjects();
     } catch (e) {}
+  };
+
+  const updateProjectStatus = async (nexus, status) => {
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(canonicalProjectId(nexus)) + '/status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) return;
+      await reconcileActiveProject();
+      await fetchProjects();
+      if (projectManagerEl) await renderProjectManager();
+      await fetchList();
+    } catch (e) {}
+  };
+
+  const resolveProjectActionIcon = (iconRef) => {
+    if (window.OraIconResolver && typeof window.OraIconResolver.resolve === 'function') {
+      return window.OraIconResolver.resolve(iconRef);
+    }
+    const safe = String(iconRef == null ? '' : iconRef)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+      + 'data-icon-fallback="no-resolver" data-icon="' + safe + '"></svg>';
+  };
+
+  const ensureProjectManager = () => {
+    if (projectManagerEl) return projectManagerEl;
+    projectManagerEl = document.createElement('div');
+    projectManagerEl.className = 'project-manager-overlay';
+    projectManagerEl.innerHTML = `
+      <div class="project-manager-card" role="dialog" aria-label="Manage projects">
+        <div class="project-manager-head">
+          <div>
+            <div class="project-manager-kicker">Projects</div>
+            <div class="project-manager-title">Manage projects</div>
+          </div>
+          <button class="project-manager-close" type="button" aria-label="Close">×</button>
+        </div>
+        <input class="project-manager-search" type="text" placeholder="Search projects…" autocomplete="off" spellcheck="false" />
+        <div class="project-manager-tabs">
+          <button class="project-manager-tab is-active" type="button" data-project-manager-status="active">Active</button>
+          <button class="project-manager-tab" type="button" data-project-manager-status="inactive">Inactive</button>
+          <button class="project-manager-tab" type="button" data-project-manager-status="archived">Archived</button>
+        </div>
+        <div class="project-manager-rows"></div>
+      </div>`;
+    document.body.appendChild(projectManagerEl);
+    projectManagerEl.querySelector('.project-manager-close').addEventListener('click', () => {
+      projectManagerEl.classList.remove('is-open');
+    });
+    projectManagerEl.addEventListener('click', (ev) => {
+      if (ev.target === projectManagerEl) projectManagerEl.classList.remove('is-open');
+    });
+    projectManagerEl.querySelector('.project-manager-search').addEventListener('input', renderProjectManager);
+    projectManagerEl.querySelectorAll('[data-project-manager-status]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        projectManagerStatus = tab.dataset.projectManagerStatus || 'active';
+        renderProjectManager();
+      });
+    });
+    return projectManagerEl;
+  };
+
+  const renderProjectManager = async () => {
+    const modal = ensureProjectManager();
+    const rowsEl = modal.querySelector('.project-manager-rows');
+    const q = (modal.querySelector('.project-manager-search').value || '').trim().toLowerCase();
+    modal.querySelectorAll('[data-project-manager-status]').forEach(tab => {
+      tab.classList.toggle('is-active', tab.dataset.projectManagerStatus === projectManagerStatus);
+    });
+    rowsEl.innerHTML = '';
+    let rows = [];
+    try {
+      const r = await fetch('/api/projects/meta?status=' + encodeURIComponent(projectManagerStatus));
+      const data = await r.json();
+      rows = (data && data.projects) || [];
+    } catch (e) {}
+    rows = rows
+      .filter(p => !p.is_default)
+      .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q));
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'project-manager-empty';
+      empty.textContent = q ? 'No matching projects.' : 'No projects in this view.';
+      rowsEl.appendChild(empty);
+      return;
+    }
+    rows.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'project-manager-row';
+      const id = canonicalProjectRecordId(p);
+      const main = document.createElement('div');
+      main.className = 'project-manager-row-main';
+      main.innerHTML = `<div class="project-manager-row-name"></div><div class="project-manager-row-meta"></div>`;
+      main.querySelector('.project-manager-row-name').textContent = p.name || p.nexus;
+      main.querySelector('.project-manager-row-meta').textContent = id;
+      row.appendChild(main);
+      const actions = document.createElement('div');
+      actions.className = 'project-manager-actions';
+      const add = (label, nextStatus, icon) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'project-manager-action';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.innerHTML = resolveProjectActionIcon(icon);
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          updateProjectStatus(id, nextStatus);
+        });
+        btn.addEventListener('keydown', (ev) => ev.stopPropagation());
+        actions.appendChild(btn);
+      };
+      if (projectManagerStatus === 'active') {
+        add('Pause project', 'inactive', 'pause');
+        add('Archive project', 'archived', 'archive');
+      } else if (projectManagerStatus === 'inactive') {
+        add('Reactivate project', 'active', 'check');
+        add('Archive project', 'archived', 'archive');
+      } else {
+        add('Restore project to inactive', 'inactive', 'rotate-ccw');
+        add('Reactivate project', 'active', 'check');
+      }
+      row.appendChild(actions);
+      rowsEl.appendChild(row);
+    });
+  };
+
+  const openProjectManager = async () => {
+    closeProjectMenu();
+    const modal = ensureProjectManager();
+    projectManagerStatus = 'active';
+    modal.classList.add('is-open');
+    modal.querySelector('.project-manager-search').value = '';
+    await renderProjectManager();
+    modal.querySelector('.project-manager-search').focus();
   };
 
   const persistActiveProjectId = (nexus) => {
@@ -1374,7 +1530,7 @@
     e.stopPropagation(); openProjectModal();
   });
   if (projectManageItem) projectManageItem.addEventListener('click', (e) => {
-    e.stopPropagation(); closeProjectMenu(); openProjectModal();
+    e.stopPropagation(); openProjectManager();
   });
 
   // ── G1.33 model-configuration section ────────────────────────────────
