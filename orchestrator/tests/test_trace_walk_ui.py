@@ -72,6 +72,8 @@ class TraceWalkUiTests(unittest.TestCase):
             window.URL.createObjectURL = () => 'blob:trace';
             window.URL.revokeObjectURL = () => {};
             window.HTMLAnchorElement.prototype.click = function () { window.__downloaded = this.download; };
+            window.prompt = () => 'looked wrong';
+            window.OraConversation = { getActiveConversationId: () => 'conv-d' };
 
             const pending = [];
             const deferred = () => {
@@ -178,6 +180,26 @@ class TraceWalkUiTests(unittest.TestCase):
               assert.strictEqual(window.location.href, beforeHref, 'failed export does not navigate page');
               assert(window.document.querySelector('[data-role="status"]').textContent.includes('gone'), 'export failure is visible');
 
+              const investigate = window.document.querySelector('[data-role="investigate"]');
+              assert(investigate && !investigate.disabled, 'loaded trace enables investigate');
+              investigate.click();
+              const invReq = pending.pop();
+              const invBody = JSON.parse(invReq.opts.body);
+              assert.strictEqual(invReq.url, '/chat');
+              assert.strictEqual(invBody.panel_id, 'conv-d');
+              assert.strictEqual(invBody.trace_debug.trace_ref, 'conv-d/turn-d');
+              assert.strictEqual(invBody.trace_debug.step_hint, '');
+              assert.strictEqual(invBody.trace_debug.symptom, 'looked wrong');
+              invReq.d.resolve(jsonResponse({ ok: true }));
+              await flush();
+              assert(window.document.querySelector('[data-role="status"]').textContent.includes('submitted'), 'successful investigation is visible');
+
+              investigate.click();
+              const invFailReq = pending.pop();
+              invFailReq.d.resolve(jsonResponse({ error: 'trace expired' }, 404));
+              await flush();
+              assert(window.document.querySelector('[data-role="status"]').textContent.includes('trace expired'), 'failed investigation is visible');
+
               window.OraTraceWalk.close();
               assert.strictEqual(window.document.activeElement, launch, 'focus restored on close');
             })().catch((err) => {
@@ -230,6 +252,9 @@ class TraceWalkUiTests(unittest.TestCase):
               if (url.includes('/engagement')) {
                 return Promise.resolve(new Response('{}', { status: 200 }));
               }
+              if (url === '/chat') {
+                return Promise.resolve(new Response('{}', { status: 200 }));
+              }
               throw new Error('unexpected fetch ' + url);
             };
             const run = (rel) => vm.runInContext(
@@ -263,6 +288,10 @@ class TraceWalkUiTests(unittest.TestCase):
               openTrace.click();
               assert.strictEqual(opened.trace_ref, 'conv-paused/turn-paused');
               assert.strictEqual(opened.step, 'step4-tools');
+              const investigate = buttons.find((btn) => btn.textContent === 'Investigate trace');
+              assert(investigate, 'paused entry renders Investigate trace');
+              investigate.click();
+              await flush();
               process.exit(0);
             })().catch((err) => {
               console.error(err && err.stack || err);

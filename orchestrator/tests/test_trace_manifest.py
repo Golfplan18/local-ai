@@ -1722,6 +1722,56 @@ class TestTraceWalkServerRoutes(TraceManifestBase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(self.manifest(d)["retention_state"], "default")
 
+    def test_probe_route_preserves_private_source_redaction(self):
+        import trace_debug
+        d = self.start("conv-route-private-probe", conversation_tag="private")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "private input"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+            "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        client = self.S.app.test_client()
+        prepared_response = client.post(
+            "/api/trace/probe/prepare",
+            json={"trace_ref": ref, "step_name": "step1-phase-a"},
+        )
+        self.assertEqual(prepared_response.status_code, 200)
+        prepared = json.loads(prepared_response.get_data(as_text=True))
+        self.assertEqual(
+            trace_debug._APPROVALS[prepared["approval_id"]]["request"]["conversation_tag"],
+            "private",
+        )
+        approved_response = client.post(
+            "/api/trace/probe/approve",
+            json={
+                "approval_id": prepared["approval_id"],
+                "approval_digest": prepared["approval_digest"],
+            },
+        )
+        self.assertEqual(approved_response.status_code, 200)
+        with mock.patch.object(self.S, "load_config", return_value={}), \
+             mock.patch.object(self.S, "get_endpoint", return_value=object()), \
+             mock.patch.object(trace_debug, "endpoint_from_probe_envelope", return_value=object()), \
+             mock.patch.object(self.S, "call_model", return_value="private probe result"):
+            executed_response = client.post(
+                "/api/trace/probe/execute",
+                json={
+                    "conversation_id": "conv-route-private-probe",
+                    "approval_id": prepared["approval_id"],
+                    "approval_digest": prepared["approval_digest"],
+                },
+            )
+        self.assertEqual(executed_response.status_code, 200)
+        executed = json.loads(executed_response.get_data(as_text=True))
+        self.assertTrue(executed["ok"], executed)
+        probe_manifest = self.manifest(
+            pipeline_trace.resolve_trace_ref(executed["trace_ref"])
+        )
+        self.assertEqual(probe_manifest["redaction_level"], "private")
+
+
 
 class TestExecutionGateTraceRefs(TraceManifestBase):
     def test_execution_gate_paused_entry_gets_exact_trace_ref(self):
@@ -1741,6 +1791,826 @@ class TestExecutionGateTraceRefs(TraceManifestBase):
             )
         self.assertEqual(qid, "queue-1")
         self.assertEqual(captured["event"]["trace_ref"], ref)
+
+
+class TestTraceDebugChunk3(TraceManifestBase):
+    def test_contract_snapshot_preserves_complete_fields_and_survives_mutation(self):
+        import trace_debug
+        milestone = SimpleNamespace(
+            id="M1", name="Failure diagnosis", mode="P-Debug",
+            endpoint_produced="Trace-backed verdict",
+            verification_criterion="Use execution-time contract only",
+            drift_check_question="Stayed inside trace evidence?",
+            output_format="Trace Diagnostic Report",
+            gear=4,
+            layers_covered=["1", "2"],
+            required_prior=[],
+            conditional_layers="Only if probe needed",
+        )
+        framework = SimpleNamespace(name="process-inference", file_path="/tmp/process-inference.md")
+        snap = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
+        self.assertEqual(snap["capture_status"], "captured")
+        fields = snap["canonical_fields"]
+        self.assertEqual(fields["verification_criterion"], "Use execution-time contract only")
+        self.assertEqual(fields["conditional_layers"], "Only if probe needed")
+        before = snap["fingerprint"]
+        milestone.verification_criterion = "MUTATED CONTRACT"
+        after = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
+        self.assertNotEqual(before, after["fingerprint"])
+
+    def test_oversize_contract_records_failure_not_truncated_contract(self):
+        import trace_debug
+        milestone = SimpleNamespace(
+            id="M1", name="Huge", mode="P-Debug",
+            endpoint_produced="x", verification_criterion="x" * (trace_debug.MAX_CONTRACT_BYTES + 1),
+            drift_check_question="x", output_format="x", gear=4,
+            layers_covered=[], required_prior=[], conditional_layers=None,
+        )
+        framework = SimpleNamespace(name="fw", file_path="/tmp/fw.md")
+        snap = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
+        self.assertEqual(snap["capture_status"], "failed")
+        self.assertNotIn("fingerprint", snap)
+
+    def test_debug_prompt_rejects_cross_conversation_and_unavailable_contract(self):
+        import trace_debug
+        d = self.start("conv-debug")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        ok, msg = trace_debug.validate_same_conversation(ref, "other-conv")
+        self.assertFalse(ok)
+        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-debug")
+        self.assertIn("CONTRACT_UNAVAILABLE", prompt)
+        self.assertFalse(meta["contract_available"])
+
+    def test_probe_approval_is_server_authoritative_one_shot(self):
+        import trace_debug
+        d = self.start("conv-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        payload = {"model_request": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
+        }}
+        pipeline_trace.write_step(d, "step1-phase-a", payload)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "cost_ceiling": 1000}, conversation_id="conv-probe")
+        self.assertTrue(prepared["ok"])
+        forged = trace_debug.consume_probe_approval(prepared["approval_id"], "bad", conversation_id="conv-probe")
+        self.assertFalse(forged["ok"])
+        approved = trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        self.assertTrue(approved["ok"])
+        first = trace_debug.consume_probe_approval(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-probe")
+        self.assertTrue(first["ok"])
+        second = trace_debug.consume_probe_approval(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-probe")
+        self.assertFalse(second["ok"])
+
+    def test_not_replayable_probe_creates_no_probe_trace(self):
+        import trace_debug
+        d = self.start("conv-noreplay")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"not": "an envelope"})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        before = set(pipeline_trace.list_trace_refs("conv-noreplay"))
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-noreplay")
+        after = set(pipeline_trace.list_trace_refs("conv-noreplay"))
+        self.assertEqual(prepared["status"], "NOT_REPLAYABLE")
+        self.assertEqual(before, after)
+
+    def test_execute_probe_consumes_before_trace_and_records_completed_probe(self):
+        import trace_debug
+        d = self.start("conv-exec-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        payload = {"model_request": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
+        }}
+        pipeline_trace.write_step(d, "step1-phase-a", payload)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-exec-probe")
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        result = trace_debug.execute_probe(
+            prepared["approval_id"], prepared["approval_digest"],
+            conversation_id="conv-exec-probe",
+            model_executor=lambda req: "probe result")
+        self.assertTrue(result["ok"])
+        probe_dir = pipeline_trace.resolve_trace_ref(result["trace_ref"])
+        probe = self.manifest(probe_dir)
+        self.assertEqual(probe["trace_kind"], "trace-probe")
+        self.assertEqual(probe["terminal_status"], "completed")
+        self.assertEqual(probe["investigates_trace_ref"], ref)
+        replay = trace_debug.execute_probe(
+            prepared["approval_id"], prepared["approval_digest"],
+            conversation_id="conv-exec-probe",
+            model_executor=lambda req: "second")
+        self.assertFalse(replay["ok"])
+
+    def test_framework_contract_bundle_fails_if_any_child_unavailable(self):
+        import trace_debug
+        framework = SimpleNamespace(name="fw", file_path="/tmp/fw.md")
+        ok = SimpleNamespace(
+            id="M1", name="OK", mode="P-Debug", endpoint_produced="x",
+            verification_criterion="x", drift_check_question="x", output_format="x",
+            gear=4, layers_covered=[], required_prior=[], conditional_layers=None,
+        )
+        huge = SimpleNamespace(
+            id="M2", name="Huge", mode="P-Debug", endpoint_produced="x",
+            verification_criterion="x" * (trace_debug.MAX_CONTRACT_BYTES + 1),
+            drift_check_question="x", output_format="x", gear=4,
+            layers_covered=[], required_prior=[], conditional_layers=None,
+        )
+        bundle = trace_debug.framework_contract_bundle(framework, [ok, huge], selected_mode="P-Debug")
+        self.assertEqual(bundle["capture_status"], "failed")
+        self.assertIn("child_statuses", bundle)
+
+    def test_debug_prompt_walks_all_steps_health_and_children(self):
+        import trace_debug
+        parent = self.start("conv-walk")
+        child = self.start("conv-walk")
+        child_ref = pipeline_trace.trace_ref_for_dir(child)
+        pipeline_trace.write_step(child, "step1-phase-a", {"semantic_status": "pass"})
+        pipeline_trace.finalize_manifest(child, kind="framework-milestone", status_hint="completed", gear=1)
+        pipeline_trace.write_step(parent, "step1-phase-a", {"system_prompt": "s", "user_message": "u", "semantic_status": "pass"})
+        pipeline_trace.write_step(parent, "step1-phase-b", {"semantic_status": "fail"})
+        pipeline_trace.write_step_health(parent, {"step1-phase-a": (True, "ok"), "step1-phase-b": (False, "bad")}, 1, [])
+        pipeline_trace.append_jsonl(parent, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        parent_fields = {"mode": "P-Debug"}
+        pipeline_trace.update_manifest_fields(parent, contract_snapshot={"capture_status": "captured", "canonical_fields": parent_fields, "fingerprint": trace_debug.digest(parent_fields)})
+        pipeline_trace.finalize_manifest(parent, kind="chat", status_hint="completed", gear=1, child_trace_refs=[child_ref])
+        ref = pipeline_trace.trace_ref_for_dir(parent)
+        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-walk")
+        self.assertTrue(meta["contract_available"])
+        self.assertIn('"step_name": "step1-phase-a"', prompt)
+        self.assertIn('"step_name": "step1-phase-b"', prompt)
+        self.assertIn('"step_health"', prompt)
+        self.assertIn(child_ref, prompt)
+        self.assertIn('"boundary_table"', prompt)
+        self.assertIn('"semantic_evidence": "fail"', prompt)
+
+    def test_prepare_probe_uses_production_step_and_model_call_config(self):
+        import trace_debug
+        d = self.start("conv-prod-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
+        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {
+            "step": "step1-phase-a", "endpoint_id": "production-test", "provider": "openrouter", "model_id": "model-x",
+            "effective_max_tokens": 123, "sampling": {"temperature": 0.1},
+        })
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-prod-probe")
+        self.assertTrue(prepared["ok"], prepared)
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        seen = {}
+        result = trace_debug.execute_probe(
+            prepared["approval_id"], prepared["approval_digest"],
+            conversation_id="conv-prod-probe",
+            model_executor=lambda req: (seen.__setitem__("req", req) or "ok"))
+        self.assertTrue(result["ok"])
+        env = seen["req"]["envelope"]
+        self.assertEqual(env["provider"], "openrouter")
+        self.assertEqual(env["model"], "model-x")
+        self.assertEqual(env["max_tokens"], 123)
+        self.assertEqual(env["messages"][0]["role"], "system")
+
+    def test_execute_probe_fails_closed_if_trace_creation_fails(self):
+        import trace_debug
+        d = self.start("conv-failclosed")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-failclosed")
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        called = {"value": False}
+        with mock.patch.object(pipeline_trace, "start_trace", return_value=None):
+            result = trace_debug.execute_probe(
+                prepared["approval_id"], prepared["approval_digest"],
+                conversation_id="conv-failclosed",
+                model_executor=lambda req: called.__setitem__("value", True))
+        self.assertFalse(result["ok"])
+        self.assertFalse(called["value"])
+
+    def test_probe_manifest_writes_fail_closed_and_read_back(self):
+        import trace_debug
+
+        def prepare(conversation_id):
+            d = self.start(conversation_id)
+            ref = pipeline_trace.trace_ref_for_dir(d)
+            pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+                "messages": [{"role": "user", "content": "hi"}],
+                "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+                "parameters": {}, "max_tokens": 10,
+            }})
+            pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+            prepared = trace_debug.prepare_probe(
+                {"trace_ref": ref, "step_name": "step1-phase-a"},
+                conversation_id=conversation_id,
+            )
+            trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+            return prepared
+
+        first = prepare("conv-probe-manifest-update")
+        with mock.patch.object(pipeline_trace, "update_manifest_fields", return_value=None):
+            update_result = trace_debug.execute_probe(
+                first["approval_id"], first["approval_digest"],
+                conversation_id="conv-probe-manifest-update",
+                model_executor=lambda req: "should not run",
+            )
+        self.assertFalse(update_result["ok"])
+
+        second = prepare("conv-probe-manifest-finalize")
+        with mock.patch.object(trace_debug.pipeline_trace, "finalize_manifest", return_value=None):
+            finalize_result = trace_debug.execute_probe(
+                second["approval_id"], second["approval_digest"],
+                conversation_id="conv-probe-manifest-finalize",
+                model_executor=lambda req: "probe result",
+            )
+        self.assertTrue(finalize_result["ok"])
+        self.assertEqual(finalize_result["status"], "completed")
+        finalized = self.manifest(pipeline_trace.resolve_trace_ref(finalize_result["trace_ref"]))
+        self.assertEqual(finalized["trace_kind"], "trace-probe")
+        self.assertTrue(finalized["investigates_trace_ref"].startswith("conv-probe-manifest-finalize/"))
+        self.assertEqual(finalized["expected_steps"], [
+            "step-probe-prepare", "step-probe-approval",
+            "step-probe-model-attempt", "step-probe-result", "step-health",
+        ])
+        self.assertEqual(set(finalized["actual_steps"]), {
+            "step-probe-approval", "step-probe-model-attempt",
+            "step-probe-prepare", "step-probe-result",
+        })
+        self.assertEqual(finalized["derived_artifacts"], ["step-health"])
+        self.assertEqual(finalized["terminal_status"], "completed")
+
+    def test_learning_library_schema_redacts_and_rejects_cross_conversation(self):
+        import trace_debug
+        d = self.start("conv-learn-schema")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
+            self.assertFalse(trace_debug.append_learning_entry({
+                "conversation_id": "other", "trace_ref": ref, "verdict": "NO_DEFECT",
+            }))
+            self.assertTrue(trace_debug.append_learning_entry({
+                "conversation_id": "conv-learn-schema", "trace_ref": ref,
+                "verdict": "DEFECT_LOCALIZED", "root_cause": "retrieval gap",
+                "extra": "must not persist", "correction_summary": "api_key=SECRET123",
+            }))
+            entries = trace_debug.list_learning_entries()
+        self.assertEqual(len(entries), 1)
+        self.assertNotIn("extra", entries[0])
+        self.assertIn("[REDACTED]", entries[0]["correction_summary"])
+
+    def test_natural_language_routing_is_exact_ref_and_default_off(self):
+        import trace_debug
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(trace_debug.TRACE_DEBUG_NL_ENABLED_ENV, None)
+            self.assertIsNone(trace_debug.parse_natural_language_request("please investigate conv-a/turn-a"))
+        with mock.patch.dict(os.environ, {trace_debug.TRACE_DEBUG_NL_ENABLED_ENV: "1"}):
+            payload = trace_debug.parse_natural_language_request("please investigate trace conv-a/turn-a")
+            self.assertEqual(payload["trace_ref"], "conv-a/turn-a")
+            self.assertIsNone(trace_debug.parse_natural_language_request("please investigate trace conv-a/turn-a and conv-b/turn-b"))
+
+    def test_trace_debug_purge_unlocked_does_not_reacquire_lifecycle_lock(self):
+        import trace_debug
+        d = self.start("conv-deadlock")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
+            self.assertTrue(trace_debug.append_learning_entry({
+                "conversation_id": "conv-deadlock", "trace_ref": ref,
+                "verdict": "NO_DEFECT",
+            }))
+            with mock.patch.object(trace_debug._rp, "conversation_lifecycle_lock", side_effect=AssertionError("would deadlock")):
+                result = trace_debug.purge_conversation_unlocked("conv-deadlock")
+        self.assertEqual(result["removed"], 1)
+
+    def test_debug_prompt_is_aggregate_bounded_and_marks_truncation(self):
+        import trace_debug
+        d = self.start("conv-bound")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {
+            "system_prompt": "s" * 300000,
+            "user_message": "u" * 300000,
+            "raw_response": "r" * 300000,
+        }, markdown="m" * 300000)
+        fields = {"mode": "P-Debug"}
+        pipeline_trace.update_manifest_fields(d, contract_snapshot={"capture_status": "captured", "canonical_fields": fields, "fingerprint": trace_debug.digest(fields)})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-bound")
+        self.assertTrue(meta["contract_available"])
+        self.assertLess(len(prompt), trace_debug.MAX_DEBUG_CONTEXT_CHARS + 25000)
+        self.assertIn('"evidence_budget"', prompt)
+        self.assertIn("TRACE_DEBUG_EVIDENCE_TRUNCATED", prompt)
+
+    def test_framework_parent_debug_walks_child_steps_and_boundary(self):
+        import trace_debug
+        parent = self.start("conv-parent")
+        child = self.start("conv-parent")
+        child_ref = pipeline_trace.trace_ref_for_dir(child)
+        pipeline_trace.write_step(child, "step1-phase-a", {"semantic_status": "fail", "user_message": "child evidence"})
+        pipeline_trace.write_step_health(child, {"step1-phase-a": (False, "bad child")}, 1, [])
+        pipeline_trace.append_jsonl(child, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        child_fields = {"mode": "P-Debug"}
+        pipeline_trace.update_manifest_fields(child, contract_snapshot={"capture_status": "captured", "canonical_fields": child_fields, "fingerprint": trace_debug.digest(child_fields)})
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        pipeline_trace.finalize_manifest(child, kind="framework-milestone", status_hint="completed", gear=1, parent_trace_ref=parent_ref)
+        parent_fields = {"mode": "P-Debug"}
+        pipeline_trace.update_manifest_fields(parent, contract_snapshot={"capture_status": "captured", "canonical_fields": parent_fields, "fingerprint": trace_debug.digest(parent_fields)})
+        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed", child_trace_refs=[child_ref])
+        ref = pipeline_trace.trace_ref_for_dir(parent)
+        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-parent")
+        self.assertIn(child_ref, prompt)
+        self.assertIn('"user_message": "child evidence"', prompt)
+        self.assertIn('"semantic_evidence": "fail"', prompt)
+        self.assertIn('"model_call_configs"', prompt)
+
+    def test_child_walk_rejects_foreign_and_nonreciprocal_children(self):
+        import trace_debug
+        parent = self.start("conv-a")
+        foreign = self.start("conv-b")
+        foreign_ref = pipeline_trace.trace_ref_for_dir(foreign)
+        pipeline_trace.write_step(foreign, "step1-secret", {"secret": "SECRET_FROM_B"})
+        pipeline_trace.finalize_manifest(foreign, kind="framework-milestone", status_hint="completed", gear=1)
+        pipeline_trace.update_manifest_fields(parent, child_trace_refs=[foreign_ref])
+        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed")
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": parent_ref}, conversation_id="conv-a")
+        self.assertNotIn("SECRET_FROM_B", prompt)
+        self.assertIn("child trace conversation mismatch", prompt)
+
+    def test_child_walk_marks_omitted_child_limit(self):
+        import trace_debug
+        parent = self.start("conv-limit")
+        refs = [f"conv-limit/missing-{i}" for i in range(trace_debug.MAX_DEBUG_CHILDREN + 1)]
+        pipeline_trace.update_manifest_fields(parent, child_trace_refs=refs)
+        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed")
+        ref = pipeline_trace.trace_ref_for_dir(parent)
+        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-limit")
+        self.assertIn("child trace count limit reached", prompt)
+
+    def test_probe_provider_failure_is_error_not_completed(self):
+        import trace_debug
+        d = self.start("conv-provider-error")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+            "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-provider-error")
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        result = trace_debug.execute_probe(
+            prepared["approval_id"], prepared["approval_digest"],
+            conversation_id="conv-provider-error",
+            model_executor=lambda _req: "[Error] provider unavailable",
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "error")
+        probe = self.manifest(pipeline_trace.resolve_trace_ref(result["trace_ref"]))
+        self.assertEqual(probe["terminal_status"], "error")
+
+    def test_probe_provider_error_finalization_readback_persists_terminal_error(self):
+        import trace_debug
+        d = self.start("conv-probe-error-finalization")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+            "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe(
+            {"trace_ref": ref, "step_name": "step1-phase-a"},
+            conversation_id="conv-probe-error-finalization",
+        )
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        with mock.patch.object(trace_debug.pipeline_trace, "TRACE_ROOT", self.root), \
+             mock.patch.object(trace_debug.pipeline_trace, "finalize_manifest", return_value=None):
+            result = trace_debug.execute_probe(
+                prepared["approval_id"], prepared["approval_digest"],
+                conversation_id="conv-probe-error-finalization",
+                model_executor=lambda _req: "[Error] provider unavailable",
+            )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "error")
+        manifest = self.manifest(pipeline_trace.resolve_trace_ref(result["trace_ref"]))
+        self.assertEqual(manifest["terminal_status"], "error")
+
+    def test_contract_budget_preserves_exact_captured_clause(self):
+        import trace_debug
+        d = self.start("conv-contract-exact")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        fields = {"mode": "P-Debug", "verification_criteria": "x" * 20000}
+        pipeline_trace.update_manifest_fields(
+            d,
+            contract_snapshot={
+                "capture_status": "captured",
+                "canonical_fields": fields,
+                "fingerprint": trace_debug.digest(fields),
+            },
+        )
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-contract-exact")
+        self.assertTrue(meta["contract_available"])
+        self.assertIn("x" * 20000, prompt)
+        self.assertNotIn("TRACE_DEBUG_EVIDENCE_TRUNCATED", prompt.split('"contract_snapshot"', 1)[-1].split('"selected_step"', 1)[0])
+
+    def test_step_health_boolean_false_is_semantic_failure(self):
+        import trace_debug
+        boundary = trace_debug._boundary_table(
+            {"expected_steps": ["step1"], "actual_steps": ["step1"], "derived_artifacts": ["step-health"]},
+            [
+                {"step_name": "step1", "json_present": True, "payload": {"ok": False}, "errors": []},
+                {"step_name": "step-health", "payload": {"step_health": {"step1": {"ok": False, "reason": "bad"}}}},
+            ],
+        )
+        self.assertEqual(boundary[0]["semantic_evidence"], "fail")
+
+    def test_trace_debug_and_probe_expected_artifacts_are_explicit(self):
+        d = self.start("conv-kinds")
+        pipeline_trace.write_step(d, "step-debug-request", {"trace_ref": "conv-kinds/target"})
+        pipeline_trace.write_step(d, "step-debug-result", {"status": "completed"})
+        pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed")
+        debug_manifest = self.manifest(d)
+        self.assertEqual(debug_manifest["expected_steps"], ["step-debug-request", "step-debug-result"])
+        p = self.start("conv-kinds")
+        for name in ("step-probe-prepare", "step-probe-approval", "step-probe-model-attempt", "step-probe-result"):
+            pipeline_trace.write_step(p, name, {"ok": True})
+        pipeline_trace.write_step_health(p, {"step-probe-result": (True, "ok")}, 0, [])
+        pipeline_trace.finalize_manifest(p, kind="trace-probe", status_hint="completed")
+        probe_manifest = self.manifest(p)
+        self.assertIn("step-health", probe_manifest["expected_steps"])
+        self.assertEqual(probe_manifest["missing_steps"] if "missing_steps" in probe_manifest else [], [])
+
+    def test_private_conversation_cannot_write_learning_entry(self):
+        import trace_debug
+        d = self.start("conv-private-learning", conversation_tag="private")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        self.assertFalse(trace_debug.append_learning_entry({
+            "conversation_id": "conv-private-learning",
+            "trace_ref": ref,
+            "verdict": "NO_DEFECT",
+        }))
+
+    def test_boundary_last_known_good_stops_before_first_failure(self):
+        import trace_debug
+        manifest = {"expected_steps": ["step1", "step2", "step3"], "actual_steps": ["step1", "step2", "step3"], "derived_artifacts": []}
+        steps = [
+            {"step_name": "step1", "json_present": True, "payload": {"semantic_status": "pass"}, "errors": []},
+            {"step_name": "step2", "json_present": True, "payload": {"semantic_status": "fail"}, "errors": []},
+            {"step_name": "step3", "json_present": True, "payload": {"semantic_status": "pass"}, "errors": []},
+        ]
+        boundary = trace_debug._boundary_table(manifest, steps)
+        self.assertEqual(trace_debug._last_before_first_failure(boundary, "semantic_evidence"), "step1")
+
+    def test_probe_rejects_ambiguous_or_incomplete_call_mapping(self):
+        import trace_debug
+        d = self.start("conv-ambig-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
+        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {"step": "other", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
+        self.assertEqual(prepared["status"], "NOT_REPLAYABLE")
+        d2 = self.start("conv-ambig-probe")
+        ref2 = pipeline_trace.trace_ref_for_dir(d2)
+        pipeline_trace.write_step(d2, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
+        for _ in range(2):
+            pipeline_trace.append_jsonl(d2, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        pipeline_trace.finalize_manifest(d2, kind="chat", status_hint="completed", gear=1)
+        prepared2 = trace_debug.prepare_probe({"trace_ref": ref2, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
+        self.assertEqual(prepared2["status"], "NOT_REPLAYABLE")
+        d3 = self.start("conv-ambig-probe")
+        ref3 = pipeline_trace.trace_ref_for_dir(d3)
+        pipeline_trace.write_step(d3, "step1-phase-a", {"system_prompt": "sys only"})
+        pipeline_trace.append_jsonl(d3, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        pipeline_trace.finalize_manifest(d3, kind="chat", status_hint="completed", gear=1)
+        prepared3 = trace_debug.prepare_probe({"trace_ref": ref3, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
+        self.assertEqual(prepared3["status"], "NOT_REPLAYABLE")
+
+    def test_probe_applies_prompt_delta_and_enforces_cost_ceiling(self):
+        import trace_debug
+        d = self.start("conv-delta-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
+        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {"step": "step1-phase-a", "endpoint_id": "test-endpoint", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        too_low = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "cost_ceiling": 1}, conversation_id="conv-delta-probe")
+        self.assertEqual(too_low["status"], "COST_EXCEEDED")
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "prompt_delta": "try shorter", "cost_ceiling": 1000}, conversation_id="conv-delta-probe")
+        self.assertTrue(prepared["ok"], prepared)
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        seen = {}
+        result = trace_debug.execute_probe(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-delta-probe", model_executor=lambda req: (seen.__setitem__("req", req) or "ok"))
+        self.assertTrue(result["ok"])
+        contents = [m["content"] for m in seen["req"]["envelope"]["messages"]]
+        self.assertTrue(any("try shorter" in c for c in contents))
+
+    def test_learning_records_require_single_verdict_field_and_store_fingerprints(self):
+        import trace_debug
+        d = self.start("conv-verdict-safe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        fields = {"framework_fingerprint": "ffp"}
+        pipeline_trace.update_manifest_fields(d, framework_id="fw", mode="P-Debug", contract_snapshot={"capture_status": "captured", "fingerprint": trace_debug.digest(fields), "canonical_fields": fields})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
+            self.assertFalse(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "Could be NO_DEFECT but maybe DEFECT_LOCALIZED"))
+            self.assertFalse(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "VERDICT: NO_DEFECT\nVERDICT: BAD_DRAW"))
+            self.assertTrue(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "VERDICT: NO_DEFECT\nFAILING STEP: none\nVERIFICATION PROBE: not needed"))
+            entries = trace_debug.list_learning_entries()
+        self.assertEqual(entries[0]["verdict"], "NO_DEFECT")
+        self.assertEqual(entries[0]["contract_fingerprint"], trace_debug.digest(fields))
+        self.assertEqual(entries[0]["framework_fingerprint"], "ffp")
+        self.assertEqual(entries[0]["verification_probe"], "not needed")
+
+    def test_learning_library_purge_physically_removes_conversation_records(self):
+        import trace_debug
+        d1 = self.start("conv-learn")
+        ref1 = pipeline_trace.trace_ref_for_dir(d1)
+        pipeline_trace.finalize_manifest(d1, kind="chat", status_hint="completed", gear=1)
+        d2 = self.start("other")
+        ref2 = pipeline_trace.trace_ref_for_dir(d2)
+        pipeline_trace.finalize_manifest(d2, kind="chat", status_hint="completed", gear=1)
+        store = Path(self.tmp.name) / "data" / "trace-debug" / "learning-library.jsonl"
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
+            self.assertTrue(trace_debug.append_learning_entry({
+                "conversation_id": "conv-learn", "trace_ref": ref1,
+                "verdict": "NO_DEFECT", "root_cause": "none",
+            }))
+            self.assertTrue(trace_debug.append_learning_entry({
+                "conversation_id": "other", "trace_ref": ref2,
+                "verdict": "DEFECT_LOCALIZED", "root_cause": "retrieval gap",
+            }))
+            result = trace_debug.purge_conversation("conv-learn")
+            self.assertEqual(result["removed"], 1)
+            text = store.read_text(encoding="utf-8")
+            self.assertNotIn("conv-learn", text)
+            self.assertIn("other", text)
+
+    def test_debug_budget_marks_omitted_child_contracts_unavailable(self):
+        import trace_debug
+        contract = {
+            "capture_status": "captured",
+            "canonical_fields": {"verification_criterion": "x" * 50000},
+            "fingerprint": trace_debug.digest({"verification_criterion": "x" * 50000}),
+        }
+        context = {
+            "contract_snapshot": contract,
+            "contract_unavailable": None,
+            "trace_walk": {
+                "trace_ref": "conv-budget/turn",
+                "manifest": {"trace_ref": "conv-budget/turn"},
+                "raw_manifest_fields": {"contract_snapshot": contract},
+                "boundary_table": [],
+                "boundary_summary": {},
+                "child_traces": [
+                    {"trace_ref": f"conv-budget/child-{i}", "manifest": {},
+                     "raw_manifest_fields": {"contract_snapshot": contract},
+                     "boundary_table": [], "boundary_summary": {},
+                     "steps": [{"markdown": "x" * 100000}]}
+                    for i in range(4)
+                ],
+            },
+        }
+        bounded = trace_debug._apply_debug_budget(context)
+        self.assertIsNotNone(bounded.get("contract_unavailable"))
+        children = bounded["trace_walk"]["child_traces"]
+        self.assertTrue(all(c["raw_manifest_fields"]["contract_snapshot"] is None for c in children))
+        self.assertTrue(all(c["raw_manifest_fields"]["contract_capture_error"] for c in children))
+
+    def test_mode_contract_refresh_uses_recorded_final_gear(self):
+        import trace_debug
+        d = self.start("conv-mode-gear")
+        pipeline_trace.write_step_health(d, {"step3": (True, "ok")}, 3, [])
+        trace_debug.refresh_mode_contract_snapshot(
+            d, "P-Debug", "## VERIFICATION CRITERIA\n\n- criteria", 4)
+        manifest = self.manifest(d)
+        self.assertEqual(manifest["contract_snapshot"]["canonical_fields"]["gear"], 3)
+
+    def test_framework_fingerprint_changes_with_source_content(self):
+        import trace_debug
+        source = Path(self.tmp.name) / "framework.md"
+        source.write_text("contract one", encoding="utf-8")
+        framework = SimpleNamespace(name="fw", file_path=str(source), raw_markdown="contract one")
+        milestone = SimpleNamespace(id="m", name="M", verification_criterion="ok")
+        first = trace_debug.framework_contract_snapshot(framework, milestone)
+        source.write_text("contract two", encoding="utf-8")
+        second = trace_debug.framework_contract_snapshot(framework, milestone)
+        self.assertEqual(
+            first["canonical_fields"]["framework_fingerprint"],
+            second["canonical_fields"]["framework_fingerprint"],
+        )
+        framework.raw_markdown = "contract two"
+        third = trace_debug.framework_contract_snapshot(framework, milestone)
+        self.assertNotEqual(
+            first["canonical_fields"]["framework_fingerprint"],
+            third["canonical_fields"]["framework_fingerprint"],
+        )
+
+    def test_prior_learning_requires_matching_contract_versions(self):
+        import trace_debug
+        records = [
+            {"trace_ref": "old/one", "framework_id": "fw", "framework_fingerprint": "new-fw", "contract_fingerprint": "new-contract", "verdict": "NO_DEFECT"},
+            {"trace_ref": "old/two", "framework_id": "fw", "framework_fingerprint": "old-fw", "contract_fingerprint": "new-contract", "verdict": "NO_DEFECT"},
+        ]
+        with mock.patch.object(trace_debug, "list_learning_entries", return_value=records):
+            kept = trace_debug._prior_learning(
+                "current/turn", {"framework_id": "fw", "mode": "P-Debug"},
+                framework_fingerprint="new-fw", contract_fingerprint="new-contract",
+            )
+        self.assertEqual([entry["trace_ref"] for entry in kept], ["old/one"])
+
+    def test_probe_cli_delta_does_not_consume_cost_option(self):
+        import trace_debug
+        parsed = trace_debug.parse_probe_cli_command(
+            "/trace-probe prepare conv/turn step1 --delta try shorter --cost-ceiling 100"
+        )
+        self.assertEqual(parsed["prompt_delta"], "try shorter")
+        self.assertEqual(parsed["cost_ceiling"], "100")
+        with mock.patch.object(
+            trace_debug,
+            "_replay_envelope",
+            return_value=({"messages": [{"role": "user", "content": "hello"}], "endpoint_id": "e", "provider": "p", "model": "m", "parameters": {}, "max_tokens": 1}, ""),
+        ):
+            rejected = trace_debug.prepare_probe(
+                {"trace_ref": "conv-delta/turn", "step_name": "step1", "prompt_delta": "x" * (trace_debug.MAX_PROBE_DELTA_CHARS + 1)},
+                conversation_id="conv-delta",
+            )
+        self.assertEqual(rejected["status"], "REJECTED")
+
+    def test_probe_binds_physical_context_and_records_non_lineage_ref(self):
+        import trace_debug
+        d = self.start("conv-probe-context")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
+        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {
+            "step": "step1-phase-a", "endpoint_id": "test-endpoint",
+            "provider": "p", "model_id": "m", "effective_max_tokens": 10,
+        })
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-probe-context")
+        self.assertTrue(prepared["ok"], prepared)
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        seen = {}
+        def executor(request):
+            import boot
+            seen["trace_dir"] = boot._TURN_TRACE_DIR_CV.get()
+            return "ok"
+        result = trace_debug.execute_probe(
+            prepared["approval_id"], prepared["approval_digest"],
+            conversation_id="conv-probe-context", model_executor=executor,
+        )
+        self.assertTrue(result["ok"], result)
+        probe_dir = pipeline_trace.resolve_trace_ref(result["trace_ref"])
+        self.assertEqual(seen["trace_dir"], probe_dir)
+        source = self.manifest(d)
+        self.assertIn(result["trace_ref"], source["probe_trace_refs"])
+        self.assertNotIn(result["trace_ref"], source["child_trace_refs"])
+
+    def test_probe_origin_requires_same_conversation_debug_reciprocity(self):
+        import trace_debug
+        target = self.start("conv-origin-a")
+        target_ref = pipeline_trace.trace_ref_for_dir(target)
+        pipeline_trace.write_step(target, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "hello"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+            "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(target, kind="chat", status_hint="completed", gear=1)
+        foreign_origin = self.start("conv-origin-b")
+        foreign_ref = pipeline_trace.trace_ref_for_dir(foreign_origin)
+        pipeline_trace.update_manifest_fields(
+            foreign_origin, trace_kind="trace-debug", investigates_trace_ref=target_ref)
+        pipeline_trace.finalize_manifest(foreign_origin, kind="trace-debug", status_hint="completed")
+        prepared = trace_debug.prepare_probe({
+            "trace_ref": target_ref, "step_name": "step1-phase-a",
+            "origin_trace_ref": foreign_ref,
+        }, conversation_id="conv-origin-a")
+        self.assertEqual(prepared["status"], "REJECTED")
+        self.assertEqual(self.manifest(foreign_origin).get("probe_trace_refs"), [])
+
+    def test_probe_required_result_artifact_fails_closed(self):
+        import trace_debug
+        d = self.start("conv-required-probe")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+            "messages": [{"role": "user", "content": "hello"}],
+            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+            "parameters": {}, "max_tokens": 10,
+        }})
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-required-probe")
+        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
+        original_write = pipeline_trace.write_step
+        def drop_result(trace_dir, step_name, payload, markdown=None):
+            if step_name != "step-probe-result":
+                original_write(trace_dir, step_name, payload, markdown)
+        with mock.patch.object(pipeline_trace, "write_step", side_effect=drop_result):
+            result = trace_debug.execute_probe(
+                prepared["approval_id"], prepared["approval_digest"],
+                conversation_id="conv-required-probe", model_executor=lambda _req: "ok")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "error")
+        probe = self.manifest(pipeline_trace.resolve_trace_ref(result["trace_ref"]))
+        self.assertEqual(probe["terminal_status"], "error")
+
+    def test_probe_execute_rejection_is_recorded_on_latest_debug_trace(self):
+        import trace_debug
+        d = self.start("conv-rejection-events")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.update_manifest_fields(d, trace_kind="trace-debug", investigates_trace_ref="conv-rejection-events/target")
+        pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed")
+        rejected = trace_debug.consume_probe_approval("forged", "bad", conversation_id="conv-rejection-events")
+        self.assertFalse(rejected["ok"])
+        events = trace_debug._read_jsonl_records_locked(Path(d), "trace-probe-events.jsonl")
+        self.assertTrue(any(event.get("event") == "execute_rejected" for event in events))
+
+    def test_learning_boundary_redacts_bounds_and_reports_corruption(self):
+        import trace_debug
+        d = self.start("conv-learning-boundary")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+        data_dir = Path(self.tmp.name) / "data"
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(data_dir)):
+            self.assertFalse(trace_debug.append_learning_entry({
+                "conversation_id": "conv-learning-boundary", "trace_ref": ref,
+                "verdict": "NO_DEFECT", "root_cause": "invented class",
+            }))
+            self.assertTrue(trace_debug.append_learning_entry({
+                "conversation_id": "conv-learning-boundary", "trace_ref": ref,
+                "verdict": "NO_DEFECT", "root_cause": "none",
+                "failing_step": "api_key=SECRET " + "x" * 1000,
+            }))
+            store = Path(trace_debug.learning_library_path())
+            with store.open("a", encoding="utf-8") as handle:
+                handle.write("not-json\n")
+                handle.write(json.dumps({"schema_version": 999, "conversation_id": "bad"}) + "\n")
+            entries = trace_debug.list_learning_entries()
+            status = trace_debug.learning_library_status()
+        self.assertEqual(len(entries), 1)
+        self.assertNotIn("SECRET", json.dumps(entries))
+        self.assertLessEqual(len(entries[0]["failing_step"]), 200)
+        self.assertEqual(status["malformed_records"], 1)
+        self.assertEqual(status["unsupported_schema_records"], 1)
+
+    def test_seeded_four_verdict_learning_paths_are_unambiguous(self):
+        import trace_debug
+        outputs = {
+            "DEFECT_LOCALIZED": "retrieval gap",
+            "BAD_DRAW": "model bad-draw",
+            "CONTRACT_MISMATCH": "framework underspecification",
+            "NO_DEFECT": "none",
+        }
+        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
+            for index, (verdict, root_cause) in enumerate(outputs.items()):
+                d = self.start("conv-seeded-verdicts")
+                ref = pipeline_trace.trace_ref_for_dir(d)
+                fields = {"framework_fingerprint": "fw-v1", "mode": "P-Debug"}
+                pipeline_trace.update_manifest_fields(
+                    d, framework_id="fw", mode="P-Debug",
+                    contract_snapshot={"capture_status": "captured", "canonical_fields": fields,
+                                       "fingerprint": trace_debug.digest(fields)})
+                pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed", gear=1)
+                self.assertTrue(trace_debug.record_diagnosis_learning(
+                    "conv-seeded-verdicts", ref,
+                    f"VERDICT: {verdict}\nROOT CAUSE: {root_cause}\nFAILING STEP: none\nVERIFICATION PROBE: none"))
+            entries = trace_debug.list_learning_entries()
+        self.assertEqual({entry["verdict"] for entry in entries}, set(outputs))
+
+    def test_probe_expiry_mutation_and_concurrent_execution_are_rejected_once(self):
+        import trace_debug
+        def make_source(conversation):
+            d = self.start(conversation)
+            ref = pipeline_trace.trace_ref_for_dir(d)
+            pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
+                "messages": [{"role": "user", "content": "hello"}],
+                "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
+                "parameters": {}, "max_tokens": 10,
+            }})
+            pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
+            return d, ref
+        expired_dir, expired_ref = make_source("conv-expiry")
+        expired = trace_debug.prepare_probe({"trace_ref": expired_ref, "step_name": "step1-phase-a"}, conversation_id="conv-expiry")
+        trace_debug._APPROVALS[expired["approval_id"]]["request"]["expires_at"] = 0
+        self.assertFalse(trace_debug.approve_probe(expired["approval_id"], expired["approval_digest"])["ok"])
+        mutated_dir, mutated_ref = make_source("conv-mutation")
+        mutated = trace_debug.prepare_probe({"trace_ref": mutated_ref, "step_name": "step1-phase-a"}, conversation_id="conv-mutation")
+        trace_debug.approve_probe(mutated["approval_id"], mutated["approval_digest"])
+        pipeline_trace.append_jsonl(mutated_dir, "model-call-config.jsonl", {"step": "step1-phase-a", "endpoint_id": "changed"})
+        self.assertEqual(trace_debug.execute_probe(mutated["approval_id"], mutated["approval_digest"], conversation_id="conv-mutation").get("status"), "REJECTED")
+        _concurrent_dir, concurrent_ref = make_source("conv-concurrent")
+        concurrent = trace_debug.prepare_probe({"trace_ref": concurrent_ref, "step_name": "step1-phase-a"}, conversation_id="conv-concurrent")
+        trace_debug.approve_probe(concurrent["approval_id"], concurrent["approval_digest"])
+        results = []
+        threads = [threading.Thread(target=lambda: results.append(trace_debug.execute_probe(
+            concurrent["approval_id"], concurrent["approval_digest"],
+            conversation_id="conv-concurrent", model_executor=lambda _req: "ok"))) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(sum(bool(result.get("ok")) for result in results), 1)
 
 
 if __name__ == "__main__":
