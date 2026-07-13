@@ -29,7 +29,8 @@ import math
 import os
 import re
 import stat
-from collections import defaultdict
+from collections import defaultdict, deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -2247,15 +2248,22 @@ def execute_source_replay(
     *,
     target_chromadb_path: str | Path,
     batch_size: int = 32,
+    embedding_workers: int = 1,
     resume: bool = False,
     client_factory: Callable[[str], Any] | None = None,
     collection_factory: Callable[[Any, dict[str, Any]], Any] | None = None,
     embedder: Callable[[list[str]], Any] | None = None,
 ) -> dict[str, Any]:
-    """Batch-embed and explicitly upsert one validated source plan."""
+    """Batch-embed and explicitly upsert one validated source plan.
+
+    Embedding calls may run concurrently, but target reads, ordered upserts,
+    checkpoint advancement, and final validation always stay on this thread.
+    """
     plan.require_valid()
     if batch_size < 1:
         raise RebuildError("batch_size must be positive")
+    if embedding_workers < 1:
+        raise RebuildError("embedding_workers must be positive")
     target = _absolute(target_chromadb_path)
     _validate_target(target, resume=resume)
     profile = _source_profile(plan.logical_collection)
@@ -2339,10 +2347,10 @@ def execute_source_replay(
     embedded_records = 0
     resumed_records = start_index
 
-    def flush(current: list[ReplayRecord], next_index: int) -> None:
-        nonlocal embedded_records, resumed_records
-        if not current:
-            return
+    def prepare_batch(
+        current: list[ReplayRecord],
+    ) -> list[ReplayRecord]:
+        nonlocal resumed_records
         existing = _existing_payloads(collection, current)
         missing: list[ReplayRecord] = []
         for record in current:
@@ -2360,12 +2368,17 @@ def execute_source_replay(
                     f"{record.row_id!r}"
                 )
             resumed_records += 1
+        return missing
+
+    def commit_batch(
+        missing: list[ReplayRecord],
+        next_index: int,
+        raw_vectors: Any | None,
+    ) -> None:
+        nonlocal embedded_records
         if missing:
             vectors = _validate_embeddings(
-                embedder([
-                    record.embedding_text or record.document
-                    for record in missing
-                ]),
+                raw_vectors,
                 records=missing,
                 dimension=profile["dimension"],
             )
@@ -2387,21 +2400,35 @@ def execute_source_replay(
             "records": plan.planned_records,
         })
 
-    for record in _iter_materialized_source_records(
-        plan, target=target, profile=profile,
-        materialization=materialization,
-    ):
-        if ordinal < start_index:
-            checkpoint_batch.append(record)
-            ordinal += 1
-            if len(checkpoint_batch) >= 1000:
+    def replay_batches() -> Iterator[tuple[list[ReplayRecord], int]]:
+        nonlocal ordinal, checkpoint_batch
+        for record in _iter_materialized_source_records(
+            plan, target=target, profile=profile,
+            materialization=materialization,
+        ):
+            if ordinal < start_index:
+                checkpoint_batch.append(record)
+                ordinal += 1
+                if len(checkpoint_batch) >= 1000:
+                    _validate_stored_payloads(
+                        collection,
+                        checkpoint_batch,
+                        context=f"checkpoint-resumed {plan.phase} prefix",
+                    )
+                    checkpoint_batch = []
+                continue
+            if checkpoint_batch:
                 _validate_stored_payloads(
                     collection,
                     checkpoint_batch,
                     context=f"checkpoint-resumed {plan.phase} prefix",
                 )
                 checkpoint_batch = []
-            continue
+            batch.append(record)
+            ordinal += 1
+            if len(batch) >= batch_size:
+                yield list(batch), ordinal
+                batch.clear()
         if checkpoint_batch:
             _validate_stored_payloads(
                 collection,
@@ -2409,18 +2436,61 @@ def execute_source_replay(
                 context=f"checkpoint-resumed {plan.phase} prefix",
             )
             checkpoint_batch = []
-        batch.append(record)
-        ordinal += 1
-        if len(batch) >= batch_size:
-            flush(batch, ordinal)
-            batch = []
-    if checkpoint_batch:
-        _validate_stored_payloads(
-            collection,
-            checkpoint_batch,
-            context=f"checkpoint-resumed {plan.phase} prefix",
+        if batch:
+            yield list(batch), ordinal
+            batch.clear()
+
+    if embedding_workers == 1:
+        for current, next_index in replay_batches():
+            missing = prepare_batch(current)
+            raw_vectors = None
+            if missing:
+                raw_vectors = embedder([
+                    record.embedding_text or record.document
+                    for record in missing
+                ])
+            commit_batch(missing, next_index, raw_vectors)
+    else:
+        pending: deque[
+            tuple[
+                list[ReplayRecord],
+                int,
+                Future[Any] | None,
+            ]
+        ] = deque()
+        executor = ThreadPoolExecutor(
+            max_workers=embedding_workers,
+            thread_name_prefix=f"ora-{plan.phase}-embed",
         )
-    flush(batch, ordinal)
+
+        def finish_oldest() -> None:
+            missing, next_index, future = pending.popleft()
+            raw_vectors = future.result() if future is not None else None
+            commit_batch(missing, next_index, raw_vectors)
+
+        try:
+            for current, next_index in replay_batches():
+                missing = prepare_batch(current)
+                future = None
+                if missing:
+                    inputs = [
+                        record.embedding_text or record.document
+                        for record in missing
+                    ]
+                    future = executor.submit(embedder, inputs)
+                pending.append((missing, next_index, future))
+                if len(pending) >= embedding_workers:
+                    finish_oldest()
+            while pending:
+                finish_oldest()
+        except BaseException:
+            for _missing, _next_index, future in pending:
+                if future is not None:
+                    future.cancel()
+            executor.shutdown(wait=True, cancel_futures=True)
+            raise
+        else:
+            executor.shutdown(wait=True)
     if ordinal != plan.planned_records:
         raise RebuildError(
             f"source plan changed during execution: planned "
@@ -2506,6 +2576,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     knowledge.add_argument("--target-chromadb-path", required=True)
     knowledge.add_argument("--batch-size", type=int, default=32)
+    knowledge.add_argument("--embedding-workers", type=int, default=1)
     knowledge.add_argument("--resume", action="store_true")
     knowledge.add_argument("--dry-run", action="store_true")
 
@@ -2527,6 +2598,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     msi.add_argument("--target-chromadb-path", required=True)
     msi.add_argument("--batch-size", type=int, default=32)
+    msi.add_argument("--embedding-workers", type=int, default=1)
     msi.add_argument("--resume", action="store_true")
     msi.add_argument("--dry-run", action="store_true")
     return parser
@@ -2575,6 +2647,7 @@ def main(argv: list[str] | None = None) -> int:
             plan,
             target_chromadb_path=args.target_chromadb_path,
             batch_size=args.batch_size,
+            embedding_workers=args.embedding_workers,
             resume=args.resume,
         )
     elif args.phase == "msi-news-articles":
@@ -2595,6 +2668,7 @@ def main(argv: list[str] | None = None) -> int:
             plan,
             target_chromadb_path=args.target_chromadb_path,
             batch_size=args.batch_size,
+            embedding_workers=args.embedding_workers,
             resume=args.resume,
         )
     else:  # pragma: no cover - argparse guards

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -1129,6 +1131,236 @@ class DerivedCorpusSourceRebuildTests(unittest.TestCase):
         self.assertTrue(all(len(vector) == 4096 for vector in collection.embeddings.values()))
         self.assertTrue((target / "knowledge-replay-checkpoint.json").is_file())
         self.assertTrue((target / "knowledge-replay-report.json").is_file())
+
+    def test_concurrent_embeddings_commit_and_checkpoint_in_record_order(self):
+        for index in range(4):
+            (self.engrams / f"claim-{index}.md").write_text(
+                self._note(body=f"Durable claim number {index} with context."),
+                encoding="utf-8",
+            )
+        plan = self._knowledge_plan()
+        expected_ids = [
+            record.row_id for record in rebuild._iter_source_plan_records(plan)
+        ]
+        target = self.root / "fresh-concurrent-chroma"
+        caller_thread = threading.get_ident()
+        event_log = []
+        collection_threads = []
+
+        class OrderedCollection(_EmbeddingFakeCollection):
+            def get(inner_self, *, ids, include):
+                collection_threads.append(threading.get_ident())
+                return super().get(ids=ids, include=include)
+
+            def upsert(inner_self, *, ids, embeddings, documents, metadatas):
+                collection_threads.append(threading.get_ident())
+                event_log.append(("upsert", list(ids)))
+                return super().upsert(
+                    ids=ids,
+                    embeddings=embeddings,
+                    documents=documents,
+                    metadatas=metadatas,
+                )
+
+            def count(inner_self):
+                collection_threads.append(threading.get_ident())
+                return super().count()
+
+        collection = OrderedCollection()
+        embed_barrier = threading.Barrier(2)
+        embed_lock = threading.Lock()
+        active = 0
+        maximum_active = 0
+        next_call = 0
+        completed = []
+        embed_threads = []
+
+        def embed(texts):
+            nonlocal active, maximum_active, next_call
+            with embed_lock:
+                call_index = next_call
+                next_call += 1
+                active += 1
+                maximum_active = max(maximum_active, active)
+                embed_threads.append(threading.get_ident())
+            try:
+                if call_index < 2:
+                    embed_barrier.wait(timeout=5)
+                if call_index == 0:
+                    time.sleep(0.05)
+                completed.append(call_index)
+                return [[float(call_index)] * 4096 for _text in texts]
+            finally:
+                with embed_lock:
+                    active -= 1
+
+        original_atomic_json = rebuild._atomic_json
+
+        def recording_atomic_json(path, value):
+            if path.name == "knowledge-replay-checkpoint.json":
+                self.assertEqual(threading.get_ident(), caller_thread)
+                event_log.append(("checkpoint", value["next_index"]))
+            return original_atomic_json(path, value)
+
+        with mock.patch.object(
+            rebuild, "_source_profile", return_value=self._profile(),
+        ), mock.patch.object(
+            rebuild, "_atomic_json", side_effect=recording_atomic_json,
+        ):
+            report = rebuild.execute_source_replay(
+                plan,
+                target_chromadb_path=target,
+                batch_size=1,
+                embedding_workers=2,
+                client_factory=lambda _path: object(),
+                collection_factory=lambda _client, _profile: collection,
+                embedder=embed,
+            )
+
+        self.assertEqual(report["target_count"], 4)
+        self.assertEqual(maximum_active, 2)
+        self.assertEqual(completed[:2], [1, 0])
+        self.assertTrue(all(thread != caller_thread for thread in embed_threads))
+        self.assertEqual(set(collection_threads), {caller_thread})
+        self.assertEqual(event_log, [
+            ("upsert", [expected_ids[0]]), ("checkpoint", 1),
+            ("upsert", [expected_ids[1]]), ("checkpoint", 2),
+            ("upsert", [expected_ids[2]]), ("checkpoint", 3),
+            ("upsert", [expected_ids[3]]), ("checkpoint", 4),
+        ])
+
+    def test_concurrent_embedding_failure_drains_and_resumes_from_checkpoint(self):
+        for index in range(4):
+            (self.engrams / f"claim-{index}.md").write_text(
+                self._note(body=f"Durable claim number {index} with context."),
+                encoding="utf-8",
+            )
+        plan = self._knowledge_plan()
+        expected_ids = [
+            record.row_id for record in rebuild._iter_source_plan_records(plan)
+        ]
+        target = self.root / "interrupted-concurrent-chroma"
+        collection = _EmbeddingFakeCollection()
+        first_wave = threading.Barrier(3)
+        drained = threading.Event()
+
+        def interrupted_embed(texts):
+            text = texts[0]
+            if any(f"number {index}" in text for index in range(3)):
+                first_wave.wait(timeout=5)
+            if "number 1" in text:
+                raise RuntimeError("synthetic concurrent interruption")
+            if "number 2" in text:
+                time.sleep(0.05)
+                drained.set()
+            return [[0.0] * 4096 for _text in texts]
+
+        with mock.patch.object(
+            rebuild, "_source_profile", return_value=self._profile(),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "synthetic concurrent interruption",
+            ):
+                rebuild.execute_source_replay(
+                    plan,
+                    target_chromadb_path=target,
+                    batch_size=1,
+                    embedding_workers=3,
+                    client_factory=lambda _path: object(),
+                    collection_factory=lambda _client, _profile: collection,
+                    embedder=interrupted_embed,
+                )
+
+        self.assertTrue(drained.is_set())
+        self.assertEqual(collection.upsert_sizes, [1])
+        self.assertEqual(list(collection.rows), [expected_ids[0]])
+        checkpoint = json.loads(
+            (target / "knowledge-replay-checkpoint.json").read_text(
+                encoding="utf-8",
+            )
+        )
+        self.assertEqual(checkpoint["next_index"], 1)
+        self.assertFalse((target / "knowledge-replay-report.json").exists())
+
+        resumed_inputs = []
+
+        def resumed_embed(texts):
+            resumed_inputs.extend(texts)
+            return [[1.0] * 4096 for _text in texts]
+
+        with mock.patch.object(
+            rebuild, "_source_profile", return_value=self._profile(),
+        ):
+            report = rebuild.execute_source_replay(
+                plan,
+                target_chromadb_path=target,
+                batch_size=1,
+                embedding_workers=2,
+                resume=True,
+                client_factory=lambda _path: object(),
+                collection_factory=lambda _client, _profile: collection,
+                embedder=resumed_embed,
+            )
+        self.assertEqual(report["target_count"], 4)
+        self.assertEqual(report["resumed_records"], 1)
+        self.assertEqual(len(resumed_inputs), 3)
+        self.assertFalse(any("number 0" in text for text in resumed_inputs))
+        self.assertEqual(list(collection.rows), expected_ids)
+
+    def test_default_embedding_worker_is_synchronous_and_does_not_open_pool(self):
+        (self.engrams / "claim.md").write_text(
+            self._note(), encoding="utf-8",
+        )
+        plan = self._knowledge_plan()
+        collection = _EmbeddingFakeCollection()
+        caller_thread = threading.get_ident()
+        embed_threads = []
+
+        def embed(texts):
+            embed_threads.append(threading.get_ident())
+            return [[0.0] * 4096 for _text in texts]
+
+        with mock.patch.object(
+            rebuild, "_source_profile", return_value=self._profile(),
+        ), mock.patch.object(
+            rebuild.ThreadPoolExecutor,
+            "__init__",
+            side_effect=AssertionError("default replay opened a worker pool"),
+        ):
+            report = rebuild.execute_source_replay(
+                plan,
+                target_chromadb_path=self.root / "default-worker-chroma",
+                client_factory=lambda _path: object(),
+                collection_factory=lambda _client, _profile: collection,
+                embedder=embed,
+            )
+        self.assertEqual(report["target_count"], 1)
+        self.assertEqual(embed_threads, [caller_thread])
+
+    def test_embedding_workers_cli_default_and_explicit_wiring(self):
+        target = self.root / "cli-target"
+        default_args = rebuild._parser().parse_args([
+            "knowledge", "--target-chromadb-path", str(target),
+        ])
+        self.assertEqual(default_args.embedding_workers, 1)
+
+        (self.engrams / "claim.md").write_text(
+            self._note(), encoding="utf-8",
+        )
+        with mock.patch.object(
+            rebuild, "execute_source_replay", return_value={"status": "complete"},
+        ) as execute, mock.patch("builtins.print"):
+            result = rebuild.main([
+                "knowledge",
+                "--engrams-root", str(self.engrams),
+                "--resources-root", str(self.resources),
+                "--mental-models-root", str(self.mental),
+                "--msi-news-root", str(self.msi_mirror),
+                "--target-chromadb-path", str(target),
+                "--embedding-workers", "4",
+            ])
+        self.assertEqual(result, 0)
+        self.assertEqual(execute.call_args.kwargs["embedding_workers"], 4)
 
     def test_source_resume_rejects_corrupted_checkpoint_prefix_without_embedding(self):
         (self.engrams / "claim.md").write_text(
