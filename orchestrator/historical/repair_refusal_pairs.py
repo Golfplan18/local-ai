@@ -210,6 +210,27 @@ def resolve_raw_path(source_chat: str) -> Optional[str]:
         if moved.is_file():
             return str(moved)
 
+        # NTFS-quote bridge: six raw archive filenames contain the
+        # NTFS-invalid ASCII double-quote (U+0022).  After the corpus
+        # transfer those files were renamed to use ASCII apostrophe
+        # (U+0027).  Provenance metadata (path2 manifest keys,
+        # source_chat frontmatter) still carries the original " as a
+        # persisted token — legal in file contents, only illegal as a
+        # filename character.  Bridge the rename here so the repair
+        # pipeline resolves the renamed file without mutating any
+        # metadata or breaking session_id hashes.
+        if '"' in relative.name:
+            renamed_parts = list(relative.parts)
+            renamed_parts[-1] = renamed_parts[-1].replace('"', "'")
+            renamed = (
+                _rp.documents_dir()
+                / "Raw Chat Archive"
+                / "raw"
+                / Path(*renamed_parts)
+            )
+            if renamed.is_file():
+                return str(renamed)
+
     # Preserve direct-path compatibility when a record is not one of the
     # portable metadata forms, or while an archive relocation is incomplete.
     p = Path(source_chat).expanduser()
@@ -610,6 +631,117 @@ def fix_chunks(report_path: Optional[str] = None,
 
 
 # ---------------------------------------------------------------------------
+# Raw-archive NTFS-quote rename
+# ---------------------------------------------------------------------------
+
+
+def find_quoted_raw_files(
+    raw_archive_root: str | None = None,
+) -> list[dict[str, str]]:
+    """Return [{old, new}] for raw archive filenames containing '"'.
+
+    Only the basename is examined; subdirectory names are not renamed.
+    Returns the full filesystem path for both old and new names.
+    """
+    if raw_archive_root is None:
+        raw_archive_root = str(
+            _rp.documents_dir() / "Raw Chat Archive" / "raw"
+        )
+    root = Path(raw_archive_root)
+    if not root.is_dir():
+        return []
+    pairs: list[dict[str, str]] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if '"' not in path.name:
+            continue
+        new_name = path.name.replace('"', "'")
+        pairs.append({
+            "old": str(path),
+            "new": str(path.parent / new_name),
+        })
+    return pairs
+
+
+def rename_quoted_raw_files(
+    apply: bool = False,
+    raw_archive_root: str | None = None,
+    backup_suffix: str = ".bak-2026-07-13",
+    audit_path: str | None = None,
+) -> dict:
+    """Rename raw archive files with NTFS-invalid '\"' to use apostrophe.
+
+    Default (apply=False) is dry-run: prints the plan and returns metadata.
+    With apply=True: backs up originals, renames, writes an audit manifest.
+    """
+    if raw_archive_root is None:
+        raw_archive_root = str(
+            _rp.documents_dir() / "Raw Chat Archive" / "raw"
+        )
+    if audit_path is None:
+        audit_path = str(
+            _rp.resolve_runtime_roots().ora_home / "data"
+            / "raw-archive-ntfs-rename.json"
+        )
+    pairs = find_quoted_raw_files(raw_archive_root)
+    if not pairs:
+        result = {
+            "status": "no files with '\"' found in archive root",
+            "archive_root": raw_archive_root,
+            "files": 0,
+        }
+        if not apply:
+            print(json.dumps(result, indent=2))
+        return result
+
+    if not apply:
+        plan = {
+            "status": "dry-run",
+            "files": len(pairs),
+            "archive_root": raw_archive_root,
+            "planned_renames": [
+                {"old": Path(p["old"]).name, "new": Path(p["new"]).name}
+                for p in pairs
+            ],
+        }
+        print(json.dumps(plan, indent=2))
+        return plan
+
+    # Apply mode.
+    backup_dir = Path(raw_archive_root).parent / backup_suffix
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    audit_renames: list[dict[str, str]] = []
+    for pair in pairs:
+        old_path = Path(pair["old"])
+        new_path = Path(pair["new"])
+        backup_file = backup_dir / old_path.name
+        backup_file.write_bytes(old_path.read_bytes())
+        os.rename(old_path, new_path)
+        audit_renames.append({"old": pair["old"], "new": pair["new"]})
+
+    audit_record = {
+        "renamed_at": datetime.now().isoformat(timespec="seconds"),
+        "files": len(pairs),
+        "archive_root": raw_archive_root,
+        "backup_dir": str(backup_dir),
+        "renames": audit_renames,
+    }
+    Path(audit_path).write_text(
+        json.dumps(audit_record, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    result = {
+        "status": "applied",
+        "files": len(pairs),
+        "backup_dir": str(backup_dir),
+        "audit_path": audit_path,
+    }
+    print(json.dumps(result, indent=2))
+    return result
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -636,10 +768,22 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--max-workers", type=int,
                         default=CLI_RECOMMENDED_MAX_WORKERS)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--rename-quoted", action="store_true",
+        help="Rename raw archive files with NTFS-invalid '\"' to use "
+             "apostrophe.  Default mode is dry-run; pass --apply to execute.",
+    )
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="With --rename-quoted: execute the rename (default is dry-run).",
+    )
     args = parser.parse_args(argv)
 
-    if not args.scan and not args.repair and not args.fix_chunks:
-        parser.error("pass --scan, --repair, and/or --fix-chunks")
+    has_action = args.scan or args.repair or args.fix_chunks or args.rename_quoted
+    if not has_action:
+        parser.error(
+            "pass --scan, --repair, --fix-chunks, and/or --rename-quoted"
+        )
 
     if args.scan:
         result = scan_archive(args.archive_dir)
@@ -676,6 +820,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         result = fix_chunks(args.report, args.archive_dir)
         print(json.dumps(result, indent=2, default=str))
 
+    if args.rename_quoted:
+        rename_quoted_raw_files(apply=args.apply)
+
     return 0
 
 
@@ -692,5 +839,7 @@ __all__ = [
     "extract_exchange_sides",
     "split_cleaned_pair_file",
     "resolve_raw_path",
+    "find_quoted_raw_files",
+    "rename_quoted_raw_files",
     "main",
 ]
