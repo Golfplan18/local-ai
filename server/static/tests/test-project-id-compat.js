@@ -45,6 +45,15 @@ var dom = new jsdom.JSDOM(
 );
 
 var w = dom.window;
+var resolvedIcons = [];
+w.OraIconResolver = {
+  resolve: function (name) {
+    resolvedIcons.push(name);
+    return '<svg class="lucide lucide-' + String(name).replace(/[^a-z0-9-]/g, '') +
+      '" data-resolved-icon="' + String(name).replace(/&/g, '&amp;').replace(/"/g, '&quot;') +
+      '" viewBox="0 0 24 24"></svg>';
+  },
+};
 var activePosts = [];
 var conversationUrls = [];
 var projectPathUrls = [];
@@ -385,6 +394,12 @@ async function run() {
   record('manager active view exposes icon lifecycle controls',
     !!w.document.querySelector('.project-manager-action[title="Pause project"]') &&
     !!w.document.querySelector('.project-manager-action[title="Archive project"]'));
+  record('manager lifecycle controls use OraIconResolver icons',
+    !!w.document.querySelector('[data-resolved-icon="pause"]') &&
+    !!w.document.querySelector('[data-resolved-icon="archive"]') &&
+    resolvedIcons.indexOf('pause') !== -1 &&
+    resolvedIcons.indexOf('archive') !== -1,
+    JSON.stringify(resolvedIcons));
 
   w.document.querySelector('[data-project-manager-status="inactive"]').click();
   await flush();
@@ -406,6 +421,10 @@ async function run() {
   await flush();
   record('archived management view exposes restore',
     !!w.document.querySelector('.project-manager-action[title="Restore project to inactive"]'));
+  record('restore/reactivate use resolver-backed Lucide names',
+    !!w.document.querySelector('[data-resolved-icon="rotate-ccw"]') &&
+    !!w.document.querySelector('[data-resolved-icon="check"]'),
+    JSON.stringify(resolvedIcons));
   w.document.querySelector('.project-manager-action[title="Restore project to inactive"]').click();
   await flush();
   record('restore posts inactive status',

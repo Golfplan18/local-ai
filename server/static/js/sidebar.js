@@ -469,11 +469,14 @@
     } catch (e) {}
   };
 
-  const iconSvg = (name) => {
-    if (name === 'archive') return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v12h14V8"></path><path d="M10 12h4"></path></svg>';
-    if (name === 'restore') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>';
-    if (name === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"></path><path d="M16 5v14"></path></svg>';
-    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>';
+  const resolveProjectActionIcon = (iconRef) => {
+    if (window.OraIconResolver && typeof window.OraIconResolver.resolve === 'function') {
+      return window.OraIconResolver.resolve(iconRef);
+    }
+    const safe = String(iconRef == null ? '' : iconRef)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+      + 'data-icon-fallback="no-resolver" data-icon="' + safe + '"></svg>';
   };
 
   const ensureProjectManager = () => {
@@ -556,7 +559,7 @@
         btn.className = 'project-manager-action';
         btn.title = label;
         btn.setAttribute('aria-label', label);
-        btn.innerHTML = iconSvg(icon);
+        btn.innerHTML = resolveProjectActionIcon(icon);
         btn.addEventListener('click', (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
@@ -569,11 +572,11 @@
         add('Pause project', 'inactive', 'pause');
         add('Archive project', 'archived', 'archive');
       } else if (projectManagerStatus === 'inactive') {
-        add('Reactivate project', 'active', 'active');
+        add('Reactivate project', 'active', 'check');
         add('Archive project', 'archived', 'archive');
       } else {
-        add('Restore project to inactive', 'inactive', 'restore');
-        add('Reactivate project', 'active', 'active');
+        add('Restore project to inactive', 'inactive', 'rotate-ccw');
+        add('Reactivate project', 'active', 'check');
       }
       row.appendChild(actions);
       rowsEl.appendChild(row);
