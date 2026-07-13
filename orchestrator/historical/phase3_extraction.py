@@ -949,7 +949,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--backend", default="api",
                         help="Model-call path: 'api' (metered key), "
                              "'claude-cli' (subscription), 'ora-slots' "
-                             "(Ora slot routing)")
+                             "(Ora slot routing), 'openrouter' (explicit "
+                             "OpenRouter-only route via openrouter.ai)")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 

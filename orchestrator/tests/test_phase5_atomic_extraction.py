@@ -21,6 +21,7 @@ if _REPO not in sys.path:
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
 from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
+    EXTRACTION_MODEL,
     AtomicCandidate,
     DEDUP_SIM_THRESHOLD,
     PairResult,
@@ -35,6 +36,7 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     build_atomic_note,
     call_sonnet_extract,
     check_and_register,
+    run_phase5,
 )
 
 
@@ -342,6 +344,121 @@ class TestDedup(unittest.TestCase):
         self.assertTrue(w2)
         self.assertNotEqual(w1, w2)
         self.assertEqual(self.col.count(), 2)
+
+
+# ---------------------------------------------------------------------------
+# Backend selection (openrouter must route through build_client; the
+# Anthropic client must never be constructed for it)
+# ---------------------------------------------------------------------------
+
+
+class TestBackendSelection(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.archive = os.path.join(self.tmp, "archive")
+        os.makedirs(self.archive)
+        # One cleaned-pair file (lexicographic name sorts newest-first).
+        self.pair = os.path.join(self.archive, "2026-07-13_10-00_pilot.md")
+        Path(self.pair).write_text("dummy cleaned pair", encoding="utf-8")
+        self.manifest = os.path.join(self.tmp, "phase5-manifest.json")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _run(self, backend, mock_build_client, mock_anthropic_client):
+        m_proc = MagicMock(return_value=PairResult(cleaned_pair_path=self.pair))
+        with patch("orchestrator.historical.phase5_atomic_extraction."
+                   "AnthropicClient", mock_anthropic_client), \
+             patch("orchestrator.historical.cleanup_backends.build_client",
+                   mock_build_client), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "_open_dedup_collection", return_value=MagicMock()), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "process_one_pair", m_proc), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "load_chain_index", return_value={}):
+            run_phase5(
+                archive_dir=self.archive,
+                manifest_path=self.manifest,
+                max_workers=1,
+                progress_to_stderr=False,
+                limit_pending=1,
+                backend=backend,
+            )
+        return m_proc
+
+    def test_openrouter_backend_routes_through_build_client(self):
+        mock_anthropic_client = MagicMock(return_value="anthropic-sentinel")
+        mock_build_client = MagicMock(return_value="openrouter-sentinel")
+        m_proc = self._run("openrouter", mock_build_client,
+                           mock_anthropic_client)
+        # The openrouter backend is served by build_client("openrouter"), and
+        # the Anthropic client is never constructed on this path.
+        mock_build_client.assert_called_once_with("openrouter")
+        mock_anthropic_client.assert_not_called()
+        self.assertEqual(m_proc.call_args.kwargs["client"],
+                         "openrouter-sentinel")
+
+    def test_api_backend_still_uses_anthropic_client_directly(self):
+        # Regression guard: the forbidden api backend keeps its original
+        # wiring so the openrouter branch is provably a separate path.
+        mock_anthropic_client = MagicMock(return_value="anthropic-sentinel")
+        mock_build_client = MagicMock(return_value="build-sentinel")
+        m_proc = self._run("api", mock_build_client, mock_anthropic_client)
+        mock_anthropic_client.assert_called_once_with(model=EXTRACTION_MODEL)
+        mock_build_client.assert_not_called()
+        self.assertEqual(m_proc.call_args.kwargs["client"],
+                         "anthropic-sentinel")
+
+
+class TestProviderFailureIsRetryable(unittest.TestCase):
+    """An OpenRouter provider failure must land as a manifest entry with a
+    non-empty error so the pair stays pending and is reprocessed on the next
+    resume (the existing-atomics / manifest semantics are preserved)."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.archive = os.path.join(self.tmp, "archive")
+        os.makedirs(self.archive)
+        self.pair = os.path.join(self.archive, "2026-07-13_09-00_pair.md")
+        Path(self.pair).write_text("dummy cleaned pair", encoding="utf-8")
+        self.manifest = os.path.join(self.tmp, "phase5-manifest.json")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_failed_pair_recorded_as_retryable_error(self):
+        failed = PairResult(
+            cleaned_pair_path=self.pair,
+            error="openrouter: 429 rate limit exceeded",
+        )
+        with patch("orchestrator.historical.phase5_atomic_extraction."
+                   "AnthropicClient"), \
+             patch("orchestrator.historical.cleanup_backends.build_client",
+                   return_value=MagicMock()), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "_open_dedup_collection", return_value=MagicMock()), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "process_one_pair", return_value=failed), \
+             patch("orchestrator.historical.phase5_atomic_extraction."
+                   "load_chain_index", return_value={}):
+            aggregate = run_phase5(
+                archive_dir=self.archive,
+                manifest_path=self.manifest,
+                max_workers=1,
+                progress_to_stderr=False,
+                limit_pending=1,
+                backend="openrouter",
+            )
+
+        self.assertEqual(aggregate["pairs_errored"], 1)
+        manifest = _load_manifest(self.manifest)
+        entry = manifest["completed_pairs"][self.pair]
+        self.assertIn("429", entry["error"])
+        # Errored entries are NOT successful → the pair stays pending and is
+        # reprocessed on the next resume.
+        self.assertNotIn(self.pair, _successful_completed_paths(manifest))
 
 
 if __name__ == "__main__":

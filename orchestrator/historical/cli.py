@@ -432,8 +432,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                           default=BACKEND_API,
                           help="Model-call path: 'api' (Anthropic API key), "
                                "'claude-cli' (Claude subscription via the "
-                               "claude CLI), 'ora-slots' (Ora slot routing). "
-                               "Default: api")
+                               "claude CLI), 'ora-slots' (Ora slot routing), "
+                               "'openrouter' (explicit OpenRouter-only route "
+                               "via openrouter.ai). Default: api")
     parser.add_argument("--rebuild", action="store_true",
                           help="Ignore manifest, reprocess everything")
     parser.add_argument("--no-resume", action="store_true",
