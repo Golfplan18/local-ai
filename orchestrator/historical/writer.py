@@ -269,24 +269,52 @@ def write_cleaned_pair_file(
     """Write the cleaned-pair file to disk. Returns the absolute path
     written.
 
-    Filename collision handling: if `<filename>` already exists, append
-    `-pairNNN` to disambiguate.
+    Filename collision handling uses exclusive creation. If `<filename>`
+    already exists, append `-pairNNN` to disambiguate; if that also exists,
+    append a numeric retry suffix. The create itself is atomic so concurrent
+    writers can never both pass a check and silently overwrite one another.
     """
     output_root = Path(output_dir).expanduser()
     output_root.mkdir(parents=True, exist_ok=True)
 
     filename = context_header.pair_filename or "untitled.md"
-    target = output_root / filename
-    if target.exists():
-        stem  = target.stem
-        ext   = target.suffix
-        target = output_root / f"{stem}-pair{cleaned_pair.pair_num:03d}{ext}"
-
     content = build_cleaned_pair_markdown(
         cleaned_pair, context_header, raw_chat, processed_at=processed_at,
     )
-    target.write_text(content, encoding="utf-8")
-    return str(target)
+    base = output_root / filename
+    stem, ext = base.stem, base.suffix
+    collision_stem = f"{stem}-pair{cleaned_pair.pair_num:03d}"
+    attempt = 0
+
+    while True:
+        if attempt == 0:
+            target = base
+        elif attempt == 1:
+            target = output_root / f"{collision_stem}{ext}"
+        else:
+            target = output_root / f"{collision_stem}-{attempt}{ext}"
+        attempt += 1
+
+        try:
+            fd = os.open(
+                target,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                0o666,
+            )
+        except FileExistsError:
+            continue
+
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(content)
+        except Exception:
+            # Never leave a partial file masquerading as a completed pair.
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
+        return str(target)
 
 
 __all__ = [

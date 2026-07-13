@@ -25,7 +25,10 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     PairResult,
     _empty_manifest,
     _atomic_uid,
+    _load_manifest,
+    _normalize_manifest,
     _slugify,
+    _successful_completed_paths,
     _vault_path_for,
     build_atomic_note,
     call_sonnet_extract,
@@ -112,6 +115,36 @@ class TestBuildAtomicNote(unittest.TestCase):
         manifest = _empty_manifest()
         self.assertEqual(manifest["completed_pairs"], {})
         self.assertEqual(manifest["totals"]["pairs_processed"], 0)
+
+    def test_reconstructed_manifest_gets_totals(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {
+                "/archive/a.md": {"error": ""},
+                "/archive/b.md": {"error": "model timeout"},
+            },
+        })
+        self.assertEqual(manifest["totals"]["pairs_processed"], 2)
+        self.assertEqual(manifest["totals"]["candidates_minted"], 0)
+
+    def test_manifest_loader_normalizes_missing_totals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "phase5-manifest.json"
+            path.write_text(
+                json.dumps({"completed_pairs": {"/archive/a.md": {}}}),
+                encoding="utf-8",
+            )
+            manifest = _load_manifest(str(path))
+        self.assertIn("totals", manifest)
+        self.assertEqual(manifest["totals"]["pairs_processed"], 1)
+
+    def test_successful_completed_paths_excludes_prior_errors(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {
+                "/archive/ok.md": {"error": ""},
+                "/archive/error.md": {"error": "unexpected: boom"},
+            },
+        })
+        self.assertEqual(_successful_completed_paths(manifest), {"/archive/ok.md"})
 
 
 # ---------------------------------------------------------------------------

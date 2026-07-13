@@ -512,21 +512,53 @@ def process_one_pair(
 # ---------------------------------------------------------------------------
 
 
+_TOTAL_DEFAULTS = {
+    "pairs_processed": 0,
+    "pairs_with_atomics": 0,
+    "candidates_total": 0,
+    "candidates_minted": 0,
+    "candidates_dedup": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+}
+
+
+def _normalize_manifest(manifest: dict) -> dict:
+    """Bring legacy/reconstructed manifests up to the writable schema."""
+    if not isinstance(manifest, dict):
+        raise ValueError("phase5 manifest root must be an object")
+
+    completed = manifest.setdefault("completed_pairs", {})
+    if not isinstance(completed, dict):
+        raise ValueError("phase5 manifest completed_pairs must be an object")
+
+    totals = manifest.setdefault("totals", {})
+    if not isinstance(totals, dict):
+        totals = {}
+        manifest.update({"totals": totals})
+    for key, default in _TOTAL_DEFAULTS.items():
+        if key == "pairs_processed":
+            default = len(completed)
+        totals.setdefault(key, default)
+    return manifest
+
+
 def _empty_manifest() -> dict:
-    return {
+    return _normalize_manifest({
         "version":          1,
         "created_at":       datetime.now().isoformat(timespec="seconds"),
         "completed_pairs":  {},
-        "totals": {
-            "pairs_processed":  0,
-            "pairs_with_atomics": 0,
-            "candidates_total": 0,
-            "candidates_minted": 0,
-            "candidates_dedup":  0,
-            "input_tokens":     0,
-            "output_tokens":    0,
-            "cost_usd":         0.0,
-        },
+        "totals":           dict(_TOTAL_DEFAULTS),
+    })
+
+
+def _successful_completed_paths(manifest: dict) -> set[str]:
+    """Return completed paths whose latest Phase 5 attempt had no error."""
+    completed = manifest.get("completed_pairs", {})
+    return {
+        path for path, entry in completed.items()
+        if not (isinstance(entry, dict) and entry.get("error"))
     }
 
 
@@ -534,7 +566,7 @@ def _load_manifest(path: str) -> dict:
     p = Path(path).expanduser()
     if not p.exists():
         return _empty_manifest()
-    return json.loads(p.read_text(encoding="utf-8"))
+    return _normalize_manifest(json.loads(p.read_text(encoding="utf-8")))
 
 
 def _save_manifest(manifest: dict, path: str) -> None:
@@ -604,11 +636,16 @@ def run_phase5(
 
     manifest = _load_manifest(manifest_path) if not rebuild_manifest \
                 else _empty_manifest()
-    completed = set(manifest.get("completed_pairs", {}).keys())
+    completed = _successful_completed_paths(manifest)
+    retry_errors = sum(
+        1 for entry in manifest.get("completed_pairs", {}).values()
+        if isinstance(entry, dict) and entry.get("error")
+    )
     pending = [p for p in pairs if p not in completed]
     if progress_to_stderr:
         print(f"[phase5] {len(completed):,} already done, "
-              f"{len(pending):,} pending (max_workers={max_workers})",
+              f"{len(pending):,} pending ({retry_errors:,} prior errors "
+              f"eligible for retry; max_workers={max_workers})",
               file=sys.stderr, flush=True)
 
     if not pending:
@@ -670,7 +707,7 @@ def run_phase5(
             "cost_usd":          r.cost_usd,
             "error":             r.error,
         }
-        m_totals = manifest["totals"]
+        m_totals = _normalize_manifest(manifest).setdefault("totals", {})
         m_totals["pairs_processed"]   += 1
         m_totals["pairs_with_atomics"] += (1 if r.candidates_minted > 0 else 0)
         m_totals["candidates_total"]  += r.candidates_total

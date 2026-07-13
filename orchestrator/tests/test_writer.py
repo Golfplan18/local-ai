@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime
+from pathlib import Path
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -240,7 +241,7 @@ class TestWrite(unittest.TestCase):
         chat = _raw_chat()
         path = write_cleaned_pair_file(cp, ch, chat, output_dir=self.tmp)
         self.assertTrue(os.path.exists(path))
-        text = open(path, encoding="utf-8").read()
+        text = Path(path).read_text(encoding="utf-8")
         self.assertTrue(text.startswith("---\n"))
         self.assertIn("type: cleaned-pair", text)
         self.assertIn("## Exchange", text)
@@ -254,11 +255,29 @@ class TestWrite(unittest.TestCase):
         chat = _raw_chat()
         # Pre-create the target file
         path1 = os.path.join(self.tmp, ch.pair_filename)
-        open(path1, "w").write("placeholder")
+        Path(path1).write_text("placeholder", encoding="utf-8")
         # Write — should land at a non-colliding path
         path2 = write_cleaned_pair_file(cp, ch, chat, output_dir=self.tmp)
         self.assertNotEqual(path1, path2)
         self.assertTrue("pair001" in os.path.basename(path2))
+
+    def test_repeated_filename_collision_uses_retry_suffix(self):
+        cp = _cleaned_pair()
+        ch = _context_header(filename="2025-07-14_21-00_test.md")
+        chat = _raw_chat()
+        Path(os.path.join(self.tmp, ch.pair_filename)).write_text(
+            "placeholder", encoding="utf-8",
+        )
+        Path(
+            os.path.join(self.tmp, "2025-07-14_21-00_test-pair001.md"),
+        ).write_text("placeholder", encoding="utf-8")
+
+        path = write_cleaned_pair_file(cp, ch, chat, output_dir=self.tmp)
+
+        self.assertEqual(
+            os.path.basename(path),
+            "2025-07-14_21-00_test-pair001-2.md",
+        )
 
 
 if __name__ == "__main__":
