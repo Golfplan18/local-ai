@@ -512,7 +512,12 @@ def atomic_write_text(path: str | Path, text: str, *, mode: int = 0o600) -> None
         prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent),
     )
     try:
-        os.fchmod(fd, mode)
+        # ``os.fchmod`` did not exist on Windows until Python 3.13, while Ora
+        # supports Python 3.11+.  Windows' mkstemp ACL is already scoped to the
+        # creating user; keep the stronger POSIX mode where the API exists.
+        fchmod = getattr(os, "fchmod", None)
+        if callable(fchmod):
+            fchmod(fd, mode)
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             fd = -1
             stream.write(text)
@@ -543,7 +548,9 @@ def atomic_write_bytes(path: str | Path, payload: bytes, *, mode: int = 0o600) -
         dir=os.path.dirname(spath) or ".",
     )
     try:
-        os.fchmod(fd, mode)
+        fchmod = getattr(os, "fchmod", None)
+        if callable(fchmod):
+            fchmod(fd, mode)
         with os.fdopen(fd, "wb") as stream:
             fd = -1
             stream.write(payload)

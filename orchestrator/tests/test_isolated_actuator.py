@@ -381,6 +381,8 @@ class TestActuatorInLoop(_ScratchMixin):
         # predicate must NOT misroute every repo into the worktree path
         # there (in-place checks are never path-preflighted off-mac).
         with mock.patch.object(er, "_macos_sandbox_available",
+                               return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available",
                                return_value=False):
             self.assertIsNone(
                 er.inplace_checks_refused(r"C:\Users\x\repo"))
@@ -391,6 +393,23 @@ class TestActuatorInLoop(_ScratchMixin):
                                return_value=True):
             self.assertTrue(
                 el.requires_isolated_worktree(os.path.expanduser("~"), er))
+
+    def test_windows_appcontainer_routes_repo_with_nested_private_data_isolated(self):
+        # Default Windows layout is ORA_HOME/data under the checkout.  A recursive
+        # AppContainer RX ACE on ORA_HOME would expose that ignored runtime state,
+        # so the opt-in backend must route checks through a disposable worktree.
+        repo = r"C:\Users\Ora\ora"
+        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=True), \
+             mock.patch.object(er._rp, "DATA_DIR_STR", repo + r"\data"), \
+             mock.patch.object(er._rp, "CONFIG_DIR_STR", repo + r"\config"), \
+             mock.patch.object(er._rp, "VAULT_STR", r"C:\Users\Ora\Documents\vault"), \
+             mock.patch.object(er._rp, "CONVERSATIONS_STR",
+                               r"C:\Users\Ora\Documents\conversations"):
+            reason = er.inplace_checks_refused(repo)
+            self.assertIsNotNone(reason)
+            self.assertIn("sensitive root", reason or "")
+            self.assertTrue(el.requires_isolated_worktree(repo, er))
 
     def test_orphan_prune_unpins_owner_repo_snapshot(self):
         # Pre-check MAJOR fold (empirically pinned by the attack agent): a
