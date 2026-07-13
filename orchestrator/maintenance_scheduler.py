@@ -100,7 +100,7 @@ CONTROL_DOC_NAME = "Reference — Ora Periodic Maintenance.md"
 
 
 def control_doc_path() -> str:
-    return str(_rp.vault_dir() / CONTROL_DOC_NAME)
+    return str(_rp.VAULT_ORA / CONTROL_DOC_NAME)
 
 
 DEFAULT_CONFIG = {

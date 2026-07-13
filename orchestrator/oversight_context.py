@@ -49,12 +49,12 @@ except ImportError:  # pragma: no cover - package-qualified import context
 
 WORKSPACE = _rp.WORKSPACE
 VAULT = _rp.VAULT_STR
-PEF_PATH = str(_rp.VAULT / "Framework — Problem Evolution.md")
+PEF_PATH = str(_rp.VAULT_ORA / "Framework — Problem Evolution.md")
 
 
 def pef_path() -> str:
     """Current PEF path, honoring canonical and legacy vault overrides."""
-    return str(_rp.vault_dir() / "Framework — Problem Evolution.md")
+    return str(_rp.vault_dir() / "Projects" / "Ora" / "Framework — Problem Evolution.md")
 
 logger = logging.getLogger(__name__)
 

@@ -38,7 +38,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Browser-based AI at localhost:5000, hardware report, README
 - **Proven Applications:** macOS Tier C (128GB); covers Tier 0–C
 - **Known Limitations:** Requires Python 3; browser automation depends on existing accounts
-- **File Location:** pending restructure (canonical: ~/Documents/vault/Installer — Local AI First Boot.md)
+- **File Location:** pending restructure (canonical: ~/Documents/vault/Projects/Ora/Installer — Local AI First Boot.md)
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** v4 (Layers 1–12)
@@ -66,7 +66,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Vault-ready atomic notes with type/subtype classification and relationship declarations (Path 1); processed turn-pair chunks for ChromaDB conversations collection when input is a chat (Path 2)
 - **Proven Applications:** Ships as the canonical pipeline implementation of Knowledge Artifact Coach v6.0; called by the file-attach pipeline for Ora's input-pane document drops
 - **Known Limitations:** Path 1 quality depends on Knowledge Artifact Coach's atomic-extraction protocol; mixed-content documents (text + diagrams) require iteration; chunking quality bounded by the format converter's output
-- **File Location:** frameworks/book/document-processing.md (executable); ~/Documents/vault/Framework — Document Processing.md (canonical)
+- **File Location:** frameworks/book/document-processing.md (executable); ~/Documents/vault/Projects/Ora/Framework — Document Processing.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
@@ -80,7 +80,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Decision Clarity Document containing executive summary, Stage 1 problem-space map (per-stakeholder framings + competing-hypotheses matrix), Stage 2 value-conflict map (per-stakeholder steelmans + Fundamental/Resolvable classification), Stage 3 consequence landscape (Cui Bono + Systems Dynamics + Scenario Planning per intervention across three time horizons + problem-definition reshaping notes), Stage 4 tradeoff statements per intervention with advocate-stance Red Team passes per subordinated stakeholder + reversibility notes. Plus reclassification recommendations when Stage 1 or Stage 2 gates fail.
 - **Proven Applications:** New framework — landing 2026-04-24
 - **Known Limitations:** DCA refuses to recommend an intervention; the decision is the user's. It cannot dissolve fundamental value conflicts. At least three of four wicked conditions must fire; partial-complexity problems route to ordinary PEF iteration instead. The framework orchestrates other modes (competing-hypotheses, cui-bono, steelman-construction, systems-dynamics, scenario-planning, the red-team modes), so quality depends on those modes' performance.
-- **File Location:** ~/Documents/vault/Framework — Decision Clarity Analysis.md (canonical, renamed from Framework — Wicked Problems.md 2026-05-01)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Decision Clarity Analysis.md (canonical, renamed from Framework — Wicked Problems.md 2026-05-01)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 2.0 (restructured 2026-05-01 from the v1.0 Wicked Problems Framework; DCA is the decision-maker-output operation, distinct from the Wicked Problems Analysis mode)
@@ -94,7 +94,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Problem Evolution Document (new or updated) with problem definition, Mission (Resolution Statement, Excluded Outcomes), Constraints (Hard/Soft/Working Assumption), Objectives, Active Milestones (with P-Feasibility verdicts) + Aspirational Milestones, Terrain Maps references, phase assessment, diagnostic findings, supervision drift-check findings, Promotion Protocol events, recommended next actions with Constructive Escalation advice form, Decision Log, iteration history; Challenge Summary; Readiness Assessment for PIF or PFF handoff; Sub-Project Spawn Specifications (PE-Spawn only); status summary (PE-Review only, PED not modified); No-Punt Escalation forwarding (when MOM Outcome 3 or TMF Escalation Package fires)
 - **Proven Applications:** Used for Capability Dispatch project definition; Version 2.0 landed 2026-04-23 with MOM auto-invocation, Universal Problem-Definition Lock, Constructive Escalation (No-Punt) Rule, Active/Aspirational milestone supervision, Excluded Outcomes drift detection, and Terrain Mapping Framework invocation path
 - **Known Limitations:** Challenge quality depends on diagnostic depth of the analyst; readiness-for-handoff assessments are advisory — user ultimately decides; MOM invocation depends on MOM availability; TMF invocation on Outcome 2 depends on TMF availability; Promotion Protocol's P-Feasibility re-check depends on PIF availability
-- **File Location:** frameworks/book/problem-evolution.md (executable); ~/Documents/vault/Framework — Problem Evolution.md (canonical)
+- **File Location:** frameworks/book/problem-evolution.md (executable); ~/Documents/vault/Projects/Ora/Framework — Problem Evolution.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 2.0
@@ -108,7 +108,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** One consolidated canonical framework by default for F-Design/F-Convert; an explicitly requested agent-mode or reasoning-model variant for F-Render; framework audit report for F-Audit; registry entry where the lifecycle requires one
 - **Proven Applications:** Multiple frameworks produced across all four modes (F-Design, F-Convert, F-Render, F-Audit)
 - **Known Limitations:** Requires human judgment to define evaluation criteria and approval-gate decisions; template-filling remains a failure mode when instructions are ambiguous; F-Render intentionally refuses file proliferation without a concrete rationale
-- **File Location:** ~/Documents/vault/Framework — Process Formalization.md (canonical); frameworks/book/process-formalization.md (exact Ora runtime mirror)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Formalization.md (canonical); frameworks/book/process-formalization.md (exact Ora runtime mirror)
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 2.3 (2026-07-12 semantic merge of the competing v2.2 canonicals; preserves the full milestone/anatomy/recovery/rendering/variable-fidelity/CFF-OFF contract together with the single-file default, approval gates, audit nuance, quality bars, and operational safeguards; vault and Ora bodies are exact)
@@ -122,7 +122,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Corpus template (C-Design, C-Modify); deployed corpus instance ready for PFF writes (C-Instance); completeness report identifying which OFFs can render (C-Validate)
 - **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Output Formalization v1.1
 - **Known Limitations:** Requires a clear concept of what a workflow "accumulates" as a body — does not help when the unit of accumulation is unclear; chain relationships add complexity that must be designed deliberately
-- **File Location:** frameworks/book/corpus-formalization.md (executable); ~/Documents/vault/Framework — Corpus Formalization.md (canonical)
+- **File Location:** frameworks/book/corpus-formalization.md (executable); ~/Documents/vault/Projects/Ora/Framework — Corpus Formalization.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.1
@@ -136,7 +136,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Bespoke output framework composing content/craft/style/render layers (O-Design, O-Modify); rendered artifact in target medium (O-Render); quality audit with remediation recommendations (O-Audit)
 - **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Corpus Formalization v1.1; also integrates with MindSpec voice for style consistency
 - **Known Limitations:** O-Design quality depends on input modality clarity; voice consistency depends on a populated MindSpec or equivalent style profile; medium-specific render details may need user iteration
-- **File Location:** frameworks/book/output-formalization.md (executable); ~/Documents/vault/Framework — Output Formalization.md (canonical)
+- **File Location:** frameworks/book/output-formalization.md (executable); ~/Documents/vault/Projects/Ora/Framework — Output Formalization.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.1
@@ -192,7 +192,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single-file mind.md (or [agent-name].md) containing all sections for v0.2.3 forward; companion ledger.md (learning log, starts empty) and modifications.md (change log, starts empty); per-tier artifact subsets
 - **Proven Applications:** Version 0.2.3 — 66-entry library, three-stage assessment instrument, inference layer, learning architecture; framework used to self-specify during rebuild. Single-file consolidation 2026-05-09 merged the formerly-separate `Framework — MindSpec Library and Instrument.md` content (library + assessment instrument) into §II and §IV of this framework, eliminating external file dependencies.
 - **Known Limitations:** Concept-access-difficult commitments require incompatibility adjustment mechanism; Tier 1 ephemeral agents exempt from incompatibility adjustment; default values calibrated to general-population median; real-use feedback mandatory for high-accuracy specs
-- **File Location:** ~/Documents/vault/Framework — MindSpec Interview.md (canonical, single-file)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MindSpec Interview.md (canonical, single-file)
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 0.2.3
@@ -234,7 +234,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Discrepancy report with severity classifications; updated installer layers; natural language system specification derivable into installer
 - **Proven Applications:** Designed for post-upgrade reconciliation of the ora system
 - **Known Limitations:** Behavioral comparison requires LLM judgment — cannot be fully automated; accretion items require human confirmation of intent
-- **File Location:** frameworks/book/spec-code-reconciliation.md (executable); ~/Documents/vault/Framework — Specification Code Reconciliation.md (canonical)
+- **File Location:** frameworks/book/spec-code-reconciliation.md (executable); ~/Documents/vault/Projects/Ora/Framework — Specification Code Reconciliation.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
@@ -262,7 +262,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Structured markdown research report with executive summary, per-sub-query sections, cross-query synthesis, named caveats, bibliography; saved to vault root with inherited nexus if specified
 - **Proven Applications:** None yet — initial version
 - **Known Limitations:** Token cost scales 4-15× a single-shot query (per Anthropic's published figures); vault-first retrieval quality depends on vault content; confabulation risk present where external sources are sparse
-- **File Location:** frameworks/book/deep-research-protocol.md (executable); ~/Documents/vault/Framework — Deep Research Protocol.md (canonical)
+- **File Location:** frameworks/book/deep-research-protocol.md (executable); ~/Documents/vault/Projects/Ora/Framework — Deep Research Protocol.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -277,7 +277,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single integrated document with three sections — receipts header (cui bono finding + anchor citation, designed for screenshot-resistance), DEFCON ladder (all seven tiers visible with level labels: 5 polite reframe, 4 firm moral superiority, 3 mockery, 2 aggressive villainization, 1 nuclear satire, 1+ profane scorched-earth bonus, 1++ prophetic-indictment bonus), backup analysis (cui bono in full + receipt set + technique identification + library selections + missing-information declaration)
 - **Proven Applications:** New framework — landing 2026-05-06 in Malcolm Little King's voice; companion to the Propaganda Analyzer (which handles longer-form editorials)
 - **Known Limitations:** No automatic deployment recommendation — relies on user judgment about which tier fits the audience and context; receipts pipeline is internal so quality depends on the framework's own retrieval rather than external verification; the prophetic-indictment register (DEFCON 1++) requires Malcolm voice fluency that less-capable models may approximate poorly; the framework's Selflessness/Selfishness Filter prevents weaponization against beneficiary-of-the-many positions but cannot prevent intentional misuse
-- **File Location:** ~/Documents/vault/Framework — MSI Malcolm Little King Spinner.md (canonical; renamed from `Framework — Propaganda Response Spinner.md` on 2026-05-07)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Malcolm Little King Spinner.md (canonical; renamed from `Framework — Propaganda Response Spinner.md` on 2026-05-07)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.2.0 (updated 2026-05-11 with methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon, §1.4.6 voice-corpus preferential retrieval, §1.4.7 past-work corpus + self-reference discipline)
@@ -291,7 +291,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** One Markdown document, beginning at H1, with five ordered H2 sections: `What the Editorial Argues` (brief good-faith steelman), `Receipts` (crop-resistant surface-vs-substance finding), `The Operation` (cui bono + technique identification), `The Record` (tiered receipts, omissions, citation verdicts, missing-information declaration), and `How to Recognize This` (plain-language pattern-recognition guide). Downstream machinery adds frontmatter, byline, sources, and disclosure.
 - **Proven Applications:** New framework — landing 2026-05-06 in Phukher Tarlson's voice; intended public-facing tool for the Main Street Independent website (companion to the placeholder at `/tools/propaganda-analyzer`); companion to the Propaganda Response Spinner (which handles short-form input)
 - **Known Limitations:** Editorial-length input only; talking-point or tweet-length material halts and routes to the Propaganda Response Spinner. Symmetric application to greater-good-paramount inputs stays inside the documented public record and may not manufacture a hidden beneficiary or operational detail. Every named technique requires a textual cue; receipts below convergence threshold remain explicitly unconfirmed.
-- **File Location:** ~/Documents/vault/Framework — MSI Phukher Tarlson Propaganda Analyzer.md (canonical; renamed from `Framework — Propaganda Analyzer.md` on 2026-05-11 per Tier-3 naming convention §1)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Phukher Tarlson Propaganda Analyzer.md (canonical; renamed from `Framework — Propaganda Analyzer.md` on 2026-05-11 per Tier-3 naming convention §1)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 2.1.0 (2026-06-03; adds the leading good-faith steelman and reshapes Receipts into the scannable surface-vs-substance finding; supersedes the former three-angle / numbered-layer architecture)
@@ -305,7 +305,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** One H1 inverted headline plus the sentence-by-sentence inverted body, with no frontmatter, byline, source narration, analysis labels, technique names, or quotations. Downstream machinery adds publication scaffolding.
 - **Proven Applications:** Active tight-mirror production framework; the 2026-05-30 v4 rewrite retired the prior multi-angle/lens architecture, and v4.1 added the attack-from-the-right / already-at-our-pole halt.
 - **Known Limitations:** Works only when the source direction is suitable for a true Main Street inversion. It flips values and framing, never facts; ambiguous direction halts.
-- **File Location:** `~/Documents/vault/Framework — MSI Editorial Board WSJ NR Inversion.md` (single canonical/executable framework).
+- **File Location:** `~/Documents/vault/Projects/Ora/Framework — MSI Editorial Board WSJ NR Inversion.md` (single canonical/executable framework).
 - **Provenance:** human-created
 - **Confidence:** high
 - **Version:** 4.1.0 (2026-06-04; tight-mirror inversion plus wrong-direction halt conditions)
@@ -319,7 +319,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single column in markdown — Headline (6–14 words; not romanticization-of-exhaustion-coded; not boomer-stole-everything-frame-coded); Lede (80–150 words; signals urban-millennial-mother register; may open with kitchen-table-math anchor / Swift track reference / cultural-criticism citation); Body (1,200–2,500 words; kitchen-table-math when relevant; Swift catalog deep-read when sub-mode applies; cultural-criticism citations as analytical anchors; cultural-Catholic-working-class-formation reference deployed with discipline; privilege-flagging where analysis depends on it); Closing (100–250 words; lived-register landing without sentimentality). S-Column 1,500–3,000 words; S-Revision 800–1,500; S-Correspondence 100–250. Frontmatter validates against Astro `columns` schema with `pen_name: ashley-wagner`. Heteronymic-disclosure footer template (e). Hybrid citation convention. Halt outputs: `halt_no_cluster`; `halt_routing_mismatch`; `halt_register_mismatch`; `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Phase 7 Pass 2; rolled to v1.1.1 on 2026-05-11 under methodology v1.2.5 four-RAG-sources rollout; intended as Ashley's primary opinion-flow column generator across the urban-millennial-mother lane, with the Taylor-Swift-catalog-as-economic-diagnostic specialty sub-mode as one of the publication's most editorially distinctive operations.
 - **Known Limitations:** Voice depends on the kitchen-table-math documentary anchor and the cultural-text-as-economic-diagnostic close-reading discipline — clusters lacking either substrate fall to drop-don't-force per Mind §1.2 closing rule; Taylor Swift lyric citation operates under strict fair-use boundary (brief-quote-with-citation only); privilege-flagging discipline is voice-load-bearing (Ashley writes from a two-earner-with-grandparental-housing-assist position and the column must keep that visible); romanticization-of-exhaustion and performed-millennial-authenticity registers are forbidden and audit gates flag drift toward them; refuses rural-Wisconsin specifics (routes to Mark), Bible-versus-Evangelical-legalism theology (routes to Joanna), SCOTUS legal substance (routes to Thomas), structural Black-liberation analytical territory (routes to Malcolm).
-- **File Location:** ~/Documents/vault/Framework — MSI Ashley Wagner Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Ashley Wagner Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon top-loaded; §1.4.6 voice-corpus preferential retrieval against Ashley's four named dossiers; §1.4.7 past-work corpus + self-reference discipline)
@@ -333,7 +333,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single Diklis Chump parody column carrying the three-layer constitutional parody disclosure (header banner + foot disclosure + schema metadata flag `parody: true` and `parody_subject: "Donald J. Trump"`); architecture: news-reaction ground → 4D-chess spin frame → running-jokes weave at column-aware density → peak-absurdity close. ALL CAPS body register; Truth-Social-feed cadence; manufactured-authority frames; third-person self-reference; superlative clusters; capitalized-noun deployment; coined nicknames; stage-coherent register progression per §11 Gate G8. Length by stage: short reactive-burst <400 words (Stage 1-2; 4-6 jokes); standard 400-800 (Stage 2-4; 8-12 jokes); sustained tirade 800+ (Stage 4-6; 15+ jokes). Column passes Mind §11 Gates G1-G8. Halt outputs: HALT-LEGITIMATE-CLAIM-RISK; `halt_register_mismatch`; `halt_audit_failure`. **Astro schema extension landed 2026-05-11** at `~/sites/mainstreetindependent/src/content/config.ts`: columns schema extended with `parody: z.boolean()` and `parody_subject: z.string()` fields per Mind §6.5.
 - **Proven Applications:** New framework — landing 2026-05-09 in Phase 7 Pass 2; rolled to v1.1.1 on 2026-05-11; target 6 / cap 12 columns per day per Mind §3; the publication's parody-by-exaggeration carrier exclusively on hostile-reality clusters.
 - **Known Limitations:** Three-layer parody-disclosure is load-bearing — Gate G1 hard-fails missing/modified disclosure; bad-news-only routing non-bypassable (legitimate-good-news clusters HALT-LEGITIMATE-CLAIM-RISK-refused); Gate G4 off-target check forbids minor grandchildren and spouses-in-private-life; Gate G5 defamation discipline keeps bounded exaggeration anchored to documented public conduct; Gate G6 symmetric-application sampling tests apparatus against comparable greater-good-paramount idiom-deploying figures; Gate G7 agent/character distinction constitutional (publisher's analytical positions never appear in Diklis's voice — register through gap between documented setback and Diklis's spin); high pairing affinity with Hector on visual indictment, Editorial Board on editorial-page operationalization, Phukher on technique-confession, Mary on moral-witness exposure, Malcolm on structural-political analysis.
-- **File Location:** ~/Documents/vault/Framework — MSI Diklis Chump Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Diklis Chump Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon top-loaded with §4 Voice-character override catalog parody-construction first-person-singular register-level exemption; §1.4.6 voice-corpus preferential retrieval against Major Character profile + documented-conduct working corpora; §1.4.7 past-work corpus with Diklis-parodic self-reference register; coordinated with same-date Astro schema extension)
@@ -347,7 +347,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single finished column in markdown — S-Column primary (1,500–3,000 words; headline / 80–150-word lede / 1,200–2,500-word pastoral-prophetic body with cross-tradition citation discipline and Pharisee-mirror sub-mode where applicable + §7.6 confession-of-complicity passage / 100–250-word close); S-Revision 800–1,500 words; S-Correspondence single-paragraph 100–250 words. Astro `columns` schema-validated frontmatter; heteronymic-disclosure footer. Four typed halt notices: `halt_no_cluster`, `halt_routing_mismatch`, `halt_register_mismatch`, `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09; news-flow default carrier per 2026-05-08 architectural pivot; coordinates with Malcolm via the Router's Malcolm-priority rule on shared triggers; with Joanna on Bible-versus-Evangelical-legalism territory where Joanna's specialty is canonical; with Hector on visual pairings.
 - **Known Limitations:** Single-pass rendering carries documented drift risks at Layer 2 Pharisee-mirror detection, Layer 4 voice-and-register composition (recency-bias pull toward contempt-coded register competes with §7.8 prohibited-moves discipline and §6.2 HARMLESSNESS-at-9 floor), and Layer 5 confession-of-complicity (under single-pass tends toward checkbox-compliance); pastoral-prophetic register requires Hayzeus voice fluency that less-capable models may approximate as pious-platitude or righteous-condemner; cluster scope limited to §11 routing inventory — structural-radical fire-and-ferocity clusters halt for re-routing to Malcolm.
-- **File Location:** ~/Documents/vault/Framework — MSI Hayzeus L Salvador Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Hayzeus L Salvador Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional, §1.4.6 voice-corpus preferential retrieval foregrounding Immigration Corpus + Religious Traditions Corpus, §1.4.7 past-work corpus + self-reference discipline)
@@ -361,7 +361,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Primary output: `columns` content-collection entry at `~/sites/mainstreetindependent/src/content/columns/[slug].md` with imageSchema-validated cartoon image + caption (≤15 words) + optional banner quotation + accessible alt text + headline + pen_name `hector-rentier` + lede (diagnosis sentence) + publish_date + sources + atomic_claims (diagnosis as single derived_claim with cited source_ids) + metadata. Canonical caricature vocabulary deployed: butt-face for propaganda figures in their propaganda role; dignity-rendering for non-propaganda figures; Peanut Gallery for crowds; gopher in lower frame; banner quotation when warranted. Halt outputs: decline-to-draw notice (Layer 1); diagnosis-without-documentation halt (Layer 2); likeness-gate halt (Layer 5); generation-failure halt (Layer 6 after two attempts); visual-suitability halt (Layer 8); self-evaluation halt (Layer 7 below ≥3 threshold after revision); placeholder ship reserved for operational emergencies.
 - **Proven Applications:** New framework — landing 2026-05-08 in Hector Rentier's voice; intended as Hector's byline-of-record artifact published as its own column entry; day-one launch portfolio of 20 backfilled cartoons covering the previous 10 days per Image Style Specification §5.8 seeds the past-work corpus; pairs with Phukher on propaganda-apparatus stories and high-frequency with Mark / Joanna / Big Jim on demographic-frame stories.
 - **Known Limitations:** Visual-generation backend dependency (gpt-image-1 / Gemini / Flux / Civitai per Image Style Specification §5.8.1 — backend choice and prompt fidelity govern caricature fidelity); LoRA training pending Phase 2 (likeness consistency on recurring named figures presently relies on conversation-DB caricature-consistency queries rather than trained adapters); likeness gate at Layer 5 halts on any named figure who is not a public figure or is depicted outside the public role; forbidden-caricature catalog at Image Style Specification §5.6 catastrophic on violation; recurring named-figure drift, symbol-vocabulary inconsistency, and prompt-summary-sanitization are named failure modes specific to the visual medium; Hector does not delegate to the cross-voice News Image Generator infrastructure because the editorial-cartoon register has voice-specific craft standards beyond what cross-voice infrastructure covers.
-- **File Location:** ~/Documents/vault/Framework — MSI Hector Rentier Editorial Cartoon.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Hector Rentier Editorial Cartoon.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 0.3.0 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional loading; §1.4.6 voice-corpus preferential retrieval over Quote Corpus + Image Style Specification §5; §1.4.7 past-work corpus seeded by launch portfolio)
@@ -375,7 +375,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single Big Jim column in markdown — S-Column (1,500–3,000 words) primary mode with headline (6–14 words, plain-words, not glamour/hawk/tribalism-coded) + lede (80–150 words) + body (1,200–2,500 words, authoritative-author citations as analytical anchors including Eisenhower-MIC reflex and veterans-as-actual-people grounding) + closing (100–250 words). S-Revision (800–1,500 words); S-Correspondence (100–250 words). Heteronymic-disclosure footer + hybrid citation convention. Astro `columns` frontmatter with `pen_name: james-big-jim-zebedee`. Halt outputs: `halt_no_cluster`, `halt_routing_mismatch`, `halt_register_mismatch`, `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Big Jim Zebedee's voice; companion to other Tier-3 pen-name column frameworks; Big Jim coordinates with Malcolm on shared triggers under Malcolm-priority rule, with Hayzeus on cross-tradition pacifist material, with Thomas on judicial-military intersections.
 - **Known Limitations:** Single-pass rendering carries drift risk at Layer 4 (voice composition where conversion-arc residue may bleed back as nationalist-Christianity language, media-captivity framings as analytical neutral, or tribalism-coded language) and body (veterans-as-tribal-prop drift where veterans become rhetorical device rather than actual subject); Layer 2 conversion-arc-discipline verification, Layer 4 residue-bleeds-back check and veterans-as-actual-people check, and Layer 6 Criterion 5 are the structural defenses; halts on routing mismatch (e.g., SCOTUS-judicial-military intersection structurally Thomas's lane) or register mismatch.
-- **File Location:** ~/Documents/vault/Framework — MSI Big Jim Zebedee Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Big Jim Zebedee Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional loading; §1.4.6 voice-corpus preferential retrieval over Military-Strategy Corpus + Anti-Hawk Foreign-Affairs Overlay; §1.4.7 past-work corpus; v1.1.1 added Astro `columns` frontmatter contract subsection)
@@ -389,7 +389,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single column in markdown — Headline; Lede; Body (1,200–2,500 words; biblical-citation discipline applies — precise sourcing book + chapter + verse, plain-language reading, no proof-texting back-at-Evangelicals; Bible-versus-Evangelical-legalism signature when sub-mode warrants; Christian-Nationalism documentary literature integrated when cluster engages; thirty-year-inside-the-apparatus working knowledge applied as analytical substrate rather than as credentialing); Closing. S-Column 1,500–3,000 words; S-Revision 800–1,500; S-Correspondence 100–250. Astro `columns` schema with `pen_name: joanna-rivera-blackwell`; chapter-and-verse biblical citations carry `outlet_class: primary_document`. Heteronymic-disclosure footer template (e). Hybrid citation convention — chapter-and-verse biblical citations stay in-text because the citation IS the analytical move. Halt outputs: `halt_no_cluster`; `halt_routing_mismatch`; `halt_register_mismatch`; `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Phase 7 Pass 2; rolled to v1.1.1 on 2026-05-11; intended as Joanna's primary opinion-flow column generator on the Evangelical-defector specialty lane, with the publication's Trojan-horse-into-conservative-Christian-readership operation as one of the structurally most distinctive editorial coordinations.
 - **Known Limitations:** Voice depends on the from-within authority of the Evangelical-defector register — Joanna is an Evangelical Christian who reads Scripture and refuses to keep the contradiction quiet, not an outside critic; audit gates check against drift toward outside-critic register, Bible-as-cudgel deployment, triumphalist-defector posture, and claiming final knowledge of God's intent; precise-biblical-citation discipline requires book + chapter + verse with plain-language reading and no proof-texting; refuses rural Wisconsin specifics (routes to Mark), urban-millennial-mother Generational Betrayal (routes to Ashley), SCOTUS legal substance (routes to Thomas), structural Black-liberation analytical tradition (routes to Malcolm), and non-Evangelical religious instrumentalization (routes to Hayzeus); high pairing affinity with Hector on religious-right-propaganda-apparatus stories; Malcolm-priority rule applies on shared-trigger structural-racial-justice-in-white-Evangelicalism stories.
-- **File Location:** ~/Documents/vault/Framework — MSI Joanna Rivera Blackwell Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Joanna Rivera Blackwell Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon top-loaded; §1.4.6 voice-corpus preferential retrieval against Joanna's two named dossiers; §1.4.7 past-work corpus + self-reference discipline)
@@ -403,7 +403,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single finished column in markdown — S-Column primary mode (1,500–4,000 words; headline / anchored-anecdote opening / structural body with cui-bono / wicked-problems / root-cause analytical stack and bad-faith catalog citations by ID + cataloged-definition + specific evidence and mentor-tradition citations per the paraphrase-with-citation / brief-quote-with-citation disciplines / eschatological-MLK long-arc close); S-Revision mode names prior column by date and headline, states prior claim plainly, explains new evidence, corrects analytical claim, reflects on what the prior error reveals about analytical method; S-Correspondence single-paragraph reply 100–300 words shorter than the inbound letter. Astro `columns` schema-validated frontmatter; heteronymic-disclosure footer; `revises` reference in S-Revision metadata. Three typed halt notices: decline-to-write notice (Layer 1 right-instrument analysis), floor-evaluation regenerate request (Layer 6 revisable concern), withdraw notice (Layer 6 unrevisable concern).
 - **Proven Applications:** New framework — landing 2026-05-07 in Malcolm Little King's voice; companion to `Framework — MSI Malcolm Little King Spinner.md`; this Column framework is Malcolm's principal writing output for the publication.
 - **Known Limitations:** Single-pass rendering with seven processing layers; wrathful-compassion register requires Malcolm voice fluency (FEROCITY against power-protection paired with COMPASSION toward the harmed; HARMLESSNESS hard floor; constitutional refusal of dehumanization, calls to violence, slurs, mockery of the rank-and-file; no-self-reference rule on Black identity; no-political-team-labels rule) that less-capable models may approximate poorly; eschatological-MLK long-arc close risks sliding into optimism without WITNESS-integration; FAIRNESS symmetric-application discipline (same scrutiny standard reaches every speaker regardless of political alignment) cannot independently source greater-good-paramount comparison cases — caller must supply when symmetric column is the goal; bad-faith catalog citations require framework's own retrieval rather than external verification; right-instrument analysis at Layer 1 is the framework's principal halt gate.
-- **File Location:** ~/Documents/vault/Framework — MSI Malcolm Little King Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Malcolm Little King Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.2.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional, §1.4.6 voice-corpus preferential retrieval foregrounding the four mentor dossiers, §1.4.7 past-work corpus + self-reference discipline; engram-RAG distributed instructions at Layers 1, 3, 5 per canonical pattern)
@@ -417,7 +417,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single column in markdown — Headline (Wisconsin-tradesman diction; plain words; not patronizing-flyover; not back-to-the-land performance); Lede (may open with twelve-year-notebook entry where cluster is climate-witness, or observational opener anchored to specific morning, stand, shop bench, or *Adams County Times-Reporter* clipping); Body (1,200–2,500 words; agrarian-canon citations integrated as analytical anchors; conservative-contradiction discrimination per 5-of-8 specialty; energy-markets / oil-and-gas-geopolitics material when cluster engages; refusal of back-to-the-land performance; refusal of patronize-flyover register); Closing (agrarian-register landing; not romance-coded; not heroic-tradesman-coded). S-Column 1,500–3,000 words; S-Revision 800–1,500; S-Correspondence 100–250. Astro `columns` schema with `pen_name: mark-paulson`; the twelve-year climate-witness notebook cited in body with year + specific observation. Heteronymic-disclosure footer template (e). Hybrid citation convention — Berry / Leopold / *Adams County Times-Reporter* stay in-text as analytical anchors; decoration-level citations move to footnotes. Halt outputs: `halt_no_cluster`; `halt_routing_mismatch`; `halt_register_mismatch`; `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Phase 7 Pass 2; rolled to v1.1.1 on 2026-05-11; intended as Mark's primary opinion-flow column generator across the rural-Wisconsin-agrarian-and-energy-markets lane, with the strategic value of covering 5 of 8 conservative contradictions from inside the targeted demographic — the publication's load-bearing reach into the Republican-aligned working-class reader.
 - **Known Limitations:** Voice depends on the slow-Wisconsin-reader pole-barn-shop pace, the Wendell-Berry-shaped agrarian register, and the *Adams County Times-Reporter* documentary base — drift toward urban-professional-prose-register, back-to-the-land performance, patronizing-flyover register, or heroic-tradesman romance fails the framework's discipline gates; the twelve-year climate-witness notebook is Mark's own evidentiary substrate cited as "the notebook" with year and specific observation — fabricated or undocumented notebook entries fail the gates; energy-markets-and-oil-and-gas-geopolitics expansion covers structural questions, not daily commodity-market commentary; refuses urban-millennial-mother lane (routes to Ashley), Bible-versus-Evangelical-legalism theology (routes to Joanna), SCOTUS legal substance (routes to Thomas), tech-policy and pure science (routes to Stewart), military-strategy and military-industrial-complex (routes to Big Jim), tax-and-fiscal-policy and federal-budget mechanics (routes to Prudence); Malcolm-priority rule applies on shared structural-political triggers; high pairing affinity with Hector on Rust Belt / deindustrialization / propaganda-capture-of-working-class stories.
-- **File Location:** ~/Documents/vault/Framework — MSI Mark Paulson Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Mark Paulson Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon top-loaded; §1.4.6 voice-corpus preferential retrieval against Mark's three named dossiers + twelve-year climate-witness notebook; §1.4.7 past-work corpus + self-reference discipline)
@@ -431,7 +431,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single finished column in markdown — S-Column primary mode (four-movement architectural template: cold-lapidary Inscription 60–120 words / dry court-reporter Ground 120–200 words / warm-cold-warm pulsing somatic-invasion Witness 180–400 words / timeless-scriptural-or-contemplative Seal 40–100 words; total 400–800 words) deploying the five rhetorical signature moves (The Swap, Direct Address, Somatic Invasion, Anchoring, Radical Demasculinization) with absence-of-self rule operative throughout; S-Inscription standalone 60–120-word three-to-six-line inscription with chiaroscuro fierce-protective figure imagery pointer for Reddit-and-meme deployment; S-Lamentation 800–1,500 words sustained-Witness register outside the four-movement structure; S-Correspondence 100–300-word single-paragraph reply preserving prosecutorial-witness register. Astro `columns` schema-validated frontmatter; heteronymic-disclosure footer; mode tag in `metadata.primary_themes`; triggering-condition recorded for silence-discipline auditability. Three halt outputs: decline-to-write notice, floor-evaluation regenerate request, withdraw notice (HARMLESSNESS hard-floor breach or absence-of-self structural violation).
 - **Proven Applications:** New framework — landing 2026-05-08 in Mary Magdalena's voice; cadence 2–6 columns per month in normal cycles, 8–12 in sustained crisis windows, silence when the three triggering conditions are not met; pairing patterns include Hector for visual indictment (most frequent), Joanna for religious-Christian-frame pairing, Malcolm for shared-substrate pairing.
 - **Known Limitations:** Single-pass rendering with seven processing layers for S-Column / S-Lamentation; the wrathful-compassion-without-EQUANIMITY architecture requires Mary voice fluency that less-capable models may collapse into pundit-outrage register; the absence-of-self rule (Mary almost never uses "I" except to bear witness) governs body prose and is structurally forbidden as biographical preamble per Mind §8.4 — a structural violation forces withdraw rather than regenerate; SCHADENFREUDE-creep where the Witness role detects the column composing from satisfaction-at-target-falling rather than grief-at-the-harmed is a Layer 6 floor-evaluation flag; the prosecutorial-witness register tolerates contempt where Canon would otherwise restrain (Mary's documented Canon override) but the publication's HARMLESSNESS hard floor and protected-category discipline remain non-negotiable.
-- **File Location:** ~/Documents/vault/Framework — MSI Mary Magdalena Witness Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Mary Magdalena Witness Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.2.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional with Mary's documented value-overrides, §1.4.6 voice-corpus preferential retrieval foregrounding the five voice-corpus dossiers, §1.4.7 past-work corpus + self-reference discipline)
@@ -445,7 +445,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single finished signed annotated-text op-ed, with 4–8 alternating excerpt-commentary pairs and one calibrated Spinner flourish, or one of four halt notices: `halt_no_source`, `halt_too_short`, `halt_segmentation_failed`, `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Phukher Tarlson's voice; primary opinion-flow output per the 2026-05-08 architectural pivot; companion to the Phukher Tarlson Propaganda Analyzer (Layer 2 pipeline step) and Malcolm Little King Spinner (Layer 6 pipeline step); intended public-facing deliverable on the Main Street Independent website.
 - **Known Limitations:** Single-pass rendering with eight processing layers plus two internal pipeline-step framework invocations; documented drift risks at Layer 4 per-excerpt commentary composition (Voice-Convergence Trap and Substitution-Without-Substance Trap) and Layer 6 DEFCON-tier selection (Tier-Calibration Trap); pieces exceeding 5,000 words need split-treatment; operator-confession register's credibility depends on disciplined HUMILITY at constitutional 9 — BITTERNESS allowed as disclosed temperament but never as analytical engine; cross-voice borrowing at the closing flourish must double down on Phukher's obnoxious-insider character rather than dissolving Phukher into Malcolm; symmetric-application discipline reaches less far on greater-good-paramount kin operations — Phukher worked liberty-frame operations from inside and can only analyze greater-good-paramount operations from outside with shallower operational detail; outlet scope limited to v1 enum.
-- **File Location:** ~/Documents/vault/Framework — MSI Phukher Tarlson Op-Ed.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Phukher Tarlson Op-Ed.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.6.0 (2026-07-12; Propaganda Analyzer consumer reconciled to the v2.1.0 five-section contract)
@@ -459,7 +459,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single Prudence column in markdown — S-Column (1,500–3,000 words) primary mode with headline (6–14 words, technical-precision diction, not Beltway-VSP register, not market-punditry register) + lede (80–150 words) + body (1,200–2,500 words, citations integrated as analytical anchors with wonk-laundering recognition when cluster engages bad-faith fiscal/regulatory rhetoric) + closing (100–250 words). S-Revision (800–1,500 words); S-Correspondence (100–250 words). Heteronymic-disclosure footer + hybrid citation convention with Prudence-specific exception that procedural-specificity citations (CBO scoring memos, JCT distributional analyses, OMB historical tables, GAO reports by number, Federal Reserve research papers, SEC enforcement-action dockets) appear in-text because the receipts ARE the indictment. Astro `columns` frontmatter with `pen_name: prudence-wonk`. Halt outputs: `halt_no_cluster`, `halt_routing_mismatch`, `halt_register_mismatch`, `halt_audit_failure`, `halt_out_of_scope` (day-to-day market commentary / stock movements / daily Wall Street activity explicitly out of scope per Mind §10).
 - **Proven Applications:** New framework — landing 2026-05-09 in Prudence Wonk's voice; intended for direct publication; companion to other Tier-3 pen-name column frameworks; emphatic lane-separation from Stewart (Stewart writes platform antitrust; Prudence writes fiscal policy and Wall Street regulatory framework).
 - **Known Limitations:** Single-pass rendering carries drift risk at Layer 4 (VSP-register drift; wonk-laundering-adoption drift where Prudence adopts wonk-laundering rather than naming it; credentialing-by-jargon; market-punditry-drift); explicit out-of-scope boundary at day-to-day market commentary requires Layer 1 out-of-scope halt-check; first-person-singular-leak risk highest at working-knowledge references and CBO-tenure biographical anchor (recast to specific-group "we at CBO during the deputy-director Macroeconomic Analysis tenure 2018–2020"); disclosed-source-discipline required for sources with documented policy commitments (Peterson Foundation as deficit-hawk; Roosevelt Institute as progressive; Stephanie Kelton as MMT framework).
-- **File Location:** ~/Documents/vault/Framework — MSI Prudence Wonk Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Prudence Wonk Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional loading; §1.4.6 voice-corpus preferential retrieval over Financial-Regulatory Substrate + Character Dossier; §1.4.7 past-work corpus; v1.1.1 added Astro `columns` frontmatter contract subsection with procedural-specificity dual-presence note)
@@ -473,7 +473,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single Stewart column in markdown — S-Column (1,500–3,000 words) primary mode with headline (6–14 words, engineering-precision diction, not Beltway-tech-policy register) + lede (80–150 words, signals outsider-engineer register) + body (1,200–2,500 words, tech-policy or pure-science citations integrated as analytical anchors; engineering-substance discrimination naming what platform companies do versus what they say; pure-science institutional substance for science clusters) + closing (100–250 words). S-Revision (800–1,500 words); S-Correspondence (100–250 words). Heteronymic-disclosure footer + hybrid citation convention (footnote anchors default; in-text reserved for analytical-anchor names — Doctorow's *enshittification* as analytical concept; Wu / Khan / Teachout as new-Brandeis anchors; Zuboff / Crawford / Schneier as surveillance-capitalism anchors). Astro `columns` frontmatter with `pen_name: stewart-letterkenski`. Halt outputs: `halt_no_cluster`, `halt_routing_mismatch`, `halt_register_mismatch`, `halt_audit_failure`.
 - **Proven Applications:** New framework — landing 2026-05-09 in Stewart Letterkenski's voice; intended for direct publication; companion to other Tier-3 pen-name column frameworks; lane-separation from Prudence (Stewart writes platform antitrust + pure science; Prudence writes fiscal policy and Wall Street regulatory framework) and from Phukher (Phukher writes reformed-propaganda-operator analysis of editorial-page operations).
 - **Known Limitations:** Single-pass rendering carries drift risk at Layer 4 (engineering-condescension drift where Stewart writes *down* to non-technical readers rather than *across*; Beltway-tech-policy-register drift where Stewart adopts platform-companies' policy-proxies' euphemism-and-credentialing register; credentialing-by-jargon where engineering jargon becomes decoration rather than analytical work; platform-apologetics-drift where the column drifts toward platform-companies' framings of their own conduct); pure-science-as-decoration trap when pure-science citations operate as cultural credentialing rather than institutional-substance engagement; first-person-singular discipline required (Stewart is a heteronym, not autobiography — recast to specific-group "we engineers" or observational register).
-- **File Location:** ~/Documents/vault/Framework — MSI Stewart Letterkenski Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Stewart Letterkenski Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional loading; §1.4.6 voice-corpus preferential retrieval over Science-Policy Dossier + Character Dossier; §1.4.7 past-work corpus; v1.1.1 added Astro `columns` frontmatter contract subsection)
@@ -487,7 +487,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Complete column or correspondence response in Thomas Reynolds's voice, anchored to primary documents, written in the audit register. Five modes: S-Column (400–1,200 words primary mode); S-Per-Justice-Audit (1,000–2,000 words per-term refresh); S-Shadow-Docket (250–500 words within 48 hours of an order issuing); S-Urban-Policy (400–1,000 words with or without judicial anchor); S-Correspondence (100–300 words single-paragraph). Title line + byline + opening primary-document anchor + body + closing per-mode convention. Heteronymic-disclosure footer + hybrid citation convention with Thomas-specific dual-presence for slip opinions and oral-argument transcripts (in-text citation IS the analytical move per Mind §6 documentary discipline; array entry supplies canonical reference). Bluebook-style for legal citations; catalog citations by entry ID. Astro `columns` frontmatter with `pen_name: thomas-reynolds`. Halt outputs: HALT-NO-TRIGGER (drop-don't-force per Mind §10.4); HALT-FLOOR-VIOLATION (audit assertion exceeds cited record); HALT-PROTECTED-CATEGORY (HARMLESSNESS-9 review); HALT-WORKING-BAR-RECOGNITION-FAIL (steel-man rework per CRAFT at 8).
 - **Proven Applications:** New framework — landing 2026-05-08 in Thomas Reynolds's voice; intended as the publication's all-judicial-plus-urban-issues specialist; pairs frequently with Hector on cartoons of specific decisions or recurring justices; with the Editorial Board on editorial-page editorializations; with Joanna on religious-liberty rulings; with Phukher on Federalist Society / Heritage operations upstream; with Mary on rulings producing moral exposure of cruelty; with Malcolm on structural-racial-justice rulings under the Malcolm-priority rule; with Big Jim on judicial-military intersections; with Prudence on tax-and-spending and financial-regulation rulings; with Stewart on tech-policy SCOTUS rulings.
 - **Known Limitations:** Single-pass rendering carries drift risk at Layer 5 (voice composition where the press-corps deference register — "conservative justices" / "liberal justices" framing as analytical taxonomy, reverence diction, cute legal-pun headlines, cable-news-style flame phrasing, FALSE HUMILITY register — may bleed into the audit register); steel-man-before-audit discipline requires working-SCOTUS-bar-recognition; no mental-state assertions about justices' motivations; AUTHORITY at 1 / TRIBALISM at 1 / APPROVAL at 2 / STATUS at 2 / FALSE HUMILITY at 1 are the suppressed commitments holding press-corps register at bay; cynicism register held off via SKEPTICISM-as-evidence-responsive-doubt discipline (BITTERNESS at 2); drop-don't-force discipline declines clusters where neither a triggering condition nor the procedural-jurisprudential audit register fits.
-- **File Location:** ~/Documents/vault/Framework — MSI Thomas Reynolds Column.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI Thomas Reynolds Column.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.1.1 (post-2026-05-11 methodology v1.2.5 rollout — four RAG sources including Source 4 Editorial Canon unconditional loading; §1.4.6 voice-corpus preferential retrieval over SCOTUS Bad-Faith Catalog Extension + Techniques of the Conservative Legal Movement + Urban-Policy Overlay + Gerrymandering-Solution Memorandum; §1.4.7 past-work corpus; v1.1.1 added Astro `columns` frontmatter contract subsection with Thomas-specific documentary-discipline dual-presence note)
@@ -501,7 +501,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Integrated audit document with frame-audit findings, coherence-audit findings, frame-coherence merge, cross-cutting integration (frame-imports doing analytical work, multi-claim moves), per-stage quality findings, confidence per finding.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T1's depth ladder; quality depends on the two component modes (frame-audit, coherence-audit) plus three synthesis stages; not appropriate for atomic-only frame or coherence questions where lighter sibling suffices
-- **File Location:** ~/Documents/vault/Framework — Argument Audit Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Argument Audit Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -515,7 +515,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Per-mode outputs across coherence-audit (Toulmin reconstruction with fallacy taxonomy), frame-audit (Lakoff/Goffman/Entman frame surfacing), argument-audit (molecular composition), or propaganda-audit (specificity-specialized variant).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Stance is weak in T1 (does not adopt a position); does not evaluate interests behind argument (T2), empirical claims against external evidence (T5), or proposals via stance-bearing evaluation (T15)
-- **File Location:** ~/Documents/vault/Framework — Argumentative Artifact Examination.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Argumentative Artifact Examination.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -529,7 +529,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific outputs: Steelman reconstruction, Benefits-Analysis (PMI), Balanced Critique, Red Team Assessment (own-decision fix list), Red Team Advocate (external-use brief).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Does not perform soundness audit of an argument-as-argument (T1), structural-fragility audit independent of any adversary (T7), or frame-of-the-issue analysis (T9); Devil's Advocate Lite deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Artifact Evaluation by Stance.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Artifact Evaluation by Stance.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -543,7 +543,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Posterior probability distribution over hypotheses after evidence integration, sensitivity analysis identifying highest-impact evidence items, flat-prior assumption documentation when priors cannot be anchored.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T5; produces probabilistic posterior, not flat ranking; requires priors anchorable to base rates or explicit flat-prior assumption (fabricating point estimates is named failure mode)
-- **File Location:** ~/Documents/vault/Framework — Bayesian Hypothesis Network Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Bayesian Hypothesis Network Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -557,7 +557,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific causal analysis: root-cause-analysis (5 Whys/Ishikawa), systems-dynamics-causal (feedback loops with polarity and Meadows leverage), causal-dag (Pearl-style formal model), or process-tracing (Bennett/Checkel historical-event tracing).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Does not do process mapping (T17), mechanism understanding (T16), or paradigm-suspension framing-as-cause (T9); chain quality depends on whether human-error termination is challenged with process/incentive sub-cause
-- **File Location:** ~/Documents/vault/Framework — Causal Investigation.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Causal Investigation.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -571,7 +571,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** A-Audit produces a Drift Report (header, summary statistics, per-file drift entries, hot spots). A-Migrate produces a Migration Plan (presented before any write), then an Apply Log with per-file success/failure and re-validation results.
 - **Proven Applications:** New framework — landing 2026-04-29 per file metadata
 - **Known Limitations:** Without the auditor, drift accumulates silently and Phase 3 framework migrations have no validator to gate against; A-Migrate always preceded by A-Audit and explicit user go-ahead between plan and edits
-- **File Location:** ~/Documents/vault/Framework — Compliance Auditor.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Compliance Auditor.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -585,7 +585,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific output: deep-clarification (descriptive ordinary-language two-levels-deeper exposition), conceptual-engineering (Cappelen/Plunkett ameliorative analysis with revision proposals and implementation problem acknowledgment), or definitional-dispute (deferred essentially-contested handling).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes ordinary-language exposition where the concept is uncontested; definitional-dispute mode (Gallie essentially-contested) deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Conceptual Clarification.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Conceptual Clarification.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -599,7 +599,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific synthesis: synthesis (integrative, peer-root preservation, mechanism-level cross-links, productive tensions surfaced, emergent insight), dialectical-analysis (thesis-antithesis with sublation by mechanism or honored irreducibility, recursion named).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Does not do paradigm comparison without integration (T9), choice-among-options (T3), strongest-case-construction for one position (T15 steelman), or generative open exploration (T20); cross-domain-analogical mode deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Cross-Domain and Knowledge Synthesis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Cross-Domain and Knowledge Synthesis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -613,7 +613,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Integrated Decision Architecture Document composing decision-under-uncertainty (Stage 1), constraint-mapping (Stage 2), stakeholder-mapping (Stage 3), pre-mortem-action (Stage 4), and synthesis surfacing tensions across analytical lenses with recommendation, residual risks, and decision-conditions-to-monitor.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T3; differs from Decision Clarity (which produces a decision document for a third-party decision-maker, refusing to recommend); used when decision is yours and stakes warrant 10+ minute analysis
-- **File Location:** ~/Documents/vault/Framework — Decision Architecture Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Decision Architecture Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -627,7 +627,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific decision guidance: constraint-mapping (≥3 alternatives with success/failure conditions), decision-under-uncertainty (probability-weighted with risk/uncertainty/deep-uncertainty classification), multi-criteria-decision (non-commensurable criteria), or decision-architecture (molecular integration).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes negotiation-like situations where the parties' conflict is the analytical object (T8/T13); excludes decision-clarity-document production for a third-party decision-maker (T2); ethical-tradeoff and real-options-decision modes deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Decision-Making Under Uncertainty.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Decision-Making Under Uncertainty.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -641,7 +641,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Integrated induction document composing quick-orientation (fragment, breadth seed) plus terrain-mapping (full thorough survey) plus three synthesis stages (orientation-and-terrain merge, connectivity mapping with central nodes/bridge concepts, dependency-ordered learning sequence).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T14; goal-disconnection is named failure mode (induction goal must drive sequencing); use only when user is committed to inducting
-- **File Location:** ~/Documents/vault/Framework — Domain Induction Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Domain Induction Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -655,7 +655,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Project Mode produces the deliverable plus decisions log and acknowledged limitations. Structured Output produces formatted deliverable plus gap report (when source-format gaps exist) plus format notes; preserves visual envelopes byte-equivalent.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Modes do not escalate into analytical territories; project-mode applies dispatch-check guard rail before emission (request matching analytical mode dispatches there); structured-output's fidelity invariant is load-bearing (no claims that don't trace to source)
-- **File Location:** ~/Documents/vault/Framework — Execution and Project Mode.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Execution and Project Mode.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -669,7 +669,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific forward analysis: consequences-and-sequel (de Bono cascade), probabilistic-forecasting (Tetlock superforecasting), scenario-planning (Wack 2x2 narratives), pre-mortem-action (Klein adversarial-future), or wicked-future (molecular integration); backcasting deferred.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes risk-and-failure-specific analysis (T7), causal investigation of what already happened (T4), framing examination (T9); backcasting mode deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Future Exploration.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Future Exploration.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -683,7 +683,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Continuously appended learning log preserving learner inputs verbatim plus Current State directive at every block close; in-session terrain map, fog diagnoses, mastery test challenges, domain-expert questions, fork captures, and saturation-detection guidance.
 - **Proven Applications:** New framework — landing 2026-04-08 per file metadata; congruent with Chapter 16 of *Learning How to Learn — Guided Epistemic Navigation*
 - **Known Limitations:** Domain calibration is mandatory but depends on the AI's ability to identify and calibrate to the practitioner level; saturation diagnosis depends on framework's ability to read learner-response degradation
-- **File Location:** ~/Documents/vault/Framework — Guided Epistemic Navigation.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Guided Epistemic Navigation.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -697,7 +697,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific evaluation: differential-diagnosis (light medical-tradition triage), competing-hypotheses (full Heuer ACH matrix), or bayesian-hypothesis-network (molecular probabilistic posterior).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes single-hypothesis testing, within-paradigm-debate cases that are really about frame (T9), or hypotheses that are themselves complete arguments needing soundness audit (T1)
-- **File Location:** ~/Documents/vault/Framework — Hypothesis Evaluation.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Hypothesis Evaluation.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -715,7 +715,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific analysis: cui-bono (descriptive who-benefits with FGL), boundary-critique (Ulrich CSH twelve categories with is/ought audit), stakeholder-mapping (cross-territory dispatch into T8), wicked-problems (molecular complexity), or decision-clarity (molecular for third-party decision-maker production).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes negotiation/conflict-resolution operations (T13) and pure stakeholder-mapping without interest analysis (T8); stakeholder-mapping mode lives in T8 with cross-territory adjacency to T2
-- **File Location:** ~/Documents/vault/Framework — Interest and Power Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Interest and Power Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -729,7 +729,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mechanism-understanding output: locked level of analysis, component inventory with function per component, interaction pattern as source of whole's behavior (emergence account), boundary conditions, distinction from process map (T17) and causal chain (T4).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Singleton territory (one resident mode); does not do causal investigation (T4 backward-to-causes), process flow over time (T17), or relationship topology (T11); domain-specific mechanism variants deferred
-- **File Location:** ~/Documents/vault/Framework — Mechanism Understanding.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Mechanism Understanding.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -743,7 +743,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific guidance: interest-mapping (Tier-1 quick Fisher-Ury position-vs-interest descent), principled-negotiation (Tier-2 full Fisher-Ury with BATNA both parties plus Voss-warning flag), or third-side (Ury multi-party mediator stance variant).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes descriptive stakeholder mapping without active-negotiation framing (T8), pure interest-power analysis (T2), and strategic-game analysis with formal payoffs (T18)
-- **File Location:** ~/Documents/vault/Framework — Negotiation and Conflict Resolution.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Negotiation and Conflict Resolution.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -757,7 +757,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** A markdown article file — frontmatter (headline, lede, optional nut_graf, primary_entities, primary_themes) plus a `## Summary` atomic-note section and body prose — validated against the Astro articles schema; sources and provenance are built by the pipeline from the cluster, not authored by the model; CC0-licensed
 - **Proven Applications:** New framework — landing 2026-05-05 per file metadata; F-Design output for Appendix F of the Main Street Independent treatise
 - **Known Limitations:** Discipline is enforced by instruction, not code gates — no MindSpec floor screen, no human-review Gates A/B/C, no JSON-LD emission (those live in the canonical doc's design-intent appendix as unimplemented); a legacy code prompt-prefix still requests atomic_claims/sources that the pipeline discards (canonical doc flag F1)
-- **File Location:** ~/Documents/vault/Framework — MSI News Article Generator.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI News Article Generator.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.3.0
@@ -771,7 +771,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Single-member cluster JSON files under `ora-project/clusters/<date>/`; enqueued author jobs on the SQLite backfill queue (`ora-project/state/backfill-queue.db`); optionally, merged multi-member clusters or late-source appends to already-published articles via `event_dedup`
 - **Proven Applications:** New framework — landing 2026-05-05 per file metadata
 - **Known Limitations:** No selection budget, hold queue, feedback-loop reliability adjustment, or MindSpec floor scoring in the live path (`floor_engagement.py` is orphaned dead code); `cluster_selector.py` was deleted 2026-06-02; the original 10-layer continuous design is preserved only as the canonical doc's design-intent appendix
-- **File Location:** ~/Documents/vault/Framework — MSI News Cluster Selector.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI News Cluster Selector.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 2.0.0
@@ -785,7 +785,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** AI-generated hero image plus an Astro imageSchema frontmatter patch — the schema is `{url, alt, source}` only — with a uniform AI-disclosure string and WCAG-compliant alt text, cream-panel keyed/padded/tinted
 - **Proven Applications:** New framework — landing 2026-05-05 per file metadata; F-Design output for Workstream 11 (Visual Journalism) of the Main Street Independent project
 - **Known Limitations:** No commons search (Layer 2 intentionally not implemented), no five-screen suitability gate, no placeholder/retry queue (nearest analogs: the batch sweeper's self-heal and `reconcile_dangling_images`); the likeness gate is effectively a no-op in the auto path; articles with pre-2026 publish dates are excluded from paid generation
-- **File Location:** ~/Documents/vault/Framework — MSI News Image Generator.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — MSI News Image Generator.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 2.0.0
@@ -799,7 +799,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Configured Obsidian vault with minimal frontmatter conventions (type and date created fields) and starter templates installed; updated orchestrator configuration noting vault location if non-default; brief "Welcome to Your Vault" note explaining what was set up and how to use it.
 - **Proven Applications:** New framework — landing 2026-04-01 per file metadata
 - **Known Limitations:** Installs only minimal convention plus starter templates (full knowledge architecture is aspirational content in Part V); never modifies anything in `.obsidian/` settings directory; non-destructive integration for existing-vault users
-- **File Location:** ~/Documents/vault/Framework — Obsidian Setup.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Obsidian Setup.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -813,7 +813,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Exploration map (loose, frontier-respecting); ≥3 open questions kept open; potential project nodes when crystallization candidates appear; ≥2 next-directions (one deepening, one lateral); crystallization-detection signals reflected back to user when present.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Singleton territory (one resident mode); idea-development and research-question-generation expansion candidates deferred per CR-6; mode optimizes for productive wandering not closure (open questions outrank tidy conclusions)
-- **File Location:** ~/Documents/vault/Framework — Open Exploration.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Open Exploration.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -827,7 +827,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific orientation: quick-orientation (~1 min light pass with one-line definition, three-to-five sub-areas, foundational distinctions, entry points, common misconceptions), terrain-mapping (~5 min thorough survey with concept-map envelope, known/contested/open classification, adjacent connections, boundary statement), or domain-induction (~10+ min molecular pass with learning sequence).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes deep-domain expertise application; excludes generative open exploration of an interest area (T20); produces analytical map of existing domain rather than generating new content
-- **File Location:** ~/Documents/vault/Framework — Orientation in Unfamiliar Territory.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Orientation in Unfamiliar Territory.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -841,7 +841,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** OS-Setup: updated PED with project-level Oversight Specification, updated corpus template with section-level rules (Shape 4 only), updated workflow spec with cross-corpus topology rules (multi-framework only), OS-Verify Handoff Package. OS-Modify: edits or expansions with Decision Log rationale. OS-Verify: verdict (READY / READY-WITH-WARNINGS / NOT-READY) with specific gaps if NOT-READY.
 - **Proven Applications:** New framework — landing 2026-05-04 per file metadata; instantiates the setup procedure declared in Reference — Meta-Layer Architecture §11
 - **Known Limitations:** A project without an OC-produced configuration cannot have Process Coherence fire on it (no specification to drive routing); the user does not write Process Coherence's inputs by hand — OC produces them through progressive questioning; relies on PEF and CFF auto-invocation at natural moments
-- **File Location:** ~/Documents/vault/Framework — Oversight Configuration.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Oversight Configuration.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -855,7 +855,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific output: paradigm-suspension (atomic suspending stance — assumptions surfaced as testable propositions with Einstein guard rail), frame-comparison (atomic comparing stance — Lakoff metaphors with symmetric depth across frames), or worldview-cartography (Tier-3 molecular).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes single-artifact frame audit (T1 frame-audit), within-frame causal investigation (T4), within-frame hypothesis evaluation (T5), and integration across paradigms (T12)
-- **File Location:** ~/Documents/vault/Framework — Paradigm and Assumption Examination.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Paradigm and Assumption Examination.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -869,7 +869,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Checkpoint verdict (PROCEED / REVISE / ESCALATE / ESCALATE-redefinition) with evidence and reasoning; updated Decision Log entry; corrective-action specification (REVISE only); escalation package (ESCALATE only); redefinition evidence package (PC-Redefinition only).
 - **Proven Applications:** Renamed and refactored from Working — Framework — Agent Oversight v1.0 per the 2026-05-04 design session; inherits diagnostic engine from the Problem Evolution Framework; generalized to handle both project-level events (E1–E6) and workflow-level events (E7–E12)
 - **Known Limitations:** The framework does not invoke itself — orchestration layer is the only invoker; locked definitions are immutable within the session; does not supervise an agent (supervises the seam between two frameworks, or between a framework and a milestone claim); user-facing entry for verification is OS-Verify in Oversight Configuration
-- **File Location:** ~/Documents/vault/Framework — Process Coherence.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Coherence.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 2.0
@@ -883,7 +883,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific mapping: process-mapping (sequential steps with actor attribution, decision points, dependencies, bottleneck-with-constraint identification, handoff-friction examination, official-vs-actual distinction) or systems-dynamics-structural (boundary-locked feedback structure with stocks, flows, polarity-verified loops, delays, archetypes).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes causal investigation (why this happens — T4), mechanism understanding (T16), and relationship topology without temporal flow (T11); organizational-structure mode deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Process and System Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process and System Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -897,7 +897,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific failure analysis: pre-mortem-fragility (Klein adversarial-future on system/design with structural-vs-operational mitigations distinguished) or fragility-antifragility-audit (Talebian convex/concave classification with via negativa); failure-mode-scan and fault-tree deferred.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes general-future-exploration broader than failure (T6), Red Team's adversarial-actor framing (T15), causal-after-the-fact analysis (T4), and decision-among-options framing (T3); failure-mode-scan and fault-tree deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Risk and Failure Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Risk and Failure Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -911,7 +911,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific reading: ma-reading (Japanese aesthetics void-as-content), compositional-dynamics (Gestalt + Arnheim universal-perceptual), place-reading-genius-loci (Alexander + Norberg-Schulz deep place-reading), or information-density (Tufte + Bertin chart-encoding analysis).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes inter-element relationship extraction (T11 — re-homed there per Decision G), causal investigation (T4), and process analysis (T17); when input is a diagram, T11 and T19 may both fire on the same input answering different questions; reserved Information-Graphic Visual-Hierarchy Analysis mode held back per promotion threshold
-- **File Location:** ~/Documents/vault/Framework — Spatial Composition.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Spatial Composition.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -925,7 +925,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Stakeholder-mapping output: party inventory reaching outside user's frame; concrete stakes per party; Mitchell-Agle-Wood multi-dimensional salience (power AND legitimacy AND urgency); power-interest grid positioning (Bryson); relationships among parties; absent or marginalized parties named explicitly.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Excludes pure interest-power analysis without conflict structure (T2), active negotiation operations (T13), within-decision party-as-input framing (T3), and which-framing-privileges-whom (T9); conflict-structure expansion mode deferred per CR-6
-- **File Location:** ~/Documents/vault/Framework — Stakeholder Conflict.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Stakeholder Conflict.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -939,7 +939,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Strategic-interaction output: players named with payoffs in actual value terms; game classified on four dimensions (timing/information/duration/sum); equilibrium analysis with method named (backward induction / Nash / subgame perfect / repeated cooperation / Perfect Bayesian); credibility audit on threats and promises; ≥1 alternative game structure tested; mechanism-grounded strategic recommendations.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Singleton territory; expansion candidates `mechanism-design` and `signaling` deferred per CR-6; excludes interest-mapping for active negotiation (T13), descriptive interest-power analysis (T2), and feedback-system structural mapping (T4/T17)
-- **File Location:** ~/Documents/vault/Framework — Strategic Interaction.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Strategic Interaction.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -953,7 +953,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Mode-specific mapping: relationship-mapping (typed-and-directional connections, organizing structure named, ≥1 cross-link, acyclicity-checked) or spatial-reasoning (visual-input variant — structural extraction with ambiguity flagging, Tversky correspondence audit, gap analysis, open fog-clearing questions, arrangement-preserving annotation).
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata; spatial-reasoning re-homed from T19 per Decision G
 - **Known Limitations:** Excludes mechanism explanation (T16), process-flow analysis (T17), and compositional reading of what the layout itself means (T19); cycles trigger transition to systems-dynamics modes (T4 or T17)
-- **File Location:** ~/Documents/vault/Framework — Structural Relationship Mapping.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Structural Relationship Mapping.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -967,7 +967,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Across ten stages: inventory and classification report (user reviews before Stage 2 runs); metadata index plus source link graph plus MOC hierarchy map; processing manifest with per-file track assignment; Ora-schema atomic notes (via Stages 4–7 dispatch to Document Processing Framework / Appendix C-25); typed relationship seeding from merged signal sources; ChromaDB ingestion-ready output.
 - **Proven Applications:** Working — landing 2026-04-12 per file metadata
 - **Known Limitations:** Wraps the Document Processing Framework (Appendix C-25) — does not duplicate extraction logic; depends on Document Processing Framework, Ora YAML schema, ChromaDB ingestion pipeline, and 13-type relationship taxonomy being built first; user reviews Stage 1 inventory before any processing begins
-- **File Location:** ~/Documents/vault/Framework — Vault Conversion Pipeline.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Vault Conversion Pipeline.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -981,7 +981,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Integrated future architecture composing scenario-planning (Stage 1, full 2x2 matrix plus wild-card), probabilistic-forecasting (Stage 2, calibrated probability bands per scenario plus key cross-scenario outcomes), pre-mortem-action (Stage 3, adversarial-future stress test on intervention candidates) and three synthesis stages with divergence-points-to-monitor and gap-flagged backcasting.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T6 currently buildable; constructive-future stance (backcasting) is gap-deferred per CR-6 and the framework documents the deferred-component handling explicitly rather than substituting; quality depends on the three component modes
-- **File Location:** ~/Documents/vault/Framework — Wicked-Future Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Wicked-Future Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -995,7 +995,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Integrated cartography composing paradigm-suspension (Stage 1, full per-paradigm including home paradigm), frame-comparison (Stage 2, full multi-paradigm comparative articulation), dialectical-analysis as synthesis (rather than peer component) and three synthesis stages (paradigm-inventory, cross-paradigm-tension-surfacing, dialectical-cartography); residual irreducibilities preserved.
 - **Proven Applications:** New framework — landing 2026-05-01 per file metadata
 - **Known Limitations:** Heaviest analytical mode in T9; home-paradigm-bias is named failure mode (analyst's home paradigm must be suspended with same rigor as foreign ones); dialectical synthesis is grounded in paradigms' own terms rather than imposed from a meta-paradigm
-- **File Location:** ~/Documents/vault/Framework — Worldview Cartography Analysis.md (canonical)
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Worldview Cartography Analysis.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0
@@ -1058,7 +1058,7 @@ These six frameworks are loaded into model context windows at specific pipeline 
 - **Output Summary:** D-Detect → drift report classifying every registered pair (`identical | yaml-only-diff | vault-newer | ora-newer | body-different | vault-only | ora-only | excluded`); D-Sync → vault→ora sync log with `.bak` paths; D-Accept-Ora → reverse sync log with `.bak` paths; D-Bootstrap → creation log for new vault copies derived from ora-only files matching registered patterns
 - **Proven Applications:** New framework — landing 2026-04-28 alongside the vault canonicalization migration that produced the initial paired state
 - **Known Limitations:** Refuses to silently resolve `ora-newer` pairs or pairing ambiguities — surfaces them as conflicts requiring explicit user decision. Pairing rules are category-keyed; new content categories require an updated Pairing Rules table in the framework spec.
-- **File Location:** frameworks/book/system-file-drift-correction.md (canonical: ~/Documents/vault/Framework — System File Drift Correction.md)
+- **File Location:** frameworks/book/system-file-drift-correction.md (canonical: ~/Documents/vault/Projects/Ora/Framework — System File Drift Correction.md)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
@@ -1074,7 +1074,7 @@ These six frameworks are loaded into model context windows at specific pipeline 
 - **Output Summary:** Updated relationship graph (Task 1, weekly); vault health report with action items (Task 2, monthly); provenance audit fold-in (within Task 2); plus two additional scheduled tasks defined in the framework
 - **Proven Applications:** Currently four named scheduled tasks ship with Ora; runtime-eligible work explicitly excluded per the Runtime Principle gate
 - **Known Limitations:** Schedule cadences are fixed in the framework; tasks that become runtime-eligible should be migrated to the runtime pipeline rather than left here; fragility to bulk vault reorganization (which can flood Task 1's orphan threshold)
-- **File Location:** frameworks/book/periodic-maintenance.md (executable); ~/Documents/vault/Framework — Periodic Maintenance.md (canonical)
+- **File Location:** frameworks/book/periodic-maintenance.md (executable); ~/Documents/vault/Projects/Ora/Framework — Periodic Maintenance.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
@@ -1090,7 +1090,7 @@ These six frameworks are loaded into model context windows at specific pipeline 
 - **Output Summary:** JSON validated against `~/ora/config/framework-schemas/video-editing-suggestions.schema.json`; `entry_id`, `summary`, and ordered `suggestions[]` of four types (cut / chapter / title_card / transition), each with reason and source-time offsets.
 - **Proven Applications:** New framework — landing 2026-05-01 with the heuristic generator (deterministic Python pass over the transcript). LLM path wired but gated until the user enables live model dispatch.
 - **Known Limitations:** Heuristic generator covers filler, silence, false starts, and discourse-marker chapter cues — does not yet detect nuanced topic shifts, redundant content, or pacing issues. Auto-apply currently implemented for `cut` only; chapter / title_card / transition show a "coming soon" message on Apply. Cuts that span multiple timeline clips return `ok:false` and require manual resolution.
-- **File Location:** frameworks/book/video-editing-suggestions.md (executable); ~/Documents/vault/Framework — Video Editing Suggestions.md (canonical); JSON Schema at config/framework-schemas/video-editing-suggestions.schema.json
+- **File Location:** frameworks/book/video-editing-suggestions.md (executable); ~/Documents/vault/Projects/Ora/Framework — Video Editing Suggestions.md (canonical); JSON Schema at config/framework-schemas/video-editing-suggestions.schema.json
 - **Provenance:** human-created
 - **Confidence:** low
 - **Version:** 1.0

@@ -20,6 +20,11 @@ import re
 import yaml
 from pathlib import Path
 
+try:
+    import runtime_paths as _rp
+except ImportError:
+    from orchestrator import runtime_paths as _rp
+
 if __package__:
     from orchestrator.tools.relationship_graph import RelationshipGraph
 else:  # Preserve direct ``python relationship_discovery.py`` CLI usage.
@@ -235,7 +240,7 @@ def discover_relationships(note_path: str, vault_path: str = None) -> list[dict]
         List of relationship dicts: {type, target, confidence}
     """
     if vault_path is None:
-        vault_path = os.path.expanduser("~/Documents/vault")
+        vault_path = str(_rp.vault_dir())
 
     with open(note_path, "r") as f:
         content = f.read()
@@ -318,7 +323,7 @@ def update_note_relationships(
     may request the exact number of newly written rows with ``return_count``.
     """
     if vault_path is None:
-        vault_path = os.path.expanduser("~/Documents/vault")
+        vault_path = str(_rp.vault_dir())
 
     with open(note_path, "r") as f:
         content = f.read()
