@@ -69,7 +69,7 @@ from orchestrator.historical.prompts import (
 # Refusal-guard audit log (JSONL, one record per guarded fallback).
 # Resolved at call time so tests and sandboxed runs can redirect it.
 GUARD_LOG_ENV     = "ORA_CLEANUP_GUARD_LOG"
-_INITIAL_GUARD_LOG_DEFAULT = str(_rp.DATA_DIR / "cleanup-guard.log")
+_INITIAL_GUARD_LOG_DEFAULT = "~/ora/data/cleanup-guard.log"
 GUARD_LOG_DEFAULT = _INITIAL_GUARD_LOG_DEFAULT
 
 
