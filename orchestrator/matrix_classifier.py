@@ -85,9 +85,24 @@ def classify_matrix(
         return ("project", warnings)
 
     if isinstance(raw, str):
-        values = [raw]
+        values = [raw.strip()]
+        warnings.append(
+            f"project_type in matrix {file_path!r} is a scalar string "
+            f"{raw!r}; the schema requires a list. Add a list-form "
+            f"declaration (e.g. project_type:\\n  - {raw.strip()})."
+        )
     elif isinstance(raw, list):
-        values = [str(v) for v in raw]
+        # Reject non-string entries before coercion.
+        for i, v in enumerate(raw):
+            if not isinstance(v, str):
+                raise InvalidProjectTypeError(
+                    file_path,
+                    raw,
+                    f"project_type in matrix {file_path!r} contains non-string "
+                    f"entry at index {i}: {v!r} (type {type(v).__name__}). "
+                    f"All entries must be strings.",
+                )
+        values = [v.strip() for v in raw]
     else:
         raise InvalidProjectTypeError(
             file_path,
@@ -97,6 +112,15 @@ def classify_matrix(
         )
 
     classifications = [v for v in values if v in VALID_CLASSIFICATIONS]
+    unknown_tokens = [v for v in values if v not in VALID_TOKENS]
+
+    if unknown_tokens:
+        warnings.append(
+            f"project_type in matrix {file_path!r} contains unrecognized "
+            f"token(s) {unknown_tokens}; recognized tokens are "
+            f"{sorted(VALID_TOKENS)}. These tokens will cause schema_valid "
+            f"to fail and must be corrected before strict mode."
+        )
 
     if len(classifications) == 1:
         return (classifications[0], warnings)
@@ -124,15 +148,22 @@ def classify_matrix(
 
 def schema_valid(frontmatter: dict[str, Any] | None) -> bool:
     """Return True if project_type is a non-empty list with exactly one core
-    classification and all tokens recognized.  Used by write-gate checks.
-
-    This is the compatibility-now check; strict mode will additionally
-    require all tokens to be in VALID_TOKENS and no duplicates.
+    classification, all tokens recognized, no duplicates, and all entries are
+    strings.  Used by write-gate checks.
     """
     raw = (frontmatter or {}).get("project_type")
     if not isinstance(raw, list) or not raw:
         return False
-    values = [str(v) for v in raw]
+    # All entries must be strings.
+    if not all(isinstance(v, str) for v in raw):
+        return False
+    values = [v.strip() for v in raw]
+    # No empty strings after strip.
+    if not all(values):
+        return False
+    # No duplicates.
+    if len(values) != len(set(values)):
+        return False
     classifications = [v for v in values if v in VALID_CLASSIFICATIONS]
     if len(classifications) != 1:
         return False

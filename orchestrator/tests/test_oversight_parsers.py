@@ -483,28 +483,32 @@ class TestMatrixClassification(unittest.TestCase):
         ped = self._ped_with_frontmatter("project_type: project")
         classification, warnings = classify_matrix(ped)
         self.assertEqual(classification, "project")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_project_type_string_operation(self):
         from oversight_context import classify_matrix
         ped = self._ped_with_frontmatter("project_type: operation")
         classification, warnings = classify_matrix(ped)
         self.assertEqual(classification, "operation")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_project_type_string_passion(self):
         from oversight_context import classify_matrix
         ped = self._ped_with_frontmatter("project_type: passion")
         classification, warnings = classify_matrix(ped)
         self.assertEqual(classification, "passion")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_project_type_string_incubator(self):
         from oversight_context import classify_matrix
         ped = self._ped_with_frontmatter("project_type: incubator")
         classification, warnings = classify_matrix(ped)
         self.assertEqual(classification, "incubator")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_project_type_list_with_one_classification_plus_content(self):
         # Per the Project Type Registry convention, a matrix may declare

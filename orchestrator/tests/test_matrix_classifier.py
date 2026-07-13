@@ -57,28 +57,32 @@ class TestClassifyMatrix(unittest.TestCase):
             {"project_type": "project"}, "/tmp/test.md",
         )
         self.assertEqual(classification, "project")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_scalar_operation(self):
         classification, warnings = classify_matrix(
             {"project_type": "operation"}, "/tmp/test.md",
         )
         self.assertEqual(classification, "operation")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_scalar_passion(self):
         classification, warnings = classify_matrix(
             {"project_type": "passion"}, "/tmp/test.md",
         )
         self.assertEqual(classification, "passion")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     def test_scalar_incubator(self):
         classification, warnings = classify_matrix(
             {"project_type": "incubator"}, "/tmp/test.md",
         )
         self.assertEqual(classification, "incubator")
-        self.assertEqual(warnings, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("scalar string", warnings[0])
 
     # ---- Single-element list ----
 
@@ -219,6 +223,63 @@ class TestClassifyMatrix(unittest.TestCase):
             )
         self.assertIn("Project Matrix Test.md", str(cm.exception))
 
+    # ---- Non-string list entries (Finding 2) ----
+
+    def test_integer_in_list_raises(self):
+        with self.assertRaises(InvalidProjectTypeError) as cm:
+            classify_matrix({"project_type": ["project", 1]}, "/tmp/test.md")
+        self.assertIn("non-string entry", str(cm.exception))
+        self.assertIn("index 1", str(cm.exception))
+
+    def test_float_in_list_raises(self):
+        with self.assertRaises(InvalidProjectTypeError):
+            classify_matrix({"project_type": [3.14]}, "/tmp/test.md")
+
+    def test_bool_in_list_raises(self):
+        with self.assertRaises(InvalidProjectTypeError):
+            classify_matrix({"project_type": [True, "project"]}, "/tmp/test.md")
+
+    def test_none_in_list_raises(self):
+        with self.assertRaises(InvalidProjectTypeError):
+            classify_matrix({"project_type": [None, "project"]}, "/tmp/test.md")
+
+    def test_mixed_string_and_int_raises(self):
+        with self.assertRaises(InvalidProjectTypeError):
+            classify_matrix(
+                {"project_type": ["project", "book", 42]}, "/tmp/test.md",
+            )
+
+    # ---- Unknown token diagnostics (Finding 3) ----
+
+    def test_unknown_token_warns(self):
+        classification, warnings = classify_matrix(
+            {"project_type": ["project", "unknown_thing"]}, "/tmp/test.md",
+        )
+        self.assertEqual(classification, "project")
+        unknown_warnings = [w for w in warnings if "unrecognized token" in w]
+        self.assertEqual(len(unknown_warnings), 1)
+        self.assertIn("unknown_thing", unknown_warnings[0])
+
+    def test_multiple_unknown_tokens_warn(self):
+        classification, warnings = classify_matrix(
+            {"project_type": ["project", "foo", "bar"]}, "/tmp/test.md",
+        )
+        self.assertEqual(classification, "project")
+        unknown_warnings = [w for w in warnings if "unrecognized token" in w]
+        self.assertEqual(len(unknown_warnings), 1)
+        self.assertIn("foo", unknown_warnings[0])
+        self.assertIn("bar", unknown_warnings[0])
+
+    def test_unknown_token_plus_domain_still_classifies(self):
+        classification, warnings = classify_matrix(
+            {"project_type": ["operation", "book", "not_a_real_type"]},
+            "/tmp/test.md",
+        )
+        self.assertEqual(classification, "operation")
+        unknown_warnings = [w for w in warnings if "unrecognized token" in w]
+        self.assertEqual(len(unknown_warnings), 1)
+        self.assertIn("not_a_real_type", unknown_warnings[0])
+
     # ---- Token sets ----
 
     def test_valid_classifications_has_four_entries(self):
@@ -283,6 +344,18 @@ class TestSchemaValid(unittest.TestCase):
 
     def test_integer_value(self):
         self.assertFalse(schema_valid({"project_type": 42}))
+
+    def test_duplicate_domain_tokens(self):
+        self.assertFalse(schema_valid({"project_type": ["project", "book", "book"]}))
+
+    def test_duplicate_classification_token(self):
+        self.assertFalse(schema_valid({"project_type": ["project", "project"]}))
+
+    def test_non_string_entry_in_list(self):
+        self.assertFalse(schema_valid({"project_type": ["project", 1]}))
+
+    def test_none_entry_in_list(self):
+        self.assertFalse(schema_valid({"project_type": [None, "project"]}))
 
 
 class TestBackwardCompatibility(unittest.TestCase):
