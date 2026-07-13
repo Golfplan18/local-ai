@@ -113,14 +113,25 @@ def _textutil_convert(path: Path) -> str:
 
     textutil is a macOS system binary (ships with the OS) and is not available
     on Windows. Callers on Windows must install a cross-platform alternative
-    (e.g. `mammoth` for .doc) or skip the file. The guard fails loudly with a
-    portable error rather than silently producing wrong behavior.
+    for legacy binary `.doc` text extraction (e.g. `antiword` via `brew install
+    antiword` on macOS / package managers on Linux / MSYS2 or Cygwin on Windows;
+    `wv` for fuller extraction; or headless `LibreOffice` via
+    `soffice --headless --convert-to txt`) or skip the file. NOTE: Mammoth is
+    NOT a valid choice — it supports `.docx` only, not binary `.doc` (per the
+    official `python-mammoth` documentation). NOTE: `.rtf` conversion is
+    already supported through the installed `striprtf` dependency (see
+    `load_rtf`); only legacy `.doc` is in D-09 scope. The guard fails loudly
+    with a portable error rather than silently producing wrong behavior.
     """
     if os.name == "nt":
         raise RuntimeError(
             f"textutil is macOS-only and cannot convert {path} on Windows. "
-            "Install a cross-platform .doc/.rtf converter (e.g. `mammoth` for "
-            ".doc) and add a Windows branch to load_doc / load_rtf."
+            "Install a cross-platform legacy-`.doc` text extractor (e.g. "
+            "`antiword`, `wv`, or headless `LibreOffice` via "
+            "`soffice --headless --convert-to txt`) and add a Windows branch "
+            "to load_doc. Note: `mammoth` is NOT a valid choice — it supports "
+            "`.docx` only, not binary `.doc`. Note: `.rtf` is already "
+            "supported through the installed `striprtf` dependency (load_rtf)."
         )
     out = subprocess.run(
         ["textutil", "-convert", "txt", "-stdout", str(path)],
