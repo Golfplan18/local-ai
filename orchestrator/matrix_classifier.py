@@ -171,6 +171,128 @@ def schema_valid(frontmatter: dict[str, Any] | None) -> bool:
     return all(v in VALID_TOKENS for v in values)
 
 
+# ---- Matrix diagnostics ----
+
+MATRIX_STATES = ("ok", "missing", "ambiguous", "invalid")
+
+
+def diagnose_matrix(
+    nexus: str,
+    folder_name: str | None = None,
+    *,
+    vault: Any = None,
+) -> dict[str, Any]:
+    """Resolve a project's Matrix file and return per-record diagnostics.
+
+    Returns a dict with:
+      - ``state``: one of "ok", "missing", "ambiguous", "invalid"
+      - ``classification``: the resolved classification (when state is "ok")
+      - ``warnings``: list of warning strings from the classifier
+      - ``matrix_path``: path to the Matrix file (when found)
+      - ``schema_valid``: whether project_type passes schema_valid (when state is "ok")
+
+    Never raises — all exceptions are caught and surfaced as state.
+    Designed for per-record use in /api/projects/meta so one bad Matrix
+    cannot fail the entire response.
+    """
+    from pathlib import Path
+
+    # Lazy import to avoid circular dependency (matrix_classifier is imported
+    # by oversight_context, which is imported early in the module graph).
+    try:
+        from operation_matrix import (
+            resolve_matrix_path,
+            _split_frontmatter,
+            MatrixAmbiguityError,
+        )
+    except ImportError:
+        from orchestrator.operation_matrix import (
+            resolve_matrix_path,
+            _split_frontmatter,
+            MatrixAmbiguityError,
+        )
+
+    nexus_l = (nexus or "").strip().lower()
+    if not nexus_l or nexus_l in ("commons", "general"):
+        return {
+            "state": "missing",
+            "classification": None,
+            "warnings": [],
+            "matrix_path": None,
+            "schema_valid": False,
+        }
+
+    try:
+        path = resolve_matrix_path(nexus, folder_name, vault=vault)
+    except MatrixAmbiguityError as exc:
+        return {
+            "state": "ambiguous",
+            "classification": None,
+            "warnings": [str(exc)],
+            "matrix_path": None,
+            "schema_valid": False,
+        }
+    except Exception as exc:
+        return {
+            "state": "invalid",
+            "classification": None,
+            "warnings": [f"Matrix resolution failed: {exc}"],
+            "matrix_path": None,
+            "schema_valid": False,
+        }
+
+    if path is None:
+        return {
+            "state": "missing",
+            "classification": None,
+            "warnings": [],
+            "matrix_path": None,
+            "schema_valid": False,
+        }
+
+    # Read and parse frontmatter.
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "state": "invalid",
+            "classification": None,
+            "warnings": [f"Could not read Matrix file: {exc}"],
+            "matrix_path": str(path),
+            "schema_valid": False,
+        }
+
+    frontmatter, _ = _split_frontmatter(text)
+
+    # Classify.
+    try:
+        classification, warnings = classify_matrix(frontmatter, str(path))
+    except InvalidProjectTypeError as exc:
+        return {
+            "state": "invalid",
+            "classification": None,
+            "warnings": [str(exc)],
+            "matrix_path": str(path),
+            "schema_valid": False,
+        }
+    except Exception as exc:
+        return {
+            "state": "invalid",
+            "classification": None,
+            "warnings": [f"Classification failed: {exc}"],
+            "matrix_path": str(path),
+            "schema_valid": False,
+        }
+
+    return {
+        "state": "ok",
+        "classification": classification,
+        "warnings": warnings,
+        "matrix_path": str(path),
+        "schema_valid": schema_valid(frontmatter),
+    }
+
+
 __all__ = [
     "VALID_CLASSIFICATIONS",
     "VALID_DOMAIN_TYPES",
@@ -178,4 +300,6 @@ __all__ = [
     "InvalidProjectTypeError",
     "classify_matrix",
     "schema_valid",
+    "MATRIX_STATES",
+    "diagnose_matrix",
 ]

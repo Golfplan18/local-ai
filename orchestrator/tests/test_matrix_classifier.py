@@ -7,7 +7,9 @@ approved compatibility-now behavior.
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
+import tempfile
 import unittest
 
 # Make orchestrator/ importable
@@ -23,6 +25,7 @@ from matrix_classifier import (  # noqa: E402
     InvalidProjectTypeError,
     classify_matrix,
     schema_valid,
+    diagnose_matrix,
 )
 
 
@@ -381,6 +384,155 @@ class TestBackwardCompatibility(unittest.TestCase):
     def test_import_valid_classifications_from_oversight_context(self):
         from oversight_context import VALID_CLASSIFICATIONS as oc_valid
         self.assertIs(oc_valid, VALID_CLASSIFICATIONS)
+
+
+class TestDiagnoseMatrix(unittest.TestCase):
+    """Exercise diagnose_matrix(nexus, folder_name, vault=) against a temp vault."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.vault = pathlib.Path(self._tmp.name)
+        self.mdir = self.vault / "Matrix"
+        self.mdir.mkdir()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write_matrix(self, filename: str, content: str):
+        (self.mdir / filename).write_text(content, encoding="utf-8")
+
+    # ---- Missing ----
+
+    def test_missing_nexus_returns_missing(self):
+        result = diagnose_matrix("nonexistent", vault=self.vault)
+        self.assertEqual(result["state"], "missing")
+        self.assertIsNone(result["classification"])
+        self.assertEqual(result["warnings"], [])
+        self.assertIsNone(result["matrix_path"])
+        self.assertFalse(result["schema_valid"])
+
+    def test_commons_returns_missing(self):
+        result = diagnose_matrix("commons", vault=self.vault)
+        self.assertEqual(result["state"], "missing")
+
+    def test_general_returns_missing(self):
+        result = diagnose_matrix("general", vault=self.vault)
+        self.assertEqual(result["state"], "missing")
+
+    def test_empty_nexus_returns_missing(self):
+        result = diagnose_matrix("", vault=self.vault)
+        self.assertEqual(result["state"], "missing")
+
+    # ---- OK ----
+
+    def test_valid_project_matrix_returns_ok(self):
+        self._write_matrix(
+            "Project Matrix Test.md",
+            "---\nnexus:\n  - test\nproject_type:\n  - project\ntype: matrix\n---\n\n# Test\n\n## Mission\n\nDone.\n",
+        )
+        result = diagnose_matrix("test", vault=self.vault)
+        self.assertEqual(result["state"], "ok")
+        self.assertEqual(result["classification"], "project")
+        self.assertEqual(result["warnings"], [])
+        self.assertIsNotNone(result["matrix_path"])
+        self.assertTrue(result["schema_valid"])
+
+    def test_valid_operation_matrix_returns_ok(self):
+        self._write_matrix(
+            "Project Matrix My Op.md",
+            "---\nnexus:\n  - my-op\nproject_type:\n  - operation\ntype: matrix\n---\n\n# My Op\n\n## Mission\n\n- **Service Statement:** Run things.\n",
+        )
+        result = diagnose_matrix("my-op", vault=self.vault)
+        self.assertEqual(result["state"], "ok")
+        self.assertEqual(result["classification"], "operation")
+
+    def test_missing_project_type_defaults_to_project_with_warning(self):
+        self._write_matrix(
+            "Project Matrix NoType.md",
+            "---\nnexus:\n  - notype\ntype: matrix\n---\n\n# NoType\n\n## Mission\n\nDone.\n",
+        )
+        result = diagnose_matrix("notype", vault=self.vault)
+        self.assertEqual(result["state"], "ok")
+        self.assertEqual(result["classification"], "project")
+        self.assertEqual(len(result["warnings"]), 1)
+        self.assertIn("project_type absent", result["warnings"][0])
+        self.assertFalse(result["schema_valid"])
+
+    def test_scalar_project_type_warns(self):
+        self._write_matrix(
+            "Project Matrix Scalar.md",
+            "---\nnexus:\n  - scalar\nproject_type: project\ntype: matrix\n---\n\n# Scalar\n\n## Mission\n\nDone.\n",
+        )
+        result = diagnose_matrix("scalar", vault=self.vault)
+        self.assertEqual(result["state"], "ok")
+        self.assertEqual(result["classification"], "project")
+        self.assertTrue(any("scalar string" in w for w in result["warnings"]))
+        self.assertFalse(result["schema_valid"])
+
+    def test_domain_plus_classification_returns_ok(self):
+        self._write_matrix(
+            "Project Matrix Book.md",
+            "---\nnexus:\n  - bookproj\nproject_type:\n  - project\n  - book\ntype: matrix\n---\n\n# Book\n\n## Mission\n\nWrite it.\n",
+        )
+        result = diagnose_matrix("bookproj", vault=self.vault)
+        self.assertEqual(result["state"], "ok")
+        self.assertEqual(result["classification"], "project")
+        self.assertTrue(result["schema_valid"])
+
+    # ---- Ambiguous ----
+
+    def test_ambiguous_matrix_returns_ambiguous(self):
+        self._write_matrix(
+            "Project Matrix A.md",
+            "---\nnexus:\n  - clash\nproject_type:\n  - project\ntype: matrix\n---\n\n# A\n\n## Mission\n\nA.\n",
+        )
+        self._write_matrix(
+            "Project Matrix B.md",
+            "---\nnexus:\n  - clash\nproject_type:\n  - project\ntype: matrix\n---\n\n# B\n\n## Mission\n\nB.\n",
+        )
+        result = diagnose_matrix("clash", vault=self.vault)
+        self.assertEqual(result["state"], "ambiguous")
+        self.assertIsNone(result["classification"])
+        self.assertTrue(any("multiple" in w.lower() or "ambiguous" in w.lower() for w in result["warnings"]))
+
+    # ---- Invalid ----
+
+    def test_multiple_classifications_returns_invalid(self):
+        self._write_matrix(
+            "Project Matrix Bad.md",
+            "---\nnexus:\n  - bad\nproject_type:\n  - project\n  - operation\ntype: matrix\n---\n\n# Bad\n\n## Mission\n\nDone.\n",
+        )
+        result = diagnose_matrix("bad", vault=self.vault)
+        self.assertEqual(result["state"], "invalid")
+        self.assertIsNone(result["classification"])
+        self.assertTrue(any("multiple" in w.lower() for w in result["warnings"]))
+
+    def test_non_string_project_type_returns_invalid(self):
+        self._write_matrix(
+            "Project Matrix Nstr.md",
+            "---\nnexus:\n  - nstr\nproject_type:\n  - 42\ntype: matrix\n---\n\n# Nstr\n\n## Mission\n\nDone.\n",
+        )
+        result = diagnose_matrix("nstr", vault=self.vault)
+        self.assertEqual(result["state"], "invalid")
+
+    # ---- Failure isolation ----
+
+    def test_one_bad_matrix_does_not_affect_others(self):
+        """diagnose_matrix is per-record; one bad result doesn't raise."""
+        self._write_matrix(
+            "Project Matrix Good.md",
+            "---\nnexus:\n  - good\nproject_type:\n  - project\ntype: matrix\n---\n\n# Good\n\n## Mission\n\nDone.\n",
+        )
+        self._write_matrix(
+            "Project Matrix Bad.md",
+            "---\nnexus:\n  - bad\nproject_type:\n  - project\n  - operation\ntype: matrix\n---\n\n# Bad\n\n## Mission\n\nDone.\n",
+        )
+        good = diagnose_matrix("good", vault=self.vault)
+        bad = diagnose_matrix("bad", vault=self.vault)
+        self.assertEqual(good["state"], "ok")
+        self.assertEqual(bad["state"], "invalid")
+        # The bad result didn't corrupt the good one.
+        self.assertEqual(good["classification"], "project")
 
 
 if __name__ == "__main__":
