@@ -529,10 +529,18 @@ def atomic_write_text(path: str | Path, text: str, *, mode: int = 0o600) -> None
 
 
 def atomic_write_bytes(path: str | Path, payload: bytes, *, mode: int = 0o600) -> None:
-    """Binary counterpart to :func:`atomic_write_text` with no-follow replace."""
-    target = Path(path)
+    """Binary counterpart to :func:`atomic_write_text` with no-follow replace.
+
+    Resolved host-natively via ``os.fspath`` / ``os.path`` (never
+    ``pathlib.Path``, whose flavour tracks the mutable ``os.name``) so a
+    Windows-simulating ``os.name`` monkeypatch cannot reflavor the target into a
+    literal ``\\``-named file in cwd — see :func:`reject_reflavored_windows_path`.
+    """
+    spath = os.fspath(path)
+    reject_reflavored_windows_path(spath)
     fd, temporary = tempfile.mkstemp(
-        prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent),
+        prefix=f".{os.path.basename(spath)}.", suffix=".tmp",
+        dir=os.path.dirname(spath) or ".",
     )
     try:
         os.fchmod(fd, mode)
@@ -541,7 +549,7 @@ def atomic_write_bytes(path: str | Path, payload: bytes, *, mode: int = 0o600) -
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, target)
+        os.replace(temporary, spath)
     finally:
         if fd >= 0:
             os.close(fd)
@@ -549,6 +557,26 @@ def atomic_write_bytes(path: str | Path, payload: bytes, *, mode: int = 0o600) -
             os.unlink(temporary)
         except FileNotFoundError:
             pass
+
+
+def reject_reflavored_windows_path(spath: str) -> None:
+    """Refuse a Windows-separated path handed to a durable writer on a POSIX host.
+
+    ``pathlib.Path()`` chooses its flavour from the **live** ``os.name``, so a
+    test that patches ``os.name='nt'`` (the Windows-simulation suites) turns a
+    perfectly good forward-slash sink path into a ``WindowsPath`` whose fspath is
+    ``\\var\\...\\tool-events.jsonl`` — which is *relative* on macOS/Linux and
+    would make ``os.open`` create a LITERAL backslash-named file in the current
+    directory (the repo root). That is exactly the residue this guard exists to
+    prevent: on a POSIX host a legitimate Ora sink is always root-anchored, so a
+    ``\\``-containing, non-``/``-anchored path can only be that reflavoring
+    footgun. ``os.path.sep`` is bound to the real host at interpreter start and
+    is unaffected by an ``os.name`` monkeypatch, so this check is reliable here
+    and inert on a genuine Windows host (where ``os.path.sep == '\\'``)."""
+    if os.path.sep == "/" and "\\" in spath and not spath.startswith("/"):
+        raise ValueError(
+            "refusing a Windows-separated path on a POSIX host — it would create "
+            f"a literal backslash-named file in cwd: {spath!r}")
 
 
 def append_bytes_no_follow(
@@ -562,22 +590,29 @@ def append_bytes_no_follow(
     Callers that share a sink across processes must hold :func:`locked_file`
     around this helper. ``O_APPEND`` keeps each completed write at the current
     end of the regular file; the loop handles short writes explicitly.
+
+    The target is resolved through ``os.fspath`` and the host-fixed ``os`` /
+    ``os.path`` module (never ``pathlib.Path``, whose flavour tracks the mutable
+    ``os.name``) so the write always lands on the actual host-native path — even
+    under a Windows-simulating ``os.name`` monkeypatch — and can never be
+    reflavored into a literal ``\\``-named file in cwd.
     """
-    target = Path(path)
-    if target.is_symlink():
-        raise ValueError(f"append target is a symlink: {target}")
+    spath = os.fspath(path)
+    reject_reflavored_windows_path(spath)
+    if os.path.islink(spath):
+        raise ValueError(f"append target is a symlink: {spath}")
     flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
-    fd = os.open(target, flags, mode)
+    fd = os.open(spath, flags, mode)
     try:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
-            raise ValueError(f"append target is not a regular file: {target}")
+            raise ValueError(f"append target is not a regular file: {spath}")
         view = memoryview(payload)
         while view:
             written = os.write(fd, view)
             if written <= 0:
-                raise OSError(f"short append to {target}")
+                raise OSError(f"short append to {spath}")
             view = view[written:]
         os.fsync(fd)
     finally:
@@ -622,7 +657,8 @@ def locked_file(path, timeout: float = DEFAULT_LOCK_TIMEOUT):
     files that don't exist yet). POSIX uses ``fcntl.flock``; Windows uses
     ``msvcrt.locking``. Raises ``TimeoutError`` if not acquired in ``timeout``
     seconds. Always releases on exit."""
-    lock_path = str(path) + ".lock"
+    lock_path = os.fspath(path) + ".lock"
+    reject_reflavored_windows_path(lock_path)
     os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
     flags = os.O_RDWR | os.O_CREAT | os.O_APPEND
     if hasattr(os, "O_NOFOLLOW"):

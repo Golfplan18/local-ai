@@ -37,15 +37,32 @@ from __future__ import annotations
 import atexit
 import os
 import shutil
+import sys
 import tempfile
 
 ENV_VAR = "ORA_OVERSIGHT_SANDBOX"
 
 
 def arm() -> str:
-    """Ensure ORA_OVERSIGHT_SANDBOX points at a directory; create one if
-    unset. Idempotent across the many modules that import this guard."""
+    """Ensure ORA_OVERSIGHT_SANDBOX points at a directory under the system temp
+    root; create one if unset. Idempotent across the many modules that import
+    this guard.
+
+    A pre-set value is honored only when it is an ABSOLUTE path — a relative
+    sandbox dir would make every rebased sink write land inside the test's
+    current working directory (the repo root) instead of a throwaway tempdir,
+    which is precisely the residue this quarantine exists to keep out of the
+    tree. A non-absolute pre-set is replaced with a fresh ``mkdtemp`` (loud on
+    stderr) so no oversight residue can ever land outside the temp root, and the
+    replacement dir gets the same ``atexit`` cleanup as a freshly-armed one.
+    """
     box = os.environ.get(ENV_VAR)
+    if box and not os.path.isabs(box):
+        sys.stderr.write(
+            f"[live_guard] ignoring non-absolute {ENV_VAR}={box!r}; a relative "
+            "sandbox would leak oversight residue into the cwd — using a fresh "
+            "tempdir instead\n")
+        box = None
     if not box:
         box = tempfile.mkdtemp(prefix="ora-oversight-sandbox-")
         os.environ[ENV_VAR] = box
