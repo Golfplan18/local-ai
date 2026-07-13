@@ -147,6 +147,30 @@ class TestEnvQuarantineWithoutFixture(unittest.TestCase):
         self.assertTrue(box)
         self.assertTrue(os.path.isdir(box))
 
+    def test_live_guard_box_is_absolute_under_tempdir(self):
+        # No residue may land outside the system temp root: the armed sandbox
+        # must be an absolute path so rebased sink writes never fall into cwd.
+        import tempfile
+        box = os.environ[live_guard.ENV_VAR]
+        self.assertTrue(os.path.isabs(box), box)
+        self.assertTrue(
+            os.path.realpath(box).startswith(
+                os.path.realpath(tempfile.gettempdir())), box)
+
+    def test_arm_replaces_non_absolute_preset(self):
+        # A relative pre-set (which would leak oversight residue into cwd) is
+        # rejected and replaced with a fresh absolute tempdir; an absolute
+        # pre-set is honored unchanged.
+        with mock.patch.dict(os.environ,
+                             {live_guard.ENV_VAR: "relative-box"}, clear=False):
+            replaced = live_guard.arm()
+            self.assertTrue(os.path.isabs(replaced))
+            self.assertNotEqual(replaced, "relative-box")
+        with mock.patch.dict(os.environ,
+                             {live_guard.ENV_VAR: os.path.abspath(os.sep + "tmp")},
+                             clear=False):
+            self.assertEqual(live_guard.arm(), os.path.abspath(os.sep + "tmp"))
+
     def test_append_human_queue_quarantined(self):
         marker = "EnvQuarantineProbe"
         oversight_actions._append_human_queue({"event_type": marker})
