@@ -12,6 +12,24 @@ from unittest import mock
 from orchestrator import runtime_paths as rp
 
 
+class AtomicWriteCompatibilityTests(unittest.TestCase):
+    def test_atomic_writes_support_windows_python_without_fchmod(self):
+        root = Path(tempfile.mkdtemp(prefix="ora-atomic-write-"))
+        text_path = root / "lease.json"
+        bytes_path = root / "lease.bin"
+        try:
+            # os.fchmod was added on Windows only in Python 3.13; Ora supports
+            # 3.11+, so D-02's write-ahead ACL journal must not require it.
+            with mock.patch.object(rp.os, "fchmod", None, create=True):
+                rp.atomic_write_text(text_path, "safe\n")
+                rp.atomic_write_bytes(bytes_path, b"safe\x00")
+            self.assertEqual(text_path.read_text(encoding="utf-8"), "safe\n")
+            self.assertEqual(bytes_path.read_bytes(), b"safe\x00")
+        finally:
+            import shutil
+            shutil.rmtree(root, ignore_errors=True)
+
+
 class RuntimeRootResolutionTests(unittest.TestCase):
     def test_documents_override_bypasses_known_folder_and_derives_children(self):
         docs = r"C:\Users\Ora\OneDrive\Documents"

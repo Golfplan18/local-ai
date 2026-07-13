@@ -26,21 +26,26 @@ The load-bearing sentence (spec §10 / §16-2), landed in code and the packet:
 ENFORCE-OR-REFUSE (spec §7; the design-gate resolution): the runner is itself an
 executor and must run each check *under its declared constraints*. A check runs
 ONLY under a backend that actually ENFORCES its declared network policy — macOS
-``sandbox-exec``, a declared ``ORA_EVIDENCE_SANDBOX`` wrapper (the first-class
-Windows enforcement route), or native Linux ``unshare -rn`` (capability-probed,
-degrades to refuse). Where no enforcing backend exists, the check **refuses
-cleanly** (``skipped=True`` + ``skip_reason``) — it is NEVER run under an
-unenforced ``network: deny``. A check that ran is genuinely ``orchestrated``;
+``sandbox-exec``, native Windows AppContainer + Job Object isolation, a declared
+``ORA_EVIDENCE_SANDBOX`` wrapper, or native Linux ``unshare -rn``
+(capability-probed, degrades to refuse). Where no enforcing backend exists, the
+check **refuses cleanly** (``skipped=True`` + ``skip_reason``) — it is NEVER run
+under an unenforced ``network: deny``. A check that ran is genuinely enforced;
 there is no "ran-but-unenforced" state.
 
 Portability (release-blocking amendment): the runner MACHINERY (parse / validate
 / discover / Contract / git-state) is pure Python and runs on macOS + Windows +
-Linux. Check EXECUTION runs under an enforcing backend or refuses; on Windows the
-supported route is a declared ``ORA_EVIDENCE_SANDBOX``. Commands are shell-free
-``argv`` by default (``subprocess.run(argv, shell=False)``); a ``cmd`` +
-``shell: true`` check runs under ``ORA_POSIX_SHELL`` and refuses cleanly (never
-``cmd.exe``) when it is unset. All paths derive from ``runtime_paths`` /
-``tempfile`` / ``pathlib`` — never a hardcoded root.
+Linux. Check EXECUTION runs under an enforcing backend or refuses. The D-02
+Windows spike is deliberately opt-in via ``ORA_WINDOWS_APPCONTAINER=1`` until its
+Windows 11 live-fire acceptance passes; G1.13's shipping default therefore stays
+degraded/fail-closed. The experimental route is an ephemeral, zero-capability
+AppContainer launched through raw ctypes with inherited stdio pipes and
+crash-recoverable per-profile-SID ACLs; a declared ``ORA_EVIDENCE_SANDBOX``
+remains the fallback. Commands are shell-free
+``argv`` by default; a ``cmd`` + ``shell: true`` check runs under
+``ORA_POSIX_SHELL`` and refuses cleanly (never ``cmd.exe``) when it is unset. All
+paths derive from ``runtime_paths`` / ``tempfile`` / ``pathlib`` — never a
+hardcoded root.
 
 Nothing here raises into the pipeline: parse/run/contract are best-effort, and a
 caught failure stamps an observable marker (``tool_events._note_failure``).
@@ -75,6 +80,7 @@ _CATALOG_RELPATH = os.path.join(".ora", "evidence.yaml")
 _MAX_DISCOVERY_WALK = 40          # pathlib upward-walk ceiling (cross-platform)
 _ENV_SANDBOX = "ORA_EVIDENCE_SANDBOX"     # declared wrapper (first-class Windows route)
 _ENV_POSIX_SHELL = "ORA_POSIX_SHELL"
+_ENV_WINDOWS_APPCONTAINER = "ORA_WINDOWS_APPCONTAINER"  # D-02 opt-in; not G1.13 default
 
 _VALID_ENV = {"isolated"}          # SEC-5: 'inherit' would leak credentials — not offered in P5
 _VALID_ON_UNKNOWN = {"gated", "skip"}
@@ -456,6 +462,28 @@ def _macos_sandbox_available() -> bool:
     return sys.platform == "darwin" and bool(shutil.which("sandbox-exec"))
 
 
+def _windows_appcontainer_available() -> bool:
+    """Lazy, explicit D-02 probe; shipping Windows remains degraded by default."""
+    if sys.platform != "win32" or os.name != "nt":
+        return False
+    try:
+        import windows_appcontainer as _wac
+    except ImportError:  # pragma: no cover
+        from orchestrator import windows_appcontainer as _wac
+    try:
+        # Recovery is not feature activation.  Run it before reading the opt-in
+        # so a crash residue is cleaned even after Windows returns to the default
+        # degraded mode, and before the evidence gate can refuse the next check.
+        _wac.recover_pending()
+        if (os.environ.get(_ENV_WINDOWS_APPCONTAINER) or "").strip().lower() not in {
+                "1", "true", "yes", "on"}:
+            return False
+        return bool(_wac.available())
+    except Exception as exc:
+        _mark_failure(exc, "evidence_runner_windows_appcontainer_recovery")
+        return False
+
+
 def _declared_wrapper() -> list[str] | None:
     """A declared ``ORA_EVIDENCE_SANDBOX`` wrapper command (the first-class Windows
     enforcement route). Must name a real executable (its first token), mirroring
@@ -570,15 +598,20 @@ def _wrapper_is_demonstrable_passthrough() -> bool:
 
 def enforcement_backend(network: str) -> str | None:
     """The backend that will ENFORCE ``network`` for a check, or None (→ refuse).
-    ``deny`` is enforceable by macOS sandbox-exec / native Linux unshare (both
-    runner-VERIFIED → ``orchestrated``) or a declared ``ORA_EVIDENCE_SANDBOX``
-    wrapper (operator-ATTESTED → ``declared-sandbox``; used unless it is a
-    demonstrable online passthrough). ``local`` and ``allow`` are NOT enforceable in
-    P5 (no localhost scoping, no egress-logging proxy) → None → refuse (spec §7)."""
+    ``deny`` is enforceable by macOS sandbox-exec / native Windows AppContainer /
+    native Linux unshare (all runner-VERIFIED → ``orchestrated``) or a declared
+    ``ORA_EVIDENCE_SANDBOX`` wrapper (operator-ATTESTED → ``declared-sandbox``;
+    used unless it is a demonstrable online passthrough). ``local`` and ``allow``
+    are NOT enforceable in P5 → None → refuse (spec §7)."""
     if network != "deny":
         return None
     if _macos_sandbox_available():
         return "sandbox-exec"
+    # A native kernel boundary wins over the weaker operator-attested wrapper.
+    # Any profile/ACL/launch failure still refuses in _run_check_impl; mere API
+    # availability never earns an enforcement claim.
+    if _windows_appcontainer_available():
+        return "windows-appcontainer"
     # A declared wrapper is trusted (operator responsibility, like ORA_POSIX_SHELL)
     # and recorded HONESTLY as declared-sandbox — but a DEMONSTRABLE online
     # passthrough (e.g. `env`) is still refused.
@@ -589,11 +622,13 @@ def enforcement_backend(network: str) -> str | None:
     return None
 
 
-# enforcement_model recorded per backend: sandbox-exec / unshare are runner-VERIFIED
+# enforcement_model recorded per backend: native backends are runner-VERIFIED
 # kernel isolation (orchestrated); a declared wrapper is operator-ATTESTED, not
 # runner-verified, so it is honestly a distinct, weaker label (§7/§17 — never
 # overclaim). No backend that RAN a check ever records less than this.
-_ENFORCEMENT_MODEL = {"sandbox-exec": "orchestrated", "unshare": "orchestrated",
+_ENFORCEMENT_MODEL = {"sandbox-exec": "orchestrated",
+                      "windows-appcontainer": "orchestrated",
+                      "unshare": "orchestrated",
                       "ora-evidence-sandbox": "declared-sandbox"}
 
 
@@ -714,7 +749,9 @@ def _wrap_argv(backend: str, argv: list[str], worktree: str, tmpdir: str,
     if backend == "ora-evidence-sandbox":
         wrapper = _declared_wrapper() or []
         return [*wrapper, *argv]
-    return list(argv)
+    # AppContainer is a CreateProcess attribute, never an argv prefix.  Unknown
+    # backends must refuse rather than silently run the command unchanged.
+    raise ValueError(f"backend is not an argv wrapper: {backend}")
 
 
 # ── run_check — ENFORCE-OR-REFUSE + the Phase-1 gate ──────────────────────────
@@ -760,9 +797,12 @@ def _gate_check(check: Check, backend: str | None) -> tuple[bool, str | None]:
         # reversible_write, not read (matches code_execute_axes; ⚖ code-F6). The
         # enforcement is the HONEST per-backend level (declared-sandbox for a
         # wrapper, orchestrated for verified kernel isolation) — never overclaimed.
+        enforcement = _ENFORCEMENT_MODEL.get(backend)
+        if enforcement is None:
+            return False, f"unknown evidence enforcement backend: {backend}"
         axes = {"category": "execute", "mutability": "reversible_write",
                 "sensitivity": "private", "egress": "none",
-                "enforcement": _ENFORCEMENT_MODEL.get(backend, "orchestrated")}
+                "enforcement": enforcement}
     try:
         decision = _te.gate(f"evidence_check:{check.name}", axes,
                             params={"check": check.name},
@@ -878,7 +918,9 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
                 check, argv,
                 f"network:{check.network} cannot be enforced on this platform; "
                 f"declare {_ENV_SANDBOX} (a network-isolating wrapper) or run where "
-                "a native backend exists — the check is NOT run unenforced (§7)")
+                "a native backend exists (the Windows D-02 spike additionally "
+                f"requires {_ENV_WINDOWS_APPCONTAINER}=1) — the check is NOT run "
+                "unenforced (§7)")
 
         # 4. Gate through the Phase-1 manifest (direct gate; never dispatch).
         allowed, why = _gate_check(check, backend)
@@ -891,51 +933,80 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
         os.makedirs(scratch_base, exist_ok=True)
         run_home = tempfile.mkdtemp(prefix="home-", dir=scratch_base)
         run_tmp = tempfile.mkdtemp(prefix="tmp-", dir=scratch_base)
-        # SEC-1/SEC-2: for the macOS profile, refuse an SBPL-unsafe or
-        # ancestor-of-a-sensitive-root worktree BEFORE building the profile — a
-        # subverted profile could otherwise record a FALSE `orchestrated` claim.
-        if backend == "sandbox-exec":
-            _bad = sandbox_worktree_unsafe(wt, run_tmp)
-            # SEC-1: the inputs dir also lands in the SBPL profile, so an
-            # unsafe-char inputs path could inject the profile — refuse it too.
-            if not _bad and inputs_dir and not _sbpl_path_safe(os.path.realpath(inputs_dir)):
-                _bad = ("inputs dir contains a character unsafe for the sandbox "
-                        "profile; refusing rather than risk profile injection")
-            if _bad:
-                shutil.rmtree(run_home, ignore_errors=True)
-                shutil.rmtree(run_tmp, ignore_errors=True)
-                return _refused(check, argv, _bad)
-        # SEC-5: always run under the credential-stripping clean env. `env: inherit`
-        # is not offered in P5 (it would pass SSH_AUTH_SOCK / API keys through); a
-        # future dedicated-HOME variant can add a SAFE inherit that still strips
-        # credentials.
-        env = _clean_env(run_home, run_tmp, inputs_dir)
-        os_argv = _wrap_argv(backend, argv, wt, run_tmp,
-                             allow_write_repo=check.mutates, inputs_dir=inputs_dir,
-                             home_dir=run_home)
-
-        # 6. Run, capture, redact. enforcement_model is the HONEST level of the
-        # backend that ran it (orchestrated for verified kernel isolation;
-        # declared-sandbox for an operator-attested wrapper) — never overclaimed.
-        enf = _ENFORCEMENT_MODEL.get(backend, "orchestrated")
-        import time as _time
-        t0 = _time.time()
         try:
-            r = subprocess.run(os_argv, capture_output=True, text=True,
-                               timeout=check.timeout, cwd=wt, env=env)
-            dur = int((_time.time() - t0) * 1000)
-            out = (r.stdout or "") + (("\n[stderr]\n" + r.stderr) if r.stderr else "")
-            return CheckResult(
-                name=check.name, generated_by=argv, exit_code=r.returncode,
-                passed=(r.returncode == 0), stdout_tail=_redact_tail(out, runner),
-                duration_ms=dur, enforcement_model=enf, backend=backend,
-                mutates=check.mutates)
-        except subprocess.TimeoutExpired:
-            dur = int((_time.time() - t0) * 1000)
-            return CheckResult(
-                name=check.name, generated_by=argv, exit_code=None, passed=False,
-                stdout_tail=f"[timeout after {check.timeout}s]", duration_ms=dur,
-                enforcement_model=enf, backend=backend, mutates=check.mutates)
+            # SEC-1/SEC-2: for the macOS profile, refuse an SBPL-unsafe or
+            # ancestor-of-a-sensitive-root worktree BEFORE building the profile.
+            if backend == "sandbox-exec":
+                _bad = sandbox_worktree_unsafe(wt, run_tmp)
+                if (not _bad and inputs_dir
+                        and not _sbpl_path_safe(os.path.realpath(inputs_dir))):
+                    _bad = ("inputs dir contains a character unsafe for the sandbox "
+                            "profile; refusing rather than risk profile injection")
+                if _bad:
+                    return _refused(check, argv, _bad)
+
+            # SEC-5: every backend receives the same credential-stripped env.
+            env = _clean_env(run_home, run_tmp, inputs_dir)
+            enf = _ENFORCEMENT_MODEL[backend]  # strict: unknown never overclaims
+            import time as _time
+            t0 = _time.time()
+
+            if backend == "windows-appcontainer":
+                try:
+                    import windows_appcontainer as _wac
+                except ImportError:  # pragma: no cover
+                    from orchestrator import windows_appcontainer as _wac
+                readonly = [wt] + ([inputs_dir] if inputs_dir else [])
+                writable = [run_home, run_tmp] + ([wt] if check.mutates else [])
+                try:
+                    native = _wac.run(
+                        argv, cwd=wt, env=env, timeout=check.timeout,
+                        readonly_roots=readonly, writable_roots=writable,
+                    )
+                except Exception as exc:
+                    return _refused(
+                        check, argv,
+                        f"native Windows AppContainer setup/launch failed closed: {exc}")
+                if not native.started:
+                    return _refused(check, argv,
+                                    "native Windows AppContainer did not start the child")
+                dur = int((_time.time() - t0) * 1000)
+                out = native.stdout or ""
+                if native.stderr:
+                    out += "\n[stderr]\n" + native.stderr
+                if native.timed_out:
+                    out += f"\n[timeout after {check.timeout}s]"
+                if native.error:
+                    out += "\n[appcontainer]\n" + native.error
+                return CheckResult(
+                    name=check.name, generated_by=argv,
+                    exit_code=native.returncode,
+                    passed=(native.returncode == 0 and not native.timed_out
+                            and not native.error and not native.cleanup_error),
+                    stdout_tail=_redact_tail(out, runner), duration_ms=dur,
+                    enforcement_model=enf, backend=backend,
+                    mutates=check.mutates)
+
+            os_argv = _wrap_argv(backend, argv, wt, run_tmp,
+                                 allow_write_repo=check.mutates,
+                                 inputs_dir=inputs_dir, home_dir=run_home)
+            try:
+                r = subprocess.run(os_argv, capture_output=True, text=True,
+                                   timeout=check.timeout, cwd=wt, env=env)
+                dur = int((_time.time() - t0) * 1000)
+                out = (r.stdout or "") + (("\n[stderr]\n" + r.stderr)
+                                            if r.stderr else "")
+                return CheckResult(
+                    name=check.name, generated_by=argv, exit_code=r.returncode,
+                    passed=(r.returncode == 0), stdout_tail=_redact_tail(out, runner),
+                    duration_ms=dur, enforcement_model=enf, backend=backend,
+                    mutates=check.mutates)
+            except subprocess.TimeoutExpired:
+                dur = int((_time.time() - t0) * 1000)
+                return CheckResult(
+                    name=check.name, generated_by=argv, exit_code=None, passed=False,
+                    stdout_tail=f"[timeout after {check.timeout}s]", duration_ms=dur,
+                    enforcement_model=enf, backend=backend, mutates=check.mutates)
         finally:
             shutil.rmtree(run_home, ignore_errors=True)
             shutil.rmtree(run_tmp, ignore_errors=True)
@@ -1151,18 +1222,19 @@ def _worktree_root() -> str:
 def inplace_checks_refused(repo_root: str) -> str | None:
     """The §3.3 routing predicate: would ``run_check``'s own pre-flight
     refuse checks run IN PLACE against this repo? Keyed on where that
-    refusal ACTUALLY happens — the macOS sandbox-exec backend's SEC-1/SEC-2
-    pre-flight. Other backends (unshare, declared wrapper) never
-    path-preflight, so in-place behavior is unchanged there. **Windows
-    regression guard (pre-check blocker fold): every Windows path contains
-    a backslash and is SBPL-unsafe BY CHARACTER SET — keying this predicate
-    on the raw ``sandbox_worktree_unsafe`` would have misrouted EVERY repo
-    into the worktree path off-mac and then deferred every check when the
-    worktree path was refused too.** Returns the refusal reason or None."""
+    refusal ACTUALLY happens: macOS sandbox-exec uses its SBPL SEC-1/SEC-2
+    pre-flight; the opt-in Windows AppContainer uses only the platform-neutral
+    ancestry check because inherited ACL grants cannot exclude a nested vault,
+    configuration, runtime-data, or recovery journal. Other backends (unshare,
+    declared wrapper) never path-preflight, so in-place behavior is unchanged.
+    Windows backslashes are never fed to the macOS SBPL character check. Returns
+    the refusal reason or None."""
     try:
-        if not _macos_sandbox_available():
-            return None
-        return sandbox_worktree_unsafe(str(repo_root), str(repo_root))
+        if _macos_sandbox_available():
+            return sandbox_worktree_unsafe(str(repo_root), str(repo_root))
+        if _windows_appcontainer_available():
+            return _worktree_containment_refusal(str(repo_root))
+        return None
     except Exception:
         return None
 
@@ -1175,8 +1247,10 @@ def _worktree_containment_refusal(wt: str) -> str | None:
     real_wt = os.path.realpath(wt)
     for sensitive in (os.path.realpath(os.path.expanduser("~")),
                       os.path.realpath(_rp.VAULT_STR),
-                      os.path.realpath(_rp.CONVERSATIONS_STR)):
-        if _is_within(sensitive, real_wt):
+                      os.path.realpath(_rp.CONVERSATIONS_STR),
+                      os.path.realpath(_rp.DATA_DIR_STR),
+                      os.path.realpath(_rp.CONFIG_DIR_STR)):
+        if _rp.within_base(sensitive, real_wt):
             return (f"worktree is equal to or an ancestor of a sensitive root "
                     f"({sensitive})")
     return None

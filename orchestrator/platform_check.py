@@ -65,6 +65,19 @@ def startup_check() -> list[str]:
     plat = detect_platform()
     recommended = plat["recommended_engine"]
 
+    # D-02 crash recovery is independent of the experimental execution opt-in.
+    # A parent may have died after granting a unique AppContainer SID; startup
+    # must revoke that lease even when G1.13 returns to degraded/fail-closed mode.
+    if plat["os"] == "Windows":
+        try:
+            try:
+                import windows_appcontainer as _wac
+            except ImportError:  # pragma: no cover
+                from orchestrator import windows_appcontainer as _wac
+            _wac.recover_pending()
+        except Exception as exc:
+            msgs.append(f"[platform] AppContainer recovery failed: {exc}")
+
     if not os.path.exists(ROUTING_CONFIG_JSON):
         msgs.append(
             f"[platform] No routing-config.json found. Copy the template and "
