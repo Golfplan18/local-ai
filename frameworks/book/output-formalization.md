@@ -1,4 +1,4 @@
-# Output Formalization Framework
+# Framework — Output Formalization
 
 ## Display Name
 Output Formalization (OFF)

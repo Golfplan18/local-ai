@@ -269,9 +269,9 @@ def write_cleaned_pair_file(
     """Write the cleaned-pair file to disk. Returns the absolute path
     written.
 
-    Filename collision handling uses exclusive creation. If `<filename>`
+    Filename collision handling uses exclusive creation.  If `<filename>`
     already exists, append `-pairNNN` to disambiguate; if that also exists,
-    append a numeric retry suffix. The create itself is atomic so concurrent
+    append a numeric retry suffix.  The create itself is atomic so concurrent
     writers can never both pass a check and silently overwrite one another.
     """
     output_root = Path(output_dir).expanduser()
@@ -285,7 +285,6 @@ def write_cleaned_pair_file(
     stem, ext = base.stem, base.suffix
     collision_stem = f"{stem}-pair{cleaned_pair.pair_num:03d}"
     attempt = 0
-
     while True:
         if attempt == 0:
             target = base

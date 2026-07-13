@@ -1048,6 +1048,20 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
     try:
         from oversight_queue import add_entry
         desc, _ = scrub_content((description or "")[:200])
+        trace_ref = None
+        trace_dir = ctx.get("trace_dir")
+        if trace_dir:
+            try:
+                import pipeline_trace as _pt
+            except ImportError:  # pragma: no cover
+                from orchestrator import pipeline_trace as _pt
+            try:
+                trace_ref = _pt.trace_ref_for_dir(trace_dir)
+            except Exception:
+                trace_ref = None
+        event_extra = dict(queue_extra or {})
+        if trace_ref:
+            event_extra.setdefault("trace_ref", trace_ref)
         entry = {
             "kind": "execution_gate",
             # Pre-filled name skips add_entry's synchronous model naming.
@@ -1062,7 +1076,7 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
                       "conversation_id": ctx.get("conversation_id"),
                       "surface": ctx.get("surface", "unknown"),
                       "description": desc,
-                      **(queue_extra or {})},
+                      **event_extra},
             "verdict": {"verdict": "GATED",
                         "reasoning": f"{why}. Approving grants a one-shot "
                                      f"token; the caller must re-issue the "

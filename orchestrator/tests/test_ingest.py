@@ -69,6 +69,10 @@ class TestRunIngest(unittest.TestCase):
                          str(_rp.vault_dir() / "Engrams"))
         self.assertEqual(rebuild_atomic_dedup.CHROMA_PATH,
                          str(_rp.chromadb_dir()))
+        self.assertEqual(rebuild_atomic_dedup.COLLECTION, "atomics")
+        self.assertEqual(
+            phase5_atomic_extraction.DEFAULT_DEDUP_COLLECTION, "atomics",
+        )
         self.assertEqual(repair_refusal_pairs.DEFAULT_REPORT_PATH,
                          str(_rp.DATA_DIR / "refusal-repair-report.json"))
         self.assertEqual(writer.DEFAULT_OUTPUT_DIR,
@@ -83,6 +87,10 @@ class TestRunIngest(unittest.TestCase):
                          str(_rp.vault_dir() / "Engrams"))
         self.assertEqual(phase_c_relationship_extraction.DEFAULT_CHROMADB_PATH,
                          str(_rp.chromadb_dir()))
+        self.assertEqual(
+            phase_c_relationship_extraction.DEFAULT_DEDUP_COLLECTION,
+            "atomics",
+        )
 
     def test_all_stages_run_in_order(self):
         m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()

@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path, PureWindowsPath
 from unittest import mock
@@ -184,9 +185,100 @@ class TestEnforceOrRefuse(unittest.TestCase):
         self.assertIsNone(er.enforcement_backend("local"))
         self.assertIsNone(er.enforcement_backend("allow"))
 
+    def test_native_windows_backend_precedes_declared_wrapper(self):
+        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=True), \
+             mock.patch.object(er, "_declared_wrapper",
+                               return_value=_PYTHON_PASSTHROUGH_WRAPPER):
+            self.assertEqual(er.enforcement_backend("deny"), "windows-appcontainer")
+
+    def test_native_windows_spike_requires_explicit_opt_in(self):
+        module = types.SimpleNamespace(
+            available=mock.Mock(return_value=True), recover_pending=mock.Mock())
+        with mock.patch.object(sys, "platform", "win32"), \
+             mock.patch.object(os, "name", "nt"), \
+             mock.patch.dict(sys.modules, {"windows_appcontainer": module}), \
+             mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(er._ENV_WINDOWS_APPCONTAINER, None)
+            self.assertFalse(er._windows_appcontainer_available())
+            module.available.assert_not_called()
+            module.recover_pending.assert_called_once()
+            os.environ[er._ENV_WINDOWS_APPCONTAINER] = "1"
+            self.assertTrue(er._windows_appcontainer_available())
+            module.available.assert_called_once()
+            self.assertEqual(module.recover_pending.call_count, 2)
+
+    def test_native_windows_dispatch_uses_stdio_result_not_subprocess_prefix(self):
+        native = types.SimpleNamespace(
+            started=True, returncode=0, stdout="PIPE_STDOUT", stderr="PIPE_STDERR",
+            timed_out=False, error=None, cleanup_error=None,
+        )
+        module = types.SimpleNamespace(run=mock.Mock(return_value=native))
+        with mock.patch.object(er, "enforcement_backend",
+                               return_value="windows-appcontainer"), \
+             mock.patch.object(er, "_gate_check", return_value=(True, "ok")), \
+             mock.patch.object(er, "_wrap_argv") as wrap, \
+             mock.patch.object(er.subprocess, "run") as ordinary_run, \
+             mock.patch.dict(sys.modules, {"windows_appcontainer": module}):
+            result = er._run_check_impl(
+                Check(name="native", argv=[sys.executable, "-c", "print('x')"]),
+                Runner(), tempfile.mkdtemp())
+        self.assertTrue(result.passed)
+        self.assertEqual(result.backend, "windows-appcontainer")
+        self.assertEqual(result.enforcement_model, "orchestrated")
+        self.assertIn("PIPE_STDOUT", result.stdout_tail)
+        self.assertIn("PIPE_STDERR", result.stdout_tail)
+        wrap.assert_not_called()
+        ordinary_run.assert_not_called()
+        call = module.run.call_args
+        self.assertEqual(call.args[0][0], sys.executable)
+        self.assertIn("readonly_roots", call.kwargs)
+        self.assertIn("writable_roots", call.kwargs)
+
+    def test_native_windows_prelaunch_failure_is_unclaimed_refusal(self):
+        module = types.SimpleNamespace(
+            run=mock.Mock(side_effect=RuntimeError("ACL recovery failed")))
+        with mock.patch.object(er, "enforcement_backend",
+                               return_value="windows-appcontainer"), \
+             mock.patch.object(er, "_gate_check", return_value=(True, "ok")), \
+             mock.patch.dict(sys.modules, {"windows_appcontainer": module}):
+            result = er._run_check_impl(
+                Check(name="native", argv=[sys.executable, "-c", "pass"]),
+                Runner(), tempfile.mkdtemp())
+        self.assertTrue(result.skipped)
+        self.assertIsNone(result.backend)
+        self.assertIsNone(result.enforcement_model)
+        self.assertIn("failed closed", result.skip_reason or "")
+
+    def test_native_timeout_is_a_started_orchestrated_failure(self):
+        native = types.SimpleNamespace(
+            started=True, returncode=None, stdout="", stderr="", timed_out=True,
+            error=None, cleanup_error=None,
+        )
+        module = types.SimpleNamespace(run=mock.Mock(return_value=native))
+        with mock.patch.object(er, "enforcement_backend",
+                               return_value="windows-appcontainer"), \
+             mock.patch.object(er, "_gate_check", return_value=(True, "ok")), \
+             mock.patch.dict(sys.modules, {"windows_appcontainer": module}):
+            result = er._run_check_impl(
+                Check(name="native", argv=[sys.executable, "-c", "pass"], timeout=1),
+                Runner(), tempfile.mkdtemp())
+        self.assertFalse(result.skipped)
+        self.assertFalse(result.passed)
+        self.assertEqual(result.enforcement_model, "orchestrated")
+        self.assertIn("timeout", result.stdout_tail.lower())
+
+    def test_unknown_backend_never_passes_through_or_claims_orchestrated(self):
+        with self.assertRaises(ValueError):
+            er._wrap_argv("typo", ["echo", "x"], "/repo", "/tmp", False)
+        allowed, why = er._gate_check(Check(name="t"), "typo")
+        self.assertFalse(allowed)
+        self.assertIn("unknown", why or "")
+
     def test_no_backend_refuses_cleanly_not_run(self):
         # Simulate a platform with NO enforcing backend at all.
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_declared_wrapper", return_value=None), \
              mock.patch.object(er, "_linux_unshare_available", return_value=False):
             self.assertIsNone(er.enforcement_backend("deny"))
@@ -202,6 +294,7 @@ class TestEnforceOrRefuse(unittest.TestCase):
         # runner-verified 'orchestrated' — §7/§17, the fold re-check).
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -219,6 +312,7 @@ class TestEnforceOrRefuse(unittest.TestCase):
         # AND wrapped OPEN) is refused — never used as a backend, never records an
         # enforcement claim.
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_linux_unshare_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=True), \
              mock.patch.object(er, "_declared_wrapper",
@@ -251,6 +345,7 @@ class TestEnforceOrRefuse(unittest.TestCase):
     def test_exit_nonzero_is_failed(self):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -263,6 +358,7 @@ class TestEnforceOrRefuse(unittest.TestCase):
     def test_timeout_is_failed_with_reason(self):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -274,6 +370,7 @@ class TestEnforceOrRefuse(unittest.TestCase):
 
     def test_invalid_wrapper_counts_as_no_backend(self):
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_linux_unshare_available", return_value=False), \
              mock.patch.dict(os.environ, {er._ENV_SANDBOX: "/nonexistent/definitely/not/here"}):
             self.assertIsNone(er._declared_wrapper())
@@ -376,6 +473,7 @@ class TestObservability(unittest.TestCase):
         # P1-2: a refused check must be VISIBLE in the tool-event log.
         with mock.patch.object(er._te, "record") as rec, \
              mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_declared_wrapper", return_value=None), \
              mock.patch.object(er, "_linux_unshare_available", return_value=False):
             er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
@@ -392,6 +490,7 @@ class TestObservability(unittest.TestCase):
         # backend enforcement (declared-sandbox for a wrapper).
         with mock.patch.object(er._te, "record") as rec, \
              mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -441,6 +540,7 @@ class TestMutatesTrue(unittest.TestCase):
     def test_mutates_allowed_under_clean_worktree(self):
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -456,6 +556,7 @@ class TestMutatesTrue(unittest.TestCase):
             self.skipTest("POSIX shell path")
         repo = tempfile.mkdtemp()
         with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
              mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
              mock.patch.object(er, "_declared_wrapper",
                                return_value=_PYTHON_PASSTHROUGH_WRAPPER):
@@ -589,6 +690,8 @@ class TestPortabilityWindowsSim(unittest.TestCase):
         with mock.patch.object(sys, "platform", "win32"), \
              mock.patch.object(os, "name", "nt"), \
              mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
+             mock.patch.object(er, "_windows_appcontainer_available", return_value=False), \
+             mock.patch.object(er._te, "record"), \
              mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(er._ENV_SANDBOX, None)
             self.assertIsNone(er.enforcement_backend("deny"))
@@ -606,7 +709,8 @@ class TestPortabilityWindowsSim(unittest.TestCase):
         except ImportError:
             from orchestrator.tools import bash_execute as be
         with mock.patch.object(os, "name", "nt"), \
-             mock.patch.object(be, "_posix_shell_path", return_value=None):
+             mock.patch.object(be, "_posix_shell_path", return_value=None), \
+             mock.patch.object(er._te, "record"):
             res = er.run_check(Check(name="s", cmd="echo x | tee y", shell=True),
                                Runner(), tempfile.mkdtemp())
             self.assertTrue(res.skipped)

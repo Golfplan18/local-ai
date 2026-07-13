@@ -30,6 +30,19 @@ case "$START_TIMEOUT" in
     ;;
 esac
 
+if [[ "${PORT+x}" == "x" ]]; then
+  case "$PORT" in
+    ''|*[!0-9]*|0*)
+      echo "ERROR: PORT must be a canonical integer from 1 to 65535; got '$PORT'." >&2
+      exit 2
+      ;;
+  esac
+  if (( ${#PORT} > 5 || PORT > 65535 )); then
+    echo "ERROR: PORT must be a canonical integer from 1 to 65535; got '$PORT'." >&2
+    exit 2
+  fi
+fi
+
 if [[ ! -x "$SERVER_LAUNCHER" ]]; then
   echo "ERROR: Foreground launcher is missing or not executable: $SERVER_LAUNCHER" >&2
   exit 1
@@ -37,7 +50,14 @@ fi
 
 find_ora_port() {
   local port payload reported_home python
-  for port in {5000..5010}; do
+  local ports=( {5000..5010} )
+  # A direct foreground/background launch inherits PORT and server.py treats it
+  # as exact intent. Supervised launches with an ambient PORT are rejected below
+  # because launchd cannot inherit a one-shot caller environment safely.
+  if [[ "${PORT+x}" == "x" ]]; then
+    ports=( "$PORT" )
+  fi
+  for port in "${ports[@]}"; do
     payload="$(curl -sf --max-time 2 "http://localhost:$port/health" 2>/dev/null)" || continue
     reported_home=""
     if command -v plutil >/dev/null 2>&1; then
@@ -106,6 +126,15 @@ if command -v launchctl >/dev/null 2>&1; then
   elif [[ -f "$LAUNCHD_PLIST" ]]; then
     launchd_state="stopped"
   fi
+fi
+
+if [[ "${PORT+x}" == "x" && "$launchd_state" != "none" ]]; then
+  cat >&2 <<EOF
+ERROR: PORT=$PORT cannot be applied while Ora is managed by launchd.
+Run ./scripts/ora-launchd.sh uninstall before using a one-shot PORT, or
+configure the supervised launcher explicitly. Refusing to start on another port.
+EOF
+  exit 2
 fi
 
 if port="$(find_ora_port)"; then

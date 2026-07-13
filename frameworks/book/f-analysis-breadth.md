@@ -1,4 +1,4 @@
-# F-ANALYSIS-BREADTH — Step 3 Breadth Model Specification
+# Specification — F-Analysis-Breadth
 
 *Loaded into: Breadth model context window at Step 3 (Parallel Independent Analysis).*
 

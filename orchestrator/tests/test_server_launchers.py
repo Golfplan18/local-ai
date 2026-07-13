@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import ast
+import http.server
+import json
 import os
 import plistlib
+import re
 import subprocess
+import sys
+import threading
 from pathlib import Path
 
 
@@ -17,6 +23,8 @@ APP_LAUNCHER = ROOT / "installer" / "macos" / "ora-app-launcher.sh"
 SWAP_ICON = ROOT / "swap-icon.sh"
 SERVICE_MANAGER = ROOT / "scripts" / "ora-launchd.sh"
 SERVER = ROOT / "server" / "server.py"
+GITIGNORE = ROOT / ".gitignore"
+LAUNCH_EXAMPLE = ROOT / ".claude" / "launch.json.example"
 
 RUNTIME_FLAGS = {
     "ORA_RAG_SELECTION": "1",
@@ -28,6 +36,39 @@ RUNTIME_FLAGS = {
     "ORA_OR_STATS": "1",
     "ORA_EXECUTION_LOOP": "1",
 }
+
+
+def _load_server_port_contract():
+    """Load only server.py's port helpers, not its 17k-line runtime graph."""
+    tree = ast.parse(SERVER.read_text(encoding="utf-8"), filename=str(SERVER))
+    wanted_assignments = {"_SERVER_HOST", "_DEFAULT_SERVER_PORTS"}
+    wanted_defs = {"ServerPortError", "_port_is_available", "_select_server_port"}
+    nodes = []
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id in wanted_assignments
+                for target in node.targets):
+            nodes.append(node)
+        elif isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in wanted_defs:
+            nodes.append(node)
+    namespace = {"os": os}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=nodes, type_ignores=[])),
+                 str(SERVER), "exec"), namespace)
+    return namespace
+
+
+def _load_server_workspace_contract():
+    """Load the checkout-root bootstrap without importing the server graph."""
+    tree = ast.parse(SERVER.read_text(encoding="utf-8"), filename=str(SERVER))
+    node = next(
+        item for item in tree.body
+        if isinstance(item, ast.FunctionDef)
+        and item.name == "_resolve_server_workspace"
+    )
+    namespace = {"os": os, "Path": Path, "__file__": str(SERVER)}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])),
+                 str(SERVER), "exec"), namespace)
+    return namespace["_resolve_server_workspace"]
 
 
 def _run_with_fake_python(tmp_path: Path, *args: str, overrides: dict[str, str] | None = None):
@@ -98,6 +139,14 @@ def test_foreground_launcher_exports_every_runtime_flag(tmp_path: Path):
     for name, default in RUNTIME_FLAGS.items():
         expected = "0" if name == "ORA_WEB_EXTRACTION" else default
         assert child_env[name] == expected
+
+
+def test_foreground_launcher_preserves_explicit_server_port(tmp_path: Path):
+    completed, _workspace, _argv, child_env = _run_with_fake_python(
+        tmp_path, overrides={"PORT": "6200"})
+
+    assert completed.returncode == 0, completed.stderr
+    assert child_env["PORT"] == "6200"
 
 
 def test_no_oversight_is_stripped_without_losing_other_arguments(tmp_path: Path):
@@ -210,6 +259,133 @@ def test_interactive_start_rejects_zero_timeout_before_launching(tmp_path: Path)
     assert "positive integer" in completed.stderr
 
 
+def test_interactive_start_rejects_invalid_explicit_port_before_launching(tmp_path: Path):
+    completed = subprocess.run(
+        ["bash", str(START)],
+        env={
+            **os.environ,
+            "HOME": str(tmp_path),
+            "ORA_HOME": str(tmp_path),
+            "PORT": "05000",
+            "ORA_NO_BROWSER": "1",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert "PORT must be a canonical integer" in completed.stderr
+
+
+def test_interactive_launchers_poll_exact_explicit_port():
+    posix = START.read_text(encoding="utf-8")
+    windows = (ROOT / "start.bat").read_text(encoding="utf-8")
+
+    assert 'ports=( "$PORT" )' in posix
+    assert '"${PORT+x}" == "x" && "$launchd_state" != "none"' in posix
+    assert 'set "ORA_HEALTH_PORT=!PORT!"' in windows
+    assert "call :check_health_identity" in windows
+    assert 'set "FOUND_PORT=!PORT!"' in windows
+    assert "s.bind(('localhost',int(os.environ['PORT'])))" in windows
+
+
+def test_windows_launcher_targets_its_own_or_explicit_checkout():
+    source = (ROOT / "start.bat").read_text(encoding="utf-8")
+
+    assert "if defined ORA_HOME" in source
+    assert 'set "WORKSPACE=!ORA_HOME!"' in source
+    assert 'set "WORKSPACE=%~dp0"' in source
+    assert 'set "ORA_HOME=!WORKSPACE!"' in source
+    assert "%USERPROFILE%\\ora" not in source
+
+
+def test_windows_health_probe_rejects_a_different_checkout(tmp_path: Path):
+    source = (ROOT / "start.bat").read_text(encoding="utf-8")
+    match = re.search(
+        r"REM ORA_HEALTH_IDENTITY_CHECK[^\n]*\n%PYTHON% -c \"([^\n]+)\" >nul",
+        source,
+    )
+    assert match, "health identity command is missing from start.bat"
+    health_code = match.group(1)
+
+    class HealthHandler(http.server.BaseHTTPRequestHandler):
+        ora_home = ""
+
+        def do_GET(self):
+            body = json.dumps({"status": "ok", "ora_home": self.ora_home}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, _format, *_args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    intended = tmp_path / "intended checkout"
+    intended.mkdir()
+    env = {
+        **os.environ,
+        "ORA_HOME": str(intended),
+        "ORA_HEALTH_PORT": str(server.server_port),
+    }
+    try:
+        HealthHandler.ora_home = str(tmp_path / "other checkout")
+        wrong = subprocess.run(
+            [sys.executable, "-c", health_code], env=env, check=False
+        )
+        HealthHandler.ora_home = str(intended)
+        correct = subprocess.run(
+            [sys.executable, "-c", health_code], env=env, check=False
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert wrong.returncode == 1
+    assert correct.returncode == 0
+
+
+def test_interactive_start_rejects_one_shot_port_when_launchd_manages_ora(
+    tmp_path: Path,
+):
+    home = tmp_path / "home"
+    workspace = tmp_path / "ora root"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    home.mkdir()
+    workspace.mkdir()
+    runner = workspace / "run-ora-server.sh"
+    runner.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+    runner.chmod(0o755)
+    launchctl = fake_bin / "launchctl"
+    launchctl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    launchctl.chmod(0o755)
+
+    completed = subprocess.run(
+        ["bash", str(START)],
+        env={
+            **os.environ,
+            "HOME": str(home),
+            "ORA_HOME": str(workspace),
+            "PATH": f"{fake_bin}:/usr/bin:/bin",
+            "PORT": "6200",
+            "ORA_NO_BROWSER": "1",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "cannot be applied while Ora is managed by launchd" in completed.stderr
+    assert "Refusing to start on another port" in completed.stderr
+
+
 def test_interactive_start_blocks_legacy_server_from_exact_checkout(tmp_path: Path):
     home = tmp_path / "home"
     workspace = home / "ora root"
@@ -305,6 +481,157 @@ def test_health_endpoint_exposes_canonical_checkout_identity():
     )[0]
     assert '"ora_home"' in health_block
     assert "os.path.realpath(WORKSPACE)" in health_block
+
+
+def test_preview_launch_config_is_machine_local_not_tracked():
+    patterns = GITIGNORE.read_text(encoding="utf-8").splitlines()
+    assert "/.claude/launch.json" in patterns
+    tracked = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "--", ".claude/launch.json"],
+        text=True, capture_output=True, check=True,
+    )
+    assert tracked.stdout.strip() == ""
+
+
+def test_preview_launch_example_preserves_profiles_and_exact_ports():
+    example = json.loads(LAUNCH_EXAMPLE.read_text(encoding="utf-8"))
+    configurations = example["configurations"]
+
+    assert [(item["name"], item["port"]) for item in configurations] == [
+        ("ora", 5000),
+        ("ora-verify", 5001),
+        ("ora-preview", 5002),
+        ("ora-preview-2", 5003),
+    ]
+    for item in configurations:
+        assert item["runtimeExecutable"] == "REPLACE_WITH_LOCAL_PYTHON"
+        assert item["runtimeArgs"] == ["${workspaceFolder}/server/server.py"]
+        assert item["cwd"] == "${workspaceFolder}"
+        assert item["env"] == {"PORT": str(item["port"])}
+        assert item["autoPort"] is False
+        assert "/Users/" not in json.dumps(item)
+        assert "/opt/" not in json.dumps(item)
+
+
+def test_server_without_ora_home_bootstraps_from_its_own_checkout(tmp_path: Path):
+    resolve = _load_server_workspace_contract()
+    checkout = tmp_path / "portable checkout"
+    server_file = checkout / "server" / "server.py"
+    server_file.parent.mkdir(parents=True)
+    server_file.touch()
+    env = {}
+
+    workspace = resolve(env, server_file)
+
+    assert Path(workspace) == checkout.resolve()
+    assert env["ORA_HOME"] == str(checkout.resolve())
+
+
+def test_server_explicit_ora_home_remains_authoritative(tmp_path: Path):
+    resolve = _load_server_workspace_contract()
+    explicit = tmp_path / "selected checkout"
+    env = {"ORA_HOME": f"  {explicit}  "}
+
+    workspace = resolve(env, tmp_path / "other" / "server" / "server.py")
+
+    assert Path(workspace) == explicit
+    assert env["ORA_HOME"] == str(explicit)
+
+
+def test_server_honors_an_explicit_available_port_without_scanning():
+    contract = _load_server_port_contract()
+    seen = []
+
+    def available(port):
+        seen.append(port)
+        return True
+
+    selected = contract["_select_server_port"]({"PORT": "6200"},
+                                                 available=available)
+    assert selected == 6200
+    assert seen == [6200]
+
+
+def test_server_resolves_port_before_startup_side_effects_and_fails_loudly():
+    source = SERVER.read_text(encoding="utf-8")
+    main = source.split('if __name__ == "__main__":', 1)[1]
+    assert main.index("port = _select_server_port()") < main.index(
+        "migrate_active_project_pointer")
+    assert 'print(f"ERROR: {_port_exc}", file=sys.stderr, flush=True)' in main
+    assert "raise SystemExit(2)" in main
+
+
+def test_server_rejects_invalid_explicit_port_values():
+    contract = _load_server_port_contract()
+    select = contract["_select_server_port"]
+    error = contract["ServerPortError"]
+    for raw in ("", " ", "+5000", "05000", "5000.0", "0", "65536",
+                "-1", "abc", "５０００"):
+        try:
+            select({"PORT": raw}, available=lambda _port: True)
+        except error as exc:
+            assert "PORT" in str(exc)
+        else:  # pragma: no cover - assertion branch
+            raise AssertionError(f"invalid PORT accepted: {raw!r}")
+
+
+def test_server_explicit_busy_port_fails_without_fallback_scan():
+    contract = _load_server_port_contract()
+    seen = []
+
+    def unavailable(port):
+        seen.append(port)
+        return False
+
+    try:
+        contract["_select_server_port"]({"PORT": "5002"}, available=unavailable)
+    except contract["ServerPortError"] as exc:
+        assert "PORT=5002 is unavailable" in str(exc)
+        assert "different port" in str(exc)
+    else:  # pragma: no cover - assertion branch
+        raise AssertionError("occupied explicit PORT silently fell back")
+    assert seen == [5002]
+
+
+def test_server_unset_port_preserves_first_free_default_scan():
+    contract = _load_server_port_contract()
+    seen = []
+
+    def third_is_free(port):
+        seen.append(port)
+        return port == 5002
+
+    selected = contract["_select_server_port"]({}, available=third_is_free)
+    assert selected == 5002
+    assert seen == [5000, 5001, 5002]
+
+
+def test_server_unset_port_fails_when_default_range_is_exhausted():
+    contract = _load_server_port_contract()
+    try:
+        contract["_select_server_port"]({}, available=lambda _port: False)
+    except contract["ServerPortError"] as exc:
+        assert "5000-5010" in str(exc)
+    else:  # pragma: no cover - assertion branch
+        raise AssertionError("exhausted default range silently selected a port")
+
+
+def test_server_port_probe_closes_socket_after_bind_failure():
+    contract = _load_server_port_contract()
+
+    class BusySocket:
+        closed = False
+
+        def bind(self, _address):
+            raise OSError("busy")
+
+        def close(self):
+            self.closed = True
+
+    sock = BusySocket()
+    assert contract["_port_is_available"](
+        5000, socket_factory=lambda: sock) is False
+    assert sock.closed is True
 
 
 def test_generated_app_launcher_delegates_to_interactive_start():

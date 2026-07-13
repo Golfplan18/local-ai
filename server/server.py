@@ -15,13 +15,26 @@ from pathlib import Path
 from urllib.parse import urlparse
 import requests
 
-# WORKSPACE must honor ORA_HOME (Windows installs / relocations) BEFORE
-# runtime_paths can be imported — runtime_paths lives under orchestrator/, which
-# the sys.path bootstrap below has to add first (chicken-and-egg). Mirror
-# runtime_paths.ORA_HOME's own derivation so the two never disagree.
-# os.path.join(root, "") appends the platform separator, preserving the
-# trailing-separator semantics the rest of this module relies on.
-WORKSPACE         = os.path.join(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"), "")
+def _resolve_server_workspace(environ=None, server_file=None) -> str:
+    """Resolve and export the checkout root before importing runtime_paths.
+
+    An explicit ORA_HOME remains authoritative. Without one, the server belongs
+    to the checkout containing this file—not an unrelated ``~/ora`` checkout.
+    Exporting the derived root keeps runtime_paths and legacy WORKSPACE consumers
+    on one identity even when a preview harness launches from another cwd.
+    """
+    env = os.environ if environ is None else environ
+    explicit = str(env.get("ORA_HOME") or "").strip()
+    root = explicit or str(Path(server_file or __file__).resolve().parents[1])
+    env["ORA_HOME"] = root
+    # A final empty component appends the host separator, preserving the legacy
+    # trailing-separator contract used throughout this module.
+    return os.path.join(root, "")
+
+
+# WORKSPACE must be established before runtime_paths can be imported because it
+# lives under orchestrator/, which the sys.path bootstrap below has to add first.
+WORKSPACE = _resolve_server_workspace()
 MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
 MAX_ITERATIONS = 10
@@ -10180,6 +10193,105 @@ def conversations_fetch(conversation_id):
     return json.dumps(data)
 
 
+# -- Trace Walk (Chunk 2): safe read-side projections + per-trace pinning ---
+
+@app.route("/api/trace/list/<conversation_id>", methods=["GET"])
+def api_trace_list(conversation_id):
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    refs = _pt.list_trace_refs(conversation_id)
+    return json.dumps({"conversation_id": conversation_id, "trace_refs": refs})
+
+
+@app.route("/api/trace/manifest/<conversation_id>/<turn_ts>", methods=["GET"])
+def api_trace_manifest(conversation_id, turn_ts):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    data = _pt.trace_manifest_projection(trace_ref)
+    if data is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    return json.dumps(data)
+
+
+@app.route("/api/trace/step/<conversation_id>/<turn_ts>/<step_name>", methods=["GET"])
+def api_trace_step(conversation_id, turn_ts, step_name):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    data = _pt.trace_step_projection(trace_ref, step_name)
+    if data is None:
+        return json.dumps({
+            "error": "step not found or not allowed",
+            "trace_ref": trace_ref,
+            "step_name": step_name,
+        }), 404
+    return json.dumps(data)
+
+
+@app.route("/api/trace/export/<conversation_id>/<turn_ts>", methods=["GET"])
+def api_trace_export(conversation_id, turn_ts):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    rendered = _pt.trace_export_html(trace_ref)
+    if rendered is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    html_doc, filename = rendered
+    headers = {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": _pt.TRACE_EXPORT_CSP,
+    }
+    return html_doc, 200, headers
+
+
+@app.route("/api/trace/retention", methods=["POST"])
+def api_trace_retention():
+    try:
+        body = request.get_json(force=True, silent=True)
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return json.dumps({"error": "expected JSON object"}), 400
+    trace_ref_value = body.get("trace_ref")
+    pinned = body.get("pinned")
+    if not isinstance(trace_ref_value, str) or not trace_ref_value.strip():
+        return json.dumps({"error": "trace_ref must be a non-empty string"}), 400
+    if not isinstance(pinned, bool):
+        return json.dumps({"error": "pinned must be a boolean"}), 400
+    trace_ref = trace_ref_value.strip()
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    try:
+        manifest = _pt.set_retention_state(trace_ref, "pinned" if pinned else "default")
+    except ValueError as exc:
+        message = str(exc) or "retention update rejected"
+        status = 409 if "open trace" in message else 400
+        return json.dumps({"error": message, "trace_ref": trace_ref}), status
+    if manifest is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    return json.dumps({
+        "ok": True,
+        "trace_ref": trace_ref,
+        "retention_state": manifest.get("retention_state"),
+    })
+
+
 @app.route("/api/conversation/<conversation_id>/mark-read", methods=["POST"])
 def conversations_mark_read(conversation_id):
     """Update the conversation's ``last_read_at`` to now (or a supplied
@@ -16783,6 +16895,8 @@ def api_oversight_paused():
             "project_nexus": (e.event or {}).get("project_nexus", ""),
             "event_type": (e.event or {}).get("event_type", ""),
             "reasoning_excerpt": reasoning,
+            "trace_ref": e.trace_ref,
+            "trace_step": (e.event or {}).get("trace_step", ""),
         })
     return json.dumps({"entries": rows}), 200, {"Content-Type": "application/json"}
 
@@ -16851,13 +16965,80 @@ def api_oversight_discuss(entry_id):
     return json.dumps(result), 200, {"Content-Type": "application/json"}
 
 
+_SERVER_HOST = "localhost"
+_DEFAULT_SERVER_PORTS = range(5000, 5011)
+
+
+class ServerPortError(RuntimeError):
+    """The requested server port is invalid or cannot be bound."""
+
+
+def _port_is_available(port: int, *, socket_factory=None) -> bool:
+    """Return whether a fresh IPv4 TCP socket can bind localhost:``port``."""
+    if socket_factory is None:
+        import socket
+        socket_factory = socket.socket
+    sock = socket_factory()
+    try:
+        sock.bind((_SERVER_HOST, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+
+def _select_server_port(environ=None, *, available=None) -> int:
+    """Resolve the startup port without silently overriding explicit intent.
+
+    An explicitly present ``PORT`` must be an ASCII-decimal TCP port and must be
+    available.  A collision raises instead of scanning to a different port—the
+    preview harness and browser must never believe Ora is on one port while the
+    process silently chose another.  Only an absent ``PORT`` retains the legacy
+    5000..5010 first-free scan.
+    """
+    env = os.environ if environ is None else environ
+    probe = _port_is_available if available is None else available
+    if "PORT" in env:
+        raw = str(env.get("PORT", ""))
+        if not raw or not raw.isascii() or not raw.isdecimal():
+            raise ServerPortError(
+                f"PORT must be an ASCII integer from 1 to 65535; got {raw!r}")
+        port = int(raw, 10)
+        if str(port) != raw or not 1 <= port <= 65535:
+            raise ServerPortError(
+                f"PORT must be a canonical integer from 1 to 65535; got {raw!r}")
+        if not probe(port):
+            raise ServerPortError(
+                f"PORT={port} is unavailable on {_SERVER_HOST}; refusing to "
+                "silently start on a different port")
+        return port
+
+    for port in _DEFAULT_SERVER_PORTS:
+        if probe(port):
+            return port
+    raise ServerPortError(
+        "no available localhost port in the default range 5000-5010")
+
+
 if __name__ == "__main__":
-    import argparse, signal as _signal, socket
+    import argparse, signal as _signal
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--scheduler", action="store_true", help="Start task scheduler")
     parser.add_argument("--oversight", action="store_true", help="Start meta-layer oversight daemon (PED watcher, corpus watcher, workflow spec sweeper, revisit sweeper)")
     args, _ = parser.parse_known_args()
+
+    # Resolve the port before migrations, daemons, or other startup side effects.
+    # PORT is the preview-harness contract; if it is present, invalid or occupied
+    # means a loud stop—not an unannounced fallback that opens the wrong URL.
+    try:
+        port = _select_server_port()
+    except ServerPortError as _port_exc:
+        print(f"ERROR: {_port_exc}", file=sys.stderr, flush=True)
+        raise SystemExit(2)
+    if "PORT" in os.environ:
+        print(f"[startup] honoring PORT={port}", flush=True)
 
     # Expand the active-project pointer before any worker threads or HTTP
     # requests can race it.  The normal getter is intentionally read-only;
@@ -16880,13 +17061,6 @@ if __name__ == "__main__":
             )
     except Exception as _project_folder_exc:
         print(f"[startup] project-folder pointer migration skipped: {_project_folder_exc}")
-
-    port = 5000
-    for p in range(5000, 5011):
-        try:
-            s = socket.socket(); s.bind(("localhost", p)); s.close(); port = p; break
-        except OSError:
-            continue
 
     # Platform check — validate engine matches this machine
     try:
@@ -17024,7 +17198,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"[server] Failed to start oversight daemon: {e}")
 
-    print(f"Local AI Chat Server starting on http://localhost:{port}")
+    print(f"Local AI Chat Server starting on http://{_SERVER_HOST}:{port}")
     print(f"Active endpoint: {endpoint.get('name') if endpoint else 'NONE — add an endpoint first'}")
     print(f"Tools: {'available' if TOOLS_AVAILABLE else 'UNAVAILABLE'} ({len(TOOL_REGISTRY)} registered)")
     # Surface the curated model-registry status so operators can see at
@@ -17133,4 +17307,4 @@ if __name__ == "__main__":
     except Exception as _e:
         print(f"[startup] icon-set rebuild failed: {_e}")
 
-    app.run(host="localhost", port=port, debug=False, threaded=True)
+    app.run(host=_SERVER_HOST, port=port, debug=False, threaded=True)

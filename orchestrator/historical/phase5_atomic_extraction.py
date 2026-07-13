@@ -58,7 +58,9 @@ from orchestrator.historical.chain_detector import (
 DEFAULT_ARCHIVE_DIR    = str(_rp.historical_archive_dir())
 DEFAULT_VAULT_ROOT     = str(_rp.vault_dir() / "Engrams" / "Historical Atomics")
 DEFAULT_CHROMADB_PATH  = str(_rp.chromadb_dir())
-DEFAULT_DEDUP_COLLECTION = "atomic_dedup"
+# Logical collection name. embedding.resolve_collection() maps this to the
+# machine-specific physical collection configured in config/chromadb.json.
+DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH  = str(_rp.DATA_DIR / "phase5-manifest.json")
 DEFAULT_REPORT_PATH    = str(_rp.DATA_DIR / "phase5-report.json")
 
@@ -525,7 +527,14 @@ _TOTAL_DEFAULTS = {
 
 
 def _normalize_manifest(manifest: dict) -> dict:
-    """Bring legacy/reconstructed manifests up to the writable schema."""
+    """Bring legacy/reconstructed manifests up to the writable schema.
+
+    The emergency 2026-07-10 reconstruction preserved ``completed_pairs``
+    but omitted ``totals``.  Phase 5 used to index that mapping directly,
+    crashing on the first completed future and losing the whole cycle's
+    checkpoint.  Normalize every counter here and again at record time so a
+    partial manifest can never recreate that failure.
+    """
     if not isinstance(manifest, dict):
         raise ValueError("phase5 manifest root must be an object")
 
@@ -533,33 +542,41 @@ def _normalize_manifest(manifest: dict) -> dict:
     if not isinstance(completed, dict):
         raise ValueError("phase5 manifest completed_pairs must be an object")
 
-    totals = manifest.setdefault("totals", {})
+    totals = manifest.get("totals")
     if not isinstance(totals, dict):
         totals = {}
-        manifest.update({"totals": totals})
+        manifest["totals"] = totals
     for key, default in _TOTAL_DEFAULTS.items():
+        # A reconstructed manifest knows how many pairs were completed even
+        # though its candidate/token history was lost.
         if key == "pairs_processed":
             default = len(completed)
         totals.setdefault(key, default)
     return manifest
 
 
-def _empty_manifest() -> dict:
-    return _normalize_manifest({
-        "version":          1,
-        "created_at":       datetime.now().isoformat(timespec="seconds"),
-        "completed_pairs":  {},
-        "totals":           dict(_TOTAL_DEFAULTS),
-    })
-
-
 def _successful_completed_paths(manifest: dict) -> set[str]:
-    """Return completed paths whose latest Phase 5 attempt had no error."""
+    """Return paths whose latest Phase 5 attempt completed without error.
+
+    Older code treated an errored result as permanently complete because the
+    path was present in ``completed_pairs``.  Keeping errored paths out of the
+    resume set makes the next invocation retry them and lets a later success
+    overwrite the failed entry.
+    """
     completed = manifest.get("completed_pairs", {})
     return {
         path for path, entry in completed.items()
         if not (isinstance(entry, dict) and entry.get("error"))
     }
+
+
+def _empty_manifest() -> dict:
+    return _normalize_manifest({
+        "version": 1,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "completed_pairs": {},
+        "totals": dict(_TOTAL_DEFAULTS),
+    })
 
 
 def _load_manifest(path: str) -> dict:
@@ -590,9 +607,15 @@ def _open_dedup_collection(chromadb_path: str, name: str):
     are shared by the historical extraction pipelines.
     """
     import chromadb
-    from orchestrator.embedding import get_or_create_collection
+    from orchestrator.embedding import get_collection
     client = chromadb.PersistentClient(path=str(chromadb_path))
-    return get_or_create_collection(client, name)
+    # Phase 5 resumes against the prebuilt atomic dedup corpus. Opening that
+    # existing collection must not take the catalog-write path: on a live
+    # persistent store, get_or_create_collection can wait indefinitely behind
+    # another Chroma client even though the collection already exists.
+    # Missing collections are a recovery/configuration error and should fail
+    # loudly rather than silently creating an empty dedup corpus.
+    return get_collection(client, name)
 
 
 def _enumerate_pairs_reverse_chrono(archive_dir: str) -> list[str]:
@@ -698,6 +721,7 @@ def run_phase5(
             aggregate["pairs_errored"] += 1
         if r.candidates_minted > 0:
             aggregate["pairs_with_atomics"] += 1
+        _normalize_manifest(manifest)
         manifest["completed_pairs"][r.cleaned_pair_path] = {
             "candidates_total":  r.candidates_total,
             "candidates_minted": r.candidates_minted,
@@ -707,7 +731,7 @@ def run_phase5(
             "cost_usd":          r.cost_usd,
             "error":             r.error,
         }
-        m_totals = _normalize_manifest(manifest).setdefault("totals", {})
+        m_totals = manifest["totals"]
         m_totals["pairs_processed"]   += 1
         m_totals["pairs_with_atomics"] += (1 if r.candidates_minted > 0 else 0)
         m_totals["candidates_total"]  += r.candidates_total
