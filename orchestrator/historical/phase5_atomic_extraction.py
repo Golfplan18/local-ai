@@ -642,6 +642,7 @@ def run_phase5(
     progress_to_stderr: bool = True,
     rebuild_manifest:   bool = False,
     limit:              Optional[int] = None,
+    limit_pending:      Optional[int] = None,
     backend:            str = "api",
 ) -> dict:
     start = time.monotonic()
@@ -665,6 +666,12 @@ def run_phase5(
         if isinstance(entry, dict) and entry.get("error")
     )
     pending = [p for p in pairs if p not in completed]
+    if limit_pending:
+        # Cap the PENDING queue (not the enumerated archive) so a pilot can
+        # process exactly one outstanding pair without touching the manifest
+        # of already-completed work. ``limit`` caps the archive enumeration
+        # and is kept for backward compatibility.
+        pending = pending[:limit_pending]
     if progress_to_stderr:
         print(f"[phase5] {len(completed):,} already done, "
               f"{len(pending):,} pending ({retry_errors:,} prior errors "
@@ -789,11 +796,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST_PATH)
     parser.add_argument("--report", default=DEFAULT_REPORT_PATH)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--limit", type=int)
+    parser.add_argument("--limit", type=int,
+                        help="Cap the enumerated archive (newest-first)")
+    parser.add_argument("--limit-pending", type=int,
+                        help="Cap the PENDING queue (post-resume) — use 1 "
+                             "for a single-pair pilot through the selected "
+                             "backend without touching completed work")
     parser.add_argument("--rebuild-manifest", action="store_true")
     parser.add_argument("--quiet", action="store_true")
-    parser.add_argument("--backend", default="api",
-                        help="Model-call path: api | claude-cli | ora-slots")
+    from orchestrator.historical.cleanup_backends import BACKEND_CHOICES
+    parser.add_argument("--backend", choices=list(BACKEND_CHOICES),
+                        default="api",
+                        help="Model-call path: 'api' (metered Anthropic — "
+                             "forbidden for the OpenRouter recovery), "
+                             "'claude-cli' (Claude subscription CLI), "
+                             "'ora-slots' (Ora slot routing — provider set "
+                             "by routing-config), 'openrouter' (explicit "
+                             "OpenRouter-only route via openrouter.ai)")
     args = parser.parse_args(argv)
 
     stats = run_phase5(
@@ -807,6 +826,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         progress_to_stderr=not args.quiet,
         rebuild_manifest=args.rebuild_manifest,
         limit=args.limit,
+        limit_pending=args.limit_pending,
         backend=args.backend,
     )
     Path(args.report).parent.mkdir(parents=True, exist_ok=True)

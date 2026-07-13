@@ -201,8 +201,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--backend", choices=list(BACKEND_CHOICES),
                         default=BACKEND_API,
                         help="Model-call path for every stage: 'api' "
-                             "(metered key), 'claude-cli' (subscription), "
-                             "'ora-slots' (Ora slot routing)")
+                             "(metered Anthropic key), 'claude-cli' "
+                             "(subscription), 'ora-slots' (Ora slot "
+                             "routing), 'openrouter' (explicit "
+                             "OpenRouter-only route via openrouter.ai)")
     parser.add_argument("--from-date", type=_parse_iso_date)
     parser.add_argument("--to-date", type=_parse_iso_date)
     parser.add_argument("--max-workers", type=int, default=8)
