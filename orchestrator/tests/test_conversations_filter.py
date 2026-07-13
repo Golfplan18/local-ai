@@ -137,6 +137,7 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.assertEqual(raw["nexus"], "general")  # pre-rename reader
         self.assertEqual(raw["canonical_nexus"], "commons")  # current reader
 
+        pm.create_project("Book", pointer_dir=pm.POINTER_DIR)
         # Dual-form input prefers the canonical field and remains dual on disk.
         posted = self.client.post(
             "/api/active-project",
@@ -147,6 +148,25 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.assertEqual(payload["canonical_nexus"], "book")
         got = json.loads(self.client.get("/api/active-project").data)
         self.assertEqual(got["canonical_nexus"], "book")
+
+    def test_active_project_get_repairs_hidden_pointer_to_commons(self):
+        pm.create_project("Book", pointer_dir=pm.POINTER_DIR)
+        pm.set_project_status("book", "inactive", pointer_dir=pm.POINTER_DIR)
+        ap.set_active_project("book")
+
+        got = json.loads(self.client.get("/api/active-project").data)
+        self.assertEqual(got["canonical_nexus"], "commons")
+        raw = json.loads(ap.ACTIVE_PROJECT_POINTER.read_text(encoding="utf-8"))
+        self.assertEqual(raw["canonical_nexus"], "commons")
+
+    def test_active_project_post_rejects_hidden_project_to_commons(self):
+        pm.create_project("Book", pointer_dir=pm.POINTER_DIR)
+        pm.set_project_status("book", "archived", pointer_dir=pm.POINTER_DIR)
+
+        posted = self.client.post("/api/active-project", json={"nexus": "book"})
+        payload = json.loads(posted.data)
+        self.assertEqual(payload["canonical_nexus"], "commons")
+        self.assertEqual(ap.get_active_project(), "commons")
 
 
 if __name__ == "__main__":

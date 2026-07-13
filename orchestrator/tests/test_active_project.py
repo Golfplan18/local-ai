@@ -46,6 +46,21 @@ class ActiveProjectPointerTests(unittest.TestCase):
         ap.set_active_project(None)
         self.assertEqual(ap.get_active_project(), "commons")
 
+    def test_repair_active_project_if_hidden_falls_back_to_commons(self):
+        ap.set_active_project("book")
+        repaired = ap.repair_active_project_if_hidden(lambda nexus: False)
+        self.assertEqual(repaired, "commons")
+        raw = json.loads(ap.ACTIVE_PROJECT_POINTER.read_text(encoding="utf-8"))
+        self.assertEqual(raw, {"nexus": "general", "canonical_nexus": "commons"})
+
+    def test_set_active_project_if_visible_rejects_hidden_target(self):
+        selected = ap.set_active_project_if_visible("book", lambda nexus: False)
+        self.assertEqual(selected, "commons")
+        self.assertEqual(ap.get_active_project(), "commons")
+        selected = ap.set_active_project_if_visible("book", lambda nexus: nexus == "book")
+        self.assertEqual(selected, "book")
+        self.assertEqual(ap.get_active_project(), "book")
+
     def test_legacy_setter_persists_dual_default(self):
         ap.set_active_project(" General ")
         raw = json.loads(ap.ACTIVE_PROJECT_POINTER.read_text(encoding="utf-8"))

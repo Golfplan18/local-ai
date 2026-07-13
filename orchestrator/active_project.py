@@ -186,6 +186,45 @@ def set_active_project(nexus: str | None) -> None:
             _write_active_project_unlocked(slug)
 
 
+def repair_active_project_if_hidden(is_visible) -> str:
+    """Return the active project, falling back to Commons when hidden/stale.
+
+    ``is_visible`` receives the canonical non-default nexus and returns truthy
+    only when it is still selectable for new Dialogues. The read and fallback
+    write share the active-pointer lock so callers never observe a hidden
+    project as authoritative between the decision and repair.
+    """
+    with _lock:
+        with _rp.locked_file(ACTIVE_PROJECT_POINTER):
+            slug = get_active_project()
+            if slug == DEFAULT:
+                return slug
+            try:
+                visible = bool(is_visible(slug))
+            except Exception:
+                visible = False
+            if visible:
+                return slug
+            _write_active_project_unlocked(DEFAULT)
+            return DEFAULT
+
+
+def set_active_project_if_visible(nexus: str | None, is_visible) -> str:
+    """Persist ``nexus`` only when it is selectable, else atomically Commons."""
+    slug = canonicalize_project_nexus(nexus)
+    with _lock:
+        with _rp.locked_file(ACTIVE_PROJECT_POINTER):
+            if slug != DEFAULT:
+                try:
+                    visible = bool(is_visible(slug))
+                except Exception:
+                    visible = False
+                if not visible:
+                    slug = DEFAULT
+            _write_active_project_unlocked(slug)
+            return slug
+
+
 def resolve_project_ids(nexus: str | None) -> list[str]:
     """Map an active-project nexus to the ``project_ids`` stamped on a NEW
     conversation. Commons (default / empty / legacy "general") -> ``[]``
@@ -206,5 +245,7 @@ __all__ = [
     "get_active_project",
     "migrate_active_project_pointer",
     "set_active_project",
+    "repair_active_project_if_hidden",
+    "set_active_project_if_visible",
     "resolve_project_ids",
 ]

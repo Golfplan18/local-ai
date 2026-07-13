@@ -364,7 +364,8 @@
           background: var(--background-primary);
           border: 1px solid var(--background-modifier-border);
           border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.28); padding: 6px;
-          max-height: 360px; overflow-y: auto;
+          max-height: 420px; overflow: hidden;
+          display: flex; flex-direction: column;
         }
         .sidebar-project-menu[hidden] { display: none; }
         .sidebar-project-search {
@@ -374,6 +375,28 @@
           border-radius: var(--radius-s, 6px); color: var(--text-normal); font-size: 15px;
         }
         .sidebar-project-search::placeholder { color: var(--text-faint); }
+        .sidebar-project-status-tabs {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+          margin: 4px 0 6px;
+        }
+        .sidebar-project-status-tab {
+          border: 1px solid var(--background-modifier-border);
+          border-radius: var(--radius-s, 6px);
+          background: transparent; color: var(--text-muted);
+          font-size: 12px; padding: 5px 4px; cursor: pointer;
+        }
+        .sidebar-project-status-tab:hover {
+          background: var(--background-modifier-hover); color: var(--text-normal);
+        }
+        .sidebar-project-status-tab.is-active {
+          background: var(--background-modifier-hover);
+          color: var(--text-normal); font-weight: 600;
+        }
+        .sidebar-project-list {
+          overflow-y: auto;
+          max-height: 296px;
+          padding-right: 2px;
+        }
         .sidebar-project-row {
           display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px;
           border: none; background: transparent; cursor: pointer;
@@ -384,8 +407,18 @@
         .sidebar-project-row.is-active {
           background: var(--background-modifier-hover); font-weight: 600;
         }
+        .sidebar-project-row.is-management { cursor: default; }
         .sidebar-project-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis;
           white-space: nowrap; }
+        .sidebar-project-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .sidebar-project-row-action {
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 999px; background: transparent; color: var(--text-muted);
+          font-size: 11px; padding: 2px 6px; cursor: pointer;
+        }
+        .sidebar-project-row-action:hover {
+          background: var(--background-modifier-hover); color: var(--text-normal);
+        }
         .sidebar-project-badge {
           min-width: 20px; text-align: center; font-size: 12px; font-weight: 600;
           padding: 2px 7px; border-radius: 10px;
@@ -474,6 +507,14 @@
         <div class="sidebar-project-menu" id="sidebarProjectMenu" role="listbox" hidden>
           <input class="sidebar-project-search" id="sidebarProjectSearch" type="text"
                  placeholder="Find a project…" autocomplete="off" spellcheck="false" />
+          <div class="sidebar-project-status-tabs" aria-label="Project status views">
+            <button class="sidebar-project-status-tab is-active" type="button"
+                    data-project-status-view="active">Active</button>
+            <button class="sidebar-project-status-tab" type="button"
+                    data-project-status-view="inactive">Inactive</button>
+            <button class="sidebar-project-status-tab" type="button"
+                    data-project-status-view="archived">Archived</button>
+          </div>
           <div class="sidebar-project-list" id="sidebarProjectList"></div>
           <button class="sidebar-project-manage-item" id="sidebarProjectManageItem" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"

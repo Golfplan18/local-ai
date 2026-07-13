@@ -5115,8 +5115,20 @@ def api_active_project_get():
     ``canonical_nexus``. Commons therefore serializes as ``general`` / ``commons``.
     """
     try:
-        from orchestrator.active_project import get_active_project, project_nexus_fields
-        return _json_response({"ok": True, **project_nexus_fields(get_active_project())})
+        from orchestrator import project_meta as _pm
+        from orchestrator.active_project import (
+            project_nexus_fields,
+            repair_active_project_if_hidden,
+        )
+
+        def visible(nexus: str) -> bool:
+            meta = _pm.read_project_meta(nexus)
+            return bool(meta and meta.get("status") == "active")
+
+        return _json_response({
+            "ok": True,
+            **project_nexus_fields(repair_active_project_if_hidden(visible)),
+        })
     except Exception as exc:
         return _json_response(
             {
@@ -5133,10 +5145,10 @@ def api_active_project_get():
 def api_active_project_set():
     """Set the active project. Body: ``{"nexus": "..."}`` ("commons"/legacy "general"/empty resets)."""
     try:
+        from orchestrator import project_meta as _pm
         from orchestrator.active_project import (
-            get_active_project,
             project_nexus_fields,
-            set_active_project,
+            set_active_project_if_visible,
         )
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
@@ -5147,8 +5159,12 @@ def api_active_project_set():
         if isinstance(canonical_nexus, str) and canonical_nexus.strip()
         else data.get("nexus")
     )
-    set_active_project(nexus if isinstance(nexus, str) else "")
-    return _json_response({"ok": True, **project_nexus_fields(get_active_project())})
+    def visible(candidate: str) -> bool:
+        meta = _pm.read_project_meta(candidate)
+        return bool(meta and meta.get("status") == "active")
+
+    selected = set_active_project_if_visible(nexus if isinstance(nexus, str) else "", visible)
+    return _json_response({"ok": True, **project_nexus_fields(selected)})
 
 
 @app.route("/api/projects/meta", methods=["GET"])

@@ -51,6 +51,7 @@
   const projectMenu     = sidebar.querySelector('#sidebarProjectMenu');
   const projectSearch   = sidebar.querySelector('#sidebarProjectSearch');
   const projectListEl   = sidebar.querySelector('#sidebarProjectList');
+  const projectStatusTabs = [...sidebar.querySelectorAll('[data-project-status-view]')];
   const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
   const projectManageBtn  = sidebar.querySelector('#sidebarProjectManage');
   const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
@@ -80,6 +81,7 @@
     }
   } catch (e) {}
   let projectsCache = [];
+  let projectStatusView = 'active';
   let activeProjectSyncGeneration = 0;
   let activeProjectMutationInFlight = false;
   let pendingActiveProjectSelection = null;
@@ -400,32 +402,96 @@
   const renderProjects = () => {
     if (!projectListEl) return;
     const q = ((projectSearch && projectSearch.value) || '').trim().toLowerCase();
+    projectStatusTabs.forEach(tab => {
+      tab.classList.toggle('is-active', tab.dataset.projectStatusView === projectStatusView);
+    });
     projectListEl.innerHTML = '';
-    projectsCache
+    const visible = projectsCache
       .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q))
-      .forEach(p => {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'sidebar-project-row' + (canonicalProjectRecordId(p) === activeProjectId ? ' is-active' : '');
+      .filter(p => p && p.status === projectStatusView || (projectStatusView === 'active' && p && p.is_default));
+    if (!visible.length) {
+      const empty = document.createElement('div');
+      empty.className = 'sidebar-group-empty';
+      empty.textContent = q ? 'No matching projects.' : 'No projects in this view.';
+      projectListEl.appendChild(empty);
+      return;
+    }
+    visible.forEach(p => {
+        const row = document.createElement('div');
+        const rowId = canonicalProjectRecordId(p);
+        const selectable = projectStatusView === 'active';
+        row.className = 'sidebar-project-row'
+          + (rowId === activeProjectId ? ' is-active' : '')
+          + (selectable ? '' : ' is-management');
         row.setAttribute('role', 'option');
+        row.tabIndex = 0;
         const name = document.createElement('span');
         name.className = 'sidebar-project-row-name';
         name.textContent = p.name || p.nexus;
-        const badge = document.createElement('span');
-        badge.className = 'sidebar-project-badge';
-        const unread = p.unread_count || 0;
-        badge.textContent = String(unread);
-        badge.setAttribute('data-zero', unread ? '0' : '1');
         row.appendChild(name);
-        row.appendChild(badge);
-        row.addEventListener('click', () => setActiveProject(canonicalProjectRecordId(p), p.name || p.nexus));
+        if (selectable) {
+          const badge = document.createElement('span');
+          badge.className = 'sidebar-project-badge';
+          const unread = p.unread_count || 0;
+          badge.textContent = String(unread);
+          badge.setAttribute('data-zero', unread ? '0' : '1');
+          row.appendChild(badge);
+          if (!p.is_default) {
+            const actions = document.createElement('span');
+            actions.className = 'sidebar-project-row-actions';
+            const addAction = (label, nextStatus) => {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'sidebar-project-row-action';
+              btn.textContent = label;
+              btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                updateProjectStatus(rowId, nextStatus);
+              });
+              actions.appendChild(btn);
+            };
+            addAction('Pause', 'inactive');
+            addAction('Archive', 'archived');
+            row.appendChild(actions);
+          }
+          row.addEventListener('click', () => setActiveProject(rowId, p.name || p.nexus));
+          row.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              setActiveProject(rowId, p.name || p.nexus);
+            }
+          });
+        } else {
+          const actions = document.createElement('span');
+          actions.className = 'sidebar-project-row-actions';
+          const addAction = (label, nextStatus) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sidebar-project-row-action';
+            btn.textContent = label;
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              updateProjectStatus(rowId, nextStatus);
+            });
+            actions.appendChild(btn);
+          };
+          if (projectStatusView === 'inactive') {
+            addAction('Reactivate', 'active');
+            addAction('Archive', 'archived');
+          } else if (projectStatusView === 'archived') {
+            addAction('Restore', 'inactive');
+            addAction('Reactivate', 'active');
+          }
+          row.appendChild(actions);
+        }
         projectListEl.appendChild(row);
       });
   };
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (status) => {
     try {
-      const r = await fetch('/api/projects/meta?status=active');
+      const wanted = status || projectStatusView || 'active';
+      const r = await fetch('/api/projects/meta?status=' + encodeURIComponent(wanted));
       if (!r.ok) return;
       const data = await r.json();
       projectsCache = (data && data.projects) || [];
@@ -434,6 +500,19 @@
         projectNameEl.textContent = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
       }
       renderProjects();
+    } catch (e) {}
+  };
+
+  const updateProjectStatus = async (nexus, status) => {
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(canonicalProjectId(nexus)) + '/status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) return;
+      await reconcileActiveProject();
+      await fetchProjects(projectStatusView);
+      await fetchList();
     } catch (e) {}
   };
 
@@ -1321,6 +1400,14 @@
   if (projectNameEl) projectNameEl.textContent = projectDisplayName(activeProjectId);
   if (projectBtn) projectBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProjectMenu(); });
   if (projectSearch) projectSearch.addEventListener('input', renderProjects);
+  projectStatusTabs.forEach(tab => tab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const next = tab.dataset.projectStatusView || 'active';
+    if (projectStatusView === next) return;
+    projectStatusView = next;
+    if (projectSearch) projectSearch.value = '';
+    fetchProjects(projectStatusView);
+  }));
   if (projectNewBtn) projectNewBtn.addEventListener('click', () => {
     // MOM-guided creation (graceful): the modal collects the name, creates the
     // record + vault folder, then invites the user into Mission & Goals. Falls
