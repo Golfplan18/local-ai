@@ -275,10 +275,27 @@ def in_flight_count(endpoint_id: str) -> int:
 
 
 # Flows from runtime_paths so the writer and oversight_health's reader
-# resolve the same file under ORA_HOME relocation.
-_DEFAULT_HEARTBEAT_PATH = os.path.join(
-    _rp.DATA_DIR_STR, "oversight", "mlx-worker-heartbeat.json"
-)
+# resolve the same file under ORA_HOME relocation. Resolved at CALL time
+# (not baked at import) so the default tracks the live DATA_DIR/ORA_HOME no
+# matter the import ordering: a test that relocates DATA_DIR_STR before
+# mlx_mutex's first import (e.g. boot.run_pipeline running under a patched
+# runtime_paths) would otherwise freeze a stale tempdir here and diverge
+# from oversight_health's live reader in a full-group run. Mirrors the
+# call-time path resolution the oversight sinks use.
+def _default_heartbeat_path() -> str:
+    return os.path.join(
+        _rp.DATA_DIR_STR, "oversight", "mlx-worker-heartbeat.json"
+    )
+
+
+def __getattr__(name: str) -> str:
+    # PEP 562 module hook: keep ``mlx_mutex._DEFAULT_HEARTBEAT_PATH`` a
+    # readable module attribute (test_portability + any external reader)
+    # while resolving it live on each access instead of freezing it at
+    # import time.
+    if name == "_DEFAULT_HEARTBEAT_PATH":
+        return _default_heartbeat_path()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def write_heartbeat(
@@ -292,7 +309,7 @@ def write_heartbeat(
     reads to flag staleness. Creates the parent directory on first call.
     Safe to call from any thread.
     """
-    target = path or _DEFAULT_HEARTBEAT_PATH
+    target = path or _default_heartbeat_path()
     os.makedirs(os.path.dirname(target), exist_ok=True)
     payload = {
         "beat_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
