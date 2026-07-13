@@ -168,6 +168,22 @@ class ConversationsProjectFilterTests(unittest.TestCase):
         self.assertEqual(payload["canonical_nexus"], "commons")
         self.assertEqual(ap.get_active_project(), "commons")
 
+    def test_project_status_endpoint_repairs_active_before_returning(self):
+        pm.create_project("Book", pointer_dir=pm.POINTER_DIR)
+        ap.set_active_project("book")
+
+        posted = self.client.post("/api/projects/book/status", json={"status": "archived"})
+        self.assertEqual(posted.status_code, 200)
+        self.assertEqual(ap.get_active_project(), "commons")
+
+    def test_project_update_endpoint_repairs_active_before_returning_when_status_changes(self):
+        pm.create_project("Book", pointer_dir=pm.POINTER_DIR)
+        ap.set_active_project("book")
+
+        posted = self.client.post("/api/projects/book", json={"status": "inactive"})
+        self.assertEqual(posted.status_code, 200)
+        self.assertEqual(ap.get_active_project(), "commons")
+
 
 if __name__ == "__main__":
     unittest.main()

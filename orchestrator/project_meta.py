@@ -658,6 +658,26 @@ def register_existing_container_project(
         pf = _pointer_path(nexus, pdir)
         with _rp.locked_file(pf):
             data = _read_pointer_for_update(pf)
+            wanted_key = _portable_collision_key(folder_name)
+            if Path(pdir).is_dir():
+                for other in Path(pdir).glob("*.json"):
+                    if other == pf:
+                        continue
+                    try:
+                        other_data = _read_pointer_for_update(other)
+                    except ProjectMetaError:
+                        continue
+                    if not pointer_has_container_metadata(other_data):
+                        continue
+                    other_folder = _pointer_folder_identity(other.stem, other_data)
+                    if (
+                        isinstance(other_folder, str)
+                        and _portable_collision_key(other_folder) == wanted_key
+                    ):
+                        raise ProjectMetaError(
+                            f"project folder {folder_name!r} is already owned by "
+                            f"{other.stem!r}"
+                        )
             existing_nexus = data.get("nexus")
             if (
                 isinstance(existing_nexus, str)

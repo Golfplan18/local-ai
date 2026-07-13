@@ -123,6 +123,37 @@ class ProjectMetaTests(unittest.TestCase):
                 vault_projects_dir=projects,
             )
 
+    def test_register_existing_container_project_rejects_folder_owned_by_other_nexus(self):
+        projects = self.d / "Projects"
+        (projects / "Shared").mkdir(parents=True)
+        (projects / "shared").mkdir(exist_ok=True)
+        pointers = self.d / "pointers"
+
+        pm.register_existing_container_project(
+            "alpha", "Alpha", "Shared",
+            pointer_dir=pointers, vault_projects_dir=projects,
+        )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "beta", "Beta", "Shared",
+                pointer_dir=pointers, vault_projects_dir=projects,
+            )
+
+    def test_register_existing_container_project_rejects_case_insensitive_folder_collision(self):
+        projects = self.d / "Projects"
+        (projects / "Shared").mkdir(parents=True)
+        pointers = self.d / "pointers"
+
+        pm.register_existing_container_project(
+            "alpha", "Alpha", "Shared",
+            pointer_dir=pointers, vault_projects_dir=projects,
+        )
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.register_existing_container_project(
+                "beta", "Beta", "shared",
+                pointer_dir=pointers, vault_projects_dir=projects,
+            )
+
     def test_display_name_change_preserves_immutable_folder(self):
         pm.create_project("My Book", pointer_dir=self.d)
         changed = pm.update_project_meta(

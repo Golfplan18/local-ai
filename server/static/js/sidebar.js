@@ -51,7 +51,6 @@
   const projectMenu     = sidebar.querySelector('#sidebarProjectMenu');
   const projectSearch   = sidebar.querySelector('#sidebarProjectSearch');
   const projectListEl   = sidebar.querySelector('#sidebarProjectList');
-  const projectStatusTabs = [...sidebar.querySelectorAll('[data-project-status-view]')];
   const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
   const projectManageBtn  = sidebar.querySelector('#sidebarProjectManage');
   const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
@@ -81,7 +80,8 @@
     }
   } catch (e) {}
   let projectsCache = [];
-  let projectStatusView = 'active';
+  let projectManagerEl = null;
+  let projectManagerStatus = 'active';
   let activeProjectSyncGeneration = 0;
   let activeProjectMutationInFlight = false;
   let pendingActiveProjectSelection = null;
@@ -402,13 +402,10 @@
   const renderProjects = () => {
     if (!projectListEl) return;
     const q = ((projectSearch && projectSearch.value) || '').trim().toLowerCase();
-    projectStatusTabs.forEach(tab => {
-      tab.classList.toggle('is-active', tab.dataset.projectStatusView === projectStatusView);
-    });
     projectListEl.innerHTML = '';
     const visible = projectsCache
       .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q))
-      .filter(p => p && p.status === projectStatusView || (projectStatusView === 'active' && p && p.is_default));
+      .filter(p => p && (p.is_default || p.status === 'active'));
     if (!visible.length) {
       const empty = document.createElement('div');
       empty.className = 'sidebar-group-empty';
@@ -419,79 +416,34 @@
     visible.forEach(p => {
         const row = document.createElement('div');
         const rowId = canonicalProjectRecordId(p);
-        const selectable = projectStatusView === 'active';
         row.className = 'sidebar-project-row'
-          + (rowId === activeProjectId ? ' is-active' : '')
-          + (selectable ? '' : ' is-management');
+          + (rowId === activeProjectId ? ' is-active' : '');
         row.setAttribute('role', 'option');
         row.tabIndex = 0;
         const name = document.createElement('span');
         name.className = 'sidebar-project-row-name';
         name.textContent = p.name || p.nexus;
         row.appendChild(name);
-        if (selectable) {
-          const badge = document.createElement('span');
-          badge.className = 'sidebar-project-badge';
-          const unread = p.unread_count || 0;
-          badge.textContent = String(unread);
-          badge.setAttribute('data-zero', unread ? '0' : '1');
-          row.appendChild(badge);
-          if (!p.is_default) {
-            const actions = document.createElement('span');
-            actions.className = 'sidebar-project-row-actions';
-            const addAction = (label, nextStatus) => {
-              const btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'sidebar-project-row-action';
-              btn.textContent = label;
-              btn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                updateProjectStatus(rowId, nextStatus);
-              });
-              actions.appendChild(btn);
-            };
-            addAction('Pause', 'inactive');
-            addAction('Archive', 'archived');
-            row.appendChild(actions);
+        const badge = document.createElement('span');
+        badge.className = 'sidebar-project-badge';
+        const unread = p.unread_count || 0;
+        badge.textContent = String(unread);
+        badge.setAttribute('data-zero', unread ? '0' : '1');
+        row.appendChild(badge);
+        row.addEventListener('click', () => setActiveProject(rowId, p.name || p.nexus));
+        row.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            setActiveProject(rowId, p.name || p.nexus);
           }
-          row.addEventListener('click', () => setActiveProject(rowId, p.name || p.nexus));
-          row.addEventListener('keydown', (ev) => {
-            if (ev.key === 'Enter' || ev.key === ' ') {
-              ev.preventDefault();
-              setActiveProject(rowId, p.name || p.nexus);
-            }
-          });
-        } else {
-          const actions = document.createElement('span');
-          actions.className = 'sidebar-project-row-actions';
-          const addAction = (label, nextStatus) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'sidebar-project-row-action';
-            btn.textContent = label;
-            btn.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              updateProjectStatus(rowId, nextStatus);
-            });
-            actions.appendChild(btn);
-          };
-          if (projectStatusView === 'inactive') {
-            addAction('Reactivate', 'active');
-            addAction('Archive', 'archived');
-          } else if (projectStatusView === 'archived') {
-            addAction('Restore', 'inactive');
-            addAction('Reactivate', 'active');
-          }
-          row.appendChild(actions);
-        }
+        });
         projectListEl.appendChild(row);
       });
   };
 
-  const fetchProjects = async (status) => {
+  const fetchProjects = async () => {
     try {
-      const wanted = status || projectStatusView || 'active';
-      const r = await fetch('/api/projects/meta?status=' + encodeURIComponent(wanted));
+      const r = await fetch('/api/projects/meta?status=active');
       if (!r.ok) return;
       const data = await r.json();
       projectsCache = (data && data.projects) || [];
@@ -511,9 +463,131 @@
       });
       if (!r.ok) return;
       await reconcileActiveProject();
-      await fetchProjects(projectStatusView);
+      await fetchProjects();
+      if (projectManagerEl) await renderProjectManager();
       await fetchList();
     } catch (e) {}
+  };
+
+  const iconSvg = (name) => {
+    if (name === 'archive') return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v12h14V8"></path><path d="M10 12h4"></path></svg>';
+    if (name === 'restore') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>';
+    if (name === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"></path><path d="M16 5v14"></path></svg>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>';
+  };
+
+  const ensureProjectManager = () => {
+    if (projectManagerEl) return projectManagerEl;
+    projectManagerEl = document.createElement('div');
+    projectManagerEl.className = 'project-manager-overlay';
+    projectManagerEl.innerHTML = `
+      <div class="project-manager-card" role="dialog" aria-label="Manage projects">
+        <div class="project-manager-head">
+          <div>
+            <div class="project-manager-kicker">Projects</div>
+            <div class="project-manager-title">Manage projects</div>
+          </div>
+          <button class="project-manager-close" type="button" aria-label="Close">×</button>
+        </div>
+        <input class="project-manager-search" type="text" placeholder="Search projects…" autocomplete="off" spellcheck="false" />
+        <div class="project-manager-tabs">
+          <button class="project-manager-tab is-active" type="button" data-project-manager-status="active">Active</button>
+          <button class="project-manager-tab" type="button" data-project-manager-status="inactive">Inactive</button>
+          <button class="project-manager-tab" type="button" data-project-manager-status="archived">Archived</button>
+        </div>
+        <div class="project-manager-rows"></div>
+      </div>`;
+    document.body.appendChild(projectManagerEl);
+    projectManagerEl.querySelector('.project-manager-close').addEventListener('click', () => {
+      projectManagerEl.classList.remove('is-open');
+    });
+    projectManagerEl.addEventListener('click', (ev) => {
+      if (ev.target === projectManagerEl) projectManagerEl.classList.remove('is-open');
+    });
+    projectManagerEl.querySelector('.project-manager-search').addEventListener('input', renderProjectManager);
+    projectManagerEl.querySelectorAll('[data-project-manager-status]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        projectManagerStatus = tab.dataset.projectManagerStatus || 'active';
+        renderProjectManager();
+      });
+    });
+    return projectManagerEl;
+  };
+
+  const renderProjectManager = async () => {
+    const modal = ensureProjectManager();
+    const rowsEl = modal.querySelector('.project-manager-rows');
+    const q = (modal.querySelector('.project-manager-search').value || '').trim().toLowerCase();
+    modal.querySelectorAll('[data-project-manager-status]').forEach(tab => {
+      tab.classList.toggle('is-active', tab.dataset.projectManagerStatus === projectManagerStatus);
+    });
+    rowsEl.innerHTML = '';
+    let rows = [];
+    try {
+      const r = await fetch('/api/projects/meta?status=' + encodeURIComponent(projectManagerStatus));
+      const data = await r.json();
+      rows = (data && data.projects) || [];
+    } catch (e) {}
+    rows = rows
+      .filter(p => !p.is_default)
+      .filter(p => !q || String(p.name || p.nexus).toLowerCase().includes(q));
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'project-manager-empty';
+      empty.textContent = q ? 'No matching projects.' : 'No projects in this view.';
+      rowsEl.appendChild(empty);
+      return;
+    }
+    rows.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'project-manager-row';
+      const id = canonicalProjectRecordId(p);
+      const main = document.createElement('div');
+      main.className = 'project-manager-row-main';
+      main.innerHTML = `<div class="project-manager-row-name"></div><div class="project-manager-row-meta"></div>`;
+      main.querySelector('.project-manager-row-name').textContent = p.name || p.nexus;
+      main.querySelector('.project-manager-row-meta').textContent = id;
+      row.appendChild(main);
+      const actions = document.createElement('div');
+      actions.className = 'project-manager-actions';
+      const add = (label, nextStatus, icon) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'project-manager-action';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.innerHTML = iconSvg(icon);
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          updateProjectStatus(id, nextStatus);
+        });
+        btn.addEventListener('keydown', (ev) => ev.stopPropagation());
+        actions.appendChild(btn);
+      };
+      if (projectManagerStatus === 'active') {
+        add('Pause project', 'inactive', 'pause');
+        add('Archive project', 'archived', 'archive');
+      } else if (projectManagerStatus === 'inactive') {
+        add('Reactivate project', 'active', 'active');
+        add('Archive project', 'archived', 'archive');
+      } else {
+        add('Restore project to inactive', 'inactive', 'restore');
+        add('Reactivate project', 'active', 'active');
+      }
+      row.appendChild(actions);
+      rowsEl.appendChild(row);
+    });
+  };
+
+  const openProjectManager = async () => {
+    closeProjectMenu();
+    const modal = ensureProjectManager();
+    projectManagerStatus = 'active';
+    modal.classList.add('is-open');
+    modal.querySelector('.project-manager-search').value = '';
+    await renderProjectManager();
+    modal.querySelector('.project-manager-search').focus();
   };
 
   const persistActiveProjectId = (nexus) => {
@@ -1400,14 +1474,6 @@
   if (projectNameEl) projectNameEl.textContent = projectDisplayName(activeProjectId);
   if (projectBtn) projectBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProjectMenu(); });
   if (projectSearch) projectSearch.addEventListener('input', renderProjects);
-  projectStatusTabs.forEach(tab => tab.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const next = tab.dataset.projectStatusView || 'active';
-    if (projectStatusView === next) return;
-    projectStatusView = next;
-    if (projectSearch) projectSearch.value = '';
-    fetchProjects(projectStatusView);
-  }));
   if (projectNewBtn) projectNewBtn.addEventListener('click', () => {
     // MOM-guided creation (graceful): the modal collects the name, creates the
     // record + vault folder, then invites the user into Mission & Goals. Falls
@@ -1461,7 +1527,7 @@
     e.stopPropagation(); openProjectModal();
   });
   if (projectManageItem) projectManageItem.addEventListener('click', (e) => {
-    e.stopPropagation(); closeProjectMenu(); openProjectModal();
+    e.stopPropagation(); openProjectManager();
   });
 
   // ── G1.33 model-configuration section ────────────────────────────────

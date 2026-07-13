@@ -34,13 +34,8 @@ var dom = new jsdom.JSDOM(
   '    <span id="sidebarProjectName"></span>' +
   '    <div id="sidebarProjectMenu" hidden>' +
   '      <input id="sidebarProjectSearch">' +
-  '      <div class="sidebar-project-status-tabs">' +
-  '        <button data-project-status-view="active" class="is-active"></button>' +
-  '        <button data-project-status-view="inactive"></button>' +
-  '        <button data-project-status-view="archived"></button>' +
-  '      </div>' +
   '      <div class="sidebar-project-list" id="sidebarProjectList"></div>' +
-  '      <button id="sidebarProjectManageItem"></button>' +
+  '      <button id="sidebarProjectManageItem">Manage projects</button>' +
   '      <button id="sidebarProjectNew"></button>' +
   '    </div>' +
   '  </div>' +
@@ -362,9 +357,12 @@ async function run() {
   await flush();
   var activeRows = w.document.querySelectorAll('.sidebar-project-row');
   var projectList = w.document.querySelector('#sidebarProjectList');
-  record('active switcher renders long project lists in row region',
+  record('active switcher renders long active-only project list in row region',
     activeRows.length === 10 && !!projectList && projectList.className.indexOf('sidebar-project-list') !== -1,
     String(activeRows.length));
+  record('active switcher rows do not expose lifecycle controls',
+    !w.document.querySelector('.sidebar-project-row-action') &&
+    !w.document.querySelector('.project-manager-action'));
   record('search remains outside row region',
     !!projectMenu && projectMenu.firstElementChild.id === 'sidebarProjectSearch');
   record('footer commands remain outside row region',
@@ -378,22 +376,37 @@ async function run() {
     w.document.querySelectorAll('.sidebar-project-row').length === 1 &&
     w.document.querySelector('.sidebar-project-row').textContent.indexOf('Project 9') !== -1);
 
-  w.document.querySelector('[data-project-status-view="inactive"]').click();
+  w.document.querySelector('#sidebarProjectManageItem').click();
+  await flush();
+  await flush();
+  record('manage projects opens separate management surface',
+    !!w.document.querySelector('.project-manager-overlay.is-open') &&
+    !!w.document.querySelector('[data-project-manager-status="active"]'));
+  record('manager active view exposes icon lifecycle controls',
+    !!w.document.querySelector('.project-manager-action[title="Pause project"]') &&
+    !!w.document.querySelector('.project-manager-action[title="Archive project"]'));
+
+  w.document.querySelector('[data-project-manager-status="inactive"]').click();
   await flush();
   record('inactive management view is searchable and non-selecting',
-    w.document.querySelectorAll('.sidebar-project-row').length === 2 &&
-    w.document.querySelector('.sidebar-project-row-action').textContent === 'Reactivate');
-  w.document.querySelector('.sidebar-project-row-action').click();
+    w.document.querySelectorAll('.project-manager-row').length === 2 &&
+    !!w.document.querySelector('.project-manager-action[title="Reactivate project"]'));
+  w.document.querySelector('.project-manager-action[title="Reactivate project"]').dispatchEvent(
+    new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+  );
+  record('lifecycle control keyboard event does not select project',
+    w.OraSidebar.getActiveProject() === 'book', w.OraSidebar.getActiveProject());
+  w.document.querySelector('.project-manager-action[title="Reactivate project"]').click();
   await flush();
   record('reactivate posts active status without deleting data',
     statusPosts.some(function (p) { return p.nexus === 'sleeping-book' && p.status === 'active'; }),
     JSON.stringify(statusPosts));
 
-  w.document.querySelector('[data-project-status-view="archived"]').click();
+  w.document.querySelector('[data-project-manager-status="archived"]').click();
   await flush();
   record('archived management view exposes restore',
-    w.document.querySelector('.sidebar-project-row-action').textContent === 'Restore');
-  w.document.querySelector('.sidebar-project-row-action').click();
+    !!w.document.querySelector('.project-manager-action[title="Restore project to inactive"]'));
+  w.document.querySelector('.project-manager-action[title="Restore project to inactive"]').click();
   await flush();
   record('restore posts inactive status',
     statusPosts.some(function (p) { return p.nexus === 'old-book' && p.status === 'inactive'; }),

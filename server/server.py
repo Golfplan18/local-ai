@@ -5141,6 +5141,21 @@ def api_active_project_get():
         )
 
 
+def _repair_active_project_visibility():
+    """Best-effort: hidden/missing active projects fall back to Commons now."""
+    try:
+        from orchestrator import project_meta as _pm
+        from orchestrator.active_project import repair_active_project_if_hidden
+
+        def visible(nexus: str) -> bool:
+            meta = _pm.read_project_meta(nexus)
+            return bool(meta and meta.get("status") == "active")
+
+        return repair_active_project_if_hidden(visible)
+    except Exception:
+        return "commons"
+
+
 @app.route("/api/active-project", methods=["POST"])
 def api_active_project_set():
     """Set the active project. Body: ``{"nexus": "..."}`` ("commons"/legacy "general"/empty resets)."""
@@ -5254,6 +5269,8 @@ def api_projects_update(nexus):
         return _json_response({"ok": False, "error": str(exc)}, 400)
     if meta is None:
         return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    if "status" in data:
+        _repair_active_project_visibility()
     return _json_response({"ok": True, "project": meta})
 
 
@@ -5272,6 +5289,7 @@ def api_projects_set_status(nexus):
         return _json_response({"ok": False, "error": str(exc)}, 400)
     if meta is None:
         return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+    _repair_active_project_visibility()
     return _json_response({"ok": True, "project": meta})
 
 
