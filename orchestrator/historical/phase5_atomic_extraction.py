@@ -607,9 +607,15 @@ def _open_dedup_collection(chromadb_path: str, name: str):
     are shared by the historical extraction pipelines.
     """
     import chromadb
-    from orchestrator.embedding import get_or_create_collection
+    from orchestrator.embedding import get_collection
     client = chromadb.PersistentClient(path=str(chromadb_path))
-    return get_or_create_collection(client, name)
+    # Phase 5 resumes against the prebuilt atomic dedup corpus. Opening that
+    # existing collection must not take the catalog-write path: on a live
+    # persistent store, get_or_create_collection can wait indefinitely behind
+    # another Chroma client even though the collection already exists.
+    # Missing collections are a recovery/configuration error and should fail
+    # loudly rather than silently creating an empty dedup corpus.
+    return get_collection(client, name)
 
 
 def _enumerate_pairs_reverse_chrono(archive_dir: str) -> list[str]:

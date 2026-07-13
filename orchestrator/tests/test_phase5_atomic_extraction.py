@@ -7,10 +7,11 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -27,6 +28,7 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     _atomic_uid,
     _load_manifest,
     _normalize_manifest,
+    _open_dedup_collection,
     _slugify,
     _successful_completed_paths,
     _vault_path_for,
@@ -37,6 +39,25 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
 
 
 install_test_stub()
+
+
+class TestDedupCollectionBinding(unittest.TestCase):
+
+    def test_opens_existing_collection_without_catalog_write(self):
+        from orchestrator import embedding
+
+        client = object()
+        persistent_client = MagicMock(return_value=client)
+        chromadb_stub = types.SimpleNamespace(PersistentClient=persistent_client)
+
+        with patch.dict(sys.modules, {"chromadb": chromadb_stub}), patch.object(
+            embedding, "get_collection", return_value="collection"
+        ) as get_collection:
+            result = _open_dedup_collection("/tmp/chroma", "atomics")
+
+        self.assertEqual(result, "collection")
+        persistent_client.assert_called_once_with(path="/tmp/chroma")
+        get_collection.assert_called_once_with(client, "atomics")
 
 
 class TestManifestCompatibility(unittest.TestCase):
