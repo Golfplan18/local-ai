@@ -271,6 +271,13 @@ def execute_framework(
         if trace_context is not None:
             trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get(selected_mode, [])
+        if trace_dir:
+            try:
+                import trace_debug as _tdbg
+            except ImportError:
+                from orchestrator import trace_debug as _tdbg
+            _tdbg.record_contract_snapshot(
+                trace_dir, _tdbg.framework_contract_bundle(fw, milestones, selected_mode=selected_mode))
         if not milestones:
             raise FrameworkParseError(
                 f"Framework {fw.name!r} has no milestones declared for mode "
@@ -289,6 +296,13 @@ def execute_framework(
         if trace_context is not None:
             trace_context["mode"] = selected_mode
         milestones = fw.milestones_by_mode.get("all", [])
+        if trace_dir:
+            try:
+                import trace_debug as _tdbg
+            except ImportError:
+                from orchestrator import trace_debug as _tdbg
+            _tdbg.record_contract_snapshot(
+                trace_dir, _tdbg.framework_contract_bundle(fw, milestones, selected_mode=selected_mode))
         if not milestones:
             raise FrameworkParseError(
                 f"Framework {fw.name!r} declared no milestones to execute."
@@ -461,7 +475,7 @@ def _run_milestone(
     last_exception: Optional[Exception] = None
     for attempt in range(1, MAX_RETRIES + 1):
         child_trace_dir = _start_child_trace(
-            parent_trace_dir, handoff, framework.name, milestone.id,
+            parent_trace_dir, handoff, framework, milestone,
             parent_trace_ref, selected_mode, milestone.gear,
             conversation_tag, trace_context)
         child_status = "error"
@@ -709,8 +723,8 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
 
 def _start_child_trace(parent_trace_dir: Optional[str],
                        handoff_packet: str,
-                       framework_id: str,
-                       milestone_id: str,
+                       framework: Framework,
+                       milestone: Milestone,
                        parent_trace_ref: Optional[str],
                        selected_mode: Optional[str],
                        gear: int,
@@ -724,6 +738,17 @@ def _start_child_trace(parent_trace_dir: Optional[str],
         except ImportError:
             from orchestrator import pipeline_trace
         parent_manifest = pipeline_trace.read_manifest(parent_trace_dir) or {}
+        framework_name = getattr(framework, "name", str(framework))
+        milestone_id = getattr(milestone, "id", str(milestone))
+        if not hasattr(milestone, "id"):
+            milestone = type("MilestoneRef", (), {
+                "id": milestone_id, "name": "", "mode": selected_mode,
+                "endpoint_produced": "", "verification_criterion": "",
+                "drift_check_question": "", "output_format": "",
+                "gear": gear, "layers_covered": [], "required_prior": [],
+                "conditional_layers": None})()
+        if not hasattr(framework, "name"):
+            framework = type("FrameworkRef", (), {"name": framework_name, "file_path": ""})()
         child_dir = pipeline_trace.start_trace(
             conversation_id=parent_manifest.get("conversation_id"),
             raw_input=handoff_packet,
@@ -738,15 +763,27 @@ def _start_child_trace(parent_trace_dir: Optional[str],
                 refs = trace_context.setdefault("child_trace_refs", [])
                 if child_ref not in refs:
                     refs.append(child_ref)
-        pipeline_trace.update_manifest_fields(
-            child_dir,
+        snapshot = None
+        try:
+            try:
+                import trace_debug as _tdbg
+            except ImportError:
+                from orchestrator import trace_debug as _tdbg
+            snapshot = _tdbg.framework_contract_snapshot(
+                framework, milestone, selected_mode=selected_mode)
+        except Exception:
+            snapshot = None
+        fields = dict(
             trace_kind="framework-milestone",
             mode=selected_mode or "all",
             gear=gear,
             parent_trace_ref=parent_trace_ref,
-            framework_id=framework_id,
+            framework_id=framework_name,
             milestone_id=milestone_id,
         )
+        if snapshot:
+            fields["contract_snapshot"] = snapshot
+        pipeline_trace.update_manifest_fields(child_dir, **fields)
         return child_dir
     except Exception:
         return None

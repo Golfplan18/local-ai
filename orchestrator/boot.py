@@ -7272,7 +7272,6 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
     mode_name = step1_result["mode"]
     mode_text = load_mode(mode_name)
     gear = extract_default_gear(mode_text)
-
     # Phase A produces three forms of the prompt:
     #   - raw_prompt: what the user actually typed (kept for audit/fallback)
     #   - cleaned_prompt: natural-language prompt after Phase A's typo
@@ -9241,6 +9240,7 @@ def run_pipeline(user_input: str, history: list = None,
         "tool_events_context_token": None,
         "tool_events_module": None,
         "framework_id": None, "milestone_id": None, "child_refs": [],
+        "mode_text": None,
     }
     effective_tag = conversation_tag or ("stealth" if stealth else "")
     tag_token = set_conversation_tag_context(effective_tag)
@@ -9391,6 +9391,109 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     except Exception as _rge:
         print(f"[risk-gate] turn-head skipped: {_rge}")
 
+    # --- Trace-backed P-Debug deterministic CLI command ---
+    try:
+        try:
+            import trace_debug as _tdbg
+        except ImportError:
+            from orchestrator import trace_debug as _tdbg
+        _trace_probe_payload = _tdbg.parse_probe_cli_command(user_input)
+        _trace_debug_payload = _tdbg.parse_cli_command(user_input)
+        if _trace_debug_payload is None:
+            _trace_debug_payload = _tdbg.parse_natural_language_request(user_input)
+    except Exception:
+        _trace_probe_payload = None
+        _trace_debug_payload = None
+    if isinstance(_trace_probe_payload, dict):
+        turn_state["kind"] = "trace-probe-control"
+        action = _trace_probe_payload.get("action")
+        if action == "error":
+            turn_state["status"] = "error"
+            return str(_trace_probe_payload.get("error") or "trace probe error")
+        if action == "prepare":
+            _trace_probe_payload["conversation_tag"] = conversation_tag or ("stealth" if stealth else "")
+            result = _tdbg.prepare_probe(_trace_probe_payload, conversation_id=conversation_id or "_orphan")
+            turn_state["status"] = "completed" if result.get("ok") else "error"
+            return json.dumps(result, indent=2, default=str)
+        if action == "approve":
+            result = _tdbg.approve_probe(_trace_probe_payload.get("approval_id") or "", _trace_probe_payload.get("approval_digest") or "")
+            turn_state["status"] = "completed" if result.get("ok") else "error"
+            return json.dumps(result, indent=2, default=str)
+        if action == "execute":
+            endpoint = get_endpoint(config)
+            if endpoint is None:
+                turn_state["status"] = "error"
+                return "Trace probe error: no AI endpoints configured"
+            def _probe_executor(req):
+                envelope = req.get("envelope") or {}
+                probe_endpoint = _tdbg.endpoint_from_probe_envelope(envelope, endpoint)
+                if probe_endpoint is None:
+                    raise RuntimeError("recorded probe endpoint is unavailable or has changed")
+                return call_model(envelope.get("messages") or [], probe_endpoint)
+            result = _tdbg.execute_probe(
+                _trace_probe_payload.get("approval_id") or "",
+                _trace_probe_payload.get("approval_digest") or "",
+                conversation_id=conversation_id or "_orphan",
+                model_executor=_probe_executor,
+                conversation_tag=conversation_tag or ("stealth" if stealth else ""))
+            turn_state["status"] = "completed" if result.get("ok") else "error"
+            return json.dumps(result, indent=2, default=str)
+    if isinstance(_trace_debug_payload, dict):
+        if _trace_debug_payload.get("error"):
+            turn_state["kind"] = "trace-debug"
+            turn_state["status"] = "error"
+            return str(_trace_debug_payload["error"])
+        _debug_prompt, _debug_meta = _tdbg.build_debug_prompt(
+            _trace_debug_payload, conversation_id=conversation_id or "_orphan")
+        turn_state["kind"] = "trace-debug"
+        if trace_dir:
+            pipeline_trace.update_manifest_fields(
+                trace_dir, trace_kind="trace-debug",
+                investigates_trace_ref=_trace_debug_payload.get("trace_ref"))
+            pipeline_trace.write_step(
+                trace_dir,
+                "step-debug-request",
+                {k: _trace_debug_payload.get(k) for k in
+                 ("trace_ref", "step_hint", "symptom", "source")},
+            )
+        if not _debug_prompt:
+            turn_state["status"] = "error"
+            if trace_dir:
+                pipeline_trace.write_step(
+                    trace_dir, "step-debug-result",
+                    {"status": "error", "error": (_debug_meta or {}).get("error") or "unknown"},
+                )
+            return "Trace debug error: " + str((_debug_meta or {}).get("error") or "unknown")
+        try:
+            from milestone_executor import run_framework_command
+            _trace_ctx = {"conversation_tag": conversation_tag or ("stealth" if stealth else "")}
+            result_text = run_framework_command(
+                _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
+                config, trace_dir=trace_dir, conversation_tag=conversation_tag,
+                trace_context=_trace_ctx)
+            try:
+                _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
+            except Exception:
+                pass
+            turn_state["status"] = _trace_ctx.get("status") or "completed"
+            turn_state["framework_id"] = _trace_ctx.get("framework_id")
+            turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
+            turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+            if trace_dir:
+                pipeline_trace.write_step(
+                    trace_dir, "step-debug-result",
+                    {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
+                )
+            return result_text
+        except Exception as exc:
+            turn_state["status"] = "error"
+            if trace_dir:
+                pipeline_trace.write_step(
+                    trace_dir, "step-debug-result",
+                    {"status": "error", "error": str(exc)},
+                )
+            return f"Trace debug framework error: {exc}"
+
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
     # meta-layer runtime operations. No model endpoint or pipeline state
@@ -9522,6 +9625,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     context_pkg.setdefault("execution_context", execution_context)
     gear = context_pkg["gear"]
     turn_state["mode"] = step1.get("mode")
+    turn_state["mode_text"] = context_pkg.get("mode_text")
     # Pre-dispatch prediction only — run_gear3/run_gear4 may silently
     # degrade to a lower gear internally (single-endpoint / unrecoverable-
     # analyst fallback); finalize_manifest re-derives the ACTUAL gear from
@@ -9556,6 +9660,26 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             context_pkg["gear"] = gear
             turn_state["gear"] = gear
         degradation_signal = format_degradation_signal(deg_state)
+
+    # Capture the exact mode contract after runtime gear degradation has been
+    # resolved. ``context_pkg["mode_text"]`` is the text loaded for this
+    # execution; do not reload a potentially edited mode file.
+    if trace_dir and PIPELINE_TRACE_AVAILABLE:
+        try:
+            try:
+                import trace_debug as _tdbg
+            except ImportError:
+                from orchestrator import trace_debug as _tdbg
+            _tdbg.record_contract_snapshot(
+                trace_dir,
+                _tdbg.mode_contract_snapshot(
+                    context_pkg.get("mode_name") or step1.get("mode") or "",
+                    context_pkg.get("mode_text") or "",
+                    gear,
+                ),
+            )
+        except Exception:
+            pass
 
     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
     # The before-clock's final step: Stage-B mode floor + sticky, tier stamped
@@ -9756,6 +9880,20 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     # source for gear-1/2 turns, which write no step-health.json. A later
     # exception on the way out overwrites this with "error" in the
     # generator-level wrapper.
+    if trace_dir and PIPELINE_TRACE_AVAILABLE:
+        try:
+            try:
+                import trace_debug as _tdbg_end
+            except ImportError:
+                from orchestrator import trace_debug as _tdbg_end
+            _tdbg_end.refresh_mode_contract_snapshot(
+                trace_dir,
+                context_pkg.get("mode_name") or step1.get("mode") or "",
+                context_pkg.get("mode_text") or "",
+                gear,
+            )
+        except Exception:
+            pass
     turn_state["status"] = "completed"
     return route_output(response, output_target, context_pkg)
 

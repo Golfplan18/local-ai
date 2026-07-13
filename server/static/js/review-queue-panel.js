@@ -226,6 +226,16 @@
           });
         }
       }));
+      actions.appendChild(actionButton('Investigate trace', async () => {
+        const ref = String(entry.trace_ref || '');
+        const conv = ref.split('/')[0] || entry.conversation_id || '';
+        try {
+          await sendChatTurn(conv, 'Investigate this trace.', { trace_ref: ref, step_hint: entry.trace_step || '', symptom: '', source: 'paused-card' });
+          setStatus('Trace investigation submitted.');
+        } catch (e) {
+          setStatus(e && e.message || String(e));
+        }
+      }));
     }
     actions.appendChild(actionButton('Approve', () => quickAction(entry, 'approve'), 'primary'));
     actions.appendChild(actionButton('Deny', () => {
@@ -369,12 +379,22 @@
     }));
   }
 
-  async function sendChatTurn(conversationId, text) {
-    await fetch('/chat', {
+  async function sendChatTurn(conversationId, text, traceDebug) {
+    const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
+    if (traceDebug) body.trace_debug = traceDebug;
+    const response = await fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, conversation_id: conversationId }),
+      body: JSON.stringify(body),
     });
+    if (!response.ok) {
+      let msg = `Chat request failed (${response.status})`;
+      try {
+        const payload = await response.json();
+        msg = payload.error || payload.message || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
   }
 
   function ageOf(isoTimestamp) {

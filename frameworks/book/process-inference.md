@@ -44,7 +44,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 **Mode P-Infer:** You have inputs and a desired output but no process. You will describe your current state, desired end state, constraints, and available resources. The AI will infer a viable transformation path.
 
-**Mode P-Debug:** You have a process that fails somewhere unknown. Describe the process, the expected behavior, and the actual behavior. The AI will identify the hidden failure point and infer a corrected path.
+**Mode P-Debug:** You have a process or captured Ora trace to investigate. The process may be defective, faithful-but-disappointing, a bad draw, or clean. For trace-backed investigations, provide the exact trace-debug context; the AI diagnoses only against captured evidence and the execution-time contract, and recommends correction only when DEFECT_LOCALIZED.
 
 **Mode P-Decompose:** You have a complex endpoint and need it broken into solvable subproblems. Describe the endpoint. The AI will decompose it into manageable parts with dependency ordering.
 
@@ -137,13 +137,13 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
 #### Milestone 1: Failure diagnosis
 
 - **Mode:** P-Debug
-- **Endpoint produced:** Identified failure point within a broken process plus corrected path specification.
-- **Verification criterion:** The failure point is isolated to a specific step or interaction; the corrected path removes the failure under the same constraints.
+- **Endpoint produced:** Trace-backed diagnostic verdict with evidence boundary and recommend-only correction bundle when, and only when, a defect is localized.
+- **Verification criterion:** The report identifies the execution-time contract, separates structural from semantic evidence, assigns pass/fail/unknown boundaries, emits exactly one of DEFECT_LOCALIZED, BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, and includes a correction bundle only for DEFECT_LOCALIZED. If the exact contract is unavailable, it emits the separate terminal diagnostic CONTRACT_UNAVAILABLE and withholds the four-way verdict.
 - **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** Diagnosis bundle — failing-step isolation (with expected vs. actual divergence point), root cause statement, and corrected path specification produced via the same Layer 4-6 candidate-generation / probe / evaluation cycle as P-Infer, then packaged through Layer 7's handoff structure.
-- **Drift check question:** Does the diagnosis pin the failure to a specific step or interaction — not a vague systemic explanation — and does the corrected path actually remove the failure under the same constraints rather than relaxing them implicitly?
+- **Output format:** Trace Diagnostic Report — verdict, confidence, contract checked, evidence walked, boundary table with structural and semantic pass/fail/unknown, root cause from the finite taxonomy, probe recommendation with cost/risk before execution, and recommend-only correction bundle when applicable.
+- **Drift check question:** Did this diagnosis stay inside captured trace evidence and the execution-time contract, without inventing a defect or requiring a correction for BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT? If the contract was unavailable, did it withhold the four-way verdict?
 
 ### Milestones for Mode P-Decompose
 
@@ -254,6 +254,40 @@ Your operating mode shifts across layers as indicated by Role Shift markers. You
 
 ---
 
+## P-Debug Trace-Backed Verdict Discipline
+
+When operating in P-Debug from a trace-debug turn, the framework is not a generic defect hunter. It is an evidence classifier over an executed trace package. The only admissible primary evidence is the supplied TRACE_DEBUG_CONTEXT_JSON: execution-time contract snapshot, manifest, all manifest-listed steps, step-health, model-call configs, child traces, verification probes, and the explicit three-valued boundary table. Prior learning entries are advisory context only and cannot establish a current finding.
+
+Allowed verdicts:
+- DEFECT_LOCALIZED: the executed process violated its preserved contract and the trace localizes the defect boundary. A correction bundle is required only for this verdict.
+- BAD_DRAW: the trace shows the process executed its contract but the sampled/model output was poor or unlucky rather than contract-breaking.
+- CONTRACT_MISMATCH: the executed contract was available and differs from the user's current expectation or requested standard.
+- NO_DEFECT: the trace and contract do not support a defect claim. This is a complete and honest endpoint.
+- CONTRACT_UNAVAILABLE is not a verdict. It is a separate terminal diagnostic used when the execution-time contract was not captured exactly or cannot be trusted. Withhold the four-way verdict and do not substitute the current framework text.
+
+Seven-class root-cause taxonomy for P-Debug:
+- retrieval gap: required source/context evidence was absent or insufficient before the model call.
+- instruction conflict: preserved instructions or contract clauses pulled the process in incompatible directions.
+- evaluator miss: a verifier, health check, or drift check failed to detect or correctly classify the relevant outcome.
+- consolidation compression loss: a later synthesis or formatting step discarded material evidence needed by the contract.
+- model bad-draw: the request was contract-faithful but the sampled/provider output was poor or unlucky.
+- config mismatch: the effective endpoint, gear, parameters, or runtime configuration differed from the required execution setup.
+- framework underspecification: the preserved framework contract did not specify enough to determine or enforce the desired outcome.
+
+CONTRACT_UNAVAILABLE is a terminal diagnostic, not a root-cause class or verdict. Prior learning is advisory context only and can never outrank the current trace walk, execution-time contract, boundary table, or evaluator evidence.
+
+PIF Evidence Lock (PEF Lock): every claim must cite a trace boundary, contract field, child trace, step-health marker, model-call config, verification probe, or prior learning entry from TRACE_DEBUG_CONTEXT_JSON. This lock is inherited by every layer, every candidate path, every probe recommendation, and every correction bundle. Do not use current framework files, current mode files, memory, or reconstructed expectations unless the context says their fingerprint matches the execution-time contract.
+
+Silent Non-Solution Substitution guard: never replace an unavailable trace fact with a plausible current file, remembered behavior, generic framework expectation, or user-restated desired behavior. If the exact evidence needed for a verdict is absent, label that boundary unknown or emit CONTRACT_UNAVAILABLE; do not silently substitute.
+
+P-Debug No-Punt escalation: do not answer "cannot determine" as a terminal punt while evidence remains walkable. First exhaust manifest steps, step-health, model-call configs, child traces, contract fingerprints, prior learning, and eligible model-only probes. If the contract is unavailable, emit CONTRACT_UNAVAILABLE and withhold the four-way verdict. Otherwise emit NO_DEFECT when the walked evidence does not support a defect claim.
+
+Fabricated-finding failure mode: a diagnosis fails verification if it invents a defect boundary from missing semantic evidence, assumes P-Debug implies a broken process, requires a correction bundle for BAD_DRAW / CONTRACT_MISMATCH / NO_DEFECT, treats CONTRACT_UNAVAILABLE as a four-way verdict, or cites evidence that is not present in TRACE_DEBUG_CONTEXT_JSON.
+
+Substitution guard: if the preserved contract is unavailable, oversized, redacted, truncated, or fingerprint-mismatched, emit CONTRACT_UNAVAILABLE. Do not diagnose against a partial, current, or guessed contract.
+
+Fabricated-finding guard: absence of semantic evidence is unknown, not failure. A readable step file proves structural presence only. Do not invent a bad boundary because the mode name is P-Debug.
+
 ## LAYER 1: ENDPOINT ELICITATION AND PROBLEM CLASSIFICATION
 
 **Stage Focus**: Establish the current state and desired end state with observable precision. Classify the problem type. Determine operating mode.
@@ -285,9 +319,10 @@ Your operating mode shifts across layers as indicated by Role Shift markers. You
    - Feedback is immediate or delayed.
    - The process is deterministic or exploratory.
 
-6. IF P-Debug mode: request the expected behavior, the actual behavior, and the point at which divergence is first observed.
-7. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
-8. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
+6. IF P-Debug mode: do not request user-narrated expected/actual behavior as the primary evidence. Use the supplied TRACE_DEBUG_CONTEXT_JSON as the evidence record. Treat the execution-time contract, manifest, step projections, step-health, model-call configs, and child traces as the admissible boundary. Optional user symptom text may orient attention, but it must not substitute for trace evidence.
+7. IF P-Debug mode: emit exactly one line matching `VERDICT: DEFECT_LOCALIZED`, `VERDICT: BAD_DRAW`, `VERDICT: CONTRACT_MISMATCH`, or `VERDICT: NO_DEFECT` when the contract is available. If it is unavailable, emit `CONTRACT_UNAVAILABLE` as the terminal diagnostic and emit no `VERDICT:` line. Always include `FAILING STEP:` and `VERIFICATION PROBE:` fields, using `none` when they do not apply.
+8. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
+9. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
 
 ### Output Format for This Layer
 
@@ -417,7 +452,7 @@ ASSUMPTIONS LOG (initialized):
    - Which states require prior states to be completed first (sequential)?
    - Are there circular dependencies? IF so, flag as a structural problem requiring decomposition.
 
-5. IF P-Debug mode: the decomposition focuses on the process segment between the last known-good state and the first observed failure. Decompose this segment into the finest granularity possible to isolate the failure point.
+5. IF P-Debug mode: build the boundary table from the supplied trace walk. Each boundary has two separate states: structural evidence (pass, fail, unknown) and semantic evidence (pass, fail, unknown). Do not infer last-known-good from successful execution alone; a structurally present step with unknown semantic validity remains semantically unknown. Identify a defect boundary only when the trace evidence supports DEFECT_LOCALIZED. If the trace instead supports BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, preserve that verdict honestly and do not force a failure point. If the contract is unavailable, emit the separate CONTRACT_UNAVAILABLE diagnostic and withhold the four-way verdict.
 6. IF P-Decompose mode: the decomposition continues recursively until every subproblem is either solvable with known methods or identified as a distinct unknown requiring its own P-Infer cycle.
 7. Update the assumptions log with any assumptions made during decomposition.
 
@@ -546,7 +581,7 @@ PATH RANKING:
    - IF probe fails (assumption disconfirmed) → [what happens next: switch to alternate path, redesign probe, revisit decomposition].
    - IF probe is ambiguous (result does not clearly confirm or disconfirm) → [what happens next: design a more targeted probe, gather additional information].
 
-5. IF P-Debug mode: the probes should isolate the failure point through binary elimination. Design probes that bisect the suspected failure region, confirming which side of the split the failure lies on.
+5. IF P-Debug mode: probes are optional model-only counterfactuals, not tool or external-action replay. Use them only when the trace walk cannot discriminate between admissible verdicts and only after prepare/approve/execute authorization is available. A probe may test a bounded hypothesis about a semantic boundary, but it must remain inert and must not be used to manufacture a defect. Modified prompts are counterfactual probes, not replays.
 6. Assess the total probe budget. IF the combined cost of all recommended probes exceeds the cost of executing the cheapest candidate path, THEN flag this and recommend executing the cheapest path directly with monitoring rather than probing.
 
 ### Output Format for This Layer
@@ -938,7 +973,7 @@ NEW ASSUMPTIONS LOGGED:
 1. Confirm you have fully processed this framework and all associated input materials.
 2. Identify the operating mode from the user's input:
    - **Mode P-Infer:** User describes endpoints without a known process. Execute Layers 1-9.
-   - **Mode P-Debug:** User describes a failing process. Execute Layers 1-9 with P-Debug modifications noted in each layer.
+   - **Mode P-Debug:** User supplies a process or exact captured trace to investigate; it may be defective, faithful-but-disappointing, a bad draw, or clean. Execute Layers 1-9 with P-Debug modifications noted in each layer.
    - **Mode P-Decompose:** User describes a complex endpoint needing reduction. Execute Layers 1-3, then return Layer 3 output as the primary deliverable. Continue to Layers 4-9 only if the user requests path generation for specific subproblems.
    - **Mode P-Formalize:** User provides a discovered process. Skip Layers 3-5. Execute Layer 1 (to formalize endpoints), Layer 2 (to capture constraints), Layer 6 (to refine the step sequence), Layer 7 (to produce the handoff package), Layers 8-9.
    - **Mode P-Feasibility:** User or calling framework provides an endpoint and current state description (Verify sub-mode), or a Resolution Statement and current state with no candidate endpoint (Suggest sub-mode). Execute Layer 1 (endpoint formalization), Layer 2 (constraint modeling), Feasibility Assessment, Layer 8 (with P-Feasibility criteria), Layer 9 (with P-Feasibility output format). Skip Layers 3 through 7. See P-Feasibility Mode Specification section for details.
@@ -953,7 +988,7 @@ NEW ASSUMPTIONS LOGGED:
 
 ## USER INPUT
 
-[State Mode P-Infer (discover unknown process), Mode P-Debug (diagnose failing process), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for PFF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
+[State Mode P-Infer (discover unknown process), Mode P-Debug (investigate a process or captured trace), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for PFF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
 
 ---
 
