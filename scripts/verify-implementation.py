@@ -55,7 +55,6 @@ VAULT_ROOT = _rp.vault_dir().resolve()
 
 MODES_DIR = VAULT_ROOT / "Modes"
 LENSES_DIR = VAULT_ROOT / "Lenses"
-ARCHITECTURE_DIR = ORA_ROOT / "architecture"
 ORA_MODES_DIR = ORA_ROOT / "modes"
 ORA_LENSES_DIR = ORA_ROOT / "knowledge" / "mental-models"
 
@@ -124,18 +123,27 @@ REQUIRED_PIPELINE_SUBSECTIONS = {
     "RAG PROFILE",
 }
 
-# 9 vault canonical → Ora runtime architecture pairs
-ARCHITECTURE_PAIRS = [
-    ("Reference — Analytical Territories.md", "territories.md"),
-    ("Reference — Mode Specification Template.md", "mode-template.md"),
-    ("Reference — Disambiguation Style Guide.md", "disambiguation-style-guide.md"),
-    ("Reference — Lens Library Specification.md", "lens-library-specification.md"),
-    ("Reference — Pre-Routing Pipeline Architecture.md", "pre-routing-pipeline.md"),
-    ("Registry — Signal Vocabulary Registry.md", "signal-vocabulary-registry.md"),
-    ("Reference — Within-Territory Disambiguation Trees.md", "within-territory-trees.md"),
-    ("Reference — Cross-Territory Adjacency.md", "cross-territory-adjacency.md"),
-    ("Reference — Trusted Web Sources.md", "trusted-web-sources.md"),
+# Vault canonical → Ora operational pairs. Ora paths are repository-relative so
+# the same check covers architecture mirrors and runtime framework copies.
+DRIFT_PAIRS = [
+    ("Reference — Analytical Territories.md", "architecture/territories.md"),
+    ("Reference — Mode Specification Template.md", "architecture/mode-template.md"),
+    ("Reference — Disambiguation Style Guide.md", "architecture/disambiguation-style-guide.md"),
+    ("Reference — Lens Library Specification.md", "architecture/lens-library-specification.md"),
+    ("Reference — Pre-Routing Pipeline Architecture.md", "architecture/pre-routing-pipeline.md"),
+    ("Registry — Signal Vocabulary Registry.md", "architecture/signal-vocabulary-registry.md"),
+    ("Reference — Within-Territory Disambiguation Trees.md", "architecture/within-territory-trees.md"),
+    ("Reference — Cross-Territory Adjacency.md", "architecture/cross-territory-adjacency.md"),
+    ("Reference — Trusted Web Sources.md", "architecture/trusted-web-sources.md"),
+    (
+        "Framework — Conversation Processing Pipeline.md",
+        "frameworks/book/conversation-processing.md",
+    ),
+    ("Specification — F-Quality-Gate.md", "frameworks/book/f-quality-gate.md"),
 ]
+# Compatibility alias for callers that imported the original architecture-only
+# registry name before it grew to cover operational framework copies.
+ARCHITECTURE_PAIRS = DRIFT_PAIRS
 
 
 # ---------------------------------------------------------------------------
@@ -566,12 +574,12 @@ def check_runtime_config(verbose: bool = False) -> CheckResult:
 
 
 def check_drift_parity(verbose: bool = False) -> CheckResult:
-    """Verify the 9 architecture file pairs match (modulo vault YAML)."""
+    """Verify registered vault/Ora file pairs match (modulo vault YAML)."""
     result = CheckResult(name="drift", passed=True)
 
-    for vault_name, ora_name in ARCHITECTURE_PAIRS:
+    for vault_name, ora_name in DRIFT_PAIRS:
         vault_path = VAULT_ROOT / vault_name
-        ora_path = ARCHITECTURE_DIR / ora_name
+        ora_path = ORA_ROOT / ora_name
 
         if not vault_path.exists():
             result.passed = False
