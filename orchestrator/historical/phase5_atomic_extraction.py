@@ -64,8 +64,10 @@ DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH  = str(_rp.DATA_DIR / "phase5-manifest.json")
 DEFAULT_REPORT_PATH    = str(_rp.DATA_DIR / "phase5-report.json")
 
-# Extraction model — Sonnet 4.5 for quality per user direction.
-EXTRACTION_MODEL = "claude-sonnet-4-5"
+# Extraction model — Mimo-V2.5-Pro via OpenRouter.
+# The hint is an OpenRouter slug (contains "/") so the OpenRouter client
+# passes it to the API unchanged via resolve_model's slug pass-through.
+EXTRACTION_MODEL = "xiaomi/mimo-v2.5-pro"
 
 # Cosine-similarity threshold for treating a candidate as a duplicate
 # of an already-indexed atomic. 0.92 per architecture; lower would
