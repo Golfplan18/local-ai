@@ -36,7 +36,7 @@ CLI:
     python -m orchestrator.historical.ingest \
         --backend claude-cli
     python -m orchestrator.historical.ingest \
-        --input-dir ~/Documents/conversations/raw --no-engrams
+        --no-engrams
 
 This is the runnable entry point for the Conversation Processing
 Pipeline framework's batch mode. Ora invokes the same `run_ingest`
@@ -59,7 +59,7 @@ from orchestrator.historical.cleanup_backends import (
     CLI_RECOMMENDED_MAX_WORKERS,
 )
 from orchestrator.historical.cli import (
-    DEFAULT_INPUT_DIR,
+    default_input_dir,
     run_batch,
 )
 from orchestrator.historical.path2_cli import (
@@ -72,7 +72,7 @@ from orchestrator.historical.writer import DEFAULT_OUTPUT_DIR
 
 
 def run_ingest(
-    input_dir:     str = DEFAULT_INPUT_DIR,
+    input_dir:     Optional[str] = None,
     *,
     output_dir:    str = DEFAULT_OUTPUT_DIR,
     backend:       str = BACKEND_API,
@@ -94,6 +94,9 @@ def run_ingest(
     the source notes) and its session map feeds chunk emission. A stage
     that processes nothing is still recorded in the summary.
     """
+    if input_dir is None:
+        input_dir = default_input_dir()
+
     started = time.monotonic()
     summary: dict = {
         "started_at": datetime.now().isoformat(timespec="seconds"),
@@ -196,7 +199,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         description="Unified conversation ingest: cleanup → extraction "
                     "→ chunks → engrams.",
     )
-    parser.add_argument("--input-dir", default=DEFAULT_INPUT_DIR)
+    parser.add_argument("--input-dir", default=default_input_dir())
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--backend", choices=list(BACKEND_CHOICES),
                         default=BACKEND_API,

@@ -21,6 +21,7 @@ import contextlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -51,6 +52,7 @@ from orchestrator.tools.vault_indexer import (  # noqa: E402
     topic_fingerprint,
     yaml_skip_by_type,
 )
+from orchestrator.tools import vault_indexer  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -685,6 +687,111 @@ class TestIterVaultFiles(unittest.TestCase):
         files = list(iter_vault_files(self.vault))
         rels = sorted(str(f.relative_to(self.vault)) for f in files)
         self.assertEqual(rels, ["A.md", "Engrams/B.md", "Workshop/E.md"])
+
+
+class TestRuntimePathDefaults(unittest.TestCase):
+
+    def test_build_and_load_follow_each_supported_vault_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cases = (
+                ("ORA_VAULT", root / "canonical-vault", {}),
+                ("ORA_VAULT_PATH", root / "legacy-vault", {}),
+                (
+                    "ORA_DOCUMENTS",
+                    root / "redirected-documents" / "vault",
+                    {"ORA_DOCUMENTS": str(root / "redirected-documents")},
+                ),
+            )
+            for label, expected_vault, extra_env in cases:
+                with self.subTest(label=label):
+                    expected_vault.mkdir(parents=True)
+                    (expected_vault / "Portable.md").write_text(
+                        "# Portable\n\n" + ("portable content " * 20),
+                        encoding="utf-8",
+                    )
+                    ora_home = root / f"ora-{label.lower()}"
+                    env = {
+                        "HOME": str(root / "profile"),
+                        "USERPROFILE": str(root / "profile"),
+                        "ORA_HOME": str(ora_home),
+                        **extra_env,
+                    }
+                    if label in {"ORA_VAULT", "ORA_VAULT_PATH"}:
+                        env[label] = str(expected_vault)
+                    with mock.patch.dict(os.environ, env, clear=True):
+                        stats = vault_indexer.build_index(rebuild=True)
+                        index = vault_indexer.load_index()
+
+                    self.assertEqual(stats["new"], 1)
+                    self.assertEqual(
+                        index["vault_path"], str(expected_vault.resolve()),
+                    )
+                    self.assertTrue(
+                        (ora_home / "data" / "vault-index.json").is_file()
+                    )
+
+    def test_explicit_paths_are_not_reinterpreted_after_relocation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            explicit_vault = root / "explicit-vault"
+            explicit_vault.mkdir()
+            (explicit_vault / "Explicit.md").write_text(
+                "# Explicit\n\n" + ("explicit content " * 20),
+                encoding="utf-8",
+            )
+            explicit_index = root / "explicit-index.json"
+            with mock.patch.dict(os.environ, {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_HOME": str(root / "relocated-home"),
+                "ORA_VAULT": str(root / "relocated-vault"),
+            }, clear=True):
+                vault_indexer.build_index(
+                    vault_path=str(explicit_vault),
+                    output_path=str(explicit_index),
+                    rebuild=True,
+                )
+
+            self.assertTrue(explicit_index.is_file())
+            self.assertFalse(
+                (root / "relocated-home" / "data" / "vault-index.json").exists()
+            )
+
+    def test_conflicting_vault_aliases_fail_loudly(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.dict(os.environ, {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_HOME": str(root / "ora"),
+                "ORA_VAULT": str(root / "one"),
+                "ORA_VAULT_PATH": str(root / "two"),
+            }, clear=True):
+                with self.assertRaises(vault_indexer._rp.PathConfigurationError):
+                    vault_indexer.build_index(rebuild=True)
+
+    def test_direct_script_help_is_portable(self):
+        script = Path(vault_indexer.__file__).resolve()
+        with tempfile.TemporaryDirectory() as td:
+            env = dict(os.environ)
+            for name in (
+                "ORA_VAULT", "ORA_VAULT_PATH", "ORA_DOCUMENTS",
+                "ORA_CONVERSATIONS", "ORA_HISTORICAL_ARCHIVE",
+            ):
+                env.pop(name, None)
+            env["ORA_HOME"] = str(Path(td) / "ora")
+            proc = subprocess.run(
+                [sys.executable, str(script), "--help"],
+                cwd=td,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("--vault", proc.stdout)
 
 
 if __name__ == "__main__":

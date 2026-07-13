@@ -214,6 +214,29 @@ class TestGuardIntegration(unittest.TestCase):
         self.assertEqual(rec["action"], "raw_preserved")
         self.assertEqual(rec["source_path"], "/x/y.md")
 
+    def test_default_guard_log_follows_late_ora_home(self):
+        relocated = os.path.join(self._tmp.name, "Relocated Ora")
+        client = _client_with_responses(REFUSAL_TEXT, "A fine response.")
+        with patch.dict(
+            os.environ, {
+                "HOME": os.path.join(self._tmp.name, "profile"),
+                "USERPROFILE": os.path.join(self._tmp.name, "profile"),
+                "ORA_HOME": relocated,
+            }, clear=True,
+        ):
+            clean_pair(
+                _make_pair("Describe this image.", "A fine response."),
+                anthropic_client=client,
+                source_path="source.md",
+            )
+
+        log_path = os.path.join(relocated, "data", "cleanup-guard.log")
+        self.assertTrue(os.path.isfile(log_path))
+        with open(log_path, encoding="utf-8") as fh:
+            rec = json.loads(fh.readline())
+        self.assertEqual(rec["source_path"], "source.md")
+        self.assertEqual(rec["action"], "raw_preserved")
+
     def test_ai_refusal_falls_back_to_raw(self):
         raw_ai = "The mechanism works through three stages of review."
         client = _client_with_responses(

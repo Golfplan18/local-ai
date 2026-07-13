@@ -7,7 +7,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -164,6 +164,40 @@ class TestEndToEnd(unittest.TestCase):
         )
         self.assertGreater(result.engagement_strips_logged, 0)
         self.assertTrue(os.path.exists(log_path))
+
+    def test_omitted_engagement_log_follows_late_ora_home(self):
+        fake = MagicMock()
+        fake.messages = MagicMock()
+        responses = []
+        for _ in range(3):
+            responses.append(_fake_message("cleaned user input"))
+            responses.append(_fake_message(
+                "Real content.\n\nWould you like more details?"
+            ))
+        fake.messages.stream = MagicMock(side_effect=responses)
+        client = AnthropicClient(client=fake)
+        relocated = os.path.join(self.tmp, "Relocated Ora")
+
+        with patch.dict(
+            os.environ, {
+                "HOME": os.path.join(self.tmp, "profile"),
+                "USERPROFILE": os.path.join(self.tmp, "profile"),
+                "ORA_HOME": relocated,
+            }, clear=True,
+        ):
+            result = process_chat_file(
+                self.raw_path,
+                vault_index={"entries": []},
+                anthropic_client=client,
+                output_dir=self.output_dir,
+                max_workers=1,
+            )
+
+        log_path = os.path.join(
+            relocated, "data", "engagement-strips.log",
+        )
+        self.assertGreater(result.engagement_strips_logged, 0)
+        self.assertTrue(os.path.isfile(log_path))
 
 
 # ---------------------------------------------------------------------------

@@ -3,23 +3,21 @@
 Walks a directory of raw chat files, applies an optional date filter,
 and processes each file via the per-file orchestrator (Phase 1.11).
 
-A manifest at `~/ora/data/cleanup-manifest.json` tracks completed and
+A manifest at `<ora-data>/cleanup-manifest.json` tracks completed and
 errored files so resumes skip already-processed chats. The manifest is
 JSON keyed by raw-chat absolute path; each entry records pairs counts,
 cost, output paths, and timestamps.
 
 CLI invocation:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.cli \\
-        --input-dir ~/Documents/conversations/raw \\
-        --output-dir "~/Documents/Commercial AI archives" \\
+    python -m orchestrator.historical.cli \\
         --from-date 2026-02-01 \\
         --max-workers 8 \\
         --limit 50
 
 For the pilot batch:
 
-    /opt/homebrew/bin/python3 -m orchestrator.historical.cli \\
+    python -m orchestrator.historical.cli \\
         --from-date 2026-02-01 \\
         --max-workers 8
 
@@ -39,8 +37,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.cleanup_backends import (
     BACKEND_API,
     BACKEND_CHOICES,
@@ -62,8 +61,45 @@ from orchestrator.tools.vault_indexer import load_index, INDEX_DEFAULT
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_INPUT_DIR    = os.path.expanduser("~/Documents/conversations/raw")
-DEFAULT_MANIFEST_PATH = os.path.expanduser("~/ora/data/cleanup-manifest.json")
+_INITIAL_DEFAULT_INPUT_DIR = str(_rp.conversations_dir() / "raw")
+DEFAULT_INPUT_DIR = _INITIAL_DEFAULT_INPUT_DIR
+_INITIAL_DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "cleanup-manifest.json")
+DEFAULT_MANIFEST_PATH = _INITIAL_DEFAULT_MANIFEST_PATH
+_INITIAL_INDEX_DEFAULT = INDEX_DEFAULT
+
+
+def _runtime_data_file(name: str) -> str:
+    return str(_rp.resolve_runtime_roots().ora_home / "data" / name)
+
+
+def default_input_dir() -> str:
+    """Resolve the live input root while preserving the public patch hook."""
+    if DEFAULT_INPUT_DIR != _INITIAL_DEFAULT_INPUT_DIR:
+        return DEFAULT_INPUT_DIR
+    return str(_rp.conversations_dir() / "raw")
+
+
+def _default_manifest_path() -> str:
+    """Resolve the live cleanup manifest while preserving its patch hook."""
+    if DEFAULT_MANIFEST_PATH != _INITIAL_DEFAULT_MANIFEST_PATH:
+        return DEFAULT_MANIFEST_PATH
+    return _runtime_data_file("cleanup-manifest.json")
+
+
+def _default_index_path() -> str:
+    """Resolve the live shared vault index while preserving its patch hook."""
+    if INDEX_DEFAULT != _INITIAL_INDEX_DEFAULT:
+        return INDEX_DEFAULT
+    return _runtime_data_file("vault-index.json")
+
+
+def _resolve_default(
+    value: Optional[str], resolver: Callable[[], str],
+) -> str:
+    """Late-bind an omitted default; every supplied path remains exact."""
+    if value is None:
+        return resolver()
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -204,10 +240,10 @@ def _cap_cli_workers(max_workers: int, file_workers: int) -> tuple[int, int]:
 
 
 def run_batch(
-    input_dir:        str = DEFAULT_INPUT_DIR,
+    input_dir:        Optional[str] = None,
     output_dir:       str = DEFAULT_OUTPUT_DIR,
-    manifest_path:    str = DEFAULT_MANIFEST_PATH,
-    vault_index_path: str = INDEX_DEFAULT,
+    manifest_path:    Optional[str] = None,
+    vault_index_path: Optional[str] = None,
     from_date:        Optional[date] = None,
     to_date:          Optional[date] = None,
     max_workers:      int = 8,
@@ -230,6 +266,10 @@ def run_batch(
     'claude-cli' (Claude subscription via the claude CLI), or
     'ora-slots' (Ora's slot routing).
     """
+
+    input_dir = _resolve_default(input_dir, default_input_dir)
+    manifest_path = _resolve_default(manifest_path, _default_manifest_path)
+    vault_index_path = _resolve_default(vault_index_path, _default_index_path)
 
     start = time.monotonic()
 
@@ -413,10 +453,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Batch cleanup of raw chat archive (Phase 1).",
     )
-    parser.add_argument("--input-dir", default=DEFAULT_INPUT_DIR)
+    parser.add_argument("--input-dir", default=default_input_dir())
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--manifest", default=DEFAULT_MANIFEST_PATH)
-    parser.add_argument("--vault-index", default=INDEX_DEFAULT)
+    parser.add_argument("--manifest", default=_default_manifest_path())
+    parser.add_argument("--vault-index", default=_default_index_path())
     parser.add_argument("--from-date", type=_parse_iso_date,
                           help="Filter: chat created_at >= this date (YYYY-MM-DD)")
     parser.add_argument("--to-date", type=_parse_iso_date,
@@ -469,6 +509,7 @@ if __name__ == "__main__":
 __all__ = [
     "DEFAULT_INPUT_DIR",
     "DEFAULT_MANIFEST_PATH",
+    "default_input_dir",
     "load_manifest",
     "save_manifest",
     "manifest_completed",

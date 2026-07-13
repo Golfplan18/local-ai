@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 from datetime import date
+from pathlib import Path
 from unittest.mock import patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,6 +49,34 @@ def _mocks():
 
 
 class TestRunIngest(unittest.TestCase):
+
+    def test_omitted_input_is_resolved_once_at_call_time(self):
+        with tempfile.TemporaryDirectory() as td:
+            conversations = Path(td) / "Redirected Documents" / "conversations"
+            m_batch, m_detect, m_p3, m_emit, m_p5 = _mocks()
+            with (
+                patch.dict(os.environ, {
+                    "HOME": str(Path(td) / "profile"),
+                    "USERPROFILE": str(Path(td) / "profile"),
+                    "ORA_HOME": str(Path(td) / "ora"),
+                    "ORA_CONVERSATIONS": str(conversations),
+                }, clear=True),
+                m_batch as batch,
+                m_detect,
+                m_p3,
+                m_emit,
+                m_p5,
+            ):
+                summary = ingest.run_ingest(
+                    extraction=False,
+                    chunks=False,
+                    engrams=False,
+                    progress=False,
+                )
+
+        expected = str(conversations / "raw")
+        self.assertEqual(summary["input_dir"], expected)
+        self.assertEqual(batch.call_args.kwargs["input_dir"], expected)
 
     def test_historical_defaults_share_runtime_roots(self):
         self.assertEqual(path2_cli.DEFAULT_MANIFEST_PATH,
