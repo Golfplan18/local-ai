@@ -58,7 +58,9 @@ from orchestrator.historical.chain_detector import (
 DEFAULT_ARCHIVE_DIR    = str(_rp.historical_archive_dir())
 DEFAULT_VAULT_ROOT     = str(_rp.vault_dir() / "Engrams" / "Historical Atomics")
 DEFAULT_CHROMADB_PATH  = str(_rp.chromadb_dir())
-DEFAULT_DEDUP_COLLECTION = "atomic_dedup"
+# Logical collection name. embedding.resolve_collection() maps this to the
+# machine-specific physical collection configured in config/chromadb.json.
+DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH  = str(_rp.DATA_DIR / "phase5-manifest.json")
 DEFAULT_REPORT_PATH    = str(_rp.DATA_DIR / "phase5-report.json")
 
