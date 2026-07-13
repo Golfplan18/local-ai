@@ -38,7 +38,7 @@ class TestOversightContextRuntimePath(unittest.TestCase):
             bundle = oc.OversightContextBundle(event={}, event_class="unknown")
         self.assertEqual(
             Path(bundle.pef_toolkit_reference),
-            vault / "Framework — Problem Evolution.md",
+            vault / "Projects" / "Ora" / "Framework — Problem Evolution.md",
         )
 
 

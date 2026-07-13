@@ -29,9 +29,13 @@ import os
 import re
 from typing import Optional
 
+try:
+    import runtime_paths as _rp
+except ImportError:
+    from orchestrator import runtime_paths as _rp
 
-_DEFAULT_TRUSTED_SOURCES_PATH = os.path.expanduser(
-    "~/Documents/vault/Reference — Trusted Web Sources.md"
+_DEFAULT_TRUSTED_SOURCES_PATH = str(
+    _rp.VAULT_ORA / "Reference — Trusted Web Sources.md"
 )
 
 
