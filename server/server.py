@@ -5199,7 +5199,12 @@ def api_active_project_set():
 def api_projects_meta():
     """Switcher list (G1.33): Commons first, then projects by recency, each with
     conversation + unread counts so the switcher can badge cross-project
-    activity (Commons == all-inclusive). Pass ``?status=active`` to filter."""
+    activity (Commons == all-inclusive). Pass ``?status=active`` to filter.
+
+    Each project also carries a ``matrix`` field with per-record Matrix
+    diagnostics (state / classification / warnings / schema_valid) so one
+    bad Matrix cannot fail the entire response.
+    """
     try:
         from orchestrator import project_meta as _pm
         from orchestrator.active_project import project_nexus_fields
@@ -5227,12 +5232,31 @@ def api_projects_meta():
                     c["unread_count"] += 1
     except Exception:
         counts = {}
+    # Lazy import of shared Matrix classifier for per-record diagnostics.
+    try:
+        from matrix_classifier import diagnose_matrix
+    except ImportError:
+        from orchestrator.matrix_classifier import diagnose_matrix
     for p in projects:
         canonical_nexus = p["nexus"]
         c = counts.get(canonical_nexus, {"conversation_count": 0, "unread_count": 0})
         p["conversation_count"] = c["conversation_count"]
         p["unread_count"] = c["unread_count"]
         p.update(project_nexus_fields(canonical_nexus))
+        # Per-record Matrix diagnostics (failure-isolated).
+        try:
+            p["matrix"] = diagnose_matrix(
+                canonical_nexus,
+                p.get("folder_name"),
+            )
+        except Exception as exc:
+            p["matrix"] = {
+                "state": "invalid",
+                "classification": None,
+                "warnings": [f"Matrix diagnostic failed: {exc}"],
+                "matrix_path": None,
+                "schema_valid": False,
+            }
     return _json_response({"ok": True, "projects": projects})
 
 
