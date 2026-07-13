@@ -9,6 +9,7 @@ Windows target-machine proof.
 from __future__ import annotations
 
 import ctypes
+import io
 import json
 import os
 import shutil
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import types
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 from unittest import mock
 
@@ -273,7 +275,9 @@ class TestMarshaling(unittest.TestCase):
 
     def test_launch_uses_zero_capabilities_exact_handles_job_and_stdio(self):
         api, events, captured = self._launch_api()
-        with mock.patch.object(wac, "_last_error", return_value=wac.ERROR_INSUFFICIENT_BUFFER):
+        logged = io.StringIO()
+        with redirect_stderr(logged), \
+             mock.patch.object(wac, "_last_error", return_value=wac.ERROR_INSUFFICIENT_BUFFER):
             result = wac._launch(
                 api, [r"C:\Python\python.exe", "-c", "print('ok')"],
                 executable=r"C:\Python\python.exe", cwd=r"C:\repo",
@@ -305,6 +309,7 @@ class TestMarshaling(unittest.TestCase):
             wac.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
             | wac.JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION,
         )
+        self.assertIn("INFO: engaged job=0x5a", logged.getvalue())
 
     def test_timeout_terminates_entire_job(self):
         api, events, _captured = self._launch_api(wait_result=wac.WAIT_TIMEOUT)
@@ -390,6 +395,7 @@ class TestACLAndRecovery(unittest.TestCase):
         events = []
         api = self._fake_api(events)
         original_write = wac._write_journal
+        original_log = wac._log
 
         def write(path, payload):
             events.append(("journal", payload["grants_started"]))
@@ -398,13 +404,20 @@ class TestACLAndRecovery(unittest.TestCase):
         def acl(_api, path, _sid, *, grant, writable):
             events.append(("grant" if grant else "revoke", path, writable))
 
+        def log(level, message):
+            events.append(("log", level, message))
+            original_log(level, message)
+
         try:
-            with mock.patch.object(wac, "_resolve_executable", return_value=sys.executable), \
+            logged = io.StringIO()
+            with redirect_stderr(logged), \
+                 mock.patch.object(wac, "_resolve_executable", return_value=sys.executable), \
                  mock.patch.object(wac, "_runtime_acl_roots", return_value=[]), \
                  mock.patch.object(wac, "_create_profile",
                                    side_effect=lambda _a, _n: events.append("profile") or wac.LPVOID(44)), \
                  mock.patch.object(wac, "_sid_text", return_value="S-1-15-2-44"), \
                  mock.patch.object(wac, "_write_journal", side_effect=write), \
+                 mock.patch.object(wac, "_log", side_effect=log), \
                  mock.patch.object(wac, "_acl_entry", side_effect=acl), \
                  mock.patch.object(wac, "_delete_profile",
                                    side_effect=lambda _a, _n: events.append("delete_profile")), \
@@ -415,10 +428,15 @@ class TestACLAndRecovery(unittest.TestCase):
                     timeout=5, readonly_roots=[str(repo)],
                     writable_roots=[str(scratch)], api=api, state_root=state)
             self.assertEqual(result.returncode, 0)
+            self.assertIn("INFO: engaged profile=ora.evidence.", logged.getvalue())
+            self.assertIn("sid=S-1-15-2-44", logged.getvalue())
             first_grant = next(i for i, item in enumerate(events)
                                if isinstance(item, tuple) and item[0] == "grant")
             started_journal = events.index(("journal", True))
-            self.assertLess(started_journal, first_grant)
+            profile_log = next(i for i, item in enumerate(events)
+                               if isinstance(item, tuple) and item[:2] == ("log", "INFO"))
+            self.assertLess(started_journal, profile_log)
+            self.assertLess(profile_log, first_grant)
             grants = [item[1] for item in events
                       if isinstance(item, tuple) and item[0] == "grant"]
             revokes = [item[1] for item in events
@@ -511,6 +529,88 @@ class TestACLAndRecovery(unittest.TestCase):
                 wac.recover_orphans(api=api, state_root=state)
             self.assertFalse(journal.exists())
         finally:
+            shutil.rmtree(state, ignore_errors=True)
+
+    def test_pregrant_journal_cleans_when_profile_is_missing_or_exists(self):
+        # grants_started=False spans both sides of profile creation.  In either
+        # state there are no ACLs, but an existing profile still must be deleted.
+        for status in (0, ctypes.c_int32(0x80070490).value):
+            with self.subTest(status=status):
+                state = Path(tempfile.mkdtemp(prefix="wac-state-"))
+                journal = state / "lease-deadbeef.json"
+                journal.write_text("planned", encoding="utf-8")
+                userenv = _DLL()
+                userenv.DeleteAppContainerProfile = _Fn(default=status)
+                api = types.SimpleNamespace(
+                    userenv=userenv, advapi32=_DLL(), kernel32=_DLL())
+                payload = {
+                    "version": 1,
+                    "profile": "ora.evidence.deadbeef",
+                    "sid": None,
+                    "grants_started": False,
+                    "grants": [],
+                }
+                try:
+                    wac._cleanup_lease(
+                        api, journal, payload, sid=None,
+                        sid_owned_by_profile=False)
+                    self.assertFalse(journal.exists())
+                finally:
+                    shutil.rmtree(state, ignore_errors=True)
+
+    def test_pregrant_profile_delete_failure_retains_journal(self):
+        state = Path(tempfile.mkdtemp(prefix="wac-state-"))
+        journal = state / "lease-deadbeef.json"
+        journal.write_text("planned", encoding="utf-8")
+        userenv = _DLL()
+        userenv.DeleteAppContainerProfile = _Fn(
+            default=ctypes.c_int32(0x80070005).value)
+        api = types.SimpleNamespace(
+            userenv=userenv, advapi32=_DLL(), kernel32=_DLL())
+        payload = {
+            "version": 1,
+            "profile": "ora.evidence.deadbeef",
+            "sid": None,
+            "grants_started": False,
+            "grants": [],
+        }
+        try:
+            with self.assertRaisesRegex(wac.AppContainerError, "cleanup incomplete"):
+                wac._cleanup_lease(
+                    api, journal, payload, sid=None,
+                    sid_owned_by_profile=False)
+            self.assertTrue(journal.exists())
+        finally:
+            shutil.rmtree(state, ignore_errors=True)
+
+    def test_corrupt_journal_does_not_block_later_valid_recovery(self):
+        repo = self._home_tree()
+        state = Path(tempfile.mkdtemp(prefix="wac-state-"))
+        corrupt = state / "lease-0000.json"
+        valid = state / "lease-1111.json"
+        corrupt.write_text("{not-json", encoding="utf-8")
+        wac._write_journal(valid, {
+            "version": 1,
+            "profile": "ora.evidence.1111",
+            "sid": None,
+            "grants_started": False,
+            "grants": [{"path": str(repo), "writable": False}],
+        })
+        api = self._fake_api([])
+        logged = io.StringIO()
+        try:
+            with redirect_stderr(logged), \
+                 mock.patch.object(wac, "_delete_profile") as delete_profile:
+                with self.assertRaisesRegex(
+                        wac.AppContainerError, "orphan recovery incomplete"):
+                    wac.recover_orphans(api=api, state_root=state)
+            self.assertTrue(corrupt.exists())
+            self.assertFalse(valid.exists())
+            delete_profile.assert_called_once_with(
+                api, "ora.evidence.1111", missing_ok=True)
+            self.assertIn("journal=lease-0000.json recovery failed", logged.getvalue())
+        finally:
+            shutil.rmtree(repo, ignore_errors=True)
             shutil.rmtree(state, ignore_errors=True)
 
     def test_tampered_journal_cannot_revoke_outside_contained_roots(self):

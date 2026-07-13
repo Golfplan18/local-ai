@@ -187,6 +187,8 @@ STILL_ACTIVE = 259
 ERROR_INSUFFICIENT_BUFFER = 122
 ERROR_BROKEN_PIPE = 109
 ERROR_ALREADY_EXISTS = 183
+ERROR_FILE_NOT_FOUND = 2
+ERROR_NOT_FOUND = 1168
 
 # Job constants.  No active-process limit: test runners/compilers may spawn.
 JobObjectExtendedLimitInformation = 9
@@ -237,6 +239,11 @@ class SandboxResult:
     timed_out: bool = False
     error: str | None = None
     cleanup_error: str | None = None
+
+
+def _log(level: str, message: str) -> None:
+    """Loud lifecycle signal; the server does not configure Python INFO logging."""
+    print(f"[windows_appcontainer] {level}: {message}", file=sys.stderr, flush=True)
 
 
 def _last_error() -> int:
@@ -445,9 +452,15 @@ def _derive_profile_sid(api: _WinAPI, name: str) -> LPVOID:
     return sid
 
 
-def _delete_profile(api: _WinAPI, name: str) -> None:
+def _delete_profile(api: _WinAPI, name: str, *, missing_ok: bool = False) -> None:
     hr = api.userenv.DeleteAppContainerProfile(name)
-    if hr != 0:
+    missing = {
+        ERROR_FILE_NOT_FOUND,
+        ERROR_NOT_FOUND,
+        0x80070000 | ERROR_FILE_NOT_FOUND,
+        0x80070000 | ERROR_NOT_FOUND,
+    }
+    if hr != 0 and not (missing_ok and _u32(hr) in missing):
         raise AppContainerError(
             f"DeleteAppContainerProfile failed (HRESULT 0x{_u32(hr):08x})")
 
@@ -603,7 +616,8 @@ def _cleanup_lease(api: _WinAPI, journal: Path, payload: dict[str, Any],
     """Idempotently revoke a lease and delete its profile.
 
     The journal remains when any cleanup step fails so a later serialized run
-    retries.  Every step is attempted even after an earlier failure.
+    retries. Every planned revoke is attempted even after an earlier revoke
+    failure; profile deletion happens only after all possible ACEs are gone.
     """
     errors: list[str] = []
     cleanup_sid = sid
@@ -643,7 +657,14 @@ def _cleanup_lease(api: _WinAPI, journal: Path, payload: dict[str, Any],
         # keeps SID derivation available to the next serialized recovery pass.
         if not errors:
             try:
-                _delete_profile(api, payload["profile"])
+                # A grants_started=False journal spans two safe states: it may
+                # precede profile creation, or the parent may have crashed after
+                # CreateAppContainerProfile but before the second journal write.
+                # Attempt deletion in both cases; missing is clean only here.
+                if payload["grants_started"]:
+                    _delete_profile(api, payload["profile"])
+                else:
+                    _delete_profile(api, payload["profile"], missing_ok=True)
             except Exception as exc:
                 errors.append(str(exc))
     finally:
@@ -668,9 +689,21 @@ def recover_orphans(*, api: _WinAPI | None = None,
     root = Path(state_root) if state_root else Path(_rp.DATA_DIR) / "evidence-appcontainer"
     if not root.exists():
         return
+    errors: list[str] = []
     for journal in sorted(root.glob("lease-*.json")):
-        payload = _read_journal(journal)
-        _cleanup_lease(api, journal, payload, sid=None, sid_owned_by_profile=False)
+        try:
+            payload = _read_journal(journal)
+            _cleanup_lease(api, journal, payload, sid=None, sid_owned_by_profile=False)
+        except Exception as exc:
+            # Continue so one corrupt/stubborn lease cannot strand every later
+            # valid one.  Aggregate and raise after the sweep so execution still
+            # fails closed while any journal remains unrecovered.
+            message = f"journal={journal.name} recovery failed: {exc}"
+            _log("ERROR", message)
+            errors.append(message)
+    if errors:
+        raise AppContainerError("AppContainer orphan recovery incomplete: "
+                                + "; ".join(errors))
 
 
 def recover_pending(*, api: _WinAPI | None = None,
@@ -846,6 +879,8 @@ def _launch(api: _WinAPI, argv: list[str], *, executable: str, cwd: str,
             raise _win_error("CreateProcessW(AppContainer)")
         process_created = True
         handles += [proc.hProcess, proc.hThread]
+        job_value = job.value if isinstance(job, ctypes.c_void_p) else int(job)
+        _log("INFO", f"engaged job=0x{int(job_value):x} pid={int(proc.dwProcessId)}")
 
         # Parent closes its copies of child-only ends immediately.  This and the
         # HANDLE_LIST attribute make inherited stdio the only result channel.
@@ -1000,6 +1035,7 @@ def run(argv: list[str], *, cwd: str, env: dict[str, str], timeout: int,
             payload["sid"] = _sid_text(api, sid)
             payload["grants_started"] = True
             _write_journal(journal, payload)  # durable before the first grant
+            _log("INFO", f"engaged profile={profile} sid={payload['sid']}")
             for item in grants:
                 _acl_entry(api, item["path"], sid, grant=True,
                            writable=item["writable"])
