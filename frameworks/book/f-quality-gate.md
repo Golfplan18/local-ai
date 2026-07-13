@@ -123,4 +123,4 @@ This file is universal. The mode-specific PASS gate you grade against is authore
 
 ## Vault canonical pair
 
-`/Users/oracle/Documents/vault/Specification — F-Quality-Gate.md` — the canonical source (carries YAML frontmatter); this `frameworks/book/f-quality-gate.md` is the operational copy the orchestrator loads at runtime.
+`Specification — F-Quality-Gate.md` in the configured vault root — the canonical source (carries YAML frontmatter); this `frameworks/book/f-quality-gate.md` is the operational copy the orchestrator loads at runtime.
