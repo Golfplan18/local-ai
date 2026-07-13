@@ -1,4 +1,4 @@
-# F-VERIFY — Step 6 Per-Stream Verifier Specification
+# Specification — F-Verify
 
 *Universal scaffolding. The nine universal checks below are the floor for every mode. Mode-specific checks layer on top — extracted from the classified mode's `## VERIFICATION CRITERIA` flat-H2 section (the H3 cascade subsections were superseded 2026-05-01).*
 

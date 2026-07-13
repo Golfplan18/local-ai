@@ -1,4 +1,4 @@
-# F-ANALYSIS-DEPTH — Step 3 Depth Model Specification
+# Specification — F-Analysis-Depth
 
 *Loaded into: Depth model context window at Step 3 (Parallel Independent Analysis).*
 

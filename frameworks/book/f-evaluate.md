@@ -1,4 +1,4 @@
-# F-EVALUATE — Step 4 Cross Adversarial Evaluation Specification
+# Specification — F-Evaluate
 
 *Universal scaffolding. Two variants (Breadth-evaluates-Depth, Depth-evaluates-Breadth) share one output contract. Mode-specific guidance (what this mode prioritises, what counts as a fail, what its named failure modes are) is not in this file — it is injected from the classified mode's `## EVALUATION CRITERIA` section (flat H2; the H3 cascade subsections were superseded 2026-05-01) plus the mode's YAML `failure_modes:` block.*
 

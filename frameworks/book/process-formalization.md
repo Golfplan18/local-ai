@@ -1,4 +1,4 @@
-# Process Formalization Framework
+# Framework — Process Formalization
 
 ## Display Name
 
