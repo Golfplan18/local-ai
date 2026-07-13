@@ -19,6 +19,7 @@ if _REPO not in sys.path:
 from orchestrator.embedding import install_test_stub  # noqa: E402
 from orchestrator.historical.path2_cli import (  # noqa: E402
     _empty_manifest,
+    _successful_completed_sessions,
     build_sessions_from_archive,
     load_manifest,
     manifest_record_session,
@@ -74,6 +75,18 @@ class TestManifest(unittest.TestCase):
         self.assertIn("~/foo.md", m["completed_sessions"])
         self.assertEqual(m["totals"]["sessions_completed"], 1)
         self.assertEqual(m["totals"]["chunks_written"], 3)
+
+    def test_errored_session_is_retryable(self):
+        m = _empty_manifest()
+        m["completed_sessions"] = {
+            "~/good.md": {"errors": []},
+            "~/bad.md": {"errors": ["upsert failed"]},
+            "~/reconstructed.md": {"reconstructed": True},
+        }
+        self.assertEqual(
+            _successful_completed_sessions(m),
+            {"~/good.md", "~/reconstructed.md"},
+        )
 
 
 # ---------------------------------------------------------------------------

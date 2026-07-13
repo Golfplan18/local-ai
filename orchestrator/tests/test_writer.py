@@ -7,6 +7,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -259,6 +260,38 @@ class TestWrite(unittest.TestCase):
         path2 = write_cleaned_pair_file(cp, ch, chat, output_dir=self.tmp)
         self.assertNotEqual(path1, path2)
         self.assertTrue("pair001" in os.path.basename(path2))
+
+    def test_repeated_suffix_collision_never_overwrites(self):
+        cp = _cleaned_pair()
+        ch = _context_header(filename="2025-07-14_21-00_test.md")
+        chat = _raw_chat()
+        base = os.path.join(self.tmp, ch.pair_filename)
+        suffix = os.path.join(self.tmp, "2025-07-14_21-00_test-pair001.md")
+        open(base, "w").write("base sentinel")
+        open(suffix, "w").write("suffix sentinel")
+
+        path = write_cleaned_pair_file(cp, ch, chat, output_dir=self.tmp)
+
+        self.assertTrue(path.endswith("-pair001-2.md"))
+        self.assertEqual(open(base).read(), "base sentinel")
+        self.assertEqual(open(suffix).read(), "suffix sentinel")
+
+    def test_concurrent_collisions_use_unique_exclusive_paths(self):
+        cp = _cleaned_pair()
+        ch = _context_header(filename="2025-07-14_21-00_test.md")
+        chat = _raw_chat()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            paths = list(pool.map(
+                lambda _: write_cleaned_pair_file(
+                    cp, ch, chat, output_dir=self.tmp),
+                range(8),
+            ))
+
+        self.assertEqual(len(set(paths)), 8)
+        for path in paths:
+            self.assertTrue(os.path.exists(path))
+            self.assertIn("Cleaned user input.", open(path).read())
 
 
 if __name__ == "__main__":
