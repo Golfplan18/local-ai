@@ -7,10 +7,11 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -27,6 +28,7 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
     _atomic_uid,
     _load_manifest,
     _normalize_manifest,
+    _open_dedup_collection,
     _slugify,
     _successful_completed_paths,
     _vault_path_for,
@@ -37,6 +39,79 @@ from orchestrator.historical.phase5_atomic_extraction import (  # noqa: E402
 
 
 install_test_stub()
+
+
+class TestDedupCollectionBinding(unittest.TestCase):
+
+    def test_opens_existing_collection_without_catalog_write(self):
+        from orchestrator import embedding
+
+        client = object()
+        persistent_client = MagicMock(return_value=client)
+        chromadb_stub = types.SimpleNamespace(PersistentClient=persistent_client)
+
+        with patch.dict(sys.modules, {"chromadb": chromadb_stub}), patch.object(
+            embedding, "get_collection", return_value="collection"
+        ) as get_collection:
+            result = _open_dedup_collection("/tmp/chroma", "atomics")
+
+        self.assertEqual(result, "collection")
+        persistent_client.assert_called_once_with(path="/tmp/chroma")
+        get_collection.assert_called_once_with(client, "atomics")
+
+
+class TestManifestCompatibility(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_reconstructed_manifest_gets_complete_totals_schema(self):
+        path = os.path.join(self.tmp, "phase5.json")
+        Path(path).write_text(json.dumps({
+            "version": 1,
+            "reconstructed": True,
+            "completed_pairs": {
+                "/archive/a.md": {"note": "reconstructed"},
+                "/archive/b.md": {"note": "reconstructed"},
+            },
+        }))
+
+        manifest = _load_manifest(path)
+
+        self.assertEqual(manifest["totals"]["pairs_processed"], 2)
+        for key in (
+            "pairs_with_atomics", "candidates_total", "candidates_minted",
+            "candidates_dedup", "input_tokens", "output_tokens", "cost_usd",
+        ):
+            self.assertIn(key, manifest["totals"])
+
+    def test_partial_totals_are_healed_without_overwriting_values(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {"/archive/a.md": {}},
+            "totals": {"pairs_processed": 17, "candidates_total": 9},
+        })
+
+        self.assertEqual(manifest["totals"]["pairs_processed"], 17)
+        self.assertEqual(manifest["totals"]["candidates_total"], 9)
+        self.assertIn("cost_usd", manifest["totals"])
+
+    def test_errored_entries_are_retryable(self):
+        manifest = _normalize_manifest({
+            "completed_pairs": {
+                "/archive/good.md": {"error": ""},
+                "/archive/bad.md": {"error": "claude CLI timeout"},
+                "/archive/reconstructed.md": {"note": "legacy"},
+            },
+        })
+
+        completed = _successful_completed_paths(manifest)
+
+        self.assertEqual(completed, {
+            "/archive/good.md", "/archive/reconstructed.md",
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -115,36 +190,6 @@ class TestBuildAtomicNote(unittest.TestCase):
         manifest = _empty_manifest()
         self.assertEqual(manifest["completed_pairs"], {})
         self.assertEqual(manifest["totals"]["pairs_processed"], 0)
-
-    def test_reconstructed_manifest_gets_totals(self):
-        manifest = _normalize_manifest({
-            "completed_pairs": {
-                "/archive/a.md": {"error": ""},
-                "/archive/b.md": {"error": "model timeout"},
-            },
-        })
-        self.assertEqual(manifest["totals"]["pairs_processed"], 2)
-        self.assertEqual(manifest["totals"]["candidates_minted"], 0)
-
-    def test_manifest_loader_normalizes_missing_totals(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "phase5-manifest.json"
-            path.write_text(
-                json.dumps({"completed_pairs": {"/archive/a.md": {}}}),
-                encoding="utf-8",
-            )
-            manifest = _load_manifest(str(path))
-        self.assertIn("totals", manifest)
-        self.assertEqual(manifest["totals"]["pairs_processed"], 1)
-
-    def test_successful_completed_paths_excludes_prior_errors(self):
-        manifest = _normalize_manifest({
-            "completed_pairs": {
-                "/archive/ok.md": {"error": ""},
-                "/archive/error.md": {"error": "unexpected: boom"},
-            },
-        })
-        self.assertEqual(_successful_completed_paths(manifest), {"/archive/ok.md"})
 
 
 # ---------------------------------------------------------------------------

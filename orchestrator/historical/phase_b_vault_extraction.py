@@ -108,8 +108,31 @@ def load_docx(path: Path) -> str:
     return "\n\n".join(parts)
 
 
-def load_doc(path: Path) -> str:
-    """Convert legacy .doc to text via macOS textutil."""
+def _textutil_convert(path: Path) -> str:
+    """Run macOS textutil to convert a legacy document to plain text.
+
+    textutil is a macOS system binary (ships with the OS) and is not available
+    on Windows. Callers on Windows must install a cross-platform alternative
+    for legacy binary `.doc` text extraction (e.g. `antiword` via `brew install
+    antiword` on macOS / package managers on Linux / MSYS2 or Cygwin on Windows;
+    `wv` for fuller extraction; or headless `LibreOffice` via
+    `soffice --headless --convert-to txt`) or skip the file. NOTE: Mammoth is
+    NOT a valid choice — it supports `.docx` only, not binary `.doc` (per the
+    official `python-mammoth` documentation). NOTE: `.rtf` conversion is
+    already supported through the installed `striprtf` dependency (see
+    `load_rtf`); only legacy `.doc` is in D-09 scope. The guard fails loudly
+    with a portable error rather than silently producing wrong behavior.
+    """
+    if os.name == "nt":
+        raise RuntimeError(
+            f"textutil is macOS-only and cannot convert {path} on Windows. "
+            "Install a cross-platform legacy-`.doc` text extractor (e.g. "
+            "`antiword`, `wv`, or headless `LibreOffice` via "
+            "`soffice --headless --convert-to txt`) and add a Windows branch "
+            "to load_doc. Note: `mammoth` is NOT a valid choice — it supports "
+            "`.docx` only, not binary `.doc`. Note: `.rtf` is already "
+            "supported through the installed `striprtf` dependency (load_rtf)."
+        )
     out = subprocess.run(
         ["textutil", "-convert", "txt", "-stdout", str(path)],
         capture_output=True, timeout=120,
@@ -119,20 +142,18 @@ def load_doc(path: Path) -> str:
     return out.stdout.decode("utf-8", errors="replace").strip()
 
 
+def load_doc(path: Path) -> str:
+    """Convert legacy .doc to text via macOS textutil."""
+    return _textutil_convert(path)
+
+
 def load_rtf(path: Path) -> str:
     """Convert .rtf to plain text via striprtf or textutil."""
     try:
         from striprtf.striprtf import rtf_to_text
         return rtf_to_text(path.read_text(encoding="utf-8", errors="replace")).strip()
     except ImportError:
-        # Fall back to textutil
-        out = subprocess.run(
-            ["textutil", "-convert", "txt", "-stdout", str(path)],
-            capture_output=True, timeout=120,
-        )
-        if out.returncode != 0:
-            raise RuntimeError(f"textutil failed: {out.stderr.decode(errors='replace')[:200]}")
-        return out.stdout.decode("utf-8", errors="replace").strip()
+        return _textutil_convert(path)
 
 
 def load_document(path: Path) -> tuple[str, str]:

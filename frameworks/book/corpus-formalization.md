@@ -1,4 +1,4 @@
-# Corpus Formalization Framework
+# Framework — Corpus Formalization
 
 ## Display Name
 Corpus Formalization (CFF)

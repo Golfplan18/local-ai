@@ -21,46 +21,130 @@
   const PALETTE_BUTTON_ID  = 'themeToggleBtn';
   const FONT_WEIGHTS       = ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
 
-  // ─── System fonts available on macOS, grouped by category ─────────
-  // The font dropdown surfaces these. Each value is a complete font-family
-  // declaration with sensible fallbacks.
+  // ─── Platform-aware system font catalog ──────────────────────────
+  // Font availability is a client concern: the browser can be on a different
+  // OS from the Ora server. Browser hints are spoofable and sometimes withheld,
+  // so inconsistent or inconclusive signals deliberately receive only portable
+  // choices. Filtering affects dropdown discovery only; an existing theme value
+  // is never rewritten and its CSS fallback remains authoritative.
 
-  const SYSTEM_FONTS = [
+  const classifyPlatformHint = (raw) => {
+    const hint = String(raw || '').trim().toLowerCase();
+    if (!hint) return null;
+    if (/iphone|ipad|ipod|android/.test(hint)) return 'other';
+    if (/windows|win32|win64|wow64/.test(hint)) return 'windows';
+    if (/macos|macintosh|macintel|mac os x/.test(hint)) return 'macos';
+    if (/linux|x11|cros/.test(hint)) return 'other';
+    return null;
+  };
+
+  const safeNavigatorValue = (nav, key) => {
+    try { return nav && nav[key]; }
+    catch { return null; }
+  };
+
+  const detectClientFontPlatform = (nav) => {
+    nav = nav || {};
+    const legacyPlatform = safeNavigatorValue(nav, 'platform');
+    const touchPoints = Number(safeNavigatorValue(nav, 'maxTouchPoints') || 0);
+    // iPadOS can report MacIntel. Its installed fonts are not the macOS catalog.
+    if (/^MacIntel$/i.test(String(legacyPlatform || '')) && touchPoints > 1) {
+      return 'unknown';
+    }
+
+    let clientHint = null;
+    try {
+      clientHint = nav.userAgentData && nav.userAgentData.platform;
+    } catch {}
+    const classified = [
+      classifyPlatformHint(clientHint),
+      classifyPlatformHint(legacyPlatform),
+      classifyPlatformHint(safeNavigatorValue(nav, 'userAgent')),
+    ].filter(Boolean);
+
+    // Linux/mobile/ChromeOS and contradictory hints are intentionally
+    // inconclusive. A coherent spoof can only affect discoverability; it never
+    // changes or deletes a saved value.
+    if (classified.includes('other')) return 'unknown';
+    const known = [...new Set(classified)];
+    return known.length === 1 ? known[0] : 'unknown';
+  };
+
+  const FONT_CATALOG = [
     // System default (matches the foundation default)
-    { label: 'System default', value: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', cat: 'system' },
+    { label: 'System default', value: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', cat: 'system', platforms: ['all'] },
 
     // Sans-serif
-    { label: 'Helvetica Neue',   value: '"Helvetica Neue", Helvetica, Arial, sans-serif', cat: 'sans' },
-    { label: 'Helvetica',        value: 'Helvetica, Arial, sans-serif', cat: 'sans' },
-    { label: 'Arial',            value: 'Arial, sans-serif', cat: 'sans' },
-    { label: 'Avenir',           value: 'Avenir, "Avenir Next", sans-serif', cat: 'sans' },
-    { label: 'Avenir Next',      value: '"Avenir Next", Avenir, sans-serif', cat: 'sans' },
-    { label: 'Futura',           value: 'Futura, sans-serif', cat: 'sans' },
-    { label: 'Gill Sans',        value: '"Gill Sans", "Gill Sans MT", sans-serif', cat: 'sans' },
-    { label: 'Lucida Grande',    value: '"Lucida Grande", sans-serif', cat: 'sans' },
-    { label: 'Optima',           value: 'Optima, sans-serif', cat: 'sans' },
-    { label: 'Tahoma',           value: 'Tahoma, sans-serif', cat: 'sans' },
-    { label: 'Trebuchet MS',     value: '"Trebuchet MS", sans-serif', cat: 'sans' },
-    { label: 'Verdana',          value: 'Verdana, sans-serif', cat: 'sans' },
+    { label: 'Sans-serif',        value: 'system-ui, sans-serif', cat: 'sans', platforms: ['all'] },
+    { label: 'Helvetica Neue',    value: '"Helvetica Neue", Helvetica, Arial, sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Helvetica',         value: 'Helvetica, Arial, sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Arial',             value: 'Arial, sans-serif', cat: 'sans', platforms: ['macos', 'windows'] },
+    { label: 'Avenir',            value: 'Avenir, "Avenir Next", sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Avenir Next',       value: '"Avenir Next", Avenir, sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Futura',            value: 'Futura, sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Gill Sans',         value: '"Gill Sans", "Gill Sans MT", sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Lucida Grande',     value: '"Lucida Grande", sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Optima',            value: 'Optima, sans-serif', cat: 'sans', platforms: ['macos'] },
+    { label: 'Segoe UI',          value: '"Segoe UI", Arial, sans-serif', cat: 'sans', platforms: ['windows'] },
+    { label: 'Calibri',           value: 'Calibri, "Segoe UI", sans-serif', cat: 'sans', platforms: ['windows'] },
+    { label: 'Candara',           value: 'Candara, "Segoe UI", sans-serif', cat: 'sans', platforms: ['windows'] },
+    { label: 'Corbel',            value: 'Corbel, "Segoe UI", sans-serif', cat: 'sans', platforms: ['windows'] },
+    { label: 'Tahoma',            value: 'Tahoma, sans-serif', cat: 'sans', platforms: ['macos', 'windows'] },
+    { label: 'Trebuchet MS',      value: '"Trebuchet MS", sans-serif', cat: 'sans', platforms: ['macos', 'windows'] },
+    { label: 'Verdana',           value: 'Verdana, sans-serif', cat: 'sans', platforms: ['macos', 'windows'] },
 
     // Serif
-    { label: 'American Typewriter', value: '"American Typewriter", serif', cat: 'serif' },
-    { label: 'Baskerville',         value: 'Baskerville, serif', cat: 'serif' },
-    { label: 'Didot',               value: 'Didot, serif', cat: 'serif' },
-    { label: 'Garamond',            value: 'Garamond, serif', cat: 'serif' },
-    { label: 'Georgia',             value: 'Georgia, serif', cat: 'serif' },
-    { label: 'Hoefler Text',        value: '"Hoefler Text", serif', cat: 'serif' },
-    { label: 'Palatino',            value: 'Palatino, "Palatino Linotype", serif', cat: 'serif' },
-    { label: 'Times',               value: 'Times, serif', cat: 'serif' },
-    { label: 'Times New Roman',     value: '"Times New Roman", Times, serif', cat: 'serif' },
+    { label: 'Serif',               value: 'serif', cat: 'serif', platforms: ['all'] },
+    { label: 'American Typewriter', value: '"American Typewriter", serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Baskerville',         value: 'Baskerville, serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Didot',               value: 'Didot, serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Garamond',            value: 'Garamond, serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Georgia',             value: 'Georgia, serif', cat: 'serif', platforms: ['macos', 'windows'] },
+    { label: 'Hoefler Text',        value: '"Hoefler Text", serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Palatino',            value: 'Palatino, "Palatino Linotype", serif', cat: 'serif', platforms: ['macos', 'windows'] },
+    { label: 'Times',               value: 'Times, serif', cat: 'serif', platforms: ['macos'] },
+    { label: 'Times New Roman',     value: '"Times New Roman", Times, serif', cat: 'serif', platforms: ['macos', 'windows'] },
+    { label: 'Cambria',             value: 'Cambria, Georgia, serif', cat: 'serif', platforms: ['windows'] },
+    { label: 'Constantia',          value: 'Constantia, Georgia, serif', cat: 'serif', platforms: ['windows'] },
 
     // Monospace
-    { label: 'Courier',     value: 'Courier, monospace', cat: 'mono' },
-    { label: 'Courier New', value: '"Courier New", Courier, monospace', cat: 'mono' },
-    { label: 'Menlo',       value: 'Menlo, Monaco, Consolas, monospace', cat: 'mono' },
-    { label: 'Monaco',      value: 'Monaco, Menlo, Consolas, monospace', cat: 'mono' },
-    { label: 'SF Mono',     value: '"SF Mono", Menlo, Monaco, Consolas, monospace', cat: 'mono' },
+    { label: 'Monospace',      value: 'ui-monospace, monospace', cat: 'mono', platforms: ['all'] },
+    { label: 'Courier',        value: 'Courier, monospace', cat: 'mono', platforms: ['macos'] },
+    { label: 'Courier New',    value: '"Courier New", Courier, monospace', cat: 'mono', platforms: ['macos', 'windows'] },
+    { label: 'Menlo',          value: 'Menlo, Monaco, Consolas, monospace', cat: 'mono', platforms: ['macos'] },
+    { label: 'Monaco',         value: 'Monaco, Menlo, Consolas, monospace', cat: 'mono', platforms: ['macos'] },
+    { label: 'SF Mono',        value: '"SF Mono", Menlo, Monaco, Consolas, monospace', cat: 'mono', platforms: ['macos'] },
+    { label: 'Consolas',       value: 'Consolas, "Courier New", monospace', cat: 'mono', platforms: ['windows'] },
+    { label: 'Lucida Console', value: '"Lucida Console", Consolas, monospace', cat: 'mono', platforms: ['windows'] },
   ];
+
+  const CLIENT_FONT_PLATFORM = detectClientFontPlatform(
+    typeof navigator === 'undefined' ? null : navigator
+  );
+
+  const visibleSystemFonts = (platform = CLIENT_FONT_PLATFORM) => {
+    return FONT_CATALOG.filter(font => {
+      return font.platforms.includes('all') || font.platforms.includes(platform);
+    });
+  };
+
+  const describeFontSelection = (value, platform = CLIENT_FONT_PLATFORM) => {
+    const visible = visibleSystemFonts(platform);
+    const matched = visible.find(font => font.value === value) || null;
+    const known = FONT_CATALOG.find(font => font.value === value) || null;
+    let currentLabel = null;
+    if (!matched && value) {
+      if (!known) {
+        currentLabel = 'Current (custom)';
+      } else if (platform === 'unknown') {
+        currentLabel = `Current — ${known.label} (platform unknown)`;
+      } else {
+        const platformLabel = platform === 'windows' ? 'Windows' : 'macOS';
+        currentLabel = `Current — ${known.label} (not standard on ${platformLabel})`;
+      }
+    }
+    return { visible, matched, known, currentLabel };
+  };
 
   // ─── Element registry ──────────────────────────
   // Each entry declares which DOM elements are customizable, how to label
@@ -568,24 +652,26 @@
       controls.appendChild(makeControlRow(axis.label, select));
     },
 
-    // Font — dropdown of system fonts, grouped by category, with
-    // "Current (custom)" surfacing if a non-listed value is set.
+    // Font — platform-filtered system fonts grouped by category. A saved value
+    // outside the visible catalog is surfaced explicitly and preserved.
     font: (axis, el, controls) => {
       const variableValue = getVariableValue(axis.var);
       const select = document.createElement('select');
 
-      const matched = SYSTEM_FONTS.find(f => f.value === variableValue);
+      const selection = describeFontSelection(variableValue);
+      const visibleFonts = selection.visible;
+      const matched = selection.matched;
 
       if (!matched && variableValue) {
         const opt = document.createElement('option');
         opt.value = variableValue;
-        opt.textContent = 'Current (custom)';
+        opt.textContent = selection.currentLabel;
         opt.selected = true;
         select.appendChild(opt);
       }
 
       // System default first
-      const sys = SYSTEM_FONTS[0];
+      const sys = visibleFonts[0];
       const sysOpt = document.createElement('option');
       sysOpt.value = sys.value;
       sysOpt.textContent = sys.label;
@@ -598,9 +684,11 @@
         ['Serif',      'serif'],
         ['Monospace',  'mono'],
       ].forEach(([groupLabel, cat]) => {
+        const fonts = visibleFonts.filter(f => f.cat === cat);
+        if (fonts.length === 0) return;
         const og = document.createElement('optgroup');
         og.label = groupLabel;
-        SYSTEM_FONTS.filter(f => f.cat === cat).forEach(f => {
+        fonts.forEach(f => {
           const opt = document.createElement('option');
           opt.value = f.value;
           opt.textContent = f.label;

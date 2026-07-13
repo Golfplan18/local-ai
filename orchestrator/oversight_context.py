@@ -60,7 +60,8 @@ logger = logging.getLogger(__name__)
 
 
 # Matrix-type-aware lock loading constants.
-VALID_CLASSIFICATIONS = {"project", "operation", "passion", "incubator"}
+# Imported from the shared classifier — single authority for project_type resolution.
+from matrix_classifier import VALID_CLASSIFICATIONS, InvalidProjectTypeError, classify_matrix as _shared_classify_matrix
 
 # The four cycle-shape near-miss patterns from Framework — Operations Manifest.
 # An Operation matrix's Excluded Outcomes should include operation-specific
@@ -72,27 +73,6 @@ CYCLE_SHAPE_NEAR_MISS_PATTERNS = [
     "Rendered output produced but not consumed",
     "Maturity gate gamed not earned",
 ]
-
-
-class InvalidProjectTypeError(ValueError):
-    """Raised when project_type frontmatter contains values that cannot be
-    resolved to one of the four valid classifications.
-
-    Per the Phase 1 implementation directive: don't fall back silently when
-    the matrix declares an unrecognized classification. Surface the matrix
-    path and the offending value so the user can correct the matrix.
-    """
-    def __init__(self, matrix_path: str, offending_value, message: str = ""):
-        self.matrix_path = matrix_path
-        self.offending_value = offending_value
-        if not message:
-            message = (
-                f"project_type {offending_value!r} in matrix {matrix_path!r} "
-                f"cannot be resolved to one of the four valid classifications "
-                f"{sorted(VALID_CLASSIFICATIONS)}. "
-                f"Update the matrix's frontmatter or extend VALID_CLASSIFICATIONS."
-            )
-        super().__init__(message)
 
 
 @dataclass
@@ -175,8 +155,13 @@ def load_context(event: dict) -> OversightContextBundle:
 def classify_matrix(ped: ParsedPED) -> tuple[str, list[str]]:
     """Resolve the matrix's classification from its frontmatter.
 
-    Returns ``(classification, warnings)``. ``classification`` is one of
-    {"project", "operation", "passion", "incubator"}. ``warnings`` is a
+    Delegates to the shared ``matrix_classifier.classify_matrix`` — the single
+    authority for project_type resolution.  This wrapper adapts the
+    ``ParsedPED`` interface to the ``(frontmatter, file_path)`` signature the
+    shared classifier expects.
+
+    Returns ``(classification, warnings)``.  ``classification`` is one of
+    {"project", "operation", "passion", "incubator"}.  ``warnings`` is a
     list of human-readable notes about how the classification was reached
     (empty when the matrix declares exactly one valid classification).
 
@@ -187,77 +172,11 @@ def classify_matrix(ped: ParsedPED) -> tuple[str, list[str]]:
         with cycle-shape near-miss patterns, Cadence rule, Constraints).
       - passion → orientation-only locks (Mission Core Essence and
         Emotional Drivers, Constraints).
-
-    The matrix's ``project_type`` field can be a string (single value),
-    a list (the Project Type Registry's multi-valued convention), or
-    absent. Resolution rules:
-
-      - Absent → default to "project" (with warning).
-      - Single classification token → use it.
-      - Multiple classification tokens → raise ``InvalidProjectTypeError``
-        (the four classifications are mutually exclusive).
-      - Content-only tokens (e.g. ``[book, knowledge]`` per the Project
-        Type Registry, with no classification token) → default to
-        "project" (with warning).
-      - Any other type (not str/list/None) → raise
-        ``InvalidProjectTypeError``.
-
-    Spec ambiguity flagged for user resolution: the strict reading of the
-    Phase 1 directive ("raise an explicit error" on any value not in the
-    four-classification set) conflicts with the Project Type Registry
-    convention that ``project_type`` is multi-valued and may contain only
-    content tokens. The implementation here treats content-only as a
-    default-with-warning rather than an error to preserve compatibility
-    with existing matrices; the strict-error path is reserved for
-    structurally-invalid frontmatter (multiple classifications, or a
-    non-str/list value).
     """
-    warnings: list[str] = []
-    raw = ped.frontmatter.get("project_type") if ped.frontmatter else None
-
-    if raw is None:
-        warnings.append(
-            "project_type absent from matrix frontmatter; defaulting to "
-            "'project' classification (current behavior, made explicit)."
-        )
-        return ("project", warnings)
-
-    if isinstance(raw, str):
-        values = [raw]
-    elif isinstance(raw, list):
-        values = [str(v) for v in raw]
-    else:
-        raise InvalidProjectTypeError(
-            ped.file_path,
-            raw,
-            f"project_type {raw!r} in matrix {ped.file_path!r} has unsupported "
-            f"type {type(raw).__name__}; must be a string or a list of strings.",
-        )
-
-    classifications = [v for v in values if v in VALID_CLASSIFICATIONS]
-
-    if len(classifications) == 1:
-        return (classifications[0], warnings)
-
-    if len(classifications) > 1:
-        raise InvalidProjectTypeError(
-            ped.file_path,
-            classifications,
-            f"project_type in matrix {ped.file_path!r} declares multiple "
-            f"classifications {classifications}; the four classifications "
-            f"(project / operation / passion / incubator) are mutually exclusive. "
-            f"Pick one and move the others to a different field.",
-        )
-
-    # No classification tokens, only content tokens (or empty list).
-    warnings.append(
-        f"project_type {values!r} in matrix {ped.file_path!r} contains no "
-        f"classification token from {sorted(VALID_CLASSIFICATIONS)}; "
-        f"defaulting to 'project' classification. If this matrix is an "
-        f"Operation, Passion, or Incubator, add the classification token "
-        f"explicitly to project_type."
+    return _shared_classify_matrix(
+        ped.frontmatter if hasattr(ped, "frontmatter") else {},
+        getattr(ped, "file_path", "<unknown>"),
     )
-    return ("project", warnings)
 
 
 # ---------- Type-specific lock loaders ----------

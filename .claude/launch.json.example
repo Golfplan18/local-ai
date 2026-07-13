@@ -1,0 +1,41 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ora",
+      "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
+      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PORT": "5000"},
+      "port": 5000,
+      "autoPort": false
+    },
+    {
+      "name": "ora-verify",
+      "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
+      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PORT": "5001"},
+      "port": 5001,
+      "autoPort": false
+    },
+    {
+      "name": "ora-preview",
+      "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
+      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PORT": "5002"},
+      "port": 5002,
+      "autoPort": false
+    },
+    {
+      "name": "ora-preview-2",
+      "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
+      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PORT": "5003"},
+      "port": 5003,
+      "autoPort": false
+    }
+  ]
+}

@@ -42,7 +42,9 @@ from orchestrator.historical.api_client import AnthropicClient
 
 DEFAULT_VAULT_ROOT = str(_rp.vault_dir() / "Engrams")
 DEFAULT_CHROMADB_PATH = str(_rp.chromadb_dir())
-DEFAULT_DEDUP_COLLECTION = "atomic_dedup"
+# Logical collection name; the configured embedding layer owns the physical
+# name (for example atomic_dedup_qwen_qwen3_embedding_8b on this machine).
+DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "phase-c-manifest.json")
 
 # Haiku 4.5 — fast classifier for the relationship typing task.

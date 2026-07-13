@@ -86,6 +86,7 @@ class PausedEntry:
     conversation_id: str = ""
     redefinition: bool = False
     forced_reason: str = ""
+    trace_ref: str = ""
     # Entry type: "" = redefinition/escalation (legacy default);
     # "execution_gate" = Execution Review gate block awaiting approval.
     # Consumers (resolution_chain, /approve, /deny) dispatch on this.
@@ -105,6 +106,7 @@ class PausedEntry:
             "conversation_id": self.conversation_id,
             "redefinition": self.redefinition,
             "forced_reason": self.forced_reason,
+            "trace_ref": self.trace_ref,
             "kind": self.kind,
             "event": self.event,
             "verdict": self.verdict,
@@ -336,6 +338,7 @@ def _record_to_paused(data: dict, raw_index: int) -> PausedEntry:
         conversation_id=str(data.get("conversation_id") or ""),
         redefinition=bool(data.get("redefinition")),
         forced_reason=data.get("forced_reason", ""),
+        trace_ref=str(data.get("trace_ref") or (data.get("event") or {}).get("trace_ref") or ""),
         kind=data.get("kind", ""),
         event=data.get("event") or {},
         verdict=data.get("verdict") or {},

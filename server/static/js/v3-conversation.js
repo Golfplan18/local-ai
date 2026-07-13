@@ -332,6 +332,17 @@
       && state.turns.length > 0
   );
 
+  const emitCurrentTurnChanged = (turn) => {
+    document.dispatchEvent(new CustomEvent('ora:current-turn-changed', {
+      detail: {
+        conversation_id: state.activeConversationId,
+        turn_index: state.currentTurnIndex,
+        turn_count: state.turns.length,
+        turn: turn || null,
+      },
+    }));
+  };
+
   const renderTurn = () => {
     if (!outputContent) return;
     const t = state.turns[state.currentTurnIndex];
@@ -345,6 +356,7 @@
       if (window.OraPromptOverlay && typeof window.OraPromptOverlay.setPrompt === 'function') {
         window.OraPromptOverlay.setPrompt('');
       }
+      emitCurrentTurnChanged(null);
       return;
     }
 
@@ -375,6 +387,7 @@
       const promptText = t.user ? (t.user.content || '') : '';
       window.OraPromptOverlay.setPrompt(promptText || '(no prompt — bootstrap or welcome content)');
     }
+    emitCurrentTurnChanged(t);
   };
 
   const renderAll = () => {

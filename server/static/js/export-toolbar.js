@@ -18,6 +18,7 @@
     bar.className = 'export-toolbar';
     bar.innerHTML = `
       <div class="export-toolbar__status" id="exportToolbarStatus" aria-live="polite"></div>
+      <button type="button" class="export-toolbar__btn" id="traceWalkBtn" title="No trace for this turn" disabled>Trace</button>
       <button type="button" class="export-toolbar__btn" id="exportPrintBtn" title="Print…">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -51,6 +52,7 @@
     const menuBtn  = bar.querySelector('#exportMenuBtn');
     const menu     = bar.querySelector('#exportMenu');
     const printBtn = bar.querySelector('#exportPrintBtn');
+    const traceBtn = bar.querySelector('#traceWalkBtn');
 
     let statusTimer = null;
     const setStatus = (msg, revealPath) => {
@@ -77,7 +79,37 @@
     document.addEventListener('click', (e) => { if (!bar.contains(e.target)) closeMenu(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 
+    const currentTraceRef = () => {
+      const conv = window.OraConversation;
+      const turn = conv && typeof conv.getCurrentTurn === 'function' ? conv.getCurrentTurn() : null;
+      return turn && turn.assistant && typeof turn.assistant.trace_ref === 'string'
+        ? turn.assistant.trace_ref
+        : '';
+    };
+
+    const updateTraceButton = () => {
+      if (!traceBtn) return;
+      const ref = currentTraceRef();
+      traceBtn.disabled = !ref;
+      traceBtn.textContent = 'Trace';
+      traceBtn.title = ref ? 'How this was made' : 'No trace for this turn';
+      traceBtn.dataset.traceRef = ref || '';
+    };
+
     printBtn.addEventListener('click', () => { try { window.print(); } catch (e) {} });
+    if (traceBtn) {
+      traceBtn.addEventListener('click', () => {
+        const ref = currentTraceRef();
+        if (!ref) { setStatus('No trace for this turn.'); return; }
+        if (!window.OraTraceWalk || typeof window.OraTraceWalk.open !== 'function') {
+          setStatus('Trace Walk is unavailable.');
+          return;
+        }
+        window.OraTraceWalk.open({ trace_ref: ref });
+      });
+    }
+    document.addEventListener('ora:current-turn-changed', updateTraceButton);
+    updateTraceButton();
 
     menu.querySelectorAll('.export-toolbar__item[data-action]').forEach(item => {
       item.addEventListener('click', () => { closeMenu(); runExport(item.dataset.action, setStatus); });

@@ -1,6 +1,6 @@
 *Canonical source for the Output Style framework's registry of built-in Output Style profiles. Engine mirror (loaded at runtime): `~/ora/frameworks/book/style-registry.md`. Edit here; keep the mirror in sync.*
 
-# Output Style Registry
+# Specification — Output Style Registry
 
 *The catalog of built-in Output Style profiles — one entry per profile. This is the "presets" surface the picker reads. The resolver reads an entry's machine block to build the injected style; the behavioral text it points at lives in the component libraries: [[Specification — Output Style Demeanor Axes]] (rung text), [[Specification — Output Style Arrangement Schemas]] (the ordered schema), [[Specification — Output Style Craft Floor]] (the competence floor). Custom profiles use the same shape but live in the user data store (`~/ora/data/custom-styles.json`), not this file.*
 

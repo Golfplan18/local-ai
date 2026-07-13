@@ -26,8 +26,10 @@ The full trace contract lives in:
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
+import re
 import stat
 import sys
 import datetime as _dt
@@ -61,6 +63,27 @@ def _resolve_ora_home() -> str:
 
 
 TRACE_ROOT = os.path.join(_resolve_ora_home(), "data", "pipeline-traces")
+
+MAX_TRACE_JSON_BYTES = 1024 * 1024
+MAX_TRACE_TEXT_BYTES = 512 * 1024
+MAX_TRACE_EXPORT_BYTES = 5 * 1024 * 1024
+TRACE_EXPORT_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+
+_STEP_LABELS = {
+    "step1-phase-a": "Prompt cleanup",
+    "step1-pre-routing": "Route selection",
+    "step2-context": "Context package",
+    "step3-depth": "Depth analysis",
+    "step3-single-analyst-fallback": "Single-analyst fallback",
+    "step4-eval": "Evaluation",
+    "step5-revised": "Revision",
+    "step6-verifier-cycle-1": "Verifier cycle 1",
+    "step6-verifier-cycle-2": "Verifier cycle 2",
+    "step7-consolidated": "Consolidation",
+    "step7-external-consolidation-handoff": "External consolidation handoff",
+    "step8-formatted": "Final formatting",
+    "step-health": "Step health",
+}
 
 # Environment variable gate. Setting ``ORA_PIPELINE_TRACE=off`` (or any
 # value in ``_DISABLE_VALUES``) disables tracing globally regardless of
@@ -97,9 +120,13 @@ def _safe_trace_dir(
 def _validated_existing_trace_dir(trace_dir: str | os.PathLike[str]) -> Path:
     """Validate a caller-supplied turn dir against the owned trace tree."""
     root = _safe_trace_root(create=False)
-    candidate = Path(trace_dir).absolute()
+    root_real = root.resolve(strict=False)
+    raw_candidate = Path(trace_dir)
+    if raw_candidate.is_symlink():
+        raise ValueError(f"trace directory is not an owned directory: {raw_candidate}")
+    candidate = raw_candidate.resolve(strict=False)
     try:
-        parts = candidate.relative_to(root.absolute()).parts
+        parts = candidate.relative_to(root_real).parts
     except ValueError as exc:
         raise ValueError(f"trace directory is outside TRACE_ROOT: {candidate}") from exc
     if len(parts) != 2:
@@ -191,6 +218,43 @@ def _read_text_no_follow(path: Path) -> str:
     finally:
         if fd >= 0:
             os.close(fd)
+
+
+def _read_text_limited_no_follow(path: Path, limit: int) -> tuple[str | None, str | None]:
+    """Read one regular direct child with a byte cap and no symlink follow."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except Exception as exc:
+        return None, f"read failed: {exc}"
+    try:
+        mode = os.fstat(fd).st_mode
+        if not stat.S_ISREG(mode):
+            return None, "not a regular file"
+        size = os.fstat(fd).st_size
+        if size > limit:
+            return None, f"file too large: {size} bytes > {limit} bytes"
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            fd = -1
+            try:
+                return stream.read(), None
+            except UnicodeDecodeError as exc:
+                return None, f"text decode failed: {exc}"
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def _read_json_limited_no_follow(path: Path, limit: int) -> tuple[Any | None, str | None]:
+    text, error = _read_text_limited_no_follow(path, limit)
+    if error:
+        return None, error
+    try:
+        return json.loads(text or ""), None
+    except Exception as exc:
+        return None, f"json parse failed: {exc}"
 
 
 def _tracing_globally_disabled() -> bool:
@@ -859,8 +923,13 @@ def read_manifest(trace_dir: str | None) -> dict[str, Any] | None:
     if not trace_dir:
         return None
     try:
-        with open(os.path.join(trace_dir, MANIFEST_FILENAME)) as f:
-            data = json.load(f)
+        owned_trace_dir = _validated_existing_trace_dir(trace_dir)
+        data, error = _read_json_limited_no_follow(
+            owned_trace_dir / MANIFEST_FILENAME,
+            MAX_TRACE_JSON_BYTES,
+        )
+        if error:
+            return None
         return data if isinstance(data, dict) else None
     except Exception:
         return None
@@ -908,10 +977,24 @@ def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
     """Set retention_state for a resolved turn trace ref."""
     if state not in {"default", "pinned"}:
         raise ValueError("retention state must be 'default' or 'pinned'")
-    trace_dir = resolve_trace_ref(trace_ref)
-    if trace_dir is None:
+    parts = _trace_ref_parts(trace_ref)
+    if parts is None:
         return None
-    return update_manifest_fields(trace_dir, retention_state=state)
+    conversation_id, _turn_ts = parts
+    with _rp.conversation_lifecycle_lock(conversation_id):
+        trace_dir = resolve_trace_ref(trace_ref)
+        if trace_dir is None:
+            return None
+        owned = _validated_existing_trace_dir(trace_dir)
+        manifest = read_manifest(str(owned))
+        if manifest is None:
+            return None
+        if manifest.get("terminal_status") == "open":
+            raise ValueError("cannot pin an open trace")
+        manifest = dict(manifest)
+        manifest["retention_state"] = state
+        _atomic_write_json(str(owned / MANIFEST_FILENAME), manifest)
+        return manifest
 
 
 def _manifest_skeleton(conversation_id: str | None,
@@ -1162,6 +1245,311 @@ def _json_default(obj: Any) -> str:
     if hasattr(obj, "isoformat"):
         return obj.isoformat()
     return repr(obj)
+
+
+
+def _trace_ref_parts(trace_ref: str | None) -> tuple[str, str] | None:
+    if not trace_ref or not isinstance(trace_ref, str):
+        return None
+    ref = trace_ref.strip().replace("\\", "/")
+    if not ref or ref.startswith("/") or ref.startswith("../") or "/../" in ref:
+        return None
+    parts = [p for p in ref.split("/") if p]
+    if len(parts) != 2 or any(p in (".", "..") for p in parts):
+        return None
+    return parts[0], parts[1]
+
+
+def _dedupe_strings(values: Any) -> list[str]:
+    out: list[str] = []
+    if not isinstance(values, list):
+        return out
+    for value in values:
+        if isinstance(value, str) and value not in out:
+            out.append(value)
+    return out
+
+
+def _step_role_label(step_name: str) -> str:
+    if step_name in _STEP_LABELS:
+        return _STEP_LABELS[step_name]
+    stem = step_name
+    if stem.startswith("step"):
+        stem = stem[4:]
+    return stem.replace("-", " ").strip().title() or step_name
+
+
+def _manifest_step_sets(manifest: dict[str, Any]) -> tuple[list[str], list[str], list[str], list[str], list[str]]:
+    expected = _dedupe_strings(manifest.get("expected_steps"))
+    actual = _dedupe_strings(manifest.get("actual_steps"))
+    derived = _dedupe_strings(manifest.get("derived_artifacts"))
+    missing = [step for step in expected if step not in actual]
+    unexpected = [step for step in actual if step not in expected]
+    return expected, actual, derived, missing, unexpected
+
+
+def _safe_projection_context_locked(trace_ref: str) -> tuple[Path, dict[str, Any], str, str] | None:
+    parts = _trace_ref_parts(trace_ref)
+    if parts is None:
+        return None
+    conversation_id, turn_ts = parts
+    trace_dir = resolve_trace_ref(trace_ref)
+    if trace_dir is None:
+        return None
+    owned = _validated_existing_trace_dir(trace_dir)
+    manifest = read_manifest(str(owned))
+    if manifest is None:
+        return None
+    return owned, manifest, conversation_id, turn_ts
+
+
+def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    expected, actual, derived, missing, unexpected = _manifest_step_sets(manifest)
+    ordered: list[str] = []
+    for step in expected + actual:
+        if step.startswith("step") and step not in ordered:
+            ordered.append(step)
+    if "step-health" in derived and "step-health" not in ordered:
+        ordered.append("step-health")
+    steps = [{
+        "step_name": step,
+        "label": _step_role_label(step),
+        "expected": step in expected,
+        "actual": step in actual,
+        "missing": step in missing,
+        "health": step == "step-health",
+    } for step in ordered]
+    fields = {
+        key: manifest.get(key)
+        for key in (
+            "schema_version", "conversation_id", "turn_timestamp_utc",
+            "trace_kind", "terminal_status", "gear", "mode", "framework_id",
+            "milestone_id", "redaction_level", "retention_state",
+            "parent_trace_ref", "child_trace_refs", "finalized_at",
+        )
+    }
+    fields.update({
+        "trace_ref": trace_ref,
+        "expected_steps": expected,
+        "actual_steps": actual,
+        "derived_artifacts": derived,
+        "missing_steps": missing,
+        "unexpected_steps": unexpected,
+        "steps": steps,
+        "open": manifest.get("terminal_status") == "open",
+    })
+    return fields
+
+
+def trace_manifest_projection(trace_ref: str | None) -> dict[str, Any] | None:
+    """Return a browser-safe manifest summary for one trace ref."""
+    if not trace_ref:
+        return None
+    parts = _trace_ref_parts(trace_ref)
+    if parts is None:
+        return None
+    conversation_id, _turn_ts = parts
+    try:
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            ctx = _safe_projection_context_locked(trace_ref)
+            if ctx is None:
+                return None
+            _trace_dir, manifest, _conv, _turn = ctx
+            return _trace_manifest_projection_from_manifest(trace_ref, manifest)
+    except Exception:
+        return None
+
+
+def _trace_step_projection_locked(trace_ref: str,
+                                  safe_step: str,
+                                  trace_dir: Path,
+                                  manifest: dict[str, Any]) -> dict[str, Any] | None:
+    expected, actual, derived, _missing, _unexpected = _manifest_step_sets(manifest)
+    allowed = set(expected) | set(actual)
+    if safe_step == "step-health":
+        if "step-health" not in derived and not (trace_dir / "step-health.json").exists():
+            return None
+    elif safe_step not in allowed:
+        return None
+    json_path = trace_dir / f"{safe_step}.json"
+    md_path = trace_dir / f"{safe_step}.md"
+    errors: list[str] = []
+    payload = None
+    json_present = False
+    markdown = None
+    markdown_present = False
+    if json_path.exists():
+        json_present = True
+        payload, error = _read_json_limited_no_follow(json_path, MAX_TRACE_JSON_BYTES)
+        if error:
+            errors.append(f"{safe_step}.json: {error}")
+            payload = None
+    elif safe_step != "step-health":
+        errors.append(f"{safe_step}.json is missing")
+    if md_path.exists():
+        markdown_present = True
+        markdown, error = _read_text_limited_no_follow(md_path, MAX_TRACE_TEXT_BYTES)
+        if error:
+            errors.append(f"{safe_step}.md: {error}")
+            markdown = None
+    return {
+        "trace_ref": trace_ref,
+        "step_name": safe_step,
+        "label": _step_role_label(safe_step),
+        "expected": safe_step in expected,
+        "actual": safe_step in actual,
+        "health": safe_step == "step-health",
+        "json_present": json_present,
+        "markdown_present": markdown_present,
+        "payload": payload,
+        "markdown": markdown,
+        "errors": errors,
+    }
+
+
+def trace_step_projection(trace_ref: str | None, step_name: str | None) -> dict[str, Any] | None:
+    """Return a bounded projection for one manifest-listed step."""
+    if not trace_ref or not step_name:
+        return None
+    try:
+        safe_step = _safe_trace_filename(step_name, label="trace step projection")
+    except Exception:
+        return None
+    if not safe_step.startswith("step"):
+        return None
+    parts = _trace_ref_parts(trace_ref)
+    if parts is None:
+        return None
+    conversation_id, _turn_ts = parts
+    try:
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            ctx = _safe_projection_context_locked(trace_ref)
+            if ctx is None:
+                return None
+            trace_dir, manifest, _conv, _turn = ctx
+            return _trace_step_projection_locked(trace_ref, safe_step, trace_dir, manifest)
+    except Exception:
+        return None
+
+
+def _escaped_simple_markdown(text: str | None) -> str:
+    """Escape first, then allow only inert formatting tags."""
+    s = html.escape(text or "", quote=True)
+    code_blocks: list[str] = []
+
+    def _hold_code(match: re.Match[str]) -> str:
+        code_blocks.append(f"<pre><code>{match.group(2).strip()}</code></pre>")
+        return f"\n@@CODEBLOCK{len(code_blocks) - 1}@@\n"
+
+    s = re.sub(r"```(\w*)\n?([\s\S]*?)```", _hold_code, s)
+    s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+    s = re.sub(r"^###### (.+)$", r"<h6>\1</h6>", s, flags=re.M)
+    s = re.sub(r"^##### (.+)$", r"<h5>\1</h5>", s, flags=re.M)
+    s = re.sub(r"^#### (.+)$", r"<h4>\1</h4>", s, flags=re.M)
+    s = re.sub(r"^### (.+)$", r"<h3>\1</h3>", s, flags=re.M)
+    s = re.sub(r"^## (.+)$", r"<h2>\1</h2>", s, flags=re.M)
+    s = re.sub(r"^# (.+)$", r"<h1>\1</h1>", s, flags=re.M)
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"\*(.+?)\*", r"<em>\1</em>", s)
+    s = re.sub(r"^&gt; ?(.*)$", r"<blockquote>\1</blockquote>", s, flags=re.M)
+    s = s.replace("</blockquote>\n<blockquote>", "<br>")
+
+    def _table(match: re.Match[str]) -> str:
+        lines = match.group(0).strip().split("\n")
+        sep = next((i for i, line in enumerate(lines) if re.match(r"^\|[\s\-:|]+\|$", line.strip())), -1)
+        if sep < 1:
+            return match.group(0)
+        head = "".join(f"<th>{cell.strip()}</th>" for cell in lines[0].strip()[1:-1].split("|"))
+        rows = []
+        for row in lines[sep + 1:]:
+            rows.append("<tr>" + "".join(f"<td>{cell.strip()}</td>" for cell in row.strip()[1:-1].split("|")) + "</tr>")
+        return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table>\n"
+
+    s = re.sub(r"((?:^\|.+\|[ \t]*\n)+)", _table, s, flags=re.M)
+    s = re.sub(r"^[-*] (.+)$", r"<li>\1</li>", s, flags=re.M)
+    s = re.sub(r"(<li>.*</li>(\n|$))+", lambda m: "<ul>" + m.group(0).replace("\n", "") + "</ul>", s)
+    s = re.sub(r"^\d+\. (.+)$", r"<li>\1</li>", s, flags=re.M)
+    s = re.sub(r"(<li>.*</li>(\n|$))+", lambda m: "<ol>" + m.group(0).replace("\n", "") + "</ol>" if "\n" in m.group(0) else m.group(0), s)
+    for idx, block in enumerate(code_blocks):
+        s = s.replace(f"@@CODEBLOCK{idx}@@", block)
+    s = re.sub(r"\n*(</?(?:h[1-6]|ul|ol|li|table|thead|tbody|tr|th|td|pre|blockquote|code|br)[^>]*>)\n*", r"\1", s)
+    s = re.sub(r"\n{2,}", "<br><br>", s)
+    s = s.replace("\n", "<br>")
+    return s
+
+
+def trace_export_html(trace_ref: str | None) -> tuple[str, str] | None:
+    if not trace_ref:
+        return None
+    parts = _trace_ref_parts(trace_ref)
+    if parts is None:
+        return None
+    conversation_id, _turn_ts = parts
+    try:
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            ctx = _safe_projection_context_locked(trace_ref)
+            if ctx is None:
+                return None
+            trace_dir, raw_manifest, _conv, _turn = ctx
+            manifest = _trace_manifest_projection_from_manifest(trace_ref, raw_manifest)
+            safe_ref = str(manifest["trace_ref"])
+            filename = "ora-trace-" + re.sub(r"[^A-Za-z0-9_.-]+", "-", safe_ref) + ".html"
+            sections: list[str] = []
+            warning = ""
+            if manifest.get("terminal_status") == "open":
+                warning = '<div class="warning">This trace is still open and may be incomplete.</div>'
+            if manifest.get("redaction_level") == "private":
+                warning += '<div class="warning">Private trace: handle the exported file accordingly.</div>'
+            for row in manifest.get("steps") or []:
+                name = row.get("step_name")
+                try:
+                    safe_step = _safe_trace_filename(name, label="trace step projection")
+                except Exception:
+                    safe_step = ""
+                step = _trace_step_projection_locked(safe_ref, safe_step, trace_dir, raw_manifest) if safe_step else None
+                if step is None:
+                    sections.append(f"<section><h2>{html.escape(name or 'unknown', quote=True)}</h2><p>Step unavailable.</p></section>")
+                    continue
+                md_html = _escaped_simple_markdown(step.get("markdown")) if step.get("markdown") else "<p>No Markdown sibling recorded.</p>"
+                payload = html.escape(json.dumps(step.get("payload"), indent=2, default=_json_default), quote=True) if step.get("payload") is not None else ""
+                errors = "".join(f"<li>{html.escape(e, quote=True)}</li>" for e in step.get("errors") or [])
+                sections.append(
+                    "<section class=\"step\">"
+                    f"<h2>{html.escape(step['step_name'], quote=True)} - {html.escape(step['label'], quote=True)}</h2>"
+                    f"<div class=\"markdown\">{md_html}</div>"
+                    + (f"<pre><code>{payload}</code></pre>" if payload else "")
+                    + (f"<ul class=\"errors\">{errors}</ul>" if errors else "")
+                    + "</section>"
+                )
+            missing = "".join(f"<li>{html.escape(s, quote=True)}</li>" for s in manifest.get("missing_steps") or []) or "<li>None</li>"
+            summary = html.escape(json.dumps({k: manifest.get(k) for k in (
+                "trace_ref", "trace_kind", "terminal_status", "gear", "mode",
+                "framework_id", "milestone_id", "retention_state", "redaction_level",
+                "parent_trace_ref", "child_trace_refs", "finalized_at",
+            )}, indent=2, default=_json_default), quote=True)
+            doc = f"""<!doctype html>
+<html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"{html.escape(TRACE_EXPORT_CSP, quote=True)}\"><title>Ora Trace Walk</title><style>
+body{{font-family:Georgia,'Times New Roman',serif;margin:2rem;line-height:1.5;background:#f7f1e6;color:#201b16}}pre{{white-space:pre-wrap;background:#211f1b;color:#f5efe2;padding:1rem;border-radius:10px;overflow:auto}}code{{font-family:Menlo,Consolas,monospace}}.warning{{border:1px solid #a65f00;background:#fff4d8;padding:.75rem;margin:.75rem 0;border-radius:8px}}.step{{border-top:1px solid #c7bca8;padding-top:1rem;margin-top:1rem}}table{{border-collapse:collapse}}td,th{{border:1px solid #b8ad99;padding:.25rem .5rem}}blockquote{{border-left:4px solid #9c7b4f;margin-left:0;padding-left:1rem;color:#584834}}.errors{{color:#8a1f11}}</style></head>
+<body><h1>Ora Trace Walk</h1>{warning}<pre><code>{summary}</code></pre><h2>Missing expected steps</h2><ul>{missing}</ul>{''.join(sections)}</body></html>"""
+            encoded = doc.encode("utf-8")
+            if len(encoded) > MAX_TRACE_EXPORT_BYTES:
+                notice = html.escape(f"Export too large: {len(encoded)} bytes > {MAX_TRACE_EXPORT_BYTES} bytes", quote=True)
+                doc = f"<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"{html.escape(TRACE_EXPORT_CSP, quote=True)}\"><title>Ora Trace Walk</title></head><body><h1>Ora Trace Walk</h1><p>{notice}</p></body></html>"
+            return doc, filename
+    except Exception:
+        return None
+
+
+def list_trace_refs(conversation_id: str | None) -> list[str]:
+    refs: list[str] = []
+    if not conversation_id:
+        return refs
+    with _rp.conversation_lifecycle_lock(conversation_id):
+        for trace_dir in list_traces(conversation_id):
+            ref = trace_ref_for_dir(trace_dir)
+            if ref and resolve_trace_ref(ref):
+                refs.append(ref)
+    return refs
 
 
 # ---------------------------------------------------------------------------

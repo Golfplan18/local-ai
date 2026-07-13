@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ntpath
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -971,6 +972,80 @@ class TestRiskGateEventLogEncoding(unittest.TestCase):
                 self.assertEqual(rgate.get_sticky("conv-1"), "high-risk")
                 rgate.set_sticky("conv-1", "auto")            # clear
                 self.assertIsNone(rgate.get_sticky("conv-1"))
+
+
+class TestWindowsSimSinkWriteStaysHostNative(unittest.TestCase):
+    """Regression (2026-07-12): a durable sink write under a Windows-simulating
+    ``os.name='nt'`` monkeypatch must land on the real host-native path and must
+    NEVER create a literal backslash-named file in cwd.
+
+    Before the fix, ``append_bytes_no_follow`` did ``target = Path(path)`` —
+    which under the patched ``os.name`` became a ``WindowsPath`` whose fspath
+    ``\\var\\...\\tool-events.jsonl`` is *relative* on POSIX, so the real
+    ``os.open`` wrote it into the current directory (the repo root). The D-01 /
+    D-03 Windows-sim evidence-runner tests leaked exactly that file into ~/ora.
+    Each test chdirs into a throwaway dir so a regression litters the temp dir,
+    never the checkout."""
+
+    def setUp(self):
+        self._cwd = os.getcwd()
+        self._tmp = tempfile.mkdtemp(prefix="ora-wsim-cwd-")
+        os.chdir(self._tmp)
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _cwd_backslash_files(self):
+        return [n for n in os.listdir(".") if "\\" in n]
+
+    def test_append_bytes_under_simulated_windows_is_host_native(self):
+        with tempfile.TemporaryDirectory(prefix="ora-sink-") as box:
+            target = os.path.join(box, "tool-events.jsonl")  # forward-slash str
+            with mock.patch.object(os, "name", "nt"):
+                runtime_paths.append_bytes_no_follow(
+                    target, b'{"event":"x"}\n', mode=0o644)
+            self.assertTrue(os.path.exists(target), target)
+            with open(target, "rb") as f:
+                self.assertIn(b'"event":"x"', f.read())
+        self.assertEqual(self._cwd_backslash_files(), [],
+                         "a backslash file leaked into cwd under os.name='nt'")
+
+    def test_guard_refuses_reflavored_windows_path_on_posix(self):
+        # Reproduce the reflavored path a WindowsPath yields on POSIX, then hand
+        # it to the durable writer + lock helper: both must refuse loudly rather
+        # than write a literal backslash-named file in cwd.
+        with mock.patch.object(os, "name", "nt"):
+            reflavored = Path("/var/folders/T/box/tool-events.jsonl")
+        self.assertIn("\\", os.fspath(reflavored))          # sanity: '\var\...'
+        self.assertFalse(reflavored.is_absolute())          # relative on POSIX
+        with self.assertRaises(ValueError):
+            runtime_paths.append_bytes_no_follow(reflavored, b"x\n")
+        with self.assertRaises(ValueError):
+            with runtime_paths.locked_file(reflavored):
+                pass
+        self.assertEqual(self._cwd_backslash_files(), [])
+
+    def test_record_end_to_end_under_simulated_windows_stays_clean(self):
+        # The exact original failure signature: os.name='nt' + an armed sandbox
+        # + a real tool_events.record() write. The event must land in the
+        # forward-slash sandbox and cwd must stay clean.
+        with tempfile.TemporaryDirectory(prefix="ora-sandbox-") as box:
+            with mock.patch.dict(
+                    os.environ,
+                    {runtime_paths.OVERSIGHT_SANDBOX_ENV: box,
+                     "ORA_TOOL_EVENTS": ""}, clear=False), \
+                    mock.patch.object(os, "name", "nt"):
+                tool_events.record({
+                    "event": "unit-test", "action": "probe",
+                    "mutability": "read", "sensitivity": "public"})
+            sink = os.path.join(box, "tool-events.jsonl")
+            self.assertTrue(os.path.exists(sink),
+                            "event did not land in the forward-slash sandbox")
+            with open(sink) as f:
+                self.assertIn("unit-test", f.read())
+        self.assertEqual(self._cwd_backslash_files(), [],
+                         "record() leaked a backslash file into cwd")
 
 
 if __name__ == "__main__":

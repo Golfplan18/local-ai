@@ -1,4 +1,4 @@
-# Deep Research Protocol
+# Framework — Deep Research Protocol
 
 ## Display Name
 Deep Research Protocol

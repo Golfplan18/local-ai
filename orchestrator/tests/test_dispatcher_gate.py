@@ -1,4 +1,4 @@
-"""Dispatcher + gate integration tests (Execution Review Phase 1).
+"""Hermetic dispatcher + gate contract tests (Execution Review Phase 1).
 
 Proves the judge-required behaviors at the dispatch() seam:
   - the gate runs BEFORE execution and independently of auto-approve;
@@ -7,18 +7,25 @@ Proves the judge-required behaviors at the dispatch() seam:
   - protected-config writes are gated (the hook-installation attack);
   - model-facing sensitive reads are gated;
   - MCP calls pass the gate + are recorded (bypass closed);
-  - code_execute routes through the dispatcher into a real sandbox;
-  - the former legacy tools are dispatcher-registered;
   - every dispatch leaves a machine-readable tool event.
+
+The real matcher, dispatcher, gate, approval, and event pipeline run here.
+Host-facing execution is replaced at its boundary: no shell, network, OS
+keyring, user hook, external grep, or live-log retirement runs in this suite.
+Real code-execute sandbox coverage lives in test_dispatcher_code_execute.py;
+the native Windows dispatcher/shell seam lives in
+test_dispatcher_windows_live.py.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shlex
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from pathlib import Path
 _ORCH = Path(__file__).resolve().parent.parent
@@ -35,6 +42,9 @@ if str(_TOOLS) not in sys.path:
 import dispatcher  # noqa: E402
 import tool_events  # noqa: E402
 import oversight_queue  # noqa: E402
+import bash_execute  # noqa: E402
+import file_ops  # noqa: E402
+import search_files  # noqa: E402
 
 
 def _read_events(path):
@@ -46,11 +56,25 @@ def _read_events(path):
 
 class DispatchBase(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        # Keep absolute positive-path fixtures under the portable home root.
+        # The legacy classifier treats /var and /private as sensitive before
+        # consulting the modeled workspace, which would make a default macOS
+        # temp directory prompt for the wrong reason.
+        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        self.workspace = os.path.join(self.tmp.name, "workspace")
+        os.makedirs(self.workspace)
         self.sink = os.path.join(self.tmp.name, "tool-events.jsonl")
         self._orig_sink = tool_events.GLOBAL_SINK_DEFAULT
         self._orig_approvals = tool_events.APPROVALS_PATH
         self._orig_queue = oversight_queue.HUMAN_QUEUE_PATH
+        self.runtime_workspace = dispatcher.WORKSPACE
+        self._orig_permission_mode = dispatcher._permission_mode
+        self._orig_approved_categories = set(dispatcher._approved_categories)
+        self._orig_consecutive = (dispatcher._consecutive_tool,
+                                  dispatcher._consecutive_count)
+        self._orig_queued_hashes = set(tool_events._queued_hashes)
+        self._orig_mcp_axes_cache = tool_events._mcp_axes_cache
+        self._orig_telemetry_health = tool_events.get_telemetry_health()
         tool_events.GLOBAL_SINK_DEFAULT = self.sink
         tool_events.APPROVALS_PATH = os.path.join(self.tmp.name, "appr.json")
         oversight_queue.HUMAN_QUEUE_PATH = os.path.join(self.tmp.name,
@@ -58,17 +82,87 @@ class DispatchBase(unittest.TestCase):
         tool_events.reset_telemetry_health()
         tool_events._queued_hashes.clear()
         self._orig_te_env = os.environ.pop("ORA_TOOL_EVENTS", None)
-        tool_events.set_turn_context()
+        self._orig_te_path_env = os.environ.pop("ORA_TOOL_EVENTS_PATH", None)
+        self._turn_token = tool_events.set_turn_context()
         dispatcher.reset_consecutive()
         dispatcher.set_permission_mode("auto-approve")  # server reality
 
+        # Give the fixture a private, allowed workspace without mutating the
+        # checkout under test. Leave the temp parent unregistered so tests can
+        # still exercise a genuinely sensitive/unrecognized path.
+        self._private_root = tool_events._cmp_key(self.workspace)
+        tool_events._PRIVATE_ROOTS.append(self._private_root)
+        dispatcher.ALLOWED_BASES.append(self.workspace)
+        file_ops.ALLOWED_BASES.append(self.workspace)
+
+        self.shell_calls = []
+
+        def fake_execute(command, **kwargs):
+            self.shell_calls.append((command, kwargs))
+            return {
+                "stdout": f"[hermetic shell stub] {command}\n",
+                "stderr": "",
+                "returncode": 0,
+                "timed_out": False,
+                "truncated": False,
+            }
+
+        self._patches = [
+            # Exercise POSIX grammar matching even on Windows; real shell
+            # availability belongs to the native-Windows live suite.
+            mock.patch.object(bash_execute, "_posix_shell_available",
+                              return_value=True),
+            mock.patch.object(dispatcher, "execute_command",
+                              side_effect=fake_execute),
+            mock.patch.object(dispatcher, "credential_store",
+                              return_value="No credential found: svc-x/u"),
+            mock.patch.object(dispatcher, "fire_hooks", return_value=[]),
+            mock.patch.object(dispatcher,
+                              "_retire_legacy_session_logs_once",
+                              return_value=None),
+            mock.patch.object(search_files, "_grep_available",
+                              return_value=False),
+            mock.patch.object(dispatcher, "WORKSPACE", self.workspace),
+            mock.patch.object(bash_execute, "WORKSPACE", self.workspace),
+        ]
+        for patcher in self._patches:
+            patcher.start()
+
     def tearDown(self):
-        tool_events.GLOBAL_SINK_DEFAULT = self._orig_sink
-        tool_events.APPROVALS_PATH = self._orig_approvals
-        oversight_queue.HUMAN_QUEUE_PATH = self._orig_queue
-        tool_events._queued_hashes.clear()
-        dispatcher.set_permission_mode("approve-each")
-        self.tmp.cleanup()
+        try:
+            for patcher in reversed(self._patches):
+                patcher.stop()
+            tool_events.GLOBAL_SINK_DEFAULT = self._orig_sink
+            tool_events.APPROVALS_PATH = self._orig_approvals
+            oversight_queue.HUMAN_QUEUE_PATH = self._orig_queue
+            tool_events._queued_hashes.clear()
+            tool_events._queued_hashes.update(self._orig_queued_hashes)
+            tool_events._mcp_axes_cache = self._orig_mcp_axes_cache
+            with tool_events._health_lock:
+                tool_events._telemetry_failures = \
+                    self._orig_telemetry_health["failures"]
+                tool_events._telemetry_last_error = \
+                    self._orig_telemetry_health["last_error"]
+            tool_events.reset_turn_context(self._turn_token)
+            if self._orig_te_env is None:
+                os.environ.pop("ORA_TOOL_EVENTS", None)
+            else:
+                os.environ["ORA_TOOL_EVENTS"] = self._orig_te_env
+            if self._orig_te_path_env is None:
+                os.environ.pop("ORA_TOOL_EVENTS_PATH", None)
+            else:
+                os.environ["ORA_TOOL_EVENTS_PATH"] = self._orig_te_path_env
+            dispatcher._permission_mode = self._orig_permission_mode
+            dispatcher._approved_categories.clear()
+            dispatcher._approved_categories.update(
+                self._orig_approved_categories)
+            (dispatcher._consecutive_tool,
+             dispatcher._consecutive_count) = self._orig_consecutive
+            dispatcher.ALLOWED_BASES.remove(self.workspace)
+            file_ops.ALLOWED_BASES.remove(self.workspace)
+            tool_events._PRIVATE_ROOTS.remove(self._private_root)
+        finally:
+            self.tmp.cleanup()
 
     def _events(self):
         return _read_events(self.sink)
@@ -91,6 +185,7 @@ class TestGateBeforeExecution(DispatchBase):
         result = dispatcher.dispatch(
             "bash_execute", {"command": "timedatectl set-time now"})
         self.assertIn("GATED", result)
+        self.assertEqual(self.shell_calls, [])
         recs = self._queue_lines()
         self.assertEqual(len(recs), 1)
         self.assertEqual(recs[0]["kind"], "execution_gate")
@@ -100,16 +195,25 @@ class TestGateBeforeExecution(DispatchBase):
         result = dispatcher.dispatch(
             "bash_execute", {"command": f"unknowncmd42 && touch {marker}"})
         self.assertIn("GATED", result)
+        self.assertEqual(self.shell_calls, [])
         self.assertFalse(os.path.exists(marker))
 
     def test_git_force_push_blocked(self):
         result = dispatcher.dispatch(
             "bash_execute", {"command": "git push --force origin main"})
         self.assertIn("GATED", result)
+        self.assertEqual(self.shell_calls, [])
 
     def test_profiled_read_command_executes(self):
         result = dispatcher.dispatch("bash_execute", {"command": "pwd"})
         self.assertNotIn("GATED", result)
+        self.assertEqual([call[0] for call in self.shell_calls], ["pwd"])
+        self.assertEqual(self.shell_calls[0][1], {
+            "timeout": 60,
+            "cwd": None,
+            "background": False,
+            "max_output_chars": 10000,
+        })
         shell_events = [e for e in self._events() if e["event"] == "shell"]
         self.assertEqual(len(shell_events), 1)
         self.assertEqual(shell_events[0]["mutability"], "read")
@@ -118,29 +222,33 @@ class TestGateBeforeExecution(DispatchBase):
     def test_blocked_patterns_still_block(self):
         result = dispatcher.dispatch("bash_execute", {"command": "mkfs /dev/sda"})
         self.assertIn("BLOCKED", result)
+        self.assertEqual(self.shell_calls, [])
 
     def test_approval_token_round_trip_through_dispatch(self):
-        # An irreversible-profile command that is HARMLESS to actually run
-        # once approved: rm of a file in this test's own temp dir. (Never
-        # use a real external action here — an approved test would run it.)
-        victim = os.path.join(self.tmp.name, "victim.txt")
+        # Approval unlocks exactly one trip through the hermetic handler.
+        # No real rm is run: the contract is the dispatch count 0 -> 1 -> 1.
+        victim = os.path.join(self.workspace, "victim.txt")
         with open(victim, "w") as f:
             f.write("x")
-        params = {"command": f"rm -f {victim}", "cwd": self.tmp.name}
+        params = {"command": f"rm -f {shlex.quote(victim)}",
+                  "cwd": self.workspace}
         r1 = dispatcher.dispatch("bash_execute", params)
         self.assertIn("GATED", r1)
-        self.assertTrue(os.path.exists(victim))  # gate blocked execution
+        self.assertEqual(len(self.shell_calls), 0)
+        self.assertTrue(os.path.exists(victim))
         args_hash = tool_events.normalize_args_hash("bash_execute", params)
         tool_events.grant_approval("bash_execute", args_hash)
         tool_events._queued_hashes.clear()
         dispatcher.reset_consecutive()
         r2 = dispatcher.dispatch("bash_execute", params)
         self.assertNotIn("GATED", r2)
-        self.assertFalse(os.path.exists(victim))  # approved call really ran
+        self.assertEqual(len(self.shell_calls), 1)
+        self.assertTrue(os.path.exists(victim))  # no host process ran
         tool_events._queued_hashes.clear()
         dispatcher.reset_consecutive()
         r3 = dispatcher.dispatch("bash_execute", params)
         self.assertIn("GATED", r3)  # token was one-shot
+        self.assertEqual(len(self.shell_calls), 1)
 
     def test_live_prompt_is_the_gate_approval_channel(self):
         dispatcher.set_permission_mode("approve-each")
@@ -156,20 +264,27 @@ class TestGateBeforeExecution(DispatchBase):
         # One prompt (the gate's), not two — and the command then runs.
         self.assertEqual(calls, ["bash_execute"])
         self.assertNotIn("GATED", result)
+        self.assertEqual([call[0] for call in self.shell_calls],
+                         ["unprofiledcmd99 --do-thing"])
 
 
 @unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
 class TestSensitiveAndProtectedPaths(DispatchBase):
     def test_model_facing_sensitive_read_is_gated(self):
-        # /private/tmp is outside the known private roots → sensitive.
+        # The temp parent is outside the registered private workspace.
         victim = os.path.join(self.tmp.name, "data.txt")
         with open(victim, "w") as f:
             f.write("payload")
         result = dispatcher.dispatch("file_read", {"path": victim})
         self.assertIn("GATED", result)
+        gate = [e for e in self._events() if e.get("event") == "gate"][-1]
+        self.assertEqual(gate["sensitivity"], "sensitive")
+        self.assertIn("sensitive", gate["gate"]["why"])
 
     def test_workspace_read_is_allowed_and_recorded_with_hash(self):
-        target = os.path.expanduser("~/ora/CLAUDE.md")
+        target = os.path.join(self.workspace, "fixture.txt")
+        with open(target, "w") as f:
+            f.write("fixture payload\n")
         result = dispatcher.dispatch("file_read", {"path": target})
         self.assertNotIn("GATED", result)
         ev = [e for e in self._events() if e["action"] == "file_read"][0]
@@ -186,9 +301,10 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # arbitrary un-gated shell. Protected-config paths gate it. Test
         # against a temp dir registered as protected — NEVER the real
         # hooks dir (a regression here must not install a live hook).
-        protected_dir = os.path.join(self.tmp.name, "hooks")
+        protected_dir = os.path.join(self.workspace, "hooks")
         os.makedirs(protected_dir)
-        tool_events._PROTECTED_PREFIXES.append(os.path.realpath(protected_dir))
+        tool_events._PROTECTED_PREFIXES.append(
+            tool_events._cmp_key(protected_dir))
         try:
             target = os.path.join(protected_dir, "installed-by-test.json")
             result = dispatcher.dispatch("file_write", {
@@ -197,15 +313,22 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             })
             self.assertIn("GATED", result)
             self.assertFalse(os.path.exists(target))
-            # And the REAL hooks dir is protected by the shipped list.
+            gate = [e for e in self._events()
+                    if e.get("event") == "gate"][-1]
+            self.assertEqual(gate["mutability"], "irreversible")
+            self.assertEqual(gate["sensitivity"], "private")
+            self.assertIn("irreversible", gate["gate"]["why"])
+            # And the checkout's hooks dir is protected by the shipped list.
             self.assertTrue(tool_events.is_protected_config_path(
-                os.path.expanduser("~/ora/config/hooks/any.json")))
+                os.path.join(self.runtime_workspace, "config", "hooks",
+                             "any.json")))
         finally:
             tool_events._PROTECTED_PREFIXES.pop()
 
     def test_orchestrator_code_write_is_gated(self):
         result = dispatcher.dispatch("file_write", {
-            "path": os.path.expanduser("~/ora/orchestrator/tool_events.py"),
+            "path": os.path.join(self.runtime_workspace, "orchestrator",
+                                 "tool_events.py"),
             "content": "# defanged",
         })
         self.assertIn("GATED", result)
@@ -214,10 +337,12 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # The critical review finding: 'echo x > config/hooks/y' must gate
         # the same as file_write into that path — a redirect must not be a
         # side door around the protected-config control.
-        target = os.path.expanduser("~/ora/config/hooks/redirect-probe.json")
+        target = os.path.join(self.runtime_workspace, "config", "hooks",
+                              "redirect-probe.json")
         result = dispatcher.dispatch(
             "bash_execute",
-            {"command": f'echo pwn > {target}', "cwd": self.tmp.name})
+            {"command": f'echo pwn > {shlex.quote(target)}',
+             "cwd": self.workspace})
         self.assertIn("GATED", result)
         self.assertFalse(os.path.exists(target))
 
@@ -241,43 +366,51 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         result = dispatcher.dispatch(
             "bash_execute",
             {"command": "head secrets.txt",
-             "cwd": os.path.expanduser("~/ora")})
+             "cwd": self.workspace})
         self.assertIn("GATED", result)
 
     def test_bare_normal_filename_in_private_cwd_allowed(self):
         # A plain filename in a private cwd must NOT over-gate.
+        target = os.path.join(self.workspace, "ordinary.txt")
+        with open(target, "w") as f:
+            f.write("ordinary\n")
         result = dispatcher.dispatch(
             "bash_execute",
-            {"command": "cat CLAUDE.md", "cwd": os.path.expanduser("~/ora")})
+            {"command": "cat ordinary.txt", "cwd": self.workspace})
         self.assertNotIn("GATED", result)
+        self.assertEqual(self.shell_calls[-1][0], "cat ordinary.txt")
 
     def test_archive_of_secret_is_gated(self):
         # gzip/tar/pandoc reading a secret must gate (content would otherwise
         # reach the model via stdout).
+        archive = shlex.quote(os.path.join(self.workspace, "o.tgz"))
         for cmd in ("gzip -c ~/.aws/credentials",
                     "pandoc ~/.ssh/id_rsa",
-                    "tar czf /tmp/o.tgz ~/.ssh/id_rsa"):
+                    f"tar czf {archive} ~/.ssh/id_rsa"):
             r = dispatcher.dispatch("bash_execute",
-                                    {"command": cmd, "cwd": self.tmp.name})
+                                    {"command": cmd, "cwd": self.workspace})
             self.assertIn("GATED", r, cmd)
+        self.assertEqual(self.shell_calls, [])
 
     def test_archive_output_into_protected_path_gated(self):
         # An archive/transform command writing its OUTPUT into a protected
         # path must gate — even when path sensitivity is only 'private' (the
         # protected-config escalation, not sensitivity, is what fires). Uses a
-        # temp protected prefix inside ~/ora (private) so sensitivity can't
-        # mask the result.
-        import tempfile, shutil
-        guard = tempfile.mkdtemp(dir=os.path.expanduser("~/ora"))
-        tool_events._PROTECTED_PREFIXES.append(os.path.realpath(guard))
+        # temp protected prefix inside the private fixture workspace so
+        # sensitivity cannot mask the protected-config reason.
+        import shutil
+        guard = os.path.join(self.workspace, "archive-protected")
+        os.makedirs(guard)
+        tool_events._PROTECTED_PREFIXES.append(tool_events._cmp_key(guard))
         try:
-            for cmd in (f"tar czf {guard}/x.tgz data.txt",
-                        f"zip {guard}/x.zip data.txt",
-                        f"pandoc data.md -o {guard}/x.pdf",
-                        f"gzip {guard}/data.txt"):
+            qguard = shlex.quote(guard)
+            for cmd in (f"tar czf {qguard}/x.tgz data.txt",
+                        f"zip {qguard}/x.zip data.txt",
+                        f"pandoc data.md -o {qguard}/x.pdf",
+                        f"gzip {qguard}/data.txt"):
                 r = dispatcher.dispatch(
                     "bash_execute",
-                    {"command": cmd, "cwd": os.path.expanduser("~/ora")})
+                    {"command": cmd, "cwd": self.workspace})
                 self.assertIn("GATED", r, cmd)
                 self.assertFalse(os.path.exists(f"{guard}/x.tgz"))
                 self.assertFalse(os.path.exists(f"{guard}/x.zip"))
@@ -287,34 +420,32 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             shutil.rmtree(guard, ignore_errors=True)
 
     def test_archive_within_workspace_not_over_gated(self):
-        import tempfile
-        out = os.path.join(self.tmp.name, "will-not-run")
         # A within-workspace archive of a non-secret file must NOT gate.
+        output = shlex.quote(os.path.join(self.workspace, "output.tgz"))
+        command = f"tar czf {output} ordinary.txt"
         r = dispatcher.dispatch(
-            "bash_execute",
-            {"command": "tar czf ~/ora/scratch/_er_probe.tgz CLAUDE.md",
-             "cwd": os.path.expanduser("~/ora")})
+            "bash_execute", {"command": command, "cwd": self.workspace})
         self.assertNotIn("GATED", r)
-        try:
-            os.remove(os.path.expanduser("~/ora/scratch/_er_probe.tgz"))
-        except OSError:
-            pass
+        self.assertEqual(self.shell_calls[-1][0], command)
 
     def test_download_output_into_protected_path_gated(self):
         # curl/wget download output flags writing into a protected path gate.
-        import tempfile, shutil
-        guard = tempfile.mkdtemp(dir=os.path.expanduser("~/ora"))
-        tool_events._PROTECTED_PREFIXES.append(os.path.realpath(guard))
+        import shutil
+        guard = os.path.join(self.workspace, "download-protected")
+        os.makedirs(guard)
+        tool_events._PROTECTED_PREFIXES.append(tool_events._cmp_key(guard))
         try:
-            for cmd in (f"wget -O {guard}/x.json http://u",
-                        f"wget --output-document {guard}/x.json http://u",
-                        f"wget -P {guard} http://u",
-                        f"curl -O --output-dir {guard} http://u",
-                        f"curl --remote-name --output-dir {guard} http://u"):
+            qguard = shlex.quote(guard)
+            for cmd in (f"wget -O {qguard}/x.json http://u",
+                        f"wget --output-document {qguard}/x.json http://u",
+                        f"wget -P {qguard} http://u",
+                        f"curl -O --output-dir {qguard} http://u",
+                        f"curl --remote-name --output-dir {qguard} http://u"):
                 r = dispatcher.dispatch(
                     "bash_execute",
-                    {"command": cmd, "cwd": os.path.expanduser("~/ora")})
+                    {"command": cmd, "cwd": self.workspace})
                 self.assertIn("GATED", r, cmd)
+            self.assertEqual(self.shell_calls, [])
         finally:
             tool_events._PROTECTED_PREFIXES.pop()
             shutil.rmtree(guard, ignore_errors=True)
@@ -323,19 +454,23 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # A download into a normal private path must NOT hit the
         # protected-config gate (external egress is a Phase-2 policy, not a
         # Phase-1 block).
+        output = shlex.quote(os.path.join(self.workspace, "download.json"))
+        command = f"curl -o {output} http://u"
         r = dispatcher.dispatch(
-            "bash_execute",
-            {"command": "curl -o ~/ora/scratch/_er_dl.json http://u",
-             "cwd": os.path.expanduser("~/ora")})
+            "bash_execute", {"command": command, "cwd": self.workspace})
         self.assertNotIn("GATED", r)
+        self.assertEqual(self.shell_calls[-1][0], command)
 
     def test_viewer_of_workspace_file_not_over_gated(self):
         # less/nl/od of a normal workspace file must NOT gate.
-        for cmd in ("less CLAUDE.md", "nl CLAUDE.md", "base64 CLAUDE.md"):
+        for cmd in ("less ordinary.txt", "nl ordinary.txt",
+                    "base64 ordinary.txt"):
             r = dispatcher.dispatch(
-                "bash_execute", {"command": cmd,
-                                 "cwd": os.path.expanduser("~/ora")})
+                "bash_execute", {"command": cmd, "cwd": self.workspace})
             self.assertNotIn("GATED", r, cmd)
+        self.assertEqual([call[0] for call in self.shell_calls],
+                         ["less ordinary.txt", "nl ordinary.txt",
+                          "base64 ordinary.txt"])
 
     def test_program_file_secret_gated(self):
         r = dispatcher.dispatch(
@@ -355,16 +490,23 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                     "pushd ~/.aws && cat config"):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
-                                     "cwd": os.path.expanduser("~/ora")})
+                                     "cwd": self.workspace})
             self.assertIn("GATED", r, cmd)
 
     def test_cd_into_workspace_does_not_over_gate(self):
-        for cmd in ("cd ~/ora && cat CLAUDE.md",
-                    "cd ~/ora/orchestrator && wc -l boot.py"):
+        nested = os.path.join(self.workspace, "nested")
+        os.makedirs(nested)
+        commands = (
+            f"cd {shlex.quote(self.workspace)} && cat ordinary.txt",
+            f"cd {shlex.quote(nested)} && pwd",
+        )
+        for cmd in commands:
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
-                                     "cwd": os.path.expanduser("~/ora")})
+                                     "cwd": self.workspace})
             self.assertNotIn("GATED", r, cmd)
+        self.assertEqual([call[0] for call in self.shell_calls],
+                         list(commands))
 
     def test_unmodelable_cd_fails_closed(self):
         # cd $VAR / cd - can't be resolved; a following relative read fails
@@ -372,7 +514,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         for cmd in ("cd $VAR && cat config", "cd - && cat config"):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
-                                     "cwd": os.path.expanduser("~/ora")})
+                                     "cwd": self.workspace})
             self.assertIn("GATED", r, cmd)
 
     def test_search_files_excludes_secret_descendants(self):
@@ -380,8 +522,9 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # CONTENT of a secret/credential descendant — across the shapes the
         # adversarial pass found (env.local, private_keys/, keys/, *.pem.txt,
         # creds.txt, .ssh2/) — while STILL returning legit secret-NAMED files.
-        import tempfile, shutil
-        root = tempfile.mkdtemp(dir=os.path.expanduser("~/ora"))
+        import shutil
+        root = os.path.join(self.workspace, "search-root")
+        os.makedirs(root)
         try:
             secret_files = {
                 "sub/credentials.txt": "NEEDLETOKEN cred-leak",
@@ -422,13 +565,18 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
     def test_list_directory_sensitive_path_is_gated(self):
         # A path outside the known-private roots resolves to sensitive.
         result = dispatcher.dispatch(
-            "list_directory", {"path": "/opt/some-unknown-place"})
+            "list_directory", {"path": self.tmp.name})
         self.assertIn("GATED", result)
 
     def test_list_directory_workspace_allowed(self):
+        listing = os.path.join(self.workspace, "listing")
+        os.makedirs(listing)
+        with open(os.path.join(listing, "visible.txt"), "w") as f:
+            f.write("visible\n")
         result = dispatcher.dispatch(
-            "list_directory", {"path": os.path.expanduser("~/ora/modes")})
+            "list_directory", {"path": listing})
         self.assertNotIn("GATED", result)
+        self.assertIn("visible.txt", result)
 
     def test_script_and_package_runners_gated(self):
         # Opaque code execution through a "profiled" command is a side door
@@ -437,13 +585,21 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                     "npm test", "npm run build", "node run.js",
                     "pip install requests", "brew install jq"):
             r = dispatcher.dispatch("bash_execute",
-                                    {"command": cmd, "cwd": self.tmp.name})
+                                    {"command": cmd, "cwd": self.workspace})
             self.assertIn("GATED", r, cmd)
-            # ...but read-only forms still pass.
+        self.assertEqual(self.shell_calls, [])
+
+        # The limiter is a separate contract. Reset it so these assertions
+        # prove the read profiles reached the handler instead of accepting a
+        # consecutive-call warning as a false positive.
+        dispatcher.reset_consecutive()
         for cmd in ("pip list", "npm ls", "brew list", "python3 --version"):
             r = dispatcher.dispatch("bash_execute",
-                                    {"command": cmd, "cwd": self.tmp.name})
+                                    {"command": cmd, "cwd": self.workspace})
             self.assertNotIn("GATED", r, cmd)
+        self.assertEqual([call[0] for call in self.shell_calls],
+                         ["pip list", "npm ls", "brew list",
+                          "python3 --version"])
 
     def test_credential_store_blocked_then_standing_allow_passes(self):
         r1 = dispatcher.dispatch("credential_store",
@@ -460,6 +616,8 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                                  {"action": "retrieve", "service": "svc-x",
                                   "username": "u"})
         self.assertNotIn("GATED", r2)
+        dispatcher.credential_store.assert_called_once_with(
+            "retrieve", "svc-x", "u", None)
         # Existence-only logging: the secret-sensitivity event carries no args.
         ev = [e for e in self._events()
               if e["action"] == "credential_store" and e["event"] != "gate"]
@@ -483,92 +641,6 @@ class TestMCPGateClosure(DispatchBase):
         tool_events.reset_mcp_axes_cache()
         dispatcher.dispatch("mcp_unknownsrv_x", {})
         self.assertTrue(any(e.get("event") == "gate" for e in self._events()))
-
-
-@unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
-class TestCodeExecute(DispatchBase):
-    def test_code_execute_registered_and_runs_sandboxed(self):
-        import code_execute as ce
-        if not ce.sandbox_available():
-            self.skipTest("sandbox-exec unavailable on this platform")
-        result = dispatcher.dispatch("code_execute",
-                                     {"code": "print(2**10)"})
-        self.assertIn("1024", result)
-        ev = [e for e in self._events() if e["action"] == "code_execute"]
-        self.assertEqual(len(ev), 1)
-        self.assertEqual(ev[0]["enforcement_model"], "orchestrated")
-
-    def test_code_execute_network_denied(self):
-        import code_execute as ce
-        if not ce.sandbox_available():
-            self.skipTest("sandbox-exec unavailable on this platform")
-        result = dispatcher.dispatch("code_execute", {"code": (
-            "import socket\n"
-            "try:\n"
-            "    socket.create_connection(('1.1.1.1', 443), timeout=3)\n"
-            "    print('NETWORK-OPEN')\n"
-            "except Exception as e:\n"
-            "    print('denied', type(e).__name__)\n")})
-        self.assertNotIn("NETWORK-OPEN", result)
-        self.assertIn("denied", result)
-
-    def test_code_execute_private_home_read_denied(self):
-        # Arbitrary Python must not read a non-secret private file (outside
-        # scratch) and exfiltrate it via stdout — stdout is the one egress
-        # the network-deny doesn't cover.
-        import code_execute as ce
-        if not ce.sandbox_available():
-            self.skipTest("sandbox-exec unavailable on this platform")
-        target = os.path.expanduser("~/ora/CLAUDE.md")
-        result = dispatcher.dispatch("code_execute", {"code": (
-            f"try:\n"
-            f"    print('LEAK:' + open({target!r}).read()[:20])\n"
-            f"except Exception as e:\n"
-            f"    print('read denied', type(e).__name__)\n")})
-        self.assertNotIn("LEAK:", result)
-        self.assertIn("denied", result)
-
-    def test_code_execute_stdlib_and_scratch_still_work(self):
-        import code_execute as ce
-        if not ce.sandbox_available():
-            self.skipTest("sandbox-exec unavailable on this platform")
-        result = dispatcher.dispatch("code_execute", {"code": (
-            "import json, math\n"
-            "print(json.dumps({'f': math.factorial(5)}))\n")})
-        self.assertIn("120", result)
-
-    def test_code_execute_workspace_write_denied(self):
-        import code_execute as ce
-        if not ce.sandbox_available():
-            self.skipTest("sandbox-exec unavailable on this platform")
-        probe = os.path.expanduser("~/ora/config/sandbox-escape-probe")
-        result = dispatcher.dispatch("code_execute", {"code": (
-            f"open({probe!r}, 'w').write('x'); print('ESCAPE-OK')")})
-        # The write must raise inside the sandbox (the traceback quotes the
-        # source line, so assert on the outcome, not on source echoes).
-        self.assertNotIn("ESCAPE-OK\n", result + "\n")
-        self.assertIn("PermissionError", result)
-        self.assertFalse(os.path.exists(probe))
-
-    def test_legacy_tools_registered(self):
-        self.assertIn("code_execute", dispatcher.TOOL_REGISTRY)
-        # continuity_save / queue_read register when boot imports; assert
-        # register_tool exists and produces valid entries either way.
-        dispatcher.register_tool(
-            "test_legacy", lambda p: "ok", permission="auto",
-            category="read", mutability="read", sensitivity="private",
-            egress="none")
-        try:
-            self.assertNotIn("GATED",
-                             dispatcher.dispatch("test_legacy", {}))
-        finally:
-            dispatcher.TOOL_REGISTRY.pop("test_legacy", None)
-
-    def test_unknown_tool_recorded(self):
-        result = dispatcher.dispatch("no_such_tool", {})
-        self.assertIn("Unknown tool", result)
-        self.assertTrue(any(e["action"] == "no_such_tool"
-                            for e in self._events()))
 
 
 if __name__ == "__main__":

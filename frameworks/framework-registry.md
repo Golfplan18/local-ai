@@ -1,4 +1,4 @@
-# Framework Registry
+# Registry — Framework Registry
 
 This file indexes all frameworks available to the system. Agents query this registry (via ChromaDB semantic search) to find frameworks matching a problem. Humans browse it to see what's available.
 
@@ -120,12 +120,12 @@ Each framework has one entry with these fields:
 - **Problem Class:** Knowledge corpus design and template management
 - **Input Summary:** C-Design: workflow description + sources + outputs. C-Modify: existing template + change description. C-Instance: template + period identifier. C-Validate: template + populated instance.
 - **Output Summary:** Corpus template (C-Design, C-Modify); deployed corpus instance ready for PFF writes (C-Instance); completeness report identifying which OFFs can render (C-Validate)
-- **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad (sibling to Process Formalization v2.0 and Output Formalization v1.0)
+- **Proven Applications:** Shipped 2026-04 as the C in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Output Formalization v1.1
 - **Known Limitations:** Requires a clear concept of what a workflow "accumulates" as a body — does not help when the unit of accumulation is unclear; chain relationships add complexity that must be designed deliberately
 - **File Location:** frameworks/book/corpus-formalization.md (executable); ~/Documents/vault/Framework — Corpus Formalization.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
-- **Version:** 1.0
+- **Version:** 1.1
 - **Delivers:** New corpus template (C-Design); modified template (C-Modify); fresh corpus instance for the current period (C-Instance); completeness assessment of an instance (C-Validate)
 
 ### Output Formalization
@@ -134,12 +134,12 @@ Each framework has one entry with these fields:
 - **Problem Class:** Output rendering and bespoke output-framework design
 - **Input Summary:** O-Design: exemplar / template / verbal description / medium-plus-genre. O-Modify: existing bespoke OFF + change description. O-Render: bespoke OFF + content (from CFF, PFF, or supplied). O-Audit: existing bespoke OFF.
 - **Output Summary:** Bespoke output framework composing content/craft/style/render layers (O-Design, O-Modify); rendered artifact in target medium (O-Render); quality audit with remediation recommendations (O-Audit)
-- **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad (sibling to Process Formalization v2.0 and Corpus Formalization v1.0); also integrates with MindSpec voice for style consistency
+- **Proven Applications:** Shipped 2026-04 as the O in the PFF/CFF/OFF triad; current sibling canonicals are Process Formalization v2.3 and Corpus Formalization v1.1; also integrates with MindSpec voice for style consistency
 - **Known Limitations:** O-Design quality depends on input modality clarity; voice consistency depends on a populated MindSpec or equivalent style profile; medium-specific render details may need user iteration
 - **File Location:** frameworks/book/output-formalization.md (executable); ~/Documents/vault/Framework — Output Formalization.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
-- **Version:** 1.0
+- **Version:** 1.1
 - **Delivers:** New bespoke output framework for a specific medium/genre (O-Design); modified output framework (O-Modify); rendered artifact (O-Render); quality audit with remediation (O-Audit)
 
 ### Process Inference
@@ -299,17 +299,17 @@ Each framework has one entry with these fields:
 
 ### WSJ-NR Inversion (MSI Editorial Board)
 
-- **Purpose:** Produce a finished Main Street Independent Editorial Board column from a Wall Street Journal, National Review, or comparable liberty-frame editorial. Output is one unified column carrying three angles — consensus-floor news on the underlying issue, deconstructed parody of the original, and media-criticism explainer naming the techniques deployed — written end-to-end in the Board's collective institutional voice as specified in `Reference — MSI Editorial Board Mind.md`. Picked when the input artifact is itself an editorial-page operation in a target outlet.
-- **Problem Class:** Editorial column production; propaganda inversion at outlet level; institutional-voice authoring; the publication's collective unsigned voice
-- **Input Summary:** Required: editorial text (or fetchable URL), outlet enum (`wsj-editorial-board` / `nr-magazine` / `nr-online` / `nr-corner` / `other-liberty-frame`), ISO-8601 publication date. Optional: author byline; cluster context (underlying news event). Reference corpus always available: MSI Editorial Board MindSpec (voice contract), MSI Editorial Mind (supervisor — floor compliance), WSJ + NR Editorial Technique Catalogues, Bad-Faith Field Guide (Treatise Appendix E), Collective Ego Playbook, WSJ + NR Inversion Worked Examples (calibration corpus)
-- **Output Summary:** Single unified Editorial Board column in markdown — three structurally-separated and labeled angles in the Board's collective institutional voice; published direct to the website with no further review when self-evaluation passes (≥4 on every criterion + Bandura self-audit + prohibited-moves check). Halt outputs (mutually exclusive with column): `halt_no_source`, `halt_outlet_out_of_scope`, `halt_density_below_floor`, `halt_audit_failure` — each published as an internal log entry, not posted to the website
-- **Proven Applications:** New framework — landing 2026-05-07; specification tier with two rendering variants planned (agent-mode primary; single-pass commercial secondary, with documented drift risk concentrated at Layer 6 parody drafting and Layer 9 Bandura self-audit)
-- **Known Limitations:** Single-pass rendering tends to perform a checkbox Bandura self-audit rather than a substantive read — agent-mode rendering preferred for production; outlet scope limited to v1 enum (WSJ, NR, comparable liberty-frame) — broader outlets fall to fallback library and may halt density-below-floor; the symmetric-application clause is mandatory but the framework cannot independently source greater-good-paramount comparison cases — caller must supply when a symmetric column is the goal; rendered execution variant files are pending creation
-- **File Location:** ~/Documents/vault/Framework — MSI Editorial Board WSJ NR Inversion.md (canonical specification); ~/Documents/vault/Framework — WSJ-NR Inversion (Agent).md and Framework — WSJ-NR Inversion (Single-Pass).md (rendered variants — pending)
+- **Purpose:** Produce one Main Street Independent Editorial Board column by surgically inverting a donor-class-favoring WSJ, National Review, or comparable liberty-frame editorial sentence by sentence. The source's facts and structure remain; evaluative and morally coded language flips to the Board's opposite pole. The retired three-angle news/parody/media-criticism package no longer ships.
+- **Problem Class:** Editorial inversion; institutional-voice authoring; tight structural mirror of one suitable liberty-frame editorial.
+- **Input Summary:** Clean editorial text already screened for suitability. Foreign-policy/military pieces, sources with no donor-class pole, attacks on Republican/conservative abuse from the right, and sources already at the Board's pole halt rather than invert into the wrong position.
+- **Output Summary:** One H1 inverted headline plus the sentence-by-sentence inverted body, with no frontmatter, byline, source narration, analysis labels, technique names, or quotations. Downstream machinery adds publication scaffolding.
+- **Proven Applications:** Active tight-mirror production framework; the 2026-05-30 v4 rewrite retired the prior multi-angle/lens architecture, and v4.1 added the attack-from-the-right / already-at-our-pole halt.
+- **Known Limitations:** Works only when the source direction is suitable for a true Main Street inversion. It flips values and framing, never facts; ambiguous direction halts.
+- **File Location:** `~/Documents/vault/Framework — MSI Editorial Board WSJ NR Inversion.md` (single canonical/executable framework).
 - **Provenance:** human-created
-- **Confidence:** low
-- **Version:** 1.1.0 (updated 2026-05-11 with methodology v1.2.5 rollout — Tier-2 carve-out extended: Sources 3 + 4 structurally excluded, §1.4.6 voice-corpus N/A, §1.4.7 past-work corpus + self-reference DOES apply to institutional voice)
-- **Delivers:** Single Editorial Board column from one editorial-page artifact (the standard production case); one of four typed halt notices (no source available, outlet out of scope, technique density below floor, audit failure within rewrite budget) when production cannot succeed
+- **Confidence:** high
+- **Version:** 4.1.0 (2026-06-04; tight-mirror inversion plus wrong-direction halt conditions)
+- **Delivers:** One standalone inversion editorial or a typed `halt_no_source` / `halt_unsuitable_for_inversion` notice.
 
 ### Ashley Wagner Column
 
