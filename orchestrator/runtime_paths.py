@@ -381,6 +381,7 @@ LOGS_DIR = ORA_HOME / "logs"
 SCRATCH_DIR = _env_dir("ORA_SCRATCH", str(ORA_HOME), "scratch")
 DOCUMENTS = _INITIAL_ROOTS.documents
 VAULT = _INITIAL_ROOTS.vault
+VAULT_ORA = VAULT / "Projects" / "Ora"
 CONVERSATIONS = _INITIAL_ROOTS.conversations
 HISTORICAL_ARCHIVE_DIR = _INITIAL_ROOTS.historical_archive
 CHROMADB_DIR = _INITIAL_ROOTS.chromadb
@@ -388,6 +389,7 @@ CHROMADB_DIR = _INITIAL_ROOTS.chromadb
 # String forms for the many os.path-based consumers (dispatcher, tool_events).
 WORKSPACE = str(ORA_HOME)
 VAULT_STR = str(VAULT)
+VAULT_ORA_STR = str(VAULT_ORA)
 CONVERSATIONS_STR = str(CONVERSATIONS)
 DATA_DIR_STR = str(DATA_DIR)
 CONFIG_DIR_STR = str(CONFIG_DIR)

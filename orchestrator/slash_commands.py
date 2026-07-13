@@ -737,7 +737,7 @@ def _cmd_deny(args: list[str]) -> str:
 # ---------- /cleaning — Engram Cleaning Framework ----------
 
 
-_CLEANING_QUEUE_FILE = os.path.join(VAULT_DIR, "Working — Engram Cleaning Queue.md")
+_CLEANING_QUEUE_FILE = os.path.join(_rp.VAULT_ORA_STR, "Working — Engram Cleaning Queue.md")
 
 
 def _cleaning_queue_status() -> tuple[int, int, str]:
@@ -894,7 +894,7 @@ def _cmd_cleaning(args: list[str]) -> str:
 # ---------- /news — News Supersession Framework ----------
 
 
-_NEWS_QUEUE_FILE = os.path.join(VAULT_DIR, "Working — News Supersession Queue.md")
+_NEWS_QUEUE_FILE = os.path.join(_rp.VAULT_ORA_STR, "Working — News Supersession Queue.md")
 
 
 def _news_queue_status() -> tuple[int, int, str]:
