@@ -58,10 +58,43 @@ except ImportError:  # pragma: no cover - package-qualified import context
 
 ORA_DIR = _rp.WORKSPACE
 DATA_DIR = _rp.DATA_DIR_STR
-OVERSIGHT_DATA_DIR = os.path.join(DATA_DIR, "oversight")
 STATE_FILE = os.path.join(DATA_DIR, "maintenance-state.json")
 RESULTS_FILE = os.path.join(DATA_DIR, "maintenance-results.jsonl")
-HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "maintenance-scheduler-heartbeat.json")
+_HEARTBEAT_BASENAME = "maintenance-scheduler-heartbeat.json"
+
+
+def _oversight_data_dir() -> str:
+    # Resolved at CALL time (not baked at import) so it tracks the live
+    # DATA_DIR / ORA_HOME regardless of import ordering — baking it froze a
+    # stale tempdir when this module was first imported under a test that had
+    # relocated runtime_paths.DATA_DIR_STR, splitting the writer from
+    # oversight_health's live reader in a full-group run. An explicit
+    # monkeypatch of the module attribute still wins (oversight_sandbox /
+    # suites set a real global via mock.patch.object); __getattr__ surfaces the
+    # live value otherwise. Mirrors mlx_mutex._default_heartbeat_path (PR #240).
+    # Reads _rp.DATA_DIR_STR (not the import-baked module-level DATA_DIR).
+    override = globals().get("OVERSIGHT_DATA_DIR")
+    if override is not None:
+        return override
+    return os.path.join(_rp.DATA_DIR_STR, "oversight")
+
+
+def _heartbeat_file() -> str:
+    override = globals().get("HEARTBEAT_FILE")
+    if override is not None:
+        return override
+    return os.path.join(_oversight_data_dir(), _HEARTBEAT_BASENAME)
+
+
+def __getattr__(name: str) -> str:
+    # PEP 562: keep OVERSIGHT_DATA_DIR / HEARTBEAT_FILE readable as module
+    # attributes (test_portability's heartbeat writer/reader agreement, the
+    # sandbox's basename probe) while resolving them live per access.
+    if name == "OVERSIGHT_DATA_DIR":
+        return _oversight_data_dir()
+    if name == "HEARTBEAT_FILE":
+        return _heartbeat_file()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 CONTROL_DOC_NAME = "Reference — Ora Periodic Maintenance.md"
 
@@ -114,8 +147,8 @@ def _now_iso() -> str:
 
 
 def _write_heartbeat():
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
-    with open(HEARTBEAT_FILE, "w") as f:
+    os.makedirs(_oversight_data_dir(), exist_ok=True)
+    with open(_heartbeat_file(), "w") as f:
         json.dump({"watcher": "maintenance_scheduler", "beat_at": _now_iso()}, f)
 
 

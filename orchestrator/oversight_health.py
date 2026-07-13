@@ -30,7 +30,29 @@ except ImportError:  # pragma: no cover - package-qualified import context
 # must resolve the same heartbeat files the watcher writers produce —
 # test_portability asserts the pairing module by module.
 WORKSPACE = _rp.WORKSPACE
-OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
+
+
+def _oversight_data_dir() -> str:
+    # Resolved at CALL time (not baked at import) so the reader tracks the live
+    # DATA_DIR / ORA_HOME regardless of import ordering. The watcher/heartbeat
+    # writers now resolve the same way, so writer and reader can never split
+    # because either was first imported under a relocated
+    # runtime_paths.DATA_DIR_STR (the risk-gate-before-portability bug class).
+    # An explicit monkeypatch of the module attribute still wins; __getattr__
+    # surfaces the live value otherwise. Mirrors mlx_mutex (PR #240).
+    override = globals().get("OVERSIGHT_DATA_DIR")
+    if override is not None:
+        return override
+    return os.path.join(_rp.DATA_DIR_STR, "oversight")
+
+
+def __getattr__(name: str) -> str:
+    # PEP 562: keep OVERSIGHT_DATA_DIR readable as a module attribute
+    # (test_portability's writer/reader agreement checks) while resolving it
+    # live per access.
+    if name == "OVERSIGHT_DATA_DIR":
+        return _oversight_data_dir()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # Expected intervals — must match oversight_daemon defaults
 HEARTBEAT_INTERVALS = {
@@ -59,7 +81,7 @@ def heartbeat_path(watcher_name: str) -> str:
     # filename. This mismatch caused check_health() to read None for
     # every watcher and unconditionally report "daemon_down."
     on_disk_name = watcher_name.replace("_", "-")
-    return os.path.join(OVERSIGHT_DATA_DIR, f"{on_disk_name}-heartbeat.json")
+    return os.path.join(_oversight_data_dir(), f"{on_disk_name}-heartbeat.json")
 
 
 def read_heartbeat(watcher_name: str) -> Optional[float]:
@@ -246,10 +268,11 @@ def format_warnings_as_chat_note(warnings: list[dict]) -> str:
 
 def _oversight_active() -> bool:
     """Return True if oversight is in use (any project registered)."""
-    if not os.path.isdir(OVERSIGHT_DATA_DIR):
+    oversight_dir = _oversight_data_dir()
+    if not os.path.isdir(oversight_dir):
         return False
-    for entry in os.listdir(OVERSIGHT_DATA_DIR):
-        full = os.path.join(OVERSIGHT_DATA_DIR, entry)
+    for entry in os.listdir(oversight_dir):
+        full = os.path.join(oversight_dir, entry)
         if os.path.isdir(full):
             if (os.path.isfile(os.path.join(full, "ped-path.json"))
                     or os.path.isfile(os.path.join(full, "workflow-pointer.json"))):

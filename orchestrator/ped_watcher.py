@@ -38,8 +38,40 @@ except ImportError:  # pragma: no cover - package-qualified import context
 # watcher/heartbeat family moves together so pointer/state writers and
 # readers can never split under relocation.
 WORKSPACE = _rp.WORKSPACE
-OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
-HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "ped-watcher-heartbeat.json")
+_HEARTBEAT_BASENAME = "ped-watcher-heartbeat.json"
+
+
+def _oversight_data_dir() -> str:
+    # Resolved at CALL time (not baked at import) so it tracks the live
+    # DATA_DIR / ORA_HOME regardless of import ordering — baking it froze a
+    # stale tempdir when this module was first imported under a test that had
+    # relocated runtime_paths.DATA_DIR_STR, splitting the writer from
+    # oversight_health's live reader in a full-group run. An explicit
+    # monkeypatch of the module attribute still wins (oversight_sandbox /
+    # suites set a real global via mock.patch.object); __getattr__ surfaces the
+    # live value otherwise. Mirrors mlx_mutex._default_heartbeat_path (PR #240).
+    override = globals().get("OVERSIGHT_DATA_DIR")
+    if override is not None:
+        return override
+    return os.path.join(_rp.DATA_DIR_STR, "oversight")
+
+
+def _heartbeat_file() -> str:
+    override = globals().get("HEARTBEAT_FILE")
+    if override is not None:
+        return override
+    return os.path.join(_oversight_data_dir(), _HEARTBEAT_BASENAME)
+
+
+def __getattr__(name: str) -> str:
+    # PEP 562: keep OVERSIGHT_DATA_DIR / HEARTBEAT_FILE readable as module
+    # attributes (test_portability's writer/reader agreement checks, the
+    # sandbox's basename probe) while resolving them live per access.
+    if name == "OVERSIGHT_DATA_DIR":
+        return _oversight_data_dir()
+    if name == "HEARTBEAT_FILE":
+        return _heartbeat_file()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # Debounce window — see Reference — Meta-Layer Architecture §10 O6
 DEBOUNCE_SECONDS = 2
@@ -57,20 +89,21 @@ class MilestoneClaimedEvent:
 
 
 def project_pointer_path(nexus: str) -> str:
-    return os.path.join(OVERSIGHT_DATA_DIR, nexus, "ped-path.json")
+    return os.path.join(_oversight_data_dir(), nexus, "ped-path.json")
 
 
 def project_state_path(nexus: str) -> str:
-    return os.path.join(OVERSIGHT_DATA_DIR, nexus, "last-ped-state.json")
+    return os.path.join(_oversight_data_dir(), nexus, "last-ped-state.json")
 
 
 def list_known_projects() -> list[str]:
     """Return the list of project nexus IDs that have an oversight pointer."""
-    if not os.path.isdir(OVERSIGHT_DATA_DIR):
+    oversight_dir = _oversight_data_dir()
+    if not os.path.isdir(oversight_dir):
         return []
     out = []
-    for name in sorted(os.listdir(OVERSIGHT_DATA_DIR)):
-        full = os.path.join(OVERSIGHT_DATA_DIR, name)
+    for name in sorted(os.listdir(oversight_dir)):
+        full = os.path.join(oversight_dir, name)
         if os.path.isdir(full) and os.path.isfile(os.path.join(full, "ped-path.json")):
             out.append(name)
     return out
@@ -91,7 +124,7 @@ def load_ped_path(nexus: str) -> Optional[str]:
 
 def write_ped_pointer(nexus: str, ped_path: str):
     """Write the per-project pointer file."""
-    nexus_dir = os.path.join(OVERSIGHT_DATA_DIR, nexus)
+    nexus_dir = os.path.join(_oversight_data_dir(), nexus)
     os.makedirs(nexus_dir, exist_ok=True)
     pointer = project_pointer_path(nexus)
     with open(pointer, "w") as f:
@@ -112,7 +145,7 @@ def load_last_state(nexus: str) -> Optional[dict]:
 
 def write_state(nexus: str, state: dict):
     """Persist the PED state snapshot."""
-    nexus_dir = os.path.join(OVERSIGHT_DATA_DIR, nexus)
+    nexus_dir = os.path.join(_oversight_data_dir(), nexus)
     os.makedirs(nexus_dir, exist_ok=True)
     path = project_state_path(nexus)
     with open(path, "w") as f:
@@ -197,8 +230,8 @@ def sweep(emit_event=None) -> list[MilestoneClaimedEvent]:
 
 
 def _write_heartbeat():
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
-    with open(HEARTBEAT_FILE, "w") as f:
+    os.makedirs(_oversight_data_dir(), exist_ok=True)
+    with open(_heartbeat_file(), "w") as f:
         json.dump({"watcher": "ped_watcher", "beat_at": _now_iso()}, f)
 
 

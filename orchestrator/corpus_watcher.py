@@ -40,8 +40,41 @@ except ImportError:  # pragma: no cover - package-qualified import context
 # Roots flow from runtime_paths (ORA_HOME-relocatable) with the rest of
 # the watcher/heartbeat family.
 WORKSPACE = _rp.WORKSPACE
-OVERSIGHT_DATA_DIR = os.path.join(_rp.DATA_DIR_STR, "oversight")
-HEARTBEAT_FILE = os.path.join(OVERSIGHT_DATA_DIR, "corpus-watcher-heartbeat.json")
+_HEARTBEAT_BASENAME = "corpus-watcher-heartbeat.json"
+
+
+def _oversight_data_dir() -> str:
+    # Resolved at CALL time (not baked at import) so it tracks the live
+    # DATA_DIR / ORA_HOME regardless of import ordering — baking it froze a
+    # stale tempdir when this module was first imported under a test that had
+    # relocated runtime_paths.DATA_DIR_STR, splitting the writer from
+    # oversight_health's live reader in a full-group run. An explicit
+    # monkeypatch of the module attribute still wins (oversight_sandbox /
+    # suites set a real global via mock.patch.object); __getattr__ surfaces the
+    # live value otherwise. Mirrors mlx_mutex._default_heartbeat_path (PR #240).
+    override = globals().get("OVERSIGHT_DATA_DIR")
+    if override is not None:
+        return override
+    return os.path.join(_rp.DATA_DIR_STR, "oversight")
+
+
+def _heartbeat_file() -> str:
+    override = globals().get("HEARTBEAT_FILE")
+    if override is not None:
+        return override
+    return os.path.join(_oversight_data_dir(), _HEARTBEAT_BASENAME)
+
+
+def __getattr__(name: str) -> str:
+    # PEP 562: keep OVERSIGHT_DATA_DIR / HEARTBEAT_FILE readable as module
+    # attributes (test_portability, workflow_spec_sweeper's cross-read at
+    # corpus_watcher.OVERSIGHT_DATA_DIR, the sandbox's basename probe) while
+    # resolving them live per access.
+    if name == "OVERSIGHT_DATA_DIR":
+        return _oversight_data_dir()
+    if name == "HEARTBEAT_FILE":
+        return _heartbeat_file()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 @dataclass
@@ -62,21 +95,22 @@ class CorpusEvent:
 
 
 def workflow_pointer_path(workflow_id: str) -> str:
-    return os.path.join(OVERSIGHT_DATA_DIR, workflow_id, "workflow-pointer.json")
+    return os.path.join(_oversight_data_dir(), workflow_id, "workflow-pointer.json")
 
 
 def corpus_state_path(workflow_id: str, instance_filename: str) -> str:
     safe_name = instance_filename.replace("/", "__").replace(" ", "_")
-    return os.path.join(OVERSIGHT_DATA_DIR, workflow_id, f"corpus-state-{safe_name}.json")
+    return os.path.join(_oversight_data_dir(), workflow_id, f"corpus-state-{safe_name}.json")
 
 
 def list_known_workflows() -> list[str]:
     """Return the list of workflow IDs that have an oversight pointer."""
-    if not os.path.isdir(OVERSIGHT_DATA_DIR):
+    oversight_dir = _oversight_data_dir()
+    if not os.path.isdir(oversight_dir):
         return []
     out = []
-    for name in sorted(os.listdir(OVERSIGHT_DATA_DIR)):
-        full = os.path.join(OVERSIGHT_DATA_DIR, name)
+    for name in sorted(os.listdir(oversight_dir)):
+        full = os.path.join(oversight_dir, name)
         if os.path.isdir(full) and os.path.isfile(os.path.join(full, "workflow-pointer.json")):
             out.append(name)
     return out
@@ -90,7 +124,7 @@ def write_workflow_pointer(
     corpus_instance_directory: str,
 ):
     """Register a workflow for corpus oversight."""
-    workflow_dir = os.path.join(OVERSIGHT_DATA_DIR, workflow_id)
+    workflow_dir = os.path.join(_oversight_data_dir(), workflow_id)
     os.makedirs(workflow_dir, exist_ok=True)
     pointer = workflow_pointer_path(workflow_id)
     with open(pointer, "w") as f:
@@ -127,7 +161,7 @@ def load_corpus_state(workflow_id: str, instance_filename: str) -> Optional[dict
 
 
 def write_corpus_state(workflow_id: str, instance_filename: str, state: dict):
-    workflow_dir = os.path.join(OVERSIGHT_DATA_DIR, workflow_id)
+    workflow_dir = os.path.join(_oversight_data_dir(), workflow_id)
     os.makedirs(workflow_dir, exist_ok=True)
     with open(corpus_state_path(workflow_id, instance_filename), "w") as f:
         json.dump(state, f, indent=2)
@@ -305,8 +339,8 @@ def sweep(emit_event=None) -> list[CorpusEvent]:
 
 
 def _write_heartbeat():
-    os.makedirs(OVERSIGHT_DATA_DIR, exist_ok=True)
-    with open(HEARTBEAT_FILE, "w") as f:
+    os.makedirs(_oversight_data_dir(), exist_ok=True)
+    with open(_heartbeat_file(), "w") as f:
         json.dump({"watcher": "corpus_watcher", "beat_at": _now_iso()}, f)
 
 
