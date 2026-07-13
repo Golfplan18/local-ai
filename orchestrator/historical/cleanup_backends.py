@@ -425,11 +425,20 @@ class OpenRouterClient:
 
     @staticmethod
     def resolve_model(model_id: Optional[str]) -> str:
-        """Map a pipeline hint to an OpenRouter slug (env override wins)."""
+        """Map a pipeline hint to an OpenRouter slug (env override wins).
+
+        Hints that are already OpenRouter slugs (contain a ``/`` separator
+        such as ``xiaomi/mimo-v2.5-pro``) pass through unchanged so the
+        extraction model can be any OpenRouter-hosted model without
+        requiring a map entry per vendor.
+        """
         forced = os.environ.get(ENV_OPENROUTER_MODEL, "").strip()
         if forced:
             return forced
         mid = (model_id or "").lower()
+        # Already an OpenRouter slug — pass through directly.
+        if "/" in mid:
+            return mid
         return _OPENROUTER_MODEL_MAP.get(mid, DEFAULT_OPENROUTER_MODEL)
 
     # ----- stats -----
