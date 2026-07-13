@@ -10146,6 +10146,105 @@ def conversations_fetch(conversation_id):
     return json.dumps(data)
 
 
+# -- Trace Walk (Chunk 2): safe read-side projections + per-trace pinning ---
+
+@app.route("/api/trace/list/<conversation_id>", methods=["GET"])
+def api_trace_list(conversation_id):
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    refs = _pt.list_trace_refs(conversation_id)
+    return json.dumps({"conversation_id": conversation_id, "trace_refs": refs})
+
+
+@app.route("/api/trace/manifest/<conversation_id>/<turn_ts>", methods=["GET"])
+def api_trace_manifest(conversation_id, turn_ts):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    data = _pt.trace_manifest_projection(trace_ref)
+    if data is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    return json.dumps(data)
+
+
+@app.route("/api/trace/step/<conversation_id>/<turn_ts>/<step_name>", methods=["GET"])
+def api_trace_step(conversation_id, turn_ts, step_name):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    data = _pt.trace_step_projection(trace_ref, step_name)
+    if data is None:
+        return json.dumps({
+            "error": "step not found or not allowed",
+            "trace_ref": trace_ref,
+            "step_name": step_name,
+        }), 404
+    return json.dumps(data)
+
+
+@app.route("/api/trace/export/<conversation_id>/<turn_ts>", methods=["GET"])
+def api_trace_export(conversation_id, turn_ts):
+    trace_ref = f"{conversation_id}/{turn_ts}"
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    rendered = _pt.trace_export_html(trace_ref)
+    if rendered is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    html_doc, filename = rendered
+    headers = {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": _pt.TRACE_EXPORT_CSP,
+    }
+    return html_doc, 200, headers
+
+
+@app.route("/api/trace/retention", methods=["POST"])
+def api_trace_retention():
+    try:
+        body = request.get_json(force=True, silent=True)
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return json.dumps({"error": "expected JSON object"}), 400
+    trace_ref_value = body.get("trace_ref")
+    pinned = body.get("pinned")
+    if not isinstance(trace_ref_value, str) or not trace_ref_value.strip():
+        return json.dumps({"error": "trace_ref must be a non-empty string"}), 400
+    if not isinstance(pinned, bool):
+        return json.dumps({"error": "pinned must be a boolean"}), 400
+    trace_ref = trace_ref_value.strip()
+    try:
+        import pipeline_trace as _pt
+    except ImportError:
+        from orchestrator import pipeline_trace as _pt
+    try:
+        manifest = _pt.set_retention_state(trace_ref, "pinned" if pinned else "default")
+    except ValueError as exc:
+        message = str(exc) or "retention update rejected"
+        status = 409 if "open trace" in message else 400
+        return json.dumps({"error": message, "trace_ref": trace_ref}), status
+    if manifest is None:
+        return json.dumps({"error": "trace_ref not found", "trace_ref": trace_ref}), 404
+    return json.dumps({
+        "ok": True,
+        "trace_ref": trace_ref,
+        "retention_state": manifest.get("retention_state"),
+    })
+
+
 @app.route("/api/conversation/<conversation_id>/mark-read", methods=["POST"])
 def conversations_mark_read(conversation_id):
     """Update the conversation's ``last_read_at`` to now (or a supplied
@@ -16749,6 +16848,8 @@ def api_oversight_paused():
             "project_nexus": (e.event or {}).get("project_nexus", ""),
             "event_type": (e.event or {}).get("event_type", ""),
             "reasoning_excerpt": reasoning,
+            "trace_ref": e.trace_ref,
+            "trace_step": (e.event or {}).get("trace_step", ""),
         })
     return json.dumps({"entries": rows}), 200, {"Content-Type": "application/json"}
 

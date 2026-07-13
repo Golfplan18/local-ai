@@ -1556,5 +1556,192 @@ class TestRunPipelineFinalization(unittest.TestCase):
             self.boot.reset_conversation_tag_context(outer_tag)
 
 
+class TestTraceWalkProjection(TraceManifestBase):
+    def _completed_trace(self):
+        d = self.start("conv-walk")
+        self.touch_step(d, "step1-phase-a", {"prompt": "<script>x</script>"})
+        Path(os.path.join(d, "step1-phase-a.md")).write_text(
+            "# Heading\n\n<script>alert(1)</script>\n\n[bad](https://example.test)\n\n![img](x)",
+            encoding="utf-8",
+        )
+        pipeline_trace.write_step_health(d, {"step1-phase-a": [True, "ok"]}, 3, [])
+        pipeline_trace.finalize_manifest(d, kind="chat", gear=3)
+        return d, pipeline_trace.trace_ref_for_dir(d)
+
+    def test_step_projection_only_allows_manifest_steps_and_step_health(self):
+        _d, ref = self._completed_trace()
+        self.assertIsNotNone(
+            pipeline_trace.trace_step_projection(ref, "step1-phase-a"))
+        self.assertIsNotNone(
+            pipeline_trace.trace_step_projection(ref, "step-health"))
+        self.assertIsNone(pipeline_trace.trace_step_projection(ref, "metadata"))
+        self.assertIsNone(
+            pipeline_trace.trace_step_projection(ref, "trace-manifest"))
+        self.assertIsNone(
+            pipeline_trace.trace_step_projection(ref, "model-call-config"))
+        self.assertIsNone(
+            pipeline_trace.trace_step_projection(ref, "step999-not-real"))
+        self.assertIsNone(
+            pipeline_trace.trace_step_projection(ref, "../step1-phase-a"))
+
+    def test_manifest_projection_surfaces_missing_steps(self):
+        _d, ref = self._completed_trace()
+        projection = pipeline_trace.trace_manifest_projection(ref)
+        self.assertIn("step2-context", projection["missing_steps"])
+        names = [row["step_name"] for row in projection["steps"]]
+        self.assertIn("step2-context", names)
+        self.assertIn("step-health", names)
+
+    def test_step_projection_reports_oversized_markdown(self):
+        d, ref = self._completed_trace()
+        Path(os.path.join(d, "step1-phase-a.md")).write_text(
+            "x" * (pipeline_trace.MAX_TRACE_TEXT_BYTES + 1),
+            encoding="utf-8",
+        )
+        step = pipeline_trace.trace_step_projection(ref, "step1-phase-a")
+        self.assertIsNone(step["markdown"])
+        self.assertTrue(any("file too large" in e for e in step["errors"]))
+
+    def test_export_escapes_trace_content_and_omits_active_urls(self):
+        _d, ref = self._completed_trace()
+        html_doc, filename = pipeline_trace.trace_export_html(ref)
+        self.assertTrue(filename.startswith("ora-trace-conv-walk-"))
+        self.assertIn("Content-Security-Policy", html_doc)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html_doc)
+        self.assertNotIn("<script", html_doc.lower())
+        self.assertNotIn("href=", html_doc.lower())
+        self.assertNotIn("<img", html_doc.lower())
+
+    def test_list_trace_refs_filters_non_manifest_dirs(self):
+        d, ref = self._completed_trace()
+        os.makedirs(os.path.join(os.path.dirname(d), "not-a-trace"))
+        self.assertEqual(pipeline_trace.list_trace_refs("conv-walk"), [ref])
+
+    def test_list_trace_refs_holds_runtime_lock_for_discovery_and_resolution(self):
+        d, ref = self._completed_trace()
+        locked = {"active": False}
+        observed = []
+
+        class FakeLock:
+            def __enter__(self):
+                locked["active"] = True
+                observed.append("enter")
+
+            def __exit__(self, exc_type, exc, tb):
+                observed.append("exit")
+                locked["active"] = False
+
+        def fake_lock(conversation_id):
+            self.assertEqual(conversation_id, "conv-walk")
+            return FakeLock()
+
+        def fake_list_traces(conversation_id):
+            self.assertEqual(conversation_id, "conv-walk")
+            self.assertTrue(locked["active"], "enumeration must run under runtime lock")
+            observed.append("list")
+            return [d]
+
+        def fake_resolve_trace_ref(candidate):
+            self.assertEqual(candidate, ref)
+            self.assertTrue(locked["active"], "resolution must run under runtime lock")
+            observed.append("resolve")
+            return d
+
+        with mock.patch.object(pipeline_trace._rp, "conversation_lifecycle_lock", side_effect=fake_lock), \
+             mock.patch.object(pipeline_trace, "list_traces", side_effect=fake_list_traces), \
+             mock.patch.object(pipeline_trace, "resolve_trace_ref", side_effect=fake_resolve_trace_ref):
+            self.assertEqual(pipeline_trace.list_trace_refs("conv-walk"), [ref])
+        self.assertEqual(observed, ["enter", "list", "resolve", "exit"])
+
+
+class TestTraceWalkServerRoutes(TraceManifestBase):
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
+        import server  # noqa: WPS433
+        cls.S = server
+
+    def setUp(self):
+        super().setUp()
+        import orchestrator.pipeline_trace as opt  # noqa: WPS433
+        patcher = mock.patch.object(opt, "TRACE_ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_export_route_is_attachment_with_hardening_headers(self):
+        d = self.start("conv-route")
+        self.touch_step(d, "step1-phase-a")
+        pipeline_trace.write_step_health(d, {}, 3, [])
+        pipeline_trace.finalize_manifest(d, kind="chat", gear=3)
+        turn = os.path.basename(d)
+        client = self.S.app.test_client()
+        response = client.get(f"/api/trace/export/conv-route/{turn}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response.headers.get("Content-Disposition", ""))
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertIn("default-src 'none'", response.headers.get("Content-Security-Policy", ""))
+
+    def test_retention_route_preserves_lineage_fields(self):
+        d = self.start("conv-route-pin")
+        pipeline_trace.finalize_manifest(
+            d, kind="framework-run", status_hint="completed",
+            framework_id="fw", child_trace_refs=["conv-route-pin/child"],
+        )
+        turn = os.path.basename(d)
+        client = self.S.app.test_client()
+        response = client.post(
+            "/api/trace/retention",
+            json={"trace_ref": f"conv-route-pin/{turn}", "pinned": True},
+        )
+        self.assertEqual(response.status_code, 200)
+        m = self.manifest(d)
+        self.assertEqual(m["retention_state"], "pinned")
+        self.assertEqual(m["framework_id"], "fw")
+        self.assertEqual(m["child_trace_refs"], ["conv-route-pin/child"])
+
+    def test_retention_route_requires_boolean_pinned(self):
+        d = self.start("conv-route-schema")
+        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed")
+        turn = os.path.basename(d)
+        client = self.S.app.test_client()
+        response = client.post(
+            "/api/trace/retention",
+            json={"trace_ref": f"conv-route-schema/{turn}", "pinned": "false"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.manifest(d)["retention_state"], "default")
+
+    def test_retention_route_rejects_open_trace(self):
+        d = self.start("conv-route-open-pin")
+        turn = os.path.basename(d)
+        client = self.S.app.test_client()
+        response = client.post(
+            "/api/trace/retention",
+            json={"trace_ref": f"conv-route-open-pin/{turn}", "pinned": True},
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(self.manifest(d)["retention_state"], "default")
+
+
+class TestExecutionGateTraceRefs(TraceManifestBase):
+    def test_execution_gate_paused_entry_gets_exact_trace_ref(self):
+        import tool_events
+        d = self.start("conv-gate")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        captured = {}
+
+        def fake_add_entry(entry):
+            captured.update(entry)
+            return SimpleNamespace(id="queue-1")
+
+        with mock.patch("oversight_queue.add_entry", side_effect=fake_add_entry):
+            qid = tool_events._queue_gate_entry(
+                "danger", "hash", "needs approval", "delete it",
+                {"conversation_id": "conv-gate", "trace_dir": d},
+            )
+        self.assertEqual(qid, "queue-1")
+        self.assertEqual(captured["event"]["trace_ref"], ref)
+
+
 if __name__ == "__main__":
     unittest.main()
