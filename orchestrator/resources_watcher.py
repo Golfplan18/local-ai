@@ -401,7 +401,10 @@ def _atomic_create_text(path: Path, text: str) -> None:
         prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent),
     )
     try:
-        os.fchmod(fd, 0o600)
+        if os.name != "nt":
+            # POSIX-only file mode; Windows has no equivalent and os.fchmod
+            # is a no-op there. Skip rather than rely on the silent no-op.
+            os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             fd = -1
             stream.write(text)
@@ -409,7 +412,8 @@ def _atomic_create_text(path: Path, text: str) -> None:
             os.fsync(stream.fileno())
         # Hard-linking the complete temp inode is atomic and, unlike replace,
         # refuses an existing destination.  The temp and target share a parent,
-        # so they are necessarily on the same filesystem.
+        # so they are necessarily on the same filesystem (Windows os.link
+        # works within a single volume, which the shared parent guarantees).
         os.link(temporary, path, follow_symlinks=False)
     finally:
         if fd >= 0:
