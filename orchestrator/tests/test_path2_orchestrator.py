@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -376,6 +377,19 @@ class TestEmitChunksForAllSessions(unittest.TestCase):
         self.assertEqual(len(a_records["ids"]), 2)
         for m in a_records["metadatas"]:
             self.assertEqual(m["chain_label"], "label-a")
+
+    def test_collection_open_failure_raises_instead_of_succeeding_empty(self):
+        source = "~/raw/A.md"
+        paths = [self._make_pair_in_session(source, 1)]
+        with mock.patch("chromadb.PersistentClient",
+                        side_effect=RuntimeError("database malformed")):
+            with self.assertRaisesRegex(RuntimeError, "open ChromaDB"):
+                emit_chunks_for_all_sessions(
+                    {source: paths},
+                    conversations_dir=self.conv_dir,
+                    chromadb_path=self.chroma,
+                    max_workers=1,
+                )
 
 
 if __name__ == "__main__":

@@ -132,6 +132,14 @@ def manifest_record_session(
     totals["chunks_skipped"]     = totals.get("chunks_skipped", 0) + result.chunks_skipped
 
 
+def _successful_completed_sessions(manifest: dict) -> set[str]:
+    """Return session paths whose latest emission finished without errors."""
+    return {
+        source for source, entry in manifest.get("completed_sessions", {}).items()
+        if not (isinstance(entry, dict) and entry.get("errors"))
+    }
+
+
 # ---------------------------------------------------------------------------
 # Stage A — Chain detection
 # ---------------------------------------------------------------------------
@@ -281,7 +289,7 @@ def run_chunk_emission(
     manifest = load_manifest(manifest_path)
     if rebuild_manifest:
         manifest = _empty_manifest()
-    completed = set(manifest.get("completed_sessions", {}).keys())
+    completed = _successful_completed_sessions(manifest)
 
     targets = {
         source: paths

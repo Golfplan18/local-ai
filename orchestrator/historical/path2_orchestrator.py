@@ -498,13 +498,12 @@ def emit_chunks_for_all_sessions(
         client = chromadb.PersistentClient(path=str(chromadb_path))
         collection = get_or_create_collection(client, "conversations")
     except Exception as e:
-        for source in sessions_to_paths:
-            results[source] = SessionEmissionResult(
-                source_chat=source,
-                session_id=derive_session_id(source),
-                errors=[f"open chromadb: {e}"],
-            )
-        return results
+        # A collection-open failure means no session can make progress.  The
+        # old behavior returned synthetic error results without invoking the
+        # progress callback, so the caller reported a zero-work success and
+        # ingest exited 0.  Fail loudly instead: supervisors must retry or
+        # stop, never mistake a broken database for a drained queue.
+        raise RuntimeError(f"open ChromaDB conversations collection: {e}") from e
 
     def _process(source: str, paths: list[str]) -> tuple[str, SessionEmissionResult]:
         sid = derive_session_id(source)
