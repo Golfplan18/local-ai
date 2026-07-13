@@ -5413,6 +5413,48 @@ def api_projects_mom_set(nexus):
     folder_name = rec.get("folder_name")
     try:
         _pm.validate_folder_identity(folder_name, vault_root=_om.vault_root())
+    except (_pm.ProjectStorageError, _om.MatrixError) as exc:
+        return _json_response(
+            {"ok": False, "migration_required": True, "error": str(exc)}, 409)
+    # Write gate: MOM writes require explicit schema-valid project_type: [project].
+    try:
+        from matrix_classifier import classify_matrix as _cm_classify, schema_valid as _cm_schema_valid, InvalidProjectTypeError
+    except ImportError:
+        from orchestrator.matrix_classifier import classify_matrix as _cm_classify, schema_valid as _cm_schema_valid, InvalidProjectTypeError
+    try:
+        _m_path = _om.resolve_matrix_path(nexus, folder_name)
+        if _m_path is not None:
+            _m_text = _m_path.read_text(encoding="utf-8")
+            _m_fm, _ = _om._split_frontmatter(_m_text)
+            _m_class, _m_warns = _cm_classify(_m_fm, str(_m_path))
+            if _m_class != "project" or not _cm_schema_valid(_m_fm):
+                return _json_response({
+                    "ok": False,
+                    "error": (
+                        "MOM writes require explicit project_type: [project] in the "
+                        "Matrix frontmatter. Current classification is "
+                        f"{_m_class!r} with schema_valid={_cm_schema_valid(_m_fm)}. "
+                        "Add project_type:\\n  - project to the Matrix file first."
+                    ),
+                    "write_gate": {
+                        "classification": _m_class,
+                        "schema_valid": _cm_schema_valid(_m_fm),
+                        "warnings": _m_warns,
+                    },
+                }, 403)
+    except InvalidProjectTypeError as exc:
+        return _json_response({
+            "ok": False,
+            "error": f"Matrix classification invalid: {exc}",
+            "write_gate": {
+                "classification": None,
+                "schema_valid": False,
+                "warnings": [str(exc)],
+            },
+        }, 403)
+    except Exception:
+        pass  # If gate check fails for other reasons, let write_mom proceed.
+    try:
         mom = _om.write_mom(
             nexus, folder_name,
             display_name=rec.get("display_name") or rec.get("name") or nexus,
