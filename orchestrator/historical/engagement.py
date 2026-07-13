@@ -18,26 +18,44 @@ A `?` is treated as a question marker EXCEPT in code blocks, inline
 code, and URLs. (Pre-sanitization step removes those before the
 question check.)
 
-Every strip is logged as JSONL to `~/ora/data/engagement-strips.log`
+Every strip is logged as JSONL to `<ora-data>/engagement-strips.log`
 so the user can audit aggressive removals on the pilot batch.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+
+from orchestrator import runtime_paths as _rp
 
 
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
 
-ENGAGEMENT_LOG_DEFAULT = os.path.expanduser("~/ora/data/engagement-strips.log")
+_INITIAL_ENGAGEMENT_LOG_DEFAULT = str(
+    _rp.DATA_DIR / "engagement-strips.log"
+)
+ENGAGEMENT_LOG_DEFAULT = _INITIAL_ENGAGEMENT_LOG_DEFAULT
+
+
+def _default_engagement_log_path() -> str:
+    """Resolve the live audit log while preserving the public patch hook."""
+    if ENGAGEMENT_LOG_DEFAULT != _INITIAL_ENGAGEMENT_LOG_DEFAULT:
+        return ENGAGEMENT_LOG_DEFAULT
+    roots = _rp.resolve_runtime_roots()
+    return str(roots.ora_home / "data" / "engagement-strips.log")
+
+
+def _resolve_log_path(log_path: Optional[str]) -> Path:
+    if log_path is None:
+        return Path(_default_engagement_log_path())
+    return Path(log_path).expanduser()
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +159,7 @@ def strip_engagement(ai_response: str) -> tuple[str, list[StripRecord]]:
 def log_strips(strip_records: list[StripRecord],
                *,
                context: Optional[dict] = None,
-               log_path: str = ENGAGEMENT_LOG_DEFAULT) -> int:
+               log_path: Optional[str] = None) -> int:
     """Append strip records to the audit log as JSONL.
 
     `context` is a small dict identifying the source (source_path,
@@ -152,7 +170,7 @@ def log_strips(strip_records: list[StripRecord],
     """
     if not strip_records:
         return 0
-    log_file = Path(log_path).expanduser()
+    log_file = _resolve_log_path(log_path)
     log_file.parent.mkdir(parents=True, exist_ok=True)
     ctx = dict(context or {})
     written = 0
@@ -175,7 +193,7 @@ def log_strips(strip_records: list[StripRecord],
 def strip_and_log(ai_response: str,
                    *,
                    context: Optional[dict] = None,
-                   log_path: str = ENGAGEMENT_LOG_DEFAULT
+                   log_path: Optional[str] = None
                    ) -> tuple[str, list[StripRecord]]:
     """Convenience: strip engagement then log to file. Returns the
     same (cleaned, records) tuple as strip_engagement."""
