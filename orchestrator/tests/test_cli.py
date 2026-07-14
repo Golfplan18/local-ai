@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 from datetime import date
+from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -16,6 +18,7 @@ _REPO = os.path.dirname(_ORCHESTRATOR)
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
+from orchestrator.historical import cli as cli_module  # noqa: E402
 from orchestrator.historical.cli import (  # noqa: E402
     _empty_manifest,
     chat_creation_date,
@@ -205,6 +208,85 @@ class TestDateFilter(unittest.TestCase):
         self.assertTrue(passes_date_filter(
             path, from_date=date(2026, 2, 1), to_date=None,
         ))
+
+
+class TestRuntimePathDefaults(unittest.TestCase):
+
+    def _run_empty_batch(self, **kwargs):
+        client = mock.Mock()
+        with (
+            mock.patch.object(
+                cli_module, "load_manifest", return_value=_empty_manifest(),
+            ) as load_manifest_mock,
+            mock.patch.object(
+                cli_module, "load_index", return_value={"entries": []},
+            ) as load_index_mock,
+            mock.patch.object(
+                cli_module, "enumerate_input_files", return_value=[],
+            ) as enumerate_mock,
+            mock.patch.object(cli_module, "build_client", return_value=client),
+        ):
+            result = cli_module.run_batch(
+                progress_to_stderr=False, **kwargs,
+            )
+        return result, load_manifest_mock, load_index_mock, enumerate_mock
+
+    def test_omitted_defaults_relocate_at_call_time(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            conversations = root / "redirected" / "conversations"
+            ora_home = root / "Ora Home"
+            env = {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_HOME": str(ora_home),
+                "ORA_CONVERSATIONS": str(conversations),
+            }
+            with mock.patch.dict(os.environ, env, clear=True):
+                result, load_manifest_mock, load_index_mock, enumerate_mock = (
+                    self._run_empty_batch()
+                )
+
+        expected_input = str(conversations / "raw")
+        expected_data = ora_home / "data"
+        enumerate_mock.assert_called_once_with(expected_input)
+        load_manifest_mock.assert_called_once_with(
+            str(expected_data / "cleanup-manifest.json")
+        )
+        load_index_mock.assert_called_once_with(
+            str(expected_data / "vault-index.json")
+        )
+        self.assertEqual(result["input_dir"], expected_input)
+        self.assertEqual(
+            result["manifest_path"],
+            str(expected_data / "cleanup-manifest.json"),
+        )
+
+    def test_explicit_paths_win_after_relocation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            explicit_input = str(root / "explicit-input")
+            explicit_manifest = str(root / "explicit-manifest.json")
+            explicit_index = str(root / "explicit-index.json")
+            with mock.patch.dict(os.environ, {
+                "HOME": str(root / "profile"),
+                "USERPROFILE": str(root / "profile"),
+                "ORA_HOME": str(root / "relocated-home"),
+                "ORA_CONVERSATIONS": str(root / "relocated-conversations"),
+            }, clear=True):
+                result, load_manifest_mock, load_index_mock, enumerate_mock = (
+                    self._run_empty_batch(
+                        input_dir=explicit_input,
+                        manifest_path=explicit_manifest,
+                        vault_index_path=explicit_index,
+                    )
+                )
+
+        enumerate_mock.assert_called_once_with(explicit_input)
+        load_manifest_mock.assert_called_once_with(explicit_manifest)
+        load_index_mock.assert_called_once_with(explicit_index)
+        self.assertEqual(result["input_dir"], explicit_input)
+        self.assertEqual(result["manifest_path"], explicit_manifest)
 
 
 if __name__ == "__main__":

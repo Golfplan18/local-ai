@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -23,6 +24,7 @@ _REPO = os.path.dirname(_ORCHESTRATOR)
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
+from orchestrator.historical import engagement  # noqa: E402
 from orchestrator.historical.engagement import (  # noqa: E402
     StripRecord,
     log_strips,
@@ -225,6 +227,43 @@ class TestLogging(unittest.TestCase):
         with open(self.log_path, encoding="utf-8") as f:
             entries = [json.loads(line) for line in f if line.strip()]
         self.assertEqual(len(entries), 1)
+
+    def test_omitted_log_path_follows_late_ora_home(self):
+        _, records = strip_engagement("Content.\n\nMore?")
+        relocated = Path(self.tmp) / "Relocated Ora"
+        with mock.patch.dict(
+            os.environ, {
+                "HOME": str(Path(self.tmp) / "profile"),
+                "USERPROFILE": str(Path(self.tmp) / "profile"),
+                "ORA_HOME": str(relocated),
+            }, clear=True,
+        ):
+            written = log_strips(records, context={"source_path": "x.md"})
+
+        log_path = relocated / "data" / "engagement-strips.log"
+        self.assertEqual(written, 1)
+        self.assertTrue(log_path.is_file())
+
+    def test_public_default_patch_hook_still_wins(self):
+        _, records = strip_engagement("Content.\n\nMore?")
+        patched = Path(self.tmp) / "patched" / "strips.jsonl"
+        with (
+            mock.patch.object(
+                engagement, "ENGAGEMENT_LOG_DEFAULT", str(patched),
+            ),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "HOME": str(Path(self.tmp) / "profile"),
+                    "USERPROFILE": str(Path(self.tmp) / "profile"),
+                    "ORA_HOME": str(Path(self.tmp) / "relocated"),
+                },
+                clear=True,
+            ),
+        ):
+            log_strips(records)
+
+        self.assertTrue(patched.is_file())
 
 
 if __name__ == "__main__":

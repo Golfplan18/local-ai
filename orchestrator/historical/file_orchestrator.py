@@ -31,7 +31,6 @@ from orchestrator.historical.context_header import (
     build_context_header,
 )
 from orchestrator.historical.engagement import (
-    ENGAGEMENT_LOG_DEFAULT,
     log_strips,
 )
 from orchestrator.historical.pair_cleanup import (
@@ -112,7 +111,7 @@ def process_chat_file(
     output_dir:       str = DEFAULT_OUTPUT_DIR,
     max_workers:      int = 8,
     progress_cb:      Optional[Callable[[ProgressEvent], None]] = None,
-    engagement_log_path: str = ENGAGEMENT_LOG_DEFAULT,
+    engagement_log_path: Optional[str] = None,
 ) -> FileProcessingResult:
     """Process one raw chat file end-to-end.
 

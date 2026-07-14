@@ -30,6 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical import RawPair
 from orchestrator.historical.api_client import (
     AnthropicClient,
@@ -68,7 +69,18 @@ from orchestrator.historical.prompts import (
 # Refusal-guard audit log (JSONL, one record per guarded fallback).
 # Resolved at call time so tests and sandboxed runs can redirect it.
 GUARD_LOG_ENV     = "ORA_CLEANUP_GUARD_LOG"
-GUARD_LOG_DEFAULT = "~/ora/data/cleanup-guard.log"
+_INITIAL_GUARD_LOG_DEFAULT = "~/ora/data/cleanup-guard.log"
+GUARD_LOG_DEFAULT = _INITIAL_GUARD_LOG_DEFAULT
+
+
+def _guard_log_path() -> Path:
+    configured = os.environ.get(GUARD_LOG_ENV)
+    if configured:
+        return Path(configured).expanduser()
+    if GUARD_LOG_DEFAULT != _INITIAL_GUARD_LOG_DEFAULT:
+        return Path(GUARD_LOG_DEFAULT).expanduser()
+    roots = _rp.resolve_runtime_roots()
+    return roots.ora_home / "data" / "cleanup-guard.log"
 
 
 def _log_guard_event(source_path: str, pair_num: int, side: str,
@@ -76,8 +88,7 @@ def _log_guard_event(source_path: str, pair_num: int, side: str,
     """Append one JSONL record for a refusal-guard fallback. Best-effort —
     a logging failure never blocks the cleanup itself."""
     try:
-        log_path = Path(os.environ.get(GUARD_LOG_ENV,
-                                       GUARD_LOG_DEFAULT)).expanduser()
+        log_path = _guard_log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True)
         record = {
             "ts":           datetime.now().isoformat(timespec="seconds"),

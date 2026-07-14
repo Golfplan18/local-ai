@@ -2727,6 +2727,20 @@ def _purge_stealth_unlocked(
     except Exception as e:
         _record_error(errors, "execution_records", e)
 
+    # --- Layer 10b: Trace-debug learning library -----------------------------
+    deleted["trace_debug_learning"] = {}
+    try:
+        try:
+            import trace_debug as _tdbg
+        except ImportError:  # pragma: no cover
+            from orchestrator import trace_debug as _tdbg
+        _td_res = _tdbg.purge_conversation_unlocked(conversation_id)
+        deleted["trace_debug_learning"] = _td_res
+        for _e in (_td_res.get("errors") or []):
+            _record_error(errors, "trace_debug_learning", _e)
+    except Exception as e:
+        _record_error(errors, "trace_debug_learning", e)
+
     # --- Layer 11: sticky risk-floor state ---------------------------------
     # This small JSON map is another conversation-keyed persistence surface.
     # Rewrite it directly (using risk_gate's authoritative sandbox-aware

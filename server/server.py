@@ -3338,6 +3338,26 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             yield _sse("pipeline_stage", stage="degradation",
                         gear=gear, label=f"Degradation: level {deg_state.degradation_level}")
 
+    # Capture the exact mode contract after runtime gear degradation has been
+    # resolved. The mode text is already in this turn's context package, so
+    # this never reloads a potentially edited mode file.
+    if trace_dir:
+        try:
+            try:
+                from trace_debug import mode_contract_snapshot, record_contract_snapshot
+            except ImportError:
+                from orchestrator.trace_debug import mode_contract_snapshot, record_contract_snapshot
+            record_contract_snapshot(
+                trace_dir,
+                mode_contract_snapshot(
+                    context_pkg.get("mode_name") or step1.get("mode") or "",
+                    context_pkg.get("mode_text") or "",
+                    gear,
+                ),
+            )
+        except Exception:
+            pass
+
     # Phase 9 — emit dispatch announcement at Stage 4 entry per Decision E.
     # _run_pipeline_from_step2 is the resume path after clarification, so the
     # announcement fires here for the resumed flow as well as the direct flow.
@@ -3417,6 +3437,20 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         # honest source for gear-1/2 turns, which write no step-health. A
         # later exception on the way out overwrites this with "error" in
         # the generator-level wrapper.
+        if trace_dir:
+            try:
+                try:
+                    from trace_debug import refresh_mode_contract_snapshot
+                except ImportError:
+                    from orchestrator.trace_debug import refresh_mode_contract_snapshot
+                refresh_mode_contract_snapshot(
+                    trace_dir,
+                    context_pkg.get("mode_name") or step1.get("mode") or "",
+                    context_pkg.get("mode_text") or "",
+                    gear,
+                )
+            except Exception:
+                pass
         turn_state["status"] = "completed"
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
@@ -3699,6 +3733,91 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             extra_context["risk_override"] = _risk_ovr
     except Exception as _rge_head:
         print(f"[risk-gate] server turn-head skipped: {_rge_head}")
+
+    # --- Trace-backed P-Debug structured route ---
+    _trace_debug_payload = (extra_context or {}).get("trace_debug") if isinstance(extra_context, dict) else None
+    try:
+        try:
+            import trace_debug as _tdbg
+        except ImportError:
+            from orchestrator import trace_debug as _tdbg
+        if not isinstance(_trace_debug_payload, dict):
+            _trace_debug_payload = _tdbg.parse_natural_language_request(user_input)
+    except Exception:
+        _tdbg = None
+    if isinstance(_trace_debug_payload, dict):
+        turn_state["kind"] = "trace-debug"
+        try:
+            if _tdbg is None:
+                try:
+                    import trace_debug as _tdbg
+                except ImportError:
+                    from orchestrator import trace_debug as _tdbg
+            _debug_prompt, _debug_meta = _tdbg.build_debug_prompt(
+                _trace_debug_payload, conversation_id=panel_id)
+            if trace_dir:
+                try:
+                    import pipeline_trace as _pt_dbg
+                except ImportError:
+                    from orchestrator import pipeline_trace as _pt_dbg
+                _pt_dbg.update_manifest_fields(
+                    trace_dir, trace_kind="trace-debug",
+                    investigates_trace_ref=_trace_debug_payload.get("trace_ref"))
+                _pt_dbg.write_step(
+                    trace_dir,
+                    "step-debug-request",
+                    {k: _trace_debug_payload.get(k) for k in
+                     ("trace_ref", "step_hint", "symptom", "source")},
+                )
+            if not _debug_prompt:
+                turn_state["status"] = "error"
+                if trace_dir:
+                    _pt_dbg.write_step(
+                        trace_dir, "step-debug-result",
+                        {"status": "error", "error": (_debug_meta or {}).get("error") or "unknown"},
+                    )
+                yield _sse("error", text="Trace debug error: " + str((_debug_meta or {}).get("error") or "unknown"))
+                return
+            config = load_config()
+            endpoint = get_endpoint(config)
+            if endpoint is None:
+                turn_state["status"] = "error"
+                yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+                return
+            yield _sse("pipeline_stage", stage="trace_debug", label="Investigating trace via P-Debug...")
+            from milestone_executor import run_framework_command
+            _trace_ctx = {"conversation_tag": _conv_tag}
+            result_text = run_framework_command(
+                _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
+                config, trace_dir=trace_dir, conversation_tag=_conv_tag,
+                trace_context=_trace_ctx)
+            try:
+                _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
+            except Exception:
+                pass
+            turn_state["status"] = _trace_ctx.get("status") or "completed"
+            turn_state["framework_id"] = _trace_ctx.get("framework_id")
+            turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
+            turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+            if trace_dir:
+                _pt_dbg.write_step(
+                    trace_dir, "step-debug-result",
+                    {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
+                )
+            yield _sse("response", text=result_text)
+            return
+        except Exception as exc:
+            turn_state["status"] = "error"
+            if trace_dir:
+                try:
+                    _pt_dbg.write_step(
+                        trace_dir, "step-debug-result",
+                        {"status": "error", "error": str(exc)},
+                    )
+                except Exception:
+                    pass
+            yield _sse("error", text=f"Trace debug framework error: {exc}")
+            return
 
     # --- Runtime slash-command short-circuit ---
     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
@@ -7748,7 +7867,7 @@ def chat():
     data       = request.get_json(force=True)
     user_input = data.get("message","").strip()
     history    = data.get("history", [])
-    panel_id   = str(data.get("panel_id", "main") or "main").strip()
+    panel_id   = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
     is_main    = data.get("is_main_feed", True)
     tag        = _normalize_tag(data.get("tag", ""))
     # V3 Phase 1 — alignment-prefilter inputs. ``manual_mode_selection`` is
@@ -7778,7 +7897,8 @@ def chat():
     # (e.g. "user-pipeline", "background-default", or a custom-saved name).
     # When omitted, the legacy execution_context path applies.
     config_name           = (data.get("config_name") or "").strip() or None
-    if not user_input:
+    trace_debug_payload = data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
+    if not user_input and not trace_debug_payload:
         return json.dumps({"error":"empty message"}), 400
     if not _valid_live_conversation_id(panel_id):
         return json.dumps({"error": "invalid conversation_id"}), 400
@@ -7815,6 +7935,7 @@ def chat():
             "framework_selected":    framework_selected,
             "output_destination":    output_destination,
             "attachments":           data.get("attachments", []),
+            "trace_debug":           trace_debug_payload,
         })
 
     # Process attachments: text content inlined, images passed separately
@@ -7824,6 +7945,9 @@ def chat():
         user_input = user_input + "\n\n" + "\n\n".join(text_parts)
 
     extra_context = {"visual_kind": manual_visual_type} if manual_visual_type else None
+    if trace_debug_payload:
+        extra_context = dict(extra_context or {})
+        extra_context["trace_debug"] = trace_debug_payload
     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
                              extra_context=extra_context,
                              tag=tag,
@@ -10322,6 +10446,83 @@ def api_trace_export(conversation_id, turn_ts):
         "Content-Security-Policy": _pt.TRACE_EXPORT_CSP,
     }
     return html_doc, 200, headers
+
+
+@app.route("/api/trace/probe/prepare", methods=["POST"])
+def api_trace_probe_prepare():
+    try:
+        body = request.get_json(force=True, silent=True)
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return json.dumps({"error": "expected JSON object"}), 400
+    trace_ref = str(body.get("trace_ref") or "").strip()
+    parts = trace_ref.split("/")
+    if len(parts) != 2:
+        return json.dumps({"error": "trace_ref must be conversation/turn"}), 400
+    conversation_id = parts[0]
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    try:
+        import trace_debug as _tdbg
+    except ImportError:
+        from orchestrator import trace_debug as _tdbg
+    body = dict(body)
+    body["conversation_tag"] = _tdbg.conversation_tag_for_trace_ref(trace_ref)
+    result = _tdbg.prepare_probe(body, conversation_id=conversation_id)
+    status = 200 if result.get("ok") else 400
+    return json.dumps(result, default=str), status
+
+
+@app.route("/api/trace/probe/approve", methods=["POST"])
+def api_trace_probe_approve():
+    try:
+        body = request.get_json(force=True, silent=True)
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return json.dumps({"error": "expected JSON object"}), 400
+    try:
+        import trace_debug as _tdbg
+    except ImportError:
+        from orchestrator import trace_debug as _tdbg
+    result = _tdbg.approve_probe(str(body.get("approval_id") or ""), str(body.get("approval_digest") or ""))
+    return json.dumps(result, default=str), (200 if result.get("ok") else 400)
+
+
+@app.route("/api/trace/probe/execute", methods=["POST"])
+def api_trace_probe_execute():
+    try:
+        body = request.get_json(force=True, silent=True)
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return json.dumps({"error": "expected JSON object"}), 400
+    conversation_id = str(body.get("conversation_id") or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    try:
+        import trace_debug as _tdbg
+    except ImportError:
+        from orchestrator import trace_debug as _tdbg
+    config = load_config()
+    fallback_endpoint = get_endpoint(config)
+    if fallback_endpoint is None:
+        return json.dumps({"error": "No AI endpoints configured."}), 400
+    def _executor(req):
+        envelope = req.get("envelope") or {}
+        endpoint = _tdbg.endpoint_from_probe_envelope(envelope, fallback_endpoint)
+        if endpoint is None:
+            raise RuntimeError("recorded probe endpoint is unavailable or has changed")
+        return call_model(envelope.get("messages") or [], endpoint)
+    result = _tdbg.execute_probe(
+        str(body.get("approval_id") or ""), str(body.get("approval_digest") or ""),
+        conversation_id=conversation_id, model_executor=_executor,
+        conversation_tag=_tdbg.approval_conversation_tag(
+            str(body.get("approval_id") or ""),
+            str(body.get("approval_digest") or ""),
+        ))
+    return json.dumps(result, default=str), (200 if result.get("ok") else 400)
 
 
 @app.route("/api/trace/retention", methods=["POST"])

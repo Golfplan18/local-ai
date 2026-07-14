@@ -157,6 +157,7 @@ data/tool-events.jsonl
 data/execution-approvals.json
 data/execution-approvals.json.lock
 data/execution-records/
+data/trace-debug/
 data/lifecycle-locks/
 
 # Per-machine runtime pointers + user stores (like data/active-configuration.json).

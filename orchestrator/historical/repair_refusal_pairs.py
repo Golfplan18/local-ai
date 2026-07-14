@@ -12,8 +12,9 @@ guards in pair_cleanup). This module repairs the damage in place:
     a signature that also appears in the raw pair is genuine content
     (e.g. the user's own conversations about this pipeline) and is
     excluded. Raw sources are resolved through the archive relocation
-    (`~/Documents/conversations/raw/` → `~/Documents/Raw Chat
-    Archive/raw/`). Writes `~/ora/data/refusal-repair-list.json`.
+    (legacy `<documents>/conversations/raw/` provenance → configured
+    `<documents>/Raw Chat Archive/raw/`). Writes
+    `<ora-data>/refusal-repair-list.json`.
 
   Repair phase (`--repair`):
     For each damaged file: re-parse the raw chat, re-clean the pair
@@ -44,8 +45,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Optional
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any, Callable, Optional
 
 from orchestrator import runtime_paths as _rp
 from orchestrator.historical.cleanup_backends import (
@@ -65,14 +66,56 @@ from orchestrator.historical.writer import (
 from orchestrator.tools.vault_indexer import INDEX_DEFAULT, load_index
 
 
-DEFAULT_ARCHIVE_DIR = str(_rp.historical_archive_dir())
-DEFAULT_REPAIR_LIST = str(_rp.DATA_DIR / "refusal-repair-list.json")
-DEFAULT_REPORT_PATH = str(_rp.DATA_DIR / "refusal-repair-report.json")
+_INITIAL_DEFAULT_ARCHIVE_DIR = str(_rp.historical_archive_dir())
+DEFAULT_ARCHIVE_DIR = _INITIAL_DEFAULT_ARCHIVE_DIR
+_INITIAL_DEFAULT_REPAIR_LIST = str(_rp.DATA_DIR / "refusal-repair-list.json")
+DEFAULT_REPAIR_LIST = _INITIAL_DEFAULT_REPAIR_LIST
+_INITIAL_DEFAULT_REPORT_PATH = str(_rp.DATA_DIR / "refusal-repair-report.json")
+DEFAULT_REPORT_PATH = _INITIAL_DEFAULT_REPORT_PATH
+_INITIAL_INDEX_DEFAULT = INDEX_DEFAULT
+
+
+def _runtime_data_file(name: str) -> str:
+    return str(_rp.resolve_runtime_roots().ora_home / "data" / name)
+
+
+def _default_archive_dir() -> str:
+    if DEFAULT_ARCHIVE_DIR != _INITIAL_DEFAULT_ARCHIVE_DIR:
+        return DEFAULT_ARCHIVE_DIR
+    return str(_rp.historical_archive_dir())
+
+
+def _default_repair_list() -> str:
+    if DEFAULT_REPAIR_LIST != _INITIAL_DEFAULT_REPAIR_LIST:
+        return DEFAULT_REPAIR_LIST
+    return _runtime_data_file("refusal-repair-list.json")
+
+
+def _default_report_path() -> str:
+    if DEFAULT_REPORT_PATH != _INITIAL_DEFAULT_REPORT_PATH:
+        return DEFAULT_REPORT_PATH
+    return _runtime_data_file("refusal-repair-report.json")
+
+
+def _default_index_path() -> str:
+    if INDEX_DEFAULT != _INITIAL_INDEX_DEFAULT:
+        return INDEX_DEFAULT
+    return _runtime_data_file("vault-index.json")
+
+
+def _resolve_default(
+    value: Optional[str], resolver: Callable[[], str],
+) -> str:
+    if value is None:
+        return resolver()
+    return value
 
 # Raw-archive relocation: cleaned-pair frontmatter records the ORIGINAL
-# input path; the historical raw corpus has since moved.
+# input path; the historical raw corpus has since moved. These strings are
+# persisted metadata tokens, not active filesystem roots. Both map onto the
+# configured Documents directory at the read boundary below.
 RAW_PREFIX_OLD = "~/Documents/conversations/raw/"
-RAW_PREFIX_NEW = "~/Documents/Raw Chat Archive/raw/"
+RAW_PREFIX_ARCHIVED = "~/Documents/Raw Chat Archive/raw/"
 
 
 # ---------------------------------------------------------------------------
@@ -139,14 +182,60 @@ def resolve_raw_path(source_chat: str) -> Optional[str]:
     the Raw Chat Archive relocation if needed. None if unresolvable."""
     if not source_chat:
         return None
-    p = Path(os.path.expanduser(source_chat))
+
+    normalized = source_chat.replace("\\", "/")
+    relative: PurePosixPath | None = None
+    for prefix in (RAW_PREFIX_OLD, RAW_PREFIX_ARCHIVED):
+        if normalized.casefold().startswith(prefix.casefold()):
+            relative = PurePosixPath(normalized[len(prefix):])
+            windows_relative = PureWindowsPath(*relative.parts)
+            if (relative.is_absolute() or not relative.parts
+                    or windows_relative.drive or windows_relative.root
+                    or any(part == ".." for part in relative.parts)):
+                return None
+            break
+
+    # Windows-written YAML can use either separator. Normalize only for
+    # matching the persisted metadata token; the resulting filesystem path is
+    # constructed with pathlib so the host chooses its native separator. The
+    # relocated archive is canonical for recognized provenance; a stale copy
+    # under the pre-relocation profile Documents folder must not win.
+    if relative is not None:
+        moved = (
+            _rp.documents_dir()
+            / "Raw Chat Archive"
+            / "raw"
+            / Path(*relative.parts)
+        )
+        if moved.is_file():
+            return str(moved)
+
+        # NTFS-quote bridge: six raw archive filenames contain the
+        # NTFS-invalid ASCII double-quote (U+0022).  After the corpus
+        # transfer those files were renamed to use ASCII apostrophe
+        # (U+0027).  Provenance metadata (path2 manifest keys,
+        # source_chat frontmatter) still carries the original " as a
+        # persisted token — legal in file contents, only illegal as a
+        # filename character.  Bridge the rename here so the repair
+        # pipeline resolves the renamed file without mutating any
+        # metadata or breaking session_id hashes.
+        if '"' in relative.name:
+            renamed_parts = list(relative.parts)
+            renamed_parts[-1] = renamed_parts[-1].replace('"', "'")
+            renamed = (
+                _rp.documents_dir()
+                / "Raw Chat Archive"
+                / "raw"
+                / Path(*renamed_parts)
+            )
+            if renamed.is_file():
+                return str(renamed)
+
+    # Preserve direct-path compatibility when a record is not one of the
+    # portable metadata forms, or while an archive relocation is incomplete.
+    p = Path(source_chat).expanduser()
     if p.is_file():
         return str(p)
-    if source_chat.startswith(RAW_PREFIX_OLD):
-        moved = RAW_PREFIX_NEW + source_chat[len(RAW_PREFIX_OLD):]
-        p2 = Path(os.path.expanduser(moved))
-        if p2.is_file():
-            return str(p2)
     return None
 
 
@@ -155,7 +244,7 @@ def resolve_raw_path(source_chat: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def scan_archive(archive_dir: str = DEFAULT_ARCHIVE_DIR,
+def scan_archive(archive_dir: Optional[str] = None,
                  progress: bool = True) -> dict:
     """Identify damaged cleaned-pair files. Returns the repair-list dict.
 
@@ -164,6 +253,7 @@ def scan_archive(archive_dir: str = DEFAULT_ARCHIVE_DIR,
     immunity rule). Files whose raw source cannot be located are
     reported separately — they cannot be repaired mechanically.
     """
+    archive_dir = _resolve_default(archive_dir, _default_archive_dir)
     archive = Path(archive_dir).expanduser()
     damaged: list[dict[str, Any]] = []
     raw_missing: list[dict[str, Any]] = []
@@ -321,9 +411,10 @@ def repair_damaged(repair_list: dict,
                    backend: str = BACKEND_CLAUDE_CLI,
                    max_workers: int = CLI_RECOMMENDED_MAX_WORKERS,
                    limit: Optional[int] = None,
-                   vault_index_path: str = INDEX_DEFAULT,
+                   vault_index_path: Optional[str] = None,
                    progress: bool = True) -> dict:
     """Re-clean and rewrite every damaged file in the repair list."""
+    vault_index_path = _resolve_default(vault_index_path, _default_index_path)
     client = build_client(backend)
     try:
         vault_index = load_index(vault_index_path)
@@ -433,8 +524,8 @@ def repair_damaged(repair_list: dict,
 # ---------------------------------------------------------------------------
 
 
-def fix_chunks(report_path: str = DEFAULT_REPORT_PATH,
-               archive_dir: str = DEFAULT_ARCHIVE_DIR,
+def fix_chunks(report_path: Optional[str] = None,
+               archive_dir: Optional[str] = None,
                progress: bool = True) -> dict:
     """Regenerate chunks + ChromaDB records for repaired pairs.
 
@@ -460,6 +551,8 @@ def fix_chunks(report_path: str = DEFAULT_REPORT_PATH,
         group_cleaned_pairs_by_session,
     )
 
+    report_path = _resolve_default(report_path, _default_report_path)
+    archive_dir = _resolve_default(archive_dir, _default_archive_dir)
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
     affected = set(report.get("affected_sessions", []))
     if not affected:
@@ -538,11 +631,125 @@ def fix_chunks(report_path: str = DEFAULT_REPORT_PATH,
 
 
 # ---------------------------------------------------------------------------
+# Raw-archive NTFS-quote rename
+# ---------------------------------------------------------------------------
+
+
+def find_quoted_raw_files(
+    raw_archive_root: str | None = None,
+) -> list[dict[str, str]]:
+    """Return [{old, new}] for raw archive filenames containing '"'.
+
+    Only the basename is examined; subdirectory names are not renamed.
+    Returns the full filesystem path for both old and new names.
+    """
+    if raw_archive_root is None:
+        raw_archive_root = str(
+            _rp.documents_dir() / "Raw Chat Archive" / "raw"
+        )
+    root = Path(raw_archive_root)
+    if not root.is_dir():
+        return []
+    pairs: list[dict[str, str]] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if '"' not in path.name:
+            continue
+        new_name = path.name.replace('"', "'")
+        pairs.append({
+            "old": str(path),
+            "new": str(path.parent / new_name),
+        })
+    return pairs
+
+
+def rename_quoted_raw_files(
+    apply: bool = False,
+    raw_archive_root: str | None = None,
+    backup_suffix: str = ".bak-2026-07-13",
+    audit_path: str | None = None,
+) -> dict:
+    """Rename raw archive files with NTFS-invalid '\"' to use apostrophe.
+
+    Default (apply=False) is dry-run: prints the plan and returns metadata.
+    With apply=True: backs up originals, renames, writes an audit manifest.
+    """
+    if raw_archive_root is None:
+        raw_archive_root = str(
+            _rp.documents_dir() / "Raw Chat Archive" / "raw"
+        )
+    if audit_path is None:
+        audit_path = str(
+            _rp.resolve_runtime_roots().ora_home / "data"
+            / "raw-archive-ntfs-rename.json"
+        )
+    pairs = find_quoted_raw_files(raw_archive_root)
+    if not pairs:
+        result = {
+            "status": "no files with '\"' found in archive root",
+            "archive_root": raw_archive_root,
+            "files": 0,
+        }
+        if not apply:
+            print(json.dumps(result, indent=2))
+        return result
+
+    if not apply:
+        plan = {
+            "status": "dry-run",
+            "files": len(pairs),
+            "archive_root": raw_archive_root,
+            "planned_renames": [
+                {"old": Path(p["old"]).name, "new": Path(p["new"]).name}
+                for p in pairs
+            ],
+        }
+        print(json.dumps(plan, indent=2))
+        return plan
+
+    # Apply mode.
+    backup_dir = Path(raw_archive_root).parent / backup_suffix
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    audit_renames: list[dict[str, str]] = []
+    for pair in pairs:
+        old_path = Path(pair["old"])
+        new_path = Path(pair["new"])
+        backup_file = backup_dir / old_path.name
+        backup_file.write_bytes(old_path.read_bytes())
+        os.rename(old_path, new_path)
+        audit_renames.append({"old": pair["old"], "new": pair["new"]})
+
+    audit_record = {
+        "renamed_at": datetime.now().isoformat(timespec="seconds"),
+        "files": len(pairs),
+        "archive_root": raw_archive_root,
+        "backup_dir": str(backup_dir),
+        "renames": audit_renames,
+    }
+    Path(audit_path).write_text(
+        json.dumps(audit_record, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    result = {
+        "status": "applied",
+        "files": len(pairs),
+        "backup_dir": str(backup_dir),
+        "audit_path": audit_path,
+    }
+    print(json.dumps(result, indent=2))
+    return result
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    archive_default = _default_archive_dir()
+    repair_list_default = _default_repair_list()
+    report_default = _default_report_path()
     parser = argparse.ArgumentParser(
         description="Scan for + repair Refusal Leak damage in the "
                     "cleaned-pair archive.",
@@ -553,18 +760,30 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="Repair files from the repair list")
     parser.add_argument("--fix-chunks", action="store_true",
                         help="Regenerate chunks + ChromaDB for repaired pairs")
-    parser.add_argument("--archive-dir", default=DEFAULT_ARCHIVE_DIR)
-    parser.add_argument("--repair-list", default=DEFAULT_REPAIR_LIST)
-    parser.add_argument("--report", default=DEFAULT_REPORT_PATH)
+    parser.add_argument("--archive-dir", default=archive_default)
+    parser.add_argument("--repair-list", default=repair_list_default)
+    parser.add_argument("--report", default=report_default)
     parser.add_argument("--backend", choices=list(BACKEND_CHOICES),
                         default=BACKEND_CLAUDE_CLI)
     parser.add_argument("--max-workers", type=int,
                         default=CLI_RECOMMENDED_MAX_WORKERS)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--rename-quoted", action="store_true",
+        help="Rename raw archive files with NTFS-invalid '\"' to use "
+             "apostrophe.  Default mode is dry-run; pass --apply to execute.",
+    )
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="With --rename-quoted: execute the rename (default is dry-run).",
+    )
     args = parser.parse_args(argv)
 
-    if not args.scan and not args.repair and not args.fix_chunks:
-        parser.error("pass --scan, --repair, and/or --fix-chunks")
+    has_action = args.scan or args.repair or args.fix_chunks or args.rename_quoted
+    if not has_action:
+        parser.error(
+            "pass --scan, --repair, --fix-chunks, and/or --rename-quoted"
+        )
 
     if args.scan:
         result = scan_archive(args.archive_dir)
@@ -601,6 +820,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         result = fix_chunks(args.report, args.archive_dir)
         print(json.dumps(result, indent=2, default=str))
 
+    if args.rename_quoted:
+        rename_quoted_raw_files(apply=args.apply)
+
     return 0
 
 
@@ -617,5 +839,7 @@ __all__ = [
     "extract_exchange_sides",
     "split_cleaned_pair_file",
     "resolve_raw_path",
+    "find_quoted_raw_files",
+    "rename_quoted_raw_files",
     "main",
 ]

@@ -97,11 +97,12 @@
     document.head.appendChild(style);
     backdrop = document.createElement('div');
     backdrop.className = 'ora-trace-backdrop';
-    backdrop.innerHTML = '<div class="ora-trace-modal" role="dialog" aria-modal="true" aria-labelledby="oraTraceTitle"><div class="ora-trace-head"><div><div class="ora-trace-title" id="oraTraceTitle">Trace Walk</div><div class="ora-trace-subtitle" data-role="subtitle"></div></div><button type="button" class="ora-trace-close" data-role="close" aria-label="Close trace walk">×</button></div><div class="ora-trace-body"><aside class="ora-trace-map" data-role="map"></aside><main class="ora-trace-detail" data-role="detail"></main></div><div class="ora-trace-actions"><button type="button" data-role="pin">Pin trace</button><button type="button" data-role="export">Export HTML</button><span data-role="status" aria-live="polite"></span></div></div>';
+    backdrop.innerHTML = '<div class="ora-trace-modal" role="dialog" aria-modal="true" aria-labelledby="oraTraceTitle"><div class="ora-trace-head"><div><div class="ora-trace-title" id="oraTraceTitle">Trace Walk</div><div class="ora-trace-subtitle" data-role="subtitle"></div></div><button type="button" class="ora-trace-close" data-role="close" aria-label="Close trace walk">×</button></div><div class="ora-trace-body"><aside class="ora-trace-map" data-role="map"></aside><main class="ora-trace-detail" data-role="detail"></main></div><div class="ora-trace-actions"><button type="button" data-role="pin">Pin trace</button><button type="button" data-role="investigate">Investigate</button><button type="button" data-role="export">Export HTML</button><span data-role="status" aria-live="polite"></span></div></div>';
     backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
     backdrop.querySelector('[data-role="close"]').addEventListener('click', close);
     backdrop.querySelector('[data-role="pin"]').addEventListener('click', pinTrace);
     backdrop.querySelector('[data-role="export"]').addEventListener('click', exportTrace);
+    backdrop.querySelector('[data-role="investigate"]').addEventListener('click', investigateTrace);
     document.body.appendChild(backdrop);
     return backdrop;
   };
@@ -131,9 +132,11 @@
   const setControls = (loaded, busy) => {
     const pin = backdrop && backdrop.querySelector('[data-role="pin"]');
     const exp = backdrop && backdrop.querySelector('[data-role="export"]');
+    const inv = backdrop && backdrop.querySelector('[data-role="investigate"]');
     const openTrace = state.manifest && state.manifest.terminal_status === 'open';
     if (pin) pin.disabled = !loaded || !!busy || !!openTrace;
     if (exp) exp.disabled = !loaded || !!busy;
+    if (inv) inv.disabled = !loaded || !!busy;
   };
 
   const renderShell = (subtitle) => {
@@ -256,6 +259,56 @@
       if (!isCurrent(gen, ref)) return;
       setStatus(e.message || String(e));
       setControls(true, false);
+    }
+  };
+
+
+  const activeConversationId = () => {
+    try {
+      if (window.OraConversation && typeof window.OraConversation.getActiveConversationId === 'function') {
+        return window.OraConversation.getActiveConversationId();
+      }
+    } catch (_) {}
+    return parts(state.traceRef) ? parts(state.traceRef)[0] : '';
+  };
+
+  const investigateTrace = async () => {
+    if (!state.manifest || !state.traceRef) return;
+    const conv = activeConversationId();
+    const p = parts(state.traceRef);
+    if (!p || conv !== p[0]) {
+      setStatus('Investigation must stay in the trace conversation.');
+      return;
+    }
+    const symptom = window.prompt('What looked wrong? Optional:', '') || '';
+    setStatus('Starting trace investigation...');
+    try {
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Investigate this trace.',
+          panel_id: conv,
+          conversation_id: conv,
+          trace_debug: {
+            trace_ref: state.traceRef,
+            step_hint: state.selectedStep || '',
+            symptom: symptom,
+            source: 'trace-walk',
+          },
+        }),
+      });
+      if (!response.ok) {
+        let msg = `Investigation failed (${response.status})`;
+        try {
+          const body = await response.json();
+          msg = body.error || body.message || msg;
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      setStatus('Trace investigation submitted.');
+    } catch (e) {
+      setStatus(e && e.message || String(e));
     }
   };
 

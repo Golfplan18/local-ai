@@ -269,6 +269,25 @@
         }
       });
       actions.appendChild(traceBtn);
+      const investigateBtn = document.createElement('button');
+      investigateBtn.type = 'button';
+      investigateBtn.textContent = 'Investigate trace';
+      investigateBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const ref = String(entry.trace_ref || '');
+        const conv = ref.split('/')[0] || entry.conversation_id || '';
+        const original = investigateBtn.textContent;
+        investigateBtn.disabled = true;
+        investigateBtn.textContent = 'Submitting...';
+        try {
+          await sendChatTurn(conv, 'Investigate this trace.', { trace_ref: ref, step_hint: entry.trace_step || '', symptom: '', source: 'paused-card' });
+          investigateBtn.textContent = 'Investigation submitted';
+        } catch (e) {
+          investigateBtn.textContent = (e && e.message) || 'Investigation failed';
+          window.setTimeout(() => { investigateBtn.textContent = original; investigateBtn.disabled = false; }, 2500);
+        }
+      });
+      actions.appendChild(investigateBtn);
     }
 
     det.appendChild(actions);
@@ -383,17 +402,26 @@
     }));
   };
 
-  const sendChatTurn = async (conversationId, text) => {
+  const sendChatTurn = async (conversationId, text, traceDebug) => {
     try {
-      await fetch('/chat', {
+      const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
+      if (traceDebug) body.trace_debug = traceDebug;
+      const response = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          conversation_id: conversationId,
-        }),
+        body: JSON.stringify(body),
       });
-    } catch (e) {}
+      if (!response.ok) {
+        let msg = `Chat request failed (${response.status})`;
+        try {
+          const payload = await response.json();
+          msg = payload.error || payload.message || msg;
+        } catch (_) {}
+        throw new Error(msg);
+      }
+    } catch (e) {
+      throw e;
+    }
   };
 
   // ── Render: Operating ─────────────────────────────────────────────────

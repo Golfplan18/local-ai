@@ -6,7 +6,7 @@ and emits a JSON index that AI consults during Phase 1 cleanup to
 spot when pasted material is just an earlier version of something
 already in mature form in the vault.
 
-Output: ~/ora/data/vault-index.json
+Output: <ora-data>/vault-index.json
 
 Design:
   - Single-pass scan with skip rules (no follow into Sessions/, .bak,
@@ -22,7 +22,7 @@ Design:
 
 Authority:
   Architecture is captured in
-  `~/Documents/vault/Working — Framework — Historical Chat Reprocessing Architecture.md`.
+  `<vault>/Working — Framework — Historical Chat Reprocessing Architecture.md`.
 """
 
 from __future__ import annotations
@@ -30,13 +30,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
+
+# Direct script execution puts ``orchestrator/tools`` on sys.path. Add the
+# repository root before package-qualified imports so this supported CLI form
+# behaves the same on Windows and POSIX hosts.
+if __package__ in (None, ""):
+    _repo_root = str(Path(__file__).resolve().parents[2])
+    if _repo_root not in sys.path:
+        sys.path.insert(0, _repo_root)
 
 try:
     from orchestrator import runtime_paths as _rp
@@ -48,8 +55,34 @@ except ImportError:  # pragma: no cover - direct script execution
 # Defaults
 # ---------------------------------------------------------------------------
 
-VAULT_DEFAULT  = os.path.expanduser("~/Documents/vault")
-INDEX_DEFAULT  = os.path.expanduser("~/ora/data/vault-index.json")
+_INITIAL_VAULT_DEFAULT = str(_rp.vault_dir())
+VAULT_DEFAULT = _INITIAL_VAULT_DEFAULT
+_INITIAL_INDEX_DEFAULT = str(_rp.DATA_DIR / "vault-index.json")
+INDEX_DEFAULT = _INITIAL_INDEX_DEFAULT
+
+
+def _default_vault_path() -> str:
+    """Resolve the live vault while preserving the public patch hook."""
+    if VAULT_DEFAULT != _INITIAL_VAULT_DEFAULT:
+        return VAULT_DEFAULT
+    return str(_rp.vault_dir())
+
+
+def _default_index_path() -> str:
+    """Resolve the live index path while preserving the public patch hook."""
+    if INDEX_DEFAULT != _INITIAL_INDEX_DEFAULT:
+        return INDEX_DEFAULT
+    roots = _rp.resolve_runtime_roots()
+    return str(roots.ora_home / "data" / "vault-index.json")
+
+
+def _resolve_default(
+    value: Optional[str], resolver: Callable[[], str],
+) -> str:
+    """Late-bind an omitted default; every supplied path remains exact."""
+    if value is None:
+        return resolver()
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -416,8 +449,8 @@ def _load_existing(output_file: Path) -> tuple[dict, int]:
     return by_path, next_id
 
 
-def _build_index_locked(vault_path: str = VAULT_DEFAULT,
-                        output_path: str = INDEX_DEFAULT,
+def _build_index_locked(vault_path: Optional[str] = None,
+                        output_path: Optional[str] = None,
                         rebuild: bool = False,
                         progress: bool = False) -> dict:
     """Build or update the vault index.
@@ -425,6 +458,8 @@ def _build_index_locked(vault_path: str = VAULT_DEFAULT,
     Returns a stats dict with counts per category.
     Writes the index JSON to `output_path`.
     """
+    vault_path = _resolve_default(vault_path, _default_vault_path)
+    output_path = _resolve_default(output_path, _default_index_path)
     vault_root = Path(vault_path).expanduser().resolve()
     output_file = Path(output_path).expanduser()
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -508,11 +543,13 @@ def _build_index_locked(vault_path: str = VAULT_DEFAULT,
     return stats
 
 
-def build_index(vault_path: str = VAULT_DEFAULT,
-                output_path: str = INDEX_DEFAULT,
+def build_index(vault_path: Optional[str] = None,
+                output_path: Optional[str] = None,
                 rebuild: bool = False,
                 progress: bool = False) -> dict:
     """Build under the same sidecar lock used by lifecycle cache cleanup."""
+    vault_path = _resolve_default(vault_path, _default_vault_path)
+    output_path = _resolve_default(output_path, _default_index_path)
     output_file = Path(output_path).expanduser()
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with _rp.locked_file(output_file):
@@ -529,8 +566,9 @@ def build_index(vault_path: str = VAULT_DEFAULT,
 # ---------------------------------------------------------------------------
 
 
-def load_index(path: str = INDEX_DEFAULT) -> dict:
+def load_index(path: Optional[str] = None) -> dict:
     """Load the index JSON. Raises if missing/malformed."""
+    path = _resolve_default(path, _default_index_path)
     return json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
 
 
@@ -583,15 +621,17 @@ def find_matches_by_topic_fingerprint(fingerprint: str,
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    vault_default = _default_vault_path()
+    index_default = _default_index_path()
     parser = argparse.ArgumentParser(
         description="Build or update the vault index for Phase 0 of the "
                     "historical chat reprocessing pipeline.",
     )
-    parser.add_argument("--vault", default=VAULT_DEFAULT,
-                        help=f"Vault root path (default: {VAULT_DEFAULT})")
-    parser.add_argument("--output", default=INDEX_DEFAULT,
+    parser.add_argument("--vault", default=vault_default,
+                        help=f"Vault root path (default: {vault_default})")
+    parser.add_argument("--output", default=index_default,
                         help=f"Index JSON output path "
-                             f"(default: {INDEX_DEFAULT})")
+                             f"(default: {index_default})")
     parser.add_argument("--rebuild", action="store_true",
                         help="Force full rebuild ignoring existing index.")
     parser.add_argument("--progress", action="store_true",

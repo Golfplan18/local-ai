@@ -807,7 +807,7 @@ MANIFEST_SCHEMA_VERSION = 1
 SHORT_CIRCUIT_KINDS = frozenset({
     "runtime_command", "risk_hold", "resolution_continuation",
     "framework_elicitation", "framework_command", "no_endpoint_error",
-    "direct",
+    "direct", "trace-probe-control",
 })
 
 # Required (always-written on a clean run) step files per gear for full
@@ -973,6 +973,27 @@ def append_child_trace_ref(parent_trace_dir: str | None,
               file=sys.stderr)
 
 
+def append_probe_trace_ref(source_trace_dir: str | None,
+                           probe_trace_ref: str | None) -> None:
+    """Record a probe relationship without treating the probe as a child."""
+    if not source_trace_dir or not probe_trace_ref:
+        return
+    try:
+        manifest = read_manifest(source_trace_dir)
+        if manifest is None:
+            return
+        refs = manifest.get("probe_trace_refs")
+        if not isinstance(refs, list):
+            refs = []
+        refs = [ref for ref in refs if isinstance(ref, str)]
+        if probe_trace_ref not in refs:
+            refs.append(probe_trace_ref)
+        update_manifest_fields(source_trace_dir, probe_trace_refs=refs)
+    except Exception as exc:
+        print(f"[pipeline_trace] append_probe_trace_ref failed: {exc}",
+              file=sys.stderr)
+
+
 def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
     """Set retention_state for a resolved turn trace ref."""
     if state not in {"default", "pinned"}:
@@ -1020,6 +1041,10 @@ def _manifest_skeleton(conversation_id: str | None,
         "parent_trace_ref": None,
         "child_trace_refs": [],
         "finalized_at": None,
+        "investigates_trace_ref": None,
+        "probe_trace_refs": [],
+        "contract_snapshot": None,
+        "contract_capture_error": None,
     }
 
 
@@ -1038,6 +1063,10 @@ def _expected_steps_for(kind: str, gear: int | None,
     false missing-step warning). Unknown gear → empty list (never guess).
     Lists are sorted so expected/actual diff cleanly.
     """
+    if kind == "trace-debug":
+        return ["step-debug-request", "step-debug-result"]
+    if kind == "trace-probe":
+        return ["step-probe-prepare", "step-probe-approval", "step-probe-model-attempt", "step-probe-result", "step-health"]
     if kind == "direct":
         return sorted(_REQUIRED_STEPS_COMMON)
     if kind in SHORT_CIRCUIT_KINDS or kind == "clarification_pending":
@@ -1283,7 +1312,8 @@ def _manifest_step_sets(manifest: dict[str, Any]) -> tuple[list[str], list[str],
     expected = _dedupe_strings(manifest.get("expected_steps"))
     actual = _dedupe_strings(manifest.get("actual_steps"))
     derived = _dedupe_strings(manifest.get("derived_artifacts"))
-    missing = [step for step in expected if step not in actual]
+    observed = set(actual) | set(derived)
+    missing = [step for step in expected if step not in observed]
     unexpected = [step for step in actual if step not in expected]
     return expected, actual, derived, missing, unexpected
 
@@ -1326,6 +1356,7 @@ def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str,
             "trace_kind", "terminal_status", "gear", "mode", "framework_id",
             "milestone_id", "redaction_level", "retention_state",
             "parent_trace_ref", "child_trace_refs", "finalized_at",
+            "investigates_trace_ref", "probe_trace_refs", "contract_capture_error",
         )
     }
     fields.update({
