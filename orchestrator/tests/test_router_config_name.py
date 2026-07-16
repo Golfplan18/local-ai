@@ -17,9 +17,13 @@ workhorse slot to a usable endpoint.
 """
 from __future__ import annotations
 
+import json
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -208,6 +212,35 @@ class TestConfigurationCacheClearsOnReload(unittest.TestCase):
         # Reload should clear the cache via _build_lookup_tables.
         router.reload()
         self.assertEqual(router._configurations, {})
+
+
+class TestProjectOwnedConfiguration(unittest.TestCase):
+    def test_msi_path_override_and_role_reference(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "msi-model-routing.json"
+            path.write_text(json.dumps({
+                "roles": {
+                    "big1": {"primary": "xiaomi/mimo-v2.5",
+                             "fallback": ["deepseek/deepseek-v4-flash"]},
+                },
+                "cells": {"analysis": {"gear4": {
+                    "depth": {"role": "big1"},
+                }}},
+            }), encoding="utf-8")
+            env = {
+                "MSI_GEAR4_CONFIG_NAME": "msi-publication",
+                "MSI_BACKGROUND_CONFIG_PATH": str(path),
+            }
+            with mock.patch.dict(os.environ, env):
+                router = Router()
+                self.assertEqual(
+                    router._configuration_path("msi-publication"), path)
+                self.assertEqual(
+                    router.get_slot_chain("depth", 4, "msi-publication"),
+                    ["xiaomi/mimo-v2.5", "deepseek/deepseek-v4-flash"],
+                )
+                self.assertNotEqual(
+                    router._configuration_path("background-default"), path)
 
 
 class TestVisionCapableLookup(unittest.TestCase):

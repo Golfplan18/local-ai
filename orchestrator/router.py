@@ -437,6 +437,18 @@ class Router:
 
         return first_busy_local
 
+    @staticmethod
+    def _resolve_configuration_cell(config: dict, cell: object) -> dict | None:
+        """Resolve an optional role reference in a project configuration."""
+        if not isinstance(cell, dict):
+            return None
+        role = cell.get("role")
+        if not role:
+            return cell
+        roles = config.get("roles")
+        resolved = roles.get(role) if isinstance(roles, dict) else None
+        return resolved if isinstance(resolved, dict) else None
+
     def resolve_gear(self, gear: int, context: str,
                      config_name: str | None = None) -> dict | None:
         """Resolve all slots for a gear level.
@@ -910,6 +922,12 @@ class Router:
         return cfg
 
     def _configuration_path(self, name: str) -> Path:
+        # MSI supplies its project-owned named configuration at runtime. This
+        # applies only to the explicit MSI name; Ora's own profiles are intact.
+        msi_path = os.environ.get("MSI_BACKGROUND_CONFIG_PATH", "").strip()
+        msi_name = os.environ.get("MSI_GEAR4_CONFIG_NAME", "").strip()
+        if msi_path and msi_name and name == msi_name:
+            return Path(msi_path).expanduser()
         overlay_names = getattr(
             rp, "RUNTIME_OVERLAY_CONFIGURATION_NAMES", rp.PRESET_NAMES)
         if CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR and name in overlay_names:
@@ -985,6 +1003,7 @@ class Router:
             cur = cur.get(key)
             if cur is None:
                 return []
+        cur = self._resolve_configuration_cell(cfg, cur)
         if not isinstance(cur, dict):
             return []
         chain: list[str] = []
@@ -1137,6 +1156,7 @@ class Router:
             if cur is None:
                 return None
 
+        cur = self._resolve_configuration_cell(cfg, cur)
         if not isinstance(cur, dict):
             return None
 
