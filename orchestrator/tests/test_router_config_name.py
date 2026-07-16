@@ -242,6 +242,22 @@ class TestProjectOwnedConfiguration(unittest.TestCase):
                 self.assertNotEqual(
                     router._configuration_path("background-default"), path)
 
+    def test_msi_configuration_fails_closed_without_bridge_environment(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            router = Router()
+            with self.assertRaisesRegex(RuntimeError, "MSI routing must set"):
+                router._configuration_path("msi-publication")
+
+    def test_msi_configuration_fails_closed_for_missing_project_file(self):
+        env = {
+            "MSI_GEAR4_CONFIG_NAME": "msi-publication",
+            "MSI_BACKGROUND_CONFIG_PATH": "/definitely/missing/msi-routing.json",
+        }
+        with mock.patch.dict(os.environ, env, clear=True):
+            router = Router()
+            with self.assertRaisesRegex(RuntimeError, "routing file is missing"):
+                router._configuration_path("msi-publication")
+
 
 class TestVisionCapableLookup(unittest.TestCase):
     """vision_capable_for_endpoint prefers models.json (Chunk 2e)."""

@@ -908,6 +908,9 @@ class Router:
 
         path = self._configuration_path(name)
         if not path.exists():
+            if name == "msi-publication":
+                raise RuntimeError(
+                    f"MSI project-owned routing file does not exist: {path}")
             print(f"[Router] configuration not found: {path}")
             return None
 
@@ -915,6 +918,10 @@ class Router:
             with open(path) as f:
                 cfg = json.load(f)
         except Exception as exc:
+            if name == "msi-publication":
+                raise RuntimeError(
+                    f"MSI project-owned routing file is invalid: {path}: {exc}"
+                ) from exc
             print(f"[Router] failed to load configuration {name}: {exc}")
             return None
 
@@ -924,10 +931,17 @@ class Router:
     def _configuration_path(self, name: str) -> Path:
         # MSI supplies its project-owned named configuration at runtime. This
         # applies only to the explicit MSI name; Ora's own profiles are intact.
-        msi_path = os.environ.get("MSI_BACKGROUND_CONFIG_PATH", "").strip()
-        msi_name = os.environ.get("MSI_GEAR4_CONFIG_NAME", "").strip()
-        if msi_path and msi_name and name == msi_name:
-            return Path(msi_path).expanduser()
+        if name == "msi-publication":
+            msi_path = os.environ.get("MSI_BACKGROUND_CONFIG_PATH", "").strip()
+            msi_name = os.environ.get("MSI_GEAR4_CONFIG_NAME", "").strip()
+            if msi_name != "msi-publication" or not msi_path:
+                raise RuntimeError(
+                    "MSI routing must set MSI_GEAR4_CONFIG_NAME=msi-publication "
+                    "and MSI_BACKGROUND_CONFIG_PATH to its project-owned JSON")
+            path = Path(msi_path).expanduser()
+            if not path.is_file():
+                raise RuntimeError(f"MSI routing file is missing: {path}")
+            return path
         overlay_names = getattr(
             rp, "RUNTIME_OVERLAY_CONFIGURATION_NAMES", rp.PRESET_NAMES)
         if CONFIGURATIONS_DIR == _DEFAULT_CONFIGURATIONS_DIR and name in overlay_names:
