@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -23,47 +24,59 @@ class DriftParityTests(unittest.TestCase):
     def test_registered_pairs_are_complete_and_repo_relative(self):
         expected = [
             (
-                "Reference — Analytical Territories.md",
+                "Projects/Ora/Reference — Analytical Territories.md",
                 "architecture/territories.md",
             ),
             (
-                "Reference — Mode Specification Template.md",
+                "Projects/Ora/Reference — Mode Specification Template.md",
                 "architecture/mode-template.md",
             ),
             (
-                "Reference — Disambiguation Style Guide.md",
+                "Projects/Ora/Reference — Disambiguation Style Guide.md",
                 "architecture/disambiguation-style-guide.md",
             ),
             (
-                "Reference — Lens Library Specification.md",
+                "Projects/Ora/Reference — Lens Library Specification.md",
                 "architecture/lens-library-specification.md",
             ),
             (
-                "Reference — Pre-Routing Pipeline Architecture.md",
+                "Projects/Ora/Reference — Pre-Routing Pipeline Architecture.md",
                 "architecture/pre-routing-pipeline.md",
             ),
             (
-                "Registry — Signal Vocabulary Registry.md",
+                "Projects/Ora/Registry — Signal Vocabulary Registry.md",
                 "architecture/signal-vocabulary-registry.md",
             ),
             (
-                "Reference — Within-Territory Disambiguation Trees.md",
+                "Projects/Ora/Reference — Within-Territory Disambiguation Trees.md",
                 "architecture/within-territory-trees.md",
             ),
             (
-                "Reference — Cross-Territory Adjacency.md",
+                "Projects/Ora/Reference — Cross-Territory Adjacency.md",
                 "architecture/cross-territory-adjacency.md",
             ),
             (
-                "Reference — Trusted Web Sources.md",
+                "Projects/Ora/Reference — Trusted Web Sources.md",
                 "architecture/trusted-web-sources.md",
             ),
             (
-                "Framework — Conversation Processing Pipeline.md",
+                "Projects/Ora/Framework — Conversation Processing Pipeline.md",
                 "frameworks/book/conversation-processing.md",
             ),
             (
-                "Specification — F-Quality-Gate.md",
+                "Projects/Ora/Framework — Process Inference.md",
+                "frameworks/book/process-inference.md",
+            ),
+            (
+                "Projects/Ora/Framework — Process Formalization.md",
+                "frameworks/book/process-formalization.md",
+            ),
+            (
+                "Projects/Ora/Framework — Problem Evolution.md",
+                "frameworks/book/problem-evolution.md",
+            ),
+            (
+                "Projects/Ora/Specification — F-Quality-Gate.md",
                 "frameworks/book/f-quality-gate.md",
             ),
         ]
@@ -97,9 +110,13 @@ class DriftParityTests(unittest.TestCase):
                 result = VERIFY.check_drift_parity(verbose=True)
 
             self.assertTrue(result.passed, result.details)
+            digest = hashlib.sha256(body.rstrip().encode("utf-8")).hexdigest()
             self.assertEqual(
                 result.details,
-                ["OK: Canonical.md ↔ frameworks/book/operational.md"],
+                [
+                    "OK: Canonical.md ↔ frameworks/book/operational.md "
+                    f"[version=unversioned, sha256={digest}]"
+                ],
             )
 
     def test_nested_operational_copy_reports_first_differing_line(self):

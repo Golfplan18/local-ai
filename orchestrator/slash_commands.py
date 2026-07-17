@@ -594,7 +594,10 @@ def _cmd_queue(args: list[str]) -> str:
     word = "entry" if len(entries) == 1 else "entries"
     lines = [f"**Human queue:** {len(entries)} pending {word}", ""]
     for e in entries:
-        kind = "redefinition" if e.redefinition else "escalation"
+        request_type = e.authority_request_type or (
+            "ped_redefinition" if e.redefinition else "legacy_untyped"
+        )
+        kind = request_type.replace("_", " ")
         project = e.event.get("project_nexus") or "(none)"
         reasoning = (e.verdict.get("reasoning") or "").strip()
         if len(reasoning) > 240:
@@ -610,7 +613,8 @@ def _cmd_queue(args: list[str]) -> str:
     lines.append("")
     lines.append(
         "Use `/approve <index>` or `/deny <index> [<reason>]` to act on a "
-        "redefinition entry."
+        "typed authority request. PED redefinitions use the legacy mechanical "
+        "archive/repoint handler; other request types require their own handler."
     )
     return "\n".join(lines)
 
@@ -668,6 +672,29 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
         return None
 
 
+def _authority_request_type_at(idx: int) -> str | None:
+    """Return the explicit queue authority type without invoking a handler."""
+    try:
+        import json as _json
+        from oversight_actions import human_queue_path
+        queue_path = human_queue_path()
+        if not os.path.isfile(queue_path):
+            return None
+        with open(queue_path) as f:
+            lines = [line for line in f if line.strip()]
+        if idx < 0 or idx >= len(lines):
+            return None
+        record = _json.loads(lines[idx])
+        if record.get("kind") in ("execution_gate", "task_gate"):
+            return None
+        request_type = str(record.get("authority_request_type") or "")
+        if not request_type and record.get("redefinition"):
+            request_type = "ped_redefinition"
+        return request_type or "legacy_untyped"
+    except Exception:
+        return None
+
+
 def _cmd_approve(args: list[str]) -> str:
     if not args:
         return (
@@ -685,6 +712,13 @@ def _cmd_approve(args: list[str]) -> str:
     gate_msg = _maybe_resolve_gate_entry_at(idx, approve=True)
     if gate_msg is not None:
         return gate_msg
+
+    request_type = _authority_request_type_at(idx)
+    if request_type and request_type != "ped_redefinition":
+        return (
+            f"[No approval handler is registered for authority request type "
+            f"`{request_type}`; the queue entry was not changed.]"
+        )
 
     from redefinition_handler import approve_redefinition
     result = approve_redefinition(idx, proposed)
@@ -724,6 +758,13 @@ def _cmd_deny(args: list[str]) -> str:
     gate_msg = _maybe_resolve_gate_entry_at(idx, approve=False, reason=reason)
     if gate_msg is not None:
         return gate_msg
+
+    request_type = _authority_request_type_at(idx)
+    if request_type and request_type != "ped_redefinition":
+        return (
+            f"[No denial handler is registered for authority request type "
+            f"`{request_type}`; the queue entry was not changed.]"
+        )
 
     from redefinition_handler import deny_redefinition
     result = deny_redefinition(idx, reason)

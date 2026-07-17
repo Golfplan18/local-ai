@@ -30,6 +30,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -126,20 +127,23 @@ REQUIRED_PIPELINE_SUBSECTIONS = {
 # Vault canonical → Ora operational pairs. Ora paths are repository-relative so
 # the same check covers architecture mirrors and runtime framework copies.
 DRIFT_PAIRS = [
-    ("Reference — Analytical Territories.md", "architecture/territories.md"),
-    ("Reference — Mode Specification Template.md", "architecture/mode-template.md"),
-    ("Reference — Disambiguation Style Guide.md", "architecture/disambiguation-style-guide.md"),
-    ("Reference — Lens Library Specification.md", "architecture/lens-library-specification.md"),
-    ("Reference — Pre-Routing Pipeline Architecture.md", "architecture/pre-routing-pipeline.md"),
-    ("Registry — Signal Vocabulary Registry.md", "architecture/signal-vocabulary-registry.md"),
-    ("Reference — Within-Territory Disambiguation Trees.md", "architecture/within-territory-trees.md"),
-    ("Reference — Cross-Territory Adjacency.md", "architecture/cross-territory-adjacency.md"),
-    ("Reference — Trusted Web Sources.md", "architecture/trusted-web-sources.md"),
+    ("Projects/Ora/Reference — Analytical Territories.md", "architecture/territories.md"),
+    ("Projects/Ora/Reference — Mode Specification Template.md", "architecture/mode-template.md"),
+    ("Projects/Ora/Reference — Disambiguation Style Guide.md", "architecture/disambiguation-style-guide.md"),
+    ("Projects/Ora/Reference — Lens Library Specification.md", "architecture/lens-library-specification.md"),
+    ("Projects/Ora/Reference — Pre-Routing Pipeline Architecture.md", "architecture/pre-routing-pipeline.md"),
+    ("Projects/Ora/Registry — Signal Vocabulary Registry.md", "architecture/signal-vocabulary-registry.md"),
+    ("Projects/Ora/Reference — Within-Territory Disambiguation Trees.md", "architecture/within-territory-trees.md"),
+    ("Projects/Ora/Reference — Cross-Territory Adjacency.md", "architecture/cross-territory-adjacency.md"),
+    ("Projects/Ora/Reference — Trusted Web Sources.md", "architecture/trusted-web-sources.md"),
     (
-        "Framework — Conversation Processing Pipeline.md",
+        "Projects/Ora/Framework — Conversation Processing Pipeline.md",
         "frameworks/book/conversation-processing.md",
     ),
-    ("Specification — F-Quality-Gate.md", "frameworks/book/f-quality-gate.md"),
+    ("Projects/Ora/Framework — Process Inference.md", "frameworks/book/process-inference.md"),
+    ("Projects/Ora/Framework — Process Formalization.md", "frameworks/book/process-formalization.md"),
+    ("Projects/Ora/Framework — Problem Evolution.md", "frameworks/book/problem-evolution.md"),
+    ("Projects/Ora/Specification — F-Quality-Gate.md", "frameworks/book/f-quality-gate.md"),
 ]
 # Compatibility alias for callers that imported the original architecture-only
 # registry name before it grew to cover operational framework copies.
@@ -616,7 +620,15 @@ def check_drift_parity(verbose: bool = False) -> CheckResult:
             result.passed = False
             result.details.append(f"Drift: {vault_name} ↔ {ora_name} differ (first diff at line {first_diff})")
         elif verbose:
-            result.details.append(f"OK: {vault_name} ↔ {ora_name}")
+            version_match = re.search(
+                r"(?im)^\s*[*_]?Version\s+([^\s*_]+)", vault_body
+            )
+            version = version_match.group(1) if version_match else "unversioned"
+            digest = hashlib.sha256(vault_body.encode("utf-8")).hexdigest()
+            result.details.append(
+                f"OK: {vault_name} ↔ {ora_name} "
+                f"[version={version}, sha256={digest}]"
+            )
 
     return result
 

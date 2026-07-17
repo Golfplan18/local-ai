@@ -835,17 +835,17 @@ Each framework has one entry with these fields:
 
 ### Oversight Configuration
 
-- **Purpose:** Configure the meta-layer oversight apparatus for a project through three modes — OS-Setup walks initial configuration with progressive questioning, OS-Modify edits or expands existing configuration as the project grows, OS-Verify dry-runs the configuration to confirm it's functional; produces project-level Oversight Specifications (in the PED), section-level rules (in corpus templates), and cross-corpus topology rules (in workflow specs)
-- **Problem Class:** Meta-layer oversight configuration management — user's entry point to the meta-layer apparatus
-- **Input Summary:** Required (varies by mode): mode (Setup/Modify/Verify); project nexus or PED path. OS-Setup: PED contents. OS-Modify: PED contents, existing configuration artifacts, change description. OS-Verify: all configuration artifacts. Optional: verification scope; existing frameworks inventory.
-- **Output Summary:** OS-Setup: updated PED with project-level Oversight Specification, updated corpus template with section-level rules (Shape 4 only), updated workflow spec with cross-corpus topology rules (multi-framework only), OS-Verify Handoff Package. OS-Modify: edits or expansions with Decision Log rationale. OS-Verify: verdict (READY / READY-WITH-WARNINGS / NOT-READY) with specific gaps if NOT-READY.
-- **Proven Applications:** New framework — landing 2026-05-04 per file metadata; instantiates the setup procedure declared in Reference — Meta-Layer Architecture §11
-- **Known Limitations:** A project without an OC-produced configuration cannot have Process Coherence fire on it (no specification to drive routing); the user does not write Process Coherence's inputs by hand — OC produces them through progressive questioning; relies on PEF and CFF auto-invocation at natural moments
+- **Purpose:** Configure, modify, and verify the locks, authority, artifact scope, evidence, bounded-judgment, correction, continuation, recovery, stopping, escalation, and transition contracts for a selected governed Process Definition and Process Run; it does not create a parallel engine or universal supervision layer
+- **Problem Class:** Governed-process contract configuration and verification
+- **Input Summary:** Mode (OS-Setup / OS-Modify / OS-Verify), target Process Definition or configuration, governing intent and locks, artifact scope, action grants and reserved authority, evidence and identity bindings, correction/continuation/recovery limits, and declared routes
+- **Output Summary:** OS-Setup produces a complete versioned configuration; OS-Modify produces an authorized versioned delta with migration/resume impact; OS-Verify produces READY / READY-WITH-WARNINGS / NOT-READY plus exact source-resolution, authority, evidence, transition, and runtime-hook findings
+- **Proven Applications:** Directly registered vault source; v2.0 reconciled to the governed Process Run contracts and seven directives in G1.1 Phase 1.5
+- **Known Limitations:** Configuration does not itself authorize actions, evaluate evidence, dispatch transitions, create watchers, or make scheduled maintenance acceptable when a runtime hook exists; unresolved required bindings remain NOT-READY
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Oversight Configuration.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
-- **Version:** 1.0
-- **Delivers:** New oversight configuration with pattern detection and progressive-questioning elicitation (OS-Setup); edited or expanded oversight configuration with Decision Log rationale (OS-Modify); dry-run verification verdict against artifact existence, lock-readability, routing coverage, synthetic-event routing, and watcher heartbeats (OS-Verify)
+- **Version:** 2.0
+- **Delivers:** Versioned governed-process configuration (OS-Setup); authorized configuration revision with migration impact (OS-Modify); topology-aware readiness verdict with synthetic seven-directive and restart/recovery checks (OS-Verify)
 
 ### Paradigm and Assumption Examination (T9 territory)
 
@@ -863,17 +863,17 @@ Each framework has one entry with these fields:
 
 ### Process Coherence
 
-- **Purpose:** Chain-coordination supervision layer of the meta-layer apparatus — fires automatically at framework transitions, milestone-completion claims, and workflow events; compares actual work product against the locked Mission, Excluded Outcomes, and Constraints from the project's PED (and section/topology rules for workflow events) and issues PROCEED, REVISE, or ESCALATE; cannot itself modify the locked definition
-- **Problem Class:** Architectural enforcement of locked problem definitions and workflow coherence at framework transition points (Layer B of the meta-layer)
-- **Input Summary:** Required: locked definitions (PED Mission/Excluded Outcomes/Constraints for project-level events; corpus template section specs and workflow spec topology rules for workflow events); output contract; current plan; executing entity's output; executing entity's claim; project Decision Log; PEF Diagnostic Toolkit. Optional: prior checkpoint history.
-- **Output Summary:** Checkpoint verdict (PROCEED / REVISE / ESCALATE / ESCALATE-redefinition) with evidence and reasoning; updated Decision Log entry; corrective-action specification (REVISE only); escalation package (ESCALATE only); redefinition evidence package (PC-Redefinition only).
-- **Proven Applications:** Renamed and refactored from Working — Framework — Agent Oversight v1.0 per the 2026-05-04 design session; inherits diagnostic engine from the Problem Evolution Framework; generalized to handle both project-level events (E1–E6) and workflow-level events (E7–E12)
-- **Known Limitations:** The framework does not invoke itself — orchestration layer is the only invoker; locked definitions are immutable within the session; does not supervise an agent (supervises the seam between two frameworks, or between a framework and a milestone claim); user-facing entry for verification is OS-Verify in Oversight Configuration
+- **Purpose:** Independently evaluate a proposed declared transition against the current Process Run, governing intent, exact artifact/evidence identities, locks, authority, and route contracts, then emit exactly one of the seven Process Run directives for mechanical dispatch
+- **Problem Class:** Evidence- and authority-bounded transition evaluation
+- **Input Summary:** Exact Run/definition/plan/node identities; proposed target; artifact and evidence identities; locks and intent; action/authority grants; correction progress; continuation/recovery state; declared routes and stop/escalation contract
+- **Output Summary:** One supported directive — PROCEED, ACCEPT, REVISE, REPLAN, REDEFINE, ESCALATE, or BLOCKED — with failure class, cited evidence, target route, and typed authority request when applicable; PASS / FAIL / BROKEN remain observations only
+- **Proven Applications:** Directly loaded vault source; v4.0 reconciled to the domain-general Process Run contracts and legacy-event adapter in G1.1 Phase 1.5
+- **Known Limitations:** Process Coherence does not invent goals, plans, routes, permissions, or cognitive direction and does not mutate state; the dispatcher alone applies a supported declared route
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Coherence.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** low
-- **Version:** 2.0
-- **Delivers:** Verdict with corrective-action specification at framework transitions and milestone-completion claims (PC-Milestone); block-evaluation against locked Constraints with alternative-approach surfacing or human-review escalation (PC-Block); redefinition evidence package and escalation when locked definition itself appears to need change (PC-Redefinition)
+- **Version:** 4.0
+- **Delivers:** Exact transition-support evaluation, failure classification, evidence/authority findings, one canonical directive, and a typed authority request only for ESCALATE
 
 ### Process and System Analysis (T17 territory)
 

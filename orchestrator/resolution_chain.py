@@ -453,12 +453,33 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
     return message
 
 
+def _non_ped_authority_message(queue_id: str) -> str | None:
+    """Prevent typed authority requests from falling into the PED handler."""
+    from oversight_queue import find_paused_by_id
+
+    entry = find_paused_by_id(queue_id)
+    if entry is None or entry.kind in ("execution_gate", "task_gate"):
+        return None
+    request_type = entry.authority_request_type or (
+        "ped_redefinition" if entry.redefinition else "legacy_untyped"
+    )
+    if request_type == "ped_redefinition":
+        return None
+    return (
+        f"[This resolution requires a handler for authority request type "
+        f"`{request_type}`. The queue entry was not changed.]"
+    )
+
+
 def _commit_approve_as_proposed(ctx: ContinuationContext, conversation_id: str) -> str:
     """User typed 1 — apply redefinition as the system originally proposed."""
     gate_msg = _maybe_commit_gate_entry(ctx.queue_id, conversation_id,
                                         approve=True)
     if gate_msg is not None:
         return gate_msg
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import approve_redefinition
 
@@ -491,6 +512,9 @@ def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) ->
             "[Option 3 has no alternative content yet — keep discussing until "
             "the AI proposes a substantive alternative, then type 3 again.]"
         )
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
 
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import approve_redefinition
@@ -525,6 +549,9 @@ def _commit_deny(
                                         reason=_extract_deny_reason(history))
     if gate_msg is not None:
         return gate_msg
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import deny_redefinition
 

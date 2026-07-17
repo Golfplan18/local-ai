@@ -238,7 +238,7 @@ class TestQueueCommand(unittest.TestCase):
                 "redefinition": False,
             }) + "\n")
         out = run_runtime_command("/queue")
-        self.assertIn("escalation", out)
+        self.assertIn("legacy untyped", out)
         self.assertNotIn("redefinition —", out)
 
 
@@ -404,8 +404,9 @@ class TestApproveDenyCommand(unittest.TestCase):
         out = run_runtime_command("/deny 99")
         self.assertIn("Denial failed", out)
 
-    def test_deny_removes_queue_entry(self):
-        # Seed a non-redefinition escalation; deny should still remove it
+    def test_untyped_escalation_never_falls_into_ped_denial_handler(self):
+        # A non-redefinition legacy escalation has no safe typed handler. It
+        # must not fall through to the PED redefinition implementation.
         with open(self.queue_path, "w") as f:
             f.write(json.dumps({
                 "queued_at": "2026-05-04T12:00:00+00:00",
@@ -414,11 +415,10 @@ class TestApproveDenyCommand(unittest.TestCase):
                 "redefinition": False,
             }) + "\n")
         out = run_runtime_command("/deny 0 \"not relevant\"")
-        self.assertIn("Denial recorded", out)
-        self.assertIn("not relevant", out)
-        # Queue file should now be empty
+        self.assertIn("legacy_untyped", out)
+        self.assertIn("was not changed", out)
         with open(self.queue_path) as f:
-            self.assertEqual(f.read().strip(), "")
+            self.assertNotEqual(f.read().strip(), "")
 
 
 # ---------- Generic dispatcher behavior ----------

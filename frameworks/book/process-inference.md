@@ -4,12 +4,14 @@
 Process Inference (PIF)
 
 ## Display Description
-Discover unknown transformation processes from defined endpoints — when you know what you have and what you want but not the path between them. Produces a candidate process specification ready for PFF formalization.
+Discover unknown transformation processes from defined endpoints, including the external artifacts, authorized actions, evidence, loop needs, and verification boundaries required for reliable execution. Produces a candidate process specification ready for PFF formalization.
 
 
 *A Framework for Discovering Unknown Processes from Defined Endpoints*
 
-*Version 1.0*
+*Version 1.3*
+
+*v1.3 makes capability routing conditional, permits bounded direct operation inside the originating PIF Process Run when the complete procedure and governing contracts are already sufficient, and requires PFF before durable reuse. v1.2 added domain-neutral capability discovery and production verification-boundary inference to P-Infer and P-Formalize only. P-Debug, P-Decompose, and P-Feasibility retain their prior mode contracts. v1.1 added the trace-backed P-Debug verdict discipline and diagnostic evidence boundary on 2026-07-13.*
 
 *Canonical Specification — Produced via F-Convert from the Process Inference Overview*
 
@@ -36,11 +38,25 @@ Optional. Approaches that have already failed or been ruled out. Helps the frame
 ### Uncertainty map
 Optional. What you know you do not know — missing substeps, hidden dependencies, unknown bottlenecks. If absent, the framework builds it from gaps between current and end states.
 
+### External artifacts and state — P-Infer and P-Formalize only
+Optional for P-Infer and P-Formalize. Files, documents, records, systems, physical outputs, or other state the process reads or changes. Identify which outputs must persist outside the conversation. If absent, the framework elicits external effects from the endpoint. This question does not activate in P-Debug, P-Decompose, or P-Feasibility.
+
+### Authorized actions — P-Infer and P-Formalize only
+Optional for P-Infer and P-Formalize. Actions the process may perform and any permission, confirmation, access, reversibility, or terminal-proof requirements. If absent, the framework asks before selecting an externally acting path. This question does not activate in P-Debug, P-Decompose, or P-Feasibility.
+
+### Available evidence and reviewers — P-Infer and P-Formalize only
+Optional for P-Infer and P-Formalize. Checks, observations, snapshots, records, or independent reviewers that can establish whether intermediate and final results are correct. If absent, the framework identifies symbolic evidence and reviewer requirements without inventing providers. This question does not activate in P-Debug, P-Decompose, or P-Feasibility.
+
+### Verification economics — P-Infer and P-Formalize only
+Optional for P-Infer and P-Formalize. The cost of delayed error discovery and the acceptable interruption, latency, effort, or expense of intermediate review. If absent, the framework compares review value and process drag qualitatively. This question does not activate in P-Debug, P-Decompose, or P-Feasibility.
+
 ## How to Use This File
 
-This is a process discovery framework. It operates when the user knows what they have and what they want but does not know the transformation path between them. It is the upstream companion to the Process Formalization Framework: this framework discovers the process; the PFF formalizes it.
+This is a process discovery framework. It operates when the user knows what they have and what they want but does not know the transformation path between them. It may hand a stable procedure to the Process Formalization Framework for durable reuse, but PFF is not a mandatory wrapper around every PIF result.
 
 Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemini) or local model — then provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
+
+**Standalone-use invariant:** This consolidated Markdown file is the complete executable framework. No Ora service, Python module, parser, registry, runtime adapter, or machine-readable configuration is required to interpret or apply it. Tools, multiple models, context resets, and governed process orchestration may enhance execution but remain optional. In P-Infer and P-Formalize, when a required tool, evidence provider, identity provider, or independent reviewer is unavailable, state the unresolved requirement and resulting assurance limit; never invent a binding or present self-review as independent verification. P-Debug, P-Decompose, and P-Feasibility retain their own mode-specific evidence and output rules.
 
 **Mode P-Infer:** You have inputs and a desired output but no process. You will describe your current state, desired end state, constraints, and available resources. The AI will infer a viable transformation path.
 
@@ -48,9 +64,28 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 
 **Mode P-Decompose:** You have a complex endpoint and need it broken into solvable subproblems. Describe the endpoint. The AI will decompose it into manageable parts with dependency ordering.
 
-**Mode P-Formalize:** You have already discovered a workable process through inference and want it prepared for handoff to the Process Formalization Framework. Provide the discovered process. The AI will structure it as an PFF-ready package.
+**Mode P-Formalize:** You have already discovered a workable process through inference and want it prepared for handoff to the Process Formalization Framework. Provide the discovered process. The AI will structure it as a PFF-ready package.
 
 **Mode P-Feasibility:** You (or a calling framework — typically the Mission, Objectives, and Milestones Clarification Framework under PEF supervision) need a lightweight feasibility assessment on a candidate milestone or next-step, without producing a full transformation path. Two sub-uses exist. **Verify**: a candidate milestone is provided with its endpoint; you determine whether reaching it from the current state is reachable, reachable with conditions, not reachable, or cannot be assessed. **Suggest**: no candidate milestone is provided; you identify candidate next state-changes from the current state toward a named Resolution Statement, and assess feasibility of each. The output is a verdict, not a full process. P-Feasibility runs Layers 1 and 2, then a dedicated Feasibility Assessment, then Layers 8 and 9. Layers 3 through 7 are skipped.
+
+## Governed Routing and Direct Operation
+
+PIF is one conditional route into the governed Process Run kernel, not a mandatory stage in a universal PEF → PIF → PFF chain. Select the least elaborate sufficient route:
+
+- invoke an exact approved Process Definition when one already fits;
+- use PFF directly when the procedure is known but a durable definition is required;
+- use PIF when a complete procedure can be responsibly inferred from current information; and
+- use PEF only when the next responsible direction depends on evidence that an interim result must first produce.
+
+PIF may proceed from inference into operation without first invoking PFF only when all of these conditions hold:
+
+1. The complete procedure is inferable from current information; future direction does not depend on an unknown interim result.
+2. The originating PIF Process Run already binds the approved plan, artifact scope, action authority, evidence and verification requirements, correction limits, continuation and recovery behavior, and stop/escalation conditions needed for the proposed actions.
+3. The objective can be satisfied without first registering, activating, invoking from another Run, promoting for reuse, or replacing a separately versioned Process Definition.
+
+Direct operation is an action segment of that same PIF Process Run. It retains the Run ID, exact plan and definition reference, artifact identities, authority grants, evidence requirements, transition records, checkpoints, correction history, and recovery contract. It is not an ad hoc executor, a new `run_kind`, or permission to infer beyond the approved plan while acting. Local `PASS`, `FAIL`, and `BROKEN` results remain observations; Process Coherence evaluates the evidence and the policy dispatcher applies one of `PROCEED`, `ACCEPT`, `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, or `BLOCKED`.
+
+PFF is required before the procedure is registered, activated, invoked by another Process Run, promoted as a reusable capability, or used to replace an existing Process Definition. PFF may also formalize a stable procedure after direct operation has strengthened its evidence. That later formalization does not invalidate the governed result already produced by the originating PIF Run.
 
 ---
 
@@ -71,13 +106,14 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 - P-Feasibility Mode Specification
 - Named Failure Modes
 - Execution Commands
+- Version History
 - User Input
 
 ---
 
 ## PURPOSE
 
-Discover a viable transformation path when the user knows the starting state and desired end state but does not know the process that connects them. Produce a structured process description ready for formalization through the Process Formalization Framework.
+Discover a viable transformation path when the user knows the starting state and desired end state but does not know the process that connects them. In P-Infer and P-Formalize only, identify the external artifacts, authorized actions, evidence capabilities, loop needs, independent review requirements, and verification boundaries the path requires. P-Infer may operate a complete inferred procedure inside the same governed Process Run when the direct-operation conditions are satisfied; otherwise it returns a handoff or unresolved requirement. Produce the deliverable defined for the selected mode; P-Debug, P-Decompose, and P-Feasibility retain their pre-v1.2 output behavior.
 
 ## INPUT CONTRACT
 
@@ -90,13 +126,22 @@ Optional:
 - **Available Transformation Resources**: Software tools, hardware, APIs, browser access, Python, manual steps, existing templates, people, documents, known partial methods. Source: user input. Default behavior if absent: Layer 2 asks the user to inventory available resources.
 - **Known Non-Solutions**: Approaches that have already failed, been ruled out, or are undesirable. Source: user input. Default behavior if absent: Layer 4 generates all candidate paths without exclusion filtering.
 - **Uncertainty Map**: What the user knows they do not know — missing substeps, hidden dependencies, unknown causal relations, unknown bottlenecks. Source: user input. Default behavior if absent: Layer 2 constructs an uncertainty map from gaps in the current state and end state descriptions.
-- **Operating Mode**: P-Infer, P-Debug, P-Decompose, or P-Formalize. Source: user input. Default behavior if absent: the AI determines mode from context.
+- **External Artifacts and State (P-Infer and P-Formalize only)**: Files, documents, records, systems, physical outputs, or other persistent state the process reads or changes. Source: user input. Default behavior if absent: Layers 1-2 infer the requirement symbolically and request confirmation where it changes authorization or architecture.
+- **Authorization Constraints (P-Infer and P-Formalize only)**: Permissions, confirmations, access boundaries, reversibility limits, and terminal-proof requirements governing process actions. Source: user input. Default behavior if absent: Layer 2 elicits them before retaining an externally acting path.
+- **Available Evidence and Reviewers (P-Infer and P-Formalize only)**: Existing checks, observations, snapshots, records, evidence providers, identity providers, or independent reviewers. Source: user input. Default behavior if absent: PIF identifies required capabilities and marks concrete bindings unresolved.
+- **Verification Economics (P-Infer and P-Formalize only)**: Cost of delayed error discovery and acceptable review interruption, latency, effort, or expense. Source: user input. Default behavior if absent: Layers 3 and 6 compare assurance value and process drag qualitatively.
+- **Operating Mode**: P-Infer, P-Debug, P-Decompose, P-Formalize, or P-Feasibility. Source: user input. Default behavior if absent: the AI determines mode from context.
 
 ## OUTPUT CONTRACT
 
 Primary outputs:
-- **Viable Process Description**: A structured description of the discovered transformation path, including step sequence, decision points, required tools, assumptions, and validation checks. Format: structured natural language with numbered steps. Quality threshold: scores 3 or above on all evaluation criteria.
-- **Formalization Handoff Package**: A structured summary ready for input to the Process Formalization Framework (F-Design or F-Convert mode). Format: process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract. Quality threshold: an operator unfamiliar with the discovery process can execute the PFF conversion without additional context.
+- **Viable Process Description (P-Infer only)**: A structured description of the discovered transformation path, including step sequence, decision points, required tools, assumptions, and validation checks. Format: structured natural language with numbered steps. Quality threshold: scores 3 or above on all nine P-Infer evaluation criteria.
+- **Process Capability Requirements (P-Infer and P-Formalize only)**: A domain-neutral account of external artifacts and state, authorized actions, evidence and identity needs, loop needs, final-gate requirements, available resources, and unresolved bindings. Format: labeled Markdown fields and tables. Quality threshold: every retained process step has the capabilities and authority it requires without invented providers.
+- **Verification-Boundary Map (P-Infer and P-Formalize only)**: Proposed intermediate review points stating the completed work unit, observable result, review rationale, independent reviewer focus, required evidence, pass criteria, failure route, and grouping/separation rationale. Format: one human-readable block per boundary. Quality threshold: each boundary is independently inspectable and worth its interruption; meaningful downstream contamination risks are not left unbounded.
+- **Formalization Handoff Package (P-Infer and P-Formalize only)**: A structured summary ready for input to the Process Formalization Framework (F-Design or F-Convert mode). Format: process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract, Process Capability Requirements, and Verification-Boundary Map. Quality threshold: an operator unfamiliar with the discovery process can execute the PFF conversion without additional context.
+- **Direct Operation Record (P-Infer only, when selected)**: The exact originating Process Run identity, approved plan, bounded action segment, artifact identities, authority and evidence bindings, transition records, and final result identity. Quality threshold: the operation remains reconstructable as part of the same Run, every external effect has a digest-bound receipt, and completion is withheld until an exact final `ACCEPT` transition is supported.
+- **Trace Diagnostic Report (P-Debug only)**: Contract-bounded verdict, evidence walk, structural/semantic boundary table, and recommend-only correction bundle when DEFECT_LOCALIZED. Format and quality threshold: the P-Debug milestone contract and Trace-Backed Verdict Discipline.
+- **Decomposed Subproblem Set (P-Decompose only)**: Transformation skeleton, necessity-tested intermediate states, dependency map, and per-subproblem solvability tags. Format and quality threshold: the P-Decompose milestone contract and Layer 3 output.
 - **P-Feasibility Verdict (Mode P-Feasibility only)**: Structured assessment of whether the specified endpoint (Verify) or the ranked candidate next state-changes (Suggest) can be reached from the current state under the given constraints. Format: one of four verdicts — Reachable / Reachable with conditions / Not reachable / Cannot assess (terrain unknown) — with justification, named blocking uncertainties if any, and (for Suggest) a ranked list of 3-5 candidate state-changes with the recommended one marked. Quality threshold: the verdict is unambiguous and the justification references specific findings from Layers 1 and 2.
 
 Secondary outputs:
@@ -105,17 +150,19 @@ Secondary outputs:
 - **Probe Plan**: Recommended validation tests with expected outcomes, interpretation rules, and branching logic. Format: numbered probe list.
 - **Assumptions Log**: Every assumption made during inference, named and tagged with the phase where it was introduced. Format: numbered list.
 
+**Mode-specific output rule:** Treat the Output Contract as a union of mode outputs, not as a requirement that every mode emit every artifact. P-Infer emits the viable process, capability requirements, boundary map, handoff, and its supporting discovery artifacts. P-Formalize emits capability requirements, boundary map, handoff, and supporting assumptions or unresolved risks. P-Debug emits only its Trace Diagnostic Report and diagnostic support. P-Decompose emits only its decomposition deliverable and supporting endpoint, constraint, and assumption records unless the user starts a separate P-Infer cycle for a subproblem. P-Feasibility emits only its dedicated verdict format and supporting Layer 1-2 findings.
+
 ## EXECUTION TIER
 
-Specification — this document is model-agnostic and environment-agnostic. All stage boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
+This consolidated Markdown file is the standalone executable Process Inference Framework. It is model-agnostic and environment-agnostic: all layers, handoffs, and milestones are logical instructions that any capable AI can follow from this file alone. In P-Infer and P-Formalize, production verification boundaries are likewise logical and do not require Ora, Python, a parser, or a context-window reset. Tools, separate models, context resets, and multi-stage runtime orchestration are optional execution enhancements. In those two modes, when an independent reviewer is unavailable, preserve the boundary, disclose the assurance gap, and do not claim that self-review satisfies the independent-review requirement. The structural/semantic evidence boundaries in P-Debug remain diagnostic constructs governed only by the Trace-Backed Verdict Discipline.
 
-Modes P-Infer and P-Debug cover Layers 1-9 (nine processing layers) and declare a single milestone each. Per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified by the iterative-then-integrative shape of process discovery: candidate path generation (Layer 4), probe design (Layer 5), and path evaluation (Layer 6) cycle internally before producing a single integrated transformation path or failure diagnosis, and intermediate milestones would emit throwaway candidate paths that the framework's own evaluation step is meant to discard.
+Modes P-Infer and P-Debug cover Layers 1-9 (nine processing layers) and declare one project-level milestone each. Per the Process Formalization Framework Section II §2.3, layer count triggers a boundary review but does not create milestones. P-Infer's candidate paths, probes, and candidate verification boundaries are exploratory working states rather than independently acceptable project results; the first eligible PIF milestone is the integrated transformation path and handoff. P-Debug likewise requires the full admissible evidence walk before a verdict becomes reviewable. The verification boundaries P-Infer proposes inside its output govern the discovered process, not acceptance of PIF's temporary discovery states.
 
 ---
 
 ## MILESTONES DELIVERED
 
-This framework's declaration of the project-level milestones it can deliver. Used by the Problem Evolution Framework (PEF) to invoke this framework for milestone delivery under project supervision.
+This framework's declaration of the project-level milestones it can deliver. PIF may be invoked directly, by an existing Process Definition, or by PEF when genuinely contingent problem evolution selects it as a bounded interim capability.
 
 PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose / P-Formalize / P-Feasibility). Mode is user-specified or, when omitted, auto-classified within Layer 1 per the Layer 1 processing instructions; there is no separate triage layer. Each mode declares a single milestone covering the layer subset its endpoint requires; P-Feasibility's layer flow is documented in the §P-Feasibility Mode Specification section. All milestone properties are defined inline per milestone.
 
@@ -124,13 +171,17 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
 #### Milestone 1: Discovered transformation path
 
 - **Mode:** P-Infer
-- **Endpoint produced:** Viable Process Description — a structured description of the transformation path from current state to desired end state, including step sequence, decision points, required tools, assumptions, and validation checks.
-- **Verification criterion:** All seven Evaluation Criteria score 3 or above; the Formalization Handoff Package is complete per Layer 7 and ready for PFF F-Convert.
+- **Endpoint produced:** Viable Process Description — a structured description of the transformation path from current state to desired end state, including step sequence, decision points, required tools, assumptions, validation checks, Process Capability Requirements, and Verification-Boundary Map; plus either a Formalization Handoff Package or, when the governed direct-operation conditions hold, a Direct Operation Record from the originating PIF Process Run.
+- **Verification criterion:** All nine Evaluation Criteria score 3 or above; every proposed verification boundary has an observable intermediate result, evidence, pass criteria, failure route, and grouping/separation rationale; and the selected disposition is explicit. A reusable procedure has a complete PFF handoff. A directly operated procedure remains inside the same governed Run and cannot complete without exact final acceptance evidence.
 - **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** Viable Process Description per Layer 6 output (selected path with refined step sequence) wrapped in the Layer 7 Formalization Handoff Package structure (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract).
+- **Output format:** Viable Process Description per Layer 6 output (selected path with refined step sequence and selected verification-boundary architecture) wrapped in the Layer 7 Formalization Handoff Package structure (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract, Process Capability Requirements, Verification-Boundary Map, unresolved bindings).
 - **Drift check question:** Does the discovered path connect the user's actual current state to the actual desired end state — without scope-shifted endpoints, without confabulated tools or steps the assumptions log doesn't justify — and is Layer 7's handoff package executable by an operator unfamiliar with the discovery process?
+- **Independent review examines:** The integrated path, capability requirements, Verification-Boundary Map, assumptions, and PFF handoff against the user's endpoints and constraints.
+- **Required evidence:** Layer 1 endpoint record; Layer 2 constraints and capabilities; candidate-path comparison; selected-path rationale; nine-criterion evaluation; complete handoff package.
+- **Failure route:** Return to the earliest deficient discovery layer; re-evaluate the path or mark the process unresolved rather than presenting an ungrounded handoff.
+- **Boundary rationale:** Temporary candidates are not independently acceptable results; the integrated path is the first point where endpoint fit, feasibility, capabilities, boundaries, and handoff completeness can be judged together.
 
 ### Milestones for Mode P-Debug
 
@@ -144,6 +195,10 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
 - **Gear:** 4
 - **Output format:** Trace Diagnostic Report — verdict, confidence, contract checked, evidence walked, boundary table with structural and semantic pass/fail/unknown, root cause from the finite taxonomy, probe recommendation with cost/risk before execution, and recommend-only correction bundle when applicable.
 - **Drift check question:** Did this diagnosis stay inside captured trace evidence and the execution-time contract, without inventing a defect or requiring a correction for BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT? If the contract was unavailable, did it withhold the four-way verdict?
+- **Independent review examines:** The execution-time contract, admissible trace evidence, boundary table, verdict logic, and any recommend-only correction bundle.
+- **Required evidence:** Exact contract or CONTRACT_UNAVAILABLE record; trace walk; structural/semantic state per boundary; one admissible terminal verdict when available.
+- **Failure route:** Return to the unsupported trace boundary or withhold the four-way verdict as CONTRACT_UNAVAILABLE; never manufacture a localized defect.
+- **Boundary rationale:** A diagnosis is reviewable only after the complete contract-bounded evidence walk can support or withhold the terminal verdict.
 
 ### Milestones for Mode P-Decompose
 
@@ -157,19 +212,27 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
 - **Gear:** 4
 - **Output format:** Layer 3 GAP DECOMPOSITION output — transformation skeleton with intermediate states, gap-size assessment per transition, dependency map, and per-subproblem solvability tags (known-method vs. requires-its-own-P-Infer-cycle).
 - **Drift check question:** Does the decomposition genuinely connect current state to desired end state without invented intermediate states — with every intermediate passing the necessity test and the dependency map acyclic — rather than producing a plausible-looking decomposition that the necessity test would reject?
+- **Independent review examines:** The complete transformation skeleton, necessity test per intermediate state, dependency map, and solvability tag per subproblem.
+- **Required evidence:** Defined endpoints; gap analysis; necessity-test results; acyclic dependency check; source or assumption for each intermediate state.
+- **Failure route:** Return to Layer 3 to remove, add, or reorder states; route unresolved subproblems to their own P-Infer cycle.
+- **Boundary rationale:** The full decomposition is the first coherent artifact whose coverage, necessity, and dependency integrity can be evaluated independently.
 
 ### Milestones for Mode P-Formalize
 
 #### Milestone 1: Formalization handoff package
 
 - **Mode:** P-Formalize
-- **Endpoint produced:** PFF-ready structured package containing process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, and output contract.
-- **Verification criterion:** An operator unfamiliar with the discovery process can execute the PFF conversion without additional context; all nine required elements are present.
+- **Endpoint produced:** PFF-ready structured package containing process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract, Process Capability Requirements, and Verification-Boundary Map.
+- **Verification criterion:** An operator unfamiliar with the discovery process can execute the PFF conversion without additional context; all eleven required elements are present; unavailable providers or reviewers are marked as unresolved bindings rather than silently assumed.
 - **Layers covered:** 7, 8, 9
 - **Required prior milestones:** None
 - **Gear:** 4
-- **Output format:** Layer 7 FORMALIZATION HANDOFF PACKAGE structure — process goal, required inputs (name/format/source per item), required tools (capability/alternatives per item), step sequence, decision points (condition + branch actions), failure modes (description/detection/recovery), validation checks, recovery paths, output contract.
-- **Drift check question:** Can an operator unfamiliar with the discovery process execute the PFF conversion using only this package — with all nine required elements present and no implicit domain knowledge that the package fails to make explicit?
+- **Output format:** Layer 7 FORMALIZATION HANDOFF PACKAGE structure — process goal, required inputs (name/format/source per item), required tools (capability/alternatives per item), step sequence, decision points (condition + branch actions), failure modes (description/detection/recovery), validation checks, recovery paths, output contract, Process Capability Requirements, Verification-Boundary Map, and unresolved bindings.
+- **Drift check question:** Can an operator unfamiliar with the discovery process execute the PFF conversion using only this package — with all eleven required elements present and no implicit domain knowledge that the package fails to make explicit?
+- **Independent review examines:** The complete handoff as a standalone input to PFF, including capability requirements, boundary map, and unresolved bindings.
+- **Required evidence:** Eleven required handoff elements; operator test; no-invented-binding check; standalone-fidelity check.
+- **Failure route:** Return to Layer 7 to supply the missing meaning or mark the dependency unresolved; withhold PFF-ready status until the operator test passes.
+- **Boundary rationale:** Formalization can begin only when PFF can reconstruct the process and its assurance requirements without hidden discovery context.
 
 ### Milestones for Mode P-Feasibility
 
@@ -183,12 +246,16 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
 - **Gear:** 4
 - **Output format:** P-Feasibility Verify or Suggest output per the §P-Feasibility Mode Specification — Verify sub-mode emits one verdict + justification; Suggest sub-mode emits 3-5 ranked candidate next state-changes each with its own verdict and a RECOMMENDED top pick. Layers 3-7 are skipped; the Feasibility Assessment substep replaces them.
 - **Drift check question:** Does the verdict objectively reflect the Layer 1-2 analysis — citing specific findings rather than asserting "Reachable" without basis or "Not reachable" without naming the blocking constraint — and (in Suggest sub-mode) do the candidates differ meaningfully rather than minor variations of the same direction?
+- **Independent review examines:** The endpoint or candidate state-changes, Layer 1-2 findings, blocking uncertainties, verdict logic, and ranking when applicable.
+- **Required evidence:** Defined current and desired states; constraint record; resource and uncertainty inventory; explicit basis for each verdict.
+- **Failure route:** Return to Layer 1 or 2 for missing endpoint, constraint, resource, or uncertainty evidence; emit Cannot assess when the terrain remains unknown.
+- **Boundary rationale:** The feasibility verdict is the mode's single independently judgeable result; earlier classifications are inputs to the verdict rather than standalone project outcomes.
 
 ---
 
 ## EVALUATION CRITERIA
 
-This framework's output is evaluated against these 7 criteria. Each criterion is rated 1-5. Minimum passing score: 3 per criterion.
+Criteria 1-7 are the standard PIF criteria. Criteria 8-9 are v1.2 supplements applied only in P-Infer and P-Formalize. P-Infer evaluates all nine; P-Formalize evaluates the applicable standard criteria plus Criteria 8-9; P-Debug and P-Decompose draw only from Criteria 1-7 as specified by Layer 8 and never evaluate Criteria 8-9; P-Feasibility uses its dedicated five criteria instead of this set. Each applicable criterion is rated 1-5. Minimum passing score: 3 per criterion.
 
 1. **Endpoint Specification Quality**:
    - 5 (Excellent): Current state and desired end state are defined with observable, testable precision. Success criteria are specific enough that an independent evaluator could determine pass/fail without consulting the user. All measurable dimensions of the end state are enumerated.
@@ -234,10 +301,24 @@ This framework's output is evaluated against these 7 criteria. Each criterion is
 
 7. **Formalization Handoff Readiness**:
    - 5 (Excellent): The handoff package contains all elements specified in the Output Contract (process goal, required inputs, required tools, step sequence, decision points, failure modes, validation checks, recovery paths, output contract). An operator unfamiliar with the discovery process can execute the PFF conversion without additional context. Every step in the sequence is concrete enough to be tested independently.
-   - 4 (Strong): The handoff package is complete. One or two steps may need minor clarification but the overall process is executable by an PFF operator.
+   - 4 (Strong): The handoff package is complete. One or two steps may need minor clarification but the overall process is executable by a PFF operator.
    - 3 (Passing): The handoff package contains the step sequence, required inputs, and output contract. Some elements (failure modes, recovery paths) may be incomplete but the core process is transferable.
    - 2 (Below threshold): The discovered process is described but not structured for PFF conversion. An operator would need to re-interview the user to fill gaps.
    - 1 (Failing): No structured handoff. The process exists only as a narrative description scattered across the analysis.
+
+8. **Capability Requirement Completeness (P-Infer and P-Formalize only)**:
+   - 5 (Excellent): Every retained step is traced to the external artifacts, access, authorized actions, evidence, identity, reviewer, loop, and final-gate capabilities it requires; available resources and unresolved bindings are distinguished explicitly; no provider or permission is invented.
+   - 4 (Strong): All material capabilities and authority requirements are named and grounded; one minor optional binding may remain underspecified without affecting viability.
+   - 3 (Passing): External artifacts, consequential actions, required evidence, and unresolved providers are identified well enough for PFF to formalize the process without assuming hidden capabilities.
+   - 2 (Below threshold): Some tools or checks are listed, but authority, identity, evidence-provider, loop, or final-gate needs remain implicit.
+   - 1 (Failing): The process assumes external capabilities or permissions that were never inventoried, or presents invented providers as available.
+
+9. **Verification-Boundary Quality (P-Infer and P-Formalize only)**:
+   - 5 (Excellent): Every boundary follows a coherent independently inspectable result, cites objective evidence and pass criteria, localizes correction before material downstream contamination, and justifies its interruption; adjacent steps are grouped or separated with explicit reasoning.
+   - 4 (Strong): Boundaries cover every material propagation risk and remain independently inspectable; one grouping or cost rationale may need minor clarification.
+   - 3 (Passing): The process includes useful boundaries at major inspectable intermediate results, avoids reviewing trivial microsteps separately, and states evidence, pass criteria, and failure routes.
+   - 2 (Below threshold): Boundaries exist but include unreviewable checkpoints, excessive trivial reviews, or oversized work units that allow costly fault propagation.
+   - 1 (Failing): No substantive boundary architecture exists, or claimed boundaries lack observable results and independent evidence.
 
 ---
 
@@ -318,11 +399,14 @@ Fabricated-finding guard: absence of semantic evidence is unknown, not failure. 
    - Intermediate states are visible or hidden.
    - Feedback is immediate or delayed.
    - The process is deterministic or exploratory.
+6. IF the mode is P-Infer or P-Formalize, THEN additionally identify whether:
+   - The process is text-only, produces or changes an external artifact, changes external state, performs an authorized external action, or combines these forms.
+   - Completion can be observed independently of the process's own narrative claim.
 
-6. IF P-Debug mode: do not request user-narrated expected/actual behavior as the primary evidence. Use the supplied TRACE_DEBUG_CONTEXT_JSON as the evidence record. Treat the execution-time contract, manifest, step projections, step-health, model-call configs, and child traces as the admissible boundary. Optional user symptom text may orient attention, but it must not substitute for trace evidence.
-7. IF P-Debug mode: emit exactly one line matching `VERDICT: DEFECT_LOCALIZED`, `VERDICT: BAD_DRAW`, `VERDICT: CONTRACT_MISMATCH`, or `VERDICT: NO_DEFECT` when the contract is available. If it is unavailable, emit `CONTRACT_UNAVAILABLE` as the terminal diagnostic and emit no `VERDICT:` line. Always include `FAILING STEP:` and `VERIFICATION PROBE:` fields, using `none` when they do not apply.
-8. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
-9. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
+7. IF P-Debug mode: do not request user-narrated expected/actual behavior as the primary evidence. Use the supplied TRACE_DEBUG_CONTEXT_JSON as the evidence record. Treat the execution-time contract, manifest, step projections, step-health, model-call configs, and child traces as the admissible boundary. Optional user symptom text may orient attention, but it must not substitute for trace evidence.
+8. IF P-Debug mode: emit exactly one line matching `VERDICT: DEFECT_LOCALIZED`, `VERDICT: BAD_DRAW`, `VERDICT: CONTRACT_MISMATCH`, or `VERDICT: NO_DEFECT` when the contract is available. If it is unavailable, emit `CONTRACT_UNAVAILABLE` as the terminal diagnostic and emit no `VERDICT:` line. Always include `FAILING STEP:` and `VERIFICATION PROBE:` fields, using `none` when they do not apply.
+9. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
+10. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
 
 ### Output Format for This Layer
 
@@ -345,7 +429,13 @@ PROBLEM CHARACTERISTICS:
 - Intermediate visibility: [visible | hidden]
 - Feedback: [immediate | delayed]
 - Process nature: [deterministic | exploratory]
+
+[P-Infer and P-Formalize only:]
+- Reality contact: [text-only | external artifact | external state | authorized action | mixed]
+- Independent completion observation: [available | unavailable | unresolved] — [basis]
 ```
+
+Omit the P-Infer/P-Formalize-only fields in P-Debug, P-Decompose, and P-Feasibility.
 
 **Invariant check**: Before proceeding to Layer 2, confirm that the primary objective — discovering a viable transformation path — has not shifted to a different task, that both endpoints are defined, and that the problem type classification is consistent with the user's input.
 
@@ -398,7 +488,16 @@ PROBLEM CHARACTERISTICS:
 
    For each uncertainty, assess: does this uncertainty block path generation (must be resolved first) or can it be carried as an open question into path generation?
 
-6. IF P-Feasibility mode: run per standard instructions. Constraints are inherited from the calling framework (typically MOM's PED Constraints section, including Hard, Soft, and Working Assumption classifications). Working Assumptions are treated as candidate blocking uncertainties for feasibility assessment purposes.
+6. IF the mode is P-Infer or P-Formalize, THEN build the initial Process Capability Requirements. For the endpoint and each known process action, identify:
+   - External artifacts or state read, created, or changed; access mode; persistence; and whether fresh identity is required.
+   - Actions requiring permission, confirmation, special access, reversibility controls, or terminal outcome proof.
+   - Evidence needed to establish intermediate and final correctness; available providers; and unresolved provider requirements.
+   - Whether planning and execution must be separated, whether a bounded synchronous loop is needed, and what progress or repeated-failure signal could stop it.
+   - Whether an independent final gate is required before release and what that gate must examine.
+   - Review-cost, latency, or interruption constraints that affect verification-boundary placement.
+   Record a concrete resource only when the user or resource inventory confirms it. Otherwise state the symbolic capability and label its binding unresolved.
+
+7. IF P-Feasibility mode: run per standard instructions. Constraints are inherited from the calling framework (typically MOM's PED Constraints section, including Hard, Soft, and Working Assumption classifications). Working Assumptions are treated as candidate blocking uncertainties for feasibility assessment purposes.
 
 ### Output Format for This Layer
 
@@ -411,6 +510,12 @@ Soft constraints:
 
 RESOURCE INVENTORY:
 - [resource]: capabilities: [list]; limitations: [list]; verified: [yes | assumed]
+
+INITIAL PROCESS CAPABILITY REQUIREMENTS:
+- External artifacts/state: [requirement, access, identity need, confirmed resource or unresolved binding]
+- Authorized actions: [action, authority, reversibility, terminal-proof need]
+- Evidence/review: [what must be established, source/provider or unresolved binding]
+- Control/final gate: [planning/execution separation, bounded loop need, independent release review]
 
 NON-SOLUTIONS:
 - [approach]: failed because: [reason]; failure type: [inherent | contingent]
@@ -425,6 +530,8 @@ ASSUMPTIONS LOG (initialized):
 - A1: [assumption, source: Layer 1 or Layer 2]
 - A2: [assumption, source]
 ```
+
+Emit `INITIAL PROCESS CAPABILITY REQUIREMENTS` only in P-Infer and P-Formalize. Omit the block in P-Debug, P-Decompose, and P-Feasibility; those modes retain the ordinary constraint, resource, non-solution, uncertainty, and assumption outputs.
 
 **Invariant check**: Before proceeding to Layer 3, confirm that no constraint has been silently dropped, that the uncertainty map accounts for gaps in both the current state and the desired end state, and that blocking uncertainties have been addressed or flagged.
 
@@ -452,9 +559,16 @@ ASSUMPTIONS LOG (initialized):
    - Which states require prior states to be completed first (sequential)?
    - Are there circular dependencies? IF so, flag as a structural problem requiring decomposition.
 
-5. IF P-Debug mode: build the boundary table from the supplied trace walk. Each boundary has two separate states: structural evidence (pass, fail, unknown) and semantic evidence (pass, fail, unknown). Do not infer last-known-good from successful execution alone; a structurally present step with unknown semantic validity remains semantically unknown. Identify a defect boundary only when the trace evidence supports DEFECT_LOCALIZED. If the trace instead supports BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, preserve that verdict honestly and do not force a failure point. If the contract is unavailable, emit the separate CONTRACT_UNAVAILABLE diagnostic and withhold the four-way verdict.
-6. IF P-Decompose mode: the decomposition continues recursively until every subproblem is either solvable with known methods or identified as a distinct unknown requiring its own P-Infer cycle.
-7. Update the assumptions log with any assumptions made during decomposition.
+5. IF the mode is P-Infer, THEN evaluate each necessary intermediate state as a candidate verification boundary. A boundary is eligible only when:
+   - A coherent work unit and observable intermediate result exist.
+   - An independent reviewer can inspect that result against objective evidence or criteria.
+   - An error at this point would contaminate meaningful downstream work or become materially harder to localize later.
+   - Correction remains local enough to justify interrupting the process.
+   - Expected assurance exceeds review cost, latency, and process drag.
+   Reject separate boundaries for trivial deterministic operations, inseparable microsteps, or states with no independently observable result. Record why adjacent steps are grouped or separated.
+6. IF P-Debug mode: build the boundary table from the supplied trace walk. Each boundary has two separate states: structural evidence (pass, fail, unknown) and semantic evidence (pass, fail, unknown). Do not infer last-known-good from successful execution alone; a structurally present step with unknown semantic validity remains semantically unknown. Identify a defect boundary only when the trace evidence supports DEFECT_LOCALIZED. If the trace instead supports BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, preserve that verdict honestly and do not force a failure point. If the contract is unavailable, emit the separate CONTRACT_UNAVAILABLE diagnostic and withhold the four-way verdict.
+7. IF P-Decompose mode: the decomposition continues recursively until every subproblem is either solvable with known methods or identified as a distinct unknown requiring its own P-Infer cycle.
+8. Update the assumptions log with any assumptions made during decomposition.
 
 ### Output Format for This Layer
 
@@ -477,6 +591,9 @@ DEPENDENCY MAP:
 UNCERTAINTY HOTSPOTS:
 - Gap between [State X] and [State Y]: [what is unknown]
 
+CANDIDATE VERIFICATION BOUNDARIES:
+- After [work unit]: observable result: [result]; evidence: [evidence]; propagation/localization rationale: [reason]; grouping/separation rationale: [reason]
+
 SUBPROBLEMS (if P-Decompose mode):
 1. [subproblem]: solvable with: [known method] | requires: [P-Infer cycle]
 2. [subproblem]: solvable with: [known method] | requires: [P-Infer cycle]
@@ -485,6 +602,8 @@ ASSUMPTIONS LOG (updated):
 - [previous assumptions]
 - A[N]: [new assumption, source: Layer 3]
 ```
+
+Emit `CANDIDATE VERIFICATION BOUNDARIES` only in P-Infer. P-Debug emits its diagnostic structural/semantic boundary table instead; P-Decompose omits production verification boundaries; P-Feasibility skips this layer.
 
 **Invariant check**: Before proceeding to Layer 4, confirm that every intermediate state passes the necessity test, that the dependency map is acyclic, and that the transformation skeleton connects the current state to the desired end state without gaps.
 
@@ -521,6 +640,8 @@ ASSUMPTIONS LOG (updated):
    - Estimated difficulty (low / medium / high) with reasoning.
    - Likely failure points (where this path is most likely to break).
    - Cheapest validation step (the single lowest-cost test that would confirm or disconfirm this path's viability).
+   - IF P-Infer: proposed verification boundaries, including the result available at each boundary, evidence, independent-review focus, pass criteria, failure route, review cost, and consequence of delayed discovery.
+   - IF P-Infer: unreviewed spans and why no intermediate boundary is justified there.
 
 3. Filter candidate paths against constraints. IF a path violates a hard constraint, THEN discard it with a note explaining the violation. IF a path violates a soft constraint, THEN retain it with the violation flagged.
 4. Filter candidate paths against non-solutions. IF a path replicates an approach the user has identified as failed, THEN discard it unless the failure was contingent and the contingent condition has changed.
@@ -542,6 +663,8 @@ Required resources: [list]
 Difficulty: [low | medium | high] — [reasoning]
 Likely failure points: [list]
 Cheapest validation: [description]
+[P-Infer only:] Verification boundaries: [boundary references with evidence and review-cost notes]
+[P-Infer only:] Unreviewed spans: [span and rationale]
 Constraint violations: [none | soft: constraint name]
 ```
 
@@ -581,8 +704,10 @@ PATH RANKING:
    - IF probe fails (assumption disconfirmed) → [what happens next: switch to alternate path, redesign probe, revisit decomposition].
    - IF probe is ambiguous (result does not clearly confirm or disconfirm) → [what happens next: design a more targeted probe, gather additional information].
 
-5. IF P-Debug mode: probes are optional model-only counterfactuals, not tool or external-action replay. Use them only when the trace walk cannot discriminate between admissible verdicts and only after prepare/approve/execute authorization is available. A probe may test a bounded hypothesis about a semantic boundary, but it must remain inert and must not be used to manufacture a defect. Modified prompts are counterfactual probes, not replays.
-6. Assess the total probe budget. IF the combined cost of all recommended probes exceeds the cost of executing the cheapest candidate path, THEN flag this and recommend executing the cheapest path directly with monitoring rather than probing.
+5. IF P-Infer, THEN keep discovery probes distinct from production verification boundaries. A probe tests whether an uncertain assumption or path is viable; a verification boundary inspects actual completed work before downstream continuation. Do not present exploratory probe results as production evidence, and do not add a production review merely because a discovery probe existed.
+
+6. IF P-Debug mode: probes are optional model-only counterfactuals, not tool or external-action replay. Use them only when the trace walk cannot discriminate between admissible verdicts and only after prepare/approve/execute authorization is available. A probe may test a bounded hypothesis about a semantic boundary, but it must remain inert and must not be used to manufacture a defect. Modified prompts are counterfactual probes, not replays.
+7. Assess the total probe budget. IF the combined cost of all recommended probes exceeds the cost of executing the cheapest candidate path, THEN flag this and recommend executing the cheapest path directly with monitoring rather than probing.
 
 ### Output Format for This Layer
 
@@ -617,32 +742,38 @@ PROBE-VS-EXECUTE RECOMMENDATION: [probe first | execute directly with monitoring
 
 ## LAYER 6: PATH EVALUATION AND SELECTION
 
-**Stage Focus**: Evaluate all candidate paths in light of the probe plan and select the recommended path. IF probes have been executed (iterative use), THEN incorporate results. IF probes have not been executed (first pass), THEN state the recommended path conditional on probe outcomes.
+**Stage Focus**: In P-Infer, evaluate candidate paths and select the recommended path. In P-Formalize, refine the supplied discovered process and formalize its production verification boundaries. In P-Debug, carry the trace diagnosis forward without producing a selected transformation path or production boundary map.
 
-**Input**: Candidate paths from Layer 4, probe plan from Layer 5, probe results (if available from iterative use).
+**Input**: P-Infer: candidate paths from Layer 4, probe plan from Layer 5, and available probe results. P-Formalize: supplied discovered process plus Layer 1 endpoint and Layer 2 constraint/capability records. P-Debug: accumulated trace-diagnostic evidence and verdict state.
 
-**Output**: Selected path with conditional logic, updated assumptions log, revised uncertainty map.
+**Output**: P-Infer: selected path with conditional logic, updated assumptions log, revised uncertainty map, and Verification-Boundary Map. P-Formalize: refined supplied process, updated assumptions/uncertainties, and Verification-Boundary Map. P-Debug: diagnostic state only, with no v1.2 capability or production-boundary output.
 
 ### Processing Instructions
 
-1. IF probe results are available:
+1. IF P-Infer and probe results are available:
    - Update the assumptions log: mark assumptions as confirmed or disconfirmed based on probe results.
    - Discard candidate paths whose critical assumptions were disconfirmed.
    - Strengthen candidate paths whose critical assumptions were confirmed.
    - IF all candidate paths were disconfirmed, THEN return to Layer 3 for re-decomposition with the new information.
 
-2. IF probe results are not available:
+2. IF P-Infer and probe results are not available:
    - State the recommended path as conditional: "IF Probe 1 confirms A[N], THEN Path [X] is recommended. IF Probe 1 disconfirms A[N], THEN Path [Y] is the fallback."
 
-3. For the selected (or conditionally selected) path:
+3. IF P-Infer, refine the selected or conditionally selected path. IF P-Formalize, refine the supplied discovered process without requiring alternative path generation or probes:
    - Refine vague steps into explicit actions.
    - Identify any remaining substeps that are still unknown (flag for the user).
    - Identify newly revealed bottlenecks (if probe results surfaced them).
    - Verify that every step uses resources from the resource inventory.
    - Verify that no step violates a hard constraint.
 
-4. Produce the refined step sequence for the selected path.
-5. Update the assumptions log and uncertainty map to reflect current state after evaluation.
+4. IF P-Infer, THEN select the path's verification-boundary architecture from the Layer 3-4 candidates. IF P-Formalize, THEN derive candidate boundaries directly from the supplied discovered process before selecting them. Preserve a candidate boundary when it follows an independently inspectable result and local correction is materially cheaper than delayed discovery. Merge adjacent candidates when either side lacks a distinct observable result, separates deterministic microsteps, or imposes review cost without material assurance. Split an oversized work unit when an inspectable intermediate state exists and errors there would contaminate meaningful downstream work. Distinguish every intermediate boundary from the independent final release gate.
+5. IF P-Infer or P-Formalize, THEN finalize each selected boundary's work unit, observable result, independent reviewer focus, required evidence, pass criteria, failure route, and grouping/separation rationale.
+6. IF P-Infer or P-Formalize, THEN produce the refined step sequence and selected Verification-Boundary Map. P-Debug omits these production-boundary steps and preserves only its trace-diagnostic boundary semantics.
+7. IF P-Infer or P-Formalize, THEN update the assumptions log and uncertainty map to reflect current state after evaluation. In P-Debug, retain only the trace-diagnostic state for Layer 8.
+8. IF P-Infer, THEN select exactly one immediate disposition:
+   - **Direct operation in this Run** only when all three governed direct-operation conditions are satisfied. Bind the action segment to the existing Run contracts and record the exact result and evidence identities.
+   - **PFF handoff** when durable reuse, registration, activation, cross-Run invocation, promotion, or definition replacement is required.
+   - **Return unresolved** when the path, authority, evidence, or provider binding is insufficient for either responsible operation or formalization.
 
 ### Output Format for This Layer
 
@@ -655,6 +786,13 @@ REFINED STEP SEQUENCE:
 2. [step]
 3. [step]
 
+SELECTED VERIFICATION-BOUNDARY ARCHITECTURE:
+- [Boundary ID after work unit]: [observable result, reviewer focus, evidence, pass criteria, failure route, grouping/separation rationale]
+- Final release gate: [required | not required] — [what must be bound and why]
+
+IMMEDIATE DISPOSITION (P-Infer): [Direct operation in this Run | PFF handoff | Return unresolved]
+Disposition basis: [evidence that the direct-operation conditions hold, the durable-reuse condition requiring PFF, or the unresolved requirement]
+
 REMAINING UNKNOWNS:
 - [unknown]: [impact on step N]
 
@@ -666,15 +804,19 @@ REVISED UNCERTAINTY MAP:
 - [reduced from Layer 2 based on probe results and decomposition]
 ```
 
+Emit `SELECTED VERIFICATION-BOUNDARY ARCHITECTURE` only in P-Infer and P-Formalize. Omit it in P-Debug and P-Decompose; P-Feasibility skips this layer.
+
 ---
 
 ## LAYER 7: FORMALIZATION HANDOFF PACKAGE
 
-**Stage Focus**: Structure the discovered process for handoff to the Process Formalization Framework. Produce a complete package that an PFF operator can convert without additional context.
+**Stage Focus**: Preserve the discovered process for its selected disposition. Produce a complete PFF handoff when durable reuse is required, or bind direct operation to the originating governed Process Run when the direct-operation conditions hold.
 
-**Input**: Selected path with refined step sequence from Layer 6, complete assumptions log, constraint model from Layer 2, uncertainty map.
+**Mode gate**: Execute this layer only in P-Infer and P-Formalize. In P-Debug, carry the Trace Diagnostic Report directly into Layer 8 without producing or validating Process Capability Requirements, a Verification-Boundary Map, or a Formalization Handoff Package. P-Decompose and P-Feasibility skip this layer unless the user starts a separate P-Formalize cycle.
 
-**Output**: PFF-ready handoff package.
+**Input**: In P-Infer, selected path with refined step sequence and Verification-Boundary Map from Layer 6, initial Process Capability Requirements and constraint model from Layer 2, complete assumptions log, and uncertainty map. In P-Formalize, the supplied discovered process plus the endpoint, constraint, capability, and boundary records produced or refined in Layers 1, 2, and 6.
+
+**Output**: In P-Formalize, and in P-Infer selecting durable reuse, a PFF-ready handoff package including Process Capability Requirements and Verification-Boundary Map. In P-Infer selecting direct operation, a Direct Operation Record and the same human-readable package retained as derivation evidence for optional later formalization.
 
 ### Processing Instructions
 
@@ -689,12 +831,17 @@ REVISED UNCERTAINTY MAP:
    - **Validation Checks**: Tests to confirm the process is producing correct results at key intermediate points. For each: what to check, expected value, action if check fails.
    - **Recovery Paths**: What to do when specific steps fail. For each failed step: diagnostic action, alternative approach, escalation condition.
    - **Output Contract**: What the process produces when it succeeds. For each output: name, format, quality threshold.
+   - **Process Capability Requirements**: External artifacts and state, authorized actions, identity and evidence needs, planning/execution separation, bounded-loop needs, independent final-gate requirements, confirmed resources, and unresolved bindings.
+   - **Verification-Boundary Map**: For each proposed boundary, the work unit completed, observable intermediate result, review rationale, independent reviewer examination, required evidence, pass criteria, failure route, and grouping/separation rationale.
 
 2. Verify handoff completeness. Apply the operator test: could a person unfamiliar with the discovery process execute the PFF conversion using only this package?
    - IF any element requires context from the discovery process that is not captured in the package, THEN add it.
    - IF any step is described at a level of abstraction that requires domain expertise to interpret, THEN make the implicit domain knowledge explicit.
 
 3. Note unresolved risks. List any assumptions that remain unconfirmed, uncertainties that remain open, and failure modes that have not been tested.
+4. Apply the no-invented-binding rule. Name a concrete tool, identity provider, evidence provider, reviewer, or final gate only when supplied or confirmed. Otherwise preserve the human-readable capability requirement and label the binding `UNRESOLVED` with the information needed to resolve it.
+5. Apply the standalone operator test. Confirm that a person using only this Markdown handoff can understand and manually execute or formalize the process. Optional implementation identifiers may supplement the description but cannot replace it.
+6. IF P-Infer selected direct operation, THEN append the Direct Operation Record: originating Run ID and exact definition/plan reference; authorized action segment; input and output artifact IDs plus digests; authority grants and selectors; evidence requirements and exact evidence references; correction bounds; checkpoint/recovery state; external-effect receipts; and the final transition record. Do not create a second Run or mark the procedure reusable.
 
 ### Output Format for This Layer
 
@@ -728,11 +875,48 @@ Recovery Paths:
 Output Contract:
 - [output name]: [format]. Quality threshold: [specific criterion].
 
+Process Capability Requirements:
+
+External Artifacts and State:
+| ID | Role | Access | Persistence | Identity Required | Confirmed Resource or Unresolved Requirement |
+|---|---|---|---|---|---|
+| [A1] | [input/reference/working/output] | [read/write/read-write] | [requirement] | [yes/no and why] | [resource or UNRESOLVED] |
+
+Authorized Actions:
+| ID | Purpose | Mutability/Reversibility | Authorization | Terminal Proof Required |
+|---|---|---|---|---|
+| [ACT1] | [purpose] | [classification] | [requirement] | [yes/no and observation] |
+
+Evidence and Review:
+| ID | What It Establishes | Source | Binding | Sufficiency Condition | Provider |
+|---|---|---|---|---|---|
+| [E1] | [claim] | [observation/check/record] | [content/identity/both] | [condition] | [resource or UNRESOLVED] |
+
+Control Requirements:
+- Planning/execution separation: [required/not required] — [reason]
+- Bounded synchronous loop: [required/not required] — [progress, failure, and stop signals]
+- Independent final gate: [required/not required] — [what it examines and must bind]
+
+Verification-Boundary Map:
+
+Boundary [B1]: [name]
+- Work unit completed: [steps]
+- Observable intermediate result: [result]
+- Why review belongs here: [propagation/localization/value rationale]
+- Independent reviewer examines: [scope]
+- Required evidence: [evidence references]
+- Pass criteria: [objective criteria]
+- Failure route: [revise work unit/replan upstream/escalate/block]
+- Grouping/separation rationale: [why adjacent steps are grouped or separated]
+
 Unresolved Risks:
 - [risk]: [impact]. [What would resolve it].
+
+Unresolved Bindings:
+- [capability/provider/reviewer/final gate]: [what is unavailable and what would resolve it]
 ```
 
-**Invariant check**: Before proceeding to Layer 8, confirm that the handoff package contains all nine required elements, that every step in the sequence uses resources from the resource inventory, and that the output contract's quality thresholds are testable.
+**Invariant check**: Before proceeding to Layer 8, confirm that the handoff package contains all eleven required elements, that every step uses a confirmed resource or explicitly unresolved capability, that every verification boundary is independently inspectable and economically justified, that unavailable bindings are not invented, and that the output contract's quality thresholds are testable.
 
 ---
 
@@ -740,9 +924,17 @@ Unresolved Risks:
 
 **Stage Focus**: Evaluate all output produced in Layers 1 through 7 against the Evaluation Criteria defined above.
 
+**Mode-scoped criterion set**:
+
+- P-Infer: Criteria 1-9.
+- P-Formalize: Criteria 1, 2, 6, 7, 8, and 9, evaluated against the supplied process and completed handoff. Criteria 3-5 are not applicable because this mode does not generate a new decomposition, alternative paths, or probes.
+- P-Debug: Apply the endpoint and assumption dimensions from Criteria 1 and 6 where relevant, then apply the P-Debug milestone's Trace-Backed Verdict verification criterion as the governing mode-specific check. Criteria 2-5 and 7-9 are not required; no capability or production-boundary artifact is produced or evaluated.
+- P-Decompose: Criteria 1, 2, 3, and 6 plus the P-Decompose milestone verification criterion. Criteria 4, 5, and 7-9 are not required; no capability or production-boundary artifact is produced or evaluated.
+- P-Feasibility: Use the dedicated five criteria in the P-Feasibility Mode Specification instead of Criteria 1-9.
+
 **Calibration warning**: Self-evaluation scores are systematically inflated. Research finds LLMs are overconfident in 84.3% of scenarios. A self-score of 4/5 likely corresponds to 3/5 by external evaluation standards. Score conservatively. Articulate specific uncertainties alongside scores.
 
-For each criterion:
+For each criterion applicable to the selected mode:
 1. State the criterion name and number.
 2. Wait — verify the current output against this specific criterion's rubric descriptions before scoring.
 3. Identify specific evidence in the output that supports or undermines each score level.
@@ -766,26 +958,52 @@ After all criteria are evaluated:
 
 ### Error Correction Protocol
 
-1. Verify factual consistency across all output sections. Flag and correct any contradictions between the transformation skeleton (Layer 3), the candidate paths (Layer 4), and the selected path (Layer 6).
+1. Verify factual consistency for the selected mode:
+   - P-Infer: flag and correct contradictions among the transformation skeleton, candidate paths, and selected path.
+   - P-Formalize: flag and correct contradictions among the supplied process, refined process, and formalization handoff.
+   - P-Debug: flag and correct contradictions among the execution-time contract, trace evidence, structural/semantic boundary table, and verdict; ensure the evidence supports the verdict.
+   - P-Decompose: flag and correct contradictions among the transformation skeleton, dependency map, and subproblem set.
+   - P-Feasibility: flag and correct contradictions between the verdict and the Layer 1-2 findings.
 2. Verify terminology consistency. Confirm that defined terms (problem type, path names, assumption numbers) are used consistently throughout.
-3. Verify structural completeness. Confirm all required output components (per Output Contract) are present: viable process description, formalization handoff package, problem model, candidate path comparison, probe plan, assumptions log.
-4. Verify constraint fidelity. Confirm that the selected path does not violate any hard constraint recorded in Layer 2. Confirm that soft constraint violations are flagged.
+3. Verify structural completeness against the selected mode's Output Contract branch:
+   - P-Infer: viable process description, Process Capability Requirements, Verification-Boundary Map, formalization handoff package, problem model, candidate path comparison, probe plan, assumptions log.
+   - P-Formalize: Process Capability Requirements, Verification-Boundary Map, formalization handoff package, endpoint and constraint records, assumptions and unresolved risks.
+   - P-Debug: Trace Diagnostic Report and its required evidence fields only; do not require Process Capability Requirements, a Verification-Boundary Map, or a Formalization Handoff Package.
+   - P-Decompose: transformation skeleton, dependency map, subproblem set, endpoint and constraint records, assumptions log; do not require Process Capability Requirements or a Verification-Boundary Map.
+   - P-Feasibility: the dedicated Verify or Suggest verdict format and supporting Layer 1-2 findings; do not require any Layers 3-7 artifact.
+4. Verify constraint fidelity for the selected mode:
+   - P-Infer: confirm that the selected path does not violate any hard constraint recorded in Layer 2 and that soft constraint violations are flagged.
+   - P-Formalize: confirm that the refined process and formalization handoff preserve the supplied process's hard constraints and flag any soft constraint violations or unresolved conflicts.
+   - P-Debug: confirm that the boundary table and verdict remain within the execution-time contract and trace evidence; do not apply selected-path checks.
+   - P-Decompose: confirm that the dependency map and subproblem set preserve the Layer 2 constraints and expose rather than silently resolve constraint conflicts; do not apply selected-path checks.
+   - P-Feasibility: confirm that the verdict explicitly reflects the Layer 1-2 hard constraints, soft constraints, and unresolved conditions; do not apply selected-path checks.
 5. Verify assumption traceability. Confirm that every assumption in the assumptions log is tagged with its source layer and current status.
 6. Document all corrections made in a Corrections Log appended to the output.
+7. IF the mode is P-Infer or P-Formalize, THEN verify standalone fidelity. Confirm that the process meaning remains complete without Ora, machine parsing, or optional runtime identifiers; mark unavailable independent review as an assurance gap.
 
 ### Output Formatting
 
-Present the complete output in this order:
+For P-Infer, present the complete output in this order:
 1. Problem Model (from Layer 1)
 2. Constraint Model (from Layer 2)
 3. Transformation Skeleton (from Layer 3)
 4. Candidate Path Comparison (from Layer 4)
 5. Probe Plan (from Layer 5)
 6. Selected Path with Refined Step Sequence (from Layer 6)
-7. Formalization Handoff Package (from Layer 7)
-8. Assumptions Log (complete, with status)
-9. Self-Evaluation Summary (from Layer 8)
-10. Corrections Log (from this layer)
+7. Process Capability Requirements (from Layer 7)
+8. Verification-Boundary Map (from Layer 7)
+9. Formalization Handoff Package (from Layer 7)
+10. Assumptions Log (complete, with status)
+11. Self-Evaluation Summary (from Layer 8)
+12. Corrections Log (from this layer)
+
+For P-Formalize, present: endpoint and constraint record; refined process; Process Capability Requirements; Verification-Boundary Map; Formalization Handoff Package; assumptions and unresolved risks; Self-Evaluation Summary; Corrections Log.
+
+For P-Debug, present only the Trace Diagnostic Report in its required format, followed by the applicable Self-Evaluation Summary and Corrections Log. Do not append capability or production-boundary sections.
+
+For P-Decompose, present: Problem Model; Constraint Model; Transformation Skeleton; Dependency Map; Subproblem Set; Assumptions Log; applicable Self-Evaluation Summary; Corrections Log. Do not append capability or production-boundary sections.
+
+For P-Feasibility, use only the dedicated Verify or Suggest output format in the P-Feasibility Mode Specification.
 
 ### Missing Information Declaration
 
@@ -966,6 +1184,18 @@ NEW ASSUMPTIONS LOGGED:
 
 **The Local Optimum Lock-In Trap:** A workable but inferior method is found early, and the system stops exploring because it has a "good enough" answer — preventing discovery of structurally better paths. Correction: Layer 4 generates paths across multiple path types, not variations within one type. Layer 6 compares the selected path against alternatives before finalizing.
 
+**The Boundary Desert (P-Infer and P-Formalize only):** Too much work accumulates before independent review, allowing an early fault to contaminate expensive downstream work. Correction: Layers 3 and 6 place a boundary at an observable intermediate result when delayed discovery materially raises propagation or correction cost.
+
+**Checkpoint Confetti (P-Infer and P-Formalize only):** Trivial deterministic operations or inseparable microsteps receive separate reviews, creating latency and process drag without meaningful assurance. Correction: Merge adjacent candidates unless each side produces a distinct independently inspectable result whose review value exceeds interruption cost.
+
+**The Unreviewable Boundary (P-Infer and P-Formalize only):** A checkpoint is declared even though no coherent observable result or objective evidence exists. Correction: Reject the boundary in Layer 3 and group the work with the nearest step that produces an independently inspectable state.
+
+**Capability Hallucination (P-Infer and P-Formalize only):** The process names a provider, permission, reviewer, or tool that was never confirmed. Correction: Record symbolic capability requirements and label concrete bindings `UNRESOLVED` until supplied or verified.
+
+**Probe–Verification Confusion (P-Infer and P-Formalize only):** An exploratory probe is presented as evidence that completed production work is correct, or a production review is added merely because a discovery probe existed. Correction: Apply Layer 5's role distinction and define production evidence independently in the Verification-Boundary Map.
+
+**Platform Capture (P-Infer and P-Formalize only):** The inferred process is understandable or executable only through Ora-specific configuration or machinery. Correction: Preserve complete natural-language instructions and capability meanings in the consolidated Markdown handoff; treat implementation identifiers as optional bindings.
+
 ---
 
 ## EXECUTION COMMANDS
@@ -974,15 +1204,24 @@ NEW ASSUMPTIONS LOGGED:
 2. Identify the operating mode from the user's input:
    - **Mode P-Infer:** User describes endpoints without a known process. Execute Layers 1-9.
    - **Mode P-Debug:** User supplies a process or exact captured trace to investigate; it may be defective, faithful-but-disappointing, a bad draw, or clean. Execute Layers 1-9 with P-Debug modifications noted in each layer.
-   - **Mode P-Decompose:** User describes a complex endpoint needing reduction. Execute Layers 1-3, then return Layer 3 output as the primary deliverable. Continue to Layers 4-9 only if the user requests path generation for specific subproblems.
+   - **Mode P-Decompose:** User describes a complex endpoint needing reduction. Execute Layers 1-3, then only the P-Decompose-scoped evaluation and formatting in Layers 8-9. Terminate after returning the decomposition deliverable. If the user requests path generation for a subproblem, start a separate P-Infer cycle using that subproblem's current state, endpoint, and constraints; do not continue through Layers 4-9 under P-Decompose.
    - **Mode P-Formalize:** User provides a discovered process. Skip Layers 3-5. Execute Layer 1 (to formalize endpoints), Layer 2 (to capture constraints), Layer 6 (to refine the step sequence), Layer 7 (to produce the handoff package), Layers 8-9.
    - **Mode P-Feasibility:** User or calling framework provides an endpoint and current state description (Verify sub-mode), or a Resolution Statement and current state with no candidate endpoint (Suggest sub-mode). Execute Layer 1 (endpoint formalization), Layer 2 (constraint modeling), Feasibility Assessment, Layer 8 (with P-Feasibility criteria), Layer 9 (with P-Feasibility output format). Skip Layers 3 through 7. See P-Feasibility Mode Specification section for details.
 3. IF the mode is ambiguous, THEN ask the user to confirm before proceeding.
 4. IF any required inputs (per Input Contract) are missing, THEN list them and request them before proceeding.
 5. IF any required inputs are present but ambiguous, THEN state what you understand, what you are uncertain about, and what assumptions you will make if not corrected. Wait for confirmation before proceeding.
-6. Execute the appropriate layer sequence. Produce all outputs specified in the Output Contract.
+6. Execute the appropriate layer sequence. Produce all outputs specified in the Output Contract. In P-Infer and P-Formalize, include Process Capability Requirements and a Verification-Boundary Map; do not invent unavailable bindings.
 7. Apply the Self-Evaluation (Layer 8) and Error Correction (Layer 9) to all outputs before delivery.
-8. Present outputs with a summary of the discovery process, key assumptions, unresolved risks, and recommendations for next steps. IF the user wants to formalize the discovered process into a reusable framework, THEN recommend running the Formalization Handoff Package through the Process Formalization Framework (F-Convert mode). The PFF will produce both the canonical framework specification and its framework registry entry for indexing.
+8. Present outputs with the selected mode's summary, key assumptions, unresolved risks, and recommendations for next steps. In P-Infer and P-Formalize, also report unresolved capability bindings. IF the user wants to formalize the discovered process into a reusable framework, THEN recommend running the Formalization Handoff Package through the Process Formalization Framework (F-Convert mode). The PFF will preserve or explicitly revise the Verification-Boundary Map and produce both the canonical framework specification and its framework registry entry for indexing.
+
+---
+
+## VERSION HISTORY
+
+- **v1.2 (2026-07-14):** Added domain-neutral discovery of external artifacts and state, authorized actions, evidence and identity capabilities, bounded-loop and final-gate needs, production verification-boundary inference, and the enriched PIF→PFF handoff in P-Infer and P-Formalize only. Preserved the v1.1 P-Debug, P-Decompose, and P-Feasibility contracts. Established the consolidated Markdown file as the standalone executable framework. This is an untested capability release; Programming Oversight derivation and cross-domain trials remain pending.
+- **v1.3 (2026-07-16):** Made capability routing conditional; permitted P-Infer to operate a complete inferred procedure only as an action segment of the same governed Process Run; required PFF before durable reuse, registration, activation, cross-Run invocation, promotion, or definition replacement; and separated local observations from the seven Process Run directives.
+- **v1.1 (2026-07-13):** Added trace-backed P-Debug verdict discipline, the admissible evidence boundary, four-way verdict handling, CONTRACT_UNAVAILABLE behavior, and recommend-only correction for localized defects.
+- **v1.0:** Initial canonical Process Inference Framework covering P-Infer, P-Debug, P-Decompose, P-Formalize, and P-Feasibility.
 
 ---
 
@@ -992,4 +1231,4 @@ NEW ASSUMPTIONS LOGGED:
 
 ---
 
-**END OF PROCESS INFERENCE FRAMEWORK v1.0**
+**END OF PROCESS INFERENCE FRAMEWORK v1.3**

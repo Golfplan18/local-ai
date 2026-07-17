@@ -439,8 +439,9 @@ class TestGear3VerdictThreadForPacket(unittest.TestCase):
 
 class TestGear4QualityGate(unittest.TestCase):
     def _run(self, h):
+        self.ctx = _ctx()
         with _patched(h):
-            return boot.run_gear4(_ctx(), {}, execution_context="interactive",
+            return boot.run_gear4(self.ctx, {}, execution_context="interactive",
                                   config_name=None)
 
     def test_pass_ships_formatter_output_without_redo(self):
@@ -479,12 +480,17 @@ class TestGear4QualityGate(unittest.TestCase):
 
     def test_one_redo_per_problem_type_bound(self):
         # Gate FAILs ANALYSIS every pass: the analysis redo fires once, then the
-        # gate is consulted again, sees the redo is spent, and ships.
+        # gate is consulted again, sees the redo is spent, and withholds.
         h = _Harness(["PROBLEM: ANALYSIS\nVERDICT: FAIL"])  # repeats
-        self._run(h)
+        result = self._run(h)
         self.assertEqual(h.count("consolidator-quality-redo"), 1)  # bounded
         self.assertEqual(h.count("formatter-after-reconsolidate"), 1)
         self.assertEqual(h.count("quality-gate"), 2)               # not 3+
+        self.assertIn("Deliverable withheld", result)
+        self.assertEqual(
+            self.ctx["execution_review"]["status"],
+            "failed-after-final-reinspection-withheld",
+        )
 
     def test_both_problem_types_each_redo_once(self):
         h = _Harness([
@@ -497,13 +503,18 @@ class TestGear4QualityGate(unittest.TestCase):
         self.assertEqual(h.count("formatter-quality-redo"), 1)
         self.assertEqual(h.count("quality-gate"), 3)
 
-    def test_broken_ships_without_redo(self):
+    def test_broken_withholds_without_content_redo(self):
         h = _Harness(["Corpus missing.\nVERDICT: BROKEN"])
         result = self._run(h)
         self.assertEqual(h.count("quality-gate"), 1)
         self.assertEqual(h.count("formatter-quality-redo"), 0)
         self.assertEqual(h.count("consolidator-quality-redo"), 0)
-        self.assertIn("<<formatter:ORIG>>", result)
+        self.assertIn("Deliverable withheld", result)
+        self.assertNotIn("<<formatter:ORIG>>", result)
+        self.assertEqual(
+            self.ctx["execution_review"]["status"],
+            "review-unavailable-withheld",
+        )
 
 
 # ────────────────────────── doc / source backstops ──────────────────────────

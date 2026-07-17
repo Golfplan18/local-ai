@@ -12508,8 +12508,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
       Step 8.6 — Final-output quality gate (f-quality-gate.md): judge the
                deliverable against the mode's VERIFICATION CRITERIA; on FAIL,
                one bounded redo per problem type — PROBLEM=ANALYSIS re-runs
-               step 7 then re-formats; PROBLEM=FORMATTING re-runs step 8 — then
-               ship.
+               step 7 then re-formats; PROBLEM=FORMATTING re-runs step 8. A
+               fresh PASS is required for release; FAIL or BROKEN withholds.
 
     Reliability contingency table (per step):
       Step 3 — Per-stream recovery: each analyst tries its PRIMARY model with
@@ -12549,7 +12549,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                one bounded redo of the implicated producer (consolidator for an
                ANALYSIS verdict, then re-format; formatter for a FORMATTING
                verdict), recorded under the ``step8_6-quality-gate-*``
-               contingency names; PASS and BROKEN ship as-is.
+               contingency names. Only PASS releases the inspected identity;
+               FAIL and BROKEN remain observations for transition policy and
+               withhold the candidate.
 
     Reliability ceiling: this layer protects against transient model
     misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
@@ -13672,7 +13674,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # dedicated 'verification' judge slot. On FAIL the judge classifies the
     # PROBLEM: ANALYSIS (substance) routes the redo back to the step-7
     # consolidator and then re-formats the corrected corpus; FORMATTING routes
-    # it back to the step-8 formatter. One redo per problem type, then ship —
+    # it back to the step-8 formatter. One redo per problem type, then stop —
     # enforced by the two used-flags + a hard 3-pass backstop, re-gating between
     # redos so a deliverable failing on both axes is repaired on each once.
     # Ported from MSI's voice-editor approval gate (failure_kind text|formatting
@@ -13689,6 +13691,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
     _qg_analysis_redo_used = False
     _qg_formatting_redo_used = False
+    gate_passed = False
+    gate_broken = True
+    gate_verdict_label = "BROKEN"
     for _qg_pass in range(3):
         gate_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -13719,8 +13724,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             gate_call_ok, gate_call_reason = False, str(e)
 
         gate_passed = _verifier_passed(gate_out)
-        # A failed gate CALL ships as BROKEN rather than firing a content redo
-        # a broken judge can't justify (fail-open, as the verifier does).
+        # A failed gate call is BROKEN. A broken judge cannot justify a content
+        # redo or a release, so the current candidate is retained but withheld.
         gate_broken = _verifier_broken(gate_out) or not gate_call_ok
         problem = _parse_quality_gate_problem(gate_out)
         gate_verdict_label = (
@@ -13729,8 +13734,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # verdict LABEL ONLY (never raw verifier text) onto a namespaced
         # context_pkg subdict for the terminal packet builder; last gate pass wins.
         # Not read by any prompt assembly — no leak.
-        context_pkg["execution_review"] = {"verdict": gate_verdict_label,
-                                           "scope": "text_review"}
+        context_pkg["execution_review"] = {
+            "verdict": gate_verdict_label,
+            "scope": "text_review",
+        }
         _record(f"step8_6-quality-gate-pass{_qg_pass + 1}", gate_call_ok,
                 f"verdict={gate_verdict_label} problem={problem}")
         _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {
@@ -13753,15 +13760,18 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             f"{gate_out}\n"
         ))
 
-        # PASS or BROKEN -> ship. BROKEN = judge couldn't decide; fail-open,
-        # matching the verifier's BROKEN handling.
-        if gate_passed or gate_broken:
+        if gate_passed:
             contingencies_fired.append(
                 f"step8_6-quality-gate-{gate_verdict_label}-pass{_qg_pass + 1}")
             break
+        if gate_broken:
+            contingencies_fired.append(
+                f"step8_6-quality-gate-BROKEN-pass{_qg_pass + 1}-withheld"
+            )
+            break
 
         # FAIL -> fire the one redo for the identified problem type. If that
-        # type is already spent, ship (one redo per problem type).
+        # type is already spent, withhold (one redo per problem type).
         if problem == "FORMATTING" and not _qg_formatting_redo_used:
             _qg_formatting_redo_used = True
             _qg_fmt_msgs = format_messages + [
@@ -13890,10 +13900,22 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                         formatted, context_pkg, config, config_name, "f-format")
             continue
 
-        # The problem-type redo for this verdict is already spent — ship.
+        # The problem-type redo for this verdict is already spent — withhold.
         contingencies_fired.append(
-            f"step8_6-quality-gate-FAIL-{problem}-redo-exhausted-shipping")
+            f"step8_6-quality-gate-FAIL-{problem}-redo-exhausted-withheld")
         break
+
+    release_deliverable = bool(gate_passed and not gate_broken)
+    review_status = None
+    if gate_broken:
+        review_status = "review-unavailable-withheld"
+    elif not gate_passed:
+        review_status = "failed-after-final-reinspection-withheld"
+    context_pkg["execution_review"] = {
+        "verdict": gate_verdict_label,
+        "scope": "text_review",
+        "status": review_status,
+    }
 
     # Per-turn step-health summary — captures every step's verdict plus
     # the contingency paths that fired. Lives at ``step-health.json`` in
@@ -13906,6 +13928,13 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Final pollution sweep before handing back to the user-facing layer.
     formatted = _strip_dispatch_noise(formatted)
+    if not release_deliverable:
+        formatted = (
+            "## Deliverable withheld\n\n"
+            "The current candidate was not released because independent final "
+            f"review concluded `{gate_verdict_label}`. The candidate and review "
+            "record remain available for the governed continuation route."
+        )
 
     # Stash the pre-formatter analyst/reviser outputs so the visual hook's
     # diagram-recovery pass can find a model-drawn mermaid/DSL diagram that the

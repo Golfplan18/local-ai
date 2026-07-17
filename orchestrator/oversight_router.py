@@ -372,20 +372,43 @@ def _bundle_to_framework_input(bundle: OversightContextBundle, mode: str) -> str
 
 
 def _parse_pc_verdict(output: str) -> dict:
-    """Parse Process Coherence's output for a verdict line."""
+    """Parse one canonical Process Run directive from Process Coherence.
+
+    ``PASS``/``FAIL``/``BROKEN`` are observations and are deliberately not
+    accepted here.  The legacy ``ESCALATE (redefinition)`` spelling remains
+    readable only as the PED locked-definition authority request it always
+    represented; generic Process Definition work uses ``REDEFINE``.
+    """
     import re
     verdict = "UNKNOWN"
     reasoning = (output or "").strip()[:1000]
+    authority_request_type = ""
 
-    # Look for explicit verdict markers
+    directives = (
+        "PROCEED|ACCEPT|REVISE|REPLAN|REDEFINE|ESCALATE|BLOCKED"
+    )
     m = re.search(
-        r"VERDICT:\s*(PROCEED|REVISE|ESCALATE(?:\s*\(redefinition\))?)",
-        output, re.IGNORECASE,
+        rf"(?:(?:SUPPORTED\s+)?DIRECTIVE|VERDICT):\s*({directives})"
+        r"(?:\s*\(\s*redefinition\s*\))?\s*(?:$|\n)",
+        output or "", re.IGNORECASE | re.MULTILINE,
     )
     if m:
         verdict = m.group(1).upper()
+        legacy_suffix = re.search(
+            r"(?:(?:SUPPORTED\s+)?DIRECTIVE|VERDICT):\s*ESCALATE"
+            r"\s*\(\s*redefinition\s*\)",
+            m.group(0), re.IGNORECASE,
+        )
+        if verdict == "ESCALATE" and legacy_suffix:
+            authority_request_type = "ped_redefinition"
 
-    return {"verdict": verdict, "reasoning": reasoning, "raw_output": output[:2000]}
+    return {
+        "verdict": verdict,
+        "directive": verdict,
+        "authority_request_type": authority_request_type,
+        "reasoning": reasoning,
+        "raw_output": (output or "")[:2000],
+    }
 
 
 def _append_router_log(entry: dict):

@@ -1,9 +1,10 @@
-"""Oversight verdict-action handlers.
+"""Mechanical Process Coherence directive handlers.
 
-Implements PROCEED / REVISE / ESCALATE / ESCALATE-redefinition handlers per
-Reference — Meta-Layer Architecture §9. Each verdict translates into actual
-state changes: Decision Log appends, framework chain dispatch, human-queue
-surfacing, dependent-corpus actions.
+Implements all seven governed Process Run directives.  Process Coherence
+selects a declared route from evidence; this module only records and dispatches
+that accepted route.  Human-queue writes require a typed ``ESCALATE`` authority
+request.  Generic ``REDEFINE`` remains in definition work and never becomes a
+PED redefinition merely because the words are similar.
 
 Includes a small file-lock primitive for PED, corpus, and workflow spec
 write coordination (per §10 O4 — concurrent PED writes).
@@ -903,7 +904,14 @@ def apply_verdict(
     stealth, conversation_id = _lifecycle_context(event)
     if conversation_id and not event.get("conversation_id"):
         event["conversation_id"] = conversation_id
-    verdict_label = (verdict.get("verdict") or "UNKNOWN").upper()
+    verdict = dict(verdict or {})
+    verdict_label = (verdict.get("directive") or verdict.get("verdict") or "UNKNOWN").upper()
+    if verdict_label.startswith("ESCALATE") and "REDEFINITION" in verdict_label:
+        # Backward read for persisted PC output.  This spelling has always
+        # meant a human-approved PED/problem-definition change, never generic
+        # Process Definition work.
+        verdict_label = "ESCALATE"
+        verdict.setdefault("authority_request_type", "ped_redefinition")
     action_record: dict = {
         "timestamp": _now_iso(),
         "event_type": event.get("event_type", ""),
@@ -921,10 +929,18 @@ def apply_verdict(
 
     if verdict_label == "PROCEED":
         _apply_proceed(event, bundle, action_record)
+    elif verdict_label == "ACCEPT":
+        _apply_accept(event, bundle, action_record)
     elif verdict_label == "REVISE":
         _apply_revise(event, bundle, verdict, action_record)
-    elif verdict_label.startswith("ESCALATE"):
-        _apply_escalate(event, bundle, verdict, action_record, redefinition="REDEFINITION" in verdict_label)
+    elif verdict_label == "REPLAN":
+        _apply_replan(event, bundle, verdict, action_record)
+    elif verdict_label == "REDEFINE":
+        _apply_redefine(event, bundle, verdict, action_record)
+    elif verdict_label == "ESCALATE":
+        _apply_escalate(event, bundle, verdict, action_record)
+    elif verdict_label == "BLOCKED":
+        _apply_blocked(event, bundle, verdict, action_record)
     else:
         action_record["action"] = "unknown_verdict"
 
@@ -967,8 +983,20 @@ def _apply_proceed(event: dict, bundle: OversightContextBundle, action_record: d
     action_record["action"] = "proceed"
 
 
+def _apply_accept(event: dict, bundle: OversightContextBundle, action_record: dict):
+    """ACCEPT — record final acceptance without dispatching more chain work."""
+    _append_decision_log_entry(event, bundle, "ACCEPT", action_record)
+    key = _revise_key(event)
+    _mutate_revise_counters(
+        event,
+        lambda counters: {k: v for k, v in counters.items() if k != key},
+    )
+    action_record["action"] = "accept"
+    action_record["terminal"] = True
+
+
 def _apply_revise(event: dict, bundle: OversightContextBundle, verdict: dict, action_record: dict):
-    """REVISE — record corrective action; cap revisions at 3 per §10 O3."""
+    """REVISE — record execution correction without diagnosing by count."""
     key = _revise_key(event)
     state: dict[str, int] = {"count": 0}
 
@@ -983,22 +1011,70 @@ def _apply_revise(event: dict, bundle: OversightContextBundle, verdict: dict, ac
 
     _mutate_revise_counters(event, increment)
 
-    if state["count"] >= REVISE_LIMIT:
-        # Force escalate after 3 revisions
-        _apply_escalate(
-            event,
-            bundle,
-            verdict,
-            action_record,
-            redefinition=False,
-            forced_reason=f"REVISE limit ({REVISE_LIMIT}) reached for {key}",
-        )
-        return
-
     _append_decision_log_entry(event, bundle, "REVISE", action_record, extra_text=verdict.get("reasoning", ""))
-    action_record["action"] = "revise"
     action_record["revise_count"] = state["count"]
     action_record["corrective_specification"] = verdict.get("reasoning", "")
+    if state["count"] >= REVISE_LIMIT:
+        action_record["action"] = "revision_limit_reached"
+        action_record["requires_failure_classification"] = True
+        action_record["allowed_next_directives"] = [
+            "REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED",
+        ]
+    else:
+        action_record["action"] = "revise"
+
+
+def _apply_replan(
+    event: dict,
+    bundle: OversightContextBundle,
+    verdict: dict,
+    action_record: dict,
+):
+    """REPLAN — return to approved-plan authority; never enter human queue."""
+    _append_decision_log_entry(
+        event, bundle, "REPLAN", action_record,
+        extra_text=verdict.get("reasoning", ""),
+    )
+    action_record["action"] = "replan"
+    action_record["plan_return"] = {
+        "current_plan_id": event.get("plan_id", ""),
+        "resume_target": verdict.get("resume_target", ""),
+    }
+
+
+def _apply_redefine(
+    event: dict,
+    bundle: OversightContextBundle,
+    verdict: dict,
+    action_record: dict,
+):
+    """REDEFINE — return to definition authority without human queuing."""
+    _append_decision_log_entry(
+        event, bundle, "REDEFINE", action_record,
+        extra_text=verdict.get("reasoning", ""),
+    )
+    action_record["action"] = "redefine"
+    action_record["definition_return"] = {
+        "definition_id": event.get("definition_id", ""),
+        "definition_version": event.get("definition_version", ""),
+        "definition_digest": event.get("definition_digest", ""),
+        "resume_target": verdict.get("resume_target", ""),
+    }
+
+
+def _apply_blocked(
+    event: dict,
+    bundle: OversightContextBundle,
+    verdict: dict,
+    action_record: dict,
+):
+    """BLOCKED — persist the absence of an authorized continuation."""
+    _append_decision_log_entry(
+        event, bundle, "BLOCKED", action_record,
+        extra_text=verdict.get("reasoning", ""),
+    )
+    action_record["action"] = "blocked"
+    action_record["blocking_evidence"] = verdict.get("blocking_evidence", [])
 
 
 def _apply_escalate(
@@ -1006,15 +1082,24 @@ def _apply_escalate(
     bundle: OversightContextBundle,
     verdict: dict,
     action_record: dict,
-    redefinition: bool = False,
-    forced_reason: str = "",
 ):
-    """ESCALATE — pause chain, surface to human queue."""
+    """ESCALATE — surface one explicit reserved-authority request."""
+    authority_request_type = str(
+        verdict.get("authority_request_type")
+        or event.get("authority_request_type")
+        or ""
+    ).strip()
+    if not authority_request_type:
+        action_record["action"] = "invalid_escalation"
+        action_record["error"] = "ESCALATE requires authority_request_type"
+        action_record["queued_for_human_review"] = False
+        return
+    redefinition = authority_request_type == "ped_redefinition"
     _append_decision_log_entry(
         event, bundle,
-        "ESCALATE (redefinition)" if redefinition else "ESCALATE",
+        "ESCALATE",
         action_record,
-        extra_text=verdict.get("reasoning", "") + (f"\n\nForced: {forced_reason}" if forced_reason else ""),
+        extra_text=verdict.get("reasoning", ""),
     )
 
     queue_entry = {
@@ -1022,8 +1107,10 @@ def _apply_escalate(
         "conversation_id": event.get("conversation_id", ""),
         "event": event,
         "verdict": verdict,
+        "authority_request_type": authority_request_type,
         "redefinition": redefinition,
-        "forced_reason": forced_reason,
+        "forced_reason": "",
+        "kind": "authority_request",
         "context_summary": {
             "project_nexus": event.get("project_nexus", ""),
             "workflow_id": event.get("workflow_id", ""),
@@ -1040,7 +1127,8 @@ def _apply_escalate(
         _add_queue_entry(queue_entry)
     except Exception:
         _append_human_queue(queue_entry)
-    action_record["action"] = "escalate" + ("_redefinition" if redefinition else "")
+    action_record["action"] = "escalate"
+    action_record["authority_request_type"] = authority_request_type
     action_record["queued_for_human_review"] = True
 
 

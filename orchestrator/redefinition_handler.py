@@ -80,6 +80,7 @@ class QueueEntry:
     event: dict
     verdict: dict
     redefinition: bool
+    authority_request_type: str = ""
     forced_reason: str = ""
     context_summary: dict = field(default_factory=dict)
     queue_index: int = 0  # 0-based position in the queue file
@@ -121,6 +122,9 @@ def list_pending_redefinitions() -> list[QueueEntry]:
             event=data.get("event", {}),
             verdict=data.get("verdict", {}),
             redefinition=True,
+            authority_request_type=str(
+                data.get("authority_request_type") or "ped_redefinition"
+            ),
             forced_reason=data.get("forced_reason", ""),
             context_summary=data.get("context_summary", {}),
             queue_index=i,
@@ -151,13 +155,17 @@ def list_pending_escalations(redefinition_only: bool = False) -> list[QueueEntry
             data = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if redefinition_only and not data.get("redefinition"):
+        authority_request_type = str(data.get("authority_request_type") or "")
+        if not authority_request_type and data.get("redefinition"):
+            authority_request_type = "ped_redefinition"
+        if redefinition_only and authority_request_type != "ped_redefinition":
             continue
         entries.append(QueueEntry(
             queued_at=data.get("queued_at", ""),
             event=data.get("event", {}),
             verdict=data.get("verdict", {}),
             redefinition=bool(data.get("redefinition")),
+            authority_request_type=authority_request_type,
             forced_reason=data.get("forced_reason", ""),
             context_summary=data.get("context_summary", {}),
             queue_index=i,
@@ -193,8 +201,14 @@ def approve_redefinition(
     target = next((e for e in entries if e.queue_index == queue_index), None)
     if target is None:
         return RedefinitionResult(success=False, error=f"No queue entry at index {queue_index}")
-    if not target.redefinition:
-        return RedefinitionResult(success=False, error=f"Queue entry {queue_index} is not a redefinition")
+    if target.authority_request_type != "ped_redefinition":
+        return RedefinitionResult(
+            success=False,
+            error=(
+                f"Queue entry {queue_index} is authority request "
+                f"{target.authority_request_type or '(untyped)'}, not a PED redefinition"
+            ),
+        )
 
     project_nexus = target.event.get("project_nexus", "")
     workflow_id = target.event.get("workflow_id", "")
@@ -268,6 +282,14 @@ def deny_redefinition(queue_index: int, reason: str = "") -> RedefinitionResult:
     target = next((e for e in entries if e.queue_index == queue_index), None)
     if target is None:
         return RedefinitionResult(success=False, error=f"No queue entry at index {queue_index}")
+    if target.authority_request_type != "ped_redefinition":
+        return RedefinitionResult(
+            success=False,
+            error=(
+                f"Queue entry {queue_index} is authority request "
+                f"{target.authority_request_type or '(untyped)'}, not a PED redefinition"
+            ),
+        )
 
     _remove_queue_entry(queue_index)
 

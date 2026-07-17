@@ -7,6 +7,7 @@ panels. Each entry now carries:
   - name                      AI-generated default, user-editable; what the user sees
   - engagement                "unseen" | "seen" | "discussing"
   - discussion_conversation_id  conversation_id of the discussion thread, if any
+  - authority_request_type    explicit reserved authority being requested
   - decided                   None until resolved; set briefly during commit handoff
 
 Existing entries (written before this module landed) lack id/name/engagement.
@@ -84,6 +85,7 @@ class PausedEntry:
     engagement: str = ENGAGEMENT_UNSEEN
     discussion_conversation_id: Optional[str] = None
     conversation_id: str = ""
+    authority_request_type: str = ""
     redefinition: bool = False
     forced_reason: str = ""
     trace_ref: str = ""
@@ -104,6 +106,7 @@ class PausedEntry:
             "engagement": self.engagement,
             "discussion_conversation_id": self.discussion_conversation_id,
             "conversation_id": self.conversation_id,
+            "authority_request_type": self.authority_request_type,
             "redefinition": self.redefinition,
             "forced_reason": self.forced_reason,
             "trace_ref": self.trace_ref,
@@ -329,6 +332,9 @@ def _record_to_paused(data: dict, raw_index: int) -> PausedEntry:
     queued_at = data.get("queued_at", "")
     entry_id = data.get("id") or _synthesize_id(data, queued_at)
     name = data.get("name") or _template_name_from_record(data)
+    authority_request_type = str(data.get("authority_request_type") or "")
+    if not authority_request_type and data.get("redefinition"):
+        authority_request_type = "ped_redefinition"
     return PausedEntry(
         id=entry_id,
         name=name,
@@ -336,6 +342,7 @@ def _record_to_paused(data: dict, raw_index: int) -> PausedEntry:
         engagement=data.get("engagement", ENGAGEMENT_UNSEEN),
         discussion_conversation_id=data.get("discussion_conversation_id"),
         conversation_id=str(data.get("conversation_id") or ""),
+        authority_request_type=authority_request_type,
         redefinition=bool(data.get("redefinition")),
         forced_reason=data.get("forced_reason", ""),
         trace_ref=str(data.get("trace_ref") or (data.get("event") or {}).get("trace_ref") or ""),
@@ -370,8 +377,13 @@ def _template_name_from_record(record: dict) -> str:
     event = record.get("event") or {}
     et = event.get("event_type", "Escalation")
     project = event.get("project_nexus", "")
-    if record.get("redefinition"):
-        et = "Redefinition"
+    authority_request_type = str(record.get("authority_request_type") or "")
+    if not authority_request_type and record.get("redefinition"):
+        authority_request_type = "ped_redefinition"
+    if authority_request_type == "ped_redefinition":
+        et = "PED redefinition"
+    elif authority_request_type:
+        et = authority_request_type.replace("_", " ").title()
     if project:
         return f"{et}: {project}"
     return et
@@ -398,6 +410,7 @@ def _generate_name(record: dict, config: dict) -> str:
         f"event_type: {event.get('event_type', '')}\n"
         f"project_nexus: {event.get('project_nexus', '')}\n"
         f"milestone_text: {event.get('milestone_text', '')}\n"
+        f"authority_request_type: {record.get('authority_request_type', '')}\n"
         f"redefinition: {record.get('redefinition', False)}\n"
     )
 
