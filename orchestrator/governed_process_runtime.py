@@ -1456,7 +1456,7 @@ class GovernedProcessRuntime:
         details: Mapping[str, Any] | None = None,
         artifact_ids: Sequence[str] = (),
     ) -> dict[str, Any]:
-        """Close exactly one persisted controlled-probe attempt."""
+        """Close one attempt, proof-checking every authoritative completion."""
 
         if status not in ("completed", "failed"):
             raise GovernedRuntimeError(
@@ -1490,6 +1490,284 @@ class GovernedProcessRuntime:
                     "controlled probe completion requires exactly one active attempt"
                 )
             attempt = int(open_attempts[0]["attempt"])
+            if open_attempts[0].get("contract_digest") != contract_digest:
+                raise GovernedRuntimeError(
+                    "controlled probe active attempt contract digest does not match"
+                )
+            supplied_details = copy.deepcopy(dict(details or {}))
+            if status == "failed":
+                if outcome is not None:
+                    raise GovernedRuntimeError(
+                        "failed controlled probe completion cannot claim an outcome"
+                    )
+                if artifact_ids:
+                    raise GovernedRuntimeError(
+                        "failed controlled probe completion cannot bind accepted artifacts"
+                    )
+            else:
+                if outcome not in ("confirmed", "disconfirmed", "ambiguous"):
+                    raise GovernedRuntimeError(
+                        "completed controlled probe outcome is invalid"
+                    )
+                completion_fields = {
+                    "contract_digest",
+                    "attempt",
+                    "assumption_id",
+                    "capability_id",
+                    "capability_identity_digest",
+                    "action",
+                    "effect_class",
+                    "effect_type",
+                    "selector",
+                    "evidence_artifact_id",
+                    "evidence_identity_digest",
+                    "receipt_artifact_id",
+                    "receipt_identity_digest",
+                    "success_condition",
+                    "failure_condition",
+                    "ambiguous_route",
+                    "stop_conditions",
+                    "recovery_identity_digest",
+                }
+                if set(supplied_details) != completion_fields:
+                    raise GovernedRuntimeError(
+                        "controlled probe authoritative completion fields are incomplete "
+                        "or ambiguous"
+                    )
+                capability = contract["capability_identity"]
+                action = contract["action_identity"]
+                exact_bindings = {
+                    "contract_digest": contract_digest,
+                    "attempt": attempt,
+                    "assumption_id": contract["assumption_id"],
+                    "capability_id": capability["capability_id"],
+                    "capability_identity_digest": capability["identity_digest"],
+                    "action": action["action"],
+                    "effect_class": action["effect_class"],
+                    "effect_type": action["effect_type"],
+                    "selector": contract["selector"],
+                    "success_condition": contract["success_condition"],
+                    "failure_condition": contract["failure_condition"],
+                    "ambiguous_route": contract["ambiguous_route"],
+                    "stop_conditions": contract["stop_conditions"],
+                    "recovery_identity_digest": (
+                        (contract.get("mutation_safety") or {}).get(
+                            "recovery_identity_digest"
+                        )
+                    ),
+                }
+                mismatched = [
+                    field
+                    for field, expected in exact_bindings.items()
+                    if supplied_details.get(field) != expected
+                ]
+                if mismatched:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion contradicts persisted contract: "
+                        + ", ".join(sorted(mismatched))
+                    )
+
+                evidence_artifact_id = str(
+                    supplied_details.get("evidence_artifact_id") or ""
+                )
+                if not evidence_artifact_id:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion requires an evidence artifact"
+                    )
+                evidence_identity_digest = _exact_digest(
+                    supplied_details.get("evidence_identity_digest"),
+                    "controlled probe completion evidence identity",
+                )
+                mutation = action["effect_class"] == "mutation"
+                receipt_artifact_id = supplied_details.get("receipt_artifact_id")
+                receipt_identity_digest = supplied_details.get(
+                    "receipt_identity_digest"
+                )
+                expected_artifact_ids = [evidence_artifact_id]
+                if mutation:
+                    if not isinstance(receipt_artifact_id, str) or not receipt_artifact_id:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion requires a receipt artifact"
+                        )
+                    receipt_identity_digest = _exact_digest(
+                        receipt_identity_digest,
+                        "controlled probe completion receipt identity",
+                    )
+                    expected_artifact_ids.append(receipt_artifact_id)
+                elif receipt_artifact_id is not None or receipt_identity_digest is not None:
+                    raise GovernedRuntimeError(
+                        "inspection probe completion cannot bind a mutation receipt"
+                    )
+                if len(set(artifact_ids)) != len(artifact_ids) or set(artifact_ids) != set(
+                    expected_artifact_ids
+                ):
+                    raise GovernedRuntimeError(
+                        "controlled probe completion artifact IDs do not match exact evidence "
+                        "and receipt bindings"
+                    )
+
+                started_record = next(
+                    record
+                    for record in reversed(records)
+                    if (record.get("event") or {}).get("event_type")
+                    == "controlled_probe_attempt_started"
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "probe_id"
+                    )
+                    == probe_id
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "attempt"
+                    )
+                    == attempt
+                )
+
+                def artifact_record(artifact_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+                    matches = []
+                    for candidate in records:
+                        event = candidate.get("event") or {}
+                        event_details = event.get("details") or {}
+                        if (
+                            event.get("event_type") == "artifact_recorded"
+                            and event_details.get("artifact_id") == artifact_id
+                        ):
+                            matches.append((candidate, event_details))
+                    if not matches:
+                        raise GovernedRuntimeError(
+                            f"controlled probe completion artifact is not persisted: {artifact_id}"
+                        )
+                    candidate, event_details = matches[-1]
+                    if int(candidate["sequence"]) <= int(started_record["sequence"]):
+                        raise GovernedRuntimeError(
+                            "controlled probe completion artifact predates its active attempt"
+                        )
+                    if event_details.get("action") != "record_evidence":
+                        raise GovernedRuntimeError(
+                            "controlled probe completion artifact bypassed evidence authority"
+                        )
+                    if event_details.get("selectors") != [contract["evidence_selector"]]:
+                        raise GovernedRuntimeError(
+                            "controlled probe completion artifact selector does not match"
+                        )
+                    if event_details.get("grant_ids") != contract["evidence_grant_ids"]:
+                        raise GovernedRuntimeError(
+                            "controlled probe completion evidence grants do not match"
+                        )
+                    return candidate, event_details
+
+                _evidence_record, evidence_record_details = artifact_record(
+                    evidence_artifact_id
+                )
+                evidence = self.load_artifact(run_id, evidence_artifact_id)
+                if evidence["role"] != "evidence":
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence has the wrong artifact role"
+                    )
+                if evidence["identity"]["digest"] != evidence_identity_digest:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence identity changed"
+                    )
+                if evidence_record_details.get("identity_digest") != evidence_identity_digest:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence record identity does not match"
+                    )
+                if evidence["lineage"]["run_id"] != run_id:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence belongs to another Run"
+                    )
+                if evidence["lineage"]["definition_ref"] != contract["definition_ref"]:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence definition identity does not match"
+                    )
+                if evidence["lineage"]["producing_node_id"] != contract["node_id"]:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion evidence node identity does not match"
+                    )
+
+                if mutation:
+                    receipt_record, receipt_record_details = artifact_record(
+                        receipt_artifact_id
+                    )
+                    receipt = self.load_artifact(run_id, receipt_artifact_id)
+                    if receipt["role"] != "external_effect_receipt":
+                        raise GovernedRuntimeError(
+                            "mutation probe completion receipt has the wrong artifact role"
+                        )
+                    if receipt["identity"]["digest"] != receipt_identity_digest:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion receipt identity changed"
+                        )
+                    if receipt_record_details.get("identity_digest") != receipt_identity_digest:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion receipt record identity does not match"
+                        )
+                    matching_actions = []
+                    safety = contract["mutation_safety"]
+                    for candidate in records:
+                        event = candidate.get("event") or {}
+                        event_details = event.get("details") or {}
+                        nested = event_details.get("details") or {}
+                        if (
+                            event.get("event_type") == "action_completed"
+                            and nested.get("probe_id") == probe_id
+                            and nested.get("contract_digest") == contract_digest
+                            and nested.get("attempt") == attempt
+                        ):
+                            matching_actions.append((candidate, event_details, nested))
+                    if len(matching_actions) != 1:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion requires exactly one matching external action"
+                        )
+                    action_record, action_details, nested = matching_actions[0]
+                    if int(action_record["sequence"]) <= int(receipt_record["sequence"]):
+                        raise GovernedRuntimeError(
+                            "mutation probe action was not bound after its receipt"
+                        )
+                    expected_action = {
+                        "action": action["action"],
+                        "selectors": [contract["selector"]],
+                        "grant_ids": contract["matched_grant_ids"],
+                        "effect_type": action["effect_type"],
+                        "external_effect": True,
+                        "receipt_artifact_id": receipt_artifact_id,
+                        "receipt_identity_digest": receipt_identity_digest,
+                    }
+                    action_mismatch = [
+                        field
+                        for field, expected in expected_action.items()
+                        if action_details.get(field) != expected
+                    ]
+                    expected_nested = {
+                        "probe_id": probe_id,
+                        "attempt": attempt,
+                        "contract_digest": contract_digest,
+                        "capability_id": capability["capability_id"],
+                        "capability_identity_digest": capability["identity_digest"],
+                        "receipt_identity_digest": receipt_identity_digest,
+                        "pre_state_digest": safety["pre_state_digest"],
+                        "idempotency_key": safety["idempotency_key"],
+                    }
+                    action_mismatch.extend(
+                        field
+                        for field, expected in expected_nested.items()
+                        if nested.get(field) != expected
+                    )
+                    if action_mismatch:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion action binding does not match: "
+                            + ", ".join(sorted(set(action_mismatch)))
+                        )
+                else:
+                    for candidate in records:
+                        event = candidate.get("event") or {}
+                        nested = ((event.get("details") or {}).get("details") or {})
+                        if (
+                            event.get("event_type") == "action_completed"
+                            and nested.get("probe_id") == probe_id
+                            and nested.get("contract_digest") == contract_digest
+                        ):
+                            raise GovernedRuntimeError(
+                                "inspection probe completion cannot bind an external action"
+                            )
             record = self._append_event_locked(
                 run,
                 "controlled_probe_attempt_completed",
@@ -1499,7 +1777,7 @@ class GovernedProcessRuntime:
                     "attempt": attempt,
                     "status": status,
                     "outcome": outcome,
-                    "details": copy.deepcopy(dict(details or {})),
+                    "details": supplied_details,
                 },
                 node_id=contract["node_id"],
                 artifact_ids=artifact_ids,

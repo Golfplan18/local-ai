@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -579,6 +580,55 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             )
         self.assertEqual(external_state, [])
 
+    def test_direct_confirmed_completion_without_exact_evidence_is_rejected(self):
+        capability = self.capability(effect_class="inspection")
+        persisted = self.persist(capability)
+        started = self.runtime.begin_controlled_probe_attempt(
+            "run-probe", "availability"
+        )
+        contract = started["contract"]
+        missing_evidence_digest = self.exact_digest("nonexistent-evidence")
+        forged_details = {
+            "contract_digest": persisted["contract_digest"],
+            "attempt": started["attempt"],
+            "assumption_id": contract["assumption_id"],
+            "capability_id": contract["capability_identity"]["capability_id"],
+            "capability_identity_digest": contract["capability_identity"][
+                "identity_digest"
+            ],
+            "action": contract["action_identity"]["action"],
+            "effect_class": contract["action_identity"]["effect_class"],
+            "effect_type": contract["action_identity"]["effect_type"],
+            "selector": contract["selector"],
+            "evidence_artifact_id": "nonexistent-evidence",
+            "evidence_identity_digest": missing_evidence_digest,
+            "receipt_artifact_id": None,
+            "receipt_identity_digest": None,
+            "success_condition": contract["success_condition"],
+            "failure_condition": contract["failure_condition"],
+            "ambiguous_route": contract["ambiguous_route"],
+            "stop_conditions": contract["stop_conditions"],
+            "recovery_identity_digest": None,
+        }
+        with self.assertRaisesRegex(
+            gpr.GovernedRuntimeError, "artifact IDs do not match exact evidence"
+        ):
+            self.runtime.complete_controlled_probe_attempt(
+                "run-probe",
+                "availability",
+                status="completed",
+                outcome="confirmed",
+                details=forged_details,
+                artifact_ids=[],
+            )
+        completions = [
+            record
+            for record in self.runtime.load_records("run-probe")
+            if record["event"]["event_type"]
+            == "controlled_probe_attempt_completed"
+        ]
+        self.assertEqual(completions, [])
+
     def test_read_only_inspection_sandbox_denies_filesystem_mutation(self):
         capability = self.capability(effect_class="inspection")
         self.persist(capability)
@@ -598,6 +648,43 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
                 self.runtime, "run-probe", "availability", boundary
             )
         self.assertFalse(marker.exists())
+
+    def test_read_only_inspection_sandbox_denies_host_process_signalling(self):
+        capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        disposable = subprocess.Popen(["/bin/sleep", "30"])
+        try:
+            script = (
+                "import json,os,signal,sys; "
+                "os.kill(int(sys.argv[1]), signal.SIGTERM); "
+                "print(json.dumps({'outcome':'confirmed','evidence':'host changed'}))"
+            )
+            boundary = discovery.ReadOnlyInspectionCommand(
+                (sys.executable, "-c", script, str(disposable.pid))
+            )
+            with self.assertRaisesRegex(
+                discovery.CapabilityDiscoveryError, "boundary refused or failed"
+            ):
+                discovery.execute_controlled_probe(
+                    self.runtime, "run-probe", "availability", boundary
+                )
+            self.assertIsNone(
+                disposable.poll(), "deny-default inspection terminated a host process"
+            )
+            self.assertEqual(self.runtime.load_run("run-probe")["artifact_ids"], [])
+            completion = [
+                record["event"]["details"]
+                for record in self.runtime.load_records("run-probe")
+                if record["event"]["event_type"]
+                == "controlled_probe_attempt_completed"
+            ]
+            self.assertEqual(len(completion), 1)
+            self.assertEqual(completion[0]["status"], "failed")
+            self.assertIsNone(completion[0]["outcome"])
+        finally:
+            if disposable.poll() is None:
+                disposable.terminate()
+            disposable.wait(timeout=5)
 
     def test_contract_persistence_fails_when_declared_stop_has_no_runtime_state(self):
         capability = self.capability(effect_class="inspection")

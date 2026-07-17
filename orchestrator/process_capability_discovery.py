@@ -31,10 +31,14 @@ CAPABILITY_CATEGORIES = (
 ACTION_EFFECT_CLASSES = frozenset({"inspection", "mutation"})
 PROBE_OUTCOMES = frozenset({"confirmed", "disconfirmed", "ambiguous"})
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+# This allowlist is deliberately small. Deny-default leaves process signalling,
+# process control/forking, IPC, network, device access, and host-state writes
+# unavailable; the child may only execute its declared image and read state.
 _READ_ONLY_SANDBOX_PROFILE = """(version 1)
-(allow default)
-(deny file-write*)
-(deny network*)
+(deny default)
+(allow file-read*)
+(allow process-exec)
+(allow sysctl-read)
 """
 
 
@@ -653,6 +657,7 @@ def execute_controlled_probe(
 
     artifact_ids: list[str] = []
     receipt_artifact_id: str | None = None
+    receipt_identity_digest: str | None = None
     if mutation:
         receipt_artifact_id = f"probe-{probe['probe_id']}-{attempt}-receipt"
         receipt_text = json.dumps(result["receipt"], sort_keys=True, separators=(",", ":"))
@@ -668,6 +673,7 @@ def execute_controlled_probe(
             media_type="application/json",
         )
         artifact_ids.append(receipt_artifact_id)
+        receipt_identity_digest = receipt["artifact"]["identity"]["digest"]
         runtime.record_action(
             run_id,
             action=declared["action"],
@@ -678,11 +684,12 @@ def execute_controlled_probe(
             receipt_artifact_id=receipt_artifact_id,
             details={
                 "probe_id": probe["probe_id"],
+                "attempt": attempt,
                 "assumption_id": probe["assumption_id"],
                 "contract_digest": started["contract_digest"],
                 "capability_id": capability_identity["capability_id"],
                 "capability_identity_digest": capability_identity["identity_digest"],
-                "receipt_identity_digest": receipt["artifact"]["identity"]["digest"],
+                "receipt_identity_digest": receipt_identity_digest,
                 "pre_state_digest": mutation_safety["pre_state_digest"],
                 "idempotency_key": mutation_safety["idempotency_key"],
             },
@@ -706,6 +713,8 @@ def execute_controlled_probe(
         status="completed",
         outcome=result["outcome"],
         details={
+            "contract_digest": started["contract_digest"],
+            "attempt": attempt,
             "assumption_id": probe["assumption_id"],
             "capability_id": capability_identity["capability_id"],
             "capability_identity_digest": capability_identity["identity_digest"],
@@ -716,6 +725,7 @@ def execute_controlled_probe(
             "evidence_artifact_id": evidence_artifact_id,
             "evidence_identity_digest": evidence["artifact"]["identity"]["digest"],
             "receipt_artifact_id": receipt_artifact_id,
+            "receipt_identity_digest": receipt_identity_digest,
             "success_condition": probe["success_condition"],
             "failure_condition": probe["failure_condition"],
             "ambiguous_route": probe["ambiguous_route"],
