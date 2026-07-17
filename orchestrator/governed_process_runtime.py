@@ -73,6 +73,46 @@ DIRECTIVE_SOURCE_STATES = {
 INITIAL_RUN_STATES = frozenset({"created", "awaiting_plan_approval", "ready"})
 TERMINAL_RUN_STATES = frozenset({"completed", "blocked", "cancelled"})
 
+# Runtime-authoritative records are emitted only by their dedicated validated
+# methods.  The public generic event surface may persist observations, but it
+# must never be able to mint state, authority, review, retry, recovery, lineage,
+# or invocation facts consumed by the runtime.
+RESERVED_RUNTIME_EVENT_TYPES = frozenset({
+    "run_created",
+    "run_ready",
+    "run_started",
+    "run_paused",
+    "run_resumed",
+    "action_completed",
+    "segment_started",
+    "attempt_started",
+    "attempt_completed",
+    "infrastructure_attempt",
+    "artifact_recorded",
+    "final_review_completed",
+    "checkpoint_created",
+    "process_invoked",
+    "child_return_received",
+    "process_returned",
+})
+
+_RESERVED_RUNTIME_EVENT_PREFIXES = (
+    "action_",
+    "artifact_",
+    "attempt_",
+    "checkpoint_",
+    "child_",
+    "infrastructure_",
+    "invocation_",
+    "lifecycle_",
+    "process_",
+    "recovery_",
+    "return_",
+    "review_",
+    "run_",
+    "segment_",
+)
+
 INFRASTRUCTURE_OUTCOMES = (
     "success",
     "retryable_failure",
@@ -138,6 +178,14 @@ def _digest_text(value: str) -> str:
 def _digest_json(value: Any) -> str:
     body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return _digest_text(body)
+
+
+def _is_reserved_runtime_event_type(event_type: str) -> bool:
+    normalized = str(event_type)
+    return (
+        normalized in RESERVED_RUNTIME_EVENT_TYPES
+        or normalized.startswith(_RESERVED_RUNTIME_EVENT_PREFIXES)
+    )
 
 
 def _require_json(value: Any, label: str) -> None:
@@ -386,6 +434,7 @@ class GovernedProcessRuntime:
                     "definition_digest": run_copy["definition_ref"]["digest"],
                 },
                 node_id=run_copy["current_node_id"],
+                runtime_authoritative=True,
             )
             return copy.deepcopy(run_copy)
 
@@ -586,9 +635,21 @@ class GovernedProcessRuntime:
         artifact_ids: Sequence[str] = (),
         record_id: str | None = None,
         allow_terminal_metadata: bool = False,
+        runtime_authoritative: bool = False,
     ) -> dict[str, Any]:
+        reserved = _is_reserved_runtime_event_type(event_type)
+        if runtime_authoritative:
+            if event_type not in RESERVED_RUNTIME_EVENT_TYPES:
+                raise GovernedRuntimeError(
+                    f"runtime event type is not registered: {event_type!r}"
+                )
+        elif reserved:
+            raise AuthorityDeniedError(
+                f"runtime-authoritative event type requires its validated method: "
+                f"{event_type!r}"
+            )
         if allow_terminal_metadata:
-            if event_type != "process_returned":
+            if not runtime_authoritative or event_type != "process_returned":
                 raise GovernedRuntimeError(
                     "only a deterministic process_returned record is safe terminal metadata"
                 )
@@ -611,6 +672,38 @@ class GovernedProcessRuntime:
         _atomic_json(self._run_path(run["run_id"]), run)
         return record
 
+    def _record_runtime_event(
+        self,
+        run_id: str,
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str | None = None,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Persist one event emitted by its dedicated validated method."""
+
+        if event_type not in RESERVED_RUNTIME_EVENT_TYPES:
+            raise GovernedRuntimeError(
+                f"internal runtime event type is not registered: {event_type!r}"
+            )
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            target = node_id or run["current_node_id"]
+            if target not in {node["node_id"] for node in definition["graph"]["nodes"]}:
+                raise GovernedRuntimeError(f"event node is not in the Process Definition: {target}")
+            return self._append_event_locked(
+                run,
+                event_type,
+                details,
+                node_id=target,
+                evidence_refs=evidence_refs,
+                artifact_ids=artifact_ids,
+                runtime_authoritative=True,
+            )
+
     def record_event(
         self,
         run_id: str,
@@ -621,6 +714,20 @@ class GovernedProcessRuntime:
         evidence_refs: Sequence[Mapping[str, Any]] = (),
         artifact_ids: Sequence[str] = (),
     ) -> dict[str, Any]:
+        """Persist a non-authoritative observation event.
+
+        Runtime-consumed event families are reserved for dedicated methods
+        such as ``record_final_review``, ``begin_attempt``, and
+        ``create_checkpoint``.  Generic observations are append-only evidence;
+        the Run materializer and transition/correction policies never consume
+        them as authority-bearing facts.
+        """
+
+        if _is_reserved_runtime_event_type(event_type):
+            raise AuthorityDeniedError(
+                f"runtime-authoritative event type is reserved for its validated method: "
+                f"{event_type!r}"
+            )
         with _locked():
             run = self.load_run(run_id)
             definition = self.load_definition(run_id)
@@ -657,6 +764,7 @@ class GovernedProcessRuntime:
                 "run_ready",
                 {"entry_node_id": entry_node_id, "reason": reason},
                 node_id=entry_node_id,
+                runtime_authoritative=True,
             )
 
     def start_run(self, run_id: str, *, reason: str) -> dict[str, Any]:
@@ -678,6 +786,7 @@ class GovernedProcessRuntime:
                 "run_started",
                 {"entry_node_id": entry_node_id, "reason": reason},
                 node_id=entry_node_id,
+                runtime_authoritative=True,
             )
 
     # -------------------------------------------------------------- authority
@@ -780,7 +889,7 @@ class GovernedProcessRuntime:
             receipt = None
         if receipt is not None and not external_effect:
             raise GovernedRuntimeError("a receipt may be bound only to an external effect")
-        return self.record_event(
+        return self._record_runtime_event(
             run_id,
             "action_completed",
             {
@@ -800,7 +909,7 @@ class GovernedProcessRuntime:
 
     # --------------------------------------------------------- attempt policy
     def start_segment(self, run_id: str, segment_id: str, *, node_id: str | None = None) -> dict[str, Any]:
-        return self.record_event(
+        return self._record_runtime_event(
             run_id,
             "segment_started",
             {"segment_id": segment_id},
@@ -835,6 +944,7 @@ class GovernedProcessRuntime:
                 "attempt_started",
                 {"segment_id": segment_id, "attempt": correction["attempt"], "max_attempts": maximum},
                 node_id=run["current_node_id"],
+                runtime_authoritative=True,
             )
 
     def complete_attempt(
@@ -906,6 +1016,7 @@ class GovernedProcessRuntime:
                 details,
                 node_id=run["current_node_id"],
                 evidence_refs=evidence_refs,
+                runtime_authoritative=True,
             )
             return {"record": record, **details}
 
@@ -985,7 +1096,7 @@ class GovernedProcessRuntime:
             raise RunConflictError("infrastructure operation has already reached a terminal outcome")
         can_retry = outcome == "retryable_failure" and attempt <= max_retries
         requires_transition_evaluation = outcome != "success" and not can_retry
-        record = self.record_event(
+        record = self._record_runtime_event(
             run_id,
             "infrastructure_attempt",
             {
@@ -1145,6 +1256,7 @@ class GovernedProcessRuntime:
                 node_id=artifact_copy["lineage"]["producing_node_id"],
                 artifact_ids=[artifact_copy["artifact_id"]],
                 record_id=artifact_copy["lineage"]["event_record_id"],
+                runtime_authoritative=True,
             )
             return {"artifact": artifact_copy, "record": record}
 
@@ -1372,7 +1484,7 @@ class GovernedProcessRuntime:
             "identity_digest": subject["identity"]["digest"],
             "outcome": outcome,
         }
-        return self.record_event(
+        return self._record_runtime_event(
             run_id,
             "final_review_completed",
             {
@@ -1799,6 +1911,7 @@ class GovernedProcessRuntime:
                 },
                 node_id=run["current_node_id"],
                 artifact_ids=run["artifact_ids"],
+                runtime_authoritative=True,
             )
 
     def pause_run(
@@ -1826,6 +1939,7 @@ class GovernedProcessRuntime:
                 "run_paused",
                 {"checkpoint_id": checkpoint_id, "reason": reason},
                 node_id=run["current_node_id"],
+                runtime_authoritative=True,
             )
         return {"checkpoint": checkpoint, "pause": paused}
 
@@ -1937,6 +2051,7 @@ class GovernedProcessRuntime:
                     "revalidate_evidence_ids": decision["revalidate_evidence_ids"],
                 },
                 node_id=decision["resume_node_id"],
+                runtime_authoritative=True,
             )
             return {"decision": decision, "record": record}
 
@@ -2105,6 +2220,7 @@ class GovernedProcessRuntime:
                     "return_node_id": call_node["return_node_id"],
                 },
                 node_id=call_node_id,
+                runtime_authoritative=True,
             )
             return {"child_run": self.load_run(child_copy["run_id"]), "parent_record": record}
 
@@ -2217,6 +2333,7 @@ class GovernedProcessRuntime:
                     },
                     node_id=invocation["return_node_id"],
                     artifact_ids=output_artifact_ids,
+                    runtime_authoritative=True,
                 )
             else:
                 parent_record = parent_return_record
@@ -2233,6 +2350,7 @@ class GovernedProcessRuntime:
                     node_id=child["current_node_id"],
                     artifact_ids=output_artifact_ids,
                     allow_terminal_metadata=True,
+                    runtime_authoritative=True,
                 )
             else:
                 child_record = child_return_record
@@ -2253,6 +2371,7 @@ __all__ = [
     "PROCESS_RUNS_DIR",
     "PROCESS_RUNS_ENV",
     "RecoveryBlockedError",
+    "RESERVED_RUNTIME_EVENT_TYPES",
     "RunConflictError",
     "RunNotFoundError",
     "TERMINAL_RUN_STATES",

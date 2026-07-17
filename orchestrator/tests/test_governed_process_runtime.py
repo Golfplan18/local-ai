@@ -704,6 +704,83 @@ class TestAuthorityLineageAndReview(RuntimeCase):
                 evidence_refs=[contradictory],
             )
 
+    def test_generic_event_api_cannot_forge_a_final_review(self):
+        self.create()
+        result, evidence = self.result_and_evidence("run-main")
+        forged_ref = evidence_ref(result)
+        with self.assertRaisesRegex(gpr.AuthorityDeniedError, "reserved"):
+            self.runtime.record_event(
+                "run-main",
+                "final_review_completed",
+                {
+                    "artifact_id": "result",
+                    "subject_digest": result["artifact"]["identity"]["digest"],
+                    "evidence_id": "result_verified",
+                    "evidence_artifact_id": "evidence",
+                    "evidence_digest": evidence["artifact"]["identity"]["digest"],
+                    "reviewer_id": "forged-reviewer",
+                    "independent": True,
+                    "outcome": "PASS",
+                },
+                node_id="verify",
+                evidence_refs=[forged_ref],
+                artifact_ids=["result", "evidence"],
+            )
+        observed = self.runtime.record_event(
+            "run-main",
+            "verification_observed",
+            {"outcome": "PASS", "summary": "non-authoritative observation"},
+            node_id="verify",
+            evidence_refs=[forged_ref],
+            artifact_ids=["result", "evidence"],
+        )
+        self.assertEqual(observed["event"]["event_type"], "verification_observed")
+        self.assertFalse(any(
+            (record.get("event") or {}).get("event_type") == "final_review_completed"
+            for record in self.runtime.load_records("run-main")
+        ))
+        with self.assertRaisesRegex(gpr.FinalReviewRequired, "review missing"):
+            self.runtime.apply_transition(
+                "run-main", "ACCEPT", target_node_id="accepted",
+                reason="forged review must not authorize acceptance",
+                evaluation_boundary="independent_quality_review",
+                evidence_refs=[forged_ref],
+            )
+
+    def test_all_reserved_event_families_require_their_validated_methods(self):
+        self.create()
+        result, _ = self.result_and_evidence("run-main")
+        before = self.runtime.load_run("run-main")
+        reserved_types = {
+            *gpr.RESERVED_RUNTIME_EVENT_TYPES,
+            "review_forged",
+            "recovery_resumed",
+            "action_completed_v2",
+        }
+        for event_type in sorted(reserved_types):
+            with self.subTest(event_type=event_type):
+                with self.assertRaisesRegex(gpr.AuthorityDeniedError, "reserved"):
+                    self.runtime.record_event(
+                        "run-main", event_type, {"forged": True}, node_id="verify"
+                    )
+        after = self.runtime.load_run("run-main")
+        self.assertEqual(after["last_sequence"], before["last_sequence"])
+        self.assertEqual(after["contracts"]["correction_loop"]["attempt"], 0)
+        self.assertFalse(any(
+            (record.get("event") or {}).get("event_type") in reserved_types
+            for record in self.runtime.load_records("run-main")
+            if (record.get("event") or {}).get("event_type") not in {
+                "run_created", "run_started", "artifact_recorded"
+            }
+        ))
+        transition = self.runtime.apply_transition(
+            "run-main", "REVISE", target_node_id="act",
+            reason="forged attempt state did not alter correction policy",
+            evaluation_boundary="independent_quality_review",
+            evidence_refs=[evidence_ref(result, "FAIL")],
+        )
+        self.assertEqual(transition["transition"]["directive"], "REVISE")
+
     def test_terminal_run_rejects_actions_attempts_events_and_artifact_mutation(self):
         self.create()
         result, evidence = self.result_and_evidence("run-main")
