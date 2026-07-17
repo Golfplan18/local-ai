@@ -279,7 +279,7 @@ def contract_set(node_id: str = "verify") -> dict:
             "grants": [
                 {
                     "grant_id": "mutation",
-                    "actions": ["inspect", "mutate", "test"],
+                    "actions": ["inspect", "mutate", "test", "evaluate_evidence"],
                     "resource_selectors": ["scope:declared_inputs", "scope:declared_outputs"],
                     "effect_types": ["local_reversible"],
                     "conditions": ["approved_plan_digest_matches"],
@@ -481,6 +481,7 @@ class TestContractVocabulary(unittest.TestCase):
     def test_versioned_catalog_is_json_serializable(self):
         catalog = pc.contract_catalog()
         self.assertEqual(catalog["schema_version"], pc.CONTRACT_SCHEMA_VERSION)
+        self.assertEqual(catalog["directive_target_states"], pc.DIRECTIVE_TARGET_STATES)
         self.assertEqual(catalog["construction_operation_model"], "relationships_over_one_process_run")
         json.dumps(catalog)
 
@@ -600,6 +601,56 @@ class TestFourPersistedFamilies(unittest.TestCase):
             pc.validate_artifact(payload)
 
 
+class TestBoundedAuthoritySemantics(unittest.TestCase):
+    def test_judgment_rejects_action_absent_from_referenced_grants(self):
+        run = process_run()
+        run["contracts"]["bounded_judgment"][0]["permitted_actions"] = [
+            "delete_everything"
+        ]
+        with self.assertRaisesRegex(pc.ContractValidationError, "not authorized"):
+            pc.validate_process_run(run)
+
+    def test_judgment_rejects_selector_outside_grant_and_artifact_scope(self):
+        run = process_run()
+        run["contracts"]["bounded_judgment"][0]["artifact_selectors"] = [
+            "scope:undeclared"
+        ]
+        with self.assertRaisesRegex(pc.ContractValidationError, "outside the referenced"):
+            pc.validate_process_run(run)
+
+    def test_judgment_rejects_granted_selector_outside_artifact_scope(self):
+        run = process_run()
+        run["contracts"]["authority"]["grants"][0]["resource_selectors"].append(
+            "scope:grant_only"
+        )
+        run["contracts"]["bounded_judgment"][0]["artifact_selectors"] = [
+            "scope:grant_only"
+        ]
+        with self.assertRaisesRegex(pc.ContractValidationError, "outside artifact scope"):
+            pc.validate_process_run(run)
+
+    def test_authority_rejects_action_that_is_granted_permitted_and_reserved(self):
+        run = process_run()
+        run["contracts"]["authority"]["reserved_actions"].append("mutate")
+        run["contracts"]["bounded_judgment"][0]["permitted_actions"].append("mutate")
+        with self.assertRaisesRegex(pc.ContractValidationError, "must not also be granted"):
+            pc.validate_process_run(run)
+
+    def test_judgment_rejects_reserved_action_even_when_not_granted(self):
+        run = process_run()
+        run["contracts"]["bounded_judgment"][0]["permitted_actions"] = ["activate"]
+        with self.assertRaisesRegex(pc.ContractValidationError, "must not be permitted"):
+            pc.validate_process_run(run)
+
+    def test_judgment_rejects_undeclared_escalation_request_type(self):
+        run = process_run()
+        run["contracts"]["bounded_judgment"][0]["escalation_request_types"].append(
+            "undeclared_authority"
+        )
+        with self.assertRaisesRegex(pc.ContractValidationError, "not declared"):
+            pc.validate_process_run(run)
+
+
 class TestTransitionSemantics(unittest.TestCase):
     def test_all_seven_directives_are_machine_valid(self):
         for directive in pc.TRANSITION_DIRECTIVES:
@@ -618,6 +669,26 @@ class TestTransitionSemantics(unittest.TestCase):
                 payload["transition"].pop("authority_request", None)
             with self.subTest(directive=directive):
                 pc.validate_event_transition_record(payload)
+
+    def test_every_directive_rejects_a_contradictory_target_state(self):
+        contradictory_states = {
+            "PROCEED": "completed",
+            "ACCEPT": "running",
+            "REVISE": "completed",
+            "REPLAN": "running",
+            "REDEFINE": "completed",
+            "ESCALATE": "completed",
+            "BLOCKED": "running",
+        }
+        for directive, contradictory_state in contradictory_states.items():
+            payload = transition_record("ESCALATE" if directive == "ESCALATE" else "REDEFINE")
+            payload["transition"]["directive"] = directive
+            payload["transition"]["to_state"] = contradictory_state
+            if directive != "ESCALATE":
+                payload["transition"].pop("authority_request", None)
+            with self.subTest(directive=directive):
+                with self.assertRaisesRegex(pc.ContractValidationError, "requires to_state"):
+                    pc.validate_event_transition_record(payload)
 
     def test_observation_words_are_not_directives(self):
         payload = transition_record()

@@ -91,6 +91,17 @@ RUN_STATES = (
     "blocked",
     "cancelled",
 )
+
+DIRECTIVE_TARGET_STATES = {
+    "PROCEED": "running",
+    "ACCEPT": "completed",
+    "REVISE": "running",
+    "REPLAN": "pending",
+    "REDEFINE": "redefining",
+    "ESCALATE": "waiting_for_authority",
+    "BLOCKED": "blocked",
+}
+
 ARTIFACT_STATUSES = ("candidate", "withheld", "verified", "accepted", "archived", "discarded")
 ARTIFACT_ROLES = (
     "input",
@@ -279,19 +290,30 @@ def _validate_authority(value: Any, path: str) -> None:
     _string(authority["principal_id"], f"{path}.principal_id", identifier=True)
     grants = _list(authority["grants"], f"{path}.grants", minimum=1)
     grant_ids: list[str] = []
+    granted_actions: set[str] = set()
     for index, raw in enumerate(grants):
         grant_path = f"{path}.grants[{index}]"
         grant = _mapping(raw, grant_path)
         fields = {"grant_id", "actions", "resource_selectors", "effect_types", "conditions"}
         _keys(grant, grant_path, required=fields, allowed=fields)
         grant_ids.append(_string(grant["grant_id"], f"{grant_path}.grant_id", identifier=True))
-        _strings(grant["actions"], f"{grant_path}.actions", minimum=1, identifiers=True)
+        granted_actions.update(
+            _strings(grant["actions"], f"{grant_path}.actions", minimum=1, identifiers=True)
+        )
         _strings(grant["resource_selectors"], f"{grant_path}.resource_selectors", minimum=1)
         _strings(grant["effect_types"], f"{grant_path}.effect_types", minimum=1, identifiers=True)
         _strings(grant["conditions"], f"{grant_path}.conditions")
     if len(set(grant_ids)) != len(grant_ids):
         _fail(f"{path}.grants", "grant_id values must be unique")
-    _strings(authority["reserved_actions"], f"{path}.reserved_actions", identifiers=True)
+    reserved_actions = set(
+        _strings(authority["reserved_actions"], f"{path}.reserved_actions", identifiers=True)
+    )
+    reserved_grants = sorted(reserved_actions & granted_actions)
+    if reserved_grants:
+        _fail(
+            f"{path}.reserved_actions",
+            f"reserved action(s) must not also be granted: {', '.join(reserved_grants)}",
+        )
     if "expires_at" in authority:
         _timestamp(authority["expires_at"], f"{path}.expires_at")
 
@@ -447,19 +469,85 @@ def _validate_contract_set(value: Any, path: str) -> None:
     _validate_recovery(contracts["recovery"], f"{path}.recovery")
     _validate_stop_escalation(contracts["stop_escalation"], f"{path}.stop_escalation")
 
-    grant_ids = {grant["grant_id"] for grant in contracts["authority"]["grants"]}
+    grants_by_id = {
+        grant["grant_id"]: grant for grant in contracts["authority"]["grants"]
+    }
+    grant_ids = set(grants_by_id)
     evidence_ids = {item["evidence_id"] for item in contracts["evidence"]["requirements"]}
+    reserved_actions = set(contracts["authority"]["reserved_actions"])
+    artifact_scope = contracts["artifact_scope"]
+    scoped_selectors = {
+        *artifact_scope["read_selectors"],
+        *artifact_scope["write_selectors"],
+        *artifact_scope["external_effect_selectors"],
+    }
+    declared_escalation_types = set(
+        contracts["stop_escalation"]["authority_request_types"]
+    )
     for index, judgment in enumerate(contracts["bounded_judgment"]):
+        judgment_path = f"{path}.bounded_judgment[{index}]"
         unknown_grants = sorted(set(judgment["authority_grant_ids"]) - grant_ids)
         if unknown_grants:
             _fail(
-                f"{path}.bounded_judgment[{index}].authority_grant_ids",
+                f"{judgment_path}.authority_grant_ids",
                 f"references unknown authority grant(s): {', '.join(unknown_grants)}",
             )
+
+        referenced_grants = [
+            grants_by_id[grant_id] for grant_id in judgment["authority_grant_ids"]
+        ]
+        permitted_actions = set(judgment["permitted_actions"])
+        reserved_permitted = sorted(permitted_actions & reserved_actions)
+        if reserved_permitted:
+            _fail(
+                f"{judgment_path}.permitted_actions",
+                f"reserved action(s) must not be permitted: {', '.join(reserved_permitted)}",
+            )
+        granted_actions = {
+            action for grant in referenced_grants for action in grant["actions"]
+        }
+        unauthorized_actions = sorted(permitted_actions - granted_actions)
+        if unauthorized_actions:
+            _fail(
+                f"{judgment_path}.permitted_actions",
+                "action(s) are not authorized by the referenced grant(s): "
+                f"{', '.join(unauthorized_actions)}",
+            )
+
+        judgment_selectors = set(judgment["artifact_selectors"])
+        granted_selectors = {
+            selector
+            for grant in referenced_grants
+            for selector in grant["resource_selectors"]
+        }
+        outside_grants = sorted(judgment_selectors - granted_selectors)
+        if outside_grants:
+            _fail(
+                f"{judgment_path}.artifact_selectors",
+                "selector(s) are outside the referenced authority grant(s): "
+                f"{', '.join(outside_grants)}",
+            )
+        outside_scope = sorted(judgment_selectors - scoped_selectors)
+        if outside_scope:
+            _fail(
+                f"{judgment_path}.artifact_selectors",
+                f"selector(s) are outside artifact scope: {', '.join(outside_scope)}",
+            )
+
+        undeclared_escalations = sorted(
+            set(judgment["escalation_request_types"]) - declared_escalation_types
+        )
+        if undeclared_escalations:
+            _fail(
+                f"{judgment_path}.escalation_request_types",
+                "authority request type(s) are not declared by stop_escalation: "
+                f"{', '.join(undeclared_escalations)}",
+            )
+
         unknown_evidence = sorted(set(judgment["required_evidence_ids"]) - evidence_ids)
         if unknown_evidence:
             _fail(
-                f"{path}.bounded_judgment[{index}].required_evidence_ids",
+                f"{judgment_path}.required_evidence_ids",
                 f"references unknown evidence requirement(s): {', '.join(unknown_evidence)}",
             )
     unknown_revalidation = sorted(
@@ -916,7 +1004,13 @@ def validate_event_transition_record(
         )
         directive = _enum(transition["directive"], TRANSITION_DIRECTIVES, f"{path}.transition.directive")
         _enum(transition["from_state"], RUN_STATES, f"{path}.transition.from_state")
-        _enum(transition["to_state"], RUN_STATES, f"{path}.transition.to_state")
+        to_state = _enum(transition["to_state"], RUN_STATES, f"{path}.transition.to_state")
+        required_target_state = DIRECTIVE_TARGET_STATES[directive]
+        if to_state != required_target_state:
+            _fail(
+                f"{path}.transition.to_state",
+                f"{directive} requires to_state '{required_target_state}', got '{to_state}'",
+            )
         _string(transition["reason"], f"{path}.transition.reason")
         _string(transition["evaluation_boundary"], f"{path}.transition.evaluation_boundary", identifier=True)
         _string(transition["target_node_id"], f"{path}.transition.target_node_id", identifier=True)
@@ -962,6 +1056,7 @@ def contract_catalog() -> dict[str, Any]:
         "root_object_families": list(ROOT_OBJECT_FAMILIES),
         "attached_contracts": list(ATTACHED_CONTRACTS),
         "transition_directives": list(TRANSITION_DIRECTIVES),
+        "directive_target_states": dict(DIRECTIVE_TARGET_STATES),
         "observation_outcomes": list(OBSERVATION_OUTCOMES),
         "definition_statuses": list(DEFINITION_STATUSES),
         "run_states": list(RUN_STATES),
@@ -980,6 +1075,7 @@ __all__ = [
     "ATTACHED_CONTRACTS",
     "CONTRACT_SCHEMA_VERSION",
     "ContractValidationError",
+    "DIRECTIVE_TARGET_STATES",
     "GRAPH_NODE_KINDS",
     "GRAPH_SCHEMA_VERSION",
     "OBSERVATION_OUTCOMES",
