@@ -486,6 +486,19 @@ def _run_milestone(
                 selected_mode=selected_mode,
                 stealth=(conversation_tag == "stealth"))
             scratch.write_milestone(milestone.id, deliverable)
+            if child_trace_dir:
+                try:
+                    try:
+                        import pipeline_trace as _pt_terminal
+                    except ImportError:
+                        from orchestrator import pipeline_trace as _pt_terminal
+                    _pt_terminal.record_terminal_output(
+                        child_trace_dir, deliverable,
+                        route="framework-milestone-scratch",
+                        output_target=milestone.id, persisted=True,
+                    )
+                except Exception:
+                    pass
 
             _drift_trace_token, _drift_tool_token = _bind_trace_context(
                 child_trace_dir, stealth=(conversation_tag == "stealth"),
@@ -673,6 +686,19 @@ def _run_through_gear_pipeline(
             else get_active_endpoint(config)
         )
         if endpoint is None:
+            if trace_dir:
+                try:
+                    try:
+                        import pipeline_trace
+                    except ImportError:
+                        from orchestrator import pipeline_trace
+                    pipeline_trace.write_step(
+                        trace_dir, "step3-direct-no-endpoint", {
+                            "gear": milestone.gear,
+                            "endpoint_available": False,
+                        })
+                except Exception:
+                    pass
             raise MilestoneExecutionError(
                 f"No endpoint available for gear {milestone.gear}"
             )
@@ -681,7 +707,28 @@ def _run_through_gear_pipeline(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": handoff_packet},
         ]
-        return _run_model_with_tools(messages, endpoint)
+        response = _run_model_with_tools(
+            messages, endpoint, trace_dir=trace_dir,
+            step_name="step3-direct-response",
+        )
+        if trace_dir:
+            try:
+                try:
+                    import pipeline_trace
+                except ImportError:
+                    from orchestrator import pipeline_trace
+                pipeline_trace.write_step(
+                    trace_dir, "step3-direct-response", {
+                        "gear": milestone.gear,
+                        "raw_response": response,
+                        "endpoint": (
+                            endpoint.get("name")
+                            if isinstance(endpoint, dict) else str(endpoint)
+                        ),
+                    })
+            except Exception:
+                pass
+        return response
 
 
 def _build_context_pkg(handoff_packet: str, milestone: Milestone,

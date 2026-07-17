@@ -152,12 +152,15 @@ class TraceWalkUiTests(unittest.TestCase):
                 step_name: 'step1-phase-a',
                 label: 'Prompt',
                 markdown: '<script>alert(1)</script>\n[bad](https://x)\n![img](x)',
+                markdown_summary: { characters: 49, sha256: 'safe-digest' },
                 payload: { safe: true },
                 errors: [],
               }));
               await flush();
               const detail = window.document.querySelector('.ora-trace-detail');
-              assert(detail.innerHTML.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), 'script escaped');
+              assert(!detail.textContent.includes('alert(1)'), 'raw markdown ignored');
+              assert(detail.textContent.includes('Markdown content redacted'), 'redaction is visible');
+              assert(detail.textContent.includes('"safe": true'), 'safe projection rendered');
               assert(!detail.querySelector('script'), 'no script tag emitted');
               assert(!detail.querySelector('a'), 'markdown links not transformed');
               assert(!detail.querySelector('img'), 'markdown images not transformed');

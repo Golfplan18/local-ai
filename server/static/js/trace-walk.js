@@ -11,7 +11,7 @@
   const controllers = { manifest: null, step: null, pin: null, export: null };
 
   const css = `
-.ora-trace-backdrop{position:fixed;inset:0;background:rgba(17,14,10,.62);z-index:6000;display:none;align-items:center;justify-content:center;padding:24px}.ora-trace-backdrop.is-open{display:flex}.ora-trace-modal{width:min(1120px,96vw);height:min(780px,92vh);background:#f8f1e4;color:#211b13;border:1px solid #6c5430;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.45);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}.ora-trace-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border-bottom:1px solid #d2c3a9;background:#efe2ca}.ora-trace-title{font:700 18px Georgia,serif}.ora-trace-close{border:0;background:#2b2115;color:#f8f1e4;border-radius:999px;width:32px;height:32px;cursor:pointer}.ora-trace-body{display:grid;grid-template-columns:320px 1fr;min-height:0}.ora-trace-map{border-right:1px solid #d2c3a9;overflow:auto;padding:14px;background:#f2e7d2}.ora-trace-detail{overflow:auto;padding:18px}.ora-trace-step{display:block;width:100%;text-align:left;border:1px solid #cab99b;background:#fff9ed;border-radius:10px;margin:0 0 8px;padding:9px 10px;cursor:pointer}.ora-trace-step.is-selected{border-color:#5e4524;box-shadow:0 0 0 2px rgba(94,69,36,.18)}.ora-trace-step.is-missing{background:#fff1e8;border-style:dashed}.ora-trace-step.is-health{background:#eaf3f1}.ora-trace-badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.ora-trace-badge{border:1px solid #c3b08e;background:#fffaf1;border-radius:999px;padding:3px 8px;font-size:12px}.ora-trace-badge.warn{border-color:#b66c24;background:#fff0dc}.ora-trace-lineage button{margin:3px 5px 3px 0}.ora-trace-actions{display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid #d2c3a9;background:#efe2ca}.ora-trace-actions button,.ora-trace-detail button{border:1px solid #6c5430;background:#fffaf1;color:#211b13;border-radius:8px;padding:7px 10px;cursor:pointer}.ora-trace-actions button[disabled]{opacity:.55;cursor:not-allowed}.ora-trace-error{border:1px solid #9c2f1e;background:#ffece7;border-radius:10px;padding:12px}.ora-trace-loading{padding:18px}.ora-trace-markdown pre,.ora-trace-json{white-space:pre-wrap;background:#211f1b;color:#f5efe2;padding:12px;border-radius:10px;overflow:auto}.ora-trace-markdown code{font-family:Menlo,Consolas,monospace}.ora-trace-markdown table{border-collapse:collapse}.ora-trace-markdown td,.ora-trace-markdown th{border:1px solid #b8ad99;padding:3px 6px}.ora-trace-markdown blockquote{border-left:4px solid #9c7b4f;margin-left:0;padding-left:1rem;color:#584834}@media(max-width:760px){.ora-trace-body{grid-template-columns:1fr}.ora-trace-map{border-right:0;border-bottom:1px solid #d2c3a9;max-height:210px}}`;
+.ora-trace-backdrop{position:fixed;inset:0;background:rgba(17,14,10,.62);z-index:6000;display:none;align-items:center;justify-content:center;padding:24px}.ora-trace-backdrop.is-open{display:flex}.ora-trace-modal{width:min(1120px,96vw);height:min(780px,92vh);background:#f8f1e4;color:#211b13;border:1px solid #6c5430;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.45);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}.ora-trace-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border-bottom:1px solid #d2c3a9;background:#efe2ca}.ora-trace-title{font:700 18px Georgia,serif}.ora-trace-close{border:0;background:#2b2115;color:#f8f1e4;border-radius:999px;width:32px;height:32px;cursor:pointer}.ora-trace-body{display:grid;grid-template-columns:320px 1fr;min-height:0}.ora-trace-map{border-right:1px solid #d2c3a9;overflow:auto;padding:14px;background:#f2e7d2}.ora-trace-detail{overflow:auto;padding:18px}.ora-trace-step{display:block;width:100%;text-align:left;border:1px solid #cab99b;background:#fff9ed;border-radius:10px;margin:0 0 8px;padding:9px 10px;cursor:pointer}.ora-trace-step.is-selected{border-color:#5e4524;box-shadow:0 0 0 2px rgba(94,69,36,.18)}.ora-trace-step.is-missing{background:#fff1e8;border-style:dashed}.ora-trace-step.is-skipped{background:#f1eee8;border-style:dashed}.ora-trace-step.is-replaced{background:#eee8f8}.ora-trace-step.is-contingency{background:#fff3d7}.ora-trace-step.is-unexpected{background:#ffe7e2;border-color:#9c2f1e}.ora-trace-step.is-health{background:#eaf3f1}.ora-trace-badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.ora-trace-badge{border:1px solid #c3b08e;background:#fffaf1;border-radius:999px;padding:3px 8px;font-size:12px}.ora-trace-badge.warn{border-color:#b66c24;background:#fff0dc}.ora-trace-lineage button{margin:3px 5px 3px 0}.ora-trace-actions{display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid #d2c3a9;background:#efe2ca}.ora-trace-actions button,.ora-trace-detail button{border:1px solid #6c5430;background:#fffaf1;color:#211b13;border-radius:8px;padding:7px 10px;cursor:pointer}.ora-trace-actions button[disabled]{opacity:.55;cursor:not-allowed}.ora-trace-error{border:1px solid #9c2f1e;background:#ffece7;border-radius:10px;padding:12px}.ora-trace-loading{padding:18px}.ora-trace-markdown pre,.ora-trace-json{white-space:pre-wrap;background:#211f1b;color:#f5efe2;padding:12px;border-radius:10px;overflow:auto}.ora-trace-markdown code{font-family:Menlo,Consolas,monospace}.ora-trace-markdown table{border-collapse:collapse}.ora-trace-markdown td,.ora-trace-markdown th{border:1px solid #b8ad99;padding:3px 6px}.ora-trace-markdown blockquote{border-left:4px solid #9c7b4f;margin-left:0;padding-left:1rem;color:#584834}@media(max-width:760px){.ora-trace-body{grid-template-columns:1fr}.ora-trace-map{border-right:0;border-bottom:1px solid #d2c3a9;max-height:210px}}`;
 
   const esc = (value) => String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -167,9 +167,10 @@
     (m.steps || []).forEach((step) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'ora-trace-step' + (step.missing ? ' is-missing' : '') + (step.health ? ' is-health' : '') + (step.step_name === state.selectedStep ? ' is-selected' : '');
+      btn.className = 'ora-trace-step' + (step.missing ? ' is-missing' : '') + (step.skipped ? ' is-skipped' : '') + (step.replaced ? ' is-replaced' : '') + (step.contingency ? ' is-contingency' : '') + (step.unexpected ? ' is-unexpected' : '') + (step.health ? ' is-health' : '') + (step.step_name === state.selectedStep ? ' is-selected' : '');
       btn.dataset.step = step.step_name;
-      btn.textContent = (step.missing ? 'Missing: ' : '') + step.step_name + ' - ' + step.label;
+      const stateLabel = step.missing ? 'Missing: ' : step.replaced ? 'Replaced: ' : step.skipped ? 'Skipped: ' : step.contingency ? 'Contingency: ' : step.unexpected ? 'Unexpected: ' : '';
+      btn.textContent = stateLabel + step.step_name + ' - ' + step.label;
       btn.addEventListener('click', () => selectStep(step.step_name));
       map.appendChild(btn);
     });
@@ -180,7 +181,14 @@
       (m.child_trace_refs || []).forEach((ref, idx) => lineage.appendChild(lineageButton('Child ' + (idx + 1), ref)));
       map.appendChild(lineage);
     }
-    detail.innerHTML = '<h2>Trace overview</h2><div class="ora-trace-badges">' + badges + '</div><p>Choose a step on the left to inspect the captured package.</p><h3>Missing expected steps</h3><ul>' + ((m.missing_steps || []).map((x) => '<li>' + esc(x) + '</li>').join('') || '<li>None</li>') + '</ul><pre class="ora-trace-json"></pre>';
+    const category = (title, values) => '<h3>' + esc(title) + '</h3><ul>' + ((values || []).map((x) => '<li>' + esc(x) + '</li>').join('') || '<li>None</li>') + '</ul>';
+    detail.innerHTML = '<h2>Trace overview</h2><div class="ora-trace-badges">' + badges + '</div><p>Choose a recorded step on the left to inspect its redacted structural projection.</p>'
+      + category('Missing expected steps', m.missing_steps)
+      + category('Skipped stages', m.skipped_steps)
+      + category('Replaced stages', m.replaced_steps)
+      + category('Contingency stages', m.contingency_steps)
+      + category('Genuinely unexpected stages', m.unexpected_steps)
+      + '<pre class="ora-trace-json"></pre>';
     detail.querySelector('pre').textContent = JSON.stringify(m, null, 2);
     const pin = backdrop.querySelector('[data-role="pin"]');
     if (pin) pin.textContent = (m.retention_state === 'pinned') ? 'Unpin trace' : 'Pin trace';
@@ -218,9 +226,13 @@
       const errors = (data.errors || []).map((e) => '<li>' + esc(e) + '</li>').join('');
       detail.innerHTML = '<h2>' + esc(data.step_name) + ' - ' + esc(data.label) + '</h2>'
         + (errors ? '<ul class="ora-trace-error">' + errors + '</ul>' : '')
-        + '<div class="ora-trace-markdown">' + (data.markdown ? md(data.markdown) : '<p>No Markdown sibling recorded.</p>') + '</div>'
+        + '<div class="ora-trace-markdown"><p>' + (data.markdown_summary ? 'Markdown content redacted; structural metadata is shown below.' : 'No Markdown sibling recorded.') + '</p></div>'
+        + (data.markdown_summary ? '<h3>Markdown metadata</h3><pre class="ora-trace-json" data-role="markdown-summary"></pre>' : '')
         + '<h3>Structured payload</h3><pre class="ora-trace-json"></pre>';
-      detail.querySelector('pre').textContent = data.payload == null ? '(no JSON payload)' : JSON.stringify(data.payload, null, 2);
+      const markdownPre = detail.querySelector('[data-role="markdown-summary"]');
+      if (markdownPre) markdownPre.textContent = JSON.stringify(data.markdown_summary, null, 2);
+      const payloadPre = detail.querySelectorAll('pre.ora-trace-json');
+      payloadPre[payloadPre.length - 1].textContent = data.payload == null ? '(no JSON payload)' : JSON.stringify(data.payload, null, 2);
     } catch (e) {
       if (e && e.name === 'AbortError') return;
       if (!isCurrent(gen, ref) || state.selectedStep !== stepName) return;
