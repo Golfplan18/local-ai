@@ -156,6 +156,20 @@ Each framework has one entry with these fields:
 - **Version:** 1.4
 - **Delivers:** Queried Capability Discovery Record, governed probe observations, viable direct-operation path or reusable-formalization handoff (P-Infer); trace-backed diagnosis (P-Debug); decomposed subproblems (P-Decompose); PFF-ready exact handoff (P-Formalize); feasibility verdict (P-Feasibility)
 
+### Programming
+
+- **Purpose:** Govern programming planning, approval, action, inspection, correction, replanning, redefining, authority return, recovery, and final acceptance through one versioned Process Definition over Ora's generic kernel
+- **Problem Class:** Evidence-governed programming capability construction and operation with exact artifacts, bounded judgment, explicit authority, seven-directive transitions, and independent completion
+- **Input Summary:** All paths begin from a management-language objective, confirmed project, exact artifact scope, constraints, and available authority. PRG-Execute additionally requires an approved exact plan; PRG-Verify requires an exact result and evaluation basis.
+- **Output Summary:** One canonical plan with Principal and Technical projections; M1 approved plan or M2 accepted result; exact artifacts/evidence/receipts; pause/recovery and non-completion packets; optional versioned capability output with construct, test, register, invoke, and activate authority kept separate
+- **Proven Applications:** v2.0 was generated in G1.1 Phase 1.6 from PIF v1.4/PFF v2.5 and validates as `ora/programming@2.0.0` against `ora.process-contracts/1.0`; the Phase 1.7 nontrivial programming trial has not yet occurred
+- **Known Limitations:** Concrete project, artifact, tool, reviewer, registry, invocation, and activation bindings remain Run-specific; the definition is not publicly exposed or automatically activated; independent final evidence is required for `ACCEPT`; PRG-Verify cannot correct and PRG-Execute cannot silently replan
+- **File Location:** frameworks/book/programming.md (operational body mirror); ~/Documents/vault/Projects/Ora/Framework — Programming.md (canonical)
+- **Provenance:** model-assisted derivation from accepted PIF v1.4/PFF v2.5 and the generic kernel; v1.0 retained only as explicit salvage/history
+- **Confidence:** medium
+- **Version:** 2.0
+- **Delivers:** Approved canonical plan plus Principal/Technical projections (PRG-Run/PRG-Plan); accepted exact programming result (PRG-Run/PRG-Execute/PRG-Verify); versioned capability definition when authorized; explicit Defect, Replan, Redefinition, Authority Request, Blocked, Pause, or Return packet when completion is withheld
+
 ### Mission, Objectives, and Milestones Clarification
 
 - **Purpose:** Convert a raw idea, tension, or goal into a structured hierarchy of Mission, Objectives, Constraints, and Milestones — either standalone (Project / Passion / Incubator) or under PEF supervision (Project-only with Active/Aspirational split and P-Feasibility-verified Active milestones)

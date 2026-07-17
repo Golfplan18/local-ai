@@ -72,6 +72,10 @@ class DriftParityTests(unittest.TestCase):
                 "frameworks/book/process-formalization.md",
             ),
             (
+                "Projects/Ora/Framework — Programming.md",
+                "frameworks/book/programming.md",
+            ),
+            (
                 "Projects/Ora/Framework — Problem Evolution.md",
                 "frameworks/book/problem-evolution.md",
             ),

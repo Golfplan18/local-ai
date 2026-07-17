@@ -142,6 +142,7 @@ DRIFT_PAIRS = [
     ),
     ("Projects/Ora/Framework — Process Inference.md", "frameworks/book/process-inference.md"),
     ("Projects/Ora/Framework — Process Formalization.md", "frameworks/book/process-formalization.md"),
+    ("Projects/Ora/Framework — Programming.md", "frameworks/book/programming.md"),
     ("Projects/Ora/Framework — Problem Evolution.md", "frameworks/book/problem-evolution.md"),
     ("Projects/Ora/Specification — F-Quality-Gate.md", "frameworks/book/f-quality-gate.md"),
 ]
