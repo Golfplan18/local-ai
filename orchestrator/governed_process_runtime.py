@@ -1,0 +1,1831 @@
+"""Generic Phase 1.4 runtime for governed Process Runs.
+
+The runtime is deliberately mechanical.  It validates and persists the four
+Phase 1.3 object families, enforces an already-approved plan and authority
+contract, records observations, and applies an accepted transition directive.
+It never calls a model, diagnoses a failure class, selects a cognitive route, or
+contains a domain-specific controller.
+
+Segment, attempt, checkpoint, infrastructure-retry, invocation, and recovery
+state are event records.  They are not additional persisted object families.
+The current Process Run is a materialized fold over those append-only records.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import copy
+import hashlib
+import json
+import os
+import tempfile
+import threading
+import uuid
+from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+try:
+    import process_contracts as _contracts
+except ImportError:  # pragma: no cover
+    from orchestrator import process_contracts as _contracts
+
+try:
+    import runtime_paths as _runtime_paths
+except ImportError:  # pragma: no cover
+    from orchestrator import runtime_paths as _runtime_paths
+
+
+PROCESS_RUNS_DIR = os.path.join(
+    os.environ.get("ORA_HOME", str(Path.home() / "ora")),
+    "data",
+    "process-runs",
+)
+PROCESS_RUNS_ENV = "ORA_PROCESS_RUNS_DIR"
+
+FAILURE_CLASS_DIRECTIVES = {
+    "execution": "REVISE",
+    "plan": "REPLAN",
+    "definition": "REDEFINE",
+    "authority": "ESCALATE",
+    "external": "BLOCKED",
+}
+
+DIRECTIVE_SOURCE_STATES = {
+    "PROCEED": {"ready", "running", "pending", "redefining", "waiting_for_authority"},
+    "ACCEPT": {"running"},
+    "REVISE": {"running"},
+    "REPLAN": {"running"},
+    "REDEFINE": {"running", "pending"},
+    "ESCALATE": {"ready", "running", "pending", "redefining"},
+    "BLOCKED": {
+        "created",
+        "awaiting_plan_approval",
+        "ready",
+        "running",
+        "pending",
+        "redefining",
+        "waiting_for_authority",
+    },
+}
+
+INFRASTRUCTURE_OUTCOMES = (
+    "success",
+    "retryable_failure",
+    "terminal_failure",
+)
+
+DEFAULT_CORRECTION_POLICY = {
+    "max_attempts": 3,
+    "progress_evidence_required": True,
+    "repeated_defect_limit": 3,
+    "allowed_directives": ["REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+    "no_progress_directives": ["REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+}
+
+_PROCESS_LOCK = threading.RLock()
+
+
+class GovernedRuntimeError(RuntimeError):
+    """Base class for a refused runtime operation."""
+
+
+class RunNotFoundError(GovernedRuntimeError):
+    pass
+
+
+class RunConflictError(GovernedRuntimeError):
+    pass
+
+
+class AuthorityDeniedError(GovernedRuntimeError):
+    pass
+
+
+class CorrectionDecisionRequired(GovernedRuntimeError):
+    pass
+
+
+class RecoveryBlockedError(GovernedRuntimeError):
+    pass
+
+
+class FinalReviewRequired(GovernedRuntimeError):
+    pass
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _storage_key(identifier: str) -> str:
+    digest = hashlib.sha256(str(identifier).encode("utf-8")).hexdigest()[:24]
+    return f"id-{digest}"
+
+
+def _digest_text(value: str) -> str:
+    return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _digest_json(value: Any) -> str:
+    body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return _digest_text(body)
+
+
+def _require_json(value: Any, label: str) -> None:
+    try:
+        json.dumps(value, sort_keys=True, ensure_ascii=False)
+    except (TypeError, ValueError) as exc:
+        raise GovernedRuntimeError(f"{label} must be JSON-serializable: {exc}") from exc
+
+
+def _safe_root(explicit: str | os.PathLike[str] | None = None) -> Path:
+    if explicit is not None:
+        raw = Path(explicit)
+    elif os.environ.get(PROCESS_RUNS_ENV):
+        raw = Path(os.environ[PROCESS_RUNS_ENV])
+    else:
+        raw = Path(_runtime_paths.sandboxed_file(PROCESS_RUNS_DIR))
+    raw = Path(os.path.abspath(os.path.expanduser(str(raw))))
+    if raw.exists() and raw.is_symlink():
+        raise GovernedRuntimeError(f"process-run root must not be a symlink: {raw}")
+    raw.mkdir(parents=True, exist_ok=True)
+    if not raw.is_dir():
+        raise GovernedRuntimeError(f"process-run root is not a directory: {raw}")
+    return raw
+
+
+def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
+    _require_json(payload, str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise GovernedRuntimeError(f"refusing to replace symlink: {path}")
+    fd, temp_path = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, sort_keys=True, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            os.unlink(temp_path)
+        except FileNotFoundError:
+            pass
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.is_file() or path.is_symlink():
+        raise RunNotFoundError(f"runtime object not found: {path}")
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise GovernedRuntimeError(f"cannot read runtime object {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise GovernedRuntimeError(f"runtime object must be a JSON object: {path}")
+    return value
+
+
+def _append_jsonl(path: Path, payload: Mapping[str, Any]) -> None:
+    _require_json(payload, str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise GovernedRuntimeError(f"refusing to append through symlink: {path}")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    try:
+        line = json.dumps(payload, sort_keys=True, ensure_ascii=False) + "\n"
+        os.write(fd, line.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    if not path.is_file() or path.is_symlink():
+        raise GovernedRuntimeError(f"invalid event store: {path}")
+    records: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise GovernedRuntimeError(
+                    f"invalid event record {path}:{number}: {exc}"
+                ) from exc
+            if not isinstance(value, dict):
+                raise GovernedRuntimeError(f"event record {path}:{number} is not an object")
+            _contracts.validate_event_transition_record(value)
+            records.append(value)
+    sequences = [record["sequence"] for record in records]
+    if sequences != list(range(1, len(sequences) + 1)):
+        raise GovernedRuntimeError(f"event sequence is not contiguous: {path}")
+    record_ids = [record["record_id"] for record in records]
+    if len(record_ids) != len(set(record_ids)):
+        raise GovernedRuntimeError(f"event record_id values are not unique: {path}")
+    return records
+
+
+@contextlib.contextmanager
+def _locked() -> Any:
+    with _PROCESS_LOCK:
+        yield
+
+
+def directive_for_failure_class(failure_class: str) -> str:
+    """Map an already-judged failure class to its declared directive.
+
+    Process Coherence owns the judgment that a failure is execution-, plan-,
+    definition-, authority-, or external-level.  This function only applies
+    the fixed policy table.
+    """
+
+    try:
+        return FAILURE_CLASS_DIRECTIVES[str(failure_class)]
+    except KeyError as exc:
+        allowed = ", ".join(FAILURE_CLASS_DIRECTIVES)
+        raise GovernedRuntimeError(
+            f"failure_class must be one of {allowed}; got {failure_class!r}"
+        ) from exc
+
+
+def correction_policy_defaults(
+    overrides: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return explicit correction defaults with bounded, validated overrides.
+
+    The returned policy is configuration material for a Process Run; the
+    runtime never starts attempts merely because a ceiling is available.
+    """
+
+    policy = copy.deepcopy(DEFAULT_CORRECTION_POLICY)
+    supplied = dict(overrides or {})
+    unknown = sorted(set(supplied) - set(policy))
+    if unknown:
+        raise GovernedRuntimeError(
+            f"unknown correction default(s): {', '.join(unknown)}"
+        )
+    policy.update(copy.deepcopy(supplied))
+    if not isinstance(policy["max_attempts"], int) or policy["max_attempts"] < 1:
+        raise GovernedRuntimeError("max_attempts must be an integer >= 1")
+    if not isinstance(policy["repeated_defect_limit"], int) or policy["repeated_defect_limit"] < 1:
+        raise GovernedRuntimeError("repeated_defect_limit must be an integer >= 1")
+    if not isinstance(policy["progress_evidence_required"], bool):
+        raise GovernedRuntimeError("progress_evidence_required must be boolean")
+    correction_directives = {"REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"}
+    for field in ("allowed_directives", "no_progress_directives"):
+        values = policy[field]
+        if not isinstance(values, list) or not values or any(
+            value not in correction_directives for value in values
+        ):
+            raise GovernedRuntimeError(
+                f"{field} must be a nonempty list of correction directives"
+            )
+    if not set(policy["no_progress_directives"]).issubset(policy["allowed_directives"]):
+        raise GovernedRuntimeError("no_progress_directives must be allowed directives")
+    return policy
+
+
+class GovernedProcessRuntime:
+    """Persistent, domain-general Process Run mechanics."""
+
+    def __init__(
+        self,
+        root: str | os.PathLike[str] | None = None,
+        *,
+        now: Callable[[], str] | None = None,
+    ):
+        self.root = _safe_root(root)
+        self._now = now or _utc_now
+
+    # ------------------------------------------------------------------ paths
+    def _run_dir(self, run_id: str, *, create: bool = False) -> Path:
+        path = self.root / _storage_key(run_id)
+        if path.exists() and path.is_symlink():
+            raise GovernedRuntimeError(f"run directory must not be a symlink: {path}")
+        if create:
+            path.mkdir(parents=False, exist_ok=True)
+        return path
+
+    def _run_path(self, run_id: str) -> Path:
+        return self._run_dir(run_id) / "run.json"
+
+    def _definition_path(self, run_id: str) -> Path:
+        return self._run_dir(run_id) / "definition.json"
+
+    def _events_path(self, run_id: str) -> Path:
+        return self._run_dir(run_id) / "records.jsonl"
+
+    def _artifact_path(self, run_id: str, artifact_id: str) -> Path:
+        directory = self._run_dir(run_id) / "artifacts"
+        if directory.exists() and directory.is_symlink():
+            raise GovernedRuntimeError(f"artifact directory must not be a symlink: {directory}")
+        return directory / f"{_storage_key(artifact_id)}.json"
+
+    # ------------------------------------------------------------ root objects
+    def create_run(self, definition: Mapping[str, Any], run: Mapping[str, Any]) -> dict[str, Any]:
+        definition_copy = _contracts.validate_process_definition(definition)
+        run_copy = _contracts.validate_process_run(run)
+        self._validate_definition_binding(definition_copy, run_copy)
+        correction = run_copy["contracts"]["correction_loop"]
+        correction_policy_defaults({
+            key: correction[key] for key in DEFAULT_CORRECTION_POLICY
+        })
+        if run_copy["artifact_ids"]:
+            raise GovernedRuntimeError(
+                "a new Process Run must start with no artifact_ids; record each input "
+                "Artifact through the authority and lineage boundary after creation"
+            )
+        run_id = run_copy["run_id"]
+        with _locked():
+            run_dir = self._run_dir(run_id, create=True)
+            if (run_dir / "run.json").exists() or (run_dir / "definition.json").exists():
+                raise RunConflictError(f"Process Run already exists: {run_id}")
+            _atomic_json(run_dir / "definition.json", definition_copy)
+            _atomic_json(run_dir / "run.json", run_copy)
+            self._append_event_locked(
+                run_copy,
+                "run_created",
+                {
+                    "entrypoint": run_copy["entrypoint"],
+                    "current_node_id": run_copy["current_node_id"],
+                    "definition_digest": run_copy["definition_ref"]["digest"],
+                },
+                node_id=run_copy["current_node_id"],
+            )
+            return copy.deepcopy(run_copy)
+
+    def load_run(self, run_id: str) -> dict[str, Any]:
+        with _locked():
+            run = _contracts.validate_process_run(_read_json(self._run_path(run_id)))
+            if run["run_id"] != run_id:
+                raise GovernedRuntimeError("Process Run storage key resolved to a different run_id")
+            records = _read_jsonl(self._events_path(run_id))
+            for record in records:
+                if record["run_id"] != run_id or record["definition_ref"] != run["definition_ref"]:
+                    raise GovernedRuntimeError(
+                        "event record identity does not match its Process Run store"
+                    )
+            record_sequence = records[-1]["sequence"] if records else 0
+            if int(run["last_sequence"]) < record_sequence:
+                run = self._materialize_records_locked(run, records)
+                _contracts.validate_process_run(run)
+                _atomic_json(self._run_path(run_id), run)
+            elif int(run["last_sequence"]) > record_sequence:
+                raise GovernedRuntimeError(
+                    f"run/event sequence mismatch for {run_id}: "
+                    f"run={run['last_sequence']} records={record_sequence}"
+                )
+            return run
+
+    def _materialize_records_locked(
+        self,
+        run: dict[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Complete an interrupted event→Process-Run materialization.
+
+        The append-only record is written before the materialized Run. If a
+        process stops between those writes, replaying only records after the
+        Run's last committed sequence restores state without replaying any
+        mutation or external effect.
+        """
+
+        materialized = copy.deepcopy(run)
+        for record in records:
+            if int(record["sequence"]) <= int(materialized["last_sequence"]):
+                continue
+            if record["run_id"] != materialized["run_id"]:
+                raise GovernedRuntimeError("event record run_id does not match its store")
+            if record["definition_ref"] != materialized["definition_ref"]:
+                raise GovernedRuntimeError("event record definition identity does not match its Run")
+            if record["record_type"] == "transition":
+                transition = record["transition"]
+                materialized["state"] = transition["to_state"]
+                materialized["current_node_id"] = transition["target_node_id"]
+                if transition["directive"] in ("REPLAN", "REDEFINE"):
+                    materialized["contracts"]["correction_loop"]["attempt"] = 0
+            else:
+                event = record["event"]
+                details = event["details"]
+                event_type = event["event_type"]
+                if event_type == "attempt_started":
+                    materialized["contracts"]["correction_loop"]["attempt"] = int(
+                        details["attempt"]
+                    )
+                elif event_type == "artifact_recorded":
+                    artifact_id = details["artifact_id"]
+                    if artifact_id not in materialized["artifact_ids"]:
+                        materialized["artifact_ids"].append(artifact_id)
+                elif event_type == "checkpoint_created":
+                    materialized["contracts"]["continuation"]["checkpoint_id"] = details[
+                        "checkpoint_id"
+                    ]
+                    materialized["contracts"]["continuation"]["resume_node_id"] = details[
+                        "resume_node_id"
+                    ]
+                elif event_type == "run_paused":
+                    materialized["state"] = "pending"
+                elif event_type == "run_started":
+                    materialized["state"] = "running"
+                elif event_type == "run_resumed":
+                    materialized["state"] = "running"
+                    materialized["current_node_id"] = details["resume_node_id"]
+                elif event_type == "process_invoked":
+                    child_ref = details["child_definition_ref"]
+                    if child_ref not in materialized["relationships"]["invoked_definition_refs"]:
+                        materialized["relationships"]["invoked_definition_refs"].append(child_ref)
+                    child_ids = materialized["contracts"]["continuation"]["child_run_ids"]
+                    if details["child_run_id"] not in child_ids:
+                        child_ids.append(details["child_run_id"])
+                    materialized["state"] = "pending"
+                elif event_type == "child_return_received":
+                    materialized["state"] = "running"
+                    materialized["current_node_id"] = details["return_node_id"]
+            materialized["last_sequence"] = int(record["sequence"])
+            materialized["updated_at"] = record["recorded_at"]
+        return materialized
+
+    def load_definition(self, run_id: str) -> dict[str, Any]:
+        with _locked():
+            return _contracts.validate_process_definition(_read_json(self._definition_path(run_id)))
+
+    def load_records(self, run_id: str) -> list[dict[str, Any]]:
+        with _locked():
+            if not self._run_path(run_id).is_file():
+                raise RunNotFoundError(f"Process Run not found: {run_id}")
+            return copy.deepcopy(_read_jsonl(self._events_path(run_id)))
+
+    def load_artifact(self, run_id: str, artifact_id: str) -> dict[str, Any]:
+        with _locked():
+            artifact = _contracts.validate_artifact(
+                _read_json(self._artifact_path(run_id, artifact_id))
+            )
+            if artifact["artifact_id"] != artifact_id:
+                raise GovernedRuntimeError(
+                    "Artifact storage key resolved to a different artifact_id"
+                )
+            recorded_digest = None
+            for record in reversed(_read_jsonl(self._events_path(run_id))):
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    event.get("event_type") == "artifact_recorded"
+                    and details.get("artifact_id") == artifact_id
+                ):
+                    recorded_digest = details.get("identity_digest")
+                    break
+            if recorded_digest is None:
+                raise GovernedRuntimeError(
+                    f"Artifact has no committed lineage record: {artifact_id}"
+                )
+            if artifact["identity"]["digest"] != recorded_digest:
+                raise GovernedRuntimeError(
+                    f"Artifact identity differs from its latest committed record: {artifact_id}"
+                )
+            return artifact
+
+    def _validate_definition_binding(self, definition: Mapping[str, Any], run: Mapping[str, Any]) -> None:
+        expected_ref = {
+            "definition_id": definition["definition_id"],
+            "version": definition["version"],
+            "digest": definition["digest"],
+        }
+        if run["definition_ref"] != expected_ref:
+            raise GovernedRuntimeError("Process Run must bind the exact Process Definition identity")
+        nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        node_refs = {run["current_node_id"], run["contracts"]["continuation"]["resume_node_id"]}
+        node_refs.update(run["contracts"]["approved_plan"]["approved_node_ids"])
+        for judgment in run["contracts"]["bounded_judgment"]:
+            node_refs.add(judgment["node_id"])
+            node_refs.add(judgment["return_node_id"])
+        unknown = sorted(node_refs - set(nodes))
+        if unknown:
+            raise GovernedRuntimeError(
+                f"Run contracts reference node(s) absent from the definition: {', '.join(unknown)}"
+            )
+
+    # --------------------------------------------------------------- records
+    def _event_record(
+        self,
+        run: Mapping[str, Any],
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+        record_id: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+            "object_family": "event_transition_record",
+            "record_id": record_id or f"event-{uuid.uuid4().hex}",
+            "run_id": run["run_id"],
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "sequence": int(run["last_sequence"]) + 1,
+            "recorded_at": self._now(),
+            "node_id": node_id,
+            "record_type": "event",
+            "event": {"event_type": event_type, "details": copy.deepcopy(dict(details))},
+            "evidence_refs": copy.deepcopy(list(evidence_refs)),
+            "artifact_ids": list(artifact_ids),
+        }
+
+    def _append_event_locked(
+        self,
+        run: dict[str, Any],
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+        record_id: str | None = None,
+    ) -> dict[str, Any]:
+        record = self._event_record(
+            run,
+            event_type,
+            details,
+            node_id=node_id,
+            evidence_refs=evidence_refs,
+            artifact_ids=artifact_ids,
+            record_id=record_id,
+        )
+        _contracts.validate_event_transition_record(record)
+        _append_jsonl(self._events_path(run["run_id"]), record)
+        run["last_sequence"] = record["sequence"]
+        run["updated_at"] = record["recorded_at"]
+        _contracts.validate_process_run(run)
+        _atomic_json(self._run_path(run["run_id"]), run)
+        return record
+
+    def record_event(
+        self,
+        run_id: str,
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str | None = None,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            target = node_id or run["current_node_id"]
+            if target not in {node["node_id"] for node in definition["graph"]["nodes"]}:
+                raise GovernedRuntimeError(f"event node is not in the Process Definition: {target}")
+            return self._append_event_locked(
+                run,
+                event_type,
+                details,
+                node_id=target,
+                evidence_refs=evidence_refs,
+                artifact_ids=artifact_ids,
+            )
+
+    def start_run(self, run_id: str, *, reason: str) -> dict[str, Any]:
+        """Start a ready Run at its declared graph entry without inventing a route."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if run["state"] != "ready":
+                raise RunConflictError("only a ready Process Run can start")
+            entry_node_id = definition["graph"]["entry_node_id"]
+            if run["current_node_id"] != entry_node_id:
+                raise RunConflictError("ready Process Run is not positioned at its graph entry")
+            if entry_node_id not in run["contracts"]["approved_plan"]["approved_node_ids"]:
+                raise AuthorityDeniedError("graph entry is outside the approved plan")
+            run["state"] = "running"
+            return self._append_event_locked(
+                run,
+                "run_started",
+                {"entry_node_id": entry_node_id, "reason": reason},
+                node_id=entry_node_id,
+            )
+
+    # -------------------------------------------------------------- authority
+    def authorize_action(
+        self,
+        run_id: str,
+        action: str,
+        selectors: Sequence[str],
+        *,
+        satisfied_conditions: Sequence[str] = (),
+        effect_type: str | None = None,
+        scope_kind: str | None = None,
+    ) -> list[str]:
+        if not selectors:
+            raise AuthorityDeniedError("an authorized action requires at least one selector")
+        if effect_type is None:
+            raise AuthorityDeniedError("an authorized action requires an explicit effect_type")
+        run = self.load_run(run_id)
+        authority = run["contracts"]["authority"]
+        expires_at = authority.get("expires_at")
+        if expires_at and _parse_time(expires_at) < _parse_time(self._now()):
+            raise AuthorityDeniedError("authority contract has expired")
+        if action in authority["reserved_actions"]:
+            raise AuthorityDeniedError(f"action is reserved for higher authority: {action}")
+        scope = run["contracts"]["artifact_scope"]
+        scope_fields = {
+            "read": "read_selectors",
+            "write": "write_selectors",
+            "external": "external_effect_selectors",
+        }
+        if scope_kind not in (None, *scope_fields):
+            raise AuthorityDeniedError(f"unknown artifact scope kind: {scope_kind}")
+        allowed_scope = (
+            set(scope[scope_fields[scope_kind]])
+            if scope_kind
+            else {
+                *scope["read_selectors"],
+                *scope["write_selectors"],
+                *scope["external_effect_selectors"],
+            }
+        )
+        outside_scope = sorted(set(selectors) - allowed_scope)
+        if outside_scope:
+            raise AuthorityDeniedError(
+                f"selector(s) outside {scope_kind or 'declared'} artifact scope: "
+                f"{', '.join(outside_scope)}"
+            )
+        satisfied = set(satisfied_conditions)
+        matched_ids: set[str] = set()
+        uncovered: list[str] = []
+        requested = list(selectors) or [None]
+        for selector in requested:
+            matches = []
+            for grant in authority["grants"]:
+                if action not in grant["actions"]:
+                    continue
+                if selector is not None and selector not in grant["resource_selectors"]:
+                    continue
+                if effect_type is not None and effect_type not in grant["effect_types"]:
+                    continue
+                if not set(grant["conditions"]).issubset(satisfied):
+                    continue
+                matches.append(grant)
+            if not matches:
+                uncovered.append(selector or "<no-selector>")
+            matched_ids.update(grant["grant_id"] for grant in matches)
+        if uncovered:
+            raise AuthorityDeniedError(
+                f"action {action!r} is not authorized for selector(s): {', '.join(uncovered)}"
+            )
+        return sorted(matched_ids)
+
+    def record_action(
+        self,
+        run_id: str,
+        *,
+        action: str,
+        selectors: Sequence[str],
+        satisfied_conditions: Sequence[str] = (),
+        effect_type: str,
+        external_effect: bool,
+        receipt_artifact_id: str | None = None,
+        details: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        scope_kind = "external" if external_effect else "write"
+        grant_ids = self.authorize_action(
+            run_id,
+            action,
+            selectors,
+            satisfied_conditions=satisfied_conditions,
+            effect_type=effect_type,
+            scope_kind=scope_kind,
+        )
+        if receipt_artifact_id is not None:
+            receipt = self.load_artifact(run_id, receipt_artifact_id)
+            if receipt["role"] != "external_effect_receipt":
+                raise GovernedRuntimeError("external-effect receipt must use that artifact role")
+        else:
+            receipt = None
+        if receipt is not None and not external_effect:
+            raise GovernedRuntimeError("a receipt may be bound only to an external effect")
+        return self.record_event(
+            run_id,
+            "action_completed",
+            {
+                "action": action,
+                "selectors": list(selectors),
+                "grant_ids": grant_ids,
+                "effect_type": effect_type,
+                "external_effect": bool(external_effect),
+                "receipt_artifact_id": receipt_artifact_id,
+                "receipt_identity_digest": (
+                    receipt["identity"]["digest"] if receipt is not None else None
+                ),
+                "details": copy.deepcopy(dict(details or {})),
+            },
+            artifact_ids=[receipt_artifact_id] if receipt_artifact_id else [],
+        )
+
+    # --------------------------------------------------------- attempt policy
+    def start_segment(self, run_id: str, segment_id: str, *, node_id: str | None = None) -> dict[str, Any]:
+        return self.record_event(
+            run_id,
+            "segment_started",
+            {"segment_id": segment_id},
+            node_id=node_id,
+        )
+
+    def begin_attempt(self, run_id: str, segment_id: str) -> dict[str, Any]:
+        with _locked():
+            run = self.load_run(run_id)
+            latest_attempt_event = None
+            for record in reversed(self.load_records(run_id)):
+                event = record.get("event") or {}
+                if event.get("event_type") in ("attempt_started", "attempt_completed"):
+                    latest_attempt_event = event
+                    break
+            if (
+                latest_attempt_event
+                and latest_attempt_event.get("event_type") == "attempt_started"
+            ):
+                raise RunConflictError("the active attempt must complete before another begins")
+            correction = run["contracts"]["correction_loop"]
+            current = int(correction["attempt"])
+            maximum = int(correction["max_attempts"])
+            if current >= maximum:
+                raise CorrectionDecisionRequired(
+                    "attempt ceiling reached; Process Coherence must select an allowed "
+                    "non-REVISE route from current evidence"
+                )
+            correction["attempt"] = current + 1
+            return self._append_event_locked(
+                run,
+                "attempt_started",
+                {"segment_id": segment_id, "attempt": correction["attempt"], "max_attempts": maximum},
+                node_id=run["current_node_id"],
+            )
+
+    def complete_attempt(
+        self,
+        run_id: str,
+        segment_id: str,
+        *,
+        defect_codes: Sequence[str],
+        evidence_refs: Sequence[Mapping[str, Any]],
+        artifact_digests: Sequence[str],
+    ) -> dict[str, Any]:
+        with _locked():
+            run = self.load_run(run_id)
+            records = self.load_records(run_id)
+            latest_attempt_event = None
+            for record in reversed(records):
+                event = record.get("event") or {}
+                if event.get("event_type") in ("attempt_started", "attempt_completed"):
+                    latest_attempt_event = event
+                    break
+            if not latest_attempt_event or latest_attempt_event.get("event_type") != "attempt_started":
+                raise RunConflictError("attempt completion requires one active attempt")
+            started = latest_attempt_event.get("details") or {}
+            if started.get("segment_id") != segment_id:
+                raise RunConflictError("attempt must complete in the segment where it started")
+            if int(started.get("attempt") or -1) != int(
+                run["contracts"]["correction_loop"]["attempt"]
+            ):
+                raise RunConflictError("attempt number does not match persisted Run state")
+            prior = None
+            for record in reversed(records):
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    event.get("event_type") == "attempt_completed"
+                    and details.get("segment_id") == segment_id
+                ):
+                    prior = event.get("details") or {}
+                    break
+            evidence_ids = sorted(
+                ref["evidence_id"]
+                for ref in evidence_refs
+                if ref.get("outcome") == "PASS"
+            )
+            artifact_digests = sorted(set(artifact_digests))
+            prior_evidence = set((prior or {}).get("passing_evidence_ids") or [])
+            prior_artifacts = set((prior or {}).get("artifact_digests") or [])
+            progress = bool(
+                (set(evidence_ids) - prior_evidence)
+                or (set(artifact_digests) - prior_artifacts)
+            )
+            defect_fingerprint = _digest_json(sorted(set(defect_codes)))
+            repeated = 1
+            if prior and prior.get("defect_fingerprint") == defect_fingerprint:
+                repeated = int(prior.get("repeated_defect_count") or 1) + 1
+            details = {
+                "segment_id": segment_id,
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+                "defect_codes": sorted(set(defect_codes)),
+                "defect_fingerprint": defect_fingerprint,
+                "repeated_defect_count": repeated,
+                "passing_evidence_ids": evidence_ids,
+                "artifact_digests": artifact_digests,
+                "progress_evidence": progress,
+            }
+            record = self._append_event_locked(
+                run,
+                "attempt_completed",
+                details,
+                node_id=run["current_node_id"],
+                evidence_refs=evidence_refs,
+            )
+            return {"record": record, **details}
+
+    def validate_correction_directive(self, run_id: str, directive: str) -> None:
+        run = self.load_run(run_id)
+        correction = run["contracts"]["correction_loop"]
+        if directive not in correction["allowed_directives"]:
+            raise CorrectionDecisionRequired(
+                f"directive {directive} is not allowed by the correction contract"
+            )
+        latest = None
+        for record in reversed(self.load_records(run_id)):
+            event = record.get("event") or {}
+            if event.get("event_type") == "attempt_completed":
+                latest = event.get("details") or {}
+                break
+        if latest is None:
+            return
+        no_progress = (
+            bool(correction["progress_evidence_required"])
+            and not bool(latest.get("progress_evidence"))
+        )
+        repeated = int(latest.get("repeated_defect_count") or 0)
+        repeated_limit = int(correction["repeated_defect_limit"])
+        at_ceiling = int(correction["attempt"]) >= int(correction["max_attempts"])
+        if no_progress or repeated >= repeated_limit or at_ceiling:
+            if directive not in correction["no_progress_directives"]:
+                reasons = []
+                if no_progress:
+                    reasons.append("no new progress evidence")
+                if repeated >= repeated_limit:
+                    reasons.append("repeated defect limit reached")
+                if at_ceiling:
+                    reasons.append("attempt ceiling reached")
+                raise CorrectionDecisionRequired(
+                    f"{'; '.join(reasons)}; directive must be one of "
+                    f"{', '.join(correction['no_progress_directives'])}"
+                )
+
+    # -------------------------------------------- infrastructure vs quality
+    def record_infrastructure_attempt(
+        self,
+        run_id: str,
+        operation_id: str,
+        *,
+        attempt: int,
+        max_retries: int,
+        outcome: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        if outcome not in INFRASTRUCTURE_OUTCOMES:
+            raise GovernedRuntimeError(
+                f"infrastructure outcome must be one of {', '.join(INFRASTRUCTURE_OUTCOMES)}"
+            )
+        if attempt < 1 or max_retries < 0:
+            raise GovernedRuntimeError("attempt must be >= 1 and max_retries must be >= 0")
+        prior_attempts = []
+        for record in self.load_records(run_id):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "infrastructure_attempt"
+                and details.get("operation_id") == operation_id
+            ):
+                prior_attempts.append(details)
+        expected_attempt = len(prior_attempts) + 1
+        if attempt != expected_attempt:
+            raise RunConflictError(
+                f"infrastructure attempt must be {expected_attempt}; got {attempt}"
+            )
+        if prior_attempts and int(prior_attempts[-1]["max_retries"]) != max_retries:
+            raise RunConflictError("max_retries cannot change within one operation")
+        if prior_attempts and (
+            prior_attempts[-1]["outcome"] == "success"
+            or not prior_attempts[-1]["can_retry"]
+        ):
+            raise RunConflictError("infrastructure operation has already reached a terminal outcome")
+        can_retry = outcome == "retryable_failure" and attempt <= max_retries
+        requires_transition_evaluation = outcome != "success" and not can_retry
+        record = self.record_event(
+            run_id,
+            "infrastructure_attempt",
+            {
+                "operation_id": operation_id,
+                "attempt": attempt,
+                "max_retries": max_retries,
+                "outcome": outcome,
+                "reason": reason,
+                "can_retry": can_retry,
+                "requires_transition_evaluation": requires_transition_evaluation,
+                "quality_directive": None,
+            },
+        )
+        return {
+            "record": record,
+            "can_retry": can_retry,
+            "requires_transition_evaluation": requires_transition_evaluation,
+            "directive": None,
+        }
+
+    # ---------------------------------------------------------- artifacts
+    def _known_source_artifact_ids(self, run_id: str) -> set[str]:
+        run = self.load_run(run_id)
+        known = set(run["artifact_ids"])
+        for record in self.load_records(run_id):
+            event = record.get("event") or {}
+            if event.get("event_type") == "child_return_received":
+                known.update((event.get("details") or {}).get("output_artifact_ids") or [])
+        return known
+
+    def record_artifact(
+        self,
+        artifact: Mapping[str, Any],
+        *,
+        action: str,
+        selectors: Sequence[str],
+        satisfied_conditions: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        artifact_copy = _contracts.validate_artifact(artifact)
+        run_id = artifact_copy["lineage"]["run_id"]
+        grant_ids = self.authorize_action(
+            run_id,
+            action,
+            selectors,
+            satisfied_conditions=satisfied_conditions,
+            effect_type="local_reversible",
+            scope_kind="write",
+        )
+        with _locked():
+            run = self.load_run(run_id)
+            if artifact_copy["lineage"]["definition_ref"] != run["definition_ref"]:
+                raise GovernedRuntimeError("Artifact lineage must bind the Run definition")
+            unknown_sources = sorted(
+                set(artifact_copy["lineage"]["source_artifact_ids"])
+                - self._known_source_artifact_ids(run_id)
+            )
+            if unknown_sources:
+                raise GovernedRuntimeError(
+                    f"Artifact lineage references unknown source(s): {', '.join(unknown_sources)}"
+                )
+            path = self._artifact_path(run_id, artifact_copy["artifact_id"])
+            prior = _read_json(path) if path.exists() else None
+            prior_digest = ((prior or {}).get("identity") or {}).get("digest")
+            current_digest = artifact_copy["identity"]["digest"]
+            _atomic_json(path, artifact_copy)
+            if artifact_copy["artifact_id"] not in run["artifact_ids"]:
+                run["artifact_ids"].append(artifact_copy["artifact_id"])
+            record = self._append_event_locked(
+                run,
+                "artifact_recorded",
+                {
+                    "artifact_id": artifact_copy["artifact_id"],
+                    "role": artifact_copy["role"],
+                    "identity_digest": current_digest,
+                    "prior_identity_digest": prior_digest,
+                    "stale_review_invalidated": bool(prior_digest and prior_digest != current_digest),
+                    "action": action,
+                    "selectors": list(selectors),
+                    "grant_ids": grant_ids,
+                },
+                node_id=artifact_copy["lineage"]["producing_node_id"],
+                artifact_ids=[artifact_copy["artifact_id"]],
+                record_id=artifact_copy["lineage"]["event_record_id"],
+            )
+            return {"artifact": artifact_copy, "record": record}
+
+    def record_inline_artifact(
+        self,
+        run_id: str,
+        artifact_id: str,
+        text: str,
+        *,
+        role: str,
+        node_id: str,
+        action: str,
+        selector: str,
+        source_artifact_ids: Sequence[str] = (),
+        satisfied_conditions: Sequence[str] = (),
+        media_type: str = "text/markdown",
+    ) -> dict[str, Any]:
+        run = self.load_run(run_id)
+        now = self._now()
+        artifact = {
+            "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+            "object_family": "artifact",
+            "artifact_id": artifact_id,
+            "role": role,
+            "status": "candidate" if role != "evidence" else "verified",
+            "media_type": media_type,
+            "locator": {"kind": "inline", "ref": f"inline:{run_id}:{artifact_id}"},
+            "identity": {
+                "kind": "content_digest",
+                "digest": _digest_text(text),
+                "coverage": ["complete_content"],
+                "captured_at": now,
+                "fresh_until": (
+                    _parse_time(now) + timedelta(days=3650)
+                ).isoformat().replace("+00:00", "Z"),
+            },
+            "lineage": {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "producing_node_id": node_id,
+                "source_artifact_ids": list(source_artifact_ids),
+                "event_record_id": f"event-{uuid.uuid4().hex}",
+            },
+            "created_at": now,
+        }
+        return self.record_artifact(
+            artifact,
+            action=action,
+            selectors=[selector],
+            satisfied_conditions=satisfied_conditions,
+        )
+
+    def record_final_review(
+        self,
+        run_id: str,
+        *,
+        artifact_id: str,
+        evidence_id: str,
+        evidence_artifact_id: str,
+        outcome: str,
+        reviewer_id: str,
+        independent: bool,
+        satisfied_conditions: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        if outcome not in _contracts.OBSERVATION_OUTCOMES:
+            raise GovernedRuntimeError(f"unknown review outcome: {outcome}")
+        run = self.load_run(run_id)
+        subject = self.load_artifact(run_id, artifact_id)
+        evidence_artifact = self.load_artifact(run_id, evidence_artifact_id)
+        if evidence_artifact["role"] != "evidence":
+            raise GovernedRuntimeError("final review evidence must be an evidence Artifact")
+        requirements = {
+            requirement["evidence_id"]: requirement
+            for requirement in run["contracts"]["evidence"]["requirements"]
+        }
+        if evidence_id not in requirements:
+            raise GovernedRuntimeError(f"undeclared evidence requirement: {evidence_id}")
+        requirement = requirements[evidence_id]
+        active_judgments = [
+            judgment
+            for judgment in run["contracts"]["bounded_judgment"]
+            if judgment["node_id"] == run["current_node_id"]
+            and evidence_id in judgment["required_evidence_ids"]
+        ]
+        if len(active_judgments) != 1:
+            raise FinalReviewRequired(
+                "final review must occur at its declared bounded-judgment node"
+            )
+        judgment = active_judgments[0]
+        self.authorize_action(
+            run_id,
+            "evaluate_evidence",
+            judgment["artifact_selectors"],
+            satisfied_conditions=satisfied_conditions,
+            effect_type="local_reversible",
+            scope_kind=None,
+        )
+        if requirement["producer_independence"] != "same_step" and not independent:
+            raise FinalReviewRequired("final review must be independent for this evidence requirement")
+        if independent and reviewer_id == run["contracts"]["authority"]["principal_id"]:
+            raise FinalReviewRequired("independent reviewer must differ from the Run principal")
+        if (
+            requirement["producer_independence"] == "independent_step"
+            and evidence_artifact["lineage"]["producing_node_id"]
+            == subject["lineage"]["producing_node_id"]
+        ):
+            raise FinalReviewRequired(
+                "independent-step evidence must be produced at a different process node"
+            )
+        review_time = _parse_time(self._now())
+        if _parse_time(evidence_artifact["identity"]["fresh_until"]) < review_time:
+            raise FinalReviewRequired("final review evidence Artifact is stale")
+        evidence_ref = {
+            "evidence_id": evidence_id,
+            "artifact_id": artifact_id,
+            "identity_digest": subject["identity"]["digest"],
+            "outcome": outcome,
+        }
+        return self.record_event(
+            run_id,
+            "final_review_completed",
+            {
+                "artifact_id": artifact_id,
+                "subject_digest": subject["identity"]["digest"],
+                "evidence_id": evidence_id,
+                "evidence_artifact_id": evidence_artifact_id,
+                "evidence_digest": evidence_artifact["identity"]["digest"],
+                "reviewer_id": reviewer_id,
+                "independent": bool(independent),
+                "outcome": outcome,
+            },
+            node_id=subject["lineage"]["producing_node_id"],
+            evidence_refs=[evidence_ref],
+            artifact_ids=[artifact_id, evidence_artifact_id],
+        )
+
+    def record_reviewed_text_candidate(
+        self,
+        run_id: str,
+        *,
+        candidate_text: str,
+        review_text: str,
+        outcome: str,
+        candidate_artifact_id: str,
+        evidence_artifact_id: str,
+        evidence_id: str,
+        candidate_node_id: str,
+        evidence_node_id: str,
+        candidate_action: str,
+        evidence_action: str,
+        candidate_selector: str,
+        evidence_selector: str,
+        reviewer_id: str,
+        satisfied_conditions: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Persist one F-framework candidate identity and its review evidence.
+
+        This is transport only: ``outcome`` remains an observation. The caller
+        must obtain a Process Coherence decision and pass it to transition
+        dispatch before a terminal state can be reached.
+        """
+
+        candidate = self.record_inline_artifact(
+            run_id,
+            candidate_artifact_id,
+            candidate_text,
+            role="result",
+            node_id=candidate_node_id,
+            action=candidate_action,
+            selector=candidate_selector,
+            satisfied_conditions=satisfied_conditions,
+        )
+        evidence = self.record_inline_artifact(
+            run_id,
+            evidence_artifact_id,
+            review_text,
+            role="evidence",
+            node_id=evidence_node_id,
+            action=evidence_action,
+            selector=evidence_selector,
+            source_artifact_ids=[candidate_artifact_id],
+            satisfied_conditions=satisfied_conditions,
+        )
+        review = self.record_final_review(
+            run_id,
+            artifact_id=candidate_artifact_id,
+            evidence_id=evidence_id,
+            evidence_artifact_id=evidence_artifact_id,
+            outcome=outcome,
+            reviewer_id=reviewer_id,
+            independent=True,
+            satisfied_conditions=satisfied_conditions,
+        )
+        return {
+            "candidate": candidate,
+            "evidence": evidence,
+            "review": review,
+            "evidence_ref": {
+                "evidence_id": evidence_id,
+                "artifact_id": candidate_artifact_id,
+                "identity_digest": candidate["artifact"]["identity"]["digest"],
+                "outcome": outcome,
+            },
+        }
+
+    def _acceptance_ready(self, run_id: str) -> tuple[bool, str]:
+        run = self.load_run(run_id)
+        requirements = {
+            requirement["evidence_id"]: requirement
+            for requirement in run["contracts"]["evidence"]["requirements"]
+            if requirement["required"]
+        }
+        result_ids = []
+        for artifact_id in run["artifact_ids"]:
+            artifact = self.load_artifact(run_id, artifact_id)
+            if artifact["role"] == "result":
+                result_ids.append(artifact_id)
+        if not result_ids:
+            return False, "no result Artifact is bound to the Run"
+        reviews: dict[tuple[str, str], dict[str, Any]] = {}
+        for record in self.load_records(run_id):
+            event = record.get("event") or {}
+            if event.get("event_type") != "final_review_completed":
+                continue
+            details = event.get("details") or {}
+            reviews[(details.get("artifact_id"), details.get("evidence_id"))] = details
+        for artifact_id in result_ids:
+            artifact = self.load_artifact(run_id, artifact_id)
+            digest = artifact["identity"]["digest"]
+            if _parse_time(artifact["identity"]["fresh_until"]) < _parse_time(self._now()):
+                return False, f"result Artifact identity is stale: {artifact_id}"
+            for evidence_id, requirement in requirements.items():
+                review = reviews.get((artifact_id, evidence_id))
+                if not review:
+                    return False, f"required final review missing: {artifact_id}/{evidence_id}"
+                if review.get("subject_digest") != digest:
+                    return False, f"final review is stale for Artifact {artifact_id}"
+                if review.get("outcome") != "PASS":
+                    return False, f"final review did not pass: {artifact_id}/{evidence_id}"
+                if not review.get("independent"):
+                    return False, f"final review is not independent: {artifact_id}/{evidence_id}"
+                try:
+                    evidence_artifact = self.load_artifact(
+                        run_id, review["evidence_artifact_id"]
+                    )
+                except (KeyError, RunNotFoundError):
+                    return False, f"final-review evidence Artifact is missing: {artifact_id}/{evidence_id}"
+                if evidence_artifact["identity"]["digest"] != review.get("evidence_digest"):
+                    return False, f"final-review evidence is stale: {artifact_id}/{evidence_id}"
+                captured = _parse_time(evidence_artifact["identity"]["captured_at"])
+                fresh_until = _parse_time(evidence_artifact["identity"]["fresh_until"])
+                acceptance_time = _parse_time(self._now())
+                declared_expiry = captured + timedelta(
+                    seconds=int(requirement["freshness_seconds"])
+                )
+                if acceptance_time > min(fresh_until, declared_expiry):
+                    return False, f"final-review evidence expired: {artifact_id}/{evidence_id}"
+        return True, "all required final reviews pass for current Artifact identities"
+
+    def _transition_judgment(
+        self,
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+        directive: str,
+        target_node_id: str,
+        evaluation_boundary: str,
+        evidence_refs: Sequence[Mapping[str, Any]],
+        authority_request: Mapping[str, Any] | None,
+    ) -> None:
+        if directive not in _contracts.TRANSITION_DIRECTIVES:
+            raise GovernedRuntimeError(f"unknown transition directive: {directive!r}")
+        if run["state"] not in DIRECTIVE_SOURCE_STATES[directive]:
+            raise GovernedRuntimeError(
+                f"{directive} is not valid from Process Run state {run['state']!r}"
+            )
+        approved_nodes = set(run["contracts"]["approved_plan"]["approved_node_ids"])
+        if target_node_id not in approved_nodes:
+            raise AuthorityDeniedError(
+                f"transition target is outside the approved plan: {target_node_id}"
+            )
+        judgments = [
+            judgment
+            for judgment in run["contracts"]["bounded_judgment"]
+            if judgment["node_id"] == run["current_node_id"]
+            and judgment["evaluator_boundary"] == evaluation_boundary
+        ]
+        if len(judgments) != 1:
+            raise AuthorityDeniedError(
+                "transition must bind exactly one active bounded-judgment boundary"
+            )
+        judgment = judgments[0]
+        if directive not in judgment["permitted_directives"]:
+            raise AuthorityDeniedError(
+                f"directive {directive} is not permitted by judgment {judgment['judgment_id']}"
+            )
+        required_evidence = set(judgment["required_evidence_ids"])
+        supplied_evidence = {ref.get("evidence_id") for ref in evidence_refs}
+        missing = sorted(required_evidence - supplied_evidence)
+        if missing:
+            raise GovernedRuntimeError(
+                f"transition is missing required evidence: {', '.join(missing)}"
+            )
+        declared_evidence = {
+            requirement["evidence_id"]
+            for requirement in run["contracts"]["evidence"]["requirements"]
+        }
+        for ref in evidence_refs:
+            if ref.get("evidence_id") not in declared_evidence:
+                raise GovernedRuntimeError(
+                    f"transition references undeclared evidence: {ref.get('evidence_id')!r}"
+                )
+            artifact = self.load_artifact(run["run_id"], str(ref.get("artifact_id")))
+            if ref.get("identity_digest") != artifact["identity"]["digest"]:
+                raise GovernedRuntimeError(
+                    f"transition evidence identity is stale: {ref.get('artifact_id')!r}"
+                )
+        nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        current_node = nodes[run["current_node_id"]]
+        if current_node["kind"] == "verification_boundary":
+            routed_target = current_node["routes"].get(directive)
+            if routed_target is not None and target_node_id != routed_target:
+                raise GovernedRuntimeError(
+                    f"{directive} must follow the declared graph route to {routed_target}"
+                )
+            if routed_target is None and target_node_id != judgment["return_node_id"]:
+                raise GovernedRuntimeError(
+                    f"unrouted {directive} must return to bounded node "
+                    f"{judgment['return_node_id']}"
+                )
+        if directive == "ESCALATE":
+            request_type = (authority_request or {}).get("request_type")
+            if request_type not in judgment["escalation_request_types"]:
+                raise AuthorityDeniedError(
+                    f"ESCALATE request type is outside bounded judgment: {request_type!r}"
+                )
+
+    # -------------------------------------------------------- transitions
+    def apply_transition(
+        self,
+        run_id: str,
+        directive: str,
+        *,
+        target_node_id: str,
+        reason: str,
+        evaluation_boundary: str,
+        authority_request: Mapping[str, Any] | None = None,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+    ) -> dict[str, Any]:
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+            if target_node_id not in nodes:
+                raise GovernedRuntimeError(f"transition target is not in the graph: {target_node_id}")
+            self._transition_judgment(
+                run,
+                definition,
+                directive,
+                target_node_id,
+                evaluation_boundary,
+                evidence_refs,
+                authority_request,
+            )
+            if directive in ("REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"):
+                self.validate_correction_directive(run_id, directive)
+            if directive == "ACCEPT":
+                ready, why = self._acceptance_ready(run_id)
+                if not ready:
+                    raise FinalReviewRequired(why)
+            if directive == "ESCALATE":
+                request_type = (authority_request or {}).get("request_type")
+                declared = run["contracts"]["stop_escalation"]["authority_request_types"]
+                if request_type not in declared:
+                    raise AuthorityDeniedError(
+                        f"ESCALATE request type is not declared: {request_type!r}"
+                    )
+            node = nodes[target_node_id]
+            if directive == "ACCEPT" and not (
+                node["kind"] == "terminal_state" and node["outcome"] == "accepted"
+            ):
+                raise GovernedRuntimeError("ACCEPT must target an accepted terminal_state")
+            if directive == "BLOCKED" and not (
+                node["kind"] == "terminal_state" and node["outcome"] == "blocked"
+            ):
+                raise GovernedRuntimeError("BLOCKED must target a blocked terminal_state")
+
+            record = {
+                "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+                "object_family": "event_transition_record",
+                "record_id": f"transition-{uuid.uuid4().hex}",
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "sequence": int(run["last_sequence"]) + 1,
+                "recorded_at": self._now(),
+                "node_id": run["current_node_id"],
+                "record_type": "transition",
+                "transition": {
+                    "directive": directive,
+                    "from_state": run["state"],
+                    "to_state": _contracts.DIRECTIVE_TARGET_STATES[directive],
+                    "reason": reason,
+                    "evaluation_boundary": evaluation_boundary,
+                    "target_node_id": target_node_id,
+                },
+                "evidence_refs": copy.deepcopy(list(evidence_refs)),
+                "artifact_ids": list(run["artifact_ids"]),
+            }
+            if authority_request is not None:
+                record["transition"]["authority_request"] = copy.deepcopy(dict(authority_request))
+            _contracts.validate_event_transition_record(record)
+            _append_jsonl(self._events_path(run_id), record)
+            run["last_sequence"] = record["sequence"]
+            run["updated_at"] = record["recorded_at"]
+            run["state"] = record["transition"]["to_state"]
+            run["current_node_id"] = target_node_id
+            if directive in ("REPLAN", "REDEFINE"):
+                run["contracts"]["correction_loop"]["attempt"] = 0
+            _contracts.validate_process_run(run)
+            _atomic_json(self._run_path(run_id), run)
+            return copy.deepcopy(record)
+
+    def dispatch_evaluated_failure(
+        self,
+        run_id: str,
+        failure_class: str,
+        *,
+        target_node_id: str,
+        reason: str,
+        evaluation_boundary: str,
+        authority_request: Mapping[str, Any] | None = None,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+    ) -> dict[str, Any]:
+        directive = directive_for_failure_class(failure_class)
+        return self.apply_transition(
+            run_id,
+            directive,
+            target_node_id=target_node_id,
+            reason=reason,
+            evaluation_boundary=evaluation_boundary,
+            authority_request=authority_request,
+            evidence_refs=evidence_refs,
+        )
+
+    # ------------------------------------------------ checkpoint/recovery
+    def _latest_checkpoint(self, run_id: str) -> dict[str, Any] | None:
+        for record in reversed(self.load_records(run_id)):
+            event = record.get("event") or {}
+            if event.get("event_type") == "checkpoint_created":
+                return record
+        return None
+
+    def create_checkpoint(
+        self,
+        run_id: str,
+        checkpoint_id: str,
+        *,
+        segment_id: str,
+        resume_node_id: str,
+    ) -> dict[str, Any]:
+        with _locked():
+            run = self.load_run(run_id)
+            for record in self.load_records(run_id):
+                event = record.get("event") or {}
+                if (
+                    event.get("event_type") == "checkpoint_created"
+                    and (event.get("details") or {}).get("checkpoint_id") == checkpoint_id
+                ):
+                    raise RunConflictError(f"checkpoint already exists: {checkpoint_id}")
+            definition = self.load_definition(run_id)
+            node_ids = {node["node_id"] for node in definition["graph"]["nodes"]}
+            if resume_node_id not in node_ids:
+                raise GovernedRuntimeError(f"checkpoint resume node is not in graph: {resume_node_id}")
+            records = self.load_records(run_id)
+            latest = self._latest_checkpoint(run_id)
+            after_sequence = latest["sequence"] if latest else 0
+            if run["contracts"]["recovery"]["external_effect_receipts_required"]:
+                for record in records:
+                    if record["sequence"] <= after_sequence:
+                        continue
+                    event = record.get("event") or {}
+                    details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "action_completed"
+                        and details.get("external_effect")
+                        and not details.get("receipt_artifact_id")
+                    ):
+                        raise RecoveryBlockedError(
+                            "cannot checkpoint an external effect without its receipt"
+                        )
+                    if (
+                        event.get("event_type") == "action_completed"
+                        and details.get("external_effect")
+                        and details.get("receipt_artifact_id")
+                    ):
+                        receipt = self.load_artifact(
+                            run_id, details["receipt_artifact_id"]
+                        )
+                        if (
+                            receipt["identity"]["digest"]
+                            != details.get("receipt_identity_digest")
+                        ):
+                            raise RecoveryBlockedError(
+                                "cannot checkpoint an external effect with a changed receipt"
+                            )
+            artifact_identities = {}
+            receipt_ids = []
+            for artifact_id in run["artifact_ids"]:
+                artifact = self.load_artifact(run_id, artifact_id)
+                artifact_identities[artifact_id] = artifact["identity"]["digest"]
+                if artifact["role"] == "external_effect_receipt":
+                    receipt_ids.append(artifact_id)
+            run["contracts"]["continuation"]["checkpoint_id"] = checkpoint_id
+            run["contracts"]["continuation"]["resume_node_id"] = resume_node_id
+            return self._append_event_locked(
+                run,
+                "checkpoint_created",
+                {
+                    "checkpoint_id": checkpoint_id,
+                    "segment_id": segment_id,
+                    "resume_node_id": resume_node_id,
+                    "state": run["state"],
+                    "attempt": run["contracts"]["correction_loop"]["attempt"],
+                    "artifact_identities": artifact_identities,
+                    "external_effect_receipt_ids": sorted(receipt_ids),
+                    "replay_mutations": False,
+                },
+                node_id=run["current_node_id"],
+                artifact_ids=run["artifact_ids"],
+            )
+
+    def pause_run(
+        self,
+        run_id: str,
+        checkpoint_id: str,
+        *,
+        segment_id: str,
+        resume_node_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        if self.load_run(run_id)["state"] not in ("ready", "running"):
+            raise RunConflictError("only a ready or running Process Run can pause")
+        checkpoint = self.create_checkpoint(
+            run_id,
+            checkpoint_id,
+            segment_id=segment_id,
+            resume_node_id=resume_node_id,
+        )
+        with _locked():
+            run = self.load_run(run_id)
+            run["state"] = "pending"
+            paused = self._append_event_locked(
+                run,
+                "run_paused",
+                {"checkpoint_id": checkpoint_id, "reason": reason},
+                node_id=run["current_node_id"],
+            )
+        return {"checkpoint": checkpoint, "pause": paused}
+
+    def recovery_decision(self, run_id: str) -> dict[str, Any]:
+        run = self.load_run(run_id)
+        checkpoint = self._latest_checkpoint(run_id)
+        if checkpoint is None:
+            return {
+                "safe_to_resume": False,
+                "replay_mutations": False,
+                "reason": "no checkpoint exists",
+                "resume_node_id": None,
+                "revalidate_evidence_ids": [],
+            }
+        details = checkpoint["event"]["details"]
+        for record in self.load_records(run_id):
+            if record["sequence"] <= checkpoint["sequence"]:
+                continue
+            event = record.get("event") or {}
+            action = event.get("details") or {}
+            if (
+                event.get("event_type") == "action_completed"
+                and action.get("external_effect")
+                and not action.get("receipt_artifact_id")
+            ):
+                return {
+                    "safe_to_resume": False,
+                    "replay_mutations": False,
+                    "reason": "external effect after checkpoint lacks a receipt",
+                    "resume_node_id": details["resume_node_id"],
+                    "revalidate_evidence_ids": [],
+                }
+        changed = []
+        for artifact_id, digest in details.get("artifact_identities", {}).items():
+            try:
+                current = self.load_artifact(run_id, artifact_id)
+            except RunNotFoundError:
+                changed.append(artifact_id)
+                continue
+            if current["identity"]["digest"] != digest:
+                changed.append(artifact_id)
+        changed_receipts = sorted(
+            set(changed) & set(details.get("external_effect_receipt_ids") or [])
+        )
+        if changed_receipts:
+            return {
+                "safe_to_resume": False,
+                "replay_mutations": False,
+                "reason": "external-effect receipt identity changed after checkpoint",
+                "resume_node_id": details["resume_node_id"],
+                "changed_artifact_ids": sorted(changed),
+                "revalidate_evidence_ids": [],
+            }
+        return {
+            "safe_to_resume": True,
+            "replay_mutations": False,
+            "reason": "checkpoint is complete; resume without replaying prior actions",
+            "resume_node_id": details["resume_node_id"],
+            "changed_artifact_ids": sorted(changed),
+            "revalidate_evidence_ids": (
+                list(run["contracts"]["recovery"]["revalidation_evidence_ids"])
+                if changed
+                else []
+            ),
+        }
+
+    def resume_run(self, run_id: str) -> dict[str, Any]:
+        if self.load_run(run_id)["state"] not in ("pending", "running"):
+            raise RunConflictError("only a pending or interrupted running Process Run can resume")
+        decision = self.recovery_decision(run_id)
+        if not decision["safe_to_resume"]:
+            raise RecoveryBlockedError(decision["reason"])
+        with _locked():
+            run = self.load_run(run_id)
+            run["state"] = "running"
+            run["current_node_id"] = decision["resume_node_id"]
+            record = self._append_event_locked(
+                run,
+                "run_resumed",
+                {
+                    "resume_node_id": decision["resume_node_id"],
+                    "replay_mutations": False,
+                    "revalidate_evidence_ids": decision["revalidate_evidence_ids"],
+                },
+                node_id=decision["resume_node_id"],
+            )
+            return {"decision": decision, "record": record}
+
+    # ---------------------------------------------------------- child runs
+    def invoke_child(
+        self,
+        parent_run_id: str,
+        child_definition: Mapping[str, Any],
+        child_run: Mapping[str, Any],
+        *,
+        call_node_id: str,
+        satisfied_conditions: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        parent = self.load_run(parent_run_id)
+        definition = self.load_definition(parent_run_id)
+        nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        call_node = nodes.get(call_node_id)
+        if not call_node or call_node["kind"] != "process_call":
+            raise GovernedRuntimeError("child invocation must originate at a process_call node")
+        if parent["current_node_id"] != call_node_id or parent["state"] != "running":
+            raise GovernedRuntimeError(
+                "parent Process Run must be running at the process_call node"
+            )
+        child_ref = {
+            "definition_id": child_definition["definition_id"],
+            "version": child_definition["version"],
+            "digest": child_definition["digest"],
+        }
+        if call_node["definition_ref"] != child_ref:
+            raise GovernedRuntimeError("process_call does not bind the supplied child definition")
+        selector = f"definition:{child_ref['definition_id']}@{child_ref['version']}"
+        self.authorize_action(
+            parent_run_id,
+            "invoke_process",
+            [selector],
+            satisfied_conditions=satisfied_conditions,
+            effect_type="local_reversible",
+        )
+        child_copy = copy.deepcopy(dict(child_run))
+        child_copy["relationships"]["parent_run_id"] = parent_run_id
+        child_copy["relationships"]["invoked_by_run_id"] = parent_run_id
+        child_copy["relationships"]["return_to_run_id"] = parent_run_id
+        child_copy["contracts"]["continuation"]["parent_run_id"] = parent_run_id
+        self.create_checkpoint(
+            parent_run_id,
+            f"call-{child_copy['run_id']}",
+            segment_id=call_node_id,
+            resume_node_id=call_node["return_node_id"],
+        )
+        self.create_run(child_definition, child_copy)
+        with _locked():
+            parent = self.load_run(parent_run_id)
+            if child_ref not in parent["relationships"]["invoked_definition_refs"]:
+                parent["relationships"]["invoked_definition_refs"].append(child_ref)
+            child_ids = parent["contracts"]["continuation"]["child_run_ids"]
+            if child_copy["run_id"] not in child_ids:
+                child_ids.append(child_copy["run_id"])
+            parent["state"] = "pending"
+            record = self._append_event_locked(
+                parent,
+                "process_invoked",
+                {
+                    "child_run_id": child_copy["run_id"],
+                    "child_definition_ref": child_ref,
+                    "call_node_id": call_node_id,
+                    "return_node_id": call_node["return_node_id"],
+                },
+                node_id=call_node_id,
+            )
+            return {"child_run": self.load_run(child_copy["run_id"]), "parent_record": record}
+
+    def return_child(
+        self,
+        child_run_id: str,
+        *,
+        output_artifact_ids: Sequence[str],
+    ) -> dict[str, Any]:
+        child = self.load_run(child_run_id)
+        if child["state"] != "completed":
+            raise GovernedRuntimeError("child Process Run must be completed before return")
+        parent_run_id = child["relationships"]["return_to_run_id"]
+        if not parent_run_id:
+            raise GovernedRuntimeError("child Process Run has no deterministic return target")
+        for artifact_id in output_artifact_ids:
+            artifact = self.load_artifact(child_run_id, artifact_id)
+            if artifact["role"] != "result":
+                raise GovernedRuntimeError("child return outputs must be result Artifacts")
+        invocation = None
+        for record in reversed(self.load_records(parent_run_id)):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if event.get("event_type") == "process_invoked" and details.get("child_run_id") == child_run_id:
+                invocation = details
+                break
+        if invocation is None:
+            raise GovernedRuntimeError("parent has no invocation record for child")
+        parent_return_record = None
+        for record in self.load_records(parent_run_id):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "child_return_received"
+                and details.get("child_run_id") == child_run_id
+            ):
+                parent_return_record = record
+                break
+        child_return_record = None
+        for record in self.load_records(child_run_id):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "process_returned"
+                and details.get("parent_run_id") == parent_run_id
+            ):
+                child_return_record = record
+                break
+        if parent_return_record is not None and child_return_record is not None:
+            raise RunConflictError("child Process Run has already returned")
+        with _locked():
+            parent = self.load_run(parent_run_id)
+            if child_run_id not in parent["contracts"]["continuation"]["child_run_ids"]:
+                raise GovernedRuntimeError("parent continuation contract does not bind child")
+            if parent_return_record is None:
+                parent["current_node_id"] = invocation["return_node_id"]
+                parent["state"] = "running"
+                parent_record = self._append_event_locked(
+                    parent,
+                    "child_return_received",
+                    {
+                        "child_run_id": child_run_id,
+                        "return_node_id": invocation["return_node_id"],
+                        "output_artifact_ids": list(output_artifact_ids),
+                        "replay_mutations": False,
+                    },
+                    node_id=invocation["return_node_id"],
+                    artifact_ids=output_artifact_ids,
+                )
+            else:
+                prior_outputs = parent_return_record["event"]["details"][
+                    "output_artifact_ids"
+                ]
+                if list(output_artifact_ids) != prior_outputs:
+                    raise RunConflictError(
+                        "recovered child return must preserve exact output bindings"
+                    )
+                parent_record = parent_return_record
+            child = self.load_run(child_run_id)
+            if child_return_record is None:
+                child_record = self._append_event_locked(
+                    child,
+                    "process_returned",
+                    {
+                        "parent_run_id": parent_run_id,
+                        "return_node_id": invocation["return_node_id"],
+                        "output_artifact_ids": list(output_artifact_ids),
+                    },
+                    node_id=child["current_node_id"],
+                    artifact_ids=output_artifact_ids,
+                )
+            else:
+                child_record = child_return_record
+            return {"parent_record": parent_record, "child_record": child_record}
+
+
+__all__ = [
+    "AuthorityDeniedError",
+    "CorrectionDecisionRequired",
+    "DEFAULT_CORRECTION_POLICY",
+    "DIRECTIVE_SOURCE_STATES",
+    "FAILURE_CLASS_DIRECTIVES",
+    "FinalReviewRequired",
+    "GovernedProcessRuntime",
+    "GovernedRuntimeError",
+    "INFRASTRUCTURE_OUTCOMES",
+    "PROCESS_RUNS_DIR",
+    "PROCESS_RUNS_ENV",
+    "RecoveryBlockedError",
+    "RunConflictError",
+    "RunNotFoundError",
+    "correction_policy_defaults",
+    "directive_for_failure_class",
+]

@@ -6,8 +6,8 @@ Covers the bounded-redo gate ported from MSI into the base engine:
     key, including the safe-default behaviour.
   * Reuse of the existing ``VERDICT:`` contract — a gate output that also
     carries a ``PROBLEM:`` line still parses to the right verdict.
-  * Gear 3: a real FAIL fires exactly one reviser re-run carrying the gate's
-    REQUIRED FIXES; PASS and BROKEN ship the reviser's draft unchanged.
+  * Gear 3: a real FAIL sends REQUIRED FIXES to the reviser and independently
+    reinspects the corrected identity; FAIL and BROKEN withhold the candidate.
   * Gear 4: a FAIL routes a bounded redo by problem type — FORMATTING re-runs
     the step-8 formatter; ANALYSIS re-runs the step-7 consolidator then
     re-formats; one redo per problem type across at most three gate passes.
@@ -26,6 +26,7 @@ from __future__ import annotations
 import contextlib
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -35,6 +36,8 @@ if str(ORCH_DIR) not in sys.path:
     sys.path.insert(0, str(ORCH_DIR))
 
 import boot  # noqa: E402
+import governed_process_runtime as gpr  # noqa: E402
+from tests.test_governed_process_runtime import make_definition, make_run  # noqa: E402
 
 DUMMY_EP = {"id": "ep", "name": "ep", "type": "remote"}
 
@@ -115,16 +118,24 @@ class _Harness:
     """Scripts the pipeline. ``gate_outputs`` are returned for successive
     ``quality-gate`` judge calls (the last one repeats if exhausted)."""
 
-    def __init__(self, gate_outputs):
+    def __init__(self, gate_outputs, verifier_outputs=None):
         self.gate_outputs = list(gate_outputs)
         self.gate_idx = 0
+        self.verifier_outputs = list(verifier_outputs or [
+            "All universal checks pass.\nVERDICT: PASS"
+        ])
+        self.verifier_idx = 0
         self.calls = []  # list of (step_name, user_content)
 
     def _route(self, messages, step_name):
         user = messages[-1]["content"] if messages else ""
         self.calls.append((step_name, user))
         if step_name == "verifier":
-            return ("All universal checks pass.\nVERDICT: PASS", True, "ok")
+            out = self.verifier_outputs[
+                min(self.verifier_idx, len(self.verifier_outputs) - 1)
+            ]
+            self.verifier_idx += 1
+            return (out, True, "ok")
         if step_name == "quality-gate":
             out = self.gate_outputs[min(self.gate_idx, len(self.gate_outputs) - 1)]
             self.gate_idx += 1
@@ -175,6 +186,36 @@ def _ctx():
     return {"cleaned_prompt": "Q", "trace_dir": None, "mode_name": "test-mode"}
 
 
+def _bind_run(ctx, runtime, run_id, evaluator=None):
+    if evaluator is None:
+        evaluator = lambda observation: {  # noqa: E731
+            "directive": "ACCEPT",
+            "target_node_id": "accepted",
+            "reason": "independent final evidence supports acceptance",
+            "evaluation_boundary": "independent_quality_review",
+        }
+    ctx["process_run_binding"] = {
+        "runtime": runtime,
+        "run_id": run_id,
+        "segment_id": "text-review",
+        "final_review": {
+            "candidate_artifact_id": "gear3-result",
+            "evidence_artifact_prefix": "gear3-final-review",
+            "evidence_id": "result_verified",
+            "candidate_node_id": "act",
+            "evidence_node_id": "verify",
+            "candidate_action": "produce_artifact",
+            "evidence_action": "record_evidence",
+            "candidate_selector": "scope:declared_outputs",
+            "evidence_selector": "scope:declared_outputs",
+            "reviewer_id": "independent-gear3-reviewer",
+            "satisfied_conditions": ["approved_plan_digest_matches"],
+        },
+        "process_coherence_evaluator": evaluator,
+    }
+    return ctx
+
+
 # ─────────────────────────── Gear 3 behavior ────────────────────────────────
 
 
@@ -187,42 +228,188 @@ class TestGear3QualityGate(unittest.TestCase):
         self.assertNotIn("QGFIX", result)              # no reviser redo fired
         self.assertFalse(h.saw_qgfix("reviser"))
 
-    def test_fail_fires_exactly_one_reviser_redo(self):
-        h = _Harness(["## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL"])
+    def test_fail_fires_one_reviser_redo_and_reinspects_before_release(self):
+        h = _Harness([
+            "## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL",
+            "## QUALITY GATE\ncorrected\nVERDICT: PASS",
+        ])
         with _patched(h):
             result = boot.run_gear3(_ctx(), {}, config_name=None)
-        self.assertEqual(h.count("quality-gate"), 1)   # gate not re-run (final)
+        self.assertEqual(h.count("quality-gate"), 2)
         self.assertTrue(h.saw_qgfix("reviser"))        # reviser got the fixes
-        self.assertIn("QGFIX", result)                 # the redo output ships
+        self.assertIn("QGFIX", result)                 # reviewed redo ships
 
-    def test_broken_ships_without_redo(self):
+    def test_fail_after_reinspection_withholds_corrected_candidate(self):
+        h = _Harness(["VERDICT: FAIL", "VERDICT: FAIL"])
+        with _patched(h):
+            result = boot.run_gear3(_ctx(), {}, config_name=None)
+        self.assertEqual(h.count("quality-gate"), 2)
+        self.assertTrue(h.saw_qgfix("reviser"))
+        self.assertIn("Deliverable withheld", result)
+        self.assertNotIn("QGFIX", result)
+
+    def test_broken_withholds_without_content_redo(self):
         h = _Harness(["Cannot reach a verdict.\nVERDICT: BROKEN"])
         with _patched(h):
             result = boot.run_gear3(_ctx(), {}, config_name=None)
         self.assertEqual(h.count("quality-gate"), 1)
         self.assertFalse(h.saw_qgfix("reviser"))
         self.assertNotIn("QGFIX", result)
+        self.assertIn("Deliverable withheld", result)
+
+    def test_bound_process_run_supplies_limit_and_persists_attempts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
+            definition = make_definition()
+            run = make_run("run-gear3", definition)
+            run["contracts"]["correction_loop"]["max_attempts"] = 12
+            run["contracts"]["correction_loop"]["repeated_defect_limit"] = 12
+            runtime.create_run(definition, run)
+            ctx = _ctx()
+            _bind_run(ctx, runtime, "run-gear3")
+            h = _Harness(
+                ["VERDICT: PASS"],
+                verifier_outputs=["VERDICT: FAIL", "VERDICT: PASS"],
+            )
+            with _patched(h):
+                boot.run_gear3(ctx, {}, config_name=None)
+
+            persisted = runtime.load_run("run-gear3")
+            self.assertEqual(persisted["contracts"]["correction_loop"]["attempt"], 2)
+            self.assertEqual(persisted["state"], "completed")
+            attempts = [
+                record["event"]["event_type"]
+                for record in runtime.load_records("run-gear3")
+                if record["record_type"] == "event"
+                and record["event"]["event_type"].startswith("attempt_")
+            ]
+            self.assertEqual(attempts, [
+                "attempt_started", "attempt_completed",
+                "attempt_started", "attempt_completed",
+            ])
+
+    def test_high_bound_does_not_force_extra_gear3_attempts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
+            definition = make_definition()
+            run = make_run("run-gear3-pass", definition)
+            run["contracts"]["correction_loop"]["max_attempts"] = 12
+            runtime.create_run(definition, run)
+            ctx = _ctx()
+            _bind_run(ctx, runtime, "run-gear3-pass")
+            with _patched(_Harness(["VERDICT: PASS"])):
+                boot.run_gear3(ctx, {}, config_name=None)
+            self.assertEqual(
+                runtime.load_run("run-gear3-pass")["contracts"]["correction_loop"]["attempt"],
+                1,
+            )
+
+    def test_bound_fail_observation_follows_process_coherence_replan_not_redo(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
+            definition = make_definition()
+            run = make_run("run-gear3-replan", definition)
+            runtime.create_run(definition, run)
+            ctx = _ctx()
+            _bind_run(ctx, runtime, "run-gear3-replan", evaluator=lambda observation: {
+                "failure_class": "plan",
+                "target_node_id": "verify",
+                "reason": "Process Coherence found a plan-level defect",
+                "evaluation_boundary": "independent_quality_review",
+            })
+            h = _Harness(["VERDICT: FAIL"])
+            with _patched(h):
+                result = boot.run_gear3(ctx, {}, config_name=None)
+            self.assertFalse(h.saw_qgfix("reviser"))
+            self.assertIn("Deliverable withheld", result)
+            persisted = runtime.load_run("run-gear3-replan")
+            self.assertEqual(persisted["state"], "pending")
+            self.assertEqual(
+                [
+                    record["transition"]["directive"]
+                    for record in runtime.load_records("run-gear3-replan")
+                    if record["record_type"] == "transition"
+                ],
+                ["REPLAN"],
+            )
+
+    def test_bound_revision_is_reinspected_then_accepts_new_artifact_identity(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
+            definition = make_definition()
+            verification = next(
+                node for node in definition["graph"]["nodes"]
+                if node["node_id"] == "verify"
+            )
+            verification["routes"]["REVISE"] = "verify"
+            run = make_run("run-gear3-reinspect", definition)
+            runtime.create_run(definition, run)
+            ctx = _ctx()
+
+            def evaluate(observation):
+                if observation["observation"] == "PASS":
+                    return {
+                        "directive": "ACCEPT",
+                        "target_node_id": "accepted",
+                        "reason": "corrected identity passed independent reinspection",
+                        "evaluation_boundary": "independent_quality_review",
+                    }
+                return {
+                    "failure_class": "execution",
+                    "target_node_id": "verify",
+                    "reason": "the current artifact has a correctable execution defect",
+                    "evaluation_boundary": "independent_quality_review",
+                }
+
+            _bind_run(ctx, runtime, "run-gear3-reinspect", evaluator=evaluate)
+            h = _Harness(["VERDICT: FAIL", "VERDICT: PASS"])
+            with _patched(h):
+                result = boot.run_gear3(ctx, {}, config_name=None)
+            self.assertIn("QGFIX", result)
+            self.assertEqual(runtime.load_run("run-gear3-reinspect")["state"], "completed")
+            records = runtime.load_records("run-gear3-reinspect")
+            self.assertEqual(
+                [r["transition"]["directive"] for r in records if r["record_type"] == "transition"],
+                ["REVISE", "ACCEPT"],
+            )
+            artifact_events = [
+                r["event"]["details"] for r in records
+                if (r.get("event") or {}).get("event_type") == "artifact_recorded"
+                and r["event"]["details"]["artifact_id"] == "gear3-result"
+            ]
+            self.assertEqual(len(artifact_events), 2)
+            self.assertTrue(artifact_events[-1]["stale_review_invalidated"])
 
 
 class TestGear3VerdictThreadForPacket(unittest.TestCase):
-    """Execution Review Phase 4 (Rev 1): the gate verdict threaded onto
-    context_pkg['execution_review'] for the terminal packet builder must describe
-    the SHIPPED text. A FAIL fires a redo that produces a NEW unreviewed
-    deliverable, so the stale FAIL must not be carried onto the final producer
-    claim — the exact path the judge flagged."""
+    """The packet label describes the inspected identity and release state."""
 
-    def test_fail_redo_records_unreviewed_status_not_stale_verdict(self):
+    def test_fail_redo_records_fresh_pass_after_reinspection(self):
         ctx = _ctx()
-        h = _Harness(["## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL"])
+        h = _Harness([
+            "## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL",
+            "## QUALITY GATE\nfixed\nVERDICT: PASS",
+        ])
         with _patched(h):
             result = boot.run_gear3(ctx, {}, config_name=None)
-        self.assertIn("QGFIX", result)                      # the redo output ships
+        self.assertIn("QGFIX", result)
         er = ctx.get("execution_review")
         self.assertIsNotNone(er)
-        # the shipped (redone) text was NOT reviewed by the gate → no stale FAIL
-        self.assertIsNone(er["verdict"])
-        self.assertEqual(er["status"], "failed-then-redone-unreviewed")
+        self.assertEqual(er["verdict"], "PASS")
+        self.assertEqual(er["status"], "passed-after-correction-reinspection")
         self.assertEqual(er["scope"], "text_review")
+
+    def test_failed_reinspection_records_withheld_status(self):
+        ctx = _ctx()
+        h = _Harness(["VERDICT: FAIL", "VERDICT: FAIL"])
+        with _patched(h):
+            result = boot.run_gear3(ctx, {}, config_name=None)
+        self.assertIn("Deliverable withheld", result)
+        self.assertEqual(ctx["execution_review"]["verdict"], "FAIL")
+        self.assertEqual(
+            ctx["execution_review"]["status"],
+            "failed-after-final-reinspection-withheld",
+        )
 
     def test_pass_records_pass_verdict(self):
         ctx = _ctx()
@@ -239,8 +426,8 @@ class TestGear3VerdictThreadForPacket(unittest.TestCase):
         with _patched(h):
             boot.run_gear3(ctx, {}, config_name=None)
         er = ctx.get("execution_review")
-        self.assertEqual(er["verdict"], "BROKEN")           # BROKEN ships as-reviewed
-        self.assertIsNone(er.get("status"))
+        self.assertEqual(er["verdict"], "BROKEN")
+        self.assertEqual(er["status"], "review-unavailable-withheld")
 
 
 # ─────────────────────────── Gear 4 behavior ────────────────────────────────
@@ -327,6 +514,8 @@ class TestGateWiredAndDocumented(unittest.TestCase):
             or os.environ.get("ORA_VAULT")
             or (Path.home() / "Documents" / "vault"))
         vault_spec = vault_root / "Specification — F-Quality-Gate.md"
+        if not vault_spec.is_file():
+            vault_spec = vault_root / "Projects" / "Ora" / "Specification — F-Quality-Gate.md"
         # The vault is the canonical source; skip rather than fail if the vault
         # is not mounted in this environment.
         if vault_spec.parent.is_dir():
@@ -341,13 +530,12 @@ class TestGateWiredAndDocumented(unittest.TestCase):
         self.assertIn('slot="verification"', text)    # dedicated judge slot
         self.assertIn("_parse_quality_gate_problem", text)
 
-    def test_runtime_spec_describes_actual_redo_bounds(self):
+    def test_runtime_spec_remains_present_for_phase_1_5_sync(self):
         text = (
             ORCH_DIR.parent / "frameworks" / "book" / "f-quality-gate.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("one redo per problem type", text)
-        self.assertIn("at most three gate passes", text)
-        self.assertIn("Gear 3 runs one gate pass", text)
+        self.assertIn("F-QUALITY-GATE", text)
+        self.assertIn("VERDICT:", text)
 
 
 if __name__ == "__main__":

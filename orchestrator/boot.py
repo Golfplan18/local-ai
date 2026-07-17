@@ -12,6 +12,7 @@ import time
 import sys
 import json
 import re
+import hashlib
 import glob as globmod
 import contextvars
 from contextvars import ContextVar
@@ -11544,14 +11545,12 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     Step 3 — Depth analyses (mode DEPTH MODEL INSTRUCTIONS via step='analyst').
     Step 4 — Breadth evaluates (f-evaluate.md + mode evaluator subsections).
     Step 5 — Depth revises (f-revise.md + mode Reviser guidance).
-    Step 6 — Breadth verifies (f-verify.md + mode Verifier checks), with up
-             to 2 correction cycles.
-    Step 6.5 — Final-output quality gate (f-quality-gate.md): judge the
-             deliverable against the mode's VERIFICATION CRITERIA on the
-             verification slot; on a real FAIL, re-run the reviser ONCE with
-             the gate's itemized REQUIRED FIXES (the re-run is final), then
-             ship. Recorded under the ``step6_5-quality-gate*`` contingency
-             names; PASS and BROKEN ship the reviser's draft as-is.
+    Step 6 — Breadth verifies (f-verify.md + mode Verifier checks) under the
+             Process Run's configurable correction policy.
+    Step 6.5 — Final-output quality gate (f-quality-gate.md): independently
+             inspect the current deliverable against the mode's VERIFICATION
+             CRITERIA. A supported correction is reinspected before release;
+             FAIL or BROKEN never releases the unaccepted candidate.
 
     Output: the reviser's revised draft (its ``## REVISED DRAFT`` body),
     gated by the per-cycle verifier (step 6) and the final-output quality
@@ -11904,8 +11903,67 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         framework_name="f-verify.md",
     )
 
-    MAX_VERIFY_CYCLES = 2
-    for cycle in range(MAX_VERIFY_CYCLES + 1):
+    # Phase 1.4: the attempt ceiling comes from the attached Process Run when
+    # one is bound; otherwise the domain-general runtime defaults apply. A
+    # ceiling is permission, not an instruction to consume every attempt.
+    _binding_requested = bool(context_pkg.get("process_run_binding"))
+    _governed_binding_fault = False
+    try:
+        try:
+            import governed_process_runtime as _gpr
+        except ImportError:  # pragma: no cover
+            from orchestrator import governed_process_runtime as _gpr
+        _process_binding = context_pkg.get("process_run_binding") or {}
+        _bound_runtime = _process_binding.get("runtime")
+        _bound_run_id = _process_binding.get("run_id")
+        if _bound_runtime is not None and _bound_run_id:
+            _bound_run = _bound_runtime.load_run(_bound_run_id)
+            _bound_correction = _bound_run["contracts"]["correction_loop"]
+            _correction_policy = _gpr.correction_policy_defaults({
+                key: _bound_correction[key]
+                for key in _gpr.DEFAULT_CORRECTION_POLICY
+            })
+            _correction_segment = str(
+                _process_binding.get("segment_id") or "gear3-verification"
+            )
+            _bound_runtime.start_segment(_bound_run_id, _correction_segment)
+        else:
+            _bound_runtime = None
+            _bound_run_id = None
+            _correction_segment = "gear3-verification"
+            _correction_policy = _gpr.correction_policy_defaults(
+                context_pkg.get("correction_loop_policy")
+            )
+    except Exception as _policy_error:
+        # A malformed optional binding cannot invent a permissive policy. Use
+        # conservative defaults and mark the bound path unhealthy for release.
+        _bound_runtime = None
+        _bound_run_id = None
+        _correction_segment = "gear3-verification"
+        _correction_policy = {
+            "max_attempts": 3,
+            "progress_evidence_required": True,
+            "repeated_defect_limit": 3,
+            "allowed_directives": ["REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+            "no_progress_directives": ["REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+        }
+        contingencies_fired.append("gear3-correction-policy-invalid-using-safe-defaults")
+        _record("gear3-correction-policy", False, str(_policy_error)[:200])
+        _governed_binding_fault = _binding_requested
+
+    max_verify_attempts = int(_correction_policy["max_attempts"])
+    prior_candidate_digest: str | None = None
+    prior_defect_fingerprint: str | None = None
+    repeated_defect_count = 0
+    for cycle in range(max_verify_attempts):
+        if _bound_runtime is not None:
+            try:
+                _bound_runtime.begin_attempt(_bound_run_id, _correction_segment)
+            except Exception as _attempt_error:
+                contingencies_fired.append("gear3-governed-attempt-start-refused")
+                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
+                _governed_binding_fault = True
+                break
         verify_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
             f"## ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
@@ -11969,10 +12027,37 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )
         unblocks = passed or (broken and bool(broken_structural_ok))
         verdict_label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
+        candidate_digest = (
+            "sha256:" + hashlib.sha256((revised_analysis or "").encode("utf-8")).hexdigest()
+        )
+        defect_fingerprint = (
+            "sha256:" + hashlib.sha256((verified or "").encode("utf-8")).hexdigest()
+        )
+        if defect_fingerprint == prior_defect_fingerprint:
+            repeated_defect_count += 1
+        else:
+            repeated_defect_count = 1
+        progress_evidence = (
+            prior_candidate_digest is None or candidate_digest != prior_candidate_digest
+        )
+        if _bound_runtime is not None:
+            try:
+                _bound_runtime.complete_attempt(
+                    _bound_run_id,
+                    _correction_segment,
+                    defect_codes=[f"verifier-{verdict_label.lower()}"],
+                    evidence_refs=[],
+                    artifact_digests=[candidate_digest],
+                )
+            except Exception as _attempt_error:
+                contingencies_fired.append("gear3-governed-attempt-completion-refused")
+                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
+                _governed_binding_fault = True
+                break
 
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
-            "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "max_attempts": max_verify_attempts,
             "system_prompt": verify_system,
             "user_message": verify_user,
             "verdict_raw": verified,
@@ -11985,7 +12070,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "broken_structural_check_ok": broken_structural_ok,
             "broken_structural_check_reason": broken_structural_reason,
         }, markdown=(
-            f"# Step 6 — Verifier (Gear 3, cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
+            f"# Step 6 — Verifier (Gear 3, attempt {cycle + 1}/{max_verify_attempts})\n\n"
             f"**Verdict:** {verdict_label}\n\n{verified}\n"
         ))
         if broken:
@@ -12001,7 +12086,34 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                     f"step6-cycle{cycle + 1}-verifier-BROKEN-structural-fail-re-revising"
                 )
 
-        if unblocks or cycle == MAX_VERIFY_CYCLES:
+        if unblocks or cycle + 1 >= max_verify_attempts:
+            break
+
+        no_progress = (
+            bool(_correction_policy["progress_evidence_required"])
+            and not progress_evidence
+        )
+        repeated_limit_reached = (
+            repeated_defect_count
+            >= int(_correction_policy["repeated_defect_limit"])
+        )
+        revision_allowed = not no_progress and not repeated_limit_reached
+        if revision_allowed and _bound_runtime is not None:
+            try:
+                _bound_runtime.validate_correction_directive(_bound_run_id, "REVISE")
+            except Exception as _policy_refusal:
+                revision_allowed = False
+                _record("gear3-governed-correction-policy", False,
+                        str(_policy_refusal)[:200])
+        if not revision_allowed:
+            reasons = []
+            if no_progress:
+                reasons.append("no-progress")
+            if repeated_limit_reached:
+                reasons.append("repeated-defect-limit")
+            contingencies_fired.append(
+                "step6-correction-stopped-" + "-and-".join(reasons or ["contract-refusal"])
+            )
             break
 
         # Verifier rejected — reviser addresses the verifier's findings.
@@ -12042,15 +12154,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             f"{revised_analysis}\n"
         ))
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
+        prior_candidate_digest = candidate_digest
+        prior_defect_fingerprint = defect_fingerprint
 
-    # --- Step 6.5: Final-output quality gate (single bounded redo) ----------
+    # --- Step 6.5: Final-output quality gate + correction reinspection ------
     # The verify loop above gates the revision cycle mid-pipeline; this is the
     # FINAL check of the deliverable against the mode's VERIFICATION CRITERIA,
     # run on the dedicated 'verification' judge slot with the f-quality-gate
-    # contract. On a real FAIL, re-run the reviser ONCE with the gate's itemized
-    # REQUIRED FIXES, then ship — the re-run is final (mirrors the in-loop
-    # re-revise above). Ported from MSI gear-3's signature-move audit
-    # (verdict-string FAIL -> one escalated re-revise).
+    # contract. A real FAIL may produce a corrected candidate, but that new
+    # identity must pass a fresh independent gate before release. BROKEN is an
+    # unavailable observation, never an implicit quality or shipping verdict.
     gate_endpoint = (
         get_slot_endpoint(config, "verification", config_name=config_name)
         or breadth_endpoint
@@ -12059,48 +12172,160 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         context_pkg, slot="breadth", step="verifier",
         framework_name=QUALITY_GATE_FRAMEWORK,
     )
-    gate_user = (
-        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-        "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
-        "is its `## REVISED DRAFT` body — the other sections are pipeline "
-        f"scaffolding)\n\n{revised_analysis}\n\n"
-        "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
-        "(PASS gate) and the universal checks. Gear 3 has no separate "
-        "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
-        "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
-        "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
-        "specification."
-    )
-    gate_messages = [
-        {"role": "system", "content": gate_system},
-        {"role": "user", "content": gate_user},
-    ]
-    try:
-        gate_out, gate_call_ok, gate_call_reason = _call_with_retry(
-            gate_messages, gate_endpoint, "quality-gate",
-            min_chars=30, retry_hint=None,
-            images=_images_for_endpoint(images, gate_endpoint),
-            slot="verification", gear=3, config_name=config_name,
+    def _run_gear3_final_gate(candidate: str, pass_number: int,
+                              prior_findings: str | None = None):
+        nonlocal _governed_binding_fault
+        gate_user = (
+            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
+            "is its `## REVISED DRAFT` body — the other sections are pipeline "
+            f"scaffolding)\n\n{candidate}\n\n"
         )
-    except Exception as e:
-        gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
-        gate_call_ok, gate_call_reason = False, str(e)
+        if prior_findings:
+            gate_user += (
+                "## PRIOR QUALITY FINDINGS\n\n"
+                f"{prior_findings}\n\n"
+                "This candidate was produced after those findings. Inspect the "
+                "new candidate identity independently; do not inherit the prior "
+                "verdict.\n\n"
+            )
+        gate_user += (
+            "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
+            "(PASS gate) and the universal checks. Gear 3 has no separate "
+            "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
+            "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
+            "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
+            "specification."
+        )
+        gate_messages = [
+            {"role": "system", "content": gate_system},
+            {"role": "user", "content": gate_user},
+        ]
+        try:
+            gate_out, call_ok, call_reason = _call_with_retry(
+                gate_messages, gate_endpoint, "quality-gate",
+                min_chars=30, retry_hint=None,
+                images=_images_for_endpoint(images, gate_endpoint),
+                slot="verification", gear=3, config_name=config_name,
+            )
+        except Exception as e:
+            gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
+            call_ok, call_reason = False, str(e)
+        passed = _verifier_passed(gate_out)
+        broken = _verifier_broken(gate_out) or not call_ok
+        label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
+        governed_directive = None
+        if _bound_runtime is not None:
+            try:
+                review_binding = _process_binding["final_review"]
+                evaluator = _process_binding["process_coherence_evaluator"]
+                if not callable(evaluator):
+                    raise TypeError("process_coherence_evaluator must be callable")
+                observed = _bound_runtime.record_reviewed_text_candidate(
+                    _bound_run_id,
+                    candidate_text=candidate,
+                    review_text=gate_out,
+                    outcome=label,
+                    candidate_artifact_id=review_binding["candidate_artifact_id"],
+                    evidence_artifact_id=(
+                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
+                    ),
+                    evidence_id=review_binding["evidence_id"],
+                    candidate_node_id=review_binding["candidate_node_id"],
+                    evidence_node_id=review_binding["evidence_node_id"],
+                    candidate_action=review_binding["candidate_action"],
+                    evidence_action=review_binding["evidence_action"],
+                    candidate_selector=review_binding["candidate_selector"],
+                    evidence_selector=review_binding["evidence_selector"],
+                    reviewer_id=review_binding["reviewer_id"],
+                    satisfied_conditions=review_binding.get("satisfied_conditions", []),
+                )
+                decision = evaluator({
+                    "run_id": _bound_run_id,
+                    "segment_id": _correction_segment,
+                    "observation": label,
+                    "gate_call_ok": bool(call_ok),
+                    "pass_number": pass_number,
+                    "candidate_artifact_id": review_binding["candidate_artifact_id"],
+                    "evidence_artifact_id": (
+                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
+                    ),
+                    "evidence_ref": observed["evidence_ref"],
+                })
+                if not isinstance(decision, dict):
+                    raise TypeError("Process Coherence evaluation must return a decision mapping")
+                transition_args = {
+                    "target_node_id": decision["target_node_id"],
+                    "reason": decision["reason"],
+                    "evaluation_boundary": decision["evaluation_boundary"],
+                    "authority_request": decision.get("authority_request"),
+                    "evidence_refs": [observed["evidence_ref"]],
+                }
+                if "failure_class" in decision:
+                    if "directive" in decision:
+                        raise ValueError(
+                            "Process Coherence decision must supply failure_class or directive, not both"
+                        )
+                    governed_directive = _gpr.directive_for_failure_class(
+                        decision["failure_class"]
+                    )
+                    _bound_runtime.dispatch_evaluated_failure(
+                        _bound_run_id,
+                        decision["failure_class"],
+                        **transition_args,
+                    )
+                else:
+                    governed_directive = decision["directive"]
+                    _bound_runtime.apply_transition(
+                        _bound_run_id,
+                        governed_directive,
+                        **transition_args,
+                    )
+            except Exception as _governed_review_error:
+                _governed_binding_fault = True
+                contingencies_fired.append("gear3-governed-final-review-refused")
+                _record(
+                    "gear3-governed-final-review",
+                    False,
+                    str(_governed_review_error)[:200],
+                )
+        _trace_step_g3(f"step6_5-quality-gate-pass-{pass_number}", {
+            "pass": pass_number,
+            "system_prompt": gate_system,
+            "user_message": gate_user,
+            "verdict_raw": gate_out,
+            "verdict_resolved": label,
+            "passed": passed,
+            "broken": broken,
+            "call_ok": call_ok,
+            "call_reason": call_reason,
+            "governed_directive": governed_directive,
+            "candidate_identity": (
+                "sha256:" + hashlib.sha256((candidate or "").encode("utf-8")).hexdigest()
+            ),
+            "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
+        }, markdown=(
+            f"# Step 6.5 — Final-output quality gate (Gear 3, pass {pass_number})\n\n"
+            f"**Verdict:** {label}\n\n{gate_out}\n"
+        ))
+        return (
+            gate_out, call_ok, call_reason, passed, broken, label, gate_user,
+            governed_directive,
+        )
 
-    gate_passed = _verifier_passed(gate_out)
-    # A failed gate CALL (transport error after retry) ships as BROKEN rather
-    # than firing a content redo a broken judge can't justify — same fail-open
-    # posture as the per-stream verifier's BROKEN handling.
-    gate_broken = _verifier_broken(gate_out) or not gate_call_ok
-    gate_verdict_label = (
-        "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
-    # Execution Review Phase 4 (condition 4): thread the scoped text-review verdict
-    # LABEL ONLY (never raw verifier text) onto a namespaced context_pkg subdict for
-    # the terminal packet builder. Not read by any prompt assembly — no leak.
-    context_pkg["execution_review"] = {"verdict": gate_verdict_label,
-                                       "scope": "text_review"}
+    (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
+     gate_verdict_label, gate_user, governed_directive) = (
+        _run_gear3_final_gate(revised_analysis, 1)
+    )
     gate_redo_fired = False
-    if not gate_passed and not gate_broken:
-        # Real FAIL -> one final re-revise carrying the gate's REQUIRED FIXES.
+    if (
+        not gate_passed
+        and not gate_broken
+        and (_bound_runtime is None or governed_directive == "REVISE")
+    ):
+        # A real execution-level FAIL supplies actionable fixes to the existing
+        # reviser path. The resulting candidate is never released until a fresh
+        # independent pass inspects its new identity.
         gate_redo_fired = True
         gate_redo_messages = [
             {"role": "system", "content": revise_system},
@@ -12110,8 +12335,8 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "## QUALITY-GATE — REQUIRED FIXES (the final output did not "
                 f"meet the mode's verification criteria)\n\n{gate_out}\n\n"
                 "Address every required fix and revise again per the mirror "
-                "contract. This is the final revision — there is no further "
-                "review pass."
+                "contract. The corrected candidate will receive a fresh "
+                "independent review before any release."
             )},
         ]
         revised_analysis, _qg_redo_ok, _qg_redo_reason = _call_with_retry(
@@ -12134,19 +12359,44 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         ))
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
-        # Execution Review Phase 4 (Rev 1): the FAIL redo produced a NEW deliverable
-        # the gate never re-reviewed — so the prior FAIL no longer describes the
-        # shipped text. Overwrite the stale verdict with a scoped unreviewed status
-        # (verdict=None; no raw verifier text) rather than mislabel the final
-        # producer claim with a verdict that reviewed a different candidate.
-        context_pkg["execution_review"] = {
-            "verdict": None, "scope": "text_review",
-            "status": "failed-then-redone-unreviewed"}
+        (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
+         gate_verdict_label, gate_user, governed_directive) = (
+            _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
+        )
+        contingencies_fired.append(
+            f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
+        )
     else:
         contingencies_fired.append(
             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
+
+    release_deliverable = bool(
+        gate_passed
+        and not gate_broken
+        and not _governed_binding_fault
+        and (_bound_runtime is None or governed_directive == "ACCEPT")
+    )
+    review_status = None
+    if gate_redo_fired and release_deliverable:
+        review_status = "passed-after-correction-reinspection"
+    elif gate_broken and gate_redo_fired:
+        review_status = "review-unavailable-after-correction-withheld"
+    elif gate_broken:
+        review_status = "review-unavailable-withheld"
+    elif not gate_passed:
+        review_status = "failed-after-final-reinspection-withheld"
+    elif _governed_binding_fault:
+        review_status = "governed-runtime-integrity-failure-withheld"
+    elif _bound_runtime is not None and governed_directive != "ACCEPT":
+        review_status = "process-coherence-did-not-accept-withheld"
+    context_pkg["execution_review"] = {
+        "verdict": gate_verdict_label,
+        "scope": "text_review",
+        "status": review_status,
+    }
     _record("step6_5-quality-gate", gate_call_ok,
-            f"verdict={gate_verdict_label} redo={gate_redo_fired}")
+            f"verdict={gate_verdict_label} redo={gate_redo_fired} "
+            f"released={release_deliverable}")
     _trace_step_g3("step6_5-quality-gate", {
         "system_prompt": gate_system,
         "user_message": gate_user,
@@ -12155,13 +12405,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         "passed": gate_passed,
         "broken": gate_broken,
         "redo_fired": gate_redo_fired,
+        "released": release_deliverable,
+        "governed_directive": governed_directive,
         "call_ok": gate_call_ok,
         "call_reason": gate_call_reason,
         "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
     }, markdown=(
         "# Step 6.5 — Final-output quality gate (Gear 3)\n\n"
         f"**Verdict:** {gate_verdict_label}  \n"
-        f"**Redo fired:** {gate_redo_fired}\n\n{gate_out}\n"
+        f"**Redo fired:** {gate_redo_fired}  \n"
+        f"**Released:** {release_deliverable}\n\n{gate_out}\n"
     ))
 
     # Gear 3 has no formatter — it returns the reviser output directly. Surface
@@ -12173,7 +12426,14 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # fall back to the full text only when the draft section can't be isolated,
     # so this is never worse than the prior behaviour.
     deliverable = revised_analysis
-    if CLAIM_VERIFICATION_AVAILABLE:
+    if not release_deliverable:
+        deliverable = (
+            "## Deliverable withheld\n\n"
+            "The current candidate was not released because independent final "
+            f"review concluded `{gate_verdict_label}`. The candidate and review "
+            "record remain available for the governed continuation route."
+        )
+    elif CLAIM_VERIFICATION_AVAILABLE:
         try:
             _draft_body = extract_revised_draft_section(revised_analysis or "")
         except Exception:
