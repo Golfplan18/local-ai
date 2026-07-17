@@ -283,6 +283,44 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             capability,
         )
 
+    def direct_completion_details(
+        self,
+        started: dict,
+        evidence: dict,
+        *,
+        receipt: dict | None = None,
+    ) -> dict:
+        contract = started["contract"]
+        capability = contract["capability_identity"]
+        action = contract["action_identity"]
+        safety = contract.get("mutation_safety") or {}
+        return {
+            "contract_digest": started["contract_digest"],
+            "attempt": started["attempt"],
+            "execution_record_id": "forged-execution-record",
+            "execution_output_digest": self.exact_digest("forged-execution-output"),
+            "assumption_id": contract["assumption_id"],
+            "capability_id": capability["capability_id"],
+            "capability_identity_digest": capability["identity_digest"],
+            "action": action["action"],
+            "effect_class": action["effect_class"],
+            "effect_type": action["effect_type"],
+            "selector": contract["selector"],
+            "evidence_artifact_id": evidence["artifact"]["artifact_id"],
+            "evidence_identity_digest": evidence["artifact"]["identity"]["digest"],
+            "receipt_artifact_id": (
+                receipt["artifact"]["artifact_id"] if receipt else None
+            ),
+            "receipt_identity_digest": (
+                receipt["artifact"]["identity"]["digest"] if receipt else None
+            ),
+            "success_condition": contract["success_condition"],
+            "failure_condition": contract["failure_condition"],
+            "ambiguous_route": contract["ambiguous_route"],
+            "stop_conditions": contract["stop_conditions"],
+            "recovery_identity_digest": safety.get("recovery_identity_digest"),
+        }
+
     def test_queries_tools_skills_frameworks_definitions_and_patterns(self):
         calls = []
 
@@ -482,6 +520,10 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         )
         self.assertLess(
             events.index("checkpoint_created"),
+            events.index("controlled_probe_execution_completed"),
+        )
+        self.assertLess(
+            events.index("controlled_probe_execution_completed"),
             events.index("action_completed"),
         )
 
@@ -591,6 +633,8 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         forged_details = {
             "contract_digest": persisted["contract_digest"],
             "attempt": started["attempt"],
+            "execution_record_id": "nonexistent-execution",
+            "execution_output_digest": self.exact_digest("nonexistent-output"),
             "assumption_id": contract["assumption_id"],
             "capability_id": contract["capability_identity"]["capability_id"],
             "capability_identity_digest": contract["capability_identity"][
@@ -628,6 +672,168 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             == "controlled_probe_attempt_completed"
         ]
         self.assertEqual(completions, [])
+
+    def test_direct_inspection_completion_cannot_bypass_sandbox_execution(self):
+        capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        started = self.runtime.begin_controlled_probe_attempt(
+            "run-probe", "availability"
+        )
+        contract = started["contract"]
+        evidence = self.runtime.record_inline_artifact(
+            "run-probe",
+            "direct-inspection-evidence",
+            "arbitrary evidence recorded without sandbox execution",
+            role="evidence",
+            node_id=contract["node_id"],
+            action="record_evidence",
+            selector=contract["evidence_selector"],
+            satisfied_conditions=contract["authority_conditions"],
+        )
+        with self.assertRaisesRegex(
+            gpr.GovernedRuntimeError, "runtime-issued execution record"
+        ):
+            self.runtime.complete_controlled_probe_attempt(
+                "run-probe",
+                "availability",
+                status="completed",
+                outcome="confirmed",
+                details=self.direct_completion_details(started, evidence),
+                artifact_ids=[evidence["artifact"]["artifact_id"]],
+            )
+        self.assertFalse(
+            any(
+                record["event"]["event_type"]
+                == "controlled_probe_attempt_completed"
+                for record in self.runtime.load_records("run-probe")
+            )
+        )
+
+    def test_inspection_completion_evidence_must_match_sandbox_output(self):
+        capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        started = self.runtime.begin_controlled_probe_attempt(
+            "run-probe", "availability"
+        )
+        sandbox_output = {
+            "outcome": "confirmed",
+            "evidence": "evidence emitted by the sandbox",
+        }
+        command = self.inspection_command(sandbox_output)
+        execution = self.runtime.execute_controlled_probe_action(
+            "run-probe",
+            "availability",
+            inspection_command={
+                "argv": list(command.argv),
+                "cwd": command.cwd,
+                "timeout_seconds": command.timeout_seconds,
+            },
+        )
+        contract = started["contract"]
+        substituted = self.runtime.record_inline_artifact(
+            "run-probe",
+            "substituted-inspection-evidence",
+            "different evidence supplied after the sandbox returned",
+            role="evidence",
+            node_id=contract["node_id"],
+            action="record_evidence",
+            selector=contract["evidence_selector"],
+            satisfied_conditions=contract["authority_conditions"],
+        )
+        details = self.direct_completion_details(started, substituted)
+        details["execution_record_id"] = execution["record"]["record_id"]
+        details["execution_output_digest"] = execution["output_digest"]
+        with self.assertRaisesRegex(
+            gpr.GovernedRuntimeError, "exact runtime execution"
+        ):
+            self.runtime.complete_controlled_probe_attempt(
+                "run-probe",
+                "availability",
+                status="completed",
+                outcome="confirmed",
+                details=details,
+                artifact_ids=[substituted["artifact"]["artifact_id"]],
+            )
+
+    def test_direct_mutation_completion_cannot_bypass_executor_or_checkpoint(self):
+        capability = self.capability(effect_class="mutation")
+        self.persist(capability)
+        started = self.runtime.begin_controlled_probe_attempt(
+            "run-probe", "availability"
+        )
+        contract = started["contract"]
+        safety = contract["mutation_safety"]
+        receipt_body = {
+            "effect_id": "forged-effect",
+            "pre_state_digest": safety["pre_state_digest"],
+            "post_state_digest": self.exact_digest("forged-post-state"),
+            "idempotency_key": safety["idempotency_key"],
+        }
+        receipt = self.runtime.record_inline_artifact(
+            "run-probe",
+            "direct-mutation-receipt",
+            json.dumps(receipt_body, sort_keys=True, separators=(",", ":")),
+            role="external_effect_receipt",
+            node_id=contract["node_id"],
+            action="record_evidence",
+            selector=contract["evidence_selector"],
+            satisfied_conditions=contract["authority_conditions"],
+            media_type="application/json",
+        )
+        self.runtime.record_action(
+            "run-probe",
+            action=contract["action_identity"]["action"],
+            selectors=[contract["selector"]],
+            satisfied_conditions=contract["authority_conditions"],
+            effect_type=contract["action_identity"]["effect_type"],
+            external_effect=True,
+            receipt_artifact_id=receipt["artifact"]["artifact_id"],
+            details={
+                "probe_id": contract["probe_id"],
+                "attempt": started["attempt"],
+                "contract_digest": started["contract_digest"],
+                "capability_id": contract["capability_identity"]["capability_id"],
+                "capability_identity_digest": contract["capability_identity"][
+                    "identity_digest"
+                ],
+                "receipt_identity_digest": receipt["artifact"]["identity"]["digest"],
+                "pre_state_digest": safety["pre_state_digest"],
+                "idempotency_key": safety["idempotency_key"],
+            },
+        )
+        evidence = self.runtime.record_inline_artifact(
+            "run-probe",
+            "direct-mutation-evidence",
+            "arbitrary mutation evidence without executor invocation",
+            role="evidence",
+            node_id=contract["node_id"],
+            action="record_evidence",
+            selector=contract["evidence_selector"],
+            satisfied_conditions=contract["authority_conditions"],
+        )
+        with self.assertRaisesRegex(
+            gpr.GovernedRuntimeError, "runtime-issued execution record"
+        ):
+            self.runtime.complete_controlled_probe_attempt(
+                "run-probe",
+                "availability",
+                status="completed",
+                outcome="confirmed",
+                details=self.direct_completion_details(
+                    started, evidence, receipt=receipt
+                ),
+                artifact_ids=[
+                    receipt["artifact"]["artifact_id"],
+                    evidence["artifact"]["artifact_id"],
+                ],
+            )
+        events = [
+            record["event"]["event_type"]
+            for record in self.runtime.load_records("run-probe")
+        ]
+        self.assertNotIn("checkpoint_created", events)
+        self.assertNotIn("controlled_probe_execution_completed", events)
+        self.assertNotIn("controlled_probe_attempt_completed", events)
 
     def test_read_only_inspection_sandbox_denies_filesystem_mutation(self):
         capability = self.capability(effect_class="inspection")
@@ -696,12 +902,19 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             self.persist(capability, contract)
 
     def test_generic_event_api_cannot_forge_controlled_probe_state(self):
-        with self.assertRaisesRegex(gpr.AuthorityDeniedError, "reserved"):
-            self.runtime.record_event(
-                "run-probe",
-                "controlled_probe_attempt_started",
-                {"probe_id": "forged", "attempt": 99},
-            )
+        for event_type in (
+            "controlled_probe_attempt_started",
+            "controlled_probe_execution_started",
+            "controlled_probe_execution_completed",
+        ):
+            with self.subTest(event_type=event_type), self.assertRaisesRegex(
+                gpr.AuthorityDeniedError, "reserved"
+            ):
+                self.runtime.record_event(
+                    "run-probe",
+                    event_type,
+                    {"probe_id": "forged", "attempt": 99},
+                )
 
     def test_active_stop_condition_withholds_probe_without_execution(self):
         capability = self.capability(effect_class="inspection")

@@ -12,9 +12,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import os
 import re
-import subprocess
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,15 +29,6 @@ CAPABILITY_CATEGORIES = (
 ACTION_EFFECT_CLASSES = frozenset({"inspection", "mutation"})
 PROBE_OUTCOMES = frozenset({"confirmed", "disconfirmed", "ambiguous"})
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-# This allowlist is deliberately small. Deny-default leaves process signalling,
-# process control/forking, IPC, network, device access, and host-state writes
-# unavailable; the child may only execute its declared image and read state.
-_READ_ONLY_SANDBOX_PROFILE = """(version 1)
-(deny default)
-(allow file-read*)
-(allow process-exec)
-(allow sysctl-read)
-"""
 
 
 class CapabilityDiscoveryError(ValueError):
@@ -472,58 +461,6 @@ def _validate_probe_result(
     return result
 
 
-def _execute_read_only_inspection(
-    boundary: ReadOnlyInspectionCommand,
-    request: Mapping[str, Any],
-) -> Mapping[str, Any]:
-    if not isinstance(boundary, ReadOnlyInspectionCommand):
-        raise CapabilityDiscoveryError(
-            "inspection probes require a ReadOnlyInspectionCommand; arbitrary callables "
-            "are not a mechanically read-only execution boundary"
-        )
-    sandbox = Path("/usr/bin/sandbox-exec")
-    if not sandbox.is_file():
-        raise CapabilityDiscoveryError(
-            "read-only inspection sandbox is unavailable; inspection withheld"
-        )
-    environment = {
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "LANG": os.environ.get("LANG", "C.UTF-8"),
-    }
-    try:
-        completed = subprocess.run(
-            [str(sandbox), "-p", _READ_ONLY_SANDBOX_PROFILE, *boundary.argv],
-            input=json.dumps(request, sort_keys=True, separators=(",", ":")),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=boundary.cwd,
-            env=environment,
-            timeout=boundary.timeout_seconds,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise CapabilityDiscoveryError(
-            f"read-only inspection boundary failed: {type(exc).__name__}: {exc}"
-        ) from exc
-    if completed.returncode != 0:
-        reason = completed.stderr.strip() or f"exit status {completed.returncode}"
-        raise CapabilityDiscoveryError(
-            f"read-only inspection boundary refused or failed the command: {reason}"
-        )
-    try:
-        result = json.loads(completed.stdout)
-    except json.JSONDecodeError as exc:
-        raise CapabilityDiscoveryError(
-            "read-only inspection command must emit exactly one JSON result"
-        ) from exc
-    if not isinstance(result, Mapping):
-        raise CapabilityDiscoveryError(
-            "read-only inspection command JSON result must be an object"
-        )
-    return result
-
-
 def execute_controlled_probe(
     runtime: Any,
     run_id: str,
@@ -542,43 +479,31 @@ def execute_controlled_probe(
     mutation = declared["effect_class"] == "mutation"
     mutation_safety = probe.get("mutation_safety") or {}
     attempt = started["attempt"]
-    request = {
-        "run_id": run_id,
-        "probe_id": probe["probe_id"],
-        "assumption_id": probe["assumption_id"],
-        "contract_digest": started["contract_digest"],
-        "definition_ref": copy.deepcopy(probe["definition_ref"]),
-        "approved_plan_ref": copy.deepcopy(probe["approved_plan_ref"]),
-        "capability_id": capability_identity["capability_id"],
-        "capability_identity_digest": capability_identity["identity_digest"],
-        "action": declared["action"],
-        "effect_class": declared["effect_class"],
-        "effect_type": declared["effect_type"],
-        "selector": probe["selector"],
-        "attempt": attempt,
-        "max_attempts": probe["max_attempts"],
-        "pre_state_digest": mutation_safety.get("pre_state_digest"),
-        "idempotency_key": mutation_safety.get("idempotency_key"),
-    }
-    executor_started = False
     try:
         if mutation:
-            if not callable(executor) or isinstance(executor, ReadOnlyInspectionCommand):
-                raise CapabilityDiscoveryError(
-                    "mutation probe executor must be a callable"
-                )
-            runtime.create_checkpoint(
+            execution = runtime.execute_controlled_probe_action(
                 run_id,
-                mutation_safety["checkpoint_id"],
-                segment_id=probe["segment_id"],
-                resume_node_id=probe["node_id"],
+                probe_id,
+                mutation_executor=executor,
             )
-            executor_started = True
-            raw_result = executor(copy.deepcopy(request))
         else:
-            raw_result = _execute_read_only_inspection(executor, request)
+            if not isinstance(executor, ReadOnlyInspectionCommand):
+                raise CapabilityDiscoveryError(
+                    "inspection probes require a ReadOnlyInspectionCommand; arbitrary "
+                    "callables are not a mechanically read-only execution boundary"
+                )
+            execution = runtime.execute_controlled_probe_action(
+                run_id,
+                probe_id,
+                inspection_command={
+                    "argv": list(executor.argv),
+                    "cwd": executor.cwd,
+                    "timeout_seconds": executor.timeout_seconds,
+                },
+            )
+        raw_result = execution["result"]
     except Exception as exc:
-        if mutation and executor_started:
+        if mutation and bool(getattr(exc, "external_effect_possible", False)):
             # The executor may have changed external state before failing.
             # Persist the possible effect without a receipt so recovery is
             # mechanically blocked rather than assuming that replay is safe.
@@ -591,8 +516,10 @@ def execute_controlled_probe(
                 external_effect=True,
                 details={
                     "probe_id": probe["probe_id"],
+                    "attempt": attempt,
                     "contract_digest": started["contract_digest"],
                     "capability_id": capability_identity["capability_id"],
+                    "capability_identity_digest": capability_identity["identity_digest"],
                     "outcome": "effect_unknown_after_executor_failure",
                     "pre_state_digest": mutation_safety["pre_state_digest"],
                     "idempotency_key": mutation_safety["idempotency_key"],
@@ -611,6 +538,8 @@ def execute_controlled_probe(
                 ),
             },
         )
+        if not mutation and not isinstance(exc, CapabilityDiscoveryError):
+            raise CapabilityDiscoveryError(str(exc)) from exc
         raise
     try:
         result = _validate_probe_result(
@@ -633,8 +562,10 @@ def execute_controlled_probe(
                 external_effect=True,
                 details={
                     "probe_id": probe["probe_id"],
+                    "attempt": attempt,
                     "contract_digest": started["contract_digest"],
                     "capability_id": capability_identity["capability_id"],
+                    "capability_identity_digest": capability_identity["identity_digest"],
                     "outcome": "receipt_invalid_or_missing",
                     "pre_state_digest": mutation_safety["pre_state_digest"],
                     "idempotency_key": mutation_safety["idempotency_key"],
@@ -715,6 +646,8 @@ def execute_controlled_probe(
         details={
             "contract_digest": started["contract_digest"],
             "attempt": attempt,
+            "execution_record_id": execution["record"]["record_id"],
+            "execution_output_digest": execution["output_digest"],
             "assumption_id": probe["assumption_id"],
             "capability_id": capability_identity["capability_id"],
             "capability_identity_digest": capability_identity["identity_digest"],

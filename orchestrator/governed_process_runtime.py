@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import tempfile
 import threading
 import uuid
@@ -96,6 +97,8 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "controlled_probe_contract_persisted",
     "controlled_probe_stop_state_recorded",
     "controlled_probe_attempt_started",
+    "controlled_probe_execution_started",
+    "controlled_probe_execution_completed",
     "controlled_probe_attempt_completed",
     "controlled_probe_withheld",
     "process_invoked",
@@ -135,6 +138,13 @@ DEFAULT_CORRECTION_POLICY = {
     "no_progress_directives": ["REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
 }
 
+_READ_ONLY_INSPECTION_SANDBOX_PROFILE = """(version 1)
+(deny default)
+(allow file-read*)
+(allow process-exec)
+(allow sysctl-read)
+"""
+
 _PROCESS_LOCK = threading.RLock()
 
 
@@ -164,6 +174,14 @@ class RecoveryBlockedError(GovernedRuntimeError):
 
 class FinalReviewRequired(GovernedRuntimeError):
     pass
+
+
+class ControlledProbeExecutionError(GovernedRuntimeError):
+    """A runtime-owned probe invocation failed before an execution record."""
+
+    def __init__(self, message: str, *, external_effect_possible: bool = False):
+        super().__init__(message)
+        self.external_effect_possible = bool(external_effect_possible)
 
 
 def _utc_now() -> str:
@@ -1446,6 +1464,289 @@ class GovernedProcessRuntime:
                 "contract_digest": contract_digest,
             }
 
+    def execute_controlled_probe_action(
+        self,
+        run_id: str,
+        probe_id: str,
+        *,
+        inspection_command: Mapping[str, Any] | None = None,
+        mutation_executor: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Invoke the persisted action and mint its reserved execution record.
+
+        This is the only public path that may create
+        ``controlled_probe_execution_completed``. Inspection commands run in
+        the runtime-owned deny-default sandbox. Mutation execution creates the
+        persisted contract checkpoint before the callable is invoked.
+        """
+
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "execute a controlled probe action")
+            records = self.load_records(run_id)
+            contract, contract_record = self._controlled_probe_contract_from_records(
+                records, probe_id
+            )
+            contract_digest = (
+                (contract_record.get("event") or {}).get("details") or {}
+            ).get("contract_digest")
+            starts = []
+            completions = set()
+            executions = []
+            execution_starts = []
+            for record in records:
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if details.get("probe_id") != probe_id:
+                    continue
+                if event.get("event_type") == "controlled_probe_attempt_started":
+                    starts.append((record, details))
+                elif event.get("event_type") == "controlled_probe_attempt_completed":
+                    completions.add(details.get("attempt"))
+                elif event.get("event_type") == "controlled_probe_execution_completed":
+                    executions.append(details)
+                elif event.get("event_type") == "controlled_probe_execution_started":
+                    execution_starts.append(details)
+            active = [
+                (record, details)
+                for record, details in starts
+                if details.get("attempt") not in completions
+            ]
+            if len(active) != 1:
+                raise RunConflictError(
+                    "controlled probe execution requires exactly one active attempt"
+                )
+            started_record, started_details = active[0]
+            attempt = int(started_details["attempt"])
+            if started_details.get("contract_digest") != contract_digest:
+                raise GovernedRuntimeError(
+                    "controlled probe execution contract digest does not match"
+                )
+            if any(
+                item.get("attempt") == attempt
+                and item.get("contract_digest") == contract_digest
+                for item in [*execution_starts, *executions]
+            ):
+                raise RunConflictError(
+                    "controlled probe action already has a runtime execution claim; "
+                    "replay is refused"
+                )
+            execution_start_record = self._append_event_locked(
+                run,
+                "controlled_probe_execution_started",
+                {
+                    "probe_id": probe_id,
+                    "attempt": attempt,
+                    "contract_digest": contract_digest,
+                    "capability_id": contract["capability_identity"]["capability_id"],
+                    "capability_identity_digest": contract["capability_identity"][
+                        "identity_digest"
+                    ],
+                    "action": contract["action_identity"]["action"],
+                    "effect_class": contract["action_identity"]["effect_class"],
+                    "effect_type": contract["action_identity"]["effect_type"],
+                    "selector": contract["selector"],
+                },
+                node_id=contract["node_id"],
+                runtime_authoritative=True,
+            )
+
+        action = contract["action_identity"]
+        capability = contract["capability_identity"]
+        safety = contract.get("mutation_safety") or {}
+        mutation = action["effect_class"] == "mutation"
+        request = {
+            "run_id": run_id,
+            "probe_id": probe_id,
+            "assumption_id": contract["assumption_id"],
+            "contract_digest": contract_digest,
+            "definition_ref": copy.deepcopy(contract["definition_ref"]),
+            "approved_plan_ref": copy.deepcopy(contract["approved_plan_ref"]),
+            "capability_id": capability["capability_id"],
+            "capability_identity_digest": capability["identity_digest"],
+            "action": action["action"],
+            "effect_class": action["effect_class"],
+            "effect_type": action["effect_type"],
+            "selector": contract["selector"],
+            "attempt": attempt,
+            "max_attempts": contract["max_attempts"],
+            "pre_state_digest": safety.get("pre_state_digest"),
+            "idempotency_key": safety.get("idempotency_key"),
+        }
+        boundary_identity: dict[str, Any]
+        if mutation:
+            if inspection_command is not None or not callable(mutation_executor):
+                raise ControlledProbeExecutionError(
+                    "mutation controlled probe requires only a callable executor"
+                )
+            try:
+                checkpoint = self.create_checkpoint(
+                    run_id,
+                    safety["checkpoint_id"],
+                    segment_id=contract["segment_id"],
+                    resume_node_id=contract["node_id"],
+                )
+            except Exception as exc:
+                raise ControlledProbeExecutionError(
+                    f"controlled probe checkpoint failed: {type(exc).__name__}: {exc}"
+                ) from exc
+            try:
+                raw_result = mutation_executor(copy.deepcopy(request))
+            except Exception as exc:
+                raise ControlledProbeExecutionError(
+                    f"controlled probe mutation executor failed: {type(exc).__name__}: {exc}",
+                    external_effect_possible=True,
+                ) from exc
+            boundary_identity = {
+                "kind": "runtime_mutation_executor",
+                "checkpoint_record_id": checkpoint["record_id"],
+                "checkpoint_id": safety["checkpoint_id"],
+            }
+        else:
+            if mutation_executor is not None or not isinstance(inspection_command, Mapping):
+                raise ControlledProbeExecutionError(
+                    "inspection controlled probe requires only a sandbox command descriptor"
+                )
+            descriptor = copy.deepcopy(dict(inspection_command))
+            if set(descriptor) != {"argv", "cwd", "timeout_seconds"}:
+                raise ControlledProbeExecutionError(
+                    "inspection sandbox descriptor fields are incomplete or ambiguous"
+                )
+            argv = descriptor["argv"]
+            cwd = descriptor["cwd"]
+            timeout_seconds = descriptor["timeout_seconds"]
+            if not isinstance(argv, list) or not argv or any(
+                not isinstance(item, str) or not item for item in argv
+            ):
+                raise ControlledProbeExecutionError(
+                    "inspection sandbox argv must be a nonempty string list"
+                )
+            executable = Path(argv[0])
+            if not executable.is_absolute() or not executable.is_file():
+                raise ControlledProbeExecutionError(
+                    "inspection sandbox executable must be an existing absolute path"
+                )
+            if cwd is not None and (not isinstance(cwd, str) or not Path(cwd).is_dir()):
+                raise ControlledProbeExecutionError(
+                    "inspection sandbox cwd must be an existing directory"
+                )
+            if (
+                not isinstance(timeout_seconds, int)
+                or isinstance(timeout_seconds, bool)
+                or timeout_seconds < 1
+            ):
+                raise ControlledProbeExecutionError(
+                    "inspection sandbox timeout must be an integer >= 1"
+                )
+            sandbox = Path("/usr/bin/sandbox-exec")
+            if not sandbox.is_file():
+                raise ControlledProbeExecutionError(
+                    "read-only inspection sandbox is unavailable"
+                )
+            environment = {
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "LANG": os.environ.get("LANG", "C.UTF-8"),
+            }
+            try:
+                completed = subprocess.run(
+                    [
+                        str(sandbox),
+                        "-p",
+                        _READ_ONLY_INSPECTION_SANDBOX_PROFILE,
+                        *argv,
+                    ],
+                    input=json.dumps(request, sort_keys=True, separators=(",", ":")),
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=cwd,
+                    env=environment,
+                    timeout=timeout_seconds,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise ControlledProbeExecutionError(
+                    f"read-only inspection boundary failed: {type(exc).__name__}: {exc}"
+                ) from exc
+            if completed.returncode != 0:
+                reason = completed.stderr.strip() or f"exit status {completed.returncode}"
+                raise ControlledProbeExecutionError(
+                    f"read-only inspection boundary refused or failed the command: {reason}"
+                )
+            try:
+                raw_result = json.loads(completed.stdout)
+            except json.JSONDecodeError as exc:
+                raise ControlledProbeExecutionError(
+                    "read-only inspection command must emit exactly one JSON result"
+                ) from exc
+            boundary_identity = {
+                "kind": "deny_default_inspection_sandbox",
+                "command_identity_digest": _digest_json(descriptor),
+                "sandbox_profile_digest": _digest_text(
+                    _READ_ONLY_INSPECTION_SANDBOX_PROFILE
+                ),
+            }
+
+        try:
+            _require_json(raw_result, "controlled probe execution output")
+            output = copy.deepcopy(raw_result)
+            output_digest = _digest_json(output)
+            reported_outcome = (
+                output.get("outcome") if isinstance(output, Mapping) else None
+            )
+            evidence_text = (
+                output.get("evidence") if isinstance(output, Mapping) else None
+            )
+            evidence_identity_digest = (
+                _digest_text(evidence_text)
+                if isinstance(evidence_text, str) and evidence_text
+                else None
+            )
+            raw_receipt = output.get("receipt") if isinstance(output, Mapping) else None
+            receipt_identity_digest = None
+            if isinstance(raw_receipt, Mapping):
+                receipt_text = json.dumps(
+                    raw_receipt, sort_keys=True, separators=(",", ":")
+                )
+                receipt_identity_digest = _digest_text(receipt_text)
+            record = self._record_runtime_event(
+                run_id,
+                "controlled_probe_execution_completed",
+                {
+                    "probe_id": probe_id,
+                    "attempt": attempt,
+                    "contract_digest": contract_digest,
+                    "capability_id": capability["capability_id"],
+                    "capability_identity_digest": capability["identity_digest"],
+                    "action": action["action"],
+                    "effect_class": action["effect_class"],
+                    "effect_type": action["effect_type"],
+                    "selector": contract["selector"],
+                    "execution_start_record_id": execution_start_record["record_id"],
+                    "boundary_identity": boundary_identity,
+                    "output_digest": output_digest,
+                    "reported_outcome": reported_outcome,
+                    "evidence_identity_digest": evidence_identity_digest,
+                    "receipt_identity_digest": receipt_identity_digest,
+                },
+                node_id=contract["node_id"],
+            )
+        except Exception as exc:
+            if isinstance(exc, ControlledProbeExecutionError):
+                raise
+            raise ControlledProbeExecutionError(
+                f"controlled probe execution record failed: {type(exc).__name__}: {exc}",
+                external_effect_possible=mutation,
+            ) from exc
+        return {
+            "result": output,
+            "request": request,
+            "record": record,
+            "output_digest": output_digest,
+            "evidence_identity_digest": evidence_identity_digest,
+            "receipt_identity_digest": receipt_identity_digest,
+        }
+
     def complete_controlled_probe_attempt(
         self,
         run_id: str,
@@ -1512,6 +1813,8 @@ class GovernedProcessRuntime:
                 completion_fields = {
                     "contract_digest",
                     "attempt",
+                    "execution_record_id",
+                    "execution_output_digest",
                     "assumption_id",
                     "capability_id",
                     "capability_identity_digest",
@@ -1621,6 +1924,113 @@ class GovernedProcessRuntime:
                     == attempt
                 )
 
+                execution_matches = []
+                for candidate in records:
+                    event = candidate.get("event") or {}
+                    event_details = event.get("details") or {}
+                    if (
+                        event.get("event_type")
+                        == "controlled_probe_execution_completed"
+                        and event_details.get("probe_id") == probe_id
+                        and event_details.get("attempt") == attempt
+                        and event_details.get("contract_digest") == contract_digest
+                    ):
+                        execution_matches.append((candidate, event_details))
+                if len(execution_matches) != 1:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion requires exactly one runtime-issued "
+                        "execution record"
+                    )
+                execution_record, execution_details = execution_matches[0]
+                if int(execution_record["sequence"]) <= int(started_record["sequence"]):
+                    raise GovernedRuntimeError(
+                        "controlled probe execution record predates its active attempt"
+                    )
+                execution_start_matches = []
+                for candidate in records:
+                    event = candidate.get("event") or {}
+                    event_details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "controlled_probe_execution_started"
+                        and event_details.get("probe_id") == probe_id
+                        and event_details.get("attempt") == attempt
+                        and event_details.get("contract_digest") == contract_digest
+                    ):
+                        execution_start_matches.append((candidate, event_details))
+                if len(execution_start_matches) != 1:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion requires one runtime execution start"
+                    )
+                execution_start_record, execution_start_details = (
+                    execution_start_matches[0]
+                )
+                if not (
+                    int(started_record["sequence"])
+                    < int(execution_start_record["sequence"])
+                    < int(execution_record["sequence"])
+                ):
+                    raise GovernedRuntimeError(
+                        "controlled probe runtime execution ordering is invalid"
+                    )
+                if (
+                    execution_details.get("execution_start_record_id")
+                    != execution_start_record["record_id"]
+                ):
+                    raise GovernedRuntimeError(
+                        "controlled probe execution output does not bind its start record"
+                    )
+                execution_bindings = {
+                    "execution_record_id": execution_record["record_id"],
+                    "execution_output_digest": execution_details.get("output_digest"),
+                }
+                execution_mismatch = [
+                    field
+                    for field, expected in execution_bindings.items()
+                    if supplied_details.get(field) != expected
+                ]
+                expected_execution = {
+                    "capability_id": capability["capability_id"],
+                    "capability_identity_digest": capability["identity_digest"],
+                    "action": action["action"],
+                    "effect_class": action["effect_class"],
+                    "effect_type": action["effect_type"],
+                    "selector": contract["selector"],
+                    "reported_outcome": outcome,
+                    "evidence_identity_digest": evidence_identity_digest,
+                    "receipt_identity_digest": receipt_identity_digest,
+                }
+                expected_execution_start = {
+                    "capability_id": capability["capability_id"],
+                    "capability_identity_digest": capability["identity_digest"],
+                    "action": action["action"],
+                    "effect_class": action["effect_class"],
+                    "effect_type": action["effect_type"],
+                    "selector": contract["selector"],
+                }
+                execution_mismatch.extend(
+                    field
+                    for field, expected in expected_execution.items()
+                    if execution_details.get(field) != expected
+                )
+                execution_mismatch.extend(
+                    f"execution_start.{field}"
+                    for field, expected in expected_execution_start.items()
+                    if execution_start_details.get(field) != expected
+                )
+                expected_boundary_kind = (
+                    "runtime_mutation_executor"
+                    if mutation
+                    else "deny_default_inspection_sandbox"
+                )
+                boundary_identity = execution_details.get("boundary_identity") or {}
+                if boundary_identity.get("kind") != expected_boundary_kind:
+                    execution_mismatch.append("boundary_identity")
+                if execution_mismatch:
+                    raise GovernedRuntimeError(
+                        "controlled probe completion is not bound to exact runtime execution: "
+                        + ", ".join(sorted(set(execution_mismatch)))
+                    )
+
                 def artifact_record(artifact_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
                     matches = []
                     for candidate in records:
@@ -1636,9 +2046,9 @@ class GovernedProcessRuntime:
                             f"controlled probe completion artifact is not persisted: {artifact_id}"
                         )
                     candidate, event_details = matches[-1]
-                    if int(candidate["sequence"]) <= int(started_record["sequence"]):
+                    if int(candidate["sequence"]) <= int(execution_record["sequence"]):
                         raise GovernedRuntimeError(
-                            "controlled probe completion artifact predates its active attempt"
+                            "controlled probe completion artifact predates runtime execution"
                         )
                     if event_details.get("action") != "record_evidence":
                         raise GovernedRuntimeError(
@@ -1684,6 +2094,41 @@ class GovernedProcessRuntime:
                     )
 
                 if mutation:
+                    checkpoint_id = contract["mutation_safety"]["checkpoint_id"]
+                    checkpoints = []
+                    for candidate in records:
+                        event = candidate.get("event") or {}
+                        event_details = event.get("details") or {}
+                        if (
+                            event.get("event_type") == "checkpoint_created"
+                            and event_details.get("checkpoint_id") == checkpoint_id
+                        ):
+                            checkpoints.append(candidate)
+                    if len(checkpoints) != 1:
+                        raise GovernedRuntimeError(
+                            "mutation probe completion requires its exact checkpoint"
+                        )
+                    checkpoint_record = checkpoints[0]
+                    if not (
+                        int(started_record["sequence"])
+                        < int(checkpoint_record["sequence"])
+                        < int(execution_record["sequence"])
+                    ):
+                        raise GovernedRuntimeError(
+                            "mutation probe checkpoint must occur after attempt start and "
+                            "before execution"
+                        )
+                    if boundary_identity.get("checkpoint_id") != checkpoint_id:
+                        raise GovernedRuntimeError(
+                            "mutation execution record checkpoint identity does not match"
+                        )
+                    if (
+                        boundary_identity.get("checkpoint_record_id")
+                        != checkpoint_record["record_id"]
+                    ):
+                        raise GovernedRuntimeError(
+                            "mutation execution record does not bind the checkpoint record"
+                        )
                     receipt_record, receipt_record_details = artifact_record(
                         receipt_artifact_id
                     )
