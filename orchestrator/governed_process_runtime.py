@@ -70,6 +70,9 @@ DIRECTIVE_SOURCE_STATES = {
     },
 }
 
+INITIAL_RUN_STATES = frozenset({"created", "awaiting_plan_approval", "ready"})
+TERMINAL_RUN_STATES = frozenset({"completed", "blocked", "cancelled"})
+
 INFRASTRUCTURE_OUTCOMES = (
     "success",
     "retryable_failure",
@@ -349,6 +352,24 @@ class GovernedProcessRuntime:
                 "a new Process Run must start with no artifact_ids; record each input "
                 "Artifact through the authority and lineage boundary after creation"
             )
+        if run_copy["state"] not in INITIAL_RUN_STATES:
+            raise GovernedRuntimeError(
+                "a new Process Run must start in created, awaiting_plan_approval, "
+                "or ready state; lifecycle advancement requires persisted events"
+            )
+        entry_node_id = definition_copy["graph"]["entry_node_id"]
+        if run_copy["current_node_id"] != entry_node_id:
+            raise GovernedRuntimeError(
+                "a new Process Run must be positioned at its graph entry"
+            )
+        if int(run_copy["last_sequence"]) != 0:
+            raise GovernedRuntimeError(
+                "a new Process Run must start at sequence zero"
+            )
+        if int(run_copy["contracts"]["correction_loop"]["attempt"]) != 0:
+            raise GovernedRuntimeError(
+                "a new Process Run must start before its first correction attempt"
+            )
         run_id = run_copy["run_id"]
         with _locked():
             run_dir = self._run_dir(run_id, create=True)
@@ -367,6 +388,13 @@ class GovernedProcessRuntime:
                 node_id=run_copy["current_node_id"],
             )
             return copy.deepcopy(run_copy)
+
+    @staticmethod
+    def _require_mutable_run(run: Mapping[str, Any], operation: str) -> None:
+        if run["state"] in TERMINAL_RUN_STATES:
+            raise RunConflictError(
+                f"terminal Process Run is immutable; cannot {operation}"
+            )
 
     def load_run(self, run_id: str) -> dict[str, Any]:
         with _locked():
@@ -439,6 +467,8 @@ class GovernedProcessRuntime:
                     ]
                 elif event_type == "run_paused":
                     materialized["state"] = "pending"
+                elif event_type == "run_ready":
+                    materialized["state"] = "ready"
                 elif event_type == "run_started":
                     materialized["state"] = "running"
                 elif event_type == "run_resumed":
@@ -555,7 +585,15 @@ class GovernedProcessRuntime:
         evidence_refs: Sequence[Mapping[str, Any]] = (),
         artifact_ids: Sequence[str] = (),
         record_id: str | None = None,
+        allow_terminal_metadata: bool = False,
     ) -> dict[str, Any]:
+        if allow_terminal_metadata:
+            if event_type != "process_returned":
+                raise GovernedRuntimeError(
+                    "only a deterministic process_returned record is safe terminal metadata"
+                )
+        else:
+            self._require_mutable_run(run, f"record {event_type}")
         record = self._event_record(
             run,
             event_type,
@@ -598,6 +636,29 @@ class GovernedProcessRuntime:
                 artifact_ids=artifact_ids,
             )
 
+    def mark_run_ready(self, run_id: str, *, reason: str) -> dict[str, Any]:
+        """Persist approval/preparation before a created Run becomes startable."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if run["state"] not in ("created", "awaiting_plan_approval"):
+                raise RunConflictError(
+                    "only a created or awaiting_plan_approval Process Run can become ready"
+                )
+            entry_node_id = definition["graph"]["entry_node_id"]
+            if run["current_node_id"] != entry_node_id:
+                raise RunConflictError("Process Run is not positioned at its graph entry")
+            if entry_node_id not in run["contracts"]["approved_plan"]["approved_node_ids"]:
+                raise AuthorityDeniedError("graph entry is outside the approved plan")
+            run["state"] = "ready"
+            return self._append_event_locked(
+                run,
+                "run_ready",
+                {"entry_node_id": entry_node_id, "reason": reason},
+                node_id=entry_node_id,
+            )
+
     def start_run(self, run_id: str, *, reason: str) -> dict[str, Any]:
         """Start a ready Run at its declared graph entry without inventing a route."""
 
@@ -635,6 +696,7 @@ class GovernedProcessRuntime:
         if effect_type is None:
             raise AuthorityDeniedError("an authorized action requires an explicit effect_type")
         run = self.load_run(run_id)
+        self._require_mutable_run(run, f"authorize action {action}")
         authority = run["contracts"]["authority"]
         expires_at = authority.get("expires_at")
         if expires_at and _parse_time(expires_at) < _parse_time(self._now()):
@@ -945,14 +1007,82 @@ class GovernedProcessRuntime:
         }
 
     # ---------------------------------------------------------- artifacts
-    def _known_source_artifact_ids(self, run_id: str) -> set[str]:
-        run = self.load_run(run_id)
-        known = set(run["artifact_ids"])
-        for record in self.load_records(run_id):
+    def _latest_artifact_record_details(
+        self,
+        run_id: str,
+        artifact_id: str,
+    ) -> dict[str, Any]:
+        for record in reversed(self.load_records(run_id)):
             event = record.get("event") or {}
-            if event.get("event_type") == "child_return_received":
-                known.update((event.get("details") or {}).get("output_artifact_ids") or [])
-        return known
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "artifact_recorded"
+                and details.get("artifact_id") == artifact_id
+            ):
+                return copy.deepcopy(details)
+        raise GovernedRuntimeError(
+            f"Artifact has no committed lineage record: {artifact_id}"
+        )
+
+    @staticmethod
+    def _local_artifact_binding(
+        artifact: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "artifact_id": artifact["artifact_id"],
+            "producing_run_id": artifact["lineage"]["run_id"],
+            "definition_ref": copy.deepcopy(artifact["lineage"]["definition_ref"]),
+            "identity_digest": artifact["identity"]["digest"],
+            "role": artifact["role"],
+        }
+
+    def _returned_child_artifact_bindings(
+        self,
+        parent_run_id: str,
+    ) -> dict[str, dict[str, Any]]:
+        bindings: dict[str, dict[str, Any]] = {}
+        for record in self.load_records(parent_run_id):
+            event = record.get("event") or {}
+            if event.get("event_type") != "child_return_received":
+                continue
+            details = event.get("details") or {}
+            exact_bindings = details.get("output_bindings")
+            if not isinstance(exact_bindings, list):
+                raise GovernedRuntimeError(
+                    "child return lacks exact output identity bindings"
+                )
+            for raw_binding in exact_bindings:
+                if not isinstance(raw_binding, dict):
+                    raise GovernedRuntimeError("invalid child output identity binding")
+                binding = copy.deepcopy(raw_binding)
+                artifact_id = str(binding.get("artifact_id") or "")
+                if not artifact_id:
+                    raise GovernedRuntimeError("child output binding lacks artifact_id")
+                prior = bindings.get(artifact_id)
+                if prior is not None and prior != binding:
+                    raise GovernedRuntimeError(
+                        f"ambiguous child Artifact identity collision: {artifact_id}"
+                    )
+                self._validate_child_output_binding(binding)
+                bindings[artifact_id] = binding
+        return bindings
+
+    def _source_artifact_bindings(
+        self,
+        run_id: str,
+    ) -> dict[str, dict[str, Any]]:
+        run = self.load_run(run_id)
+        bindings: dict[str, dict[str, Any]] = {}
+        for artifact_id in run["artifact_ids"]:
+            artifact = self.load_artifact(run_id, artifact_id)
+            bindings[artifact_id] = self._local_artifact_binding(artifact)
+        for artifact_id, binding in self._returned_child_artifact_bindings(run_id).items():
+            if artifact_id in bindings:
+                raise GovernedRuntimeError(
+                    f"local/child Artifact identity collision: {artifact_id}"
+                )
+            bindings[artifact_id] = binding
+        return bindings
 
     def record_artifact(
         self,
@@ -974,16 +1104,23 @@ class GovernedProcessRuntime:
         )
         with _locked():
             run = self.load_run(run_id)
+            self._require_mutable_run(run, "record or replace an Artifact")
             if artifact_copy["lineage"]["definition_ref"] != run["definition_ref"]:
                 raise GovernedRuntimeError("Artifact lineage must bind the Run definition")
-            unknown_sources = sorted(
-                set(artifact_copy["lineage"]["source_artifact_ids"])
-                - self._known_source_artifact_ids(run_id)
-            )
+            returned_bindings = self._returned_child_artifact_bindings(run_id)
+            if artifact_copy["artifact_id"] in returned_bindings:
+                raise GovernedRuntimeError(
+                    "local Artifact ID collides with an identity-bound child return: "
+                    f"{artifact_copy['artifact_id']}"
+                )
+            source_bindings = self._source_artifact_bindings(run_id)
+            source_ids = list(artifact_copy["lineage"]["source_artifact_ids"])
+            unknown_sources = sorted(set(source_ids) - set(source_bindings))
             if unknown_sources:
                 raise GovernedRuntimeError(
                     f"Artifact lineage references unknown source(s): {', '.join(unknown_sources)}"
                 )
+            exact_source_bindings = [source_bindings[source_id] for source_id in source_ids]
             path = self._artifact_path(run_id, artifact_copy["artifact_id"])
             prior = _read_json(path) if path.exists() else None
             prior_digest = ((prior or {}).get("identity") or {}).get("digest")
@@ -1003,6 +1140,7 @@ class GovernedProcessRuntime:
                     "action": action,
                     "selectors": list(selectors),
                     "grant_ids": grant_ids,
+                    "source_artifact_identities": exact_source_bindings,
                 },
                 node_id=artifact_copy["lineage"]["producing_node_id"],
                 artifact_ids=[artifact_copy["artifact_id"]],
@@ -1059,6 +1197,112 @@ class GovernedProcessRuntime:
             satisfied_conditions=satisfied_conditions,
         )
 
+    def _assert_evidence_bound_to_subject(
+        self,
+        run_id: str,
+        evidence_artifact: Mapping[str, Any],
+        subject: Mapping[str, Any],
+    ) -> None:
+        subject_id = subject["artifact_id"]
+        if subject_id not in evidence_artifact["lineage"]["source_artifact_ids"]:
+            raise FinalReviewRequired(
+                "final review evidence has no lineage to the reviewed result"
+            )
+        details = self._latest_artifact_record_details(
+            run_id, evidence_artifact["artifact_id"]
+        )
+        exact_sources = details.get("source_artifact_identities")
+        if not isinstance(exact_sources, list):
+            raise FinalReviewRequired(
+                "final review evidence lacks an exact source identity binding"
+            )
+        expected = {
+            "artifact_id": subject_id,
+            "producing_run_id": run_id,
+            "definition_ref": subject["lineage"]["definition_ref"],
+            "identity_digest": subject["identity"]["digest"],
+            "role": subject["role"],
+        }
+        if expected not in exact_sources:
+            raise FinalReviewRequired(
+                "final review evidence is not bound to the current result identity"
+            )
+
+    def _latest_final_review_record(
+        self,
+        run_id: str,
+        artifact_id: str,
+        evidence_id: str,
+    ) -> dict[str, Any] | None:
+        for record in reversed(self.load_records(run_id)):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "final_review_completed"
+                and details.get("artifact_id") == artifact_id
+                and details.get("evidence_id") == evidence_id
+            ):
+                return copy.deepcopy(record)
+        return None
+
+    def _current_passing_review(
+        self,
+        run_id: str,
+        artifact_id: str,
+        evidence_id: str,
+    ) -> dict[str, Any]:
+        run = self.load_run(run_id)
+        requirements = {
+            requirement["evidence_id"]: requirement
+            for requirement in run["contracts"]["evidence"]["requirements"]
+        }
+        requirement = requirements.get(evidence_id)
+        if requirement is None:
+            raise FinalReviewRequired(
+                f"required final review is undeclared: {artifact_id}/{evidence_id}"
+            )
+        record = self._latest_final_review_record(run_id, artifact_id, evidence_id)
+        if record is None:
+            raise FinalReviewRequired(
+                f"required final review missing: {artifact_id}/{evidence_id}"
+            )
+        details = record["event"]["details"]
+        subject = self.load_artifact(run_id, artifact_id)
+        if details.get("subject_digest") != subject["identity"]["digest"]:
+            raise FinalReviewRequired(f"final review is stale for Artifact {artifact_id}")
+        if details.get("outcome") != "PASS":
+            raise FinalReviewRequired(
+                f"final review did not pass: {artifact_id}/{evidence_id}"
+            )
+        if not details.get("independent"):
+            raise FinalReviewRequired(
+                f"final review is not independent: {artifact_id}/{evidence_id}"
+            )
+        try:
+            evidence_artifact = self.load_artifact(
+                run_id, details["evidence_artifact_id"]
+            )
+        except (KeyError, RunNotFoundError) as exc:
+            raise FinalReviewRequired(
+                f"final-review evidence Artifact is missing: {artifact_id}/{evidence_id}"
+            ) from exc
+        if evidence_artifact["identity"]["digest"] != details.get("evidence_digest"):
+            raise FinalReviewRequired(
+                f"final-review evidence is stale: {artifact_id}/{evidence_id}"
+            )
+        self._assert_evidence_bound_to_subject(run_id, evidence_artifact, subject)
+        captured = _parse_time(evidence_artifact["identity"]["captured_at"])
+        fresh_until = _parse_time(evidence_artifact["identity"]["fresh_until"])
+        acceptance_time = _parse_time(self._now())
+        declared_expiry = captured + timedelta(
+            seconds=int(requirement["freshness_seconds"])
+        )
+        if acceptance_time > min(fresh_until, declared_expiry):
+            raise FinalReviewRequired(
+                f"final-review evidence expired: {artifact_id}/{evidence_id}"
+            )
+        return record
+
     def record_final_review(
         self,
         run_id: str,
@@ -1078,6 +1322,9 @@ class GovernedProcessRuntime:
         evidence_artifact = self.load_artifact(run_id, evidence_artifact_id)
         if evidence_artifact["role"] != "evidence":
             raise GovernedRuntimeError("final review evidence must be an evidence Artifact")
+        if evidence_artifact_id == artifact_id:
+            raise FinalReviewRequired("final review evidence must differ from its subject")
+        self._assert_evidence_bound_to_subject(run_id, evidence_artifact, subject)
         requirements = {
             requirement["evidence_id"]: requirement
             for requirement in run["contracts"]["evidence"]["requirements"]
@@ -1226,44 +1473,15 @@ class GovernedProcessRuntime:
                 result_ids.append(artifact_id)
         if not result_ids:
             return False, "no result Artifact is bound to the Run"
-        reviews: dict[tuple[str, str], dict[str, Any]] = {}
-        for record in self.load_records(run_id):
-            event = record.get("event") or {}
-            if event.get("event_type") != "final_review_completed":
-                continue
-            details = event.get("details") or {}
-            reviews[(details.get("artifact_id"), details.get("evidence_id"))] = details
         for artifact_id in result_ids:
             artifact = self.load_artifact(run_id, artifact_id)
-            digest = artifact["identity"]["digest"]
             if _parse_time(artifact["identity"]["fresh_until"]) < _parse_time(self._now()):
                 return False, f"result Artifact identity is stale: {artifact_id}"
-            for evidence_id, requirement in requirements.items():
-                review = reviews.get((artifact_id, evidence_id))
-                if not review:
-                    return False, f"required final review missing: {artifact_id}/{evidence_id}"
-                if review.get("subject_digest") != digest:
-                    return False, f"final review is stale for Artifact {artifact_id}"
-                if review.get("outcome") != "PASS":
-                    return False, f"final review did not pass: {artifact_id}/{evidence_id}"
-                if not review.get("independent"):
-                    return False, f"final review is not independent: {artifact_id}/{evidence_id}"
+            for evidence_id in requirements:
                 try:
-                    evidence_artifact = self.load_artifact(
-                        run_id, review["evidence_artifact_id"]
-                    )
-                except (KeyError, RunNotFoundError):
-                    return False, f"final-review evidence Artifact is missing: {artifact_id}/{evidence_id}"
-                if evidence_artifact["identity"]["digest"] != review.get("evidence_digest"):
-                    return False, f"final-review evidence is stale: {artifact_id}/{evidence_id}"
-                captured = _parse_time(evidence_artifact["identity"]["captured_at"])
-                fresh_until = _parse_time(evidence_artifact["identity"]["fresh_until"])
-                acceptance_time = _parse_time(self._now())
-                declared_expiry = captured + timedelta(
-                    seconds=int(requirement["freshness_seconds"])
-                )
-                if acceptance_time > min(fresh_until, declared_expiry):
-                    return False, f"final-review evidence expired: {artifact_id}/{evidence_id}"
+                    self._current_passing_review(run_id, artifact_id, evidence_id)
+                except GovernedRuntimeError as exc:
+                    return False, str(exc)
         return True, "all required final reviews pass for current Artifact identities"
 
     def _transition_judgment(
@@ -1323,6 +1541,52 @@ class GovernedProcessRuntime:
                 raise GovernedRuntimeError(
                     f"transition evidence identity is stale: {ref.get('artifact_id')!r}"
                 )
+        if directive == "ACCEPT":
+            required_acceptance_ids = {
+                requirement["evidence_id"]
+                for requirement in run["contracts"]["evidence"]["requirements"]
+                if requirement["required"]
+            }
+            result_ids = {
+                artifact_id
+                for artifact_id in run["artifact_ids"]
+                if self.load_artifact(run["run_id"], artifact_id)["role"] == "result"
+            }
+            expected_pairs = {
+                (artifact_id, evidence_id)
+                for artifact_id in result_ids
+                for evidence_id in required_acceptance_ids
+            }
+            supplied_pairs = [
+                (str(ref.get("artifact_id")), str(ref.get("evidence_id")))
+                for ref in evidence_refs
+            ]
+            if len(supplied_pairs) != len(set(supplied_pairs)):
+                raise FinalReviewRequired(
+                    "ACCEPT evidence references must be unique current PASS reviews"
+                )
+            if set(supplied_pairs) != expected_pairs:
+                raise FinalReviewRequired(
+                    "ACCEPT evidence references must exactly cover every required "
+                    "current result review"
+                )
+            refs_by_pair = {
+                pair: ref for pair, ref in zip(supplied_pairs, evidence_refs)
+            }
+            for artifact_id, evidence_id in sorted(expected_pairs):
+                supplied_ref = refs_by_pair[(artifact_id, evidence_id)]
+                review_record = self._current_passing_review(
+                    run["run_id"], artifact_id, evidence_id
+                )
+                if supplied_ref.get("outcome") != "PASS":
+                    raise FinalReviewRequired(
+                        "ACCEPT evidence references must report PASS"
+                    )
+                persisted_refs = review_record["evidence_refs"]
+                if len(persisted_refs) != 1 or supplied_ref != persisted_refs[0]:
+                    raise FinalReviewRequired(
+                        "ACCEPT evidence reference does not match the current persisted PASS review"
+                    )
         nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
         current_node = nodes[run["current_node_id"]]
         if current_node["kind"] == "verification_boundary":
@@ -1594,6 +1858,32 @@ class GovernedProcessRuntime:
                     "resume_node_id": details["resume_node_id"],
                     "revalidate_evidence_ids": [],
                 }
+            if (
+                event.get("event_type") == "action_completed"
+                and action.get("external_effect")
+                and action.get("receipt_artifact_id")
+            ):
+                receipt_id = str(action["receipt_artifact_id"])
+                try:
+                    receipt = self.load_artifact(run_id, receipt_id)
+                except GovernedRuntimeError:
+                    return {
+                        "safe_to_resume": False,
+                        "replay_mutations": False,
+                        "reason": "post-checkpoint external-effect receipt is missing or changed",
+                        "resume_node_id": details["resume_node_id"],
+                        "changed_artifact_ids": [receipt_id],
+                        "revalidate_evidence_ids": [],
+                    }
+                if receipt["identity"]["digest"] != action.get("receipt_identity_digest"):
+                    return {
+                        "safe_to_resume": False,
+                        "replay_mutations": False,
+                        "reason": "post-checkpoint external-effect receipt identity changed",
+                        "resume_node_id": details["resume_node_id"],
+                        "changed_artifact_ids": [receipt_id],
+                        "revalidate_evidence_ids": [],
+                    }
         changed = []
         for artifact_id, digest in details.get("artifact_identities", {}).items():
             try:
@@ -1651,6 +1941,106 @@ class GovernedProcessRuntime:
             return {"decision": decision, "record": record}
 
     # ---------------------------------------------------------- child runs
+    def _child_output_binding(
+        self,
+        child_run_id: str,
+        artifact_id: str,
+    ) -> dict[str, Any]:
+        child = self.load_run(child_run_id)
+        artifact = self.load_artifact(child_run_id, artifact_id)
+        if artifact["role"] != "result":
+            raise GovernedRuntimeError("child return outputs must be result Artifacts")
+        if artifact["lineage"]["definition_ref"] != child["definition_ref"]:
+            raise GovernedRuntimeError(
+                "child output Artifact does not bind the child definition identity"
+            )
+        required_evidence_ids = sorted(
+            requirement["evidence_id"]
+            for requirement in child["contracts"]["evidence"]["requirements"]
+            if requirement["required"]
+        )
+        acceptance_evidence = []
+        for evidence_id in required_evidence_ids:
+            review_record = self._current_passing_review(
+                child_run_id, artifact_id, evidence_id
+            )
+            review = review_record["event"]["details"]
+            acceptance_evidence.append({
+                "evidence_id": evidence_id,
+                "outcome": "PASS",
+                "subject_digest": review["subject_digest"],
+                "evidence_artifact_id": review["evidence_artifact_id"],
+                "evidence_digest": review["evidence_digest"],
+                "review_record_id": review_record["record_id"],
+                "reviewer_id": review["reviewer_id"],
+                "independent": bool(review["independent"]),
+            })
+        acceptance_record = None
+        for record in reversed(self.load_records(child_run_id)):
+            transition = record.get("transition") or {}
+            if transition.get("directive") == "ACCEPT":
+                acceptance_record = record
+                break
+        if acceptance_record is None:
+            raise GovernedRuntimeError(
+                "completed child Run lacks its persisted ACCEPT transition"
+            )
+        accepted_refs = [
+            copy.deepcopy(ref)
+            for ref in acceptance_record["evidence_refs"]
+            if ref.get("artifact_id") == artifact_id
+        ]
+        expected_ref_ids = {(artifact_id, evidence_id) for evidence_id in required_evidence_ids}
+        actual_ref_ids = {
+            (str(ref.get("artifact_id")), str(ref.get("evidence_id")))
+            for ref in accepted_refs
+        }
+        if actual_ref_ids != expected_ref_ids or any(
+            ref.get("outcome") != "PASS" for ref in accepted_refs
+        ):
+            raise GovernedRuntimeError(
+                "child ACCEPT transition does not bind current PASS evidence for its output"
+            )
+        return {
+            "artifact_id": artifact_id,
+            "producing_run_id": child_run_id,
+            "definition_ref": copy.deepcopy(child["definition_ref"]),
+            "identity_digest": artifact["identity"]["digest"],
+            "role": artifact["role"],
+            "acceptance_evidence": acceptance_evidence,
+            "acceptance_transition": {
+                "record_id": acceptance_record["record_id"],
+                "recorded_at": acceptance_record["recorded_at"],
+                "directive": "ACCEPT",
+                "evidence_refs": accepted_refs,
+            },
+        }
+
+    def _validate_child_output_binding(self, binding: Mapping[str, Any]) -> None:
+        required_fields = {
+            "artifact_id",
+            "producing_run_id",
+            "definition_ref",
+            "identity_digest",
+            "role",
+            "acceptance_evidence",
+            "acceptance_transition",
+        }
+        if set(binding) != required_fields:
+            raise GovernedRuntimeError("child output identity binding is incomplete")
+        producing_run_id = str(binding["producing_run_id"])
+        artifact_id = str(binding["artifact_id"])
+        child = self.load_run(producing_run_id)
+        if child["state"] != "completed":
+            raise GovernedRuntimeError(
+                "returned child output no longer belongs to a completed Run"
+            )
+        current = self._child_output_binding(producing_run_id, artifact_id)
+        if current != dict(binding):
+            raise GovernedRuntimeError(
+                f"returned child Artifact identity or acceptance evidence changed: {artifact_id}"
+            )
+
     def invoke_child(
         self,
         parent_run_id: str,
@@ -1730,10 +2120,16 @@ class GovernedProcessRuntime:
         parent_run_id = child["relationships"]["return_to_run_id"]
         if not parent_run_id:
             raise GovernedRuntimeError("child Process Run has no deterministic return target")
-        for artifact_id in output_artifact_ids:
-            artifact = self.load_artifact(child_run_id, artifact_id)
-            if artifact["role"] != "result":
-                raise GovernedRuntimeError("child return outputs must be result Artifacts")
+        if not output_artifact_ids:
+            raise GovernedRuntimeError(
+                "child return requires at least one identity-bound output Artifact"
+            )
+        if len(output_artifact_ids) != len(set(output_artifact_ids)):
+            raise GovernedRuntimeError("child return output Artifact IDs must be unique")
+        output_bindings = [
+            self._child_output_binding(child_run_id, artifact_id)
+            for artifact_id in output_artifact_ids
+        ]
         invocation = None
         for record in reversed(self.load_records(parent_run_id)):
             event = record.get("event") or {}
@@ -1743,6 +2139,10 @@ class GovernedProcessRuntime:
                 break
         if invocation is None:
             raise GovernedRuntimeError("parent has no invocation record for child")
+        if invocation.get("child_definition_ref") != child["definition_ref"]:
+            raise GovernedRuntimeError(
+                "child return does not match the invoked definition identity"
+            )
         parent_return_record = None
         for record in self.load_records(parent_run_id):
             event = record.get("event") or {}
@@ -1763,6 +2163,24 @@ class GovernedProcessRuntime:
             ):
                 child_return_record = record
                 break
+        exact_return = {
+            "child_definition_ref": copy.deepcopy(child["definition_ref"]),
+            "output_artifact_ids": list(output_artifact_ids),
+            "output_bindings": output_bindings,
+        }
+        for existing in (parent_return_record, child_return_record):
+            if existing is None:
+                continue
+            prior = existing["event"]["details"]
+            if (
+                prior.get("child_definition_ref") != exact_return["child_definition_ref"]
+                or prior.get("output_artifact_ids") != exact_return["output_artifact_ids"]
+                or prior.get("output_bindings") != exact_return["output_bindings"]
+            ):
+                raise RunConflictError(
+                    "recovered child return must preserve exact definition, output, "
+                    "and acceptance-evidence bindings"
+                )
         if parent_return_record is not None and child_return_record is not None:
             raise RunConflictError("child Process Run has already returned")
         with _locked():
@@ -1770,6 +2188,22 @@ class GovernedProcessRuntime:
             if child_run_id not in parent["contracts"]["continuation"]["child_run_ids"]:
                 raise GovernedRuntimeError("parent continuation contract does not bind child")
             if parent_return_record is None:
+                if parent["state"] != "pending":
+                    raise RunConflictError(
+                        "parent Process Run must be pending when its child returns"
+                    )
+                local_collisions = sorted(
+                    set(output_artifact_ids) & set(parent["artifact_ids"])
+                )
+                returned_collisions = sorted(
+                    set(output_artifact_ids)
+                    & set(self._returned_child_artifact_bindings(parent_run_id))
+                )
+                collisions = sorted(set(local_collisions + returned_collisions))
+                if collisions:
+                    raise GovernedRuntimeError(
+                        "child return Artifact ID collision: " + ", ".join(collisions)
+                    )
                 parent["current_node_id"] = invocation["return_node_id"]
                 parent["state"] = "running"
                 parent_record = self._append_event_locked(
@@ -1778,20 +2212,13 @@ class GovernedProcessRuntime:
                     {
                         "child_run_id": child_run_id,
                         "return_node_id": invocation["return_node_id"],
-                        "output_artifact_ids": list(output_artifact_ids),
+                        **exact_return,
                         "replay_mutations": False,
                     },
                     node_id=invocation["return_node_id"],
                     artifact_ids=output_artifact_ids,
                 )
             else:
-                prior_outputs = parent_return_record["event"]["details"][
-                    "output_artifact_ids"
-                ]
-                if list(output_artifact_ids) != prior_outputs:
-                    raise RunConflictError(
-                        "recovered child return must preserve exact output bindings"
-                    )
                 parent_record = parent_return_record
             child = self.load_run(child_run_id)
             if child_return_record is None:
@@ -1801,10 +2228,11 @@ class GovernedProcessRuntime:
                     {
                         "parent_run_id": parent_run_id,
                         "return_node_id": invocation["return_node_id"],
-                        "output_artifact_ids": list(output_artifact_ids),
+                        **exact_return,
                     },
                     node_id=child["current_node_id"],
                     artifact_ids=output_artifact_ids,
+                    allow_terminal_metadata=True,
                 )
             else:
                 child_record = child_return_record
@@ -1820,12 +2248,14 @@ __all__ = [
     "FinalReviewRequired",
     "GovernedProcessRuntime",
     "GovernedRuntimeError",
+    "INITIAL_RUN_STATES",
     "INFRASTRUCTURE_OUTCOMES",
     "PROCESS_RUNS_DIR",
     "PROCESS_RUNS_ENV",
     "RecoveryBlockedError",
     "RunConflictError",
     "RunNotFoundError",
+    "TERMINAL_RUN_STATES",
     "correction_policy_defaults",
     "directive_for_failure_class",
 ]

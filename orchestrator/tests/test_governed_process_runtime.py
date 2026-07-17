@@ -51,10 +51,51 @@ def _broaden_contracts(run: dict, *, child_selector: str | None = None) -> None:
 
 def make_definition(definition_id: str = "generic/work") -> dict:
     definition = fixtures.process_definition(definition_id, "Generic governed work")
-    verification = next(
-        node for node in definition["graph"]["nodes"] if node["node_id"] == "verify"
-    )
-    verification["routes"]["PROCEED"] = "act"
+    definition["graph"] = {
+        "schema_version": pc.GRAPH_SCHEMA_VERSION,
+        "graph_id": "governed/verification-entry",
+        "entry_node_id": "verify",
+        "nodes": [
+            {
+                "node_id": "verify",
+                "kind": "verification_boundary",
+                "label": "Inspect independent evidence",
+                "evidence_requirement_ids": ["result_verified"],
+                "routes": {
+                    "PROCEED": "act",
+                    "ACCEPT": "accepted",
+                    "REVISE": "act",
+                    "REPLAN": "verify",
+                    "REDEFINE": "verify",
+                    "ESCALATE": "verify",
+                    "BLOCKED": "blocked",
+                },
+            },
+            {
+                "node_id": "act",
+                "kind": "action",
+                "label": "Perform the approved change",
+                "operation": "apply_approved_change",
+                "next_node_id": "verify",
+                "authority_grant_ids": ["mutation"],
+                "artifact_access": [OUTPUT],
+                "evidence_requirement_ids": ["result_verified"],
+                "external_effect": False,
+            },
+            {
+                "node_id": "accepted",
+                "kind": "terminal_state",
+                "label": "Accepted",
+                "outcome": "accepted",
+            },
+            {
+                "node_id": "blocked",
+                "kind": "terminal_state",
+                "label": "Blocked",
+                "outcome": "blocked",
+            },
+        ],
+    }
     return definition
 
 
@@ -62,7 +103,7 @@ def make_run(
     run_id: str,
     definition: dict,
     *,
-    state: str = "running",
+    state: str = "ready",
     current_node_id: str = "verify",
     child_selector: str | None = None,
 ) -> dict:
@@ -77,6 +118,9 @@ def make_run(
     run["current_node_id"] = current_node_id
     run["artifact_ids"] = []
     run["contracts"]["continuation"]["resume_node_id"] = current_node_id
+    run["contracts"]["approved_plan"]["approved_node_ids"] = [
+        node["node_id"] for node in definition["graph"]["nodes"]
+    ]
     _broaden_contracts(run, child_selector=child_selector)
     return run
 
@@ -100,6 +144,7 @@ class RuntimeCase(unittest.TestCase):
         definition = make_definition()
         run = make_run(run_id, definition)
         self.runtime.create_run(definition, run)
+        self.runtime.start_run(run_id, reason="approved test plan is ready")
         return definition, run
 
     def result_and_evidence(
@@ -170,7 +215,7 @@ class TestPersistentKernel(RuntimeCase):
     def test_ready_run_starts_only_at_approved_graph_entry(self):
         definition = make_definition()
         run = make_run(
-            "run-ready", definition, state="ready", current_node_id="approve"
+            "run-ready", definition, state="ready", current_node_id="verify"
         )
         self.runtime.create_run(definition, run)
         started = self.runtime.start_run("run-ready", reason="approved plan is ready")
@@ -178,6 +223,45 @@ class TestPersistentKernel(RuntimeCase):
         self.assertEqual(self.runtime.load_run("run-ready")["state"], "running")
         with self.assertRaisesRegex(gpr.RunConflictError, "only a ready"):
             self.runtime.start_run("run-ready", reason="duplicate start")
+
+    def test_creation_rejects_advanced_or_inconsistent_lifecycle_state(self):
+        definition = make_definition()
+        for index, state in enumerate(("running", "pending", "completed", "blocked")):
+            with self.subTest(state=state):
+                run = make_run(f"run-invalid-{index}", definition, state=state)
+                with self.assertRaisesRegex(
+                    gpr.GovernedRuntimeError, "lifecycle advancement requires persisted events"
+                ):
+                    self.runtime.create_run(definition, run)
+
+        wrong_node = make_run("run-wrong-node", definition, current_node_id="act")
+        with self.assertRaisesRegex(gpr.GovernedRuntimeError, "graph entry"):
+            self.runtime.create_run(definition, wrong_node)
+        sequenced = make_run("run-sequenced", definition)
+        sequenced["last_sequence"] = 9
+        with self.assertRaisesRegex(gpr.GovernedRuntimeError, "sequence zero"):
+            self.runtime.create_run(definition, sequenced)
+
+    def test_created_run_becomes_ready_and_running_only_through_events(self):
+        definition = make_definition()
+        run = make_run("run-lifecycle", definition, state="created")
+        self.runtime.create_run(definition, run)
+        ready = self.runtime.mark_run_ready(
+            "run-lifecycle", reason="approved plan and bindings are complete"
+        )
+        started = self.runtime.start_run(
+            "run-lifecycle", reason="start approved work"
+        )
+        self.assertEqual(ready["event"]["event_type"], "run_ready")
+        self.assertEqual(started["event"]["event_type"], "run_started")
+        self.assertEqual(self.runtime.load_run("run-lifecycle")["state"], "running")
+        self.assertEqual(
+            [
+                record["event"]["event_type"]
+                for record in self.runtime.load_records("run-lifecycle")
+            ],
+            ["run_created", "run_ready", "run_started"],
+        )
 
     def test_persists_exactly_the_four_contract_families(self):
         self.create()
@@ -390,6 +474,7 @@ class TestTransitionRouting(RuntimeCase):
                 definition = make_definition()
                 run_id = f"run-{directive.lower()}"
                 runtime.create_run(definition, make_run(run_id, definition))
+                runtime.start_run(run_id, reason="approved test plan is ready")
                 result = runtime.record_inline_artifact(
                     run_id, "result", "candidate", role="result", node_id="act",
                     action="produce_artifact", selector=OUTPUT,
@@ -504,6 +589,7 @@ class TestAuthorityLineageAndReview(RuntimeCase):
         run = make_run("run-expired", definition)
         run["contracts"]["authority"]["expires_at"] = "2026-07-16T17:00:00-07:00"
         self.runtime.create_run(definition, run)
+        self.runtime.start_run("run-expired", reason="approved test plan is ready")
         with self.assertRaisesRegex(gpr.AuthorityDeniedError, "expired"):
             self.runtime.authorize_action(
                 "run-expired", "mutate", [OUTPUT], satisfied_conditions=CONDITION,
@@ -565,6 +651,90 @@ class TestAuthorityLineageAndReview(RuntimeCase):
         )
         self.assertEqual(accepted["transition"]["to_state"], "completed")
         self.assertEqual(new_evidence["lineage"]["source_artifact_ids"], ["result"])
+
+    def test_final_review_requires_exact_subject_lineage_and_digest(self):
+        self.create()
+        result = self.runtime.record_inline_artifact(
+            "run-main", "result", "candidate-v1", role="result", node_id="act",
+            action="produce_artifact", selector=OUTPUT,
+            satisfied_conditions=CONDITION,
+        )
+        unrelated = self.runtime.record_inline_artifact(
+            "run-main", "unrelated-evidence", "looks persuasive", role="evidence",
+            node_id="verify", action="record_evidence", selector=OUTPUT,
+            satisfied_conditions=CONDITION,
+        )
+        with self.assertRaisesRegex(gpr.FinalReviewRequired, "no lineage"):
+            self.runtime.record_final_review(
+                "run-main", artifact_id="result", evidence_id="result_verified",
+                evidence_artifact_id="unrelated-evidence", outcome="PASS",
+                reviewer_id="independent", independent=True,
+                satisfied_conditions=CONDITION,
+            )
+
+        evidence = self.runtime.record_inline_artifact(
+            "run-main", "evidence", "proof of v1", role="evidence", node_id="verify",
+            action="record_evidence", selector=OUTPUT,
+            source_artifact_ids=["result"], satisfied_conditions=CONDITION,
+        )
+        self.runtime.record_inline_artifact(
+            "run-main", "result", "candidate-v2", role="result", node_id="act",
+            action="produce_artifact", selector=OUTPUT,
+            satisfied_conditions=CONDITION,
+        )
+        with self.assertRaisesRegex(gpr.FinalReviewRequired, "current result identity"):
+            self.runtime.record_final_review(
+                "run-main", artifact_id="result", evidence_id="result_verified",
+                evidence_artifact_id=evidence["artifact"]["artifact_id"], outcome="PASS",
+                reviewer_id="independent", independent=True,
+                satisfied_conditions=CONDITION,
+            )
+        self.assertEqual(result["artifact"]["artifact_id"], "result")
+
+    def test_accept_ref_must_match_the_current_persisted_pass_review(self):
+        self.create()
+        result, evidence = self.result_and_evidence("run-main")
+        self.pass_review("run-main", result, evidence)
+        contradictory = evidence_ref(result, "FAIL")
+        with self.assertRaisesRegex(gpr.FinalReviewRequired, "must report PASS"):
+            self.runtime.apply_transition(
+                "run-main", "ACCEPT", target_node_id="accepted",
+                reason="contradictory transition evidence",
+                evaluation_boundary="independent_quality_review",
+                evidence_refs=[contradictory],
+            )
+
+    def test_terminal_run_rejects_actions_attempts_events_and_artifact_mutation(self):
+        self.create()
+        result, evidence = self.result_and_evidence("run-main")
+        self.pass_review("run-main", result, evidence)
+        self.runtime.apply_transition(
+            "run-main", "ACCEPT", target_node_id="accepted", reason="accepted",
+            evaluation_boundary="independent_quality_review",
+            evidence_refs=[evidence_ref(result)],
+        )
+        accepted_digest = self.runtime.load_artifact(
+            "run-main", "result"
+        )["identity"]["digest"]
+        with self.assertRaisesRegex(gpr.RunConflictError, "terminal Process Run"):
+            self.runtime.authorize_action(
+                "run-main", "mutate", [OUTPUT], satisfied_conditions=CONDITION,
+                effect_type="local_reversible", scope_kind="write",
+            )
+        with self.assertRaisesRegex(gpr.RunConflictError, "terminal Process Run"):
+            self.runtime.begin_attempt("run-main", "late-attempt")
+        with self.assertRaisesRegex(gpr.RunConflictError, "terminal Process Run"):
+            self.runtime.record_event("run-main", "late_event", {})
+        with self.assertRaisesRegex(gpr.RunConflictError, "terminal Process Run"):
+            self.runtime.record_inline_artifact(
+                "run-main", "result", "replacement", role="result", node_id="act",
+                action="produce_artifact", selector=OUTPUT,
+                satisfied_conditions=CONDITION,
+            )
+        self.assertEqual(
+            self.runtime.load_artifact("run-main", "result")["identity"]["digest"],
+            accepted_digest,
+        )
 
     def test_artifact_drift_from_committed_lineage_is_rejected(self):
         self.create()
@@ -647,11 +817,77 @@ class TestRecoveryAndInvocation(RuntimeCase):
         self.assertFalse(decision["safe_to_resume"])
         self.assertIn("receipt identity changed", decision["reason"])
 
+    def test_post_checkpoint_receipt_is_checked_against_effect_digest(self):
+        self.create()
+        self.runtime.create_checkpoint(
+            "run-main", "before-effect", segment_id="segment-a",
+            resume_node_id="verify",
+        )
+        receipt = self.runtime.record_inline_artifact(
+            "run-main", "late-receipt", "receipt-v1", role="external_effect_receipt",
+            node_id="act", action="produce_artifact", selector=OUTPUT,
+            satisfied_conditions=CONDITION,
+        )
+        self.runtime.record_action(
+            "run-main", action="external_write", selectors=[EXTERNAL],
+            satisfied_conditions=CONDITION, effect_type="external_irreversible",
+            external_effect=True,
+            receipt_artifact_id=receipt["artifact"]["artifact_id"],
+        )
+        self.runtime.record_inline_artifact(
+            "run-main", "late-receipt", "receipt-v2", role="external_effect_receipt",
+            node_id="act", action="produce_artifact", selector=OUTPUT,
+            satisfied_conditions=CONDITION,
+        )
+        decision = self.runtime.recovery_decision("run-main")
+        self.assertFalse(decision["safe_to_resume"])
+        self.assertFalse(decision["replay_mutations"])
+        self.assertIn("post-checkpoint", decision["reason"])
+        self.assertEqual(decision["changed_artifact_ids"], ["late-receipt"])
+
     def test_child_invocation_returns_to_declared_node_once(self):
         child_definition = make_definition("generic/child")
         child_selector = "definition:generic/child@1.0.0"
         parent_definition = fixtures.process_definition("generic/parent", "Generic parent")
-        parent_definition["graph"] = fixtures.complete_grammar_graph()
+        parent_definition["graph"] = {
+            "schema_version": pc.GRAPH_SCHEMA_VERSION,
+            "graph_id": "governed/parent-call",
+            "entry_node_id": "call",
+            "nodes": [
+                {
+                    "node_id": "call",
+                    "kind": "process_call",
+                    "label": "Invoke governed child",
+                    "definition_ref": {
+                        "definition_id": child_definition["definition_id"],
+                        "version": child_definition["version"],
+                        "digest": child_definition["digest"],
+                    },
+                    "input_bindings": {},
+                    "return_node_id": "return",
+                    "on_error_node_id": "blocked",
+                },
+                {
+                    "node_id": "return",
+                    "kind": "process_return",
+                    "label": "Receive governed child",
+                    "output_bindings": {"result": "child.result"},
+                    "next_node_id": "accepted",
+                },
+                {
+                    "node_id": "accepted",
+                    "kind": "terminal_state",
+                    "label": "Accepted",
+                    "outcome": "accepted",
+                },
+                {
+                    "node_id": "blocked",
+                    "kind": "terminal_state",
+                    "label": "Blocked",
+                    "outcome": "blocked",
+                },
+            ],
+        }
         parent_run = make_run(
             "run-parent", parent_definition, current_node_id="call",
             child_selector=child_selector,
@@ -660,13 +896,17 @@ class TestRecoveryAndInvocation(RuntimeCase):
             node["node_id"] for node in parent_definition["graph"]["nodes"]
         ]
         parent_run["contracts"]["continuation"]["resume_node_id"] = "call"
+        parent_run["contracts"]["bounded_judgment"][0]["node_id"] = "return"
+        parent_run["contracts"]["bounded_judgment"][0]["return_node_id"] = "return"
         self.runtime.create_run(parent_definition, parent_run)
+        self.runtime.start_run("run-parent", reason="approved parent plan is ready")
 
         child_run = make_run("run-child", child_definition)
         invoked = self.runtime.invoke_child(
             "run-parent", child_definition, child_run, call_node_id="call",
             satisfied_conditions=CONDITION,
         )
+        self.runtime.start_run("run-child", reason="approved child plan is ready")
         self.assertEqual(invoked["child_run"]["relationships"]["parent_run_id"], "run-parent")
         self.assertEqual(
             invoked["child_run"]["contracts"]["continuation"]["parent_run_id"],
@@ -692,6 +932,14 @@ class TestRecoveryAndInvocation(RuntimeCase):
             evaluation_boundary="independent_quality_review",
             evidence_refs=[evidence_ref(result)],
         )
+        with self.assertRaisesRegex(gpr.RunConflictError, "terminal Process Run"):
+            self.runtime.record_inline_artifact(
+                "run-child", "child-result", "replacement child output", role="result",
+                node_id="act", action="produce_artifact", selector=OUTPUT,
+                satisfied_conditions=CONDITION,
+            )
+        with self.assertRaisesRegex(gpr.GovernedRuntimeError, "at least one"):
+            self.runtime.return_child("run-child", output_artifact_ids=[])
         returned = self.runtime.return_child(
             "run-child", output_artifact_ids=["child-result"]
         )
@@ -703,6 +951,23 @@ class TestRecoveryAndInvocation(RuntimeCase):
             returned["parent_record"]["event"]["details"]["output_artifact_ids"],
             ["child-result"],
         )
+        binding = returned["parent_record"]["event"]["details"]["output_bindings"][0]
+        self.assertEqual(binding["artifact_id"], "child-result")
+        self.assertEqual(binding["producing_run_id"], "run-child")
+        self.assertEqual(binding["definition_ref"], child_run["definition_ref"])
+        self.assertEqual(
+            binding["identity_digest"], result["artifact"]["identity"]["digest"]
+        )
+        self.assertEqual(
+            [item["evidence_id"] for item in binding["acceptance_evidence"]],
+            ["result_verified"],
+        )
+        self.assertEqual(binding["acceptance_evidence"][0]["outcome"], "PASS")
+        self.assertEqual(binding["acceptance_transition"]["directive"], "ACCEPT")
+        self.assertEqual(
+            binding["acceptance_transition"]["evidence_refs"],
+            [evidence_ref(result)],
+        )
         derived = self.runtime.record_inline_artifact(
             "run-parent", "parent-result", "derived parent output", role="result",
             node_id="return", action="produce_artifact", selector=OUTPUT,
@@ -712,8 +977,25 @@ class TestRecoveryAndInvocation(RuntimeCase):
             derived["artifact"]["lineage"]["source_artifact_ids"],
             ["child-result"],
         )
+        with self.assertRaisesRegex(gpr.GovernedRuntimeError, "collides"):
+            self.runtime.record_inline_artifact(
+                "run-parent", "child-result", "colliding local output", role="result",
+                node_id="return", action="produce_artifact", selector=OUTPUT,
+                satisfied_conditions=CONDITION,
+            )
         with self.assertRaisesRegex(gpr.RunConflictError, "already returned"):
             self.runtime.return_child("run-child", output_artifact_ids=["child-result"])
+
+        child_path = self.runtime._artifact_path("run-child", "child-result")
+        tampered = json.loads(child_path.read_text(encoding="utf-8"))
+        tampered["identity"]["digest"] = "sha256:" + "d" * 64
+        child_path.write_text(json.dumps(tampered), encoding="utf-8")
+        with self.assertRaisesRegex(gpr.GovernedRuntimeError, "latest committed record"):
+            self.runtime.record_inline_artifact(
+                "run-parent", "parent-result-2", "drifted derivation", role="result",
+                node_id="return", action="produce_artifact", selector=OUTPUT,
+                source_artifact_ids=["child-result"], satisfied_conditions=CONDITION,
+            )
 
 
 if __name__ == "__main__":

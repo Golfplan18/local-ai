@@ -265,6 +265,7 @@ class TestGear3QualityGate(unittest.TestCase):
             run["contracts"]["correction_loop"]["max_attempts"] = 12
             run["contracts"]["correction_loop"]["repeated_defect_limit"] = 12
             runtime.create_run(definition, run)
+            runtime.start_run("run-gear3", reason="approved Gear 3 plan is ready")
             ctx = _ctx()
             _bind_run(ctx, runtime, "run-gear3")
             h = _Harness(
@@ -295,6 +296,7 @@ class TestGear3QualityGate(unittest.TestCase):
             run = make_run("run-gear3-pass", definition)
             run["contracts"]["correction_loop"]["max_attempts"] = 12
             runtime.create_run(definition, run)
+            runtime.start_run("run-gear3-pass", reason="approved Gear 3 plan is ready")
             ctx = _ctx()
             _bind_run(ctx, runtime, "run-gear3-pass")
             with _patched(_Harness(["VERDICT: PASS"])):
@@ -310,6 +312,7 @@ class TestGear3QualityGate(unittest.TestCase):
             definition = make_definition()
             run = make_run("run-gear3-replan", definition)
             runtime.create_run(definition, run)
+            runtime.start_run("run-gear3-replan", reason="approved Gear 3 plan is ready")
             ctx = _ctx()
             _bind_run(ctx, runtime, "run-gear3-replan", evaluator=lambda observation: {
                 "failure_class": "plan",
@@ -344,6 +347,7 @@ class TestGear3QualityGate(unittest.TestCase):
             verification["routes"]["REVISE"] = "verify"
             run = make_run("run-gear3-reinspect", definition)
             runtime.create_run(definition, run)
+            runtime.start_run("run-gear3-reinspect", reason="approved Gear 3 plan is ready")
             ctx = _ctx()
 
             def evaluate(observation):
