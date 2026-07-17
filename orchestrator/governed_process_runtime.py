@@ -6,9 +6,10 @@ contract, records observations, and applies an accepted transition directive.
 It never calls a model, diagnoses a failure class, selects a cognitive route, or
 contains a domain-specific controller.
 
-Segment, attempt, checkpoint, infrastructure-retry, invocation, and recovery
-state are event records.  They are not additional persisted object families.
-The current Process Run is a materialized fold over those append-only records.
+Segment, attempt, controlled-probe contract/stop/attempt, checkpoint,
+infrastructure-retry, invocation, and recovery state are event records.  They
+are not additional persisted object families.  The current Process Run is a
+materialized fold over those append-only records.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 import uuid
@@ -91,6 +93,11 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "artifact_recorded",
     "final_review_completed",
     "checkpoint_created",
+    "controlled_probe_contract_persisted",
+    "controlled_probe_stop_state_recorded",
+    "controlled_probe_attempt_started",
+    "controlled_probe_attempt_completed",
+    "controlled_probe_withheld",
     "process_invoked",
     "child_return_received",
     "process_returned",
@@ -102,6 +109,7 @@ _RESERVED_RUNTIME_EVENT_PREFIXES = (
     "attempt_",
     "checkpoint_",
     "child_",
+    "controlled_probe_",
     "infrastructure_",
     "invocation_",
     "lifecycle_",
@@ -178,6 +186,13 @@ def _digest_text(value: str) -> str:
 def _digest_json(value: Any) -> str:
     body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return _digest_text(body)
+
+
+def _exact_digest(value: Any, label: str) -> str:
+    result = str(value or "")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", result):
+        raise GovernedRuntimeError(f"{label} must be an exact sha256 digest")
+    return result
 
 
 def _is_reserved_runtime_event_type(event_type: str) -> bool:
@@ -906,6 +921,591 @@ class GovernedProcessRuntime:
             },
             artifact_ids=[receipt_artifact_id] if receipt_artifact_id else [],
         )
+
+    # ---------------------------------------------------- controlled probes
+    @staticmethod
+    def _controlled_probe_contract_from_records(
+        records: Sequence[Mapping[str, Any]],
+        probe_id: str,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        matches = []
+        for record in records:
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "controlled_probe_contract_persisted"
+                and details.get("probe_id") == probe_id
+            ):
+                matches.append((record, details))
+        if not matches:
+            raise RunNotFoundError(f"controlled probe contract not found: {probe_id}")
+        if len(matches) != 1:
+            raise GovernedRuntimeError(
+                f"controlled probe contract identity is ambiguous: {probe_id}"
+            )
+        record, details = matches[0]
+        contract = details.get("contract")
+        if not isinstance(contract, dict):
+            raise GovernedRuntimeError("controlled probe contract record is malformed")
+        expected = _digest_json(contract)
+        if details.get("contract_digest") != expected:
+            raise GovernedRuntimeError("controlled probe contract digest does not match")
+        return copy.deepcopy(contract), copy.deepcopy(record)
+
+    @staticmethod
+    def _latest_controlled_probe_stop_states(
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        states: dict[str, dict[str, Any]] = {}
+        for record in records:
+            event = record.get("event") or {}
+            if event.get("event_type") != "controlled_probe_stop_state_recorded":
+                continue
+            details = copy.deepcopy(event.get("details") or {})
+            details["record_id"] = record.get("record_id")
+            details["sequence"] = record.get("sequence")
+            states[str(details.get("condition_id") or "")] = details
+        states.pop("", None)
+        return states
+
+    def record_controlled_probe_stop_state(
+        self,
+        run_id: str,
+        condition_id: str,
+        *,
+        active: bool,
+        state_identity_digest: str,
+        source: str,
+        node_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Persist an exact stop-state observation for later probe enforcement."""
+
+        condition_id = str(condition_id or "").strip()
+        source = str(source or "").strip()
+        if not condition_id:
+            raise GovernedRuntimeError("controlled probe stop condition_id is required")
+        if not isinstance(active, bool):
+            raise GovernedRuntimeError("controlled probe stop state active must be boolean")
+        if not source:
+            raise GovernedRuntimeError("controlled probe stop state source is required")
+        state_identity_digest = _exact_digest(
+            state_identity_digest, "controlled probe stop state identity"
+        )
+        return self._record_runtime_event(
+            run_id,
+            "controlled_probe_stop_state_recorded",
+            {
+                "condition_id": condition_id,
+                "active": active,
+                "state_identity_digest": state_identity_digest,
+                "source": source,
+            },
+            node_id=node_id,
+        )
+
+    def persist_controlled_probe_contract(
+        self,
+        run_id: str,
+        contract: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Persist one immutable, identity-bound Controlled Probe Contract."""
+
+        if not isinstance(contract, Mapping):
+            raise GovernedRuntimeError("controlled probe contract must be an object")
+        supplied = copy.deepcopy(dict(contract))
+        _require_json(supplied, "controlled probe contract")
+        required = {
+            "contract_version",
+            "run_id",
+            "definition_ref",
+            "approved_plan_ref",
+            "probe_id",
+            "assumption_id",
+            "capability_identity",
+            "action_identity",
+            "selector",
+            "node_id",
+            "segment_id",
+            "authority_conditions",
+            "matched_grant_ids",
+            "evidence_selector",
+            "evidence_grant_ids",
+            "evidence_requirement",
+            "success_condition",
+            "failure_condition",
+            "ambiguous_route",
+            "max_attempts",
+            "stop_condition_ids",
+            "mutation_safety",
+        }
+        missing = sorted(required - set(supplied))
+        unknown = sorted(set(supplied) - required)
+        if missing or unknown:
+            problem = []
+            if missing:
+                problem.append(f"missing: {', '.join(missing)}")
+            if unknown:
+                problem.append(f"unknown: {', '.join(unknown)}")
+            raise GovernedRuntimeError(
+                "invalid controlled probe contract fields (" + "; ".join(problem) + ")"
+            )
+
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "persist a controlled probe contract")
+            records = self.load_records(run_id)
+            probe_id = str(supplied.get("probe_id") or "").strip()
+            if not probe_id:
+                raise GovernedRuntimeError("controlled probe contract probe_id is required")
+            for record in records:
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    event.get("event_type") == "controlled_probe_contract_persisted"
+                    and details.get("probe_id") == probe_id
+                ):
+                    raise RunConflictError(
+                        f"controlled probe contract is immutable and already exists: {probe_id}"
+                    )
+
+            if supplied["run_id"] != run_id:
+                raise GovernedRuntimeError("controlled probe contract run identity does not match")
+            if supplied["definition_ref"] != run["definition_ref"]:
+                raise GovernedRuntimeError(
+                    "controlled probe contract definition identity does not match"
+                )
+            plan = run["contracts"]["approved_plan"]
+            expected_plan_ref = {
+                "plan_id": plan["plan_id"],
+                "version": plan["version"],
+                "digest": plan["digest"],
+            }
+            if supplied["approved_plan_ref"] != expected_plan_ref:
+                raise GovernedRuntimeError(
+                    "controlled probe contract approved-plan identity does not match"
+                )
+            if supplied["contract_version"] != "1.0":
+                raise GovernedRuntimeError("unsupported controlled probe contract version")
+            maximum = supplied["max_attempts"]
+            if not isinstance(maximum, int) or isinstance(maximum, bool) or maximum < 1:
+                raise GovernedRuntimeError(
+                    "controlled probe max_attempts must be an integer >= 1"
+                )
+            for field in ("probe_id", "assumption_id", "selector", "node_id", "segment_id"):
+                if not isinstance(supplied[field], str) or not supplied[field].strip():
+                    raise GovernedRuntimeError(f"controlled probe {field} is required")
+            for field in (
+                "evidence_selector",
+                "evidence_requirement",
+                "success_condition",
+                "failure_condition",
+                "ambiguous_route",
+            ):
+                if not isinstance(supplied[field], str) or not supplied[field].strip():
+                    raise GovernedRuntimeError(f"controlled probe {field} is required")
+            for field in ("authority_conditions", "matched_grant_ids", "evidence_grant_ids", "stop_condition_ids"):
+                value = supplied[field]
+                if not isinstance(value, list) or any(
+                    not isinstance(item, str) or not item for item in value
+                ):
+                    raise GovernedRuntimeError(
+                        f"controlled probe {field} must be a string list"
+                    )
+                if field != "authority_conditions" and not value:
+                    raise GovernedRuntimeError(
+                        f"controlled probe {field} must contain at least one identity"
+                    )
+                if len(set(value)) != len(value):
+                    raise GovernedRuntimeError(
+                        f"controlled probe {field} contains duplicate identities"
+                    )
+            capability_identity = supplied["capability_identity"]
+            action_identity = supplied["action_identity"]
+            if not isinstance(capability_identity, dict) or not isinstance(action_identity, dict):
+                raise GovernedRuntimeError(
+                    "controlled probe capability and action identities must be objects"
+                )
+            capability_fields = {
+                "capability_id", "category", "version", "identity_digest", "locator"
+            }
+            action_fields = {"action", "effect_class", "effect_type"}
+            if set(capability_identity) != capability_fields:
+                raise GovernedRuntimeError(
+                    "controlled probe capability identity fields are incomplete or ambiguous"
+                )
+            if set(action_identity) != action_fields:
+                raise GovernedRuntimeError(
+                    "controlled probe action identity fields are incomplete or ambiguous"
+                )
+            for field in ("capability_id", "category", "version", "locator"):
+                if not isinstance(capability_identity[field], str) or not capability_identity[field]:
+                    raise GovernedRuntimeError(
+                        f"controlled probe capability {field} is required"
+                    )
+            for field in ("action", "effect_type"):
+                if not isinstance(action_identity[field], str) or not action_identity[field]:
+                    raise GovernedRuntimeError(
+                        f"controlled probe action {field} is required"
+                    )
+            _exact_digest(
+                capability_identity.get("identity_digest"),
+                "controlled probe capability identity",
+            )
+            effect_class = action_identity.get("effect_class")
+            if effect_class not in ("inspection", "mutation"):
+                raise GovernedRuntimeError(
+                    "controlled probe action effect_class must be inspection or mutation"
+                )
+            definition = self.load_definition(run_id)
+            node_ids = {node["node_id"] for node in definition["graph"]["nodes"]}
+            if supplied["node_id"] not in node_ids:
+                raise GovernedRuntimeError(
+                    "controlled probe node identity is not in the Process Definition"
+                )
+            if supplied["node_id"] not in plan["approved_node_ids"]:
+                raise AuthorityDeniedError(
+                    "controlled probe node identity is outside the approved plan"
+                )
+            scope_kind = "external" if effect_class == "mutation" else "read"
+            action_grants = self.authorize_action(
+                run_id,
+                action_identity["action"],
+                [supplied["selector"]],
+                satisfied_conditions=supplied["authority_conditions"],
+                effect_type=action_identity["effect_type"],
+                scope_kind=scope_kind,
+            )
+            if action_grants != sorted(supplied["matched_grant_ids"]):
+                raise AuthorityDeniedError(
+                    "controlled probe matched grant identities do not match current authority"
+                )
+            evidence_grants = self.authorize_action(
+                run_id,
+                "record_evidence",
+                [supplied["evidence_selector"]],
+                satisfied_conditions=supplied["authority_conditions"],
+                effect_type="local_reversible",
+                scope_kind="write",
+            )
+            if evidence_grants != sorted(supplied["evidence_grant_ids"]):
+                raise AuthorityDeniedError(
+                    "controlled probe evidence grant identities do not match current authority"
+                )
+            mutation_safety = supplied["mutation_safety"]
+            if effect_class == "mutation":
+                if not isinstance(mutation_safety, dict):
+                    raise GovernedRuntimeError(
+                        "mutation controlled probe requires mutation_safety"
+                    )
+                required_safety = {
+                    "reversible",
+                    "pre_state_digest",
+                    "idempotency_key",
+                    "checkpoint_id",
+                    "required_receipt_fields",
+                    "recovery_route",
+                    "recovery_identity_digest",
+                }
+                if set(mutation_safety) != required_safety:
+                    raise GovernedRuntimeError(
+                        "controlled probe mutation_safety fields are incomplete or ambiguous"
+                    )
+                if mutation_safety["reversible"] is not True:
+                    raise GovernedRuntimeError(
+                        "mutation controlled probe must be explicitly reversible"
+                    )
+                _exact_digest(
+                    mutation_safety.get("pre_state_digest"),
+                    "controlled probe pre-state identity",
+                )
+                _exact_digest(
+                    mutation_safety.get("recovery_identity_digest"),
+                    "controlled probe recovery identity",
+                )
+                idempotency_key = str(mutation_safety.get("idempotency_key") or "")
+                if not idempotency_key:
+                    raise GovernedRuntimeError(
+                        "mutation controlled probe requires an idempotency key"
+                    )
+                for field in ("checkpoint_id", "recovery_route"):
+                    if not isinstance(mutation_safety[field], str) or not mutation_safety[field]:
+                        raise GovernedRuntimeError(
+                            f"mutation controlled probe requires {field}"
+                        )
+                required_receipt_fields = [
+                    "effect_id",
+                    "pre_state_digest",
+                    "post_state_digest",
+                    "idempotency_key",
+                ]
+                if mutation_safety["required_receipt_fields"] != required_receipt_fields:
+                    raise GovernedRuntimeError(
+                        "mutation controlled probe receipt fields do not match the runtime contract"
+                    )
+                expected_recovery_identity = _digest_json(
+                    {"recovery_route": mutation_safety["recovery_route"]}
+                )
+                if mutation_safety["recovery_identity_digest"] != expected_recovery_identity:
+                    raise GovernedRuntimeError(
+                        "controlled probe recovery identity does not bind its route"
+                    )
+                if maximum != 1:
+                    raise GovernedRuntimeError(
+                        "a mutation controlled probe has one immutable idempotency key "
+                        "and therefore requires max_attempts = 1"
+                    )
+                for record in records:
+                    event = record.get("event") or {}
+                    details = event.get("details") or {}
+                    if event.get("event_type") != "controlled_probe_contract_persisted":
+                        continue
+                    prior = details.get("contract") or {}
+                    prior_safety = prior.get("mutation_safety") or {}
+                    if prior_safety.get("idempotency_key") == idempotency_key:
+                        raise RunConflictError(
+                            "controlled probe idempotency key is already bound to another "
+                            "immutable contract"
+                        )
+            elif mutation_safety is not None:
+                raise GovernedRuntimeError(
+                    "inspection controlled probe must not contain mutation_safety"
+                )
+
+            latest_stops = self._latest_controlled_probe_stop_states(records)
+            bound_stops = []
+            for condition_id in supplied.pop("stop_condition_ids"):
+                state = latest_stops.get(condition_id)
+                if state is None:
+                    raise AuthorityDeniedError(
+                        "controlled probe stop state must be persisted before contract "
+                        f"creation: {condition_id}"
+                    )
+                bound_stops.append(
+                    {
+                        "condition_id": condition_id,
+                        "active": state["active"],
+                        "state_identity_digest": state["state_identity_digest"],
+                        "state_record_id": state["record_id"],
+                        "state_sequence": state["sequence"],
+                    }
+                )
+            supplied["stop_conditions"] = bound_stops
+            contract_digest = _digest_json(supplied)
+            record = self._append_event_locked(
+                run,
+                "controlled_probe_contract_persisted",
+                {
+                    "probe_id": probe_id,
+                    "contract_digest": contract_digest,
+                    "contract": supplied,
+                },
+                node_id=supplied["node_id"],
+                runtime_authoritative=True,
+            )
+            return {
+                "contract": copy.deepcopy(supplied),
+                "contract_digest": contract_digest,
+                "record": record,
+            }
+
+    def load_controlled_probe_contract(
+        self,
+        run_id: str,
+        probe_id: str,
+    ) -> dict[str, Any]:
+        with _locked():
+            if not self._run_path(run_id).is_file():
+                raise RunNotFoundError(f"Process Run not found: {run_id}")
+            contract, record = self._controlled_probe_contract_from_records(
+                self.load_records(run_id), probe_id
+            )
+            return {
+                "contract": contract,
+                "contract_digest": (record.get("event") or {}).get("details", {}).get(
+                    "contract_digest"
+                ),
+                "record": record,
+            }
+
+    def begin_controlled_probe_attempt(
+        self,
+        run_id: str,
+        probe_id: str,
+    ) -> dict[str, Any]:
+        """Allocate an attempt from persisted contract and stop state only."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "begin a controlled probe attempt")
+            records = self.load_records(run_id)
+            contract, contract_record = self._controlled_probe_contract_from_records(
+                records, probe_id
+            )
+            contract_details = (contract_record.get("event") or {}).get("details") or {}
+            contract_digest = contract_details.get("contract_digest")
+            latest_stops = self._latest_controlled_probe_stop_states(records)
+            stop_hits = []
+            for bound in contract["stop_conditions"]:
+                condition_id = bound["condition_id"]
+                current = latest_stops.get(condition_id)
+                if current is None:
+                    stop_hits.append(
+                        {"condition_id": condition_id, "reason": "state_missing"}
+                    )
+                elif current["active"]:
+                    stop_hits.append(
+                        {
+                            "condition_id": condition_id,
+                            "reason": "active",
+                            "state_identity_digest": current["state_identity_digest"],
+                        }
+                    )
+                elif current["state_identity_digest"] != bound["state_identity_digest"]:
+                    stop_hits.append(
+                        {
+                            "condition_id": condition_id,
+                            "reason": "identity_changed",
+                            "state_identity_digest": current["state_identity_digest"],
+                        }
+                    )
+            if stop_hits:
+                record = self._append_event_locked(
+                    run,
+                    "controlled_probe_withheld",
+                    {
+                        "probe_id": probe_id,
+                        "contract_digest": contract_digest,
+                        "stop_conditions": stop_hits,
+                    },
+                    node_id=contract["node_id"],
+                    runtime_authoritative=True,
+                )
+                return {
+                    "status": "withheld",
+                    "record": record,
+                    "stop_conditions": stop_hits,
+                }
+
+            started = []
+            completed_keys = set()
+            for record in records:
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if details.get("probe_id") != probe_id:
+                    continue
+                if event.get("event_type") == "controlled_probe_attempt_started":
+                    started.append(details)
+                elif event.get("event_type") == "controlled_probe_attempt_completed":
+                    completed_keys.add(details.get("attempt"))
+            active_attempts = [
+                details for details in started if details.get("attempt") not in completed_keys
+            ]
+            if active_attempts:
+                raise RunConflictError(
+                    "controlled probe has an active attempt; replay is refused"
+                )
+            maximum = int(contract["max_attempts"])
+            if len(started) >= maximum:
+                raise CorrectionDecisionRequired(
+                    "controlled probe attempt ceiling reached in persisted Run state"
+                )
+            attempt = len(started) + 1
+            mutation_safety = contract.get("mutation_safety") or {}
+            idempotency_key = mutation_safety.get("idempotency_key")
+            if idempotency_key:
+                for record in records:
+                    event = record.get("event") or {}
+                    details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "controlled_probe_attempt_started"
+                        and details.get("idempotency_key") == idempotency_key
+                    ):
+                        raise RunConflictError(
+                            "controlled probe mutation idempotency key has already been consumed; "
+                            "replay is refused"
+                        )
+            record = self._append_event_locked(
+                run,
+                "controlled_probe_attempt_started",
+                {
+                    "probe_id": probe_id,
+                    "contract_digest": contract_digest,
+                    "attempt": attempt,
+                    "max_attempts": maximum,
+                    "idempotency_key": idempotency_key,
+                },
+                node_id=contract["node_id"],
+                runtime_authoritative=True,
+            )
+            return {
+                "status": "started",
+                "attempt": attempt,
+                "max_attempts": maximum,
+                "record": record,
+                "contract": contract,
+                "contract_digest": contract_digest,
+            }
+
+    def complete_controlled_probe_attempt(
+        self,
+        run_id: str,
+        probe_id: str,
+        *,
+        status: str,
+        outcome: str | None,
+        details: Mapping[str, Any] | None = None,
+        artifact_ids: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Close exactly one persisted controlled-probe attempt."""
+
+        if status not in ("completed", "failed"):
+            raise GovernedRuntimeError(
+                "controlled probe attempt status must be completed or failed"
+            )
+        with _locked():
+            run = self.load_run(run_id)
+            records = self.load_records(run_id)
+            contract, contract_record = self._controlled_probe_contract_from_records(
+                records, probe_id
+            )
+            contract_digest = (
+                (contract_record.get("event") or {}).get("details") or {}
+            ).get("contract_digest")
+            started = []
+            completed = set()
+            for record in records:
+                event = record.get("event") or {}
+                event_details = event.get("details") or {}
+                if event_details.get("probe_id") != probe_id:
+                    continue
+                if event.get("event_type") == "controlled_probe_attempt_started":
+                    started.append(event_details)
+                elif event.get("event_type") == "controlled_probe_attempt_completed":
+                    completed.add(event_details.get("attempt"))
+            open_attempts = [
+                item for item in started if item.get("attempt") not in completed
+            ]
+            if len(open_attempts) != 1:
+                raise RunConflictError(
+                    "controlled probe completion requires exactly one active attempt"
+                )
+            attempt = int(open_attempts[0]["attempt"])
+            record = self._append_event_locked(
+                run,
+                "controlled_probe_attempt_completed",
+                {
+                    "probe_id": probe_id,
+                    "contract_digest": contract_digest,
+                    "attempt": attempt,
+                    "status": status,
+                    "outcome": outcome,
+                    "details": copy.deepcopy(dict(details or {})),
+                },
+                node_id=contract["node_id"],
+                artifact_ids=artifact_ids,
+                runtime_authoritative=True,
+            )
+            return record
 
     # --------------------------------------------------------- attempt policy
     def start_segment(self, run_id: str, segment_id: str, *, node_id: str | None = None) -> dict[str, Any]:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import sys
 import tempfile
@@ -209,6 +210,35 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         ]
         self.runtime.create_run(definition, run)
         self.runtime.start_run("run-probe", reason="approved controlled probe")
+        for condition_id in ("authority_changed", "unsafe_environment"):
+            self.record_stop(condition_id, active=False, revision="initial")
+
+    @staticmethod
+    def exact_digest(value: object) -> str:
+        body = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        return "sha256:" + hashlib.sha256(body.encode()).hexdigest()
+
+    def record_stop(self, condition_id: str, *, active: bool, revision: str):
+        identity = self.exact_digest(
+            {
+                "condition_id": condition_id,
+                "active": active,
+                "revision": revision,
+            }
+        )
+        return self.runtime.record_controlled_probe_stop_state(
+            "run-probe",
+            condition_id,
+            active=active,
+            state_identity_digest=identity,
+            source=f"test:{revision}",
+            node_id="verify",
+        )
+
+    @staticmethod
+    def inspection_command(result: dict) -> discovery.ReadOnlyInspectionCommand:
+        script = "import json; print(json.dumps(" + repr(result) + "))"
+        return discovery.ReadOnlyInspectionCommand((sys.executable, "-c", script))
 
     def contract(self, capability: dict) -> dict:
         mutation = capability["actions"][0]["effect_class"] == "mutation"
@@ -221,10 +251,10 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             "node_id": "verify",
             "segment_id": "probe-segment",
             "evidence_selector": self.WRITE,
+            "evidence_requirement": "persist the exact observed signal",
             "success_condition": "provider returns the expected signal",
             "failure_condition": "provider disproves the assumption",
             "ambiguous_route": "stop and refine the probe",
-            "attempt": 1,
             "max_attempts": 1,
             "authority_conditions": runtime_fixtures.CONDITION,
             "stop_conditions": ["authority_changed", "unsafe_environment"],
@@ -234,10 +264,23 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
                 {
                     "reversible": True,
                     "idempotency_key": "probe-availability-1",
+                    "pre_state_digest": self.exact_digest("isolated-before"),
+                    "checkpoint_id": "probe:availability:checkpoint",
                     "recovery_route": "restore the isolated pre-state",
+                    "recovery_identity_digest": self.exact_digest(
+                        {"recovery_route": "restore the isolated pre-state"}
+                    ),
                 }
             )
         return contract
+
+    def persist(self, capability: dict, contract: dict | None = None) -> dict:
+        return discovery.persist_controlled_probe_contract(
+            self.runtime,
+            "run-probe",
+            contract or self.contract(capability),
+            capability,
+        )
 
     def test_queries_tools_skills_frameworks_definitions_and_patterns(self):
         calls = []
@@ -322,24 +365,29 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
 
     def test_inspection_probe_runs_with_read_authority_and_persists_evidence(self):
         capability = self.capability(effect_class="inspection")
-        requests = []
+        persisted = self.persist(capability)
+        contract = persisted["contract"]
+        self.assertEqual(contract["run_id"], "run-probe")
+        self.assertEqual(
+            contract["definition_ref"], self.runtime.load_run("run-probe")["definition_ref"]
+        )
+        self.assertRegex(persisted["contract_digest"], r"^sha256:[0-9a-f]{64}$")
         result = discovery.execute_controlled_probe(
             self.runtime,
             "run-probe",
-            self.contract(capability),
-            capability,
-            lambda request: requests.append(request)
-            or {"outcome": "confirmed", "evidence": "inspection signal present"},
+            "availability",
+            self.inspection_command(
+                {"outcome": "confirmed", "evidence": "inspection signal present"}
+            ),
         )
         self.assertEqual(result["status"], "executed")
         self.assertEqual(result["outcome"], "confirmed")
-        self.assertEqual(requests[0]["effect_class"], "inspection")
         self.assertIsNone(result["receipt_artifact_id"])
         evidence = self.runtime.load_artifact(
             "run-probe", result["evidence_artifact_id"]
         )
         self.assertEqual(evidence["role"], "evidence")
-        observed = result["observed_record"]["event"]["details"]
+        observed = result["completed_record"]["event"]["details"]["details"]
         self.assertEqual(observed["capability_id"], capability["capability_id"])
         self.assertEqual(
             observed["capability_identity_digest"], capability["identity_digest"]
@@ -349,15 +397,11 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         capability = self.capability(effect_class="mutation")
         contract = self.contract(capability)
         contract["selector"] = "scope:undeclared"
-        executor = mock.Mock()
         with self.assertRaisesRegex(gpr.AuthorityDeniedError, "outside external"):
-            discovery.execute_controlled_probe(
-                self.runtime, "run-probe", contract, capability, executor
-            )
-        executor.assert_not_called()
+            self.persist(capability, contract)
         self.assertFalse(
             any(
-                record["event"]["event_type"] == "controlled_probe_planned"
+                record["event"]["event_type"] == "controlled_probe_contract_persisted"
                 for record in self.runtime.load_records("run-probe")
             )
         )
@@ -367,11 +411,11 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         with self.assertRaisesRegex(
             discovery.CapabilityDiscoveryError, "requires an external-effect receipt"
         ):
+            self.persist(capability)
             discovery.execute_controlled_probe(
                 self.runtime,
                 "run-probe",
-                self.contract(capability),
-                capability,
+                "availability",
                 lambda _request: {
                     "outcome": "confirmed",
                     "evidence": "mutation appeared to work",
@@ -381,7 +425,7 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
             record["event"]["event_type"]
             for record in self.runtime.load_records("run-probe")
         ]
-        self.assertIn("controlled_probe_failed", events)
+        self.assertIn("controlled_probe_attempt_completed", events)
         self.assertIn("action_completed", events)
         action = next(
             record["event"]["details"]
@@ -397,11 +441,13 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         capability = self.capability(effect_class="mutation")
         before = "sha256:" + hashlib.sha256(b"before").hexdigest()
         after = "sha256:" + hashlib.sha256(b"after").hexdigest()
+        contract = self.contract(capability)
+        contract["pre_state_digest"] = before
+        self.persist(capability, contract)
         result = discovery.execute_controlled_probe(
             self.runtime,
             "run-probe",
-            self.contract(capability),
-            capability,
+            "availability",
             lambda request: {
                 "outcome": "disconfirmed",
                 "evidence": "the isolated mutation disproved A1",
@@ -424,20 +470,169 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
         ]
         self.assertIn("checkpoint_created", events)
         self.assertIn("action_completed", events)
-        self.assertIn("controlled_probe_observed", events)
+        self.assertIn("controlled_probe_attempt_completed", events)
+        self.assertLess(
+            events.index("controlled_probe_contract_persisted"),
+            events.index("controlled_probe_attempt_started"),
+        )
+        self.assertLess(
+            events.index("controlled_probe_attempt_started"),
+            events.index("checkpoint_created"),
+        )
+        self.assertLess(
+            events.index("checkpoint_created"),
+            events.index("action_completed"),
+        )
+
+    def test_mutation_receipt_must_match_pre_state_persisted_before_execution(self):
+        capability = self.capability(effect_class="mutation")
+        contract = self.contract(capability)
+        persisted_pre_state = contract["pre_state_digest"]
+        different_pre_state = self.exact_digest("invented-after-execution")
+        persisted = self.persist(capability, contract)
+        self.assertEqual(
+            persisted["contract"]["mutation_safety"]["pre_state_digest"],
+            persisted_pre_state,
+        )
+        with self.assertRaisesRegex(
+            discovery.CapabilityDiscoveryError, "persisted pre-state identity"
+        ):
+            discovery.execute_controlled_probe(
+                self.runtime,
+                "run-probe",
+                "availability",
+                lambda request: {
+                    "outcome": "confirmed",
+                    "evidence": "executor supplied a different pre-state afterward",
+                    "receipt": {
+                        "effect_id": "effect-wrong-pre-state",
+                        "pre_state_digest": different_pre_state,
+                        "post_state_digest": self.exact_digest("after"),
+                        "idempotency_key": request["idempotency_key"],
+                    },
+                },
+            )
+        self.assertFalse(self.runtime.recovery_decision("run-probe")["safe_to_resume"])
+
+    def test_persisted_attempt_ceiling_and_idempotency_prevent_caller_replay(self):
+        capability = self.capability(effect_class="mutation")
+        contract = self.contract(capability)
+        self.persist(capability, contract)
+        calls = []
+
+        def mutate(request):
+            calls.append(request)
+            return {
+                "outcome": "confirmed",
+                "evidence": "one isolated effect",
+                "receipt": {
+                    "effect_id": "effect-once",
+                    "pre_state_digest": request["pre_state_digest"],
+                    "post_state_digest": self.exact_digest("after-once"),
+                    "idempotency_key": request["idempotency_key"],
+                },
+            }
+
+        discovery.execute_controlled_probe(
+            self.runtime, "run-probe", "availability", mutate
+        )
+        replay = mock.Mock()
+        with self.assertRaisesRegex(
+            gpr.CorrectionDecisionRequired, "persisted Run state"
+        ):
+            discovery.execute_controlled_probe(
+                self.runtime, "run-probe", "availability", replay
+            )
+        replay.assert_not_called()
+        self.assertEqual(len(calls), 1)
+
+        caller_rewritten = dict(contract)
+        caller_rewritten["max_attempts"] = 2
+        with self.assertRaisesRegex(
+            discovery.CapabilityDiscoveryError, "requires max_attempts = 1"
+        ):
+            self.persist(capability, caller_rewritten)
+
+        reused_key = dict(contract)
+        reused_key["probe_id"] = "availability-replay"
+        reused_key["checkpoint_id"] = "probe:availability-replay:checkpoint"
+        with self.assertRaisesRegex(gpr.RunConflictError, "idempotency key"):
+            self.persist(capability, reused_key)
+
+    def test_arbitrary_inspection_callable_cannot_mutate_caller_state(self):
+        capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        external_state = []
+
+        def falsely_declared_inspection(_request):
+            external_state.append("mutated")
+            return {"outcome": "confirmed", "evidence": "should not be accepted"}
+
+        with self.assertRaisesRegex(
+            discovery.CapabilityDiscoveryError, "mechanically read-only"
+        ):
+            discovery.execute_controlled_probe(
+                self.runtime,
+                "run-probe",
+                "availability",
+                falsely_declared_inspection,
+            )
+        self.assertEqual(external_state, [])
+
+    def test_read_only_inspection_sandbox_denies_filesystem_mutation(self):
+        capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        marker = Path(self.temp.name) / "inspection-mutated"
+        script = (
+            "from pathlib import Path; import json,sys; "
+            "Path(sys.argv[1]).write_text('mutated'); "
+            "print(json.dumps({'outcome':'confirmed','evidence':'unsafe'}))"
+        )
+        boundary = discovery.ReadOnlyInspectionCommand(
+            (sys.executable, "-c", script, str(marker))
+        )
+        with self.assertRaisesRegex(
+            discovery.CapabilityDiscoveryError, "boundary refused or failed"
+        ):
+            discovery.execute_controlled_probe(
+                self.runtime, "run-probe", "availability", boundary
+            )
+        self.assertFalse(marker.exists())
+
+    def test_contract_persistence_fails_when_declared_stop_has_no_runtime_state(self):
+        capability = self.capability(effect_class="inspection")
+        contract = self.contract(capability)
+        contract["stop_conditions"].append("unobserved_stop")
+        with self.assertRaisesRegex(
+            gpr.AuthorityDeniedError, "must be persisted before contract creation"
+        ):
+            self.persist(capability, contract)
+
+    def test_generic_event_api_cannot_forge_controlled_probe_state(self):
+        with self.assertRaisesRegex(gpr.AuthorityDeniedError, "reserved"):
+            self.runtime.record_event(
+                "run-probe",
+                "controlled_probe_attempt_started",
+                {"probe_id": "forged", "attempt": 99},
+            )
 
     def test_active_stop_condition_withholds_probe_without_execution(self):
         capability = self.capability(effect_class="inspection")
+        self.persist(capability)
+        # The stop becomes active after contract persistence. Execution has no
+        # caller-supplied stop argument and must fold the latest Run record.
+        self.record_stop("unsafe_environment", active=True, revision="unsafe")
         executor = mock.Mock()
         result = discovery.execute_controlled_probe(
             self.runtime,
             "run-probe",
-            self.contract(capability),
-            capability,
+            "availability",
             executor,
-            active_stop_conditions=["unsafe_environment"],
         )
         self.assertEqual(result["status"], "withheld")
+        self.assertEqual(
+            result["stop_conditions"][0]["condition_id"], "unsafe_environment"
+        )
         executor.assert_not_called()
 
 
