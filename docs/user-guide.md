@@ -173,6 +173,88 @@ Invoke a framework with no input to have Ora walk you through it one question at
 
 ---
 
+## Diagnose a problematic result with Trace Walk
+
+**Current-feature note (2026-07-16, post-pin).** Trace Walk landed in Ora PR #269 (merge commit `241a31c0`, implementation commit `99638ef3`). This section is a scoped description of that shipped feature; it does not re-pin the rest of this guide from its installed-system baseline at `7a5e8f40`.
+
+Tracing is automatic and on by default. There is no `/trace` slash command and no setup command to run. Each eligible turn records what actually happened under `~/ora/data/pipeline-traces/<dialogue-id>/<turn>/`. Setting `ORA_PIPELINE_TRACE=off` (also `false`, `0`, `no`, or `disabled`) disables new traces globally. A Stealth Dialogue never creates a trace.
+
+### Open and read a trace
+
+1. Go to the problematic turn in its Dialogue.
+2. Hover over the lower-right edge of the Findings pane. The output toolbar appears.
+3. Click **Trace** (tooltip: **How this was made**). The button is enabled only when that turn carries a trace reference.
+4. Read the overview badges first: trace kind, terminal status, effective Gear, and retention state. If a Gear 4 attempt fell back to Gear 3, the Gear badge reports the Gear that actually completed.
+5. Check the stage categories, then choose a recorded step in the left-hand map. Trace Walk shows a redacted structural projection: stage identity, endpoint/slot and health fields when recorded, retry or contingency markers, verdicts, routing/persistence state, and lengths/hashes instead of raw prompt or output text.
+
+The manifest categories have literal meanings:
+
+| Category | Meaning |
+|---|---|
+| Actual | A real `step*.json` artifact exists on disk. |
+| Derived | A computed artifact such as step health or cost summary exists; it is not itself a production stage. |
+| Missing expected | A normally required stage is absent from a completed turn. This deserves investigation. |
+| Skipped | An optional stage did not run, or an exceptional exit prevented a required stage from being reached. |
+| Replaced | A fallback or short path displaced normally expected work; the manifest retains the original expectation rather than rewriting history. |
+| Contingency | A recorded retry, fallback, no-endpoint, or other exceptional production path actually ran. |
+| Unexpected | A real stage ran but belongs to none of the expected, optional, replacement, or contingency sets. |
+
+Use the evidence this way:
+
+| Symptom | Inspect first |
+|---|---|
+| Wrong model, mode, or routing | `step1-pre-routing`, model-call configuration records, endpoint/slot fields, and the effective Gear badge |
+| Sources or retrieved context seem absent | Step 2 context assembly, supplemental-RAG, and web-consultation stages; distinguish **skipped** from **missing expected** |
+| Answer looks degraded or fell back | Step health plus **contingency**, **replaced**, and **skipped** stages |
+| Findings differ from what the pipeline produced | `step-terminal-output`; its local artifact records the exact value only after output routing/delivery, including persistence state |
+| A factual claim or verification seems unsupported | Claim-evidence assembly, verifier, quality-gate, and retry/fallback stages |
+
+### Preserve, investigate, or export
+
+- Click **Pin trace** before an important investigation. Unpinned traces are normally swept after 30 days; pinned traces are exempt. The same control becomes **Unpin trace**.
+- Select the most suspicious step and click **Investigate**. Add the symptom when prompted. Ora creates a separate P-Debug diagnostic turn in the same Dialogue; it does not rerun, replay, approve, or modify the original trace.
+- Click **Export HTML** for a portable report. Browser views and exports recursively redact raw strings and bytes to structural metadata, lengths, and SHA-256 hashes. A Private trace is labeled private and its raw content is omitted from the export. Investigation stays in the originating Dialogue and keeps its privacy tag. Stealth produces no trace at all.
+
+The raw local trace files are more sensitive than the Trace Walk view: they can contain exact prompts, model responses, and terminal values. Treat `~/ora/data/pipeline-traces/` as private local diagnostic data and do not share a raw turn directory without reviewing it.
+
+### Reproduce a problem from the command line `[macOS]`
+
+Use the exact URL reported by the Ora launcher; do not assume port 5000 when the launcher selected another port.
+
+```bash
+cd ~/ora
+export ORA_URL="http://127.0.0.1:5000"  # replace with the reported URL
+
+./scripts/ora-test --list-configs
+./scripts/ora-test --list-modes
+./scripts/ora-test --server "$ORA_URL" \
+  --id trace-repro-001 \
+  "Describe the problem you need to reproduce"
+```
+
+Add `--config NAME` to use a saved configuration without changing the server's active configuration, or `--mode MODE` to pin a mode. The command prints the Dialogue id, pipeline stages, final trace directory, and a cost summary when available. `--no-wait` submits in the background; it is POSIX-only and gives you a directory pattern rather than a completed trace immediately.
+
+A trace reference is the final two path components, `<dialogue-id>/<turn>`. From `~/ora`, inspect or preserve it without opening the browser:
+
+```bash
+python3 -m orchestrator.pipeline_trace status '<dialogue-id>/<turn>'
+python3 -m orchestrator.pipeline_trace pin '<dialogue-id>/<turn>'
+python3 -m orchestrator.pipeline_trace unpin '<dialogue-id>/<turn>'
+```
+
+For automation or remote diagnostics, the server exposes safe read-side projections. Replace the placeholders with the Dialogue id and turn timestamp from the trace reference:
+
+```bash
+curl -s "$ORA_URL/api/trace/list/<dialogue-id>"
+curl -s "$ORA_URL/api/trace/manifest/<dialogue-id>/<turn>"
+curl -s "$ORA_URL/api/trace/step/<dialogue-id>/<turn>/<step-name>"
+curl -o ora-trace.html "$ORA_URL/api/trace/export/<dialogue-id>/<turn>"
+```
+
+If **Trace** is disabled or absent, the turn has no trace reference. Common causes are a turn created before Trace Walk was installed, a globally disabled trace layer, a Stealth Dialogue, an incomplete/current turn, or a fail-open trace-write error. Tracing is observational: a trace-write failure must not change the answer or crash the pipeline, so server logs are the next place to check.
+
+---
+
 ## Where your things live
 
 - **Vault** — `~/Documents/vault/`. Put files here that you want Ora to search: notes, documents, project files.
@@ -224,6 +306,7 @@ For a script that is broken at the source level, `docs/install-manual.md` reprod
 | Garbled output from a local model | The chat template needs a re-check | Switch models, or re-run the model setup |
 | Output repeats itself | The Dialogue has grown too long | Start a new Dialogue |
 | Free model unavailable or rate-limited | Expected on the Free configuration | Add OpenRouter credits or a direct provider key |
+| **Trace** is disabled for a turn | That turn has no trace reference | Use a post-PR #269 non-Stealth turn, confirm `ORA_PIPELINE_TRACE` is not disabled, and check server logs for a fail-open trace-write error |
 
 If a command in this guide fails on Windows or Linux, that is consistent with the platform status: macOS is the tested target. Check the platform label on the step before assuming a defect.
 
@@ -248,6 +331,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-16** — Added the post-pin Trace Walk operator workflow: UI access, truthful stage-category interpretation, symptom-to-evidence routing, pin/investigate/export behavior, private/Stealth boundaries, `ora-test` reproduction, manifest/step/export APIs, and trace status/pin/unpin commands. The rest of the guide remains pinned to `7a5e8f40`.
 - **2026-07-12** — macOS operation now follows the consolidated supervision contract: `ora-launchd.sh install` is the recommended setup, `start.sh` and `stop.sh` delegate when supervision is installed, every operational step uses the exact reported port in the 5000–5010 range, and troubleshooting covers launchd logs plus the Documents/TCC permission caveat. The repository mirror remains body-identical.
 - **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (both unassigned and project-assigned Dialogues appear there); Commons saves now land at the vault root; and V3 uses one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
 - **2026-07-11** — Interface strings caught up to the nomenclature (ora PR #211): the running UI now shows these names, so the earlier "interface may still show older labels" caveat was removed. Still terminology-only; content remains pinned to `7a5e8f40`.
