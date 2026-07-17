@@ -1,6 +1,7 @@
 """Phase 1.6 proof for the regenerated Programming Process Definition."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import inspect
 import json
@@ -43,6 +44,63 @@ DIRECTIVES = {
     "BLOCKED",
 }
 ENTRYPOINTS = ("prg_run", "prg_plan", "prg_execute", "prg_verify")
+PATH_DECISIONS = {
+    "entry-route",
+    "mode-after-scope",
+    "post-plan-mode",
+    "work-remaining",
+    "revision-route",
+    "replan-route",
+    "attempt-redefine-route",
+    "final-redefine-route",
+    "definition-resume-route",
+    "resume-route",
+}
+PROHIBITED_NODES = {
+    "prg_run": {"bind-plan", "inspect-result", "persist-definition-resume-verify"},
+    "prg_plan": {
+        "bind-plan",
+        "execute-preflight",
+        "execute-step",
+        "inspect-result",
+        "attempt-review",
+        "work-remaining",
+        "execution-work-remaining",
+        "correction-loop",
+        "correct",
+        "no-progress",
+        "persist-definition-resume-execute",
+        "persist-definition-resume-verify",
+        "persist-definition-resume-final",
+    },
+    "prg_execute": {
+        "intent-interview",
+        "plan",
+        "plan-review",
+        "plan-approval",
+        "post-plan-mode",
+        "inspect-result",
+        "persist-definition-resume-plan",
+        "persist-definition-resume-verify",
+    },
+    "prg_verify": {
+        "intent-interview",
+        "plan",
+        "plan-review",
+        "plan-approval",
+        "post-plan-mode",
+        "bind-plan",
+        "execute-preflight",
+        "execute-step",
+        "execution-work-remaining",
+        "correction-loop",
+        "correct",
+        "no-progress",
+        "persist-definition-resume-plan",
+        "persist-definition-resume-execute",
+        "persist-definition-resume-final",
+    },
+}
 
 
 def body(path: Path) -> str:
@@ -78,6 +136,68 @@ def section(text: str, heading: str) -> str:
     return match.group(1)
 
 
+def reachable_graph_state(
+    definition: dict, entrypoint: str
+) -> tuple[set[str], set[tuple[str, str, str]]]:
+    """Traverse every directive and every valid decision outcome for one PRG path."""
+    nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+    pending = [definition["graph"]["entry_node_id"]]
+    reached: set[str] = set()
+    directive_edges: set[tuple[str, str, str]] = set()
+    while pending:
+        node_id = pending.pop()
+        if node_id in reached:
+            continue
+        reached.add(node_id)
+        node = nodes[node_id]
+        kind = node["kind"]
+        targets: list[str]
+        if kind == "action":
+            targets = [node["next_node_id"]]
+        elif kind == "decision":
+            if node_id in PATH_DECISIONS:
+                matching = [
+                    route["target_node_id"]
+                    for route in node["routes"]
+                    if route["condition"] == entrypoint
+                    or route["condition"].startswith(entrypoint + ":")
+                ]
+                targets = matching or [node["default_node_id"]]
+            else:
+                targets = [route["target_node_id"] for route in node["routes"]]
+                targets.append(node["default_node_id"])
+        elif kind == "bounded_loop":
+            targets = [node["body_node_id"], node["exit_node_id"]]
+        elif kind == "verification_boundary":
+            targets = list(node["routes"].values())
+            directive_edges.update(
+                (node_id, directive, target)
+                for directive, target in node["routes"].items()
+            )
+        elif kind == "human_checkpoint":
+            targets = [node["on_approved_node_id"], node["on_denied_node_id"]]
+            if "on_unavailable_node_id" in node:
+                targets.append(node["on_unavailable_node_id"])
+        elif kind == "sequence":
+            targets = [*node["member_node_ids"], node["next_node_id"]]
+        elif kind == "parallel_branch":
+            targets = [*node["branch_node_ids"], node["join_node_id"]]
+        elif kind == "join":
+            targets = [node["next_node_id"]]
+        elif kind == "process_call":
+            targets = [node["return_node_id"]]
+            if "on_error_node_id" in node:
+                targets.append(node["on_error_node_id"])
+        elif kind == "process_return":
+            targets = [node["next_node_id"]]
+        elif kind == "terminal_state":
+            targets = []
+        else:  # pragma: no cover - the generic validator rejects unknown kinds
+            raise AssertionError(f"unsupported graph node kind: {kind}")
+        pending.extend(targets)
+    return reached, directive_edges
+
+
 class TestProgrammingDefinitionArtifact(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -87,7 +207,7 @@ class TestProgrammingDefinitionArtifact(unittest.TestCase):
 
     def test_canonical_and_operational_mirror_have_exact_body_parity(self):
         self.assertEqual(self.canonical_body, self.mirror_body)
-        self.assertIn("Version 2.0 — Generated Capability Definition", self.canonical_body)
+        self.assertIn("Version 2.0.1 — Corrected Generated Capability Definition", self.canonical_body)
         self.assertIn("Process Inference v1.4", self.canonical_body)
         self.assertIn("Process Formalization v2.5", self.canonical_body)
 
@@ -106,7 +226,7 @@ class TestProgrammingDefinitionArtifact(unittest.TestCase):
     def test_embedded_projection_is_a_valid_generic_process_definition(self):
         validated = contracts.validate_process_definition(self.definition)
         self.assertEqual(validated["definition_id"], "ora/programming")
-        self.assertEqual(validated["version"], "2.0.0")
+        self.assertEqual(validated["version"], "2.0.1")
         self.assertEqual(validated["object_family"], "process_definition")
         self.assertEqual(validated["graph"]["schema_version"], contracts.GRAPH_SCHEMA_VERSION)
         self.assertEqual(
@@ -164,6 +284,110 @@ class TestProgrammingDefinitionArtifact(unittest.TestCase):
             else:
                 self.assertNotIn("ACCEPT", routes)
         self.assertEqual(observed, DIRECTIVES)
+
+    def test_exhaustive_path_and_directive_traversal_cannot_reach_prohibited_nodes(self):
+        nodes = {node["node_id"]: node for node in self.definition["graph"]["nodes"]}
+        target_mutating = {
+            node_id
+            for node_id, node in nodes.items()
+            if node["kind"] == "action"
+            and node["external_effect"]
+            and set(node["artifact_access"]) != {"scope:process_definition"}
+        }
+        self.assertEqual(target_mutating, {"execute-step", "correct"})
+        for entrypoint in ENTRYPOINTS:
+            with self.subTest(entrypoint=entrypoint):
+                reached, directive_edges = reachable_graph_state(
+                    self.definition, entrypoint
+                )
+                self.assertFalse(
+                    reached & PROHIBITED_NODES[entrypoint],
+                    f"{entrypoint} reached prohibited nodes: "
+                    f"{sorted(reached & PROHIBITED_NODES[entrypoint])}",
+                )
+                expected_edges = {
+                    (node_id, directive, target)
+                    for node_id in reached
+                    if nodes[node_id]["kind"] == "verification_boundary"
+                    for directive, target in nodes[node_id]["routes"].items()
+                }
+                self.assertEqual(directive_edges, expected_edges)
+                self.assertEqual(
+                    {directive for _, directive, _ in directive_edges}, DIRECTIVES
+                )
+                if entrypoint in {"prg_plan", "prg_verify"}:
+                    self.assertFalse(reached & target_mutating)
+
+    def test_traversal_proof_rejects_each_reported_path_bypass(self):
+        attacks = []
+
+        plan_revision = copy.deepcopy(self.definition)
+        plan_nodes = {node["node_id"]: node for node in plan_revision["graph"]["nodes"]}
+        next(
+            route
+            for route in plan_nodes["revision-route"]["routes"]
+            if route["condition"] == "prg_plan"
+        )["target_node_id"] = "correction-loop"
+        attacks.append(("prg_plan", plan_revision, {"correction-loop", "correct"}))
+
+        verify_execution = copy.deepcopy(self.definition)
+        verify_nodes = {
+            node["node_id"]: node for node in verify_execution["graph"]["nodes"]
+        }
+        next(
+            route
+            for route in verify_nodes["work-remaining"]["routes"]
+            if route["condition"] == "prg_verify"
+        )["target_node_id"] = "execution-work-remaining"
+        attacks.append(("prg_verify", verify_execution, {"execute-step"}))
+
+        execute_replan = copy.deepcopy(self.definition)
+        execute_nodes = {
+            node["node_id"]: node for node in execute_replan["graph"]["nodes"]
+        }
+        next(
+            route
+            for route in execute_nodes["definition-resume-route"]["routes"]
+            if route["condition"] == "prg_execute:final_review"
+        )["target_node_id"] = "plan"
+        attacks.append(("prg_execute", execute_replan, {"plan"}))
+
+        for entrypoint, attacked_definition, expected_leak in attacks:
+            with self.subTest(entrypoint=entrypoint, expected_leak=expected_leak):
+                reached, _directive_edges = reachable_graph_state(
+                    attacked_definition, entrypoint
+                )
+                self.assertTrue(reached & expected_leak)
+                self.assertTrue(reached & PROHIBITED_NODES[entrypoint])
+
+    def test_path_qualified_returns_are_fail_closed(self):
+        nodes = {node["node_id"]: node for node in self.definition["graph"]["nodes"]}
+        for node_id in PATH_DECISIONS:
+            self.assertEqual(nodes[node_id]["default_node_id"], "blocked")
+        self.assertEqual(
+            {
+                route["condition"]: route["target_node_id"]
+                for route in nodes["revision-route"]["routes"]
+            },
+            {
+                "prg_run": "correction-loop",
+                "prg_plan": "plan",
+                "prg_execute": "correction-loop",
+                "prg_verify": "returned",
+            },
+        )
+        self.assertEqual(
+            {
+                route["condition"]: route["target_node_id"]
+                for route in nodes["work-remaining"]["routes"]
+            },
+            {
+                "prg_run": "execution-work-remaining",
+                "prg_plan": "blocked",
+                "prg_execute": "execution-work-remaining",
+                "prg_verify": "final-review",
+            },
+        )
 
     def test_definition_contains_no_private_programming_runtime_type(self):
         runtime_types = {
@@ -228,13 +452,55 @@ class TestProgrammingDefinitionSemantics(unittest.TestCase):
         self.assertIn("no human queue by default", self.text)
         self.assertIn("typed reserved human authority", self.text)
         nodes = {node["node_id"]: node for node in self.definition["graph"]["nodes"]}
-        self.assertEqual(nodes["attempt-review"]["routes"]["REDEFINE"], "definition-plan")
+        self.assertEqual(
+            nodes["attempt-review"]["routes"]["REDEFINE"],
+            "attempt-redefine-route",
+        )
         self.assertEqual(nodes["attempt-review"]["routes"]["ESCALATE"], "authority")
         self.assertFalse(nodes["definition-plan"]["external_effect"])
         self.assertTrue(nodes["redefine"]["external_effect"])
         self.assertEqual(
             nodes["definition-plan-approval"]["on_approved_node_id"], "redefine"
         )
+
+    def test_redefinition_persists_and_enforces_exact_path_legal_resume(self):
+        nodes = {node["node_id"]: node for node in self.definition["graph"]["nodes"]}
+        persisted_targets = {
+            "persist-definition-resume-scope": "inspect-scope",
+            "persist-definition-resume-plan": "plan",
+            "persist-definition-resume-execute": "execute-preflight",
+            "persist-definition-resume-verify": "inspect-result",
+            "persist-definition-resume-final": "final-review",
+        }
+        for node_id, target in persisted_targets.items():
+            with self.subTest(node_id=node_id):
+                node = nodes[node_id]
+                self.assertEqual(node["kind"], "action")
+                self.assertFalse(node["external_effect"])
+                self.assertEqual(node["next_node_id"], "definition-plan")
+                self.assertIn(f"exact resume target {target}", node["label"])
+        for node in nodes.values():
+            if node["kind"] == "verification_boundary" and "REDEFINE" in node["routes"]:
+                self.assertNotEqual(node["routes"]["REDEFINE"], "definition-plan")
+        self.assertEqual(
+            nodes["definition-review"]["routes"]["PROCEED"],
+            "definition-resume-route",
+        )
+        resume_by_path: dict[str, set[str]] = {entrypoint: set() for entrypoint in ENTRYPOINTS}
+        for route in nodes["definition-resume-route"]["routes"]:
+            entrypoint, _persisted_target = route["condition"].split(":", 1)
+            resume_by_path[entrypoint].add(route["target_node_id"])
+        self.assertEqual(
+            resume_by_path,
+            {
+                "prg_run": {"inspect-scope", "plan", "execute-preflight", "final-review"},
+                "prg_plan": {"inspect-scope", "plan"},
+                "prg_execute": {"inspect-scope", "execute-preflight", "final-review"},
+                "prg_verify": {"inspect-scope", "inspect-result"},
+            },
+        )
+        self.assertIn("immutable for the definition attempt", self.text)
+        self.assertIn("mismatched, or undeclared destinations route to `BLOCKED`", self.text)
 
     def test_evidence_staleness_recovery_and_external_editor_rules_are_explicit(self):
         for token in (
@@ -259,7 +525,7 @@ class TestProgrammingDefinitionSemantics(unittest.TestCase):
 
 
 class TestProgrammingRegistryAndExposure(unittest.TestCase):
-    def test_both_framework_registries_describe_v2_generic_kernel_semantics(self):
+    def test_both_framework_registries_describe_v2_0_1_generic_kernel_semantics(self):
         for path in (
             VAULT_ORA / "Registry — Framework Registry.md",
             ROOT / "frameworks" / "framework-registry.md",
@@ -268,12 +534,13 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
                 discovery.verify_registry_entry(
                     path.read_text(encoding="utf-8"),
                     "Programming",
-                    version="2.0",
+                    version="2.0.1",
                     required_semantics=(
-                        "ora/programming@2.0.0",
+                        "ora/programming@2.0.1",
                         "generic kernel",
                         "Principal and Technical",
                         "register, invoke, and activate",
+                        "exact persisted path-legal resume destination",
                     ),
                 )
 
@@ -283,16 +550,11 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
         )
         entry = section(text, "Framework — Programming.md")
         for token in (
-            "v2.0",
-            "ora/programming@2.0.0",
-            "28-node",
+            "v2.0.1",
+            "ora/programming@2.0.1",
             "Phase 1.7 programming trial",
             "public picker exposure",
         ):
-            if token == "28-node":
-                # The current graph grows only by explicit versioned definition
-                # change; assert the registry reports the actual count below.
-                continue
             self.assertIn(token, entry)
         definition = embedded_definition(body(CANONICAL))
         self.assertIn(f"{len(definition['graph']['nodes'])}-node", entry)

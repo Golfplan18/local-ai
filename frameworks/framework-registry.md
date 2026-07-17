@@ -162,12 +162,12 @@ Each framework has one entry with these fields:
 - **Problem Class:** Evidence-governed programming capability construction and operation with exact artifacts, bounded judgment, explicit authority, seven-directive transitions, and independent completion
 - **Input Summary:** All paths begin from a management-language objective, confirmed project, exact artifact scope, constraints, and available authority. PRG-Execute additionally requires an approved exact plan; PRG-Verify requires an exact result and evaluation basis.
 - **Output Summary:** One canonical plan with Principal and Technical projections; M1 approved plan or M2 accepted result; exact artifacts/evidence/receipts; pause/recovery and non-completion packets; optional versioned capability output with construct, test, register, invoke, and activate authority kept separate
-- **Proven Applications:** v2.0 was generated in G1.1 Phase 1.6 from PIF v1.4/PFF v2.5 and validates as `ora/programming@2.0.0` against `ora.process-contracts/1.0`; the Phase 1.7 nontrivial programming trial has not yet occurred
-- **Known Limitations:** Concrete project, artifact, tool, reviewer, registry, invocation, and activation bindings remain Run-specific; the definition is not publicly exposed or automatically activated; independent final evidence is required for `ACCEPT`; PRG-Verify cannot correct and PRG-Execute cannot silently replan
+- **Proven Applications:** v2.0.1 corrected the issued Phase 1.6 definition and validates as `ora/programming@2.0.1` against `ora.process-contracts/1.0`; exhaustive graph traversal enforces every entry contract across all directives; the Phase 1.7 nontrivial programming trial has not yet occurred
+- **Known Limitations:** Concrete project, artifact, tool, reviewer, registry, invocation, and activation bindings remain Run-specific; the definition is not publicly exposed or automatically activated; independent final evidence is required for `ACCEPT`; PRG-Plan and PRG-Verify cannot reach target mutation, PRG-Execute and PRG-Verify cannot silently replan, and successful redefinition requires an exact persisted path-legal resume destination
 - **File Location:** frameworks/book/programming.md (operational body mirror); ~/Documents/vault/Projects/Ora/Framework — Programming.md (canonical)
 - **Provenance:** model-assisted derivation from accepted PIF v1.4/PFF v2.5 and the generic kernel; v1.0 retained only as explicit salvage/history
 - **Confidence:** medium
-- **Version:** 2.0
+- **Version:** 2.0.1
 - **Delivers:** Approved canonical plan plus Principal/Technical projections (PRG-Run/PRG-Plan); accepted exact programming result (PRG-Run/PRG-Execute/PRG-Verify); versioned capability definition when authorized; explicit Defect, Replan, Redefinition, Authority Request, Blocked, Pause, or Return packet when completion is withheld
 
 ### Mission, Objectives, and Milestones Clarification

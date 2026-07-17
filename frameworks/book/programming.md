@@ -8,7 +8,7 @@ Plan, approve, execute, inspect, correct, and complete bounded programming work 
 
 *A Versioned Programming Process Definition over Ora's Generic Governed-Process Kernel*
 
-*Version 2.0 — Generated Capability Definition*
+*Version 2.0.1 — Corrected Generated Capability Definition*
 
 *Derived from Process Inference v1.4, Process Formalization v2.5, and `ora.process-contracts/1.0`*
 
@@ -34,7 +34,7 @@ The derivation queried the available capability categories before formalization:
 | Tools | Repository inspection, Git identity, diffing, test execution, compilation, registry loading, and patch application are available; each declares inspection or mutation at invocation time | Concrete tools remain Run bindings, not definition-level assumptions |
 | Skills | No installed skill is required to interpret or execute this definition | Skill-specific bindings remain optional |
 | Frameworks | PIF v1.4, PFF v2.5, Process Coherence v4.0, Oversight Configuration v2.0, and F-Quality Gate v2.0 are available by their accepted topology | The specialization consumes their contracts without copying their engines |
-| Approved Process Definitions | The generic contract schemas exist; no approved Programming v2 definition existed before this derivation | This file creates `ora/programming@2.0.0`; v1.0 is not invoked as a baseline |
+| Approved Process Definitions | The generic contract schemas exist; no approved Programming v2 definition existed before this derivation | This file creates the corrected `ora/programming@2.0.1`; issued v2.0.0 and v1.0 remain history, not invocation baselines |
 | Solution patterns | Programming v1.0, the reconciled candidate salvage matrix, generic Gear 3 correction/recovery behavior, and external-editor workflows were inspected | Only architecture-compatible invariants survive |
 
 No controlled mutation probe was needed to infer the reusable procedure. Read-only inspection and contract validation were sufficient. Because this capability is intended for registration, exact-version invocation, and later activation, PFF formalization is mandatory; same-Run PIF direct operation is not a substitute.
@@ -145,8 +145,8 @@ All four PRG paths create the same Process Run object family, bind the same exac
 ### Process Definition Identity and Applicability
 
 - **Definition ID:** `ora/programming`
-- **Version:** `2.0.0`
-- **Digest:** `sha256:6996f3bc3696acf3ea1487ba662b157eddffda5d407762dacad830c86affd116`
+- **Version:** `2.0.1`
+- **Digest:** `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`
 - **Digest rule:** SHA-256 of this canonical body after replacing every occurrence of the declared definition digest with `sha256:` plus 64 zeroes and removing vault YAML. This avoids self-reference while binding the complete human and machine definition.
 - **Status and scope:** approved for controlled governed invocation; universal programming specialization; not automatically activated.
 - **Purpose:** Govern programming work through one generic Process Definition/Process Run kernel.
@@ -162,8 +162,8 @@ The following projection must validate with `process_contracts.validate_process_
   "schema_version": "ora.process-contracts/1.0",
   "object_family": "process_definition",
   "definition_id": "ora/programming",
-  "version": "2.0.0",
-  "digest": "sha256:6996f3bc3696acf3ea1487ba662b157eddffda5d407762dacad830c86affd116",
+  "version": "2.0.1",
+  "digest": "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927",
   "title": "Governed Programming",
   "purpose": "Produce an exact programming plan or verified result under explicit authority, current evidence, bounded correction, and independent final review.",
   "status": "approved",
@@ -202,37 +202,46 @@ The following projection must validate with `process_contracts.validate_process_
   },
   "graph": {
     "schema_version": "ora.process-graph/1.0",
-    "graph_id": "ora/programming/2.0.0",
+    "graph_id": "ora/programming/2.0.1",
     "entry_node_id": "entry-route",
     "nodes": [
       {"node_id": "entry-route", "kind": "decision", "label": "Select the confirmed PRG entry contract", "routes": [{"condition": "prg_run", "target_node_id": "intent-interview"}, {"condition": "prg_plan", "target_node_id": "intent-interview"}, {"condition": "prg_execute", "target_node_id": "inspect-scope"}, {"condition": "prg_verify", "target_node_id": "inspect-scope"}], "default_node_id": "blocked"},
       {"node_id": "intent-interview", "kind": "action", "label": "Conduct the management-language intent interview", "operation": "elicit_programming_intent", "next_node_id": "inspect-scope", "authority_grant_ids": ["grant-dialogue"], "artifact_access": ["scope:dialogue", "scope:declared_inputs"], "evidence_requirement_ids": ["ev-intent"], "external_effect": false},
       {"node_id": "inspect-scope", "kind": "action", "label": "Inspect exact artifacts, policies, and existing work", "operation": "inspect_programming_scope", "next_node_id": "scope-review", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_inputs"], "evidence_requirement_ids": ["ev-identity", "ev-policy", "ev-authority"], "external_effect": false},
-      {"node_id": "scope-review", "kind": "verification_boundary", "label": "Judge scope and identity", "evidence_requirement_ids": ["ev-intent", "ev-identity", "ev-policy", "ev-authority"], "routes": {"PROCEED": "mode-after-scope", "REVISE": "inspect-scope", "REPLAN": "intent-interview", "REDEFINE": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "scope-review", "kind": "verification_boundary", "label": "Judge scope and identity", "evidence_requirement_ids": ["ev-intent", "ev-identity", "ev-policy", "ev-authority"], "routes": {"PROCEED": "mode-after-scope", "REVISE": "inspect-scope", "REPLAN": "replan-route", "REDEFINE": "persist-definition-resume-scope", "ESCALATE": "authority", "BLOCKED": "blocked"}},
       {"node_id": "mode-after-scope", "kind": "decision", "label": "Continue according to the selected PRG contract", "routes": [{"condition": "prg_run", "target_node_id": "plan"}, {"condition": "prg_plan", "target_node_id": "plan"}, {"condition": "prg_execute", "target_node_id": "bind-plan"}, {"condition": "prg_verify", "target_node_id": "inspect-result"}], "default_node_id": "blocked"},
       {"node_id": "plan", "kind": "action", "label": "Produce the canonical plan and both projections", "operation": "produce_programming_plan", "next_node_id": "plan-review", "authority_grant_ids": ["grant-plan"], "artifact_access": ["scope:declared_inputs", "scope:plan_outputs"], "evidence_requirement_ids": ["ev-plan", "ev-identity", "ev-authority"], "external_effect": false},
-      {"node_id": "plan-review", "kind": "verification_boundary", "label": "Independently review the exact plan", "evidence_requirement_ids": ["ev-plan", "ev-plan-projection-parity", "ev-review", "ev-authority"], "routes": {"PROCEED": "plan-approval", "REVISE": "plan", "REPLAN": "intent-interview", "REDEFINE": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "plan-review", "kind": "verification_boundary", "label": "Independently review the exact plan", "evidence_requirement_ids": ["ev-plan", "ev-plan-projection-parity", "ev-review", "ev-authority"], "routes": {"PROCEED": "plan-approval", "REVISE": "plan", "REPLAN": "replan-route", "REDEFINE": "persist-definition-resume-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
       {"node_id": "plan-approval", "kind": "human_checkpoint", "label": "Approve the exact canonical plan before mutation", "authority_request_type": "plan_approval", "on_approved_node_id": "post-plan-mode", "on_denied_node_id": "blocked", "on_unavailable_node_id": "authority"},
       {"node_id": "post-plan-mode", "kind": "decision", "label": "Stop with M1 or begin approved execution", "routes": [{"condition": "prg_plan", "target_node_id": "final-review"}, {"condition": "prg_run", "target_node_id": "execute-preflight"}], "default_node_id": "blocked"},
       {"node_id": "bind-plan", "kind": "action", "label": "Bind and revalidate the supplied approved plan", "operation": "bind_approved_plan", "next_node_id": "execute-preflight", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_inputs", "scope:plan_outputs"], "evidence_requirement_ids": ["ev-plan", "ev-identity", "ev-authority"], "external_effect": false},
       {"node_id": "execute-preflight", "kind": "action", "label": "Revalidate artifact, evidence, and authority before acting", "operation": "programming_preflight", "next_node_id": "execute-step", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_inputs", "scope:declared_outputs"], "evidence_requirement_ids": ["ev-identity", "ev-authority", "ev-recovery"], "external_effect": false},
       {"node_id": "execute-step", "kind": "action", "label": "Perform one approved programming step", "operation": "execute_approved_programming_step", "next_node_id": "attempt-review", "authority_grant_ids": ["grant-execute-approved-step"], "artifact_access": ["scope:declared_inputs", "scope:declared_outputs", "scope:declared_external_effects"], "evidence_requirement_ids": ["ev-action", "ev-delta", "ev-check"], "external_effect": true},
       {"node_id": "inspect-result", "kind": "action", "label": "Inspect the supplied result without mutation", "operation": "inspect_programming_result", "next_node_id": "attempt-review", "authority_grant_ids": ["grant-test"], "artifact_access": ["scope:declared_inputs", "scope:declared_outputs"], "evidence_requirement_ids": ["ev-identity", "ev-delta", "ev-check"], "external_effect": false},
-      {"node_id": "attempt-review", "kind": "verification_boundary", "label": "Independently judge the current attempt", "evidence_requirement_ids": ["ev-identity", "ev-delta", "ev-check", "ev-review"], "routes": {"PROCEED": "work-remaining", "REVISE": "revision-route", "REPLAN": "replan-route", "REDEFINE": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
-      {"node_id": "work-remaining", "kind": "decision", "label": "Continue approved work or prepare final review", "routes": [{"condition": "authorized_work_remains", "target_node_id": "execute-step"}], "default_node_id": "final-review"},
-      {"node_id": "revision-route", "kind": "decision", "label": "Return findings or enter bounded correction", "routes": [{"condition": "prg_verify", "target_node_id": "returned"}], "default_node_id": "correction-loop"},
+      {"node_id": "attempt-review", "kind": "verification_boundary", "label": "Independently judge the current attempt", "evidence_requirement_ids": ["ev-identity", "ev-delta", "ev-check", "ev-review"], "routes": {"PROCEED": "work-remaining", "REVISE": "revision-route", "REPLAN": "replan-route", "REDEFINE": "attempt-redefine-route", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "work-remaining", "kind": "decision", "label": "Apply the active path before continuing work", "routes": [{"condition": "prg_run", "target_node_id": "execution-work-remaining"}, {"condition": "prg_execute", "target_node_id": "execution-work-remaining"}, {"condition": "prg_verify", "target_node_id": "final-review"}, {"condition": "prg_plan", "target_node_id": "blocked"}], "default_node_id": "blocked"},
+      {"node_id": "execution-work-remaining", "kind": "decision", "label": "Continue only mutation-authorized approved work", "routes": [{"condition": "authorized_work_remains", "target_node_id": "execute-step"}], "default_node_id": "final-review"},
+      {"node_id": "revision-route", "kind": "decision", "label": "Revise only through an active-path-legal route", "routes": [{"condition": "prg_run", "target_node_id": "correction-loop"}, {"condition": "prg_plan", "target_node_id": "plan"}, {"condition": "prg_execute", "target_node_id": "correction-loop"}, {"condition": "prg_verify", "target_node_id": "returned"}], "default_node_id": "blocked"},
       {"node_id": "correction-loop", "kind": "bounded_loop", "label": "Bound programming correction", "body_node_id": "correct", "exit_node_id": "no-progress", "max_iterations": 12, "progress_evidence_requirement_ids": ["ev-progress"]},
       {"node_id": "correct", "kind": "action", "label": "Correct the cited execution or artifact defect", "operation": "correct_programming_defect", "next_node_id": "attempt-review", "authority_grant_ids": ["grant-execute-approved-step"], "artifact_access": ["scope:declared_outputs"], "evidence_requirement_ids": ["ev-action", "ev-delta", "ev-check", "ev-progress"], "external_effect": true},
-      {"node_id": "no-progress", "kind": "decision", "label": "Classify why correction cannot continue", "routes": [{"condition": "plan_defect", "target_node_id": "replan-route"}, {"condition": "definition_defect", "target_node_id": "definition-plan"}, {"condition": "reserved_authority_required", "target_node_id": "authority"}], "default_node_id": "blocked"},
-      {"node_id": "replan-route", "kind": "decision", "label": "Replan only where the entry contract permits it", "routes": [{"condition": "prg_run", "target_node_id": "plan"}], "default_node_id": "returned"},
+      {"node_id": "no-progress", "kind": "decision", "label": "Classify why correction cannot continue", "routes": [{"condition": "plan_defect", "target_node_id": "replan-route"}, {"condition": "definition_defect", "target_node_id": "persist-definition-resume-execute"}, {"condition": "reserved_authority_required", "target_node_id": "authority"}], "default_node_id": "blocked"},
+      {"node_id": "replan-route", "kind": "decision", "label": "Replan only where the entry contract permits it", "routes": [{"condition": "prg_run", "target_node_id": "plan"}, {"condition": "prg_plan", "target_node_id": "plan"}, {"condition": "prg_execute", "target_node_id": "returned"}, {"condition": "prg_verify", "target_node_id": "returned"}], "default_node_id": "blocked"},
+      {"node_id": "attempt-redefine-route", "kind": "decision", "label": "Persist an attempt-return target legal for the active path", "routes": [{"condition": "prg_run", "target_node_id": "persist-definition-resume-execute"}, {"condition": "prg_plan", "target_node_id": "blocked"}, {"condition": "prg_execute", "target_node_id": "persist-definition-resume-execute"}, {"condition": "prg_verify", "target_node_id": "persist-definition-resume-verify"}], "default_node_id": "blocked"},
+      {"node_id": "final-redefine-route", "kind": "decision", "label": "Persist a final-review return target legal for the active path", "routes": [{"condition": "prg_run", "target_node_id": "persist-definition-resume-final"}, {"condition": "prg_plan", "target_node_id": "persist-definition-resume-plan"}, {"condition": "prg_execute", "target_node_id": "persist-definition-resume-final"}, {"condition": "prg_verify", "target_node_id": "persist-definition-resume-verify"}], "default_node_id": "blocked"},
+      {"node_id": "persist-definition-resume-scope", "kind": "action", "label": "Persist exact resume target inspect-scope for the active path", "operation": "persist_programming_resume_scope", "next_node_id": "definition-plan", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_inputs", "scope:process_definition"], "evidence_requirement_ids": ["ev-identity", "ev-recovery", "ev-definition-defect"], "external_effect": false},
+      {"node_id": "persist-definition-resume-plan", "kind": "action", "label": "Persist exact resume target plan for PRG-Run or PRG-Plan", "operation": "persist_programming_resume_plan", "next_node_id": "definition-plan", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:plan_outputs", "scope:process_definition"], "evidence_requirement_ids": ["ev-plan", "ev-recovery", "ev-definition-defect"], "external_effect": false},
+      {"node_id": "persist-definition-resume-execute", "kind": "action", "label": "Persist exact resume target execute-preflight for PRG-Run or PRG-Execute", "operation": "persist_programming_resume_execute", "next_node_id": "definition-plan", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_outputs", "scope:process_definition"], "evidence_requirement_ids": ["ev-identity", "ev-recovery", "ev-definition-defect"], "external_effect": false},
+      {"node_id": "persist-definition-resume-verify", "kind": "action", "label": "Persist exact resume target inspect-result for PRG-Verify", "operation": "persist_programming_resume_verify", "next_node_id": "definition-plan", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_outputs", "scope:process_definition"], "evidence_requirement_ids": ["ev-identity", "ev-recovery", "ev-definition-defect"], "external_effect": false},
+      {"node_id": "persist-definition-resume-final", "kind": "action", "label": "Persist exact resume target final-review for PRG-Run or PRG-Execute", "operation": "persist_programming_resume_final", "next_node_id": "definition-plan", "authority_grant_ids": ["grant-inspect"], "artifact_access": ["scope:declared_outputs", "scope:process_definition"], "evidence_requirement_ids": ["ev-final-binding", "ev-recovery", "ev-definition-defect"], "external_effect": false},
       {"node_id": "definition-plan", "kind": "action", "label": "Plan the bounded replacement-definition work", "operation": "plan_programming_redefinition", "next_node_id": "definition-plan-review", "authority_grant_ids": ["grant-plan"], "artifact_access": ["scope:process_definition"], "evidence_requirement_ids": ["ev-definition-defect", "ev-plan", "ev-authority"], "external_effect": false},
-      {"node_id": "definition-plan-review", "kind": "verification_boundary", "label": "Review the replacement-definition plan", "evidence_requirement_ids": ["ev-definition-defect", "ev-plan", "ev-review", "ev-authority"], "routes": {"PROCEED": "definition-plan-approval", "REVISE": "definition-plan", "REPLAN": "intent-interview", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "definition-plan-review", "kind": "verification_boundary", "label": "Review the replacement-definition plan", "evidence_requirement_ids": ["ev-definition-defect", "ev-plan", "ev-review", "ev-authority"], "routes": {"PROCEED": "definition-plan-approval", "REVISE": "definition-plan", "REPLAN": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
       {"node_id": "definition-plan-approval", "kind": "human_checkpoint", "label": "Approve replacement-definition construction before mutation", "authority_request_type": "definition_construction_approval", "on_approved_node_id": "redefine", "on_denied_node_id": "blocked", "on_unavailable_node_id": "authority"},
       {"node_id": "redefine", "kind": "action", "label": "Draft and test an exact replacement definition", "operation": "redefine_programming_process", "next_node_id": "definition-review", "authority_grant_ids": ["grant-construct"], "artifact_access": ["scope:process_definition"], "evidence_requirement_ids": ["ev-definition-defect", "ev-definition", "ev-check"], "external_effect": true},
-      {"node_id": "definition-review", "kind": "verification_boundary", "label": "Review and bind the exact replacement definition", "evidence_requirement_ids": ["ev-definition-defect", "ev-definition", "ev-check", "ev-review"], "routes": {"PROCEED": "plan", "REVISE": "redefine", "REPLAN": "intent-interview", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "definition-review", "kind": "verification_boundary", "label": "Review and bind the exact replacement definition", "evidence_requirement_ids": ["ev-definition-defect", "ev-definition", "ev-check", "ev-review"], "routes": {"PROCEED": "definition-resume-route", "REVISE": "redefine", "REPLAN": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "definition-resume-route", "kind": "decision", "label": "Resume only at the exact persisted destination for the active path", "routes": [{"condition": "prg_run:inspect_scope", "target_node_id": "inspect-scope"}, {"condition": "prg_run:plan", "target_node_id": "plan"}, {"condition": "prg_run:execute_preflight", "target_node_id": "execute-preflight"}, {"condition": "prg_run:final_review", "target_node_id": "final-review"}, {"condition": "prg_plan:inspect_scope", "target_node_id": "inspect-scope"}, {"condition": "prg_plan:plan", "target_node_id": "plan"}, {"condition": "prg_execute:inspect_scope", "target_node_id": "inspect-scope"}, {"condition": "prg_execute:execute_preflight", "target_node_id": "execute-preflight"}, {"condition": "prg_execute:final_review", "target_node_id": "final-review"}, {"condition": "prg_verify:inspect_scope", "target_node_id": "inspect-scope"}, {"condition": "prg_verify:inspect_result", "target_node_id": "inspect-result"}], "default_node_id": "blocked"},
       {"node_id": "authority", "kind": "human_checkpoint", "label": "Resolve one typed reserved-authority request", "authority_request_type": "programming_reserved_authority", "on_approved_node_id": "resume-route", "on_denied_node_id": "blocked", "on_unavailable_node_id": "blocked"},
-      {"node_id": "resume-route", "kind": "decision", "label": "Resume at the persisted authority-return target", "routes": [{"condition": "resume_plan", "target_node_id": "plan"}, {"condition": "resume_execute", "target_node_id": "execute-preflight"}, {"condition": "resume_definition", "target_node_id": "definition-plan"}], "default_node_id": "blocked"},
-      {"node_id": "final-review", "kind": "verification_boundary", "label": "Independently judge the exact final outcome", "evidence_requirement_ids": ["ev-identity", "ev-delta", "ev-check", "ev-review", "ev-final-binding"], "routes": {"ACCEPT": "accepted", "REVISE": "revision-route", "REPLAN": "replan-route", "REDEFINE": "definition-plan", "ESCALATE": "authority", "BLOCKED": "blocked"}},
+      {"node_id": "resume-route", "kind": "decision", "label": "Resume authority only at a persisted active-path-legal target", "routes": [{"condition": "prg_run:resume_plan", "target_node_id": "plan"}, {"condition": "prg_run:resume_execute", "target_node_id": "execute-preflight"}, {"condition": "prg_run:resume_definition", "target_node_id": "definition-plan"}, {"condition": "prg_plan:resume_plan", "target_node_id": "plan"}, {"condition": "prg_plan:resume_definition", "target_node_id": "definition-plan"}, {"condition": "prg_execute:resume_execute", "target_node_id": "execute-preflight"}, {"condition": "prg_execute:resume_definition", "target_node_id": "definition-plan"}, {"condition": "prg_verify:resume_verify", "target_node_id": "inspect-result"}, {"condition": "prg_verify:resume_definition", "target_node_id": "definition-plan"}], "default_node_id": "blocked"},
+      {"node_id": "final-review", "kind": "verification_boundary", "label": "Independently judge the exact final outcome", "evidence_requirement_ids": ["ev-identity", "ev-delta", "ev-check", "ev-review", "ev-final-binding"], "routes": {"ACCEPT": "accepted", "REVISE": "revision-route", "REPLAN": "replan-route", "REDEFINE": "final-redefine-route", "ESCALATE": "authority", "BLOCKED": "blocked"}},
       {"node_id": "accepted", "kind": "terminal_state", "label": "Accepted governed outcome", "outcome": "accepted"},
       {"node_id": "returned", "kind": "terminal_state", "label": "Return exact findings or replanning need", "outcome": "returned"},
       {"node_id": "blocked", "kind": "terminal_state", "label": "No authorized evidence-supported continuation", "outcome": "blocked"}
@@ -241,8 +250,8 @@ The following projection must validate with `process_contracts.validate_process_
   "package_manifest": {
     "schema_version": "ora.process-package/1.0",
     "package_id": "ora/programming",
-    "package_version": "2.0.0",
-    "definition_ref": {"definition_id": "ora/programming", "version": "2.0.0", "digest": "sha256:6996f3bc3696acf3ea1487ba662b157eddffda5d407762dacad830c86affd116"},
+    "package_version": "2.0.1",
+    "definition_ref": {"definition_id": "ora/programming", "version": "2.0.1", "digest": "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927"},
     "entry_member_id": "programming-definition",
     "members": [{
       "member_id": "programming-definition",
@@ -250,7 +259,7 @@ The following projection must validate with `process_contracts.validate_process_
       "required": true,
       "media_type": "text/markdown",
       "locator": {"kind": "file", "ref": "Projects/Ora/Framework — Programming.md"},
-      "identity": {"kind": "content_digest", "digest": "sha256:6996f3bc3696acf3ea1487ba662b157eddffda5d407762dacad830c86affd116", "coverage": ["complete_canonical_body", "embedded_kernel_projection"], "captured_at": "2026-07-17T00:00:00-07:00", "fresh_until": "2036-07-17T00:00:00-07:00"}
+      "identity": {"kind": "content_digest", "digest": "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927", "coverage": ["complete_canonical_body", "embedded_kernel_projection"], "captured_at": "2026-07-17T00:00:00-07:00", "fresh_until": "2036-07-17T00:00:00-07:00"}
     }]
   },
   "labels": ["programming", "governed", "generic-kernel", "pif-1.4-derived", "pff-2.5-formalized"]
@@ -300,7 +309,7 @@ The embedded graph is the edge authority. Natural-language node responsibilities
 | Approval | Independent plan review followed by Principal approval of the same digest | Approved M1 or typed non-approval route |
 | Execution | Perform only the next approved action; persist artifact/effect identity before another action | Attempt and effect records |
 | Review | Judge current evidence against exact criteria without acting on the target | One supported directive and findings packet |
-| Redefinition | Preserve defect evidence, approve the bounded replacement-definition plan, draft/test an exact replacement, and rebind the same nonterminal Run only after review | Approved definition plan, replacement definition identity, or typed authority request |
+| Redefinition | Before definition work, persist the active entrypoint, originating boundary, exact path-legal resume node, and current definition/plan/artifact/evidence identities; approve the bounded replacement-definition plan; draft/test an exact replacement; rebind the same nonterminal Run only after review | Immutable definition-resume record, approved definition plan, replacement definition identity, or typed authority request |
 | Finalization | Independently review and rederive the exact subject/evidence bindings | `ACCEPT` completion or one explicit non-completion route |
 
 ### Bounded Judgment Contracts
@@ -326,7 +335,7 @@ Every judgment record binds `judgment_id`, Run and definition identity, current 
 | `B-RESUME` | Internal before resumed action | Checkpoint/current state, receipts, drift, stale evidence, next action | Independent from recovery actor where mutation occurred | `PROCEED`, `REPLAN`, `REDEFINE`, `ESCALATE`, `BLOCKED` |
 | `B-FINAL` | Final M1 or M2 boundary | Exact plan/result and complete current evidence | Qualified evaluator independent from judged acting steps | `ACCEPT`, `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, `BLOCKED` |
 
-All v1.0 boundary intent survives. `B-DEFINITION` is added because v2.0 now has a first-class generic `REDEFINE` route; this increases observability before a Run rebinds to an exact replacement version.
+All v1.0 boundary intent survives. `B-DEFINITION` is present because v2.0.1 has a first-class generic `REDEFINE` route; this increases observability before a Run rebinds to an exact replacement version.
 
 ### Evidence Contract
 
@@ -370,7 +379,7 @@ The graph and this table use exactly the seven Process Run directives:
 | `ACCEPT` | The active PRG path's final boundary is satisfied | Terminal accepted state and completion record |
 | `REVISE` | Execution or produced artifact is defective; plan and definition remain sound | Bounded correction, or terminal findings return for nonmutating `PRG-Verify` |
 | `REPLAN` | Evidence invalidates the plan but not the reusable definition | Planning in `PRG-Run`; exact Replan Return in `PRG-Execute`/`PRG-Verify` |
-| `REDEFINE` | The reusable Programming definition is defective or insufficient | Same nonterminal Run returns to definition authority with old identity, defect evidence, replacement draft, tests, and resume target; no human queue by default |
+| `REDEFINE` | The reusable Programming definition is defective or insufficient | Same nonterminal Run first persists its entrypoint, source boundary, old identity, defect evidence, and exact path-legal resume node, then returns to definition authority; successful replacement may resume only through that immutable record; no human queue by default |
 | `ESCALATE` | A typed reserved human authority is required | Human checkpoint with request type, exact decision, options, evidence, and resume/stop target |
 | `BLOCKED` | No authorized evidence-supported continuation exists | Terminal blocked state preserving artifacts and restart conditions |
 
@@ -388,6 +397,8 @@ The graph and this table use exactly the seven Process Run directives:
 ### Continuation and Recovery
 
 Persist before pause or external effect: Run/definition/plan/node IDs; attempt and loop state; exact artifact/evidence identities; approved grants; completed actions; checkpoint; receipts and idempotency keys; child invocation/return identities; typed authority request; and deterministic resume/stop target.
+
+Before any `REDEFINE` work, persist a definition-resume record containing the active PRG entrypoint, originating boundary/directive, old definition identity, exact proposed replacement scope, current plan/artifact/evidence identities, and one graph-declared resume node legal for that entrypoint. The record is immutable for the definition attempt. `definition-resume-route` must match the persisted entrypoint and node exactly after the replacement identity is reviewed and rebound; missing, changed, mismatched, or undeclared destinations route to `BLOCKED`. `PRG-Execute` and `PRG-Verify` never acquire planning authority through redefinition, and `PRG-Plan` and `PRG-Verify` never acquire target-mutation authority through revision, work-remaining, or authority return.
 
 On restart:
 
@@ -408,7 +419,7 @@ This is one consolidated capability file. The vault canonical and operational mi
 
 | Member | Role | Locator | Identity | Required |
 |---|---|---|---|---|
-| `programming-definition` | Process Definition and complete instruction | `Projects/Ora/Framework — Programming.md` | `ora/programming@2.0.0` plus declared normalized-body digest | Yes |
+| `programming-definition` | Process Definition and complete instruction | `Projects/Ora/Framework — Programming.md` | `ora/programming@2.0.1` plus declared normalized-body digest | Yes |
 
 ### Unresolved Bindings and Assurance Limits
 
@@ -429,14 +440,14 @@ Concrete project, repository, identity provider, executor tool, evidence provide
 ## EVALUATION CRITERIA
 
 1. The selected PRG path is the least-authoritative path consistent with the management intent.
-2. All four paths use `ora/programming@2.0.0`, the generic Run/contracts, and no private controller or `run_kind`.
+2. All four paths use `ora/programming@2.0.1`, the generic Run/contracts, and no private controller or `run_kind`.
 3. The project, exact target identity, pre-existing changes, policies, non-solutions, and exclusions are explicit.
 4. Principal and Technical projections share one plan ID/version/digest and no semantic divergence.
 5. No mutation occurs before exact plan approval; no action exceeds its grant or artifact selector.
 6. Construct, test, register, invoke, and activate authority are mechanically distinct.
 7. Every material judgment is step-bound, evidence-backed, and limited to declared conclusions/directives/actions.
 8. Intermediate continuation uses `PROCEED`; only the active path's final boundary uses `ACCEPT`.
-9. `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, and `BLOCKED` preserve their distinct failure/authority meanings.
+9. `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, and `BLOCKED` preserve their distinct failure/authority meanings; exhaustive path traversal cannot reach a planning or target-mutation node prohibited by the active entry contract.
 10. Evidence is bound to the exact subject and invalidated after relevant drift.
 11. Pause/restart preserves state and never replays a mutation without exact safety proof.
 12. Final acceptance is independent, post-review bindings match, code remains visible, and every external effect has lineage/receipt.
@@ -452,6 +463,7 @@ Concrete project, repository, identity provider, executor tool, evidence provide
 - **Intermediate acceptance:** `ACCEPT` is used to continue ordinary work. Replace it with `PROCEED`; reserve `ACCEPT` for the active path's final boundary.
 - **Observation transition:** `PASS`, `FAIL`, or `BROKEN` changes lifecycle state directly. Return the observation to Process Coherence.
 - **Redefinition queue collapse:** every definition defect interrupts a human. Continue authorized draft/test work under `REDEFINE`; use `ESCALATE` only for reserved authority.
+- **Path-erasing return:** revision, replanning, redefinition, work-remaining, or authority return resumes at a node illegal for the active PRG entry contract. Persist and enforce the exact path-qualified target; otherwise `BLOCKED`.
 - **Blind churn:** attempt budget forces repeated work without a new hypothesis or progress. Stop and classify the failure.
 - **Stale proof:** evidence survives a relevant artifact/provider/dependency change. Invalidate and recapture affected evidence.
 - **Receiptless recovery:** resume assumes an external effect did not happen. Refuse replay and return authority.
@@ -462,12 +474,13 @@ Concrete project, repository, identity provider, executor tool, evidence provide
 
 1. Confirm `PRG-Run`, `PRG-Plan`, `PRG-Execute`, or `PRG-Verify` after the management-language interview.
 2. Query available capabilities and exact artifact/policy state before binding tools or proposing mutation.
-3. Create one generic Process Run bound to `ora/programming@2.0.0`; attach plan, authority, scope, judgment, evidence, correction, continuation, recovery, and escalation contracts.
+3. Create one generic Process Run bound to `ora/programming@2.0.1`; attach plan, authority, scope, judgment, evidence, correction, continuation, recovery, and escalation contracts.
 4. Traverse only the embedded graph and active path. Resolve each boundary to one declared directive and let the generic dispatcher apply it.
 5. Preserve every artifact/effect identity and return the accepted outcome or exact non-completion packet.
 
 ## VERSION HISTORY
 
+- **v2.0.1 — 2026-07-17:** Corrected the issued v2.0.0 graph after Gate 1.6 traversal review. Made revision, replanning, work-remaining, redefinition, and authority-return routing entrypoint-aware; prevented `PRG-Plan` and `PRG-Verify` from reaching target-mutating nodes; prevented `PRG-Execute` and `PRG-Verify` from silently entering planning; and bound successful redefinition to an immutable exact path-legal resume destination.
 - **v2.0 — 2026-07-17:** Regenerated from PIF v1.4 and PFF v2.5. Bound the consolidated specialization to `ora.process-contracts/1.0`; added the machine-checkable embedded definition; management-language intent interview; one canonical plan with Principal/Technical projections; explicit construct/test/register/invoke/activate authority separation; step-bound planner/executor/judge/overseer judgments; four PRG paths over one Run; all seven directives with intermediate `PROCEED` and final-only `ACCEPT`; generic `REDEFINE` versus typed `ESCALATE`; stale-evidence invalidation; pause/restart/recovery; external-editor/code visibility; and versioned capability output.
 - **v1.0 — 2026-07-15 (superseded as active definition; retained in history):** Established exact artifact identity, approved planning, four programming paths, compact boundary packets, independent review, bounded correction, accepted-exception records, and post-review drift checking. Its old intermediate `ACCEPT` outcomes, reduced-assurance pseudo-transition, and pre-v2.5 derivation semantics do not govern v2.0.
 
@@ -477,4 +490,4 @@ Concrete project, repository, identity provider, executor tool, evidence provide
 
 ---
 
-*End of Framework — Programming v2.0*
+*End of Framework — Programming v2.0.1*
