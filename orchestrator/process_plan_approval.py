@@ -1384,11 +1384,25 @@ class ProcessPlanApprovalService:
                 status = "retained"
             if approval is not None:
                 status = "approval_pending_commit"
+            phase_2_4_active = (
+                "phase-2.4" in run.get("labels", [])
+                and "delegated" in run.get("labels", [])
+            )
+            phase_2_4_positioned = (
+                phase_2_4_active
+                and run["current_node_id"] != "post-plan-mode"
+                and str(
+                    run["contracts"]["continuation"].get("checkpoint_id") or ""
+                ).startswith("delegation-")
+            )
             if (
                 approval is not None
                 and export is not None
                 and current is not None
-                and run["current_node_id"] == "post-plan-mode"
+                and (
+                    run["current_node_id"] == "post-plan-mode"
+                    or phase_2_4_active
+                )
                 and run["contracts"]["approved_plan"]["digest"] == current["digest"]
             ):
                 status = "approved"
@@ -1415,6 +1429,7 @@ class ProcessPlanApprovalService:
                 "proposal_idempotency": proposal_keys,
                 "approval_idempotency": approval_keys,
                 "dialogue_lifecycle_receipts": lifecycle_receipts,
+                "run_state": run["state"],
                 "current_node_id": run["current_node_id"],
                 "next_action": {
                     "planning": "submit_canonical_plan",
@@ -1422,11 +1437,34 @@ class ProcessPlanApprovalService:
                     "revision_requested": "submit_revised_plan",
                     "stale": "submit_revised_plan",
                     "approval_pending_commit": "finish_approval_commit",
-                    "approved": "await_phase_2_4_delegation",
+                    "approved": (
+                        "review_completed_result"
+                        if run["state"] == "completed"
+                        else (
+                            "resolve_blocked_run"
+                            if run["state"] == "blocked"
+                            else (
+                                "delegated_execution_active"
+                                if phase_2_4_positioned
+                                else (
+                                    "finish_phase_2_4_activation"
+                                    if phase_2_4_active
+                                    else "await_phase_2_4_delegation"
+                                )
+                            )
+                        )
+                    ),
                     "retained": "no_execution",
                 }[status],
-                "phase_2_4_authorized": False,
-                "target_mutation_authorized": False,
+                "phase_2_4_authorized": phase_2_4_active,
+                "target_mutation_authorized": (
+                    phase_2_4_positioned
+                    and run["state"] not in {"completed", "blocked"}
+                    and any(
+                        "execute_approved_programming_step" in grant["actions"]
+                        for grant in run["contracts"]["authority"]["grants"]
+                    )
+                ),
             }
             try:
                 persisted_lifecycle = load_process_plan_lifecycle(

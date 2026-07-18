@@ -141,6 +141,20 @@
   const togglePin = () => setPinned(!isPinned());
   let sidebarPinBtn = null;
 
+  const updateWordmarkAttention = () => {
+    const logoA = document.getElementById('logo-a');
+    if (!logoA) return;
+    const hasAttention = sidebar.dataset.dialogueAttention === 'true'
+      || sidebar.dataset.processAttention === 'true';
+    logoA.classList.toggle('wordmark-attract', hasAttention);
+  };
+
+  document.addEventListener('ora:process-attention-changed', (event) => {
+    const detail = (event && event.detail) || {};
+    sidebar.dataset.processAttention = detail.needs_attention ? 'true' : 'false';
+    updateWordmarkAttention();
+  });
+
   const render = (data) => {
     lastSnapshot = data || { pinned: [], pending: [], unread: [], active: [] };
 
@@ -162,14 +176,11 @@
     // might want to look at (any unread, errored, or pending). The
     // CSS gates the animation on body:not(.sidebar-expanded) so the
     // pulse only fires when the affordance actually matters.
-    const logoA = document.getElementById('logo-a');
-    if (logoA) {
-      const hasAttention = (data.unread  || []).length > 0
-                        || (data.errored || []).length > 0
-                        || (data.pending || []).length > 0;
-      if (hasAttention) logoA.classList.add('wordmark-attract');
-      else              logoA.classList.remove('wordmark-attract');
-    }
+    const hasDialogueAttention = (data.unread  || []).length > 0
+      || (data.errored || []).length > 0
+      || (data.pending || []).length > 0;
+    sidebar.dataset.dialogueAttention = hasDialogueAttention ? 'true' : 'false';
+    updateWordmarkAttention();
 
     // Expanded group lists. Hide the pinned / errored groups entirely
     // when empty so their section headers don't show as orphans.

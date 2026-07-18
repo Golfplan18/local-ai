@@ -5215,8 +5215,24 @@ def _process_plan_service():
     return ProcessPlanApprovalService(repository_root=WORKSPACE)
 
 
+def _process_delegation_service(plan_service=None):
+    """Construct the Phase 2.4 delegation and attention service."""
+
+    from process_delegation_attention import ProcessDelegationAttentionService
+
+    if plan_service is not None:
+        return ProcessDelegationAttentionService(
+            runtime=plan_service.runtime,
+            plan_service=plan_service,
+            sessions_root=plan_service.sessions_root,
+            repository_root=WORKSPACE,
+        )
+    return ProcessDelegationAttentionService(repository_root=WORKSPACE)
+
+
 def _process_plan_error_status(exc: Exception) -> int:
     from governed_process_runtime import AuthorityDeniedError
+    from process_delegation_attention import ProcessDelegationError
     from process_plan_approval import (
         ProcessPlanError,
         ProcessPlanConflict,
@@ -5224,6 +5240,8 @@ def _process_plan_error_status(exc: Exception) -> int:
         ProcessPlanIntegrityError,
     )
 
+    if isinstance(exc, ProcessDelegationError):
+        return _process_delegation_error_status(exc)
     if isinstance(exc, AuthorityDeniedError):
         return 403
     if isinstance(exc, ProcessPlanInputRequired):
@@ -5233,6 +5251,28 @@ def _process_plan_error_status(exc: Exception) -> int:
     if isinstance(exc, ProcessPlanIntegrityError):
         return 503
     if isinstance(exc, ProcessPlanError):
+        return 400
+    return 503
+
+
+def _process_delegation_error_status(exc: Exception) -> int:
+    from governed_process_runtime import AuthorityDeniedError
+    from process_delegation_attention import (
+        ProcessDelegationConflict,
+        ProcessDelegationError,
+        ProcessDelegationInputRequired,
+        ProcessDelegationIntegrityError,
+    )
+
+    if isinstance(exc, AuthorityDeniedError):
+        return 403
+    if isinstance(exc, ProcessDelegationInputRequired):
+        return 422
+    if isinstance(exc, ProcessDelegationConflict):
+        return 409
+    if isinstance(exc, ProcessDelegationIntegrityError):
+        return 503
+    if isinstance(exc, ProcessDelegationError):
         return 400
     return 503
 
@@ -5253,7 +5293,7 @@ def _apply_process_plan_action(service, conversation_id, payload):
             idempotency_key=str(payload.get("idempotency_key") or ""),
         )
     if action in {"approve_and_start", "approve_without_start"}:
-        return service.approve(
+        state = service.approve(
             conversation_id,
             decision=action,
             plan_ref=payload.get("plan_ref") or {},
@@ -5261,6 +5301,45 @@ def _apply_process_plan_action(service, conversation_id, payload):
             decision_by=str(payload.get("decision_by") or "principal:user"),
             idempotency_key=str(payload.get("idempotency_key") or ""),
         )
+        if action == "approve_and_start" and state.get("status") == "approved":
+            delegation = _process_delegation_service(service).delegate(
+                conversation_id,
+                plan_ref={
+                    field: state["current_plan"][field]
+                    for field in ("plan_id", "version", "digest")
+                },
+                approval_receipt_digest=state["dialogue_lifecycle"][
+                    "approval_receipt_digest"
+                ],
+                requested_by=str(payload.get("decision_by") or "principal:user"),
+                idempotency_key=(
+                    "delegate:" + str(payload.get("idempotency_key") or "")
+                ),
+            )
+            refreshed = service.get_state(conversation_id)
+            if refreshed is None:
+                raise RuntimeError("approved plan disappeared after delegation")
+            return {**refreshed, "delegation": delegation}
+        return state
+    if action == "delegate":
+        state = service.get_state(conversation_id)
+        if state is None or state.get("current_plan") is None:
+            from process_plan_approval import ProcessPlanConflict
+
+            raise ProcessPlanConflict("Dialogue has no approved plan to delegate")
+        delegation = _process_delegation_service(service).delegate(
+            conversation_id,
+            plan_ref=payload.get("plan_ref") or {},
+            approval_receipt_digest=str(
+                payload.get("approval_receipt_digest") or ""
+            ),
+            requested_by=str(payload.get("requested_by") or "principal:user"),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+        refreshed = service.get_state(conversation_id)
+        if refreshed is None:
+            raise RuntimeError("approved plan disappeared after delegation")
+        return {**refreshed, "delegation": delegation}
     if action in {"request_changes", "change_scope_or_permissions"}:
         return service.request_revision(
             conversation_id,
@@ -5427,6 +5506,59 @@ def process_plan_state(conversation_id):
     if state is None:
         return _json_response({"ok": False, "error": "process_plan_not_found"}, 404)
     return _json_response({"ok": True, "plan": state})
+
+
+@app.route("/api/process-delegation/<conversation_id>", methods=["GET", "POST"])
+def process_delegation_state(conversation_id):
+    """Hydrate or start one exact approved Phase 2.4 delegation."""
+
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+    try:
+        service = _process_delegation_service()
+        if request.method == "POST":
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or payload.get("action") != "delegate":
+                from process_delegation_attention import ProcessDelegationInputRequired
+
+                raise ProcessDelegationInputRequired(
+                    "Phase 2.4 action must be exact delegation"
+                )
+            state = service.delegate(
+                conversation_id,
+                plan_ref=payload.get("plan_ref") or {},
+                approval_receipt_digest=str(
+                    payload.get("approval_receipt_digest") or ""
+                ),
+                requested_by=str(payload.get("requested_by") or "principal:user"),
+                idempotency_key=str(payload.get("idempotency_key") or ""),
+            )
+        else:
+            state = service.get_delegation(conversation_id)
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_delegation_error_status(exc),
+        )
+    if state is None:
+        return _json_response(
+            {"ok": False, "error": "process_delegation_not_found"}, 404
+        )
+    return _json_response({"ok": True, "delegation": state})
+
+
+@app.route("/api/process-attention", methods=["GET"])
+def process_attention_projection():
+    """Return Pending, Automated Processes, and Unread process projections."""
+
+    try:
+        projection = _process_delegation_service().projection()
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_delegation_error_status(exc),
+        )
+    return _json_response({"ok": True, **projection})
 
 
 @app.route("/api/slash-commands", methods=["GET"])
@@ -8259,9 +8391,23 @@ def _process_plan_response_text(state):
     if status == "approval_pending_commit":
         return "Your exact approval is recorded. Ora is completing the idempotent plan export and checkpoint commit."
     if status == "approved":
+        delegation = state.get("delegation") or {}
+        if delegation.get("status") == "delegated":
+            return (
+                "The exact approved plan is delegated and safely checkpointed. "
+                "The live Process Run is now in Pending at execution preflight; "
+                "routine work remains quiet and Ora will return only for a focused "
+                "decision, a blocked condition, or verified completion."
+            )
+        if delegation.get("status") == "withheld":
+            condition = ((delegation.get("observation") or {}).get("payload") or {})
+            return (
+                "Delegation is withheld because the approved target baseline is "
+                f"stale. {condition.get('required_decision', '')}"
+            ).strip()
         return (
             "The exact plan is approved and exported as the execution contract. "
-            "Execution has not begun; Phase 2.4 delegation remains the next boundary."
+            "Execution has not begun; it is waiting for an explicit start decision."
         )
     if status == "retained":
         return "The reviewed plan was retained and the Run stopped without execution."
@@ -8465,18 +8611,36 @@ def chat():
             _management_interview_error_status(exc),
         )
 
+    # A terminal Process Run has returned to attention. Its governing
+    # Dialogue must be usable for result or blockage discussion; it is no
+    # longer an active planning/delegation checkpoint that intercepts every
+    # turn. The Run remains immutable and visible through Process attention.
+    if active_plan is not None and active_plan.get("run_state") in {
+        "completed", "blocked",
+    }:
+        active_plan = None
+
     if active_plan is not None:
         if management_plan_raw is None:
             _delete_pending_submission(submission_id)
-            boundary = (
-                "awaiting_phase_2_4_delegation"
-                if active_plan["status"] == "approved"
-                else "awaiting_plan_action"
-            )
-            return _json_response({
+            boundary = "awaiting_plan_action"
+            delegation = None
+            if active_plan["status"] == "approved":
+                delegation = _process_delegation_service(
+                    plan_service
+                ).get_delegation(panel_id)
+                boundary = (
+                    "delegated_run_active"
+                    if delegation and delegation.get("status") == "delegated"
+                    else "awaiting_phase_2_4_delegation"
+                )
+            payload = {
                 "error": boundary,
                 "process_plan": active_plan,
-            }, 409)
+            }
+            if delegation is not None:
+                payload["delegation"] = delegation
+            return _json_response(payload, 409)
         try:
             plan_state = _apply_process_plan_action(
                 plan_service, panel_id, management_plan_raw

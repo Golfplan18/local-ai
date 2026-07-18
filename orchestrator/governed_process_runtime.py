@@ -104,6 +104,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "controlled_probe_withheld",
     "dialogue_observation_recorded",
     "run_contracts_replaced",
+    "delegation_activated",
     "process_invoked",
     "child_return_received",
     "process_returned",
@@ -566,6 +567,9 @@ class GovernedProcessRuntime:
                 elif event_type == "run_contracts_replaced":
                     materialized["contracts"] = copy.deepcopy(details["contracts"])
                     materialized["labels"] = list(details["labels"])
+                elif event_type == "delegation_activated":
+                    materialized["contracts"] = copy.deepcopy(details["contracts"])
+                    materialized["labels"] = list(details["labels"])
                 elif event_type == "process_invoked":
                     child_ref = details["child_definition_ref"]
                     if child_ref not in materialized["relationships"]["invoked_definition_refs"]:
@@ -932,6 +936,158 @@ class GovernedProcessRuntime:
                         "version": replacement["approved_plan"]["version"],
                         "digest": replacement["approved_plan"]["digest"],
                     },
+                    "contracts": replacement,
+                    "labels": clean_labels,
+                },
+                node_id=run["current_node_id"],
+                runtime_authoritative=True,
+            )
+
+    def _activate_approved_delegation(
+        self,
+        run_id: str,
+        contracts: Mapping[str, Any],
+        *,
+        plan_ref: Mapping[str, Any],
+        approval_receipt_digest: str,
+        delegation_digest: str,
+        idempotency_key: str,
+        labels: Sequence[str],
+    ) -> dict[str, Any]:
+        """Bind one exact approved plan to the generic execution kernel.
+
+        This is an internal Phase 2.4 seam.  It changes only attached Run
+        contracts and never performs a target action.  The owning delegation
+        service has already authenticated the Dialogue, approval receipt,
+        current target baseline, and idempotency identity.  This boundary
+        repeats the load-bearing checks before making execution nodes
+        reachable and records the complete replacement for crash recovery.
+        """
+
+        replacement = copy.deepcopy(dict(contracts))
+        exact_approval = _exact_digest(
+            approval_receipt_digest, "approval_receipt_digest"
+        )
+        exact_delegation = _exact_digest(delegation_digest, "delegation_digest")
+        key = str(idempotency_key or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", key):
+            raise GovernedRuntimeError("delegation idempotency key is invalid")
+        clean_labels = [str(label or "").strip() for label in labels]
+        if not clean_labels or any(not label for label in clean_labels):
+            raise GovernedRuntimeError("delegation labels must be non-empty")
+
+        with _locked():
+            run = self.load_run(run_id)
+            existing = [
+                record
+                for record in self.load_records(run_id)
+                if (record.get("event") or {}).get("event_type")
+                == "delegation_activated"
+            ]
+            if existing:
+                details = existing[-1]["event"]["details"]
+                if (
+                    len(existing) != 1
+                    or details.get("delegation_digest") != exact_delegation
+                    or details.get("approval_receipt_digest") != exact_approval
+                    or details.get("plan_ref") != dict(plan_ref)
+                    or details.get("idempotency_key") != key
+                    or details.get("contracts") != replacement
+                    or details.get("labels") != clean_labels
+                ):
+                    raise RunConflictError(
+                        "Process Run already carries a different delegation identity"
+                    )
+                return copy.deepcopy(existing[-1])
+
+            self._require_mutable_run(run, "activate approved delegation")
+            if run["state"] != "running" or run["current_node_id"] != "post-plan-mode":
+                raise RunConflictError(
+                    "delegation requires the approved post-plan execution boundary"
+                )
+            expected_plan_ref = {
+                field: run["contracts"]["approved_plan"][field]
+                for field in ("plan_id", "version", "digest")
+            }
+            if dict(plan_ref) != expected_plan_ref:
+                raise AuthorityDeniedError(
+                    "delegation does not bind the exact approved plan"
+                )
+            if "plan:approved" not in run.get("labels", []):
+                raise AuthorityDeniedError(
+                    "delegation requires the persisted approved-plan boundary"
+                )
+            replacement_plan_ref = {
+                field: replacement.get("approved_plan", {}).get(field)
+                for field in ("plan_id", "version", "digest")
+            }
+            if replacement_plan_ref != expected_plan_ref:
+                raise AuthorityDeniedError(
+                    "delegation contracts replace the approved plan identity"
+                )
+            candidate = copy.deepcopy(run)
+            candidate["contracts"] = replacement
+            candidate["labels"] = clean_labels
+            _contracts.validate_process_run(candidate)
+            definition = self.load_definition(run_id)
+            self._validate_definition_binding(definition, candidate)
+
+            required_nodes = {
+                "post-plan-mode", "execute-preflight", "execute-step",
+                "attempt-review", "final-review", "authority", "accepted",
+                "blocked",
+            }
+            approved_nodes = set(
+                replacement["approved_plan"]["approved_node_ids"]
+            )
+            missing_nodes = sorted(required_nodes - approved_nodes)
+            if missing_nodes:
+                raise AuthorityDeniedError(
+                    "delegation omits required execution node(s): "
+                    + ", ".join(missing_nodes)
+                )
+            always_reserved = {
+                "activate", "construct_definition", "expand_scope", "publish",
+                "register_definition", "remote_git", "send_external",
+            }
+            reserved = set(replacement["authority"]["reserved_actions"])
+            if not always_reserved.issubset(reserved):
+                raise AuthorityDeniedError(
+                    "delegation releases authority that requires a separate approval"
+                )
+            granted = {
+                action
+                for grant in replacement["authority"]["grants"]
+                for action in grant["actions"]
+            }
+            allowed = {
+                "programming_preflight", "execute_approved_programming_step",
+                "correct_programming_defect", "inspect_programming_result",
+                "persist_programming_resume_execute",
+                "persist_programming_resume_final",
+            }
+            outside = sorted(granted - allowed)
+            if outside:
+                raise AuthorityDeniedError(
+                    "delegation grants an unsupported action: " + ", ".join(outside)
+                )
+            if set(replacement["artifact_scope"]["external_effect_selectors"]) - {
+                "scope:declared_external_effects"
+            }:
+                raise AuthorityDeniedError(
+                    "delegation contains an undeclared external-effect scope"
+                )
+
+            run["contracts"] = replacement
+            run["labels"] = clean_labels
+            return self._append_event_locked(
+                run,
+                "delegation_activated",
+                {
+                    "plan_ref": copy.deepcopy(dict(plan_ref)),
+                    "approval_receipt_digest": exact_approval,
+                    "delegation_digest": exact_delegation,
+                    "idempotency_key": key,
                     "contracts": replacement,
                     "labels": clean_labels,
                 },

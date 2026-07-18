@@ -1,10 +1,11 @@
-/* V3 sidebar — Automated Processes panels (oversight).
+/* V3 sidebar — governed Process attention plus legacy oversight panels.
  *
- * Two-supergroup accordion: Dialogues / Automated Processes. Expansion is
- * mutually exclusive. Dialogues starts expanded; Automated Processes contains
- * the Paused and Operating inner groups and expands on demand.
+ * Two-supergroup accordion: Dialogues / Processes. The Process surface projects
+ * durable governed state into Unread, Pending, and Automated Processes. The
+ * pre-existing Paused/Operating queues remain below as explicitly legacy views.
  *
  * Data:
+ *   GET /api/process-attention     — authenticated Phase 2.4 projection
  *   GET /api/oversight/paused    — Paused entries for resolution
  *   GET /api/oversight/operating — Operating items (read-only in v1)
  *
@@ -40,13 +41,20 @@
 
   const pausedList     = sidebar.querySelector('#oversightPausedList');
   const operatingList  = sidebar.querySelector('#oversightOperatingList');
+  const attentionUnreadList = sidebar.querySelector('#processAttentionUnreadList');
+  const attentionPendingList = sidebar.querySelector('#processAttentionPendingList');
+  const attentionAutomatedList = sidebar.querySelector('#processAttentionAutomatedList');
   const pausedCount    = sidebar.querySelector('#sidebarPausedCount');
   const operatingCount = sidebar.querySelector('#sidebarOperatingCount');
+  const attentionUnreadCount = sidebar.querySelector('#processAttentionUnreadCount');
+  const attentionPendingCount = sidebar.querySelector('#processAttentionPendingCount');
+  const attentionAutomatedCount = sidebar.querySelector('#processAttentionAutomatedCount');
   const processesCount = sidebar.querySelector('#sidebarProcessesCount');
 
   const state = {
     paused:    [],
     operating: [],
+    attention: { unread: [], pending: [], automated_processes: [] },
     expanded:  null, // detail-expanded entry id within Paused
   };
 
@@ -62,11 +70,9 @@
       const arrow = sg.querySelector('.sidebar-supergroup-arrow');
       if (arrow) arrow.textContent = isThis ? '▾' : '▸';
     }
-    // When expanding the Automated Processes super-group, fetch both
-    // Paused and Operating in parallel.
+    // Expanding Processes refreshes the governed projection and legacy queues.
     if (name === 'processes') {
-      fetchPaused();
-      fetchOperating();
+      refreshAll();
     }
   };
 
@@ -104,8 +110,30 @@
     } catch (e) {}
   };
 
+  const fetchProcessAttention = async () => {
+    try {
+      const r = await fetch('/api/process-attention');
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data.ok) return;
+      state.attention = {
+        unread: data.unread || [],
+        pending: data.pending || [],
+        automated_processes: data.automated_processes || [],
+      };
+      renderProcessAttention();
+      updateAttentionCounts();
+      const needsAttention = state.attention.unread.length > 0
+        || state.attention.pending.some(item => item.needs_attention === true);
+      sidebar.dataset.processAttention = needsAttention ? 'true' : 'false';
+      document.dispatchEvent(new CustomEvent('ora:process-attention-changed', {
+        detail: { needs_attention: needsAttention },
+      }));
+    } catch (e) {}
+  };
+
   const refreshAll = async () => {
-    await Promise.all([fetchPaused(), fetchOperating()]);
+    await Promise.all([fetchProcessAttention(), fetchPaused(), fetchOperating()]);
   };
 
   // ── Counts ────────────────────────────────────────────────────────────
@@ -130,9 +158,164 @@
 
   const updateProcessesCount = () => {
     if (!processesCount) return;
-    const total = state.paused.length + state.operating.length;
+    const runIds = new Set();
+    state.attention.pending.forEach(item => runIds.add(item.run_id));
+    state.attention.unread.forEach(item => runIds.add(item.run_id));
+    const total = runIds.size + state.attention.automated_processes.length
+      + state.paused.length + state.operating.length;
     processesCount.textContent = String(total);
     processesCount.dataset.count = String(total);
+  };
+
+  const setCount = (element, value) => {
+    if (!element) return;
+    element.textContent = String(value);
+    element.dataset.count = String(value);
+  };
+
+  const updateAttentionCounts = () => {
+    setCount(attentionUnreadCount, state.attention.unread.length);
+    setCount(attentionPendingCount, state.attention.pending.length);
+    setCount(attentionAutomatedCount, state.attention.automated_processes.length);
+    updateProcessesCount();
+  };
+
+  // ── Render: governed Process attention ──────────────────────────────
+
+  const renderProcessAttention = () => {
+    renderProcessRows(attentionUnreadList, state.attention.unread, 'unread');
+    renderProcessRows(attentionPendingList, state.attention.pending, 'pending');
+    renderAutomatedRows();
+  };
+
+  const renderProcessRows = (container, rows, surface) => {
+    if (!container) return;
+    container.innerHTML = '';
+    rows.forEach(row => container.appendChild(buildProcessRunCard(row, surface)));
+  };
+
+  const appendBadge = (container, value, extraClass) => {
+    if (!value) return;
+    const badge = document.createElement('span');
+    badge.className = `badge${extraClass ? ' ' + extraClass : ''}`;
+    badge.textContent = value;
+    container.appendChild(badge);
+  };
+
+  const buildProcessRunCard = (row, surface) => {
+    const card = document.createElement('div');
+    card.className = 'oversight-card process-attention-card';
+    card.dataset.runId = row.run_id || '';
+    card.dataset.surface = surface;
+    card.dataset.needsAttention = row.needs_attention ? 'true' : 'false';
+    card.dataset.engagement = surface === 'unread' ? 'unseen' : 'seen';
+
+    const name = document.createElement('div');
+    name.className = 'oversight-card-name';
+    name.textContent = row.title || row.run_id || '(untitled Process Run)';
+    card.appendChild(name);
+
+    const meta = document.createElement('div');
+    meta.className = 'oversight-card-meta';
+    appendBadge(meta, row.visible_status || row.run_state,
+      row.needs_attention ? 'attention' : '');
+    appendBadge(meta, row.project_ref || '');
+    if (row.current_step) {
+      const step = document.createElement('span');
+      step.textContent = row.current_step;
+      meta.appendChild(step);
+    }
+    card.appendChild(meta);
+
+    if (row.attention) {
+      const detail = document.createElement('div');
+      detail.className = 'process-attention-detail';
+      const condition = document.createElement('div');
+      condition.textContent = row.attention.condition || '';
+      detail.appendChild(condition);
+      const decision = document.createElement('div');
+      decision.className = 'process-attention-required';
+      decision.textContent = typeof row.attention.required_decision === 'string'
+        ? row.attention.required_decision
+        : JSON.stringify(row.attention.required_decision || {});
+      detail.appendChild(decision);
+      const evidenceRefs = row.attention.evidence_refs || [];
+      if (evidenceRefs.length) {
+        const evidence = document.createElement('div');
+        evidence.className = 'process-attention-evidence';
+        evidence.textContent = 'Evidence: ' + evidenceRefs.map(ref => (
+          typeof ref === 'string' ? ref : JSON.stringify(ref)
+        )).join('; ');
+        detail.appendChild(evidence);
+      }
+      const results = row.attention.result_artifacts || [];
+      if (results.length) {
+        const artifacts = document.createElement('div');
+        artifacts.className = 'process-attention-results';
+        artifacts.textContent = 'Results: ' + results.map(item => (
+          `${item.artifact_id} (${item.identity_digest})`
+        )).join('; ');
+        detail.appendChild(artifacts);
+      }
+      card.appendChild(detail);
+    }
+
+    if (row.dialogue_ref) {
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.title = 'Open the governing Dialogue';
+      const open = () => openProcessDialogue(row);
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open();
+        }
+      });
+    }
+    return card;
+  };
+
+  const openProcessDialogue = async (row) => {
+    if (!row.dialogue_ref) return;
+    if (row.needs_attention) {
+      try {
+        await fetch(`/api/conversation/${encodeURIComponent(row.dialogue_ref)}/mark-read`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+        });
+      } catch (e) {}
+    }
+    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+      detail: {
+        conversation_id: row.dialogue_ref,
+        title: row.title || 'Process',
+        tag: '',
+      },
+    }));
+    fetchProcessAttention();
+  };
+
+  const renderAutomatedRows = () => {
+    if (!attentionAutomatedList) return;
+    attentionAutomatedList.innerHTML = '';
+    state.attention.automated_processes.forEach(row => {
+      const card = document.createElement('div');
+      card.className = 'oversight-card process-attention-card';
+      card.dataset.surface = 'automated';
+      card.dataset.engagement = 'seen';
+      card.dataset.needsAttention = 'false';
+      const name = document.createElement('div');
+      name.className = 'oversight-card-name';
+      name.textContent = row.title || row.definition_ref.definition_id;
+      card.appendChild(name);
+      const meta = document.createElement('div');
+      meta.className = 'oversight-card-meta';
+      appendBadge(meta, row.status || 'Deployed');
+      appendBadge(meta, `trigger: ${row.trigger_binding}`);
+      appendBadge(meta, `authority: ${row.authority_binding}`);
+      card.appendChild(meta);
+      attentionAutomatedList.appendChild(card);
+    });
   };
 
   // ── Render: Paused ────────────────────────────────────────────────────
