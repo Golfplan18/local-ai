@@ -86,6 +86,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "run_started",
     "run_paused",
     "run_resumed",
+    "node_advanced",
     "action_completed",
     "segment_started",
     "attempt_started",
@@ -116,6 +117,7 @@ _RESERVED_RUNTIME_EVENT_PREFIXES = (
     "infrastructure_",
     "invocation_",
     "lifecycle_",
+    "node_",
     "process_",
     "recovery_",
     "return_",
@@ -556,6 +558,8 @@ class GovernedProcessRuntime:
                 elif event_type == "run_resumed":
                     materialized["state"] = "running"
                     materialized["current_node_id"] = details["resume_node_id"]
+                elif event_type == "node_advanced":
+                    materialized["current_node_id"] = details["to_node_id"]
                 elif event_type == "process_invoked":
                     child_ref = details["child_definition_ref"]
                     if child_ref not in materialized["relationships"]["invoked_definition_refs"]:
@@ -820,6 +824,455 @@ class GovernedProcessRuntime:
                 {"entry_node_id": entry_node_id, "reason": reason},
                 node_id=entry_node_id,
                 runtime_authoritative=True,
+            )
+
+    # ------------------------------------------------------ graph traversal
+    @staticmethod
+    def _graph_nodes(definition: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+        return {
+            str(node["node_id"]): node
+            for node in definition["graph"]["nodes"]
+        }
+
+    def _mechanical_block_locked(
+        self,
+        run: dict[str, Any],
+        *,
+        source_node_id: str,
+        target_node_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Apply a graph-declared fail-closed route without cognitive judgment."""
+
+        record = {
+            "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+            "object_family": "event_transition_record",
+            "record_id": f"transition-{uuid.uuid4().hex}",
+            "run_id": run["run_id"],
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "sequence": int(run["last_sequence"]) + 1,
+            "recorded_at": self._now(),
+            "node_id": source_node_id,
+            "record_type": "transition",
+            "transition": {
+                "directive": "BLOCKED",
+                "from_state": run["state"],
+                "to_state": "blocked",
+                "reason": reason,
+                "evaluation_boundary": "mechanical_graph_route",
+                "target_node_id": target_node_id,
+            },
+            "evidence_refs": [],
+            "artifact_ids": list(run["artifact_ids"]),
+        }
+        _contracts.validate_event_transition_record(record)
+        _append_jsonl(self._events_path(run["run_id"]), record)
+        run["last_sequence"] = record["sequence"]
+        run["updated_at"] = record["recorded_at"]
+        run["state"] = "blocked"
+        run["current_node_id"] = target_node_id
+        _contracts.validate_process_run(run)
+        _atomic_json(self._run_path(run["run_id"]), run)
+        return copy.deepcopy(record)
+
+    def _advance_graph_locked(
+        self,
+        run: dict[str, Any],
+        definition: Mapping[str, Any],
+        *,
+        target_node_id: str,
+        advance_kind: str,
+        reason: str,
+        route: Mapping[str, Any],
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        if run["state"] != "running":
+            raise RunConflictError("graph traversal requires a running Process Run")
+        nodes = self._graph_nodes(definition)
+        source_node_id = str(run["current_node_id"])
+        target = nodes.get(target_node_id)
+        if target is None:
+            raise GovernedRuntimeError(
+                f"graph traversal target is not in the definition: {target_node_id}"
+            )
+        if target_node_id not in run["contracts"]["approved_plan"]["approved_node_ids"]:
+            raise AuthorityDeniedError(
+                f"graph traversal target is outside the approved plan: {target_node_id}"
+            )
+        if target["kind"] == "terminal_state":
+            if target["outcome"] == "blocked":
+                return self._mechanical_block_locked(
+                    run,
+                    source_node_id=source_node_id,
+                    target_node_id=target_node_id,
+                    reason=reason,
+                )
+            raise GovernedRuntimeError(
+                "accepted, cancelled, or returned terminal states require their "
+                "dedicated transition/return boundary"
+            )
+        known_artifacts = set(run["artifact_ids"])
+        unknown_artifacts = sorted(set(artifact_ids) - known_artifacts)
+        if unknown_artifacts:
+            raise GovernedRuntimeError(
+                "graph advancement references unknown Artifact(s): "
+                + ", ".join(unknown_artifacts)
+            )
+        _require_json(evidence_refs, "graph advancement evidence_refs")
+        _require_json(route, "graph advancement route")
+        run["current_node_id"] = target_node_id
+        return self._append_event_locked(
+            run,
+            "node_advanced",
+            {
+                "from_node_id": source_node_id,
+                "to_node_id": target_node_id,
+                "advance_kind": advance_kind,
+                "reason": reason,
+                "route": copy.deepcopy(dict(route)),
+            },
+            node_id=source_node_id,
+            evidence_refs=evidence_refs,
+            artifact_ids=artifact_ids,
+            runtime_authoritative=True,
+        )
+
+    def advance_decision(
+        self,
+        run_id: str,
+        condition: str,
+        *,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Apply one declared decision route without inventing direction."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "decision":
+                raise GovernedRuntimeError("advance_decision requires a decision node")
+            route = next(
+                (
+                    item
+                    for item in node["routes"]
+                    if item["condition"] == condition
+                ),
+                None,
+            )
+            entrypoints = set(
+                (((definition.get("input_schema") or {}).get("properties") or {})
+                .get("entrypoint", {})
+                .get("enum", []))
+            )
+            condition_entrypoint = str(condition).split(":", 1)[0]
+            if condition_entrypoint in entrypoints and condition_entrypoint != run["entrypoint"]:
+                raise AuthorityDeniedError(
+                    "decision condition belongs to a different Process Run entrypoint"
+                )
+            target = (
+                str(route["target_node_id"])
+                if route is not None
+                else str(node["default_node_id"])
+            )
+            return self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=target,
+                advance_kind="decision",
+                reason=reason,
+                route={
+                    "condition": condition,
+                    "matched": route is not None,
+                    "default_used": route is None,
+                },
+            )
+
+    def complete_action_node(
+        self,
+        run_id: str,
+        operation: str,
+        *,
+        reason: str,
+        completion_details: Mapping[str, Any] | None = None,
+        evidence_refs: Sequence[Mapping[str, Any]] = (),
+        artifact_ids: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Advance an exact action only after its required completion proof exists."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "action":
+                raise GovernedRuntimeError("complete_action_node requires an action node")
+            if operation != node["operation"]:
+                raise GovernedRuntimeError(
+                    f"action operation mismatch: expected {node['operation']}, got {operation}"
+                )
+            details = copy.deepcopy(dict(completion_details or {}))
+            if not details and not evidence_refs and not artifact_ids:
+                raise GovernedRuntimeError(
+                    "action completion requires details, evidence, or an Artifact identity"
+                )
+            records = self.load_records(run_id)
+            entered_sequence = 0
+            for record in records:
+                transition = record.get("transition") or {}
+                event = record.get("event") or {}
+                event_details = event.get("details") or {}
+                if transition.get("target_node_id") == run["current_node_id"]:
+                    entered_sequence = int(record["sequence"])
+                elif (
+                    event.get("event_type") == "node_advanced"
+                    and event_details.get("to_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(record["sequence"])
+                elif (
+                    event.get("event_type") == "run_started"
+                    and event_details.get("entry_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(record["sequence"])
+                elif (
+                    event.get("event_type") == "run_resumed"
+                    and event_details.get("resume_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(record["sequence"])
+                elif (
+                    event.get("event_type") == "child_return_received"
+                    and event_details.get("return_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(record["sequence"])
+            action_record_id = None
+            current_artifact_records: dict[str, Mapping[str, Any]] = {}
+            for record in reversed(records):
+                if int(record["sequence"]) <= entered_sequence:
+                    break
+                if record["node_id"] != run["current_node_id"]:
+                    continue
+                event = record.get("event") or {}
+                event_details = event.get("details") or {}
+                nested = event_details.get("details") or {}
+                if (
+                    action_record_id is None
+                    and event.get("event_type") == "action_completed"
+                    and nested.get("operation") == operation
+                    and set(event_details.get("selectors") or []).issubset(
+                        set(node["artifact_access"])
+                    )
+                ):
+                    action_record_id = record["record_id"]
+                if event.get("event_type") == "artifact_recorded":
+                    artifact_id = str(event_details.get("artifact_id") or "")
+                    current_artifact_records.setdefault(artifact_id, event_details)
+            proof_artifact_ids = {
+                *artifact_ids,
+                *(str(ref.get("artifact_id") or "") for ref in evidence_refs),
+            }
+            exact_artifact_proof = bool(proof_artifact_ids)
+            for artifact_id in proof_artifact_ids:
+                record_details = current_artifact_records.get(artifact_id)
+                if record_details is None:
+                    exact_artifact_proof = False
+                    break
+                artifact = self.load_artifact(run_id, artifact_id)
+                if (
+                    record_details.get("identity_digest")
+                    != artifact["identity"]["digest"]
+                    or not set(record_details.get("selectors") or []).issubset(
+                        set(node["artifact_access"])
+                    )
+                ):
+                    exact_artifact_proof = False
+                    break
+            if exact_artifact_proof:
+                for ref in evidence_refs:
+                    artifact = self.load_artifact(run_id, str(ref.get("artifact_id")))
+                    if ref.get("identity_digest") != artifact["identity"]["digest"]:
+                        exact_artifact_proof = False
+                        break
+            if node["external_effect"] and action_record_id is None:
+                raise GovernedRuntimeError(
+                    "external-effect action completion requires a current validated "
+                    "action record bound to the exact operation and artifact selectors"
+                )
+            if action_record_id is None and not exact_artifact_proof:
+                raise GovernedRuntimeError(
+                    "action completion requires a current validated action record or "
+                    "exact Artifact proof produced during this node entry"
+                )
+            details["operation"] = operation
+            details["action_record_id"] = action_record_id
+            return self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=str(node["next_node_id"]),
+                advance_kind="action",
+                reason=reason,
+                route=details,
+                evidence_refs=evidence_refs,
+                artifact_ids=artifact_ids,
+            )
+
+    def resolve_human_checkpoint(
+        self,
+        run_id: str,
+        outcome: str,
+        *,
+        decision_by: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Apply an explicit human-checkpoint result to its declared route."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "human_checkpoint":
+                raise GovernedRuntimeError(
+                    "resolve_human_checkpoint requires a human_checkpoint node"
+                )
+            if outcome not in {"approved", "denied", "unavailable"}:
+                raise GovernedRuntimeError(
+                    "human checkpoint outcome must be approved, denied, or unavailable"
+                )
+            if not decision_by:
+                raise AuthorityDeniedError("human checkpoint requires a decision maker")
+            if outcome == "approved" and decision_by != run["contracts"]["authority"]["principal_id"]:
+                raise AuthorityDeniedError(
+                    "checkpoint approval must come from the Run principal"
+                )
+            target_field = {
+                "approved": "on_approved_node_id",
+                "denied": "on_denied_node_id",
+                "unavailable": "on_unavailable_node_id",
+            }[outcome]
+            if target_field not in node:
+                target_field = "on_denied_node_id"
+            return self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=str(node[target_field]),
+                advance_kind="human_checkpoint",
+                reason=reason,
+                route={
+                    "outcome": outcome,
+                    "decision_by": decision_by,
+                    "authority_request_type": node["authority_request_type"],
+                },
+            )
+
+    def advance_bounded_loop(
+        self,
+        run_id: str,
+        *,
+        continue_loop: bool,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Enter or exit one graph-declared bounded loop mechanically."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "bounded_loop":
+                raise GovernedRuntimeError(
+                    "advance_bounded_loop requires a bounded_loop node"
+                )
+            attempt = int(run["contracts"]["correction_loop"]["attempt"])
+            if continue_loop and attempt >= int(node["max_iterations"]):
+                raise CorrectionDecisionRequired(
+                    "bounded-loop ceiling reached; exit and classify the failure"
+                )
+            target = (
+                str(node["body_node_id"])
+                if continue_loop
+                else str(node["exit_node_id"])
+            )
+            return self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=target,
+                advance_kind="bounded_loop",
+                reason=reason,
+                route={"continue_loop": bool(continue_loop), "attempt": attempt},
+            )
+
+    def complete_process_return_node(
+        self,
+        run_id: str,
+        *,
+        child_run_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Advance a process_return only from its exact persisted child return."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "process_return":
+                raise GovernedRuntimeError(
+                    "complete_process_return_node requires a process_return node"
+                )
+            records = self.load_records(run_id)
+            entered_sequence = 0
+            for candidate in records:
+                transition = candidate.get("transition") or {}
+                event = candidate.get("event") or {}
+                details = event.get("details") or {}
+                if transition.get("target_node_id") == run["current_node_id"]:
+                    entered_sequence = int(candidate["sequence"])
+                elif (
+                    event.get("event_type") == "node_advanced"
+                    and details.get("to_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(candidate["sequence"])
+                elif (
+                    event.get("event_type") == "run_resumed"
+                    and details.get("resume_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(candidate["sequence"])
+                elif (
+                    event.get("event_type") == "child_return_received"
+                    and details.get("return_node_id") == run["current_node_id"]
+                ):
+                    entered_sequence = int(candidate["sequence"])
+            matching = []
+            for record in records:
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    int(record["sequence"]) >= entered_sequence
+                    and event.get("event_type") == "child_return_received"
+                    and details.get("child_run_id") == child_run_id
+                    and details.get("return_node_id") == run["current_node_id"]
+                ):
+                    matching.append((record, details))
+            if len(matching) != 1:
+                raise GovernedRuntimeError(
+                    "process return requires exactly one identity-bound child return"
+                )
+            record, details = matching[0]
+            output_bindings = details.get("output_bindings") or []
+            if not output_bindings:
+                raise GovernedRuntimeError(
+                    "process return requires an identity-bound output Artifact"
+                )
+            for binding in output_bindings:
+                self._validate_child_output_binding(binding)
+            return self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=str(node["next_node_id"]),
+                advance_kind="process_return",
+                reason=reason,
+                route={
+                    "child_run_id": child_run_id,
+                    "child_return_record_id": record["record_id"],
+                    "output_bindings": copy.deepcopy(output_bindings),
+                },
             )
 
     # -------------------------------------------------------------- authority

@@ -544,7 +544,7 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
                     ),
                 )
 
-    def test_overview_registry_records_phase_1_6_without_claiming_phase_1_7(self):
+    def test_overview_registry_records_phase_1_7_without_part_2_exposure(self):
         text = (VAULT_ORA / "Registry — Ora Overview and Document Registry.md").read_text(
             encoding="utf-8"
         )
@@ -552,7 +552,9 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
         for token in (
             "v2.0.1",
             "ora/programming@2.0.1",
-            "Phase 1.7 programming trial",
+            "G1.1 Phase 1.7 evidence",
+            "twelve bounded attempts",
+            "reserved tax-settlement exception",
             "public picker exposure",
         ):
             self.assertIn(token, entry)
