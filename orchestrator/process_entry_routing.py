@@ -262,8 +262,43 @@ _INVOCATION_RE = re.compile(
     rf"\b(?:apply|execute|invoke|run|use)\b(?:\s+\w+){{0,6}}\s+{_CAPABILITY_NOUN}\b",
     flags=re.IGNORECASE,
 )
+_MANAGED_WORK_ACTION = (
+    r"(?:alert|archive|back\s+up|calculate|check|compile|create|deliver|email|export|"
+    r"generate|import|inspect|monitor|notify|prepare|process|produce|reconcile|refresh|"
+    r"review|run|send|summarize|sync|update|validate|verify)"
+)
+_AUTOMATION_REQUEST_RE = re.compile(
+    r"\bautomate\b|"
+    r"\bmake\b.{0,80}\bautomatic(?:ally)?\b|"
+    rf"\bautomatically\b.{{0,80}}\b{_MANAGED_WORK_ACTION}\b|"
+    rf"\b{_MANAGED_WORK_ACTION}\b.{{0,80}}\bautomatically\b",
+    flags=re.IGNORECASE,
+)
+_MANAGED_WORK_RE = re.compile(
+    rf"\b{_MANAGED_WORK_ACTION}\b",
+    flags=re.IGNORECASE,
+)
+_CADENCE_RE = re.compile(
+    r"\b(?:hourly|daily|nightly|weekly|monthly|quarterly|annually|yearly)\b\s*[.!?]*$|"
+    r"\b(?:every|each)\s+(?:(?:other|\d+)\s+)?(?:minute|hour|day|night|weekday|"
+    r"week|month|quarter|year|monday|tuesday|wednesday|thursday|friday|saturday|"
+    r"sunday)s?\b|"
+    r"\bon\s+(?:mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b",
+    flags=re.IGNORECASE,
+)
+_TRIGGER_RE = re.compile(
+    r"\b(?:whenever|every\s+time|each\s+time)\b|"
+    r"\bwhen\b.{0,100}\b(?:arrives?|changes?|completes?|fails?|is\s+(?:added|"
+    r"created|modified|received|updated))\b",
+    flags=re.IGNORECASE,
+)
 _NAMED_ACTIVATION_RE = re.compile(
     r"\b(?:activate|enable|deploy|publish|schedule|turn\s+on)\b",
+    flags=re.IGNORECASE,
+)
+_NAMED_AVAILABILITY_RE = re.compile(
+    r"\b(?:make|keep)\b.{0,80}\b(?:available|usable|accessible|ready\s+for\s+use)\b|"
+    r"\b(?:allow|permit)\b.{0,80}\b(?:access|use)\b",
     flags=re.IGNORECASE,
 )
 _NAMED_CONSTRUCTION_RE = re.compile(
@@ -273,6 +308,16 @@ _NAMED_CONSTRUCTION_RE = re.compile(
 )
 _NAMED_INVOCATION_RE = re.compile(
     r"\b(?:apply|execute|invoke|run|use)\b",
+    flags=re.IGNORECASE,
+)
+_NAMED_OPERATION_RE = re.compile(
+    r"\b(?:analy[sz]e|assess|check|classify|compare|evaluate|inspect|map|process|"
+    r"review|summarize|test|validate|verify)\b",
+    flags=re.IGNORECASE,
+)
+_NAMED_DELEGATION_RE = re.compile(
+    r"\b(?:ask|get|have|let|tell)\b.{0,80}\b(?:do|handle|help|take\s+care\s+of|"
+    r"work(?:\s+on)?)\b",
     flags=re.IGNORECASE,
 )
 
@@ -290,12 +335,19 @@ def _classify_intent(
         return "capability_construction", ["explicit construction/programming action"]
     if _ACTIVATION_RE.search(objective):
         return "capability_activation", ["activation language with a capability object"]
+    if _AUTOMATION_REQUEST_RE.search(objective):
+        return "capability_construction", ["explicit automation request"]
+    if (_MANAGED_WORK_RE.search(objective)
+            and (_CADENCE_RE.search(objective) or _TRIGGER_RE.search(objective))):
+        return "capability_construction", ["recurring or triggered work request"]
     if _REUSABLE_CONSTRUCTION_RE.search(objective):
         return "capability_construction", ["construction language with a capability object"]
     if _PROGRAMMING_CHANGE_RE.search(objective):
         return "capability_construction", ["programming artifact mutation language"]
     if named_capability and _NAMED_ACTIVATION_RE.search(objective):
         return "capability_activation", ["activation language with an exact named capability"]
+    if named_capability and _NAMED_AVAILABILITY_RE.search(objective):
+        return "capability_activation", ["availability request for an exact named capability"]
     if named_capability and _NAMED_CONSTRUCTION_RE.search(objective):
         return "capability_construction", ["construction language with an exact named capability"]
     if selected_entry is not None:
@@ -304,6 +356,10 @@ def _classify_intent(
         return "capability_invocation", ["curated framework selected"]
     if named_capability and _NAMED_INVOCATION_RE.search(objective):
         return "capability_invocation", ["direct natural-language invocation of an exact capability"]
+    if named_capability and _NAMED_OPERATION_RE.search(objective):
+        return "capability_invocation", ["operation request for an exact named capability"]
+    if named_capability and _NAMED_DELEGATION_RE.search(objective):
+        return "capability_invocation", ["delegated work request for an exact named capability"]
     if _INVOCATION_RE.search(objective):
         return "capability_invocation", ["invocation language with a capability object"]
     return "ordinary_generation", ["no reusable-capability or activation boundary detected"]

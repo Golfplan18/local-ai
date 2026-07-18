@@ -113,6 +113,37 @@ class Phase21RoutingTests(unittest.TestCase):
         self.assertEqual(result["status"], "awaiting_project_confirmation")
         self.assertEqual(result["next_action"], "choose_project")
 
+    def test_ordinary_language_automation_requires_project_confirmation(self):
+        result = self.route(_request("Automate my weekly cash-flow report."))
+        self.assertEqual(result["intent"], "capability_construction")
+        self.assertEqual(result["classification_basis"], ["explicit automation request"])
+        self.assertEqual(result["status"], "awaiting_project_confirmation")
+        self.assertEqual(result["next_action"], "choose_project")
+
+    def test_recurring_and_triggered_work_require_project_confirmation(self):
+        requests = (
+            "Email me the cash-flow report every Friday.",
+            "Reconcile new invoices whenever they arrive.",
+            "When a repository check fails, notify me.",
+            "Back up this folder nightly.",
+            "Prepare the cash-flow report each Monday.",
+        )
+        for objective in requests:
+            with self.subTest(objective=objective):
+                result = self.route(_request(objective))
+                self.assertEqual(result["intent"], "capability_construction")
+                self.assertEqual(
+                    result["classification_basis"],
+                    ["recurring or triggered work request"],
+                )
+                self.assertEqual(result["status"], "awaiting_project_confirmation")
+                self.assertEqual(result["next_action"], "choose_project")
+                self.assertFalse(result["project_confirmed"])
+
+    def test_frequency_describing_one_input_is_not_automatically_recurring(self):
+        result = self.route(_request("Summarize this weekly cash-flow report once."))
+        self.assertEqual(result["intent"], "ordinary_generation")
+
     def test_explicit_programming_action_is_construction(self):
         result = self.route(_request(
             "Make this repeatable.", source="construction_action",
@@ -159,6 +190,33 @@ class Phase21RoutingTests(unittest.TestCase):
         self.assertEqual(result["definition_ref"], PROGRAMMING_REF)
         self.assertEqual(result["status"], "awaiting_activation")
         self.assertEqual(result["next_action"], "begin_activation_review")
+
+    def test_named_capability_operation_cannot_fall_through_generation(self):
+        requests = (
+            "Have Programming verify this repository.",
+            "Could Programming inspect these files?",
+            "Ask Programming to review this patch.",
+            "Have Programming handle this repository.",
+        )
+        for objective in requests:
+            with self.subTest(objective=objective):
+                result = self.route(_request(objective, source="natural_language"))
+                self.assertEqual(result["intent"], "capability_invocation")
+                self.assertEqual(result["definition_ref"], PROGRAMMING_REF)
+                self.assertEqual(result["status"], "awaiting_activation")
+                self.assertEqual(result["next_action"], "begin_activation_review")
+
+    def test_named_capability_availability_is_activation_review(self):
+        result = self.route(_request(
+            "Make Programming available for this project.",
+            source="natural_language",
+        ))
+        self.assertEqual(result["intent"], "capability_activation")
+        self.assertEqual(result["definition_ref"], PROGRAMMING_REF)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["next_action"], "begin_activation_review")
+        self.assertEqual(result["authority_effects"], [])
+        self.assertFalse(result["creates_process_run"])
 
     def test_direct_natural_language_legacy_framework_invocation_is_ready(self):
         result = self.route(_request(
@@ -333,9 +391,10 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
 
     def test_omitted_client_entry_cannot_bypass_project_gate(self):
         result = server._decode_process_entry_request(
-            None, "Build a reusable automation.", "",
+            None, "Automate my weekly cash-flow report.", "",
         )
         self.assertEqual(result["source"], "natural_language")
+        self.assertEqual(result["intent"], "capability_construction")
         self.assertEqual(result["status"], "awaiting_project_confirmation")
 
     def test_programming_picker_omission_is_server_reconstructed(self):
@@ -370,13 +429,33 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
             server, "_invoke_pipeline",
         ) as invoke:
             response = self.client.post("/chat", json={
-                "message": "Build a reusable automation.",
+                "message": "Automate my weekly cash-flow report.",
                 "conversation_id": "phase-2-1-test",
             })
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.get_json()["entry"]["status"],
                          "awaiting_project_confirmation")
         delete.assert_called_once_with("submission-1")
+        invoke.assert_not_called()
+
+    def test_chat_rejects_unconfirmed_recurring_work_before_pipeline(self):
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-recurring",
+        ), mock.patch.object(
+            server, "_delete_pending_submission",
+        ) as delete, mock.patch.object(
+            server, "_invoke_pipeline",
+        ) as invoke:
+            response = self.client.post("/chat", json={
+                "message": "Email me the cash-flow report every Friday.",
+                "conversation_id": "phase-2-1-test",
+            })
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()["entry"]["intent"],
+                         "capability_construction")
+        self.assertEqual(response.get_json()["entry"]["status"],
+                         "awaiting_project_confirmation")
+        delete.assert_called_once_with("submission-recurring")
         invoke.assert_not_called()
 
     def test_chat_cannot_invoke_unactivated_programming_definition(self):
@@ -388,15 +467,33 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
             server, "_invoke_pipeline",
         ) as invoke:
             response = self.client.post("/chat", json={
-                "message": "Run Programming to verify this repository.",
+                "message": "Have Programming verify this repository.",
                 "conversation_id": "phase-2-1-test",
-                "framework_selected": "programming",
             })
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.get_json()["entry"]["status"],
                          "awaiting_activation")
         delete.assert_called_once_with("submission-2")
         invoke.assert_not_called()
+
+    def test_chat_routes_named_availability_to_activation_review(self):
+        response_value = server._json_response({"status": "ok"})
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-activation",
+        ), mock.patch.object(
+            server, "_invoke_pipeline", return_value=response_value,
+        ) as invoke:
+            response = self.client.post("/chat", json={
+                "message": "Make Programming available for this project.",
+                "conversation_id": "phase-2-1-test",
+            })
+        self.assertEqual(response.status_code, 200)
+        contract = invoke.call_args.kwargs["extra_context"]["process_entry"]
+        self.assertEqual(contract["intent"], "capability_activation")
+        self.assertEqual(contract["definition_ref"], PROGRAMMING_REF)
+        self.assertEqual(contract["next_action"], "begin_activation_review")
+        self.assertEqual(contract["authority_effects"], [])
+        self.assertFalse(contract["creates_process_run"])
 
     def test_chat_threads_direct_natural_language_framework_invocation(self):
         response_value = server._json_response({"status": "ok"})

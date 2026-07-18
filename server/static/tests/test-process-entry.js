@@ -71,7 +71,7 @@ global.fetch = function (url, options) {
     var request = JSON.parse(options.body);
     routeRequests.push(request);
     var construction = request.source === 'construction_action'
-      || /\b(build|modify|reusable)\b/i.test(request.objective);
+      || /\b(build|modify|reusable|automate)\b/i.test(request.objective);
     var activation = /\bactivate\b/i.test(request.objective);
     var unknownInvocation = /deployment workflow/i.test(request.objective)
       && !request.selected_definition_ref;
@@ -172,14 +172,14 @@ async function run() {
   record('ordinary Inquiry preserves Inquiry source', ordinary.request.source === 'inquiry');
 
   var constructionPromise = w.OraProcessEntry.prepareInquiry(
-    'Modify the repository with a reusable tool.', null
+    'Automate my weekly cash-flow report.', null
   );
   await flush();
   await flush();
   record('inferred construction also opens project chooser',
     w.document.querySelector('.process-entry').hidden === false
       && w.document.querySelector('.process-entry__project').value === 'ora');
-  submitVisibleForm('Modify the repository with a reusable tool.');
+  submitVisibleForm('Automate my weekly cash-flow report.');
   var inferredConstruction = await constructionPromise;
   record('inferred construction returns confirmed request',
     inferredConstruction.request.project_confirmed === true
