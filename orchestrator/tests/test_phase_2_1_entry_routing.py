@@ -127,6 +127,8 @@ class Phase21RoutingTests(unittest.TestCase):
             "When a repository check fails, notify me.",
             "Back up this folder nightly.",
             "Prepare the cash-flow report each Monday.",
+            "Check invoice totals every month.",
+            "Review the repository every Friday.",
         )
         for objective in requests:
             with self.subTest(objective=objective):
@@ -143,6 +145,23 @@ class Phase21RoutingTests(unittest.TestCase):
     def test_frequency_describing_one_input_is_not_automatically_recurring(self):
         result = self.route(_request("Summarize this weekly cash-flow report once."))
         self.assertEqual(result["intent"], "ordinary_generation")
+
+    def test_recurring_or_automation_subject_matter_stays_ordinary(self):
+        requests = (
+            "Review what happens when a repository check fails.",
+            "Check whether invoice totals change every month.",
+            "Create a guide explaining how to automate weekly reports.",
+        )
+        for objective in requests:
+            with self.subTest(objective=objective):
+                result = self.route(_request(objective))
+                self.assertEqual(result["intent"], "ordinary_generation")
+                self.assertEqual(
+                    result["classification_basis"],
+                    ["explanatory or content request about work"],
+                )
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["next_action"], "submit_ordinary_generation")
 
     def test_explicit_programming_action_is_construction(self):
         result = self.route(_request(
@@ -217,6 +236,22 @@ class Phase21RoutingTests(unittest.TestCase):
         self.assertEqual(result["next_action"], "begin_activation_review")
         self.assertEqual(result["authority_effects"], [])
         self.assertFalse(result["creates_process_run"])
+
+    def test_named_capability_as_subject_matter_stays_ordinary(self):
+        requests = (
+            "Summarize the Programming framework.",
+            "Review the Programming documentation.",
+            "Compare Programming with Terrain Mapping.",
+            "Explain how to use Programming.",
+        )
+        for objective in requests:
+            with self.subTest(objective=objective):
+                result = self.route(_request(objective, source="natural_language"))
+                self.assertEqual(result["intent"], "ordinary_generation")
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["next_action"], "submit_ordinary_generation")
+                self.assertIsNone(result["definition_ref"])
+                self.assertIsNone(result["framework_id"])
 
     def test_direct_natural_language_legacy_framework_invocation_is_ready(self):
         result = self.route(_request(
@@ -494,6 +529,52 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
         self.assertEqual(contract["next_action"], "begin_activation_review")
         self.assertEqual(contract["authority_effects"], [])
         self.assertFalse(contract["creates_process_run"])
+
+    def test_chat_allows_automation_and_recurrence_explanations(self):
+        requests = (
+            "Review what happens when a repository check fails.",
+            "Check whether invoice totals change every month.",
+            "Create a guide explaining how to automate weekly reports.",
+        )
+        for index, objective in enumerate(requests):
+            response_value = server._json_response({"status": "ok"})
+            with self.subTest(objective=objective), mock.patch.object(
+                server, "_log_pending_submission", return_value=f"submission-content-{index}",
+            ), mock.patch.object(
+                server, "_invoke_pipeline", return_value=response_value,
+            ) as invoke:
+                response = self.client.post("/chat", json={
+                    "message": objective,
+                    "conversation_id": "phase-2-1-content-test",
+                })
+            self.assertEqual(response.status_code, 200)
+            contract = invoke.call_args.kwargs["extra_context"]["process_entry"]
+            self.assertEqual(contract["intent"], "ordinary_generation")
+            self.assertEqual(contract["status"], "ready")
+            self.assertEqual(contract["next_action"], "submit_ordinary_generation")
+
+    def test_chat_allows_programming_subject_matter_as_ordinary(self):
+        requests = (
+            "Summarize the Programming framework.",
+            "Review the Programming documentation.",
+        )
+        for index, objective in enumerate(requests):
+            response_value = server._json_response({"status": "ok"})
+            with self.subTest(objective=objective), mock.patch.object(
+                server, "_log_pending_submission", return_value=f"submission-docs-{index}",
+            ), mock.patch.object(
+                server, "_invoke_pipeline", return_value=response_value,
+            ) as invoke:
+                response = self.client.post("/chat", json={
+                    "message": objective,
+                    "conversation_id": "phase-2-1-content-test",
+                })
+            self.assertEqual(response.status_code, 200)
+            contract = invoke.call_args.kwargs["extra_context"]["process_entry"]
+            self.assertEqual(contract["intent"], "ordinary_generation")
+            self.assertEqual(contract["status"], "ready")
+            self.assertIsNone(contract["definition_ref"])
+            self.assertIsNone(contract["framework_id"])
 
     def test_chat_threads_direct_natural_language_framework_invocation(self):
         response_value = server._json_response({"status": "ok"})

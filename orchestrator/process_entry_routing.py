@@ -267,15 +267,37 @@ _MANAGED_WORK_ACTION = (
     r"generate|import|inspect|monitor|notify|prepare|process|produce|reconcile|refresh|"
     r"review|run|send|summarize|sync|update|validate|verify)"
 )
+_REQUEST_LEAD = (
+    r"(?:"
+    r"(?:(?:please|kindly)\s+)?|"
+    r"(?:can|could|would|will)\s+you\s+(?:(?:please|kindly)\s+)?|"
+    r"i\s+(?:need|want)(?:\s+you)?\s+to\s+"
+    r")"
+)
+_CONTENT_ABOUT_WORK_RE = re.compile(
+    rf"^\s*{_REQUEST_LEAD}(?:describe|explain|summarize)\b|"
+    rf"^\s*{_REQUEST_LEAD}(?:analy[sz]e|assess|check|review)\b.{{0,100}}"
+    r"\b(?:documentation|docs?|framework|definition|guide|how|what|whether|why)\b|"
+    rf"^\s*{_REQUEST_LEAD}(?:create|draft|prepare|produce|write)\b.{{0,60}}"
+    r"\b(?:documentation|docs?|explanation|guide|overview|summary|tutorial)\b|"
+    r"^\s*(?:how|what|why|where)\b|"
+    r"^\s*(?:can|could|should|would)\s+i\b|"
+    r"^\s*(?:show|tell)\s+me\b.{0,80}\b(?:how|what|whether|why)\b",
+    flags=re.IGNORECASE,
+)
 _AUTOMATION_REQUEST_RE = re.compile(
-    r"\bautomate\b|"
-    r"\bmake\b.{0,80}\bautomatic(?:ally)?\b|"
-    rf"\bautomatically\b.{{0,80}}\b{_MANAGED_WORK_ACTION}\b|"
-    rf"\b{_MANAGED_WORK_ACTION}\b.{{0,80}}\bautomatically\b",
+    rf"^\s*{_REQUEST_LEAD}automate\b|"
+    rf"^\s*{_REQUEST_LEAD}make\b.{{0,80}}\bautomatic(?:ally)?\b|"
+    rf"^\s*{_REQUEST_LEAD}automatically\b.{{0,80}}\b{_MANAGED_WORK_ACTION}\b|"
+    rf"^\s*{_REQUEST_LEAD}{_MANAGED_WORK_ACTION}\b.{{0,80}}\bautomatically\b",
     flags=re.IGNORECASE,
 )
 _MANAGED_WORK_RE = re.compile(
     rf"\b{_MANAGED_WORK_ACTION}\b",
+    flags=re.IGNORECASE,
+)
+_MANAGED_WORK_REQUEST_RE = re.compile(
+    rf"^\s*{_REQUEST_LEAD}{_MANAGED_WORK_ACTION}\b",
     flags=re.IGNORECASE,
 )
 _CADENCE_RE = re.compile(
@@ -292,34 +314,109 @@ _TRIGGER_RE = re.compile(
     r"created|modified|received|updated))\b",
     flags=re.IGNORECASE,
 )
+_CADENCE_AT_START_RE = re.compile(
+    rf"^\s*{_REQUEST_LEAD}(?:"
+    r"(?:hourly|daily|nightly|weekly|monthly|quarterly|annually|yearly)\b\s*[:,]|"
+    r"(?:every|each)\s+(?:(?:other|\d+)\s+)?(?:minute|hour|day|night|weekday|"
+    r"week|month|quarter|year|monday|tuesday|wednesday|thursday|friday|saturday|"
+    r"sunday)s?\b|"
+    r"on\s+(?:mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b)",
+    flags=re.IGNORECASE,
+)
+_TRIGGER_AT_START_RE = re.compile(
+    rf"^\s*{_REQUEST_LEAD}(?:"
+    r"(?:whenever|every\s+time|each\s+time)\b|"
+    r"when\b.{0,100}\b(?:arrives?|changes?|completes?|fails?|is\s+(?:added|"
+    r"created|modified|received|updated))\b)",
+    flags=re.IGNORECASE,
+)
 _NAMED_ACTIVATION_RE = re.compile(
-    r"\b(?:activate|enable|deploy|publish|schedule|turn\s+on)\b",
+    rf"^\s*{_REQUEST_LEAD}(?:activate|enable|deploy|publish|schedule|turn\s+on)\b",
     flags=re.IGNORECASE,
 )
 _NAMED_AVAILABILITY_RE = re.compile(
-    r"\b(?:make|keep)\b.{0,80}\b(?:available|usable|accessible|ready\s+for\s+use)\b|"
-    r"\b(?:allow|permit)\b.{0,80}\b(?:access|use)\b",
+    rf"^\s*{_REQUEST_LEAD}(?:make|keep)\b.{{0,80}}"
+    r"\b(?:available|usable|accessible|ready\s+for\s+use)\b|"
+    rf"^\s*{_REQUEST_LEAD}(?:allow|permit)\b.{{0,80}}\b(?:access|use)\b",
     flags=re.IGNORECASE,
 )
 _NAMED_CONSTRUCTION_RE = re.compile(
-    r"\b(?:build|construct|create|design|formalize|modify|change|update|replace|"
+    rf"^\s*{_REQUEST_LEAD}(?:build|construct|create|design|formalize|modify|"
+    r"change|update|replace|"
     r"debug|fix|implement|refactor|remove)\b",
     flags=re.IGNORECASE,
 )
-_NAMED_INVOCATION_RE = re.compile(
-    r"\b(?:apply|execute|invoke|run|use)\b",
-    flags=re.IGNORECASE,
+_NAMED_OPERATOR_ACTION = (
+    r"(?:analy[sz]e|apply|assess|check|classify|compare|do|evaluate|execute|handle|"
+    r"help|inspect|invoke|map|process|review|run|summarize|take\s+care\s+of|test|"
+    r"use|validate|verify|work(?:\s+on)?)"
 )
-_NAMED_OPERATION_RE = re.compile(
-    r"\b(?:analy[sz]e|assess|check|classify|compare|evaluate|inspect|map|process|"
-    r"review|summarize|test|validate|verify)\b",
-    flags=re.IGNORECASE,
-)
-_NAMED_DELEGATION_RE = re.compile(
-    r"\b(?:ask|get|have|let|tell)\b.{0,80}\b(?:do|handle|help|take\s+care\s+of|"
-    r"work(?:\s+on)?)\b",
-    flags=re.IGNORECASE,
-)
+
+
+def _is_recurring_effect_request(objective: str) -> bool:
+    """Require a recurring/trigger signal to govern an effect action."""
+
+    if not (_CADENCE_RE.search(objective) or _TRIGGER_RE.search(objective)):
+        return False
+    if _MANAGED_WORK_REQUEST_RE.search(objective):
+        return True
+    signal = _CADENCE_AT_START_RE.search(objective) or _TRIGGER_AT_START_RE.search(
+        objective
+    )
+    return bool(signal and _MANAGED_WORK_RE.search(objective, signal.end()))
+
+
+def _named_capability_pattern(
+    named_entry: Mapping[str, Any] | None,
+    named_framework_id: str | None,
+) -> str | None:
+    """Build the exact language patterns that resolved one named capability."""
+
+    tokens: set[str] = set()
+    if named_entry is not None:
+        tokens.update({
+            str(named_entry.get("id") or ""),
+            str(named_entry.get("display_name") or ""),
+            str((named_entry.get("definition_ref") or {}).get("definition_id") or ""),
+            *(str(alias) for alias in named_entry.get("aliases") or []),
+        })
+    if named_framework_id is not None:
+        tokens.add(named_framework_id)
+        registry = load_framework_invocability_registry()
+        tokens.update(
+            token for token, filename in registry.invocable_by_key.items()
+            if Path(filename).stem == named_framework_id
+        )
+    patterns: list[str] = []
+    for token in sorted((token.strip() for token in tokens if token.strip()),
+                        key=len, reverse=True):
+        parts = [part for part in re.split(r"[-_/\s]+", token) if part]
+        if parts:
+            core = r"[\s_/-]+".join(re.escape(part) for part in parts)
+            patterns.append(rf"(?<![\w-]){core}(?![\w-])")
+    return "(?:" + "|".join(patterns) + ")" if patterns else None
+
+
+def _named_capability_is_operator(
+    objective: str,
+    named_entry: Mapping[str, Any] | None,
+    named_framework_id: str | None,
+) -> bool:
+    """Recognize the named capability as actor/tool, never mere subject matter."""
+
+    name = _named_capability_pattern(named_entry, named_framework_id)
+    if name is None:
+        return False
+    patterns = (
+        rf"^\s*{_REQUEST_LEAD}(?:apply|execute|invoke|run|use)\b.{{0,80}}{name}",
+        rf"^\s*{_REQUEST_LEAD}(?:ask|get|have|let|tell)\b.{{0,40}}{name}"
+        rf".{{0,30}}\b(?:to\s+)?{_NAMED_OPERATOR_ACTION}\b",
+        rf"^\s*(?:can|could|would|will|should)\s+{name}[,:]?\s+"
+        rf"(?:please\s+)?{_NAMED_OPERATOR_ACTION}\b",
+        rf"^\s*i\s+(?:need|want)\s+{name}\s+to\s+{_NAMED_OPERATOR_ACTION}\b",
+        rf"^\s*(?:please\s+)?{name}[,:]?\s+{_NAMED_OPERATOR_ACTION}\b",
+    )
+    return any(re.search(pattern, objective, flags=re.IGNORECASE) for pattern in patterns)
 
 
 def _classify_intent(
@@ -333,12 +430,14 @@ def _classify_intent(
     named_capability = named_entry is not None or named_framework_id is not None
     if source == "construction_action":
         return "capability_construction", ["explicit construction/programming action"]
+    if (selected_entry is None and selected_framework_id is None
+            and _CONTENT_ABOUT_WORK_RE.search(objective)):
+        return "ordinary_generation", ["explanatory or content request about work"]
     if _ACTIVATION_RE.search(objective):
         return "capability_activation", ["activation language with a capability object"]
     if _AUTOMATION_REQUEST_RE.search(objective):
         return "capability_construction", ["explicit automation request"]
-    if (_MANAGED_WORK_RE.search(objective)
-            and (_CADENCE_RE.search(objective) or _TRIGGER_RE.search(objective))):
+    if _is_recurring_effect_request(objective):
         return "capability_construction", ["recurring or triggered work request"]
     if _REUSABLE_CONSTRUCTION_RE.search(objective):
         return "capability_construction", ["construction language with a capability object"]
@@ -354,12 +453,10 @@ def _classify_intent(
         return "capability_invocation", ["exact Process Definition selected"]
     if selected_framework_id is not None:
         return "capability_invocation", ["curated framework selected"]
-    if named_capability and _NAMED_INVOCATION_RE.search(objective):
-        return "capability_invocation", ["direct natural-language invocation of an exact capability"]
-    if named_capability and _NAMED_OPERATION_RE.search(objective):
-        return "capability_invocation", ["operation request for an exact named capability"]
-    if named_capability and _NAMED_DELEGATION_RE.search(objective):
-        return "capability_invocation", ["delegated work request for an exact named capability"]
+    if named_capability and _named_capability_is_operator(
+        objective, named_entry, named_framework_id,
+    ):
+        return "capability_invocation", ["exact named capability is the requested operator"]
     if _INVOCATION_RE.search(objective):
         return "capability_invocation", ["invocation language with a capability object"]
     return "ordinary_generation", ["no reusable-capability or activation boundary detected"]
@@ -477,7 +574,8 @@ def route_process_entry(
         next_action = "choose_process_definition"
 
     definition_ref = (
-        copy.deepcopy(named_entry["definition_ref"]) if named_entry is not None else None
+        copy.deepcopy(named_entry["definition_ref"])
+        if named_entry is not None and intent != "ordinary_generation" else None
     )
     contract: dict[str, Any] = {
         "schema_version": ENTRY_SCHEMA_VERSION,
