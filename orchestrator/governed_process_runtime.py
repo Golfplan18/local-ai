@@ -3010,6 +3010,32 @@ class GovernedProcessRuntime:
             exact_source_bindings = [source_bindings[source_id] for source_id in source_ids]
             path = self._artifact_path(run_id, artifact_copy["artifact_id"])
             prior = _read_json(path) if path.exists() else None
+            if prior is not None:
+                stable_bindings = {
+                    "role": (prior.get("role"), artifact_copy.get("role")),
+                    "media_type": (
+                        prior.get("media_type"), artifact_copy.get("media_type")
+                    ),
+                    "locator": (prior.get("locator"), artifact_copy.get("locator")),
+                    "identity.kind": (
+                        (prior.get("identity") or {}).get("kind"),
+                        artifact_copy["identity"].get("kind"),
+                    ),
+                    "identity.coverage": (
+                        (prior.get("identity") or {}).get("coverage"),
+                        artifact_copy["identity"].get("coverage"),
+                    ),
+                }
+                changed_bindings = sorted(
+                    field
+                    for field, (old, new) in stable_bindings.items()
+                    if old != new
+                )
+                if changed_bindings:
+                    raise GovernedRuntimeError(
+                        "Artifact replacement cannot change its semantic identity "
+                        "binding: " + ", ".join(changed_bindings)
+                    )
             prior_digest = ((prior or {}).get("identity") or {}).get("digest")
             current_digest = artifact_copy["identity"]["digest"]
             _atomic_json(path, artifact_copy)
@@ -3361,6 +3387,37 @@ class GovernedProcessRuntime:
                 result_ids.append(artifact_id)
         if not result_ids:
             return False, "no result Artifact is bound to the Run"
+        repository_result_ids = [
+            artifact_id
+            for artifact_id in result_ids
+            if (
+                self.load_artifact(run_id, artifact_id)["identity"]["kind"]
+                == "composite"
+                and self.load_artifact(run_id, artifact_id)["locator"]["kind"]
+                == "git_ref"
+            )
+        ]
+        latest_attempt = None
+        if repository_result_ids:
+            for record in reversed(self.load_records(run_id)):
+                event = record.get("event") or {}
+                if event.get("event_type") == "attempt_completed":
+                    latest_attempt = event.get("details") or {}
+                    break
+        if latest_attempt is not None:
+            if latest_attempt.get("defect_codes"):
+                return False, "the latest persisted attempt still reports defects"
+            attempt_digests = set(latest_attempt.get("artifact_digests") or [])
+            for artifact_id in repository_result_ids:
+                result_digest = self.load_artifact(run_id, artifact_id)["identity"][
+                    "digest"
+                ]
+                if result_digest not in attempt_digests:
+                    return (
+                        False,
+                        "result Artifact identity is not bound to the latest "
+                        f"successful attempt: {artifact_id}",
+                    )
         for artifact_id in result_ids:
             artifact = self.load_artifact(run_id, artifact_id)
             if _parse_time(artifact["identity"]["fresh_until"]) < _parse_time(self._now()):

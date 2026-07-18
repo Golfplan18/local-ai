@@ -44,12 +44,84 @@ def _digest_bytes(value: bytes) -> str:
     return "sha256:" + hashlib.sha256(value).hexdigest()
 
 
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _digest_json(value: object) -> str:
+    return _digest_text(_canonical_json(value))
+
+
+def _repository_composite(repository: Path) -> tuple[dict, str]:
+    """Capture exact Git HEAD plus every non-ignored worktree file identity."""
+
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repository, check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    ).stdout.strip()
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        cwd=repository, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    ).stdout
+    listed = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cwd=repository, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    ).stdout
+    entries = []
+    for raw_name in sorted(item for item in listed.split(b"\0") if item):
+        relative = os.fsdecode(raw_name)
+        path = repository / relative
+        if path.is_symlink():
+            kind = "symlink"
+            digest = _digest_text(os.readlink(path))
+            mode = None
+        else:
+            kind = "file"
+            digest = _digest_bytes(path.read_bytes())
+            mode = oct(path.stat().st_mode & 0o777)
+        entries.append(
+            {"path": relative, "kind": kind, "mode": mode, "digest": digest}
+        )
+    payload = {
+        "schema_version": "ora.repository-composite/1.0",
+        "repository": str(repository.resolve()),
+        "git_head": head,
+        "git_status_digest": _digest_bytes(status),
+        "worktree_entries": entries,
+    }
+    return payload, _digest_json(payload)
+
+
 def _definition_ref(definition: dict) -> dict:
     return {
         "definition_id": definition["definition_id"],
         "version": definition["version"],
         "digest": definition["digest"],
     }
+
+
+def _seal_definition(definition: dict) -> dict:
+    """Bind every self-reference to the definition's normalized content."""
+
+    placeholder = "sha256:" + ("0" * 64)
+    manifest = definition["package_manifest"]
+    manifest["definition_ref"] = {
+        "definition_id": definition["definition_id"],
+        "version": definition["version"],
+        "digest": placeholder,
+    }
+    entry_member = next(
+        member
+        for member in manifest["members"]
+        if member["member_id"] == manifest["entry_member_id"]
+    )
+    definition["digest"] = placeholder
+    entry_member["identity"]["digest"] = placeholder
+    digest = registry_module.process_definition_content_digest(definition)
+    definition["digest"] = digest
+    manifest["definition_ref"]["digest"] = digest
+    entry_member["identity"]["digest"] = digest
+    return definition
 
 
 def _programming_definition() -> dict:
@@ -76,17 +148,14 @@ def _definition(
 ) -> dict:
     definition = fixtures.process_definition(definition_id, definition_id)
     definition["version"] = version
-    definition["digest"] = _digest_text(f"{definition_id}@{version}")
     definition["graph"] = graph or copy.deepcopy(definition["graph"])
     manifest = definition["package_manifest"]
     manifest["package_id"] = definition_id
     manifest["package_version"] = version
-    manifest["definition_ref"] = _definition_ref(definition)
     manifest["members"][0]["locator"]["ref"] = (
         f"processes/{definition_id}@{version}"
     )
-    manifest["members"][0]["identity"]["digest"] = definition["digest"]
-    return definition
+    return _seal_definition(definition)
 
 
 def _cash_review_definition() -> dict:
@@ -160,7 +229,7 @@ def _construction_definition(target: dict) -> dict:
     definition["input_schema"]["properties"]["target_definition_ref"] = {
         "const": _definition_ref(target)
     }
-    return definition
+    return _seal_definition(definition)
 
 
 def _calling_definition(
@@ -466,18 +535,85 @@ class TrialCase(unittest.TestCase):
             evidence_refs=[self.evidence_ref(run_id, label)],
         )
 
-    def external_action(self, run_id: str, operation: str, label: str) -> None:
-        safe_label = re.sub(r"[^A-Za-z0-9._:/-]", "-", label)
-        receipt_id = f"receipt-{safe_label}"
-        receipt = self.runtime.record_inline_artifact(
-            run_id,
-            receipt_id,
-            f"External-effect receipt: {label}",
-            role="external_effect_receipt",
-            node_id=self.runtime.load_run(run_id)["current_node_id"],
+    def repository_artifact(
+        self,
+        run_id: str,
+        repository: Path,
+        artifact_id: str,
+        *,
+        role: str,
+        node_id: str | None = None,
+        source_artifact_ids: tuple[str, ...] = (),
+    ) -> dict:
+        payload, digest = _repository_composite(repository)
+        run = self.runtime.load_run(run_id)
+        artifact = {
+            "schema_version": pc.CONTRACT_SCHEMA_VERSION,
+            "object_family": "artifact",
+            "artifact_id": artifact_id,
+            "role": role,
+            "status": "candidate",
+            "media_type": "application/vnd.ora.repository-state+json",
+            "locator": {"kind": "git_ref", "ref": str(repository.resolve())},
+            "identity": {
+                "kind": "composite",
+                "digest": digest,
+                "coverage": ["git_head", "git_status", "nonignored_worktree_files"],
+                "captured_at": NOW,
+                "fresh_until": fixtures.LATER,
+                "external_version": payload["git_head"],
+            },
+            "lineage": {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "producing_node_id": node_id or run["current_node_id"],
+                "source_artifact_ids": list(source_artifact_ids),
+                "event_record_id": f"event-{run_id}-{artifact_id}-{digest[7:19]}",
+            },
+            "created_at": NOW,
+        }
+        recorded = self.runtime.record_artifact(
+            artifact,
             action="produce_artifact",
-            selector=OUTPUT,
+            selectors=[OUTPUT],
             satisfied_conditions=CONDITIONS,
+        )
+        return {**recorded, "composite": payload}
+
+    def repository_mutation(
+        self,
+        run_id: str,
+        repository: Path,
+        operation: str,
+        label: str,
+        pre_state: dict,
+        post_state: dict,
+    ) -> dict:
+        node_id = self.runtime.load_run(run_id)["current_node_id"]
+        receipt_id = f"receipt-{label}"
+        receipt_payload = {
+            "schema_version": "ora.repository-mutation-receipt/1.0",
+            "operation": operation,
+            "repository": str(repository.resolve()),
+            "pre_state": {
+                "artifact_id": pre_state["artifact"]["artifact_id"],
+                "identity_digest": pre_state["artifact"]["identity"]["digest"],
+            },
+            "post_state": {
+                "artifact_id": post_state["artifact"]["artifact_id"],
+                "identity_digest": post_state["artifact"]["identity"]["digest"],
+            },
+        }
+        receipt = self.runtime.record_inline_artifact(
+            run_id, receipt_id, _canonical_json(receipt_payload),
+            role="external_effect_receipt", node_id=node_id,
+            action="produce_artifact", selector=OUTPUT,
+            source_artifact_ids=[
+                pre_state["artifact"]["artifact_id"],
+                post_state["artifact"]["artifact_id"],
+            ],
+            satisfied_conditions=CONDITIONS,
+            media_type="application/json",
         )
         self.runtime.record_action(
             run_id,
@@ -487,11 +623,87 @@ class TrialCase(unittest.TestCase):
             effect_type="external_irreversible",
             external_effect=True,
             receipt_artifact_id=receipt["artifact"]["artifact_id"],
-            details={"operation": operation, "trial_step": label},
+            details={
+                "operation": operation,
+                "repository": str(repository.resolve()),
+                "pre_state_identity": receipt_payload["pre_state"],
+                "post_state_identity": receipt_payload["post_state"],
+            },
         )
         self.runtime.complete_action_node(
             run_id, operation, reason=label, artifact_ids=[receipt_id]
         )
+        return {"receipt": receipt, "payload": receipt_payload}
+
+    def repository_test_evidence(
+        self,
+        run_id: str,
+        repository: Path,
+        subject_artifact_id: str,
+        evidence_artifact_id: str,
+    ) -> tuple[dict, dict, dict]:
+        subject = self.runtime.load_artifact(run_id, subject_artifact_id)
+        current_composite, current_digest = _repository_composite(repository)
+        self.assertEqual(current_digest, subject["identity"]["digest"])
+        command = [
+            sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"
+        ]
+        completed = subprocess.run(
+            command, cwd=repository, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, check=False,
+        )
+        after_composite, after_digest = _repository_composite(repository)
+        self.assertEqual(after_digest, current_digest)
+        payload = {
+            "schema_version": "ora.repository-test-evidence/1.0",
+            "command": command,
+            "cwd": str(repository.resolve()),
+            "repository_identity_digest": current_digest,
+            "repository_composite": current_composite,
+            "post_test_repository_composite": after_composite,
+            "returncode": completed.returncode,
+            "output": completed.stdout,
+        }
+        evidence_dir = Path(self.temp.name) / "programming-evidence"
+        evidence_dir.mkdir(exist_ok=True)
+        evidence_path = evidence_dir / f"{evidence_artifact_id}.json"
+        evidence_path.write_text(_canonical_json(payload) + "\n", encoding="utf-8")
+        run = self.runtime.load_run(run_id)
+        artifact = {
+            "schema_version": pc.CONTRACT_SCHEMA_VERSION,
+            "object_family": "artifact",
+            "artifact_id": evidence_artifact_id,
+            "role": "evidence",
+            "status": "verified",
+            "media_type": "application/json",
+            "locator": {"kind": "file", "ref": str(evidence_path.resolve())},
+            "identity": {
+                "kind": "content_digest",
+                "digest": _digest_bytes(evidence_path.read_bytes()),
+                "coverage": ["command", "repository_composite", "exit_status", "output"],
+                "captured_at": NOW,
+                "fresh_until": fixtures.LATER,
+            },
+            "lineage": {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "producing_node_id": run["current_node_id"],
+                "source_artifact_ids": [subject_artifact_id],
+                "event_record_id": f"event-{run_id}-{evidence_artifact_id}",
+            },
+            "created_at": NOW,
+        }
+        recorded = self.runtime.record_artifact(
+            artifact, action="record_evidence", selectors=[OUTPUT],
+            satisfied_conditions=CONDITIONS,
+        )
+        evidence_ref = {
+            "evidence_id": "result_verified",
+            "artifact_id": evidence_artifact_id,
+            "identity_digest": artifact["identity"]["digest"],
+            "outcome": "PASS" if completed.returncode == 0 else "FAIL",
+        }
+        return recorded, evidence_ref, payload
 
     def observed_action(
         self,
@@ -734,8 +946,23 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
             registry.resolve(first["definition_id"], first["version"], second["digest"])
         attacked = copy.deepcopy(first)
         attacked["title"] = "Conflicting body"
+        with self.assertRaises(registry_module.DefinitionIntegrityError):
+            registry.register(attacked)
+        _seal_definition(attacked)
+        self.assertNotEqual(attacked["digest"], first["digest"])
         with self.assertRaises(registry_module.DefinitionVersionConflict):
             registry.register(attacked)
+
+        stored_path = registry._definition_path(first["definition_id"], first["version"])
+        stored = json.loads(stored_path.read_text(encoding="utf-8"))
+        stored["graph"]["nodes"][0]["label"] = "Tampered after registration"
+        stored_path.write_text(
+            json.dumps(stored, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+        )
+        with self.assertRaises(registry_module.DefinitionIntegrityError):
+            registry.resolve(first["definition_id"], first["version"], first["digest"])
+        with self.assertRaises(registry_module.DefinitionIntegrityError):
+            registry.list_definition_refs()
 
 
 class TestProgrammingTrial(TrialCase):
@@ -746,18 +973,6 @@ class TestProgrammingTrial(TrialCase):
             3: """def allocate(stock, requests):\n    result = {}\n    for sku, qty in requests:\n        if qty < 0 or qty > stock[sku]:\n            raise ValueError('quantity')\n        result[sku] = result.get(sku, 0) + qty\n        stock[sku] -= qty\n    return result\n""",
         }
         (repository / "inventory.py").write_text(implementations[attempt], encoding="utf-8")
-
-    @staticmethod
-    def _tests_pass(repository: Path) -> bool:
-        completed = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"],
-            cwd=repository,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=False,
-        )
-        return completed.returncode == 0
 
     def test_nontrivial_repository_change_exercises_full_correction_and_recovery(self):
         definition = _programming_definition()
@@ -770,6 +985,9 @@ class TestProgrammingTrial(TrialCase):
         (repository / "tests" / "test_inventory.py").write_text(
             """import unittest\nfrom inventory import allocate\n\nclass InventoryTest(unittest.TestCase):\n    def test_capacity(self):\n        with self.assertRaises(ValueError):\n            allocate({'A': 2}, [('A', 3)])\n\n    def test_negative(self):\n        with self.assertRaises(ValueError):\n            allocate({'A': 2}, [('A', -1)])\n""",
             encoding="utf-8",
+        )
+        (repository / ".gitignore").write_text(
+            "__pycache__/\n*.pyc\n", encoding="utf-8"
         )
         subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
         subprocess.run(["git", "config", "user.email", "trial@example.test"], cwd=repository, check=True)
@@ -810,26 +1028,60 @@ class TestProgrammingTrial(TrialCase):
         )
 
         self.runtime.begin_attempt(run_id, "inventory-change")
+        attempt_one_pre = self.repository_artifact(
+            run_id, repository, "repository-pre-attempt-1", role="working"
+        )
         self._write_attempt(repository, 1)
-        self.assertFalse(self._tests_pass(repository))
-        self.external_action(run_id, "execute_approved_programming_step", "attempt-1")
-        attempt_one_ref = self.evidence_ref(run_id, "negative-quantity-failure")
+        attempt_one_state = self.repository_artifact(
+            run_id, repository, "repository-state-attempt-1", role="working"
+        )
+        receipt_one = self.repository_mutation(
+            run_id, repository, "execute_approved_programming_step", "attempt-1",
+            attempt_one_pre, attempt_one_state,
+        )
+        _attempt_one_evidence, attempt_one_ref, attempt_one_test = (
+            self.repository_test_evidence(
+                run_id, repository, "repository-state-attempt-1",
+                "repository-tests-attempt-1",
+            )
+        )
+        self.assertNotEqual(attempt_one_test["returncode"], 0)
         self.runtime.complete_attempt(
             run_id, "inventory-change", defect_codes=["negative_quantity_unchecked"],
-            evidence_refs=[attempt_one_ref], artifact_digests=[_digest_bytes((repository / "inventory.py").read_bytes())],
+            evidence_refs=[attempt_one_ref],
+            artifact_digests=[attempt_one_state["artifact"]["identity"]["digest"]],
         )
         self.transition(run_id, "REVISE", "revision-route", "execution defect")
         self.runtime.advance_decision(run_id, "prg_run", reason="PRG-Run correction")
         self.runtime.advance_bounded_loop(run_id, continue_loop=True, reason="one bounded correction")
 
         self.runtime.begin_attempt(run_id, "inventory-change")
+        attempt_two_pre = self.repository_artifact(
+            run_id, repository, "repository-pre-attempt-2", role="working"
+        )
         self._write_attempt(repository, 2)
-        self.assertTrue(self._tests_pass(repository))
-        self.external_action(run_id, "correct_programming_defect", "attempt-2")
+        attempt_two_state = self.repository_artifact(
+            run_id, repository, "repository-state-attempt-2", role="working"
+        )
+        receipt_two = self.repository_mutation(
+            run_id, repository, "correct_programming_defect", "attempt-2",
+            attempt_two_pre, attempt_two_state,
+        )
+        _initial_two_evidence, initial_two_ref, initial_two_test = (
+            self.repository_test_evidence(
+                run_id, repository, "repository-state-attempt-2",
+                "repository-tests-attempt-2-initial",
+            )
+        )
+        self.assertEqual(initial_two_test["returncode"], 0)
+        before_editor, before_editor_digest = _repository_composite(repository)
         (repository / "tests" / "test_inventory.py").write_text(
             (repository / "tests" / "test_inventory.py").read_text(encoding="utf-8")
             + """\n    def test_duplicate_sku_is_aggregated(self):\n        self.assertEqual(allocate({'A': 10}, [('A', 3), ('A', 2)]), {'A': 5})\n""",
             encoding="utf-8",
+        )
+        editor_state = self.repository_artifact(
+            run_id, repository, "repository-state-attempt-2-editor", role="working"
         )
         self.runtime.record_event(
             run_id,
@@ -840,13 +1092,22 @@ class TestProgrammingTrial(TrialCase):
                     (repository / "tests" / "test_inventory.py").read_bytes()
                 ),
                 "effect": "independent test added",
+                "repository_pre_identity_digest": before_editor_digest,
+                "repository_post_identity_digest": editor_state["artifact"]["identity"]["digest"],
+                "repository_pre_composite": before_editor,
             },
         )
-        self.assertFalse(self._tests_pass(repository))
-        attempt_two_ref = self.evidence_ref(run_id, "duplicate-plan-defect")
+        _attempt_two_evidence, attempt_two_ref, attempt_two_test = (
+            self.repository_test_evidence(
+                run_id, repository, "repository-state-attempt-2-editor",
+                "repository-tests-attempt-2-editor",
+            )
+        )
+        self.assertNotEqual(attempt_two_test["returncode"], 0)
         self.runtime.complete_attempt(
             run_id, "inventory-change", defect_codes=["plan_omitted_duplicate_semantics"],
-            evidence_refs=[attempt_two_ref], artifact_digests=[_digest_bytes((repository / "inventory.py").read_bytes())],
+            evidence_refs=[initial_two_ref, attempt_two_ref],
+            artifact_digests=[editor_state["artifact"]["identity"]["digest"]],
         )
         self.runtime.create_checkpoint(
             run_id, "before-replan", segment_id="inventory-change", resume_node_id="replan-route"
@@ -875,44 +1136,176 @@ class TestProgrammingTrial(TrialCase):
         )
 
         self.runtime.begin_attempt(run_id, "inventory-change")
+        attempt_three_pre = self.repository_artifact(
+            run_id, repository, "repository-pre-attempt-3", role="working"
+        )
         self._write_attempt(repository, 3)
-        self.assertTrue(self._tests_pass(repository))
-        self.external_action(run_id, "execute_approved_programming_step", "attempt-3")
-        attempt_three_ref = self.evidence_ref(run_id, "all-repository-tests-pass")
+        attempt_three_state = self.repository_artifact(
+            run_id, repository, "repository-state-attempt-3", role="working"
+        )
+        receipt_three = self.repository_mutation(
+            run_id, repository, "execute_approved_programming_step", "attempt-3",
+            attempt_three_pre, attempt_three_state,
+        )
+        _attempt_three_evidence, attempt_three_ref, attempt_three_test = (
+            self.repository_test_evidence(
+                run_id, repository, "repository-state-attempt-3",
+                "repository-tests-attempt-3",
+            )
+        )
+        self.assertEqual(attempt_three_test["returncode"], 0)
         self.runtime.complete_attempt(
             run_id, "inventory-change", defect_codes=[], evidence_refs=[attempt_three_ref],
-            artifact_digests=[_digest_bytes((repository / "inventory.py").read_bytes())],
+            artifact_digests=[attempt_three_state["artifact"]["identity"]["digest"]],
         )
         self.transition(run_id, "PROCEED", "work-remaining", "attempt independently passed")
         self.runtime.advance_decision(run_id, "prg_run", reason="apply PRG-Run path")
         self.runtime.advance_decision(run_id, "no_authorized_work_remains", reason="work complete")
 
-        result, _evidence, accepted_ref = self.final_result(
-            run_id,
-            _digest_bytes((repository / "inventory.py").read_bytes()),
+        result = self.repository_artifact(
+            run_id, repository, "repository-result", role="result",
+            node_id="execute-step",
+        )
+        final_evidence_before_restart, _final_ref_before_restart, final_test_before_restart = (
+            self.repository_test_evidence(
+                run_id, repository, "repository-result",
+                "repository-tests-final-before-restart",
+            )
+        )
+        self.assertEqual(final_test_before_restart["returncode"], 0)
+        self.runtime.record_final_review(
+            run_id, artifact_id="repository-result", evidence_id="result_verified",
+            evidence_artifact_id=final_evidence_before_restart["artifact"]["artifact_id"],
+            outcome="PASS", reviewer_id="independent-reviewer", independent=True,
+            satisfied_conditions=CONDITIONS,
         )
         self.runtime.pause_run(
             run_id, "restart-before-accept", segment_id="final-review",
             resume_node_id="final-review", reason="restart trial",
         )
-        changed = self.runtime.record_inline_artifact(
-            run_id, "trial-result", result["artifact"]["identity"]["digest"] + ":reloaded",
-            role="result", node_id="execute-step", action="produce_artifact",
-            selector=OUTPUT, satisfied_conditions=CONDITIONS,
+        repository_before_restart_drift = result["composite"]
+        (repository / "inventory.py").write_text(
+            (repository / "inventory.py").read_text(encoding="utf-8")
+            + "\n# restart drift recaptured before acceptance\n",
+            encoding="utf-8",
+        )
+        changed = self.repository_artifact(
+            run_id, repository, "repository-result", role="result",
+            node_id="execute-step",
+        )
+        self.runtime.record_event(
+            run_id, "restart_repository_drift_observed",
+            {
+                "repository": str(repository.resolve()),
+                "pre_identity_digest": result["artifact"]["identity"]["digest"],
+                "post_identity_digest": changed["artifact"]["identity"]["digest"],
+                "pre_composite": repository_before_restart_drift,
+                "post_composite": changed["composite"],
+            },
         )
         decision = self.runtime.recovery_decision(run_id)
-        self.assertEqual(decision["changed_artifact_ids"], ["trial-result"])
+        self.assertEqual(decision["changed_artifact_ids"], ["repository-result"])
         self.assertEqual(decision["revalidate_evidence_ids"], ["result_verified"])
         self.runtime.resume_run(run_id)
-        _result, _evidence, accepted_ref = self.final_result(
-            run_id, changed["artifact"]["identity"]["digest"] + ":verified"
+
+        self.runtime.begin_attempt(run_id, "restart-revalidation")
+        final_evidence, final_test_ref, final_test = self.repository_test_evidence(
+            run_id, repository, "repository-result", "repository-tests-final"
+        )
+        self.assertEqual(final_test["returncode"], 0)
+        self.assertEqual(
+            final_test["repository_identity_digest"],
+            changed["artifact"]["identity"]["digest"],
+        )
+        self.runtime.complete_attempt(
+            run_id, "restart-revalidation", defect_codes=[],
+            evidence_refs=[final_test_ref],
+            artifact_digests=[changed["artifact"]["identity"]["digest"]],
+        )
+
+        with self.assertRaisesRegex(
+            gpr.GovernedRuntimeError, "semantic identity binding"
+        ):
+            self.runtime.record_inline_artifact(
+                run_id, "repository-result", "synthetic hash-chain substitute",
+                role="result", node_id="execute-step", action="produce_artifact",
+                selector=OUTPUT, satisfied_conditions=CONDITIONS,
+            )
+        unrelated = self.runtime.record_inline_artifact(
+            run_id, "unrelated-hash-chain", "synthetic unrelated result hash",
+            role="working", node_id="execute-step", action="produce_artifact",
+            selector=OUTPUT, satisfied_conditions=CONDITIONS,
+        )
+        unrelated_evidence = self.runtime.record_inline_artifact(
+            run_id, "unrelated-hash-chain-proof", "independent synthetic proof",
+            role="evidence", node_id="final-review", action="record_evidence",
+            selector=OUTPUT, source_artifact_ids=["unrelated-hash-chain"],
+            satisfied_conditions=CONDITIONS,
+        )
+        unrelated_review = self.runtime.record_final_review(
+            run_id, artifact_id=unrelated["artifact"]["artifact_id"],
+            evidence_id="result_verified",
+            evidence_artifact_id=unrelated_evidence["artifact"]["artifact_id"],
+            outcome="PASS", reviewer_id="independent-reviewer", independent=True,
+            satisfied_conditions=CONDITIONS,
+        )
+        with self.assertRaises(gpr.FinalReviewRequired):
+            self.runtime.apply_transition(
+                run_id, "ACCEPT", target_node_id="accepted",
+                reason="unrelated hash cannot authorize repository completion",
+                evaluation_boundary="review-final-review",
+                evidence_refs=unrelated_review["evidence_refs"],
+            )
+
+        final_review = self.runtime.record_final_review(
+            run_id, artifact_id="repository-result", evidence_id="result_verified",
+            evidence_artifact_id=final_evidence["artifact"]["artifact_id"],
+            outcome="PASS", reviewer_id="independent-reviewer", independent=True,
+            satisfied_conditions=CONDITIONS,
         )
         self.runtime.apply_transition(
             run_id, "ACCEPT", target_node_id="accepted", reason="verified completion",
-            evaluation_boundary="review-final-review", evidence_refs=[accepted_ref],
+            evaluation_boundary="review-final-review",
+            evidence_refs=final_review["evidence_refs"],
         )
         self.assertEqual(self.runtime.load_run(run_id)["state"], "completed")
-        self.assertTrue(self._tests_pass(repository))
+        persisted_result = self.runtime.load_artifact(run_id, "repository-result")
+        self.assertEqual(persisted_result["identity"]["kind"], "composite")
+        self.assertEqual(persisted_result["locator"], {
+            "kind": "git_ref", "ref": str(repository.resolve())
+        })
+        self.assertEqual(
+            persisted_result["identity"]["digest"],
+            changed["artifact"]["identity"]["digest"],
+        )
+        self.assertEqual(
+            final_review["event"]["details"]["subject_digest"],
+            persisted_result["identity"]["digest"],
+        )
+        self.assertEqual(
+            final_evidence["artifact"]["lineage"]["source_artifact_ids"],
+            ["repository-result"],
+        )
+        for receipt, state in (
+            (receipt_one, attempt_one_state),
+            (receipt_two, attempt_two_state),
+            (receipt_three, attempt_three_state),
+        ):
+            self.assertEqual(
+                receipt["payload"]["post_state"]["identity_digest"],
+                state["artifact"]["identity"]["digest"],
+            )
+            source_identities = receipt["receipt"]["record"]["event"]["details"][
+                "source_artifact_identities"
+            ]
+            self.assertIn(
+                state["artifact"]["identity"]["digest"],
+                {item["identity_digest"] for item in source_identities},
+            )
+        self.assertEqual(
+            _digest_bytes(Path(final_evidence["artifact"]["locator"]["ref"]).read_bytes()),
+            final_evidence["artifact"]["identity"]["digest"],
+        )
         directives = [
             record["transition"]["directive"] for record in self.runtime.load_records(run_id)
             if record["record_type"] == "transition"

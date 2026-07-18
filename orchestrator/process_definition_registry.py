@@ -42,6 +42,10 @@ class DefinitionVersionConflict(ProcessDefinitionRegistryError):
     pass
 
 
+class DefinitionIntegrityError(ProcessDefinitionRegistryError):
+    pass
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -49,6 +53,51 @@ def _utc_now() -> str:
 def _digest_json(value: Any) -> str:
     body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+_SELF_DIGEST_PLACEHOLDER = "sha256:" + ("0" * 64)
+
+
+def _normalized_definition_content(
+    definition: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return the canonical content covered by a Process Definition digest.
+
+    The three fields which carry the definition's own digest are replaced by
+    one fixed placeholder to avoid an impossible self-referential hash. Every
+    other field, including the graph and package-member identities, remains in
+    the canonical JSON coverage.
+    """
+
+    normalized = copy.deepcopy(dict(definition))
+    normalized["digest"] = _SELF_DIGEST_PLACEHOLDER
+    manifest = normalized["package_manifest"]
+    manifest["definition_ref"]["digest"] = _SELF_DIGEST_PLACEHOLDER
+    entry_member_id = manifest["entry_member_id"]
+    entry_member = next(
+        member
+        for member in manifest["members"]
+        if member["member_id"] == entry_member_id
+    )
+    entry_member["identity"]["digest"] = _SELF_DIGEST_PLACEHOLDER
+    return normalized
+
+
+def process_definition_content_digest(definition: Mapping[str, Any]) -> str:
+    """Compute the normalized, deterministic digest of a valid definition."""
+
+    validated = _contracts.validate_process_definition(definition)
+    return _digest_json(_normalized_definition_content(validated))
+
+
+def _assert_definition_integrity(definition: Mapping[str, Any]) -> None:
+    declared = str(definition["digest"])
+    computed = process_definition_content_digest(definition)
+    if declared != computed:
+        raise DefinitionIntegrityError(
+            "Process Definition content digest mismatch: "
+            f"declared {declared}, computed {computed}"
+        )
 
 
 def _storage_key(value: str) -> str:
@@ -75,7 +124,9 @@ def _read_definition(path: Path) -> dict[str, Any]:
         raise ProcessDefinitionRegistryError(
             f"cannot read registered Process Definition {path}: {exc}"
         ) from exc
-    return _contracts.validate_process_definition(value)
+    validated = _contracts.validate_process_definition(value)
+    _assert_definition_integrity(validated)
+    return validated
 
 
 def _atomic_definition(path: Path, definition: Mapping[str, Any]) -> None:
@@ -138,6 +189,7 @@ class ProcessDefinitionRegistry:
         """Register an approved exact definition, idempotently but never mutably."""
 
         validated = _contracts.validate_process_definition(definition)
+        _assert_definition_integrity(validated)
         if validated["status"] not in {"approved", "active"}:
             raise ProcessDefinitionRegistryError(
                 "only an approved or active Process Definition may be registered"
@@ -209,8 +261,10 @@ class ProcessDefinitionRegistry:
 
 
 __all__ = [
+    "DefinitionIntegrityError",
     "DefinitionNotFoundError",
     "DefinitionVersionConflict",
     "ProcessDefinitionRegistry",
     "ProcessDefinitionRegistryError",
+    "process_definition_content_digest",
 ]
