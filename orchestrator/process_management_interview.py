@@ -167,7 +167,9 @@ _OUTPUT_SIGNAL = re.compile(
 )
 _AUTHORITY_SIGNAL = re.compile(
     r"\b(?:ora|the\s+system|it)\s+(?:may|can|cannot|must|must\s+not)\b|"
-    r"\b(?:without|before)\s+(?:asking|approval)\b",
+    r"\b(?:without|before)\s+(?:asking|approval)\b|"
+    r"\b(?:requires?|needs?)\s+(?:my|principal|human)\s+approval\b|"
+    r"\bapproval\s+(?:is|must\s+be)\s+required\b",
     flags=re.IGNORECASE,
 )
 _EXCEPTION_SIGNAL = re.compile(
@@ -184,11 +186,63 @@ _PERMISSION_SIGNAL = re.compile(
 _EVIDENCE_SIGNAL = re.compile(
     r"\b(?:accept(?:ed)?\s+when|evidence|proof|verified|verification|verify)\b|"
     r"\b(?:all\s+|the\s+)?tests?\s+(?:must\s+|should\s+|will\s+)?pass(?:es|ed)?\b|"
-    r"\bpasses?\s+(?:all\s+|the\s+)?(?:checks?|tests?|verification)\b",
+    r"\bpasses?\s+(?:all\s+|the\s+)?(?:checks?|tests?|verification)\b|"
+    r"\b(?:passing\s+)?(?:test|check|review)\s+(?:output|results?|report)\b",
     flags=re.IGNORECASE,
 )
 _STOPPING_SIGNAL = re.compile(
     r"\b(?:ask\s+me|escalate|halt|pause|return\s+to\s+me|stop)\b",
+    flags=re.IGNORECASE,
+)
+_NONANSWER_SIGNAL = re.compile(
+    r"^(?:i\s+(?:(?:do\s+not|don't|cannot|can't)\s+"
+    r"(?:know|answer|say|decide)(?:\s+(?:that|this|yet|who|what|when|where|how))?|"
+    r"have\s+no\s+(?:idea|preference|information))|i'm\s+not\s+sure|"
+    r"not\s+sure|not\s+applicable|unsure|unknown|no\s+(?:idea|comment)|"
+    r"tbd(?:\s+later)?|to\s+be\s+determined|skip|pass|whatever|anything|"
+    r"you\s+decide|can\s+you\s+decide|as\s+needed|n/?a|none\s+provided|"
+    r"maybe|perhaps)[.!?]*$",
+    flags=re.IGNORECASE,
+)
+_NONANSWER_PREFIX_SIGNAL = re.compile(
+    r"^(?:i\s+(?:(?:do\s+not|don't|cannot|can't)\s+"
+    r"(?:know|answer|say|decide|provide|specify)|"
+    r"have\s+no\s+(?:idea|preference|information|answer|result))|"
+    r"i'm\s+not\s+sure|"
+    r"not\s+sure|unsure|unknown|maybe|perhaps)\b",
+    flags=re.IGNORECASE,
+)
+_CONCRETE_INTENT_GENERIC_TOKENS = {
+    "a", "an", "and", "as", "at", "automate", "automated", "automation",
+    "be", "build", "built", "by", "capability", "construct", "create",
+    "created", "develop", "do", "establish", "for", "from", "implement",
+    "in", "it", "make", "made", "my", "new", "of", "on", "our",
+    "process", "repeatable", "reusable", "set", "solution", "something",
+    "system", "task", "that", "the", "thing", "this", "to", "tool", "up",
+    "using", "with", "work", "workflow",
+}
+_REUSE_ANSWER_SIGNAL = re.compile(
+    r"\b(?:one[ -]time|once|repeatable|reusable|recurring|ongoing|"
+    r"each\s+run|every\s+run|later\s+runs?|future\s+runs?|not\s+(?:reused|repeatable))\b",
+    flags=re.IGNORECASE,
+)
+_MANUAL_INITIATION_SIGNAL = re.compile(
+    r"\b(?:manually|on\s+demand|when\s+(?:i|we|a\s+user|the\s+user)\s+"
+    r"(?:ask|start|request|run)|started\s+by|triggered\s+by|"
+    r"(?:a|the)\s+(?:person|user|principal)\s+(?:starts?|initiates?|runs?))\b",
+    flags=re.IGNORECASE,
+)
+_PARTY_ANSWER_SIGNAL = re.compile(
+    r"\b(?:team|department|staff|users?|customers?|clients?|employees?|"
+    r"auditors?|managers?|stakeholders?|principal|operators?|reviewers?|"
+    r"finance|operations?|sales|support|legal|compliance|engineering|product|"
+    r"management|executive|accounting|audit|(?:for|affects?|used\s+by)\s+me|"
+    r"only\s+me|me\s+and|i\s+(?:will\s+)?use|"
+    r"we\s+(?:will\s+)?use)\b",
+    flags=re.IGNORECASE,
+)
+_NO_EXCEPTION_SIGNAL = re.compile(
+    r"\b(?:no\s+exceptions?|all\s+(?:errors?|failures?)|every\s+(?:error|failure))\b",
     flags=re.IGNORECASE,
 )
 _SERVICE_LOCK = threading.RLock()
@@ -213,6 +267,88 @@ def _utc_now() -> str:
 def _digest_json(value: Any) -> str:
     body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _is_nonanswer(text: str) -> bool:
+    normalized = " ".join(str(text or "").split())
+    if _NONANSWER_SIGNAL.fullmatch(normalized) is not None:
+        return True
+    return (
+        _NONANSWER_PREFIX_SIGNAL.search(normalized) is not None
+        and re.search(r"\b(?:but|however)\b", normalized, flags=re.IGNORECASE) is None
+    )
+
+
+def _concrete_intended_result(text: str) -> bool:
+    """Require a named result, not merely a generic construction category."""
+
+    normalized = " ".join(str(text or "").split())
+    if _is_nonanswer(normalized):
+        return False
+    informative = [
+        token for token in re.findall(r"[a-z0-9]+", normalized.casefold())
+        if token not in _CONCRETE_INTENT_GENERIC_TOKENS
+        and not re.fullmatch(
+            r"(?:hourly|daily|nightly|weekly|monthly|quarterly|annually|yearly)",
+            token,
+        )
+    ]
+    # Two content-bearing terms are the minimum evidence for an exact result.
+    # This rejects goals such as "Build a reusable automation" while accepting
+    # concrete results such as "a reconciled cash-flow report" or "an API endpoint".
+    return len(informative) >= 2
+
+
+def _materially_resolves(dimension: str, text: str) -> bool:
+    """Return whether text supplies the management fact a dimension requires."""
+
+    normalized = " ".join(str(text or "").split())
+    if not normalized or _is_nonanswer(normalized):
+        return False
+    if dimension == "intended_result":
+        return _concrete_intended_result(normalized)
+    if dimension == "affected_parties":
+        return _PARTY_ANSWER_SIGNAL.search(normalized) is not None
+    if dimension == "inputs_outputs":
+        return (
+            _INPUT_SIGNAL.search(normalized) is not None
+            and _OUTPUT_SIGNAL.search(normalized) is not None
+        )
+    if dimension == "reuse":
+        return _REUSE_ANSWER_SIGNAL.search(normalized) is not None
+    if dimension == "initiation":
+        return (
+            _INITIATION_SIGNAL.search(normalized) is not None
+            or _MANUAL_INITIATION_SIGNAL.search(normalized) is not None
+        )
+    if dimension == "authority":
+        return _AUTHORITY_SIGNAL.search(normalized) is not None
+    if dimension == "exceptions":
+        return (
+            _EXCEPTION_SIGNAL.search(normalized) is not None
+            or _NO_EXCEPTION_SIGNAL.search(normalized) is not None
+        )
+    if dimension == "permissions":
+        return _PERMISSION_SIGNAL.search(normalized) is not None
+    if dimension == "evidence":
+        return _EVIDENCE_SIGNAL.search(normalized) is not None
+    if dimension == "stopping":
+        return _STOPPING_SIGNAL.search(normalized) is not None
+    return False
+
+
+def _default_answer_idempotency_key(dialogue_ref: str, answer: str) -> str:
+    return "answer:" + _digest_json({
+        "dialogue_ref": dialogue_ref,
+        "answer": answer,
+    }).removeprefix("sha256:")
+
+
+def _normalize_answer_idempotency_key(value: str) -> str:
+    key = str(value or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", key):
+        raise ManagementInterviewError("management answer idempotency key is invalid")
+    return key
 
 
 def _definition_ref(definition: Mapping[str, Any]) -> dict[str, str]:
@@ -321,18 +457,25 @@ def _explicit_answers(text: str, *, source_prefix: str) -> dict[str, dict[str, s
                 "answer": normalized,
                 "source": f"{source_prefix}_{dimension}",
             }
-    return answers
+    return {
+        dimension: fact
+        for dimension, fact in answers.items()
+        if _materially_resolves(dimension, fact["answer"])
+    }
 
 
 def _initial_answers(route: Mapping[str, Any]) -> dict[str, dict[str, str]]:
     objective = str(route["objective"]).strip()
-    return {
-        "intended_result": {
-            "answer": objective,
-            "source": "submitted_objective",
-        },
-        **_explicit_answers(objective, source_prefix="submitted"),
-    }
+    answers = _explicit_answers(objective, source_prefix="submitted")
+    if _materially_resolves("intended_result", objective):
+        answers = {
+            "intended_result": {
+                "answer": objective,
+                "source": "submitted_objective",
+            },
+            **answers,
+        }
+    return answers
 
 
 def _interview_contracts(
@@ -822,6 +965,11 @@ class ManagementInterviewService:
             source = str(fact.get("source") or "").strip()
             if not answer or not source:
                 raise ManagementInterviewIntegrityError("initial interview answer is empty")
+            # Runs created before the tightened Phase 2.2 gate may contain an
+            # authenticated but semantically vague initial fact.  It remains
+            # part of history, but cannot resolve the dimension.
+            if not _materially_resolves(dimension, answer):
+                continue
             answers[dimension] = {
                 "answer": answer,
                 "source": source,
@@ -830,33 +978,84 @@ class ManagementInterviewService:
             }
 
         temporary_calls: dict[str, dict[str, Any]] = {}
+        answer_receipts: dict[str, dict[str, str]] = {}
         completion_records: list[dict[str, Any]] = []
         for item in records:
             kind = item["observation_type"]
             item_payload = item["payload"]
             if kind == "management_interview_answered":
+                legacy_keys = {
+                    "schema_version", "question_id", "dimension", "answer", "source",
+                }
+                if set(item_payload) == legacy_keys:
+                    # Legacy non-idempotent observations cannot resolve a
+                    # dimension under the corrected interview contract.
+                    continue
                 dimension = str(item_payload.get("dimension") or "")
                 answer = str(item_payload.get("answer") or "").strip()
                 source = str(item_payload.get("source") or "").strip()
                 question_id = str(item_payload.get("question_id") or "")
+                idempotency_key = str(item_payload.get("idempotency_key") or "")
+                response = " ".join(str(item_payload.get("response") or "").split())
+                response_digest = str(item_payload.get("response_digest") or "")
+                expected_response_digest = _digest_json({"answer": response})
+                unresolved_before = [
+                    candidate for candidate in INTERVIEW_DIMENSIONS
+                    if candidate not in answers
+                ]
+                expected_question_id = (
+                    f"question:{run['run_id']}:{unresolved_before[0]}"
+                    if unresolved_before else ""
+                )
+                receipt = answer_receipts.get(idempotency_key)
                 if (
                     set(item_payload) != {
-                        "schema_version", "question_id", "dimension", "answer", "source",
+                        "schema_version", "question_id", "idempotency_key",
+                        "response", "response_digest", "dimension", "answer", "source",
                     }
                     or item_payload.get("schema_version") != INTERVIEW_SCHEMA_VERSION
                     or dimension not in INTERVIEW_DIMENSIONS
                     or dimension in answers
                     or not answer
                     or not source
-                    or not question_id.startswith(f"question:{run['run_id']}:")
+                    or not re.fullmatch(
+                        r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", idempotency_key
+                    )
+                    or not response
+                    or response_digest != expected_response_digest
+                    or not _materially_resolves(dimension, answer)
                 ):
                     raise ManagementInterviewIntegrityError(
                         "management interview answer observation is invalid or duplicated"
+                    )
+                if receipt is None:
+                    if (
+                        not unresolved_before
+                        or dimension != unresolved_before[0]
+                        or question_id != expected_question_id
+                    ):
+                        raise ManagementInterviewIntegrityError(
+                            "management interview answer does not bind the pending question"
+                        )
+                    receipt = {
+                        "question_id": question_id,
+                        "response_digest": response_digest,
+                    }
+                    answer_receipts[idempotency_key] = receipt
+                elif (
+                    receipt["question_id"] != question_id
+                    or receipt["response_digest"] != response_digest
+                ):
+                    raise ManagementInterviewIntegrityError(
+                        "management interview idempotency identity was reused"
                     )
                 answers[dimension] = {
                     "answer": answer,
                     "source": source,
                     "question_id": question_id,
+                    "idempotency_key": idempotency_key,
+                    "response": response,
+                    "response_digest": response_digest,
                     "record_id": item["record_id"],
                     "recorded_at": item["recorded_at"],
                 }
@@ -979,22 +1178,76 @@ class ManagementInterviewService:
             "authority_effects": [],
         }
 
-    def answer(self, dialogue_ref: str, answer: str) -> dict[str, Any]:
-        """Bind one principal answer to the exact currently pending question."""
+    def answer(
+        self,
+        dialogue_ref: str,
+        answer: str,
+        *,
+        question_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Bind one material principal answer to one exact pending question."""
 
         normalized = " ".join(str(answer or "").split())
         if not normalized:
             raise ManagementInterviewError("management interview answer must be non-empty")
         if len(normalized) > 20_000:
             raise ManagementInterviewError("management interview answer is too long")
+        supplied_question_id = str(question_id or "").strip()
+        answer_key = _normalize_answer_idempotency_key(
+            idempotency_key
+            or _default_answer_idempotency_key(dialogue_ref, normalized)
+        )
+        response_digest = _digest_json({"answer": normalized})
         with _SERVICE_LOCK:
             state = self.get_state(dialogue_ref)
             if state is None:
                 raise ManagementInterviewConflict("Dialogue has no active management interview")
+            prior = [
+                fact for fact in state["answers"].values()
+                if fact.get("idempotency_key") == answer_key
+            ]
+            if prior:
+                prior_questions = {fact.get("question_id") for fact in prior}
+                prior_digests = {fact.get("response_digest") for fact in prior}
+                if (
+                    prior_digests != {response_digest}
+                    or (
+                        supplied_question_id
+                        and prior_questions != {supplied_question_id}
+                    )
+                ):
+                    raise ManagementInterviewConflict(
+                        "management answer idempotency identity conflicts with its receipt"
+                    )
+                # This exact answer was already made authoritative.  Return the
+                # folded state even if the Dialogue save failed after append;
+                # never reinterpret it as an answer to the next question.
+                return state
             question = state["current_question"]
             if state["status"] != "interviewing" or question is None:
                 raise ManagementInterviewConflict("management interview is already complete")
+            if supplied_question_id and supplied_question_id != question["question_id"]:
+                raise ManagementInterviewConflict(
+                    "management answer does not name the current pending question"
+                )
             facts = _explicit_answers(normalized, source_prefix="principal")
+            current_fact = facts.get(question["dimension"]) or {
+                "answer": normalized,
+                "source": "principal_dialogue_answer",
+            }
+            if not _materially_resolves(question["dimension"], current_fact["answer"]):
+                required = copy.deepcopy(state)
+                required["status"] = "input_required"
+                required["next_action"] = "provide_management_answer"
+                required["input_required"] = {
+                    "type": "management_interview_input_required",
+                    "question_id": question["question_id"],
+                    "dimension": question["dimension"],
+                    "idempotency_key": answer_key,
+                    "reason": "The response does not materially resolve the pending dimension.",
+                }
+                return required
             answer_dimensions = [question["dimension"]]
             answer_dimensions.extend(
                 dimension for dimension in INTERVIEW_DIMENSIONS
@@ -1003,10 +1256,7 @@ class ManagementInterviewService:
                 and dimension != question["dimension"]
             )
             for dimension in answer_dimensions:
-                fact = facts.get(dimension) or {
-                    "answer": normalized,
-                    "source": "principal_dialogue_answer",
-                }
+                fact = current_fact if dimension == question["dimension"] else facts[dimension]
                 self.runtime._record_dialogue_observation(
                     state["run_id"],
                     dialogue_ref=dialogue_ref,
@@ -1015,6 +1265,9 @@ class ManagementInterviewService:
                     payload={
                         "schema_version": INTERVIEW_SCHEMA_VERSION,
                         "question_id": question["question_id"],
+                        "idempotency_key": answer_key,
+                        "response": normalized,
+                        "response_digest": response_digest,
                         "dimension": dimension,
                         "answer": fact["answer"],
                         "source": fact["source"],

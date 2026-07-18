@@ -8123,13 +8123,19 @@ def _persist_management_interview_exchange(
         )
     if submission_id:
         _finalize_pending_submission(submission_id)
-    return _json_response({
-        "status": "ok",
+    response_status = (
+        "input_required" if state.get("status") == "input_required" else "ok"
+    )
+    payload = {
+        "status": response_status,
         "conversation_id": panel_id,
         "chunk_id": chunk_id,
         "run_id": state["run_id"],
         "management_interview": state,
-    })
+    }
+    if state.get("input_required") is not None:
+        payload["input_required"] = state["input_required"]
+    return _json_response(payload)
 
 
 def _temporary_framework_result_ref(result):
@@ -8172,6 +8178,7 @@ def chat():
     manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
     process_entry_raw     = data.get("process_entry_request")
+    management_answer_raw = data.get("management_interview_answer")
     # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
     style_audience        = (data.get("style_audience") or "").strip()
     # Optional per-request target visual kind. When the caller knows exactly
@@ -8227,6 +8234,7 @@ def chat():
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
             "process_entry_request": process_entry_raw,
+            "management_interview_answer": management_answer_raw,
             "output_destination":    output_destination,
             "attachments":           data.get("attachments", []),
             "trace_debug":           trace_debug_payload,
@@ -8248,7 +8256,42 @@ def chat():
         )
 
     if active_interview is not None:
+        if management_answer_raw is not None and not isinstance(
+            management_answer_raw, dict
+        ):
+            _delete_pending_submission(submission_id)
+            return _json_response({
+                "error": "management_interview_answer must be an object",
+            }, 400)
+        answer_contract = management_answer_raw or {}
         if active_interview["status"] != "interviewing":
+            if not framework_selected:
+                from process_management_interview import ManagementInterviewConflict
+
+                try:
+                    replayed = interview_service.answer(
+                        panel_id,
+                        user_input,
+                        question_id=answer_contract.get("question_id"),
+                        idempotency_key=answer_contract.get("idempotency_key"),
+                    )
+                except ManagementInterviewConflict:
+                    replayed = None
+                except Exception as exc:
+                    _delete_pending_submission(submission_id)
+                    return _json_response(
+                        {"error": str(exc)}, _management_interview_error_status(exc)
+                    )
+                if replayed is not None:
+                    return _persist_management_interview_exchange(
+                        user_input=user_input,
+                        state=replayed,
+                        history=history,
+                        panel_id=panel_id,
+                        tag=tag,
+                        submission_id=submission_id,
+                        output_destination=output_destination,
+                    )
             _delete_pending_submission(submission_id)
             return _json_response({
                 "error": "awaiting_phase_2_3_plan",
@@ -8340,7 +8383,12 @@ def chat():
                 "management_interview": active_interview,
             }, 409)
         try:
-            state = interview_service.answer(panel_id, user_input)
+            state = interview_service.answer(
+                panel_id,
+                user_input,
+                question_id=answer_contract.get("question_id"),
+                idempotency_key=answer_contract.get("idempotency_key"),
+            )
         except Exception as exc:
             _delete_pending_submission(submission_id)
             return _json_response(

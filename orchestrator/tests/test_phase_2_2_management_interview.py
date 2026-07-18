@@ -31,6 +31,19 @@ from server import server  # noqa: E402
 
 NOW = "2026-07-18T12:00:00Z"
 
+MATERIAL_ANSWERS = {
+    "intended_result": "A reconciled weekly cash-flow report should be delivered.",
+    "affected_parties": "The finance team uses it, and the principal is affected.",
+    "inputs_outputs": "It reads invoice CSV files and produces a reconciled PDF report.",
+    "reuse": "This is a repeatable capability for future Runs.",
+    "initiation": "A finance user starts it manually on demand.",
+    "authority": "Ora may choose formatting without asking, but must ask before changing totals.",
+    "exceptions": "If an invoice is missing, stop and return to me.",
+    "permissions": "Ora may read invoice files and may write the report.",
+    "evidence": "Accept when the reconciliation tests pass.",
+    "stopping": "Stop and ask me when permission or evidence is missing.",
+}
+
 
 def construction_route(objective: str = "Automate my weekly cash-flow report."):
     return entry.route_process_entry({
@@ -64,12 +77,14 @@ class Phase22ServiceTests(unittest.TestCase):
         )
 
     def complete(self, state):
-        index = 0
         while state["status"] == "interviewing":
+            question = state["current_question"]
             state = self.service.answer(
-                state["dialogue_ref"], f"principal answer {index}",
+                state["dialogue_ref"],
+                MATERIAL_ANSWERS[question["dimension"]],
+                question_id=question["question_id"],
+                idempotency_key=f"test-answer:{question['dimension']}",
             )
-            index += 1
         return state
 
     def test_exact_programming_definition_is_loaded_for_the_governing_run(self):
@@ -116,6 +131,12 @@ class Phase22ServiceTests(unittest.TestCase):
         self.assertEqual(state["current_question"]["dimension"], "affected_parties")
         self.assertTrue(state["current_question"]["evidence"])
         self.assertTrue(state["current_question"]["consequence"])
+
+    def test_vague_construction_category_does_not_resolve_intended_result(self):
+        state = self.start("Build a reusable automation.")
+        self.assertNotIn("intended_result", state["answers"])
+        self.assertEqual(state["current_question"]["dimension"], "intended_result")
+        self.assertIn("reuse", state["answers"])
 
     def test_nonrecurring_construction_does_not_invent_reuse_or_initiation(self):
         state = self.start("Implement a new API endpoint in the repository.")
@@ -165,6 +186,78 @@ class Phase22ServiceTests(unittest.TestCase):
             "The finance team and the principal.",
         )
         self.assertEqual(restarted["current_question"], state["current_question"])
+
+    def test_nonanswer_is_typed_input_required_and_keeps_question_unresolved(self):
+        state = self.start("Build a reusable automation.")
+        pending = copy.deepcopy(state["current_question"])
+        rejected = None
+        for attempt in range(10):
+            rejected = self.service.answer(
+                "dialogue-phase-2-2",
+                "I do not know.",
+                question_id=pending["question_id"],
+                idempotency_key=f"answer:nonanswer:{attempt}",
+            )
+        self.assertEqual(rejected["status"], "input_required")
+        self.assertEqual(
+            rejected["input_required"]["type"],
+            "management_interview_input_required",
+        )
+        self.assertEqual(rejected["current_question"], pending)
+        persisted = self.service.get_state("dialogue-phase-2-2")
+        self.assertEqual(persisted["status"], "interviewing")
+        self.assertEqual(persisted["current_question"], pending)
+        self.assertNotIn("intended_result", persisted["answers"])
+
+    def test_duplicate_answer_receipt_cannot_advance_the_next_question(self):
+        state = self.start()
+        pending = copy.deepcopy(state["current_question"])
+        first = self.service.answer(
+            "dialogue-phase-2-2",
+            "The finance team uses it.",
+            question_id=pending["question_id"],
+            idempotency_key="answer:finance-team",
+        )
+        self.assertEqual(first["current_question"]["dimension"], "inputs_outputs")
+        retry = self.service.answer(
+            "dialogue-phase-2-2",
+            "The finance team uses it.",
+            question_id=pending["question_id"],
+            idempotency_key="answer:finance-team",
+        )
+        self.assertEqual(retry, first)
+        self.assertNotIn("inputs_outputs", retry["answers"])
+
+    def test_idempotency_identity_cannot_be_reused_for_different_content(self):
+        state = self.start()
+        pending = state["current_question"]
+        self.service.answer(
+            "dialogue-phase-2-2",
+            "The finance team uses it.",
+            question_id=pending["question_id"],
+            idempotency_key="answer:fixed-key",
+        )
+        with self.assertRaises(interview.ManagementInterviewConflict):
+            self.service.answer(
+                "dialogue-phase-2-2",
+                "The audit team uses it.",
+                idempotency_key="answer:fixed-key",
+            )
+
+    def test_answer_for_nonpending_question_is_rejected_without_state_change(self):
+        before = self.start()
+        stale_question_id = (
+            f"question:{before['run_id']}:inputs_outputs"
+        )
+        with self.assertRaises(interview.ManagementInterviewConflict):
+            self.service.answer(
+                "dialogue-phase-2-2",
+                "The finance team uses it.",
+                question_id=stale_question_id,
+                idempotency_key="answer:wrong-question",
+            )
+        after = self.service.get_state("dialogue-phase-2-2")
+        self.assertEqual(after, before)
 
     def test_retry_is_idempotent_but_different_route_cannot_displace_run(self):
         state = self.start()
@@ -381,6 +474,157 @@ class Phase22ServerBoundaryTests(unittest.TestCase):
             "The finance team uses it.",
         )
 
+    def test_chat_vague_objective_starts_with_intended_result_unresolved(self):
+        route = construction_route("Build a reusable automation.")
+        saved = server._json_response({"status": "ok", "chunk_id": "chunk-vague"})
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-vague",
+        ), mock.patch.object(
+            server, "_process_entry_project_visible", return_value=True,
+        ), mock.patch.object(
+            server, "_persist_management_interview_exchange", return_value=saved,
+        ):
+            response = self.post(
+                route["objective"],
+                process_entry_request={
+                    "source": "natural_language",
+                    "objective": route["objective"],
+                    "project_ref": "ora",
+                    "project_confirmed": True,
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        state = self.service.get_state("server-dialogue-phase-2-2")
+        self.assertEqual(state["current_question"]["dimension"], "intended_result")
+        self.assertNotIn("intended_result", state["answers"])
+
+    def test_chat_nonanswer_returns_typed_input_required_without_advancing(self):
+        state = self.service.start_or_resume(
+            "server-dialogue-phase-2-2",
+            construction_route("Build a reusable automation."),
+        )
+        pending = copy.deepcopy(state["current_question"])
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-nonanswer",
+        ), mock.patch.object(
+            server, "_save_conversation", return_value="chunk-nonanswer",
+        ), mock.patch.object(
+            memory, "save_turn_spatial_state", return_value=self.sessions,
+        ), mock.patch.object(server, "_finalize_pending_submission"):
+            response = self.post(
+                "I do not know.",
+                management_interview_answer={
+                    "question_id": pending["question_id"],
+                    "idempotency_key": "chat-answer:nonanswer",
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["status"], "input_required")
+        self.assertEqual(
+            payload["input_required"]["type"],
+            "management_interview_input_required",
+        )
+        persisted = self.service.get_state("server-dialogue-phase-2-2")
+        self.assertEqual(persisted["current_question"], pending)
+        self.assertNotIn("intended_result", persisted["answers"])
+
+    def test_duplicate_chat_answer_without_client_key_is_idempotent(self):
+        state = self.service.start_or_resume(
+            "server-dialogue-phase-2-2", construction_route(),
+        )
+        self.assertEqual(state["current_question"]["dimension"], "affected_parties")
+        saved = server._json_response({"status": "ok", "chunk_id": "chunk-answer"})
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-duplicate",
+        ), mock.patch.object(
+            server, "_persist_management_interview_exchange", return_value=saved,
+        ):
+            first = self.post("The finance team uses it.")
+            retry = self.post("The finance team uses it.")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(retry.status_code, 200)
+        resumed = self.service.get_state("server-dialogue-phase-2-2")
+        self.assertEqual(resumed["current_question"]["dimension"], "inputs_outputs")
+        self.assertNotIn("inputs_outputs", resumed["answers"])
+
+    def test_retry_after_answer_append_but_dialogue_save_failure_does_not_advance(self):
+        state = self.service.start_or_resume(
+            "server-dialogue-phase-2-2", construction_route(),
+        )
+        pending = copy.deepcopy(state["current_question"])
+        with mock.patch.object(
+            server,
+            "_log_pending_submission",
+            side_effect=["submission-failed-save", "submission-retry"],
+        ), mock.patch.object(
+            server,
+            "_save_conversation",
+            side_effect=[RuntimeError("injected save interruption"), "chunk-retry"],
+        ), mock.patch.object(
+            memory, "save_turn_spatial_state", return_value=self.sessions,
+        ), mock.patch.object(server, "_finalize_pending_submission") as finalize:
+            first = self.post("The finance team uses it.")
+            retry = self.post("The finance team uses it.")
+        self.assertEqual(first.status_code, 500)
+        self.assertEqual(retry.status_code, 200)
+        resumed = self.service.get_state("server-dialogue-phase-2-2")
+        self.assertEqual(
+            resumed["answers"]["affected_parties"]["question_id"],
+            pending["question_id"],
+        )
+        self.assertEqual(resumed["current_question"]["dimension"], "inputs_outputs")
+        self.assertNotIn("inputs_outputs", resumed["answers"])
+        finalize.assert_called_once_with("submission-retry")
+
+    def test_terminal_answer_retry_after_save_failure_returns_completed_state(self):
+        state = self.service.start_or_resume(
+            "server-dialogue-phase-2-2", construction_route(),
+        )
+        while len(state["unresolved_dimensions"]) > 1:
+            question = state["current_question"]
+            state = self.service.answer(
+                "server-dialogue-phase-2-2",
+                MATERIAL_ANSWERS[question["dimension"]],
+                question_id=question["question_id"],
+                idempotency_key=f"terminal-setup:{question['dimension']}",
+            )
+        last = copy.deepcopy(state["current_question"])
+        last_answer = MATERIAL_ANSWERS[last["dimension"]]
+        with mock.patch.object(
+            server,
+            "_log_pending_submission",
+            side_effect=["submission-terminal-failed", "submission-terminal-retry"],
+        ), mock.patch.object(
+            server,
+            "_save_conversation",
+            side_effect=[RuntimeError("injected save interruption"), "chunk-terminal"],
+        ), mock.patch.object(
+            memory, "save_turn_spatial_state", return_value=self.sessions,
+        ), mock.patch.object(server, "_finalize_pending_submission"):
+            first = self.post(last_answer)
+            retry = self.post(last_answer)
+        self.assertEqual(first.status_code, 500)
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(
+            retry.get_json()["management_interview"]["status"],
+            "ready_for_plan",
+        )
+        completed = self.service.get_state("server-dialogue-phase-2-2")
+        self.assertEqual(completed["status"], "ready_for_plan")
+        last_records = [
+            record for record in self.service.runtime.load_records(completed["run_id"])
+            if (record.get("event") or {}).get("event_type")
+            == "dialogue_observation_recorded"
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "observation_type"
+            ) == "management_interview_answered"
+            and (((record.get("event") or {}).get("details") or {}).get("payload") or {}).get(
+                "dimension"
+            ) == last["dimension"]
+        ]
+        self.assertEqual(len(last_records), 1)
+
     def test_chat_temporary_framework_call_does_not_displace_interview(self):
         state = self.service.start_or_resume(
             "server-dialogue-phase-2-2", construction_route(),
@@ -447,8 +691,12 @@ class Phase22ServerBoundaryTests(unittest.TestCase):
             "server-dialogue-phase-2-2", construction_route(),
         )
         while state["status"] == "interviewing":
+            question = state["current_question"]
             state = self.service.answer(
-                "server-dialogue-phase-2-2", "A bounded principal answer.",
+                "server-dialogue-phase-2-2",
+                MATERIAL_ANSWERS[question["dimension"]],
+                question_id=question["question_id"],
+                idempotency_key=f"server-answer:{question['dimension']}",
             )
         with mock.patch.object(
             server, "_log_pending_submission", return_value="submission-4",
