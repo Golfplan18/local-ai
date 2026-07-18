@@ -24,7 +24,12 @@ from typing import Any
 try:
     import process_contracts as _contracts
     import runtime_paths as _runtime_paths
-    from conversation_memory import load_governing_process_binding
+    from conversation_memory import (
+        ConversationPlanLifecycleError,
+        load_governing_process_binding,
+        load_process_plan_lifecycle,
+        persist_process_plan_lifecycle,
+    )
     from governed_process_runtime import (
         AuthorityDeniedError,
         GovernedProcessRuntime,
@@ -43,7 +48,12 @@ try:
 except ImportError:  # pragma: no cover - package-qualified imports
     from orchestrator import process_contracts as _contracts
     from orchestrator import runtime_paths as _runtime_paths
-    from orchestrator.conversation_memory import load_governing_process_binding
+    from orchestrator.conversation_memory import (
+        ConversationPlanLifecycleError,
+        load_governing_process_binding,
+        load_process_plan_lifecycle,
+        persist_process_plan_lifecycle,
+    )
     from orchestrator.governed_process_runtime import (
         AuthorityDeniedError,
         GovernedProcessRuntime,
@@ -811,6 +821,30 @@ def _plan_ref(plan: Mapping[str, Any]) -> dict[str, str]:
     }
 
 
+def _dialogue_lifecycle_binding(state: Mapping[str, Any]) -> dict[str, Any]:
+    plan = state.get("current_plan")
+    if not isinstance(plan, Mapping):
+        raise ProcessPlanIntegrityError(
+            "Dialogue lifecycle requires an exact current plan"
+        )
+    approved = state.get("status") == "approved"
+    approval = copy.deepcopy(state.get("approval")) if approved else None
+    if approved and not isinstance(approval, dict):
+        raise ProcessPlanIntegrityError(
+            "approved Dialogue lifecycle requires an approval receipt"
+        )
+    body = {
+        "schema_version": "ora.dialogue-plan-lifecycle/1.0",
+        "lifecycle": "plan:approved" if approved else "plan:in-planning",
+        "run_id": state["run_id"],
+        "binding_digest": state["binding_digest"],
+        "plan_ref": _plan_ref(plan),
+        "approval_receipt": approval,
+        "approval_receipt_digest": _digest_json(approval) if approval else None,
+    }
+    return {**body, "lifecycle_digest": _digest_json(body)}
+
+
 def _principal_projection(plan: Mapping[str, Any]) -> dict[str, Any]:
     content = {
         "outcome": plan["objective"],
@@ -1089,6 +1123,7 @@ class ProcessPlanApprovalService:
             retained = None
             proposal_keys: dict[str, dict[str, Any]] = {}
             approval_keys: dict[str, dict[str, Any]] = {}
+            lifecycle_receipts: list[dict[str, Any]] = []
             for item in observations:
                 kind = item["kind"]
                 payload = item["payload"]
@@ -1233,6 +1268,49 @@ class ProcessPlanApprovalService:
                         field="retention idempotency_key",
                     )
                     retained = copy.deepcopy(payload)
+                elif kind == "programming_plan_dialogue_lifecycle_persisted":
+                    if set(payload) != {
+                        "schema_version", "lifecycle", "plan_ref",
+                        "approval_receipt_digest", "lifecycle_digest",
+                    } or payload.get("schema_version") != PLAN_STATE_SCHEMA_VERSION:
+                        raise ProcessPlanIntegrityError(
+                            "Dialogue lifecycle receipt is invalid"
+                        )
+                    matching = [
+                        plan for plan in plans if _plan_ref(plan) == payload["plan_ref"]
+                    ]
+                    if (
+                        len(matching) != 1
+                        or payload.get("lifecycle")
+                        not in {"plan:in-planning", "plan:approved"}
+                        or not re.fullmatch(
+                            r"sha256:[0-9a-f]{64}",
+                            str(payload.get("lifecycle_digest") or ""),
+                        )
+                        or any(
+                            item["lifecycle_digest"] == payload["lifecycle_digest"]
+                            for item in lifecycle_receipts
+                        )
+                    ):
+                        raise ProcessPlanIntegrityError(
+                            "Dialogue lifecycle receipt identity is invalid"
+                        )
+                    ref_key = _digest_json(payload["plan_ref"])
+                    if payload["lifecycle"] == "plan:approved":
+                        exact_approval = approvals.get(ref_key)
+                        if (
+                            exact_approval is None
+                            or payload.get("approval_receipt_digest")
+                            != _digest_json(exact_approval)
+                        ):
+                            raise ProcessPlanIntegrityError(
+                                "approved Dialogue lifecycle lacks its exact receipt"
+                            )
+                    elif payload.get("approval_receipt_digest") is not None:
+                        raise ProcessPlanIntegrityError(
+                            "in-planning Dialogue lifecycle claims approval"
+                        )
+                    lifecycle_receipts.append(copy.deepcopy(payload))
                 else:
                     raise ProcessPlanIntegrityError(f"unknown plan observation: {kind}")
             current = plans[-1] if plans else None
@@ -1318,7 +1396,7 @@ class ProcessPlanApprovalService:
             if relevant_stale:
                 status = "stale"
                 tags = ["plan:in-planning"]
-            return {
+            result = {
                 "schema_version": PLAN_STATE_SCHEMA_VERSION,
                 "dialogue_ref": dialogue_ref,
                 "run_id": run["run_id"],
@@ -1336,6 +1414,7 @@ class ProcessPlanApprovalService:
                 "retained": retained,
                 "proposal_idempotency": proposal_keys,
                 "approval_idempotency": approval_keys,
+                "dialogue_lifecycle_receipts": lifecycle_receipts,
                 "current_node_id": run["current_node_id"],
                 "next_action": {
                     "planning": "submit_canonical_plan",
@@ -1349,6 +1428,59 @@ class ProcessPlanApprovalService:
                 "phase_2_4_authorized": False,
                 "target_mutation_authorized": False,
             }
+            try:
+                persisted_lifecycle = load_process_plan_lifecycle(
+                    dialogue_ref, sessions_root=self.sessions_root
+                )
+            except ConversationPlanLifecycleError as exc:
+                raise ProcessPlanIntegrityError(
+                    "persisted Dialogue plan lifecycle is invalid"
+                ) from exc
+            if lifecycle_receipts and persisted_lifecycle is None:
+                raise ProcessPlanIntegrityError(
+                    "authoritative Dialogue lifecycle receipt has no envelope binding"
+                )
+            if persisted_lifecycle is not None:
+                if (
+                    persisted_lifecycle["run_id"] != result["run_id"]
+                    or persisted_lifecycle["binding_digest"]
+                    != result["binding_digest"]
+                    or not any(
+                        persisted_lifecycle["plan_ref"] == _plan_ref(plan)
+                        for plan in plans
+                    )
+                ):
+                    raise ProcessPlanIntegrityError(
+                        "Dialogue lifecycle does not bind this plan family"
+                    )
+                persisted_ref_key = _digest_json(
+                    persisted_lifecycle["plan_ref"]
+                )
+                if persisted_lifecycle["lifecycle"] == "plan:approved":
+                    exact_approval = approvals.get(persisted_ref_key)
+                    if (
+                        exact_approval is None
+                        or persisted_lifecycle["approval_receipt"]
+                        != exact_approval
+                    ):
+                        raise ProcessPlanIntegrityError(
+                            "Dialogue approved lifecycle receipt drifted"
+                        )
+                latest_receipt_digest = (
+                    lifecycle_receipts[-1]["lifecycle_digest"]
+                    if lifecycle_receipts else None
+                )
+                expected_current = _dialogue_lifecycle_binding(result)
+                if (
+                    persisted_lifecycle["lifecycle_digest"]
+                    != latest_receipt_digest
+                    and persisted_lifecycle != expected_current
+                ):
+                    raise ProcessPlanIntegrityError(
+                        "Dialogue lifecycle is neither receipted nor current"
+                    )
+            result["dialogue_lifecycle"] = copy.deepcopy(persisted_lifecycle)
+            return result
 
     def _record(self, dialogue_ref: str, state: Mapping[str, Any], kind: str, payload: Mapping[str, Any]) -> None:
         self.runtime._record_dialogue_observation(
@@ -1358,6 +1490,49 @@ class ProcessPlanApprovalService:
             observation_type=kind,
             payload=payload,
         )
+
+    def _persist_dialogue_lifecycle(
+        self,
+        dialogue_ref: str,
+        state: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Persist and receipt lifecycle without repurposing privacy tags."""
+
+        lifecycle = _dialogue_lifecycle_binding(state)
+        try:
+            persist_process_plan_lifecycle(
+                dialogue_ref,
+                lifecycle,
+                sessions_root=self.sessions_root,
+            )
+        except ConversationPlanLifecycleError as exc:
+            raise ProcessPlanIntegrityError(
+                "Dialogue plan lifecycle could not be persisted"
+            ) from exc
+        if not any(
+            receipt["lifecycle_digest"] == lifecycle["lifecycle_digest"]
+            for receipt in state["dialogue_lifecycle_receipts"]
+        ):
+            self._record(
+                dialogue_ref,
+                state,
+                "programming_plan_dialogue_lifecycle_persisted",
+                {
+                    "schema_version": PLAN_STATE_SCHEMA_VERSION,
+                    "lifecycle": lifecycle["lifecycle"],
+                    "plan_ref": lifecycle["plan_ref"],
+                    "approval_receipt_digest": lifecycle[
+                        "approval_receipt_digest"
+                    ],
+                    "lifecycle_digest": lifecycle["lifecycle_digest"],
+                },
+            )
+        persisted = self.get_state(dialogue_ref)
+        if persisted is None:
+            raise ProcessPlanIntegrityError(
+                "plan state disappeared after Dialogue lifecycle persistence"
+            )
+        return persisted
 
     def _ensure_artifact(
         self,
@@ -1627,7 +1802,7 @@ class ProcessPlanApprovalService:
                 recovered = self.get_state(dialogue_ref)
                 if recovered is None:
                     raise ProcessPlanIntegrityError("plan disappeared during retry recovery")
-                return recovered
+                return self._persist_dialogue_lifecycle(dialogue_ref, recovered)
             if existing is not None and existing["status"] in {"approved", "retained"}:
                 raise ProcessPlanConflict("the plan family is already closed")
             if existing is not None and existing["current_plan"] is not None:
@@ -1701,7 +1876,7 @@ class ProcessPlanApprovalService:
             state = self.get_state(dialogue_ref)
             if state is None:
                 raise ProcessPlanIntegrityError("plan state disappeared after proposal")
-            return state
+            return self._persist_dialogue_lifecycle(dialogue_ref, state)
 
     def request_revision(
         self,
@@ -1730,7 +1905,7 @@ class ProcessPlanApprovalService:
                         or prior["reason"] != explanation
                     ):
                         raise ProcessPlanConflict("revision idempotency identity conflicts")
-                    return state
+                    return self._persist_dialogue_lifecycle(dialogue_ref, state)
             if state["status"] != "awaiting_approval":
                 raise ProcessPlanConflict("no reviewed plan is awaiting a revision decision")
             if dict(plan_ref) != _plan_ref(state["current_plan"]):
@@ -1753,7 +1928,7 @@ class ProcessPlanApprovalService:
             result = self.get_state(dialogue_ref)
             if result is None:
                 raise ProcessPlanIntegrityError("plan state disappeared after revision request")
-            return result
+            return self._persist_dialogue_lifecycle(dialogue_ref, result)
 
     def _export_directory(self, project_ref: str) -> Path:
         if self.project_folder_resolver is not None:
@@ -1886,7 +2061,9 @@ class ProcessPlanApprovalService:
                 stale_state = self.get_state(dialogue_ref)
                 if stale_state is None:
                     raise ProcessPlanIntegrityError("stale plan state disappeared")
-                return stale_state
+                return self._persist_dialogue_lifecycle(
+                    dialogue_ref, stale_state
+                )
 
             prior = state["approval_idempotency"].get(key)
             if prior is not None:
@@ -2036,7 +2213,7 @@ class ProcessPlanApprovalService:
             result = self.get_state(dialogue_ref)
             if result is None:
                 raise ProcessPlanIntegrityError("approved plan state disappeared")
-            return result
+            return self._persist_dialogue_lifecycle(dialogue_ref, result)
 
     def stop_and_retain(
         self,
@@ -2074,7 +2251,7 @@ class ProcessPlanApprovalService:
                 recovered = self.get_state(dialogue_ref)
                 if recovered is None:
                     raise ProcessPlanIntegrityError("retained plan state disappeared")
-                return recovered
+                return self._persist_dialogue_lifecycle(dialogue_ref, recovered)
             if state["status"] != "awaiting_approval":
                 raise ProcessPlanConflict("no reviewed plan is awaiting a decision")
             if dict(plan_ref) != _plan_ref(state["current_plan"]):
@@ -2101,7 +2278,7 @@ class ProcessPlanApprovalService:
             result = self.get_state(dialogue_ref)
             if result is None:
                 raise ProcessPlanIntegrityError("retained plan state disappeared")
-            return result
+            return self._persist_dialogue_lifecycle(dialogue_ref, result)
 
 
 __all__ = [

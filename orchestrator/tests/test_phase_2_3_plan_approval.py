@@ -512,6 +512,151 @@ class Phase23ServiceTests(Phase23Fixture):
         with self.assertRaises(planning.ProcessPlanIntegrityError):
             self.service.get_state("dialogue-plan")
 
+    def test_planning_lifecycle_real_write_reload_and_restart(self):
+        memory.set_conversation_tag(
+            "dialogue-plan", "private", sessions_root=self.root / "sessions"
+        )
+        state = self.propose()
+        envelope = memory.load_conversation_json(
+            "dialogue-plan", sessions_root=self.root / "sessions"
+        )
+        self.assertEqual(envelope["tag"], "private")
+        self.assertEqual(
+            envelope["process_plan_lifecycle"], state["dialogue_lifecycle"]
+        )
+        self.assertEqual(
+            state["dialogue_lifecycle"]["lifecycle"], "plan:in-planning"
+        )
+        restarted = planning.ProcessPlanApprovalService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.root / "runs", now=lambda: NOW
+            ),
+            sessions_root=self.root / "sessions",
+            repository_root=ROOT,
+            vault_root=self.vault,
+            project_folder_resolver=lambda _project: "Projects/Ora",
+            now=lambda: NOW,
+        )
+        hydrated = restarted.get_state("dialogue-plan")
+        self.assertEqual(hydrated["dialogue_lifecycle"], state["dialogue_lifecycle"])
+        self.assertEqual(
+            memory.get_conversation_tag(
+                "dialogue-plan", sessions_root=self.root / "sessions"
+            ),
+            "private",
+        )
+
+    def test_approved_lifecycle_real_write_reload_and_restart(self):
+        approved = self.approve(self.propose())
+        envelope = memory.load_conversation_json(
+            "dialogue-plan", sessions_root=self.root / "sessions"
+        )
+        lifecycle = envelope["process_plan_lifecycle"]
+        self.assertEqual(lifecycle["lifecycle"], "plan:approved")
+        self.assertEqual(lifecycle["plan_ref"], {
+            field: approved["current_plan"][field]
+            for field in ("plan_id", "version", "digest")
+        })
+        self.assertEqual(lifecycle["approval_receipt"], approved["approval"])
+        restarted = planning.ProcessPlanApprovalService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.root / "runs", now=lambda: NOW
+            ),
+            sessions_root=self.root / "sessions",
+            repository_root=ROOT,
+            vault_root=self.vault,
+            project_folder_resolver=lambda _project: "Projects/Ora",
+            now=lambda: NOW,
+        )
+        self.assertEqual(
+            restarted.get_state("dialogue-plan")["dialogue_lifecycle"], lifecycle
+        )
+        self.assertEqual(envelope["tag"], "")
+
+    def test_recomputed_envelope_lifecycle_tampering_is_rejected(self):
+        self.propose()
+        envelope_path = (
+            self.root / "sessions" / "dialogue-plan" / "conversation.json"
+        )
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+        lifecycle = envelope["process_plan_lifecycle"]
+        lifecycle["plan_ref"]["digest"] = "sha256:" + "0" * 64
+        lifecycle_body = {
+            key: value for key, value in lifecycle.items()
+            if key != "lifecycle_digest"
+        }
+        lifecycle["lifecycle_digest"] = memory._digest_json(lifecycle_body)
+        envelope_path.write_text(
+            json.dumps(envelope, indent=2), encoding="utf-8"
+        )
+        restarted = planning.ProcessPlanApprovalService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.root / "runs", now=lambda: NOW
+            ),
+            sessions_root=self.root / "sessions",
+            repository_root=ROOT,
+            vault_root=self.vault,
+            project_folder_resolver=lambda _project: "Projects/Ora",
+            now=lambda: NOW,
+        )
+        with self.assertRaises(planning.ProcessPlanIntegrityError):
+            restarted.get_state("dialogue-plan")
+
+    def test_recomputed_approval_receipt_tampering_is_rejected(self):
+        self.approve(self.propose())
+        envelope_path = (
+            self.root / "sessions" / "dialogue-plan" / "conversation.json"
+        )
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+        lifecycle = envelope["process_plan_lifecycle"]
+        lifecycle["approval_receipt"]["decision_by"] = "substituted-principal"
+        lifecycle["approval_receipt_digest"] = memory._digest_json(
+            lifecycle["approval_receipt"]
+        )
+        lifecycle_body = {
+            key: value for key, value in lifecycle.items()
+            if key != "lifecycle_digest"
+        }
+        lifecycle["lifecycle_digest"] = memory._digest_json(lifecycle_body)
+        envelope_path.write_text(
+            json.dumps(envelope, indent=2), encoding="utf-8"
+        )
+        restarted = planning.ProcessPlanApprovalService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.root / "runs", now=lambda: NOW
+            ),
+            sessions_root=self.root / "sessions",
+            repository_root=ROOT,
+            vault_root=self.vault,
+            project_folder_resolver=lambda _project: "Projects/Ora",
+            now=lambda: NOW,
+        )
+        with self.assertRaises(planning.ProcessPlanIntegrityError):
+            restarted.get_state("dialogue-plan")
+
+    def test_receipted_lifecycle_removal_is_rejected_after_restart(self):
+        self.propose()
+        envelope_path = (
+            self.root / "sessions" / "dialogue-plan" / "conversation.json"
+        )
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+        envelope.pop("process_plan_lifecycle")
+        envelope_path.write_text(
+            json.dumps(envelope, indent=2), encoding="utf-8"
+        )
+        restarted = planning.ProcessPlanApprovalService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.root / "runs", now=lambda: NOW
+            ),
+            sessions_root=self.root / "sessions",
+            repository_root=ROOT,
+            vault_root=self.vault,
+            project_folder_resolver=lambda _project: "Projects/Ora",
+            now=lambda: NOW,
+        )
+        with self.assertRaises(planning.ProcessPlanIntegrityError):
+            restarted.get_state("dialogue-plan")
+
     def test_rejected_export_resolver_creates_nothing_outside_vault(self):
         state = self.propose()
         outside = self.root / "outside-created-by-invalid-resolver"
@@ -661,22 +806,33 @@ class Phase23ServerTests(Phase23Fixture):
         })
         self.assertEqual(response.status_code, 403)
 
-    def test_dialogue_turn_uses_the_plan_lifecycle_tag(self):
+    def test_dialogue_turn_preserves_privacy_and_real_lifecycle(self):
+        self.assertEqual(memory.CONVERSATION_TAGS, ("", "stealth", "private"))
+        self.assertNotIn("plan:in-planning", memory.CONVERSATION_TAGS)
+        self.assertNotIn("plan:approved", memory.CONVERSATION_TAGS)
+        memory.set_conversation_tag(
+            "dialogue-plan", "private", sessions_root=self.root / "sessions"
+        )
         state = self.propose()
         with mock.patch.object(
             server, "_save_conversation", return_value="chunk-tagged",
         ) as save, mock.patch.object(
             server, "_finalize_pending_submission",
-        ), mock.patch(
-            "conversation_memory.save_turn_spatial_state",
-        ) as spatial:
+        ):
             response = server._persist_process_plan_exchange(
                 user_input="Prepare the plan.", state=state, history=[],
                 panel_id="dialogue-plan", tag="", submission_id="submission:tag",
             )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(save.call_args.args[4], "plan:in-planning")
-        self.assertEqual(spatial.call_args.kwargs["tag"], "plan:in-planning")
+        self.assertEqual(save.call_args.args[4], "")
+        envelope = memory.load_conversation_json(
+            "dialogue-plan", sessions_root=self.root / "sessions"
+        )
+        self.assertEqual(envelope["tag"], "private")
+        self.assertEqual(
+            envelope["process_plan_lifecycle"], state["dialogue_lifecycle"]
+        )
+        self.assertEqual(envelope["messages"][-1]["role"], "assistant")
 
     def test_chat_proposal_stops_at_approval_and_saves_plan_card(self):
         saved = server._json_response({"status": "ok", "chunk_id": "chunk-plan"})

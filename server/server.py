@@ -8281,15 +8281,13 @@ def _persist_process_plan_exchange(
     """Persist the Phase 2.3 plan card through normal Dialogue surfaces."""
 
     assistant_text = _process_plan_response_text(state)
-    plan_tags = state.get("plan_tags") or []
-    plan_tag = plan_tags[0] if plan_tags else tag
     try:
         chunk_id = _save_conversation(
             user_input,
             assistant_text,
             panel_id,
             len(history) == 0,
-            plan_tag,
+            tag,
             output_destination=output_destination,
             trace_ref=None,
         )
@@ -8306,15 +8304,32 @@ def _persist_process_plan_exchange(
             "failure_summary": "process plan Dialogue save produced no chunk",
         }, 500)
     try:
-        from conversation_memory import save_turn_spatial_state
-
-        save_turn_spatial_state(panel_id, user_input, assistant_text, tag=plan_tag)
-    except Exception as exc:
-        print(
-            f"[process-plan] Dialogue envelope turn save failed: {exc}",
-            file=sys.stderr,
-            flush=True,
+        from conversation_memory import (
+            get_conversation_tag,
+            load_process_plan_lifecycle,
+            save_turn_spatial_state,
         )
+
+        privacy_before = get_conversation_tag(panel_id)
+        envelope_path = save_turn_spatial_state(
+            panel_id, user_input, assistant_text, tag=tag
+        )
+        persisted_lifecycle = load_process_plan_lifecycle(panel_id)
+        privacy_after = get_conversation_tag(panel_id)
+        if (
+            envelope_path is None
+            or persisted_lifecycle != state.get("dialogue_lifecycle")
+            or privacy_after != privacy_before
+        ):
+            raise RuntimeError(
+                "Dialogue plan lifecycle or privacy failed durable verification"
+            )
+    except Exception as exc:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": f"process plan Dialogue persistence failed: {exc}",
+        }, 500)
     if submission_id:
         _finalize_pending_submission(submission_id)
     return _json_response({
