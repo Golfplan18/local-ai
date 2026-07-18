@@ -1116,6 +1116,11 @@ class ManagementInterviewService:
                 call["completed_record_id"] = item["record_id"]
             elif kind == "management_interview_completed":
                 completion_records.append(item)
+            elif str(kind).startswith("programming_plan_"):
+                # Phase 2.3 shares the same Dialogue-bound observation stream.
+                # Its owning service validates those records; they cannot
+                # retroactively alter the completed interview fold.
+                continue
             elif kind != "management_interview_started":
                 raise ManagementInterviewIntegrityError(
                     f"unknown management interview observation: {kind!r}"

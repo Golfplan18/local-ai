@@ -417,6 +417,13 @@ class Phase22ServerBoundaryTests(unittest.TestCase):
         )
         self.service_factory.start()
         self.addCleanup(self.service_factory.stop)
+        plan_service = mock.Mock()
+        plan_service.get_state.return_value = None
+        self.plan_service_factory = mock.patch.object(
+            server, "_process_plan_service", return_value=plan_service,
+        )
+        self.plan_service_factory.start()
+        self.addCleanup(self.plan_service_factory.stop)
 
     def post(self, message, **extra):
         payload = {

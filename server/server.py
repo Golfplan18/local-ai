@@ -5207,6 +5207,81 @@ def _management_interview_error_status(exc: Exception) -> int:
     return 503
 
 
+def _process_plan_service():
+    """Construct the Phase 2.3 canonical plan/approval service."""
+
+    from process_plan_approval import ProcessPlanApprovalService
+
+    return ProcessPlanApprovalService(repository_root=WORKSPACE)
+
+
+def _process_plan_error_status(exc: Exception) -> int:
+    from governed_process_runtime import AuthorityDeniedError
+    from process_plan_approval import (
+        ProcessPlanError,
+        ProcessPlanConflict,
+        ProcessPlanInputRequired,
+        ProcessPlanIntegrityError,
+    )
+
+    if isinstance(exc, AuthorityDeniedError):
+        return 403
+    if isinstance(exc, ProcessPlanInputRequired):
+        return 422
+    if isinstance(exc, ProcessPlanConflict):
+        return 409
+    if isinstance(exc, ProcessPlanIntegrityError):
+        return 503
+    if isinstance(exc, ProcessPlanError):
+        return 400
+    return 503
+
+
+def _apply_process_plan_action(service, conversation_id, payload):
+    """Apply one exact Phase 2.3 action without inferring execution authority."""
+
+    if not isinstance(payload, dict):
+        from process_plan_approval import ProcessPlanInputRequired
+
+        raise ProcessPlanInputRequired("management_plan must be an object")
+    action = str(payload.get("action") or "").strip()
+    if action == "propose":
+        return service.propose(
+            conversation_id,
+            payload.get("planning_basis"),
+            planner_id=str(payload.get("planner_id") or "planner:programming"),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    if action in {"approve_and_start", "approve_without_start"}:
+        return service.approve(
+            conversation_id,
+            decision=action,
+            plan_ref=payload.get("plan_ref") or {},
+            baseline_digest=str(payload.get("baseline_digest") or ""),
+            decision_by=str(payload.get("decision_by") or "principal:user"),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    if action in {"request_changes", "change_scope_or_permissions"}:
+        return service.request_revision(
+            conversation_id,
+            action=action,
+            plan_ref=payload.get("plan_ref") or {},
+            reason=str(payload.get("reason") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    if action == "stop_and_retain":
+        return service.stop_and_retain(
+            conversation_id,
+            plan_ref=payload.get("plan_ref") or {},
+            decision_by=str(payload.get("decision_by") or "principal:user"),
+            reason=str(payload.get("reason") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    from process_plan_approval import ProcessPlanInputRequired
+
+    raise ProcessPlanInputRequired("management_plan action is invalid")
+
+
 def _decode_process_entry_request(raw, objective: str, framework_selected: str = ""):
     """Recompute a client entry preview at the authoritative server boundary."""
 
@@ -5329,6 +5404,29 @@ def process_management_interview_state(conversation_id):
     if state is None:
         return _json_response({"ok": False, "error": "management_interview_not_found"}, 404)
     return _json_response({"ok": True, "interview": state})
+
+
+@app.route("/api/process-plan/<conversation_id>", methods=["GET", "POST"])
+def process_plan_state(conversation_id):
+    """Hydrate or act on one exact Dialogue-bound Phase 2.3 plan."""
+
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+    try:
+        service = _process_plan_service()
+        if request.method == "POST":
+            state = _apply_process_plan_action(
+                service, conversation_id, request.get_json(silent=True)
+            )
+        else:
+            state = service.get_state(conversation_id)
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)}, _process_plan_error_status(exc)
+        )
+    if state is None:
+        return _json_response({"ok": False, "error": "process_plan_not_found"}, 404)
+    return _json_response({"ok": True, "plan": state})
 
 
 @app.route("/api/slash-commands", methods=["GET"])
@@ -8138,6 +8236,96 @@ def _persist_management_interview_exchange(
     return _json_response(payload)
 
 
+def _process_plan_response_text(state):
+    plan = state.get("current_plan") or {}
+    principal = ((plan.get("principal_view") or {}).get("content") or {})
+    status = state.get("status")
+    if status == "awaiting_approval":
+        return (
+            "The canonical plan passed independent review and is waiting for your "
+            "decision.\n\n"
+            f"Outcome: {principal.get('outcome', '')}\n"
+            f"Users: {principal.get('users', '')}\n"
+            f"Risks: {'; '.join(principal.get('risks') or [])}\n"
+            f"Proof: {'; '.join(principal.get('proof') or [])}\n\n"
+            "You may approve and start, approve without starting, request plan "
+            "changes, change scope or permissions, or stop and retain the plan. "
+            "The Technical View remains available in plan details."
+        )
+    if status == "revision_requested":
+        return "Your requested plan change is recorded against the exact version. A revised canonical version is required."
+    if status == "stale":
+        return "The target changed after planning. Approval is withheld until a revised plan binds the current baseline."
+    if status == "approval_pending_commit":
+        return "Your exact approval is recorded. Ora is completing the idempotent plan export and checkpoint commit."
+    if status == "approved":
+        return (
+            "The exact plan is approved and exported as the execution contract. "
+            "Execution has not begun; Phase 2.4 delegation remains the next boundary."
+        )
+    if status == "retained":
+        return "The reviewed plan was retained and the Run stopped without execution."
+    return "Ora is preparing one canonical plan and its Principal and Technical views."
+
+
+def _persist_process_plan_exchange(
+    *,
+    user_input,
+    state,
+    history,
+    panel_id,
+    tag,
+    submission_id,
+    output_destination="",
+):
+    """Persist the Phase 2.3 plan card through normal Dialogue surfaces."""
+
+    assistant_text = _process_plan_response_text(state)
+    plan_tags = state.get("plan_tags") or []
+    plan_tag = plan_tags[0] if plan_tags else tag
+    try:
+        chunk_id = _save_conversation(
+            user_input,
+            assistant_text,
+            panel_id,
+            len(history) == 0,
+            plan_tag,
+            output_destination=output_destination,
+            trace_ref=None,
+        )
+    except Exception as exc:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": f"process plan Dialogue save failed: {exc}",
+        }, 500)
+    if not chunk_id:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": "process plan Dialogue save produced no chunk",
+        }, 500)
+    try:
+        from conversation_memory import save_turn_spatial_state
+
+        save_turn_spatial_state(panel_id, user_input, assistant_text, tag=plan_tag)
+    except Exception as exc:
+        print(
+            f"[process-plan] Dialogue envelope turn save failed: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+    if submission_id:
+        _finalize_pending_submission(submission_id)
+    return _json_response({
+        "status": "ok",
+        "conversation_id": panel_id,
+        "chunk_id": chunk_id,
+        "run_id": state["run_id"],
+        "process_plan": state,
+    })
+
+
 def _temporary_framework_result_ref(result):
     """Reduce a pipeline reply to the exact return facts stored on the Run."""
 
@@ -8179,6 +8367,7 @@ def chat():
     framework_selected    = (data.get("framework_selected") or "").strip()
     process_entry_raw     = data.get("process_entry_request")
     management_answer_raw = data.get("management_interview_answer")
+    management_plan_raw   = data.get("management_plan")
     # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
     style_audience        = (data.get("style_audience") or "").strip()
     # Optional per-request target visual kind. When the caller knows exactly
@@ -8235,24 +8424,61 @@ def chat():
             "framework_selected":    framework_selected,
             "process_entry_request": process_entry_raw,
             "management_interview_answer": management_answer_raw,
+            "management_plan":          management_plan_raw,
             "output_destination":    output_destination,
             "attachments":           data.get("attachments", []),
             "trace_debug":           trace_debug_payload,
         })
 
     interview_service = None
+    plan_service = None
     active_interview = None
+    active_plan = None
     try:
         from conversation_memory import load_governing_process_binding
 
         if load_governing_process_binding(panel_id) is not None:
-            interview_service = _management_interview_service()
-            active_interview = interview_service.get_state(panel_id)
+            plan_service = _process_plan_service()
+            active_plan = plan_service.get_state(panel_id)
+            if active_plan is None:
+                interview_service = _management_interview_service()
+                active_interview = interview_service.get_state(panel_id)
     except Exception as exc:
         _delete_pending_submission(submission_id)
         return _json_response(
             {"error": str(exc)},
             _management_interview_error_status(exc),
+        )
+
+    if active_plan is not None:
+        if management_plan_raw is None:
+            _delete_pending_submission(submission_id)
+            boundary = (
+                "awaiting_phase_2_4_delegation"
+                if active_plan["status"] == "approved"
+                else "awaiting_plan_action"
+            )
+            return _json_response({
+                "error": boundary,
+                "process_plan": active_plan,
+            }, 409)
+        try:
+            plan_state = _apply_process_plan_action(
+                plan_service, panel_id, management_plan_raw
+            )
+        except Exception as exc:
+            _delete_pending_submission(submission_id)
+            return _json_response(
+                {"error": str(exc)}, _process_plan_error_status(exc)
+            )
+        return _persist_process_plan_exchange(
+            user_input=user_input,
+            state=plan_state,
+            history=history,
+            panel_id=panel_id,
+            tag=tag,
+            submission_id=submission_id,
+            output_destination=output_destination,
         )
 
     if active_interview is not None:
@@ -8264,7 +8490,36 @@ def chat():
                 "error": "management_interview_answer must be an object",
             }, 400)
         answer_contract = management_answer_raw or {}
+        if (
+            active_interview["status"] == "interviewing"
+            and management_plan_raw is not None
+        ):
+            _delete_pending_submission(submission_id)
+            return _json_response({
+                "error": "management_interview_incomplete",
+                "management_interview": active_interview,
+            }, 409)
         if active_interview["status"] != "interviewing":
+            if management_plan_raw is not None:
+                try:
+                    plan_service = plan_service or _process_plan_service()
+                    plan_state = _apply_process_plan_action(
+                        plan_service, panel_id, management_plan_raw
+                    )
+                except Exception as exc:
+                    _delete_pending_submission(submission_id)
+                    return _json_response(
+                        {"error": str(exc)}, _process_plan_error_status(exc)
+                    )
+                return _persist_process_plan_exchange(
+                    user_input=user_input,
+                    state=plan_state,
+                    history=history,
+                    panel_id=panel_id,
+                    tag=tag,
+                    submission_id=submission_id,
+                    output_destination=output_destination,
+                )
             if not framework_selected:
                 from process_management_interview import ManagementInterviewConflict
 

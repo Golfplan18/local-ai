@@ -103,6 +103,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "controlled_probe_attempt_completed",
     "controlled_probe_withheld",
     "dialogue_observation_recorded",
+    "run_contracts_replaced",
     "process_invoked",
     "child_return_received",
     "process_returned",
@@ -562,6 +563,9 @@ class GovernedProcessRuntime:
                     materialized["current_node_id"] = details["resume_node_id"]
                 elif event_type == "node_advanced":
                     materialized["current_node_id"] = details["to_node_id"]
+                elif event_type == "run_contracts_replaced":
+                    materialized["contracts"] = copy.deepcopy(details["contracts"])
+                    materialized["labels"] = list(details["labels"])
                 elif event_type == "process_invoked":
                     child_ref = details["child_definition_ref"]
                     if child_ref not in materialized["relationships"]["invoked_definition_refs"]:
@@ -833,6 +837,103 @@ class GovernedProcessRuntime:
                     "observation_type": observation,
                     "payload_digest": _digest_json(payload),
                     "payload": copy.deepcopy(dict(payload)),
+                },
+                node_id=run["current_node_id"],
+                runtime_authoritative=True,
+            )
+
+    def _replace_contracts_for_nonmutating_phase(
+        self,
+        run_id: str,
+        contracts: Mapping[str, Any],
+        *,
+        expected_current_plan_digest: str,
+        phase: str,
+        labels: Sequence[str],
+    ) -> dict[str, Any]:
+        """Replace attached contracts only for a fail-closed nonmutating phase.
+
+        This internal seam exists for a governing service that moves one Run
+        from its interview authorization into reviewed planning, or binds the
+        approved M1 while execution remains withheld.  It cannot introduce an
+        external-effect selector, an external-effect node, or an effect type
+        beyond Dialogue/read-only/local-reversible state.
+        """
+
+        exact_expected = _exact_digest(
+            expected_current_plan_digest, "expected_current_plan_digest"
+        )
+        phase_id = str(phase or "").strip()
+        if not re.fullmatch(r"phase-2\.3-(?:planning|approved)", phase_id):
+            raise GovernedRuntimeError("nonmutating phase contract identifier is invalid")
+        clean_labels = [str(label or "").strip() for label in labels]
+        if not clean_labels or any(not label for label in clean_labels):
+            raise GovernedRuntimeError("nonmutating phase labels must be non-empty")
+        replacement = copy.deepcopy(dict(contracts))
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "replace nonmutating phase contracts")
+            current_digest = run["contracts"]["approved_plan"]["digest"]
+            if current_digest != exact_expected:
+                raise RunConflictError(
+                    "Process Run contracts changed before phase replacement"
+                )
+            definition = self.load_definition(run_id)
+            nodes = self._graph_nodes(definition)
+            approved_nodes = set(
+                (replacement.get("approved_plan") or {}).get("approved_node_ids") or []
+            )
+            if run["current_node_id"] not in approved_nodes:
+                raise AuthorityDeniedError(
+                    "replacement contracts omit the current Process node"
+                )
+            for node_id in approved_nodes:
+                node = nodes.get(str(node_id))
+                if node is None:
+                    raise GovernedRuntimeError(
+                        f"replacement contracts reference an unknown node: {node_id}"
+                    )
+                if node["kind"] == "action" and node.get("external_effect") is True:
+                    raise AuthorityDeniedError(
+                        "nonmutating phase contracts cannot approve external-effect nodes"
+                    )
+            scope = replacement.get("artifact_scope") or {}
+            if scope.get("external_effect_selectors"):
+                raise AuthorityDeniedError(
+                    "nonmutating phase contracts cannot grant external-effect scope"
+                )
+            safe_effect_types = {"dialogue_only", "read_only", "local_reversible"}
+            for grant in (replacement.get("authority") or {}).get("grants") or []:
+                outside = set(grant.get("effect_types") or []) - safe_effect_types
+                if outside:
+                    raise AuthorityDeniedError(
+                        "nonmutating phase contracts contain an unsafe effect type"
+                    )
+            candidate = copy.deepcopy(run)
+            candidate["contracts"] = replacement
+            candidate["labels"] = clean_labels
+            _contracts.validate_process_run(candidate)
+            self._validate_definition_binding(definition, candidate)
+            old_ref = copy.deepcopy(run["contracts"]["approved_plan"])
+            run["contracts"] = replacement
+            run["labels"] = clean_labels
+            return self._append_event_locked(
+                run,
+                "run_contracts_replaced",
+                {
+                    "phase": phase_id,
+                    "prior_plan_ref": {
+                        "plan_id": old_ref["plan_id"],
+                        "version": old_ref["version"],
+                        "digest": old_ref["digest"],
+                    },
+                    "replacement_plan_ref": {
+                        "plan_id": replacement["approved_plan"]["plan_id"],
+                        "version": replacement["approved_plan"]["version"],
+                        "digest": replacement["approved_plan"]["digest"],
+                    },
+                    "contracts": replacement,
+                    "labels": clean_labels,
                 },
                 node_id=run["current_node_id"],
                 runtime_authoritative=True,
