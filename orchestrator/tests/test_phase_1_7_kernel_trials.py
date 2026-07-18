@@ -928,8 +928,142 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
                 "run-checkpoint", "approved", decision_by="not-principal", reason="forged"
             )
 
+        repository_graph = {
+            "schema_version": pc.GRAPH_SCHEMA_VERSION,
+            "graph_id": "trial/repository-zero-attempt",
+            "entry_node_id": "produce",
+            "nodes": [
+                {"node_id": "produce", "kind": "action", "label": "Produce repository",
+                 "operation": "produce_repository_result", "next_node_id": "review",
+                 "authority_grant_ids": ["trial-grant"], "artifact_access": [OUTPUT],
+                 "evidence_requirement_ids": ["result_verified"], "external_effect": False},
+                {"node_id": "review", "kind": "verification_boundary", "label": "Review",
+                 "evidence_requirement_ids": ["result_verified"],
+                 "routes": {"ACCEPT": "accepted", "BLOCKED": "blocked"}},
+                {"node_id": "accepted", "kind": "terminal_state", "label": "Accepted",
+                 "outcome": "accepted"},
+                {"node_id": "blocked", "kind": "terminal_state", "label": "Blocked",
+                 "outcome": "blocked"},
+            ],
+        }
+        repository_definition = _definition(
+            "trial/repository-zero-attempt", graph=repository_graph
+        )
+        repository = Path(self.temp.name) / "zero-attempt-repository"
+        repository.mkdir()
+        (repository / "result.txt").write_text("current repository result\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "trial@example.test"],
+            cwd=repository, check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Phase Trial"],
+            cwd=repository, check=True,
+        )
+        subprocess.run(["git", "add", "."], cwd=repository, check=True)
+        subprocess.run(["git", "commit", "-qm", "result"], cwd=repository, check=True)
+        self.create("run-zero-attempt", repository_definition)
+        repository_result = self.repository_artifact(
+            "run-zero-attempt", repository, "repository-result", role="result"
+        )
+        self.runtime.complete_action_node(
+            "run-zero-attempt", "produce_repository_result", reason="result captured",
+            artifact_ids=[repository_result["artifact"]["artifact_id"]],
+        )
+        repository_evidence = self.runtime.record_inline_artifact(
+            "run-zero-attempt", "repository-result-proof", "synthetic pass",
+            role="evidence", node_id="review", action="record_evidence",
+            selector=OUTPUT, source_artifact_ids=["repository-result"],
+            satisfied_conditions=CONDITIONS,
+        )
+        repository_review = self.runtime.record_final_review(
+            "run-zero-attempt", artifact_id="repository-result",
+            evidence_id="result_verified",
+            evidence_artifact_id=repository_evidence["artifact"]["artifact_id"],
+            outcome="PASS", reviewer_id="independent-reviewer", independent=True,
+            satisfied_conditions=CONDITIONS,
+        )
+        with self.assertRaisesRegex(
+            gpr.FinalReviewRequired, "successful completed attempt"
+        ):
+            self.runtime.apply_transition(
+                "run-zero-attempt", "ACCEPT", target_node_id="accepted",
+                reason="zero-attempt bypass", evaluation_boundary="review-review",
+                evidence_refs=repository_review["evidence_refs"],
+            )
+        self.assertEqual(self.runtime.load_run("run-zero-attempt")["state"], "running")
+        self.assertFalse(any(
+            (record.get("event") or {}).get("event_type") == "attempt_completed"
+            for record in self.runtime.load_records("run-zero-attempt")
+        ))
+        repository_digest = repository_result["artifact"]["identity"]["digest"]
+        self.runtime.begin_attempt("run-zero-attempt", "repository-check")
+        self.runtime.complete_attempt(
+            "run-zero-attempt", "repository-check", defect_codes=[],
+            evidence_refs=[], artifact_digests=[repository_digest],
+        )
+        with self.assertRaisesRegex(
+            gpr.FinalReviewRequired, "PASS attempt evidence"
+        ):
+            self.runtime.apply_transition(
+                "run-zero-attempt", "ACCEPT", target_node_id="accepted",
+                reason="evidence-free attempt bypass",
+                evaluation_boundary="review-review",
+                evidence_refs=repository_review["evidence_refs"],
+            )
+        attempt_evidence_ref = {
+            "evidence_id": "result_verified",
+            "artifact_id": repository_evidence["artifact"]["artifact_id"],
+            "identity_digest": repository_evidence["artifact"]["identity"]["digest"],
+            "outcome": "PASS",
+        }
+        self.runtime.begin_attempt("run-zero-attempt", "repository-check")
+        self.runtime.complete_attempt(
+            "run-zero-attempt", "repository-check", defect_codes=[],
+            evidence_refs=[attempt_evidence_ref], artifact_digests=[repository_digest],
+        )
+        self.runtime.apply_transition(
+            "run-zero-attempt", "ACCEPT", target_node_id="accepted",
+            reason="successful identity-bound repository attempt",
+            evaluation_boundary="review-review",
+            evidence_refs=repository_review["evidence_refs"],
+        )
+        self.assertEqual(self.runtime.load_run("run-zero-attempt")["state"], "completed")
+
     def test_exact_version_registry_is_immutable_and_never_selects_latest(self):
         root = Path(self.temp.name) / "registry"
+        registry = registry_module.ProcessDefinitionRegistry(root, now=lambda: NOW)
+        programming = _programming_definition()
+        self.assertEqual(
+            programming["digest"],
+            "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927",
+        )
+        programming_receipt = registry.register(programming)
+        self.assertEqual(programming_receipt["definition_ref"], _definition_ref(programming))
+        self.assertEqual(
+            registry.resolve(
+                programming["definition_id"], programming["version"], programming["digest"]
+            ),
+            programming,
+        )
+        programming_path = registry._definition_path(
+            programming["definition_id"], programming["version"]
+        )
+        stored_programming = json.loads(programming_path.read_text(encoding="utf-8"))
+        stored_programming["definition"]["graph"]["nodes"][0]["label"] = (
+            "Tampered Programming graph"
+        )
+        programming_path.write_text(
+            json.dumps(stored_programming, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(registry_module.DefinitionIntegrityError):
+            registry.resolve(
+                programming["definition_id"], programming["version"], programming["digest"]
+            )
+
+        root = Path(self.temp.name) / "synthetic-registry"
         registry = registry_module.ProcessDefinitionRegistry(root, now=lambda: NOW)
         first = _definition("business/cash-review", version="1.0.0")
         second = _definition("business/cash-review", version="1.1.0")
@@ -946,7 +1080,7 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
             registry.resolve(first["definition_id"], first["version"], second["digest"])
         attacked = copy.deepcopy(first)
         attacked["title"] = "Conflicting body"
-        with self.assertRaises(registry_module.DefinitionIntegrityError):
+        with self.assertRaises(registry_module.DefinitionVersionConflict):
             registry.register(attacked)
         _seal_definition(attacked)
         self.assertNotEqual(attacked["digest"], first["digest"])
@@ -955,7 +1089,9 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
 
         stored_path = registry._definition_path(first["definition_id"], first["version"])
         stored = json.loads(stored_path.read_text(encoding="utf-8"))
-        stored["graph"]["nodes"][0]["label"] = "Tampered after registration"
+        stored["definition"]["graph"]["nodes"][0]["label"] = (
+            "Tampered after registration"
+        )
         stored_path.write_text(
             json.dumps(stored, sort_keys=True, indent=2) + "\n", encoding="utf-8"
         )

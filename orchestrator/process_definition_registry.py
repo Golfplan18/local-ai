@@ -1,9 +1,10 @@
 """Exact-version registry for reusable governed Process Definitions.
 
 Registration is intentionally smaller than the future Process Library UI. It
-validates one approved definition, stores that exact JSON identity immutably,
-and resolves only an explicit ID/version/digest triple. Registration never
-invokes or activates a capability.
+validates one approved definition, preserves its issued identity, authenticates
+the stored JSON through a separate registry envelope, and resolves only an
+explicit ID/version/digest triple. Registration never invokes or activates a
+capability.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ except ImportError:  # pragma: no cover
 
 PROCESS_DEFINITIONS_ENV = "ORA_PROCESS_DEFINITIONS_DIR"
 DEFAULT_PROCESS_DEFINITIONS_DIR = Path.home() / "ora" / "data" / "process-definitions"
+REGISTRY_ENTRY_SCHEMA_VERSION = "ora.process-definition-registry-entry/1.0"
 _REGISTRY_LOCK = threading.RLock()
 
 
@@ -84,20 +86,24 @@ def _normalized_definition_content(
 
 
 def process_definition_content_digest(definition: Mapping[str, Any]) -> str:
-    """Compute the normalized, deterministic digest of a valid definition."""
+    """Compute a normalized JSON digest for a newly constructed definition.
+
+    An already-issued definition may instead carry a digest of its canonical
+    source body. Registry storage integrity therefore uses a separate envelope
+    digest and never reinterprets this helper as the issued identity.
+    """
 
     validated = _contracts.validate_process_definition(definition)
     return _digest_json(_normalized_definition_content(validated))
 
 
-def _assert_definition_integrity(definition: Mapping[str, Any]) -> None:
-    declared = str(definition["digest"])
-    computed = process_definition_content_digest(definition)
-    if declared != computed:
-        raise DefinitionIntegrityError(
-            "Process Definition content digest mismatch: "
-            f"declared {declared}, computed {computed}"
-        )
+def _storage_entry(definition: Mapping[str, Any]) -> dict[str, Any]:
+    definition_copy = copy.deepcopy(dict(definition))
+    return {
+        "schema_version": REGISTRY_ENTRY_SCHEMA_VERSION,
+        "definition": definition_copy,
+        "storage_content_digest": _digest_json(definition_copy),
+    }
 
 
 def _storage_key(value: str) -> str:
@@ -119,13 +125,28 @@ def _read_definition(path: Path) -> dict[str, Any]:
     if not path.is_file() or path.is_symlink():
         raise DefinitionNotFoundError(f"registered Process Definition not found: {path}")
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        entry = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ProcessDefinitionRegistryError(
             f"cannot read registered Process Definition {path}: {exc}"
         ) from exc
-    validated = _contracts.validate_process_definition(value)
-    _assert_definition_integrity(validated)
+    if not isinstance(entry, dict) or set(entry) != {
+        "schema_version", "definition", "storage_content_digest"
+    }:
+        raise DefinitionIntegrityError(
+            "registered Process Definition lacks its authenticated storage envelope"
+        )
+    if entry["schema_version"] != REGISTRY_ENTRY_SCHEMA_VERSION:
+        raise DefinitionIntegrityError(
+            "registered Process Definition storage envelope version is unsupported"
+        )
+    definition = entry["definition"]
+    computed = _digest_json(definition)
+    if entry["storage_content_digest"] != computed:
+        raise DefinitionIntegrityError(
+            "registered Process Definition storage content digest mismatch"
+        )
+    validated = _contracts.validate_process_definition(definition)
     return validated
 
 
@@ -189,7 +210,7 @@ class ProcessDefinitionRegistry:
         """Register an approved exact definition, idempotently but never mutably."""
 
         validated = _contracts.validate_process_definition(definition)
-        _assert_definition_integrity(validated)
+        storage_entry = _storage_entry(validated)
         if validated["status"] not in {"approved", "active"}:
             raise ProcessDefinitionRegistryError(
                 "only an approved or active Process Definition may be registered"
@@ -208,7 +229,7 @@ class ProcessDefinitionRegistry:
                     )
                 idempotent = True
             else:
-                _atomic_definition(path, validated)
+                _atomic_definition(path, storage_entry)
         definition_ref = self._ref(validated)
         receipt = {
             "definition_ref": definition_ref,
@@ -219,6 +240,7 @@ class ProcessDefinitionRegistry:
             ),
             "idempotent": idempotent,
             "activated": False,
+            "storage_content_digest": storage_entry["storage_content_digest"],
         }
         receipt["receipt_digest"] = _digest_json(receipt)
         return receipt

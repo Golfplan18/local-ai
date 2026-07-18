@@ -3398,12 +3398,20 @@ class GovernedProcessRuntime:
             )
         ]
         latest_attempt = None
+        latest_attempt_record = None
         if repository_result_ids:
             for record in reversed(self.load_records(run_id)):
                 event = record.get("event") or {}
                 if event.get("event_type") == "attempt_completed":
                     latest_attempt = event.get("details") or {}
+                    latest_attempt_record = record
                     break
+            if latest_attempt is None:
+                return (
+                    False,
+                    "repository result acceptance requires at least one successful "
+                    "completed attempt",
+                )
         if latest_attempt is not None:
             if latest_attempt.get("defect_codes"):
                 return False, "the latest persisted attempt still reports defects"
@@ -3417,6 +3425,41 @@ class GovernedProcessRuntime:
                         False,
                         "result Artifact identity is not bound to the latest "
                         f"successful attempt: {artifact_id}",
+                    )
+            attempt_evidence_refs = (latest_attempt_record or {}).get(
+                "evidence_refs"
+            ) or []
+            for artifact_id in repository_result_ids:
+                subject = self.load_artifact(run_id, artifact_id)
+                passing_evidence_ids = set()
+                for ref in attempt_evidence_refs:
+                    if ref.get("outcome") != "PASS":
+                        continue
+                    try:
+                        evidence_artifact = self.load_artifact(
+                            run_id, str(ref.get("artifact_id") or "")
+                        )
+                        if (
+                            evidence_artifact["role"] != "evidence"
+                            or evidence_artifact["identity"]["digest"]
+                            != ref.get("identity_digest")
+                        ):
+                            continue
+                        self._assert_evidence_bound_to_subject(
+                            run_id, evidence_artifact, subject
+                        )
+                    except GovernedRuntimeError:
+                        continue
+                    passing_evidence_ids.add(str(ref.get("evidence_id") or ""))
+                missing_attempt_evidence = sorted(
+                    set(requirements) - passing_evidence_ids
+                )
+                if missing_attempt_evidence:
+                    return (
+                        False,
+                        "repository result acceptance requires current PASS attempt "
+                        "evidence bound to the repository identity: "
+                        + ", ".join(missing_attempt_evidence),
                     )
         for artifact_id in result_ids:
             artifact = self.load_artifact(run_id, artifact_id)
