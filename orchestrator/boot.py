@@ -2101,16 +2101,21 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
             "id": str,                    # filename stem (no .md)
             "display_name": str,          # 60-char-limit picker title
             "display_description": str,   # 500-char-limit picker body
-            "category": str,              # "standard" | "user-created" | "one-off"
+            "category": str,              # "process-definition" | "standard" |
+                                            # "user-created" | "one-off"
+            "kind": str,                  # "process_definition" | "framework"
         }
 
-    Category resolution for V3 Phase 2: every shipped framework is "standard".
+    Category resolution: authenticated Process Definitions occupy the
+    ``process-definition`` group; other shipped rows remain ``standard``.
     User-created and one-off categories land when those provenance sources
-    exist (Process Formalization F-Design output / framework-generated
-    one-offs). The ``provenance`` field of a registry entry is the long-term
-    source of truth; for now we tag everything in frameworks/book/ as standard.
+    exist. The curated invocability registry—not file presence—is the exposure
+    boundary for both kinds.
     """
-    from framework_invocability import is_user_pickable_framework
+    from framework_invocability import (
+        is_process_definition_framework,
+        is_user_pickable_framework,
+    )
 
     if not is_user_pickable_framework(framework_id):
         return None
@@ -2128,12 +2133,27 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
     if not display_name or not display_description:
         return None
 
-    return {
+    metadata = {
         "id": framework_id,
         "display_name": display_name,
         "display_description": display_description,
         "category": "standard",
+        "kind": "framework",
     }
+    if is_process_definition_framework(framework_id):
+        from process_entry_routing import load_programming_entry
+
+        process_entry = load_programming_entry(WORKSPACE)
+        metadata.update({
+            "category": "process-definition",
+            "kind": "process_definition",
+            "definition_ref": process_entry["definition_ref"],
+            "scope": process_entry["scope"],
+            "status": process_entry["status"],
+            "entrypoints": process_entry["entrypoints"],
+            "activated": process_entry["activated"],
+        })
+    return metadata
 
 
 def _first_paragraph(body: str) -> str:
@@ -8659,6 +8679,31 @@ def build_system_prompt_for_gear(
                 "The items below are Phase A inferences, not user-stated "
                 "facts. When your analysis depends on one, name it to the "
                 "user so they can correct it."
+            ),
+        ))
+
+    # G1.1 Phase 2.1 — the entry router's server-recomputed decision follows
+    # the Inquiry into every pipeline role.  This is intentionally routing
+    # evidence only: Phase 2.1 does not create a Process Run, grant authority,
+    # begin the management interview, invoke a definition, or activate one.
+    # Keeping those limits in the prompt prevents ordinary generation from
+    # silently becoming construction and prevents a classified construction
+    # request from being mistaken for already-authorized implementation.
+    process_entry = context_package.get("process_entry")
+    if isinstance(process_entry, dict):
+        parts.append(_fenced(
+            "GOVERNED PROCESS ENTRY (ROUTING EVIDENCE ONLY)",
+            json.dumps(
+                process_entry,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ),
+            note=(
+                "This server-validated contract classifies the entry route. "
+                "It grants no authority, creates no Process Run, and does not "
+                "prove invocation or activation. Preserve its exact project "
+                "and definition identities; do not infer later-phase approval."
             ),
         ))
 

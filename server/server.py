@@ -5125,7 +5125,9 @@ def list_pickable_analysis_modes() -> list[dict]:
 def frameworks_picker():
     """V3 Phase 2 — list of pickable frameworks for the input-box framework picker.
 
-    Returns ``{ frameworks: [ {id, display_name, display_description, category}, ... ] }``
+    Returns ``{ frameworks: [ {id, display_name, display_description,
+    category, kind, ...}, ... ] }``. Process Definition rows additionally
+    carry an authenticated exact definition reference and activation state.
     with one row per framework that declares both ``## Display Name`` and
     ``## Display Description`` sections. Pipeline-internal frameworks (F-* and
     Phase A) are silently excluded — they do not declare these fields.
@@ -5134,8 +5136,159 @@ def frameworks_picker():
     alphabetical Display Name. This endpoint is read-only and side-effect-free
     so it can be called freely on every picker open.
     """
-    rows = list_pickable_frameworks()
+    try:
+        rows = list_pickable_frameworks()
+    except Exception as exc:
+        # Definition-backed picker rows are authenticated on each read. A
+        # missing or drifted canonical must hide the catalog and fail closed,
+        # never silently downgrade Programming into an ordinary framework.
+        return _json_response({"frameworks": [], "error": str(exc)}, 503)
     return json.dumps({"frameworks": rows}), 200, {"Content-Type": "application/json"}
+
+
+def _process_entry_catalog():
+    from process_entry_routing import list_entry_definitions
+
+    return list_entry_definitions(WORKSPACE)
+
+
+def _process_entry_project_visible(project_ref: str) -> bool:
+    from orchestrator.active_project import canonicalize_project_nexus
+
+    canonical = canonicalize_project_nexus(project_ref)
+    if canonical == "commons":
+        return True
+    try:
+        from orchestrator import project_meta as _pm
+
+        meta = _pm.read_project_meta(canonical)
+    except Exception:
+        return False
+    return bool(meta and meta.get("status") == "active")
+
+
+def _route_process_entry_request(payload):
+    from process_entry_routing import route_process_entry
+
+    return route_process_entry(
+        payload,
+        catalog=_process_entry_catalog(),
+        project_visible=_process_entry_project_visible,
+    )
+
+
+def _process_entry_error_status(exc: Exception) -> int:
+    """Separate malformed user entry from unavailable/integrity failures."""
+
+    from process_entry_routing import ProcessEntryRoutingError
+
+    return 400 if isinstance(exc, ProcessEntryRoutingError) else 503
+
+
+def _decode_process_entry_request(raw, objective: str, framework_selected: str = ""):
+    """Recompute a client entry preview at the authoritative server boundary."""
+
+    payload = raw
+    if isinstance(raw, str):
+        if not raw.strip():
+            payload = None
+        else:
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                from process_entry_routing import ProcessEntryRoutingError
+
+                raise ProcessEntryRoutingError(
+                    f"process_entry_request is invalid JSON: {exc}"
+                ) from exc
+
+    framework_id = (framework_selected or "").strip()
+    if payload is None and framework_id == "programming":
+        from orchestrator.active_project import get_active_project
+
+        definition = next(
+            item for item in _process_entry_catalog()
+            if item.get("definition_ref", {}).get("definition_id") == "ora/programming"
+        )
+        payload = {
+            "source": "shared_picker",
+            "objective": objective,
+            "project_ref": get_active_project(),
+            "project_confirmed": False,
+            "selected_definition_ref": definition["definition_ref"],
+        }
+    elif payload is None and framework_id:
+        from orchestrator.active_project import get_active_project
+
+        payload = {
+            "source": "shared_picker",
+            "objective": objective,
+            "project_ref": get_active_project(),
+            "project_confirmed": False,
+            "selected_framework_id": framework_id,
+        }
+    elif payload is None and objective.strip():
+        # Direct API and natural-language callers cross the same boundary as
+        # the browser Inquiry pane.  Otherwise omitting the optional-looking
+        # client preview would bypass construction's mandatory project gate.
+        from orchestrator.active_project import get_active_project
+
+        payload = {
+            "source": "natural_language",
+            "objective": objective,
+            "project_ref": get_active_project(),
+            "project_confirmed": False,
+        }
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        from process_entry_routing import ProcessEntryRoutingError
+
+        raise ProcessEntryRoutingError("process_entry_request must be an object")
+    if str(payload.get("objective") or "").strip() != objective.strip():
+        from process_entry_routing import ProcessEntryRoutingError
+
+        raise ProcessEntryRoutingError(
+            "process_entry_request objective must match the submitted Inquiry"
+        )
+    if payload.get("source") == "shared_picker":
+        from process_entry_routing import ProcessEntryRoutingError
+
+        selected_definition = payload.get("selected_definition_ref")
+        selected_framework = str(payload.get("selected_framework_id") or "").strip()
+        if selected_definition is not None and framework_id != "programming":
+            raise ProcessEntryRoutingError(
+                "shared-picker Process Definition entry must carry the programming picker selection"
+            )
+        if selected_framework and framework_id != selected_framework:
+            raise ProcessEntryRoutingError(
+                "shared-picker framework entry must match framework_selected"
+            )
+    return _route_process_entry_request(payload)
+
+
+@app.route("/api/process-library/entries", methods=["GET"])
+def process_library_entry_catalog():
+    """Entry-only authenticated Process Definition catalog for Phase 2.1."""
+
+    try:
+        definitions = _process_entry_catalog()
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc), "definitions": []}, 503)
+    return _json_response({"ok": True, "definitions": definitions})
+
+
+@app.route("/api/process-entry/route", methods=["POST"])
+def process_entry_route():
+    """Preview one authority-neutral four-intent entry routing contract."""
+
+    payload = request.get_json(silent=True)
+    try:
+        contract = _route_process_entry_request(payload)
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)},
+                              _process_entry_error_status(exc))
+    return _json_response({"ok": True, "entry": contract})
 
 
 @app.route("/api/slash-commands", methods=["GET"])
@@ -7879,6 +8032,7 @@ def chat():
     manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
+    process_entry_raw     = data.get("process_entry_request")
     # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
     style_audience        = (data.get("style_audience") or "").strip()
     # Optional per-request target visual kind. When the caller knows exactly
@@ -7933,10 +8087,34 @@ def chat():
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
+            "process_entry_request": process_entry_raw,
             "output_destination":    output_destination,
             "attachments":           data.get("attachments", []),
             "trace_debug":           trace_debug_payload,
         })
+
+    try:
+        process_entry = _decode_process_entry_request(
+            process_entry_raw, user_input, framework_selected,
+        )
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return _json_response({"error": str(exc)},
+                              _process_entry_error_status(exc))
+    if process_entry is not None and process_entry["status"] != "ready":
+        _delete_pending_submission(submission_id)
+        return _json_response({
+            "error": process_entry["status"],
+            "entry": process_entry,
+        }, 409)
+    if (process_entry is not None
+            and process_entry.get("intent") == "capability_invocation"
+            and process_entry.get("framework_id")
+            and not framework_selected):
+        # Direct natural-language invocation resolves one curated legacy
+        # framework at the server boundary, then enters its established
+        # pipeline path exactly as a shared-picker selection would.
+        framework_selected = process_entry["framework_id"]
 
     # Process attachments: text content inlined, images passed separately
     raw_attachments = data.get("attachments", [])
@@ -7948,6 +8126,9 @@ def chat():
     if trace_debug_payload:
         extra_context = dict(extra_context or {})
         extra_context["trace_debug"] = trace_debug_payload
+    if process_entry is not None:
+        extra_context = dict(extra_context or {})
+        extra_context["process_entry"] = process_entry
     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
                              extra_context=extra_context,
                              tag=tag,
@@ -8060,6 +8241,7 @@ def chat_multipart():
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
+    process_entry_raw     = form.get("process_entry_request", "")
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
@@ -8134,11 +8316,32 @@ def chat_multipart():
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
+            "process_entry_request": process_entry_raw,
             "output_destination":    output_destination,
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
         })
+
+    try:
+        process_entry = _decode_process_entry_request(
+            process_entry_raw, user_input, framework_selected,
+        )
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return _json_response({"error": str(exc)},
+                              _process_entry_error_status(exc))
+    if process_entry is not None and process_entry["status"] != "ready":
+        _delete_pending_submission(submission_id)
+        return _json_response({
+            "error": process_entry["status"],
+            "entry": process_entry,
+        }, 409)
+    if (process_entry is not None
+            and process_entry.get("intent") == "capability_invocation"
+            and process_entry.get("framework_id")
+            and not framework_selected):
+        framework_selected = process_entry["framework_id"]
 
     # Optional history as JSON string
     history = []
@@ -8222,6 +8425,8 @@ def chat_multipart():
         extra_context["image_source"]          = "canvas_preview"
     if annotations_payload is not None:
         extra_context["annotations"] = annotations_payload
+    if process_entry is not None:
+        extra_context["process_entry"] = process_entry
 
     # WP-5.3 — Spatial continuity across turns. Fetch the prior turn's
     # spatial_representation from either the in-memory history arg or
@@ -11814,16 +12019,28 @@ def _persist_turn_spatial_state_unlocked(
             spatial_rep = extra_context.get("spatial_representation")
             annotations = extra_context.get("annotations")
             vision_extr = extra_context.get("vision_extraction_result")
-        # Bind a NEW conversation to the active project (G1.33). project_ids
-        # is honored on first save only, so passing it every turn is safe —
-        # existing envelopes preserve their membership. General (the default)
-        # resolves to [] (the implicit baseline).
+        # Bind a NEW conversation to the explicitly confirmed Process Entry
+        # project when present; otherwise preserve the G1.33 active-project
+        # behavior. project_ids is honored on first save only, so existing
+        # Dialogue membership never changes implicitly.
         try:
             from orchestrator.active_project import (
                 get_active_project,
                 resolve_project_ids,
             )
-            _project_ids = resolve_project_ids(get_active_project())
+            _entry = (
+                extra_context.get("process_entry")
+                if isinstance(extra_context, dict)
+                else None
+            )
+            _entry_project = (
+                _entry.get("project_ref")
+                if isinstance(_entry, dict) and _entry.get("status") == "ready"
+                else None
+            )
+            _project_ids = resolve_project_ids(
+                _entry_project if _entry_project is not None else get_active_project()
+            )
         except Exception:
             _project_ids = None
         save_turn_spatial_state(

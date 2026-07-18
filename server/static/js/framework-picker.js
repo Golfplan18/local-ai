@@ -7,7 +7,8 @@
  * click the picker commits the framework via OraInputState.setFramework
  * and closes itself. Outside-click and Escape close without committing.
  *
- * Three category groups are supported per design doc Q3:
+ * Four category groups are supported per design doc Q3 and G1.1 Phase 2.1:
+ *   - "process-definition" — authenticated governed Process Definitions
  *   - "standard"     — built-in Ora frameworks (not removable)
  *   - "user-created" — user-authored masters (X to remove from picker;
  *                      optional delete-entirely)
@@ -29,11 +30,12 @@
   const TOOLBAR_BTN_SELECTOR = '#inputToolbarFramework';
 
   const CATEGORY_LABELS = {
+    'process-definition': 'Processes',
     'standard':      'Frameworks',
     'user-created':  'User-created',
     'one-off':       'One-offs',
   };
-  const CATEGORY_ORDER = ['standard', 'user-created', 'one-off'];
+  const CATEGORY_ORDER = ['process-definition', 'standard', 'user-created', 'one-off'];
 
   let _picker = null;
   let _list   = null;
@@ -178,7 +180,9 @@
 
     // X-to-remove only for non-standard categories. Standard frameworks
     // ship with Ora and cannot be picker-removed.
-    if (framework.category && framework.category !== 'standard') {
+    if (framework.category
+        && framework.category !== 'standard'
+        && framework.category !== 'process-definition') {
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'framework-picker__remove';

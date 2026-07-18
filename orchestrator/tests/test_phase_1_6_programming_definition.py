@@ -561,10 +561,11 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
         definition = embedded_definition(body(CANONICAL))
         self.assertIn(f"{len(definition['graph']['nodes'])}-node", entry)
 
-    def test_operational_mirror_is_not_prematurely_publicly_exposed(self):
+    def test_phase_2_1_exposes_entry_without_legacy_runtime_invocation(self):
         self.assertTrue(MIRROR.is_file())
         self.assertFalse(invocability.is_user_invocable_framework("programming"))
-        self.assertFalse(invocability.is_user_pickable_framework("programming"))
+        self.assertTrue(invocability.is_user_pickable_framework("programming"))
+        self.assertTrue(invocability.is_process_definition_framework("programming"))
 
 
 if __name__ == "__main__":

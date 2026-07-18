@@ -1,0 +1,379 @@
+/* G1.1 Phase 2.1 — governed Process entry and routing surfaces.
+ *
+ * This module deliberately stops at an authority-neutral routing contract.
+ * It can classify an Inquiry, require an explicit project choice for
+ * construction, and select an exact authenticated Process Definition.  It
+ * does not create a Process Run, conduct the management interview, activate a
+ * definition, or expose lifecycle controls (all later phases).
+ */
+(() => {
+  const ROUTE_URL = '/api/process-entry/route';
+  const LIBRARY_URL = '/api/process-library/entries';
+  const PROJECTS_URL = '/api/projects/meta?status=active';
+
+  let overlay = null;
+  let pendingResolve = null;
+
+  const activeProject = () => {
+    if (window.OraSidebar && typeof window.OraSidebar.getActiveProject === 'function') {
+      return window.OraSidebar.getActiveProject() || 'commons';
+    }
+    return 'commons';
+  };
+
+  const exactRef = (entry) => {
+    const ref = entry && entry.definition_ref;
+    return ref ? {
+      definition_id: ref.definition_id,
+      version: ref.version,
+      digest: ref.digest,
+    } : null;
+  };
+
+  function ensureOverlay() {
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.className = 'process-entry';
+    overlay.hidden = true;
+    overlay.innerHTML = [
+      '<div class="process-entry__backdrop" data-process-entry-close></div>',
+      '<section class="process-entry__card" role="dialog" aria-modal="true" aria-labelledby="processEntryTitle">',
+      '  <header class="process-entry__header">',
+      '    <div>',
+      '      <div class="process-entry__kicker">Governed Process</div>',
+      '      <h2 class="process-entry__title" id="processEntryTitle">Programming</h2>',
+      '    </div>',
+      '    <button class="process-entry__close" type="button" data-process-entry-close aria-label="Close">×</button>',
+      '  </header>',
+      '  <div class="process-entry__body"></div>',
+      '</section>',
+    ].join('');
+    document.body.appendChild(overlay);
+    overlay.querySelectorAll('[data-process-entry-close]').forEach((button) => {
+      button.addEventListener('click', () => close(null));
+    });
+    overlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close(null);
+      }
+    });
+    return overlay;
+  }
+
+  function show() {
+    ensureOverlay();
+    overlay.hidden = false;
+    document.body.classList.add('process-entry-open');
+  }
+
+  function close(value) {
+    if (!overlay || overlay.hidden) return;
+    overlay.hidden = true;
+    document.body.classList.remove('process-entry-open');
+    const resolve = pendingResolve;
+    pendingResolve = null;
+    if (resolve) resolve(value);
+  }
+
+  async function fetchJson(url, options) {
+    const response = await fetch(url, options);
+    let payload = null;
+    try { payload = await response.json(); } catch (_) { payload = {}; }
+    if (!response.ok || !payload || payload.ok === false) {
+      throw new Error((payload && payload.error) || `HTTP ${response.status}`);
+    }
+    return payload;
+  }
+
+  async function route(request) {
+    const payload = await fetchJson(ROUTE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    return payload.entry;
+  }
+
+  async function loadProjects() {
+    const payload = await fetchJson(PROJECTS_URL);
+    const projects = Array.isArray(payload.projects) ? payload.projects : [];
+    const byId = new Map();
+    byId.set('commons', { nexus: 'commons', name: 'Commons' });
+    projects.forEach((project) => {
+      const id = String(project.canonical_nexus || project.nexus || '').trim();
+      if (id) byId.set(id, project);
+    });
+    return Array.from(byId.values());
+  }
+
+  function errorNode(message) {
+    const node = document.createElement('div');
+    node.className = 'process-entry__error';
+    node.setAttribute('role', 'alert');
+    node.textContent = message;
+    return node;
+  }
+
+  async function showEntryForm(options) {
+    ensureOverlay();
+    const body = overlay.querySelector('.process-entry__body');
+    const title = overlay.querySelector('.process-entry__title');
+    title.textContent = options.title || 'Programming';
+    body.innerHTML = [
+      '<form class="process-entry__form">',
+      '  <label class="process-entry__label" for="processEntryObjective">What should happen?</label>',
+      '  <textarea class="process-entry__objective" id="processEntryObjective" rows="5" required></textarea>',
+      '  <label class="process-entry__label" for="processEntryProject">Project</label>',
+      '  <select class="process-entry__project" id="processEntryProject" required></select>',
+      '  <p class="process-entry__hint">Construction is bound to the project you confirm here. Ora infers the implementation form.</p>',
+      '  <div class="process-entry__actions">',
+      '    <button class="process-entry__button process-entry__button--secondary" type="button" data-process-entry-cancel>Cancel</button>',
+      '    <button class="process-entry__button process-entry__button--primary" type="submit">Continue</button>',
+      '  </div>',
+      '</form>',
+    ].join('');
+    const form = body.querySelector('form');
+    const objective = body.querySelector('#processEntryObjective');
+    const project = body.querySelector('#processEntryProject');
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    objective.value = options.objective || '';
+    body.querySelector('[data-process-entry-cancel]').addEventListener('click', () => close(null));
+
+    show();
+    try {
+      const projects = await loadProjects();
+      const selectedId = options.projectRef || activeProject();
+      projects.forEach((record) => {
+        const id = String(record.canonical_nexus || record.nexus || '').trim() || 'commons';
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = record.name || record.display_name || id;
+        option.selected = id === selectedId;
+        project.appendChild(option);
+      });
+      submit.disabled = project.options.length === 0;
+    } catch (error) {
+      form.prepend(errorNode(`Projects could not be loaded: ${error.message}`));
+      submit.disabled = true;
+    }
+
+    const result = new Promise((resolve) => { pendingResolve = resolve; });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      form.querySelectorAll('.process-entry__error').forEach((node) => node.remove());
+      const request = {
+        source: options.source,
+        objective: objective.value.trim(),
+        project_ref: project.value || 'commons',
+        project_confirmed: true,
+      };
+      if (options.selectedDefinitionRef) {
+        request.selected_definition_ref = options.selectedDefinitionRef;
+      }
+      if (options.selectedFrameworkId) {
+        request.selected_framework_id = options.selectedFrameworkId;
+      }
+      if (!request.objective) {
+        form.prepend(errorNode('What should happen? is required.'));
+        objective.focus();
+        return;
+      }
+      try {
+        const contract = await route(request);
+        if (contract.status !== 'ready') {
+          const message = contract.status === 'awaiting_activation'
+            ? 'This Process Definition is not active. No invocation or Process Run has started; request activation explicitly.'
+            : `Entry is not ready: ${contract.status}`;
+          form.prepend(errorNode(message));
+          return;
+        }
+        close({ request, contract, objective: request.objective });
+      } catch (error) {
+        form.prepend(errorNode(error.message));
+      }
+    });
+    setTimeout(() => objective.focus(), 0);
+    return result;
+  }
+
+  async function chooseFromLibrary() {
+    ensureOverlay();
+    const body = overlay.querySelector('.process-entry__body');
+    overlay.querySelector('.process-entry__title').textContent = 'Process Library';
+    body.innerHTML = [
+      '<div class="process-entry__library-intro">Choose the exact Process Definition to use.</div>',
+      '<div class="process-entry__library" aria-live="polite"></div>',
+      '<div class="process-entry__actions">',
+      '  <button class="process-entry__button process-entry__button--secondary" type="button" data-process-entry-cancel>Cancel</button>',
+      '</div>',
+    ].join('');
+    const list = body.querySelector('.process-entry__library');
+    body.querySelector('[data-process-entry-cancel]').addEventListener('click', () => close(null));
+    show();
+    const result = new Promise((resolve) => { pendingResolve = resolve; });
+    try {
+      const payload = await fetchJson(LIBRARY_URL);
+      const definitions = Array.isArray(payload.definitions) ? payload.definitions : [];
+      if (!definitions.length) {
+        list.appendChild(errorNode('No authenticated Process Definitions are available.'));
+      }
+      definitions.forEach((entry) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'process-entry__library-row';
+        const name = document.createElement('span');
+        name.className = 'process-entry__library-name';
+        name.textContent = entry.display_name || entry.id;
+        const description = document.createElement('span');
+        description.className = 'process-entry__library-description';
+        description.textContent = entry.display_description || '';
+        const identity = document.createElement('span');
+        identity.className = 'process-entry__library-identity';
+        const ref = exactRef(entry);
+        identity.textContent = ref ? `${ref.definition_id}@${ref.version}` : 'Unavailable identity';
+        button.append(name, description, identity);
+        button.addEventListener('click', () => close(entry));
+        list.appendChild(button);
+      });
+    } catch (error) {
+      list.appendChild(errorNode(`Process Library could not be loaded: ${error.message}`));
+    }
+    return result;
+  }
+
+  function showNotice(titleText, message) {
+    ensureOverlay();
+    const body = overlay.querySelector('.process-entry__body');
+    overlay.querySelector('.process-entry__title').textContent = titleText;
+    body.innerHTML = [
+      '<p class="process-entry__notice"></p>',
+      '<div class="process-entry__actions">',
+      '  <button class="process-entry__button process-entry__button--primary" type="button" data-process-entry-notice-close>Close</button>',
+      '</div>',
+    ].join('');
+    body.querySelector('.process-entry__notice').textContent = message;
+    body.querySelector('[data-process-entry-notice-close]').addEventListener(
+      'click', () => close(null)
+    );
+    show();
+    return new Promise((resolve) => { pendingResolve = resolve; });
+  }
+
+  async function prepareInquiry(objective, selectedFramework) {
+    const selectedRef = selectedFramework && selectedFramework.kind === 'process_definition'
+      ? exactRef(selectedFramework) : null;
+    const selectedFrameworkId = selectedFramework && selectedFramework.id && !selectedRef
+      ? selectedFramework.id : null;
+    const request = {
+      source: (selectedRef || selectedFrameworkId) ? 'shared_picker' : 'inquiry',
+      objective: String(objective || '').trim(),
+      project_ref: activeProject(),
+      project_confirmed: false,
+    };
+    if (selectedRef) request.selected_definition_ref = selectedRef;
+    if (selectedFrameworkId) request.selected_framework_id = selectedFrameworkId;
+    const contract = await route(request);
+    if (contract.status === 'awaiting_project_confirmation') {
+      return showEntryForm({
+        source: request.source,
+        objective: request.objective,
+        projectRef: request.project_ref,
+        selectedDefinitionRef: selectedRef,
+        selectedFrameworkId,
+        title: selectedFramework && selectedFramework.display_name,
+      });
+    }
+    if (contract.status === 'awaiting_definition_selection') {
+      const selected = await chooseFromLibrary();
+      if (!selected) return null;
+      const selectedRequest = {
+        source: 'process_library',
+        objective: request.objective,
+        project_ref: request.project_ref,
+        project_confirmed: false,
+        selected_definition_ref: exactRef(selected),
+      };
+      const selectedContract = await route(selectedRequest);
+      if (selectedContract.status === 'awaiting_project_confirmation') {
+        return showEntryForm({
+          source: selectedRequest.source,
+          objective: selectedRequest.objective,
+          projectRef: selectedRequest.project_ref,
+          selectedDefinitionRef: selectedRequest.selected_definition_ref,
+          title: selected.display_name,
+        });
+      }
+      if (selectedContract.status === 'awaiting_activation') {
+        await showNotice(
+          selected.display_name || 'Activation required',
+          'This Process Definition is not active. No invocation or Process Run has started. Request activation explicitly to continue.'
+        );
+        return null;
+      }
+      return {
+        request: selectedRequest,
+        contract: selectedContract,
+        objective: selectedRequest.objective,
+      };
+    }
+    if (contract.status === 'awaiting_activation') {
+      await showNotice(
+        (selectedFramework && selectedFramework.display_name) || 'Activation required',
+        'This Process Definition is not active. No invocation or Process Run has started. Request activation explicitly to continue.'
+      );
+      return null;
+    }
+    return { request, contract, objective: request.objective };
+  }
+
+  async function openConstruction() {
+    const result = await showEntryForm({
+      source: 'construction_action',
+      objective: '',
+      projectRef: activeProject(),
+      title: 'Programming',
+    });
+    if (result) {
+      document.dispatchEvent(new CustomEvent('ora:process-entry:ready', { detail: result }));
+    }
+    return result;
+  }
+
+  async function openLibrary() {
+    const selected = await chooseFromLibrary();
+    if (!selected) return null;
+    const result = await showEntryForm({
+      source: 'process_library',
+      objective: '',
+      projectRef: activeProject(),
+      selectedDefinitionRef: exactRef(selected),
+      title: selected.display_name || 'Programming',
+    });
+    if (result) {
+      document.dispatchEvent(new CustomEvent('ora:process-entry:ready', { detail: result }));
+    }
+    return result;
+  }
+
+  function init() {
+    ensureOverlay();
+    document.addEventListener('ora:input-toolbar:programming', openConstruction);
+    const libraryButton = document.getElementById('sidebarProcessLibraryOpen');
+    if (libraryButton) libraryButton.addEventListener('click', openLibrary);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  window.OraProcessEntry = {
+    prepareInquiry,
+    openConstruction,
+    openLibrary,
+    close,
+  };
+})();

@@ -299,6 +299,7 @@
 <script src="/static/js/style-audience-toggle.js?v=g136-20260701" defer></script>
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
+<script src="/static/js/process-entry.js?v=g11-phase-2-1" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
@@ -662,6 +663,8 @@
           </button>
           <div class="sidebar-supergroup-body">
             <div class="sidebar-processes-toolbar">
+              <button class="sidebar-processes-open" id="sidebarProcessLibraryOpen"
+                      type="button">Process Library</button>
               <button class="sidebar-processes-open" id="sidebarReviewQueueOpen"
                       type="button">Open review queue</button>
             </div>
@@ -700,7 +703,8 @@
   <!-- LEFT COLUMN — input on top, draggable bridge strip, output on bottom -->
   <div class="left-column">
     <div class="pane input-pane">
-      <textarea spellcheck="false"></textarea>
+      <textarea spellcheck="false" placeholder="What should happen?"
+                aria-label="What should happen?"></textarea>
       <!-- V3 Input Handling Phase 8 — attachment chip row. The
            file-drop dispatcher (in this file's inline script) renders
            per-file chips here when a file is dropped on the pane or
@@ -714,6 +718,17 @@
            Click handlers dispatch `ora:input-toolbar:*` events; picker modules
            wire the framework and analysis dropdowns. -->
       <div class="input-pane-toolbar" role="toolbar" aria-label="Inquiry options">
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarProgramming"
+                aria-label="Programming"
+                title="Programming"
+                data-input-toolbar="programming">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarFramework"
                 aria-label="Frameworks"
@@ -1895,13 +1910,19 @@
     }
   };
 
-  const submitToMainPipeline = async (text) => {
+  const submitToMainPipeline = async (text, processEntryRequest = null) => {
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', currentConversationId());
     body.append('panel_id',        currentConversationId());
     body.append('is_main_feed',    'true');
     body.append('tag',             currentTag());
+    // G1.1 Phase 2.1 — send the user's entry request, never the client
+    // preview result. The server authenticates the selected definition and
+    // recomputes the routing contract before the pipeline can observe it.
+    if (processEntryRequest) {
+      body.append('process_entry_request', JSON.stringify(processEntryRequest));
+    }
 
     // V3 Input Handling Phase 4 — pass the picker's framework selection
     // through to the pipeline so the framework branch of
@@ -2167,17 +2188,24 @@
     ].join('\n');
   };
 
-  const submitWithFrameworkCheck = async (text) => {
+  const submitWithFrameworkCheck = async (text, processEntryRequest = null) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, processEntryRequest);
+    }
+    // Process Definitions have their own governed entry contract. Sending
+    // Programming through the legacy framework gap analyzer would confuse
+    // entry routing with the later management interview and milestone
+    // executor, both outside Phase 2.1.
+    if (fw.kind === 'process_definition') {
+      return submitToMainPipeline(text, processEntryRequest);
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, processEntryRequest);
     }
 
     // Iteration loop. Round N: analyze with priorResponses, popup if
@@ -2200,11 +2228,11 @@
         // Analyzer down — submit anyway so the user isn't trapped. Phase
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
-        return submitToMainPipeline(augmentedPrompt);
+        return submitToMainPipeline(augmentedPrompt, processEntryRequest);
       }
 
       if (!_hasGaps(report)) {
-        return submitToMainPipeline(augmentedPrompt);
+        return submitToMainPipeline(augmentedPrompt, processEntryRequest);
       }
 
       const choice = await window.OraFrameworkSetupPopup.show(report);
@@ -2225,7 +2253,7 @@
 
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
-        return submitToMainPipeline(augmentedPrompt + note);
+        return submitToMainPipeline(augmentedPrompt + note, processEntryRequest);
       }
 
       // choice.action === 'continue' — loop and re-analyze. If the user's
@@ -2234,7 +2262,7 @@
     }
 
     // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(augmentedPrompt);
+    return submitToMainPipeline(augmentedPrompt, processEntryRequest);
   };
 
   let imageGenerateMode = false;
@@ -2409,7 +2437,7 @@
     trimScratchpadHistory();
   };
 
-  const submitInput = () => {
+  const submitInput = async () => {
     const rightContent = rightInputArea.value.trim();
     if (rightContent) {
       if (window.OraSlashCommands
@@ -2447,23 +2475,57 @@
       return;
     }
 
-    leftInputArea.value = '';
-    if (leftContent) {
-      renderUserTurn(leftContent);
-    } else {
-      renderUserTurn('[canvas content]');
-    }
     if (routeAsImageGeneration) {
+      leftInputArea.value = '';
+      renderUserTurn(leftContent);
       setImageGenerateMode(false);
       submitImageGenerationPrompt(leftContent);
       return;
     }
+    // Canvas-only input has no natural-language objective to classify.
+    // Preserve its existing submission path; text-bearing Inquiries always
+    // cross the Phase 2.1 server router before they are cleared or rendered.
+    if (!leftContent) {
+      leftInputArea.value = '';
+      renderUserTurn('[canvas content]');
+      submitWithFrameworkCheck(leftContent, null);
+      return;
+    }
+    let prepared = null;
+    try {
+      const selectedFramework = (window.OraInputState
+        && typeof window.OraInputState.getFramework === 'function')
+        ? window.OraInputState.getFramework() : null;
+      if (!window.OraProcessEntry
+          || typeof window.OraProcessEntry.prepareInquiry !== 'function') {
+        throw new Error('governed Process entry is unavailable');
+      }
+      prepared = await window.OraProcessEntry.prepareInquiry(leftContent, selectedFramework);
+    } catch (error) {
+      renderAssistantTurn('[Entry routing failed: ' + (error.message || error) + ']');
+      return;
+    }
+    if (!prepared) return;
+    leftInputArea.value = '';
+    renderUserTurn(leftContent);
     // V3 Input Handling Phase 7 — route through the framework gap check.
     // When no framework is selected, the wrapper passes straight through
     // to submitToMainPipeline; when one is selected, the popup may
     // intervene before submission.
-    submitWithFrameworkCheck(leftContent);
+    submitWithFrameworkCheck(leftContent, prepared.request);
   };
+
+  // Programming action and Process Library entries begin outside the Inquiry
+  // textarea, but converge on the same submit boundary once the project and
+  // exact definition requirements are satisfied.
+  document.addEventListener('ora:process-entry:ready', (event) => {
+    const prepared = event.detail;
+    if (!prepared || !prepared.request || !prepared.objective) return;
+    if (!requireMutableInquiry()) return;
+    leftInputArea.value = '';
+    renderUserTurn(prepared.objective);
+    submitToMainPipeline(prepared.objective, prepared.request);
+  });
 
   // V3 Backlog 7 — pulse the O on submit for visual feedback. The
   // animation removes itself when the class is cleared, so we toggle
