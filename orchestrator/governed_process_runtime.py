@@ -102,6 +102,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "controlled_probe_execution_completed",
     "controlled_probe_attempt_completed",
     "controlled_probe_withheld",
+    "dialogue_observation_recorded",
     "process_invoked",
     "child_return_received",
     "process_returned",
@@ -114,6 +115,7 @@ _RESERVED_RUNTIME_EVENT_PREFIXES = (
     "checkpoint_",
     "child_",
     "controlled_probe_",
+    "dialogue_",
     "infrastructure_",
     "invocation_",
     "lifecycle_",
@@ -778,6 +780,62 @@ class GovernedProcessRuntime:
                 node_id=target,
                 evidence_refs=evidence_refs,
                 artifact_ids=artifact_ids,
+            )
+
+    def _record_dialogue_observation(
+        self,
+        run_id: str,
+        *,
+        dialogue_ref: str,
+        binding_digest: str,
+        observation_type: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Internal append for a validated Run-bound Dialogue observation.
+
+        The owning Dialogue service validates question order and payload
+        semantics before calling this internal seam. These records use a
+        reserved runtime event so neither the public generic event API nor a
+        direct public completion method can forge facts later folded by that
+        service.
+        """
+
+        dialogue = str(dialogue_ref or "").strip()
+        observation = str(observation_type or "").strip()
+        if not dialogue:
+            raise GovernedRuntimeError("dialogue_ref must be non-empty")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]*", observation):
+            raise GovernedRuntimeError("observation_type must be a stable identifier")
+        exact_binding = _exact_digest(binding_digest, "binding_digest")
+        _require_json(payload, "dialogue observation payload")
+        with _locked():
+            run = self.load_run(run_id)
+            if run["input_bindings"].get("dialogue_ref") != dialogue:
+                raise AuthorityDeniedError(
+                    "Dialogue observation does not match the Process Run dialogue_ref"
+                )
+            expected_binding = _digest_json({
+                "schema_version": "ora.dialogue-process-binding/1.0",
+                "dialogue_ref": dialogue,
+                "run_id": run["run_id"],
+                "definition_ref": run["definition_ref"],
+            })
+            if expected_binding != exact_binding:
+                raise AuthorityDeniedError(
+                    "Dialogue observation does not match the Process Run binding digest"
+                )
+            return self._append_event_locked(
+                run,
+                "dialogue_observation_recorded",
+                {
+                    "dialogue_ref": dialogue,
+                    "binding_digest": exact_binding,
+                    "observation_type": observation,
+                    "payload_digest": _digest_json(payload),
+                    "payload": copy.deepcopy(dict(payload)),
+                },
+                node_id=run["current_node_id"],
+                runtime_authoritative=True,
             )
 
     def mark_run_ready(self, run_id: str, *, reason: str) -> dict[str, Any]:

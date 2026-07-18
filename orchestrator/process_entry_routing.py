@@ -108,15 +108,15 @@ def _definition_ref(definition: Mapping[str, Any]) -> dict[str, str]:
     }
 
 
-def load_programming_entry(
+def load_programming_definition(
     repository_root: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Load and authenticate the issued Programming definition for entry UI.
+    """Load and authenticate the exact issued Programming definition.
 
     The operational mirror is never trusted on file presence or its declared
     identity alone.  The same content-identity verifier used by registry
     registration and resolution checks it against the authoritative canonical
-    body and embedded projection on every catalog read.
+    body and embedded projection on every read.
     """
 
     root = Path(repository_root or _REPO_ROOT).resolve()
@@ -140,6 +140,18 @@ def load_programming_entry(
         ) from exc
     definition = _contracts.validate_process_definition(raw_definition)
     ProcessDefinitionRegistry._verify_issued_content_identity(definition)
+    return definition
+
+
+def load_programming_entry(
+    repository_root: str | Path | None = None,
+) -> dict[str, Any]:
+    """Return the authenticated Programming definition's entry projection."""
+
+    root = Path(repository_root or _REPO_ROOT).resolve()
+    path = root / "frameworks" / "book" / "programming.md"
+    text = path.read_text(encoding="utf-8")
+    definition = load_programming_definition(root)
     return {
         "kind": "process_definition",
         "id": "programming",
@@ -637,6 +649,7 @@ __all__ = [
     "ENTRY_STATUSES",
     "ProcessEntryRoutingError",
     "list_entry_definitions",
+    "load_programming_definition",
     "load_programming_entry",
     "route_process_entry",
 ]

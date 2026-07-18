@@ -5185,6 +5185,28 @@ def _process_entry_error_status(exc: Exception) -> int:
     return 400 if isinstance(exc, ProcessEntryRoutingError) else 503
 
 
+def _management_interview_service():
+    """Construct the Phase 2.2 service at the request boundary."""
+
+    from process_management_interview import ManagementInterviewService
+
+    return ManagementInterviewService(repository_root=WORKSPACE)
+
+
+def _management_interview_error_status(exc: Exception) -> int:
+    from process_management_interview import (
+        ManagementInterviewConflict,
+        ManagementInterviewError,
+        ManagementInterviewIntegrityError,
+    )
+
+    if isinstance(exc, ManagementInterviewIntegrityError):
+        return 503
+    if isinstance(exc, (ManagementInterviewConflict, ManagementInterviewError)):
+        return 409
+    return 503
+
+
 def _decode_process_entry_request(raw, objective: str, framework_selected: str = ""):
     """Recompute a client entry preview at the authoritative server boundary."""
 
@@ -5289,6 +5311,24 @@ def process_entry_route():
         return _json_response({"ok": False, "error": str(exc)},
                               _process_entry_error_status(exc))
     return _json_response({"ok": True, "entry": contract})
+
+
+@app.route("/api/process-interview/<conversation_id>", methods=["GET"])
+def process_management_interview_state(conversation_id):
+    """Hydrate the persistent interview bound to one Dialogue."""
+
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+    try:
+        state = _management_interview_service().get_state(conversation_id)
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _management_interview_error_status(exc),
+        )
+    if state is None:
+        return _json_response({"ok": False, "error": "management_interview_not_found"}, 404)
+    return _json_response({"ok": True, "interview": state})
 
 
 @app.route("/api/slash-commands", methods=["GET"])
@@ -8015,6 +8055,105 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
         )
 
 
+def _management_interview_response_text(state):
+    question = state.get("current_question")
+    if question:
+        return (
+            f"{question['prompt']}\n\n"
+            f"Why I’m asking: {question['evidence']} "
+            f"{question['consequence']}"
+        )
+    return (
+        "The management interview is complete. The same governed Process Run "
+        "is ready for the planning phase. No plan has been created, and no "
+        "construction, mutation, registration, invocation, or activation "
+        "authority has been granted."
+    )
+
+
+def _persist_management_interview_exchange(
+    *,
+    user_input,
+    state,
+    history,
+    panel_id,
+    tag,
+    submission_id,
+    output_destination="",
+):
+    """Persist a deterministic interview turn through the normal Dialogue path."""
+
+    assistant_text = _management_interview_response_text(state)
+    try:
+        chunk_id = _save_conversation(
+            user_input,
+            assistant_text,
+            panel_id,
+            len(history) == 0,
+            tag,
+            output_destination=output_destination,
+            trace_ref=None,
+        )
+    except Exception as exc:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": f"management interview Dialogue save failed: {exc}",
+        }, 500)
+    if not chunk_id:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": "management interview Dialogue save produced no chunk",
+        }, 500)
+    try:
+        from conversation_memory import save_turn_spatial_state
+
+        save_turn_spatial_state(
+            panel_id,
+            user_input,
+            assistant_text,
+            tag=tag,
+        )
+    except Exception as exc:
+        print(
+            f"[management-interview] Dialogue envelope turn save failed: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+    if submission_id:
+        _finalize_pending_submission(submission_id)
+    return _json_response({
+        "status": "ok",
+        "conversation_id": panel_id,
+        "chunk_id": chunk_id,
+        "run_id": state["run_id"],
+        "management_interview": state,
+    })
+
+
+def _temporary_framework_result_ref(result):
+    """Reduce a pipeline reply to the exact return facts stored on the Run."""
+
+    if hasattr(result, "get_json"):
+        payload = result.get_json(silent=True) or {}
+    else:
+        body = result[0] if isinstance(result, tuple) else result
+        try:
+            payload = json.loads(body) if isinstance(body, str) else {}
+        except json.JSONDecodeError:
+            payload = {}
+    status = str(payload.get("status") or "errored")
+    return (
+        "ok" if status == "ok" else "errored",
+        {
+            "conversation_id": payload.get("conversation_id"),
+            "chunk_id": payload.get("chunk_id"),
+            "status": status,
+        },
+    )
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data       = request.get_json(force=True)
@@ -8093,6 +8232,130 @@ def chat():
             "trace_debug":           trace_debug_payload,
         })
 
+    interview_service = None
+    active_interview = None
+    try:
+        from conversation_memory import load_governing_process_binding
+
+        if load_governing_process_binding(panel_id) is not None:
+            interview_service = _management_interview_service()
+            active_interview = interview_service.get_state(panel_id)
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return _json_response(
+            {"error": str(exc)},
+            _management_interview_error_status(exc),
+        )
+
+    if active_interview is not None:
+        if active_interview["status"] != "interviewing":
+            _delete_pending_submission(submission_id)
+            return _json_response({
+                "error": "awaiting_phase_2_3_plan",
+                "management_interview": active_interview,
+            }, 409)
+
+        temporary_entry = None
+        if framework_selected and framework_selected != "programming":
+            try:
+                temporary_entry = _decode_process_entry_request(
+                    process_entry_raw, user_input, framework_selected,
+                )
+            except Exception as exc:
+                _delete_pending_submission(submission_id)
+                return _json_response(
+                    {"error": str(exc)}, _process_entry_error_status(exc)
+                )
+        elif not framework_selected and user_input:
+            try:
+                candidate = _decode_process_entry_request(
+                    process_entry_raw, user_input, "",
+                )
+            except Exception:
+                candidate = None
+            if (
+                candidate is not None
+                and candidate.get("intent") == "capability_invocation"
+                and candidate.get("framework_id")
+            ):
+                temporary_entry = candidate
+
+        if temporary_entry is not None:
+            framework_selected = str(temporary_entry["framework_id"])
+            try:
+                call = interview_service.begin_temporary_framework_call(
+                    panel_id, framework_selected, user_input,
+                )
+            except Exception as exc:
+                _delete_pending_submission(submission_id)
+                return _json_response(
+                    {"error": str(exc)}, _management_interview_error_status(exc)
+                )
+            raw_attachments = data.get("attachments", [])
+            text_parts, images = _process_attachments(raw_attachments)
+            if text_parts:
+                user_input = user_input + "\n\n" + "\n\n".join(text_parts)
+            extra_context = {
+                "process_entry": temporary_entry,
+                "governing_process": {
+                    "run_id": active_interview["run_id"],
+                    "definition_ref": active_interview["definition_ref"],
+                    "binding_digest": active_interview["binding_digest"],
+                    "temporary_framework_call_id": call["call_id"],
+                },
+            }
+            if manual_visual_type:
+                extra_context["visual_kind"] = manual_visual_type
+            if trace_debug_payload:
+                extra_context["trace_debug"] = trace_debug_payload
+            result = _invoke_pipeline(
+                user_input, history, panel_id, is_main, images=images,
+                extra_context=extra_context, tag=tag,
+                manual_mode_selection=manual_mode_selection,
+                manual_lens_selection=manual_lens_selection,
+                framework_selected=framework_selected,
+                submission_id=submission_id,
+                output_destination=output_destination,
+                config_name=config_name,
+                style_audience=style_audience,
+            )
+            status, result_ref = _temporary_framework_result_ref(result)
+            try:
+                interview_service.complete_temporary_framework_call(
+                    panel_id,
+                    call["call_id"],
+                    status=status,
+                    result_ref=result_ref,
+                )
+            except Exception as exc:
+                return _json_response(
+                    {"error": str(exc)}, _management_interview_error_status(exc)
+                )
+            return result
+
+        if framework_selected == "programming":
+            _delete_pending_submission(submission_id)
+            return _json_response({
+                "error": "Programming cannot displace its active governing interview",
+                "management_interview": active_interview,
+            }, 409)
+        try:
+            state = interview_service.answer(panel_id, user_input)
+        except Exception as exc:
+            _delete_pending_submission(submission_id)
+            return _json_response(
+                {"error": str(exc)}, _management_interview_error_status(exc)
+            )
+        return _persist_management_interview_exchange(
+            user_input=user_input,
+            state=state,
+            history=history,
+            panel_id=panel_id,
+            tag=tag,
+            submission_id=submission_id,
+            output_destination=output_destination,
+        )
+
     try:
         process_entry = _decode_process_entry_request(
             process_entry_raw, user_input, framework_selected,
@@ -8107,6 +8370,31 @@ def chat():
             "error": process_entry["status"],
             "entry": process_entry,
         }, 409)
+    if (
+        process_entry is not None
+        and process_entry.get("intent") == "capability_construction"
+    ):
+        try:
+            interview_service = interview_service or _management_interview_service()
+            state = interview_service.start_or_resume(
+                panel_id,
+                process_entry,
+                dialogue_tag=tag,
+            )
+        except Exception as exc:
+            _delete_pending_submission(submission_id)
+            return _json_response(
+                {"error": str(exc)}, _management_interview_error_status(exc)
+            )
+        return _persist_management_interview_exchange(
+            user_input=user_input,
+            state=state,
+            history=history,
+            panel_id=panel_id,
+            tag=tag,
+            submission_id=submission_id,
+            output_destination=output_destination,
+        )
     if (process_entry is not None
             and process_entry.get("intent") == "capability_invocation"
             and process_entry.get("framework_id")

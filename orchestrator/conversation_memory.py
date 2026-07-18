@@ -77,8 +77,10 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import threading
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -308,6 +310,117 @@ def _mutate_conversation_envelope(
                 return path if _atomic_write_envelope(path, data) else None
         except (OSError, TimeoutError):
             return None
+
+
+class ConversationProcessBindingError(RuntimeError):
+    """A Dialogue cannot safely establish or read its governing Run binding."""
+
+
+_PROCESS_BINDING_SCHEMA_VERSION = "ora.dialogue-process-binding/1.0"
+_PROCESS_BINDING_FIELDS = frozenset({
+    "schema_version",
+    "run_id",
+    "definition_ref",
+    "binding_digest",
+    "bound_at",
+})
+_PROCESS_BINDING_REF_FIELDS = frozenset({"definition_id", "version", "digest"})
+
+
+def _validate_process_binding(value: Any) -> dict[str, Any]:
+    """Validate the immutable pointer stored on a Dialogue envelope."""
+
+    if not isinstance(value, dict) or set(value) != _PROCESS_BINDING_FIELDS:
+        raise ConversationProcessBindingError(
+            "governing_process has an invalid field set"
+        )
+    if value.get("schema_version") != _PROCESS_BINDING_SCHEMA_VERSION:
+        raise ConversationProcessBindingError(
+            "governing_process has an unsupported schema version"
+        )
+    run_id = str(value.get("run_id") or "").strip()
+    if not run_id:
+        raise ConversationProcessBindingError("governing_process run_id is empty")
+    definition_ref = value.get("definition_ref")
+    if (not isinstance(definition_ref, dict)
+            or set(definition_ref) != _PROCESS_BINDING_REF_FIELDS
+            or any(not str(definition_ref.get(field) or "").strip()
+                   for field in _PROCESS_BINDING_REF_FIELDS)):
+        raise ConversationProcessBindingError(
+            "governing_process definition_ref is invalid"
+        )
+    if not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", str(definition_ref.get("digest") or "")
+    ):
+        raise ConversationProcessBindingError(
+            "governing_process definition digest is invalid"
+        )
+    digest = str(value.get("binding_digest") or "")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        raise ConversationProcessBindingError(
+            "governing_process binding_digest is invalid"
+        )
+    bound_at = str(value.get("bound_at") or "").strip()
+    if not bound_at:
+        raise ConversationProcessBindingError("governing_process bound_at is empty")
+    try:
+        datetime.fromisoformat(bound_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ConversationProcessBindingError(
+            "governing_process bound_at is not ISO-8601"
+        ) from exc
+    return copy.deepcopy(value)
+
+
+def bind_governing_process(
+    conversation_id: str,
+    binding: dict[str, Any],
+    *,
+    sessions_root: Path | None = None,
+) -> Path:
+    """Bind one immutable governing Process Run to an existing Dialogue.
+
+    Repeating the exact binding is idempotent.  A different binding is never
+    allowed to replace the active Run implicitly; callers must use a future
+    explicit lifecycle operation instead.
+    """
+
+    validated = _validate_process_binding(binding)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+
+    def mutate(data: dict[str, Any]) -> None:
+        existing = data.get("governing_process")
+        if existing is None:
+            data["governing_process"] = copy.deepcopy(validated)
+            return
+        current = _validate_process_binding(existing)
+        immutable_fields = (
+            "schema_version", "run_id", "definition_ref", "binding_digest",
+        )
+        if any(current[field] != validated[field] for field in immutable_fields):
+            raise ConversationProcessBindingError(
+                "Dialogue already has a different governing Process Run"
+            )
+
+    path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    if path is None:
+        raise ConversationProcessBindingError(
+            "Dialogue envelope is unavailable for governing Run binding"
+        )
+    return path
+
+
+def load_governing_process_binding(
+    conversation_id: str,
+    *,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Return the validated governing Run pointer for one Dialogue."""
+
+    envelope = load_conversation_json(conversation_id, sessions_root=sessions_root)
+    if envelope is None or envelope.get("governing_process") is None:
+        return None
+    return _validate_process_binding(envelope["governing_process"])
 
 
 def load_conversation_json(
