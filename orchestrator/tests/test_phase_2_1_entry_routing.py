@@ -129,6 +129,8 @@ class Phase21RoutingTests(unittest.TestCase):
             "Prepare the cash-flow report each Monday.",
             "Check invoice totals every month.",
             "Review the repository every Friday.",
+            "Set up a repeatable monthly cash-flow review.",
+            "Arrange to email me the report each Friday.",
         )
         for objective in requests:
             with self.subTest(objective=objective):
@@ -243,6 +245,8 @@ class Phase21RoutingTests(unittest.TestCase):
             "Review the Programming documentation.",
             "Compare Programming with Terrain Mapping.",
             "Explain how to use Programming.",
+            "Use Programming as an example in the guide.",
+            "Run a comparison of Programming for the guide.",
         )
         for objective in requests:
             with self.subTest(objective=objective):
@@ -493,6 +497,31 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
         delete.assert_called_once_with("submission-recurring")
         invoke.assert_not_called()
 
+    def test_chat_rejects_effect_establishing_setup_and_arrangement(self):
+        requests = (
+            "Set up a repeatable monthly cash-flow review.",
+            "Arrange to email me the report each Friday.",
+        )
+        for index, objective in enumerate(requests):
+            with self.subTest(objective=objective), mock.patch.object(
+                server, "_log_pending_submission", return_value=f"submission-setup-{index}",
+            ), mock.patch.object(
+                server, "_delete_pending_submission",
+            ) as delete, mock.patch.object(
+                server, "_invoke_pipeline",
+            ) as invoke:
+                response = self.client.post("/chat", json={
+                    "message": objective,
+                    "conversation_id": "phase-2-1-setup-test",
+                })
+            self.assertEqual(response.status_code, 409)
+            contract = response.get_json()["entry"]
+            self.assertEqual(contract["intent"], "capability_construction")
+            self.assertEqual(contract["status"], "awaiting_project_confirmation")
+            self.assertEqual(contract["next_action"], "choose_project")
+            delete.assert_called_once_with(f"submission-setup-{index}")
+            invoke.assert_not_called()
+
     def test_chat_cannot_invoke_unactivated_programming_definition(self):
         with mock.patch.object(
             server, "_log_pending_submission", return_value="submission-2",
@@ -557,6 +586,8 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
         requests = (
             "Summarize the Programming framework.",
             "Review the Programming documentation.",
+            "Use Programming as an example in the guide.",
+            "Run a comparison of Programming for the guide.",
         )
         for index, objective in enumerate(requests):
             response_value = server._json_response({"status": "ok"})

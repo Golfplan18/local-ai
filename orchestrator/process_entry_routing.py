@@ -300,6 +300,22 @@ _MANAGED_WORK_REQUEST_RE = re.compile(
     rf"^\s*{_REQUEST_LEAD}{_MANAGED_WORK_ACTION}\b",
     flags=re.IGNORECASE,
 )
+_EFFECT_SETUP_REQUEST_RE = re.compile(
+    rf"^\s*{_REQUEST_LEAD}(?:arrange(?:\s+for|\s+to)?|establish|set\s+up)\b",
+    flags=re.IGNORECASE,
+)
+_REUSABLE_EFFECT_RE = re.compile(
+    r"\b(?:ongoing|recurring|repeatable|reusable|standing)\b",
+    flags=re.IGNORECASE,
+)
+_BROAD_CADENCE_RE = re.compile(
+    r"\b(?:hourly|daily|nightly|weekly|monthly|quarterly|annually|yearly)\b|"
+    r"\b(?:every|each)\s+(?:(?:other|\d+)\s+)?(?:minute|hour|day|night|weekday|"
+    r"week|month|quarter|year|monday|tuesday|wednesday|thursday|friday|saturday|"
+    r"sunday)s?\b|"
+    r"\bon\s+(?:mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b",
+    flags=re.IGNORECASE,
+)
 _CADENCE_RE = re.compile(
     r"\b(?:hourly|daily|nightly|weekly|monthly|quarterly|annually|yearly)\b\s*[.!?]*$|"
     r"\b(?:every|each)\s+(?:(?:other|\d+)\s+)?(?:minute|hour|day|night|weekday|"
@@ -351,11 +367,24 @@ _NAMED_OPERATOR_ACTION = (
     r"help|inspect|invoke|map|process|review|run|summarize|take\s+care\s+of|test|"
     r"use|validate|verify|work(?:\s+on)?)"
 )
+_NAMED_CONTENT_SUFFIX = (
+    r"(?!\s+(?:"
+    r"(?:as|for)\s+(?:(?:an?|the)\s+)?(?:comparison|example|reference|subject)\b|"
+    r"in\s+(?:(?:an?|the|this)\s+)?(?:documentation|docs?|example|guide)\b|"
+    r"documentation\b|docs?\b"
+    r"))"
+)
 
 
 def _is_recurring_effect_request(objective: str) -> bool:
     """Require a recurring/trigger signal to govern an effect action."""
 
+    if (_EFFECT_SETUP_REQUEST_RE.search(objective)
+            and _MANAGED_WORK_RE.search(objective)
+            and (_REUSABLE_EFFECT_RE.search(objective)
+                 or _BROAD_CADENCE_RE.search(objective)
+                 or _TRIGGER_RE.search(objective))):
+        return True
     if not (_CADENCE_RE.search(objective) or _TRIGGER_RE.search(objective)):
         return False
     if _MANAGED_WORK_REQUEST_RE.search(objective):
@@ -408,7 +437,8 @@ def _named_capability_is_operator(
     if name is None:
         return False
     patterns = (
-        rf"^\s*{_REQUEST_LEAD}(?:apply|execute|invoke|run|use)\b.{{0,80}}{name}",
+        rf"^\s*{_REQUEST_LEAD}(?:apply|execute|invoke|run|use)\s+"
+        rf"(?:the\s+)?{name}{_NAMED_CONTENT_SUFFIX}",
         rf"^\s*{_REQUEST_LEAD}(?:ask|get|have|let|tell)\b.{{0,40}}{name}"
         rf".{{0,30}}\b(?:to\s+)?{_NAMED_OPERATOR_ACTION}\b",
         rf"^\s*(?:can|could|would|will|should)\s+{name}[,:]?\s+"
@@ -457,6 +487,8 @@ def _classify_intent(
         objective, named_entry, named_framework_id,
     ):
         return "capability_invocation", ["exact named capability is the requested operator"]
+    if named_capability:
+        return "ordinary_generation", ["named capability is request subject matter"]
     if _INVOCATION_RE.search(objective):
         return "capability_invocation", ["invocation language with a capability object"]
     return "ordinary_generation", ["no reusable-capability or activation boundary detected"]
