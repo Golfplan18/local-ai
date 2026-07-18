@@ -89,11 +89,11 @@ def _normalized_definition_content(
 
 
 def process_definition_content_digest(definition: Mapping[str, Any]) -> str:
-    """Compute a normalized JSON digest for a newly constructed definition.
+    """Compute the issued normalized-JSON identity for a definition.
 
     An already-issued definition may instead carry a digest of its canonical
-    source body. Registry storage integrity therefore uses a separate envelope
-    digest and never reinterprets this helper as the issued identity.
+    source body. The registry selects that canonical verification only when the
+    entry member explicitly declares complete-canonical-body coverage.
     """
 
     validated = _contracts.validate_process_definition(definition)
@@ -275,7 +275,7 @@ class ProcessDefinitionRegistry:
         return _definition_ref(definition)
 
     @staticmethod
-    def _verify_authoritative_canonical(definition: Mapping[str, Any]) -> None:
+    def _verify_issued_content_identity(definition: Mapping[str, Any]) -> None:
         manifest = definition["package_manifest"]
         entry_member = next(
             member
@@ -284,6 +284,12 @@ class ProcessDefinitionRegistry:
         )
         coverage = set(entry_member["identity"]["coverage"])
         if "complete_canonical_body" not in coverage:
+            calculated = process_definition_content_digest(definition)
+            if calculated != definition["digest"]:
+                raise DefinitionIntegrityError(
+                    "normalized content digest does not match the issued "
+                    "Process Definition identity"
+                )
             return
         locator = entry_member["locator"]
         if locator["kind"] != "file":
@@ -373,14 +379,14 @@ class ProcessDefinitionRegistry:
             raise DefinitionIntegrityError(
                 "registered Process Definition identity differs from its registration anchor"
             )
-        self._verify_authoritative_canonical(definition)
+        self._verify_issued_content_identity(definition)
         return definition
 
     def register(self, definition: Mapping[str, Any]) -> dict[str, Any]:
         """Register an approved exact definition, idempotently but never mutably."""
 
         validated = _contracts.validate_process_definition(definition)
-        self._verify_authoritative_canonical(validated)
+        self._verify_issued_content_identity(validated)
         storage_entry = _storage_entry(validated)
         registration_anchor = _registration_anchor(
             validated, storage_entry["storage_content_digest"]

@@ -1110,7 +1110,9 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
             registry.resolve(first["definition_id"], first["version"], second["digest"])
         attacked = copy.deepcopy(first)
         attacked["title"] = "Conflicting body"
-        with self.assertRaises(registry_module.DefinitionVersionConflict):
+        with self.assertRaisesRegex(
+            registry_module.DefinitionIntegrityError, "normalized content digest"
+        ):
             registry.register(attacked)
         _seal_definition(attacked)
         self.assertNotEqual(attacked["digest"], first["digest"])
@@ -1126,9 +1128,21 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
         stored_path.write_text(
             json.dumps(stored, sort_keys=True, indent=2) + "\n", encoding="utf-8"
         )
-        with self.assertRaises(registry_module.DefinitionIntegrityError):
+        anchor_path = registry._anchor_path(first["definition_id"], first["version"])
+        stored_anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+        stored_anchor["storage_content_digest"] = stored["storage_content_digest"]
+        os.chmod(anchor_path, 0o600)
+        anchor_path.write_text(
+            json.dumps(stored_anchor, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            registry_module.DefinitionIntegrityError, "normalized content digest"
+        ):
             registry.resolve(first["definition_id"], first["version"], first["digest"])
-        with self.assertRaises(registry_module.DefinitionIntegrityError):
+        with self.assertRaisesRegex(
+            registry_module.DefinitionIntegrityError, "normalized content digest"
+        ):
             registry.list_definition_refs()
 
 
