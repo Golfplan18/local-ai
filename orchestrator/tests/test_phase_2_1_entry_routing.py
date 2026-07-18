@@ -218,6 +218,7 @@ class Phase21RoutingTests(unittest.TestCase):
             "Could Programming inspect these files?",
             "Ask Programming to review this patch.",
             "Have Programming handle this repository.",
+            "Use Programming to review this patch.",
         )
         for objective in requests:
             with self.subTest(objective=objective):
@@ -247,6 +248,8 @@ class Phase21RoutingTests(unittest.TestCase):
             "Explain how to use Programming.",
             "Use Programming as an example in the guide.",
             "Run a comparison of Programming for the guide.",
+            "Use Programming’s documentation to explain the model.",
+            "Use the Programming guide to explain the model.",
         )
         for objective in requests:
             with self.subTest(objective=objective):
@@ -523,22 +526,27 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
             invoke.assert_not_called()
 
     def test_chat_cannot_invoke_unactivated_programming_definition(self):
-        with mock.patch.object(
-            server, "_log_pending_submission", return_value="submission-2",
-        ), mock.patch.object(
-            server, "_delete_pending_submission",
-        ) as delete, mock.patch.object(
-            server, "_invoke_pipeline",
-        ) as invoke:
-            response = self.client.post("/chat", json={
-                "message": "Have Programming verify this repository.",
-                "conversation_id": "phase-2-1-test",
-            })
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.get_json()["entry"]["status"],
-                         "awaiting_activation")
-        delete.assert_called_once_with("submission-2")
-        invoke.assert_not_called()
+        requests = (
+            "Have Programming verify this repository.",
+            "Use Programming to review this patch.",
+        )
+        for index, objective in enumerate(requests):
+            with self.subTest(objective=objective), mock.patch.object(
+                server, "_log_pending_submission", return_value=f"submission-invoke-{index}",
+            ), mock.patch.object(
+                server, "_delete_pending_submission",
+            ) as delete, mock.patch.object(
+                server, "_invoke_pipeline",
+            ) as invoke:
+                response = self.client.post("/chat", json={
+                    "message": objective,
+                    "conversation_id": "phase-2-1-test",
+                })
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.get_json()["entry"]["status"],
+                             "awaiting_activation")
+            delete.assert_called_once_with(f"submission-invoke-{index}")
+            invoke.assert_not_called()
 
     def test_chat_routes_named_availability_to_activation_review(self):
         response_value = server._json_response({"status": "ok"})
@@ -588,6 +596,8 @@ class Phase21ServerBoundaryTests(unittest.TestCase):
             "Review the Programming documentation.",
             "Use Programming as an example in the guide.",
             "Run a comparison of Programming for the guide.",
+            "Use Programming’s documentation to explain the model.",
+            "Use the Programming guide to explain the model.",
         )
         for index, objective in enumerate(requests):
             response_value = server._json_response({"status": "ok"})

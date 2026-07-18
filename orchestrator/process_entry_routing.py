@@ -367,12 +367,14 @@ _NAMED_OPERATOR_ACTION = (
     r"help|inspect|invoke|map|process|review|run|summarize|take\s+care\s+of|test|"
     r"use|validate|verify|work(?:\s+on)?)"
 )
+_NAMED_CONTENT_NOUN = r"(?:documentation|docs?|guide|manual|overview|reference)"
 _NAMED_CONTENT_SUFFIX = (
-    r"(?!\s+(?:"
-    r"(?:as|for)\s+(?:(?:an?|the)\s+)?(?:comparison|example|reference|subject)\b|"
-    r"in\s+(?:(?:an?|the|this)\s+)?(?:documentation|docs?|example|guide)\b|"
-    r"documentation\b|docs?\b"
-    r"))"
+    rf"(?!"
+    rf"['’]s\b|\s+{_NAMED_CONTENT_NOUN}\b|"
+    r"\s+(?:as|for)\s+(?:(?:an?|the)\s+)?"
+    r"(?:comparison|example|reference|subject)\b|"
+    r"\s+in\s+(?:(?:an?|the|this)\s+)?(?:documentation|docs?|example|guide)\b"
+    r")"
 )
 
 
