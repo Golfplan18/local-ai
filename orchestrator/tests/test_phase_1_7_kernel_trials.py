@@ -1054,6 +1054,9 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
         stored_programming["definition"]["graph"]["nodes"][0]["label"] = (
             "Tampered Programming graph"
         )
+        stored_programming["storage_content_digest"] = _digest_json(
+            stored_programming["definition"]
+        )
         programming_path.write_text(
             json.dumps(stored_programming, sort_keys=True, indent=2) + "\n",
             encoding="utf-8",
@@ -1062,6 +1065,33 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
             registry.resolve(
                 programming["definition_id"], programming["version"], programming["digest"]
             )
+        with self.assertRaises(registry_module.DefinitionIntegrityError):
+            registry.list_definition_refs()
+
+        programming_anchor_path = registry._anchor_path(
+            programming["definition_id"], programming["version"]
+        )
+        stored_anchor = json.loads(
+            programming_anchor_path.read_text(encoding="utf-8")
+        )
+        stored_anchor["storage_content_digest"] = stored_programming[
+            "storage_content_digest"
+        ]
+        os.chmod(programming_anchor_path, 0o600)
+        programming_anchor_path.write_text(
+            json.dumps(stored_anchor, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            registry_module.DefinitionIntegrityError, "canonical projection"
+        ):
+            registry.resolve(
+                programming["definition_id"], programming["version"], programming["digest"]
+            )
+        with self.assertRaisesRegex(
+            registry_module.DefinitionIntegrityError, "canonical projection"
+        ):
+            registry.list_definition_refs()
 
         root = Path(self.temp.name) / "synthetic-registry"
         registry = registry_module.ProcessDefinitionRegistry(root, now=lambda: NOW)
@@ -1092,6 +1122,7 @@ class TestMechanicalTraversalAndRegistry(TrialCase):
         stored["definition"]["graph"]["nodes"][0]["label"] = (
             "Tampered after registration"
         )
+        stored["storage_content_digest"] = _digest_json(stored["definition"])
         stored_path.write_text(
             json.dumps(stored, sort_keys=True, indent=2) + "\n", encoding="utf-8"
         )

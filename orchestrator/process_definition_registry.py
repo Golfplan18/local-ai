@@ -13,6 +13,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 from collections.abc import Callable, Mapping
@@ -29,6 +30,8 @@ except ImportError:  # pragma: no cover
 PROCESS_DEFINITIONS_ENV = "ORA_PROCESS_DEFINITIONS_DIR"
 DEFAULT_PROCESS_DEFINITIONS_DIR = Path.home() / "ora" / "data" / "process-definitions"
 REGISTRY_ENTRY_SCHEMA_VERSION = "ora.process-definition-registry-entry/1.0"
+REGISTRATION_ANCHOR_SCHEMA_VERSION = "ora.process-definition-registration-anchor/1.0"
+REGISTRATION_ANCHOR_DIRECTORY = ".registration-anchors"
 _REGISTRY_LOCK = threading.RLock()
 
 
@@ -106,6 +109,24 @@ def _storage_entry(definition: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _definition_ref(definition: Mapping[str, Any]) -> dict[str, str]:
+    return {
+        "definition_id": str(definition["definition_id"]),
+        "version": str(definition["version"]),
+        "digest": str(definition["digest"]),
+    }
+
+
+def _registration_anchor(
+    definition: Mapping[str, Any], storage_content_digest: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": REGISTRATION_ANCHOR_SCHEMA_VERSION,
+        "definition_ref": _definition_ref(definition),
+        "storage_content_digest": storage_content_digest,
+    }
+
+
 def _storage_key(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
@@ -121,16 +142,23 @@ def _safe_root(explicit: str | os.PathLike[str] | None) -> Path:
     return root
 
 
-def _read_definition(path: Path) -> dict[str, Any]:
+def _read_json_object(path: Path, label: str) -> dict[str, Any]:
     if not path.is_file() or path.is_symlink():
-        raise DefinitionNotFoundError(f"registered Process Definition not found: {path}")
+        raise DefinitionNotFoundError(f"registered {label} not found: {path}")
     try:
-        entry = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ProcessDefinitionRegistryError(
-            f"cannot read registered Process Definition {path}: {exc}"
+            f"cannot read registered {label} {path}: {exc}"
         ) from exc
-    if not isinstance(entry, dict) or set(entry) != {
+    if not isinstance(value, dict):
+        raise DefinitionIntegrityError(f"registered {label} must be a JSON object")
+    return value
+
+
+def _read_storage_entry(path: Path) -> dict[str, Any]:
+    entry = _read_json_object(path, "Process Definition")
+    if set(entry) != {
         "schema_version", "definition", "storage_content_digest"
     }:
         raise DefinitionIntegrityError(
@@ -146,8 +174,31 @@ def _read_definition(path: Path) -> dict[str, Any]:
         raise DefinitionIntegrityError(
             "registered Process Definition storage content digest mismatch"
         )
-    validated = _contracts.validate_process_definition(definition)
-    return validated
+    return entry
+
+
+def _read_registration_anchor(path: Path) -> dict[str, Any]:
+    anchor = _read_json_object(path, "Process Definition registration anchor")
+    if set(anchor) != {
+        "schema_version", "definition_ref", "storage_content_digest"
+    }:
+        raise DefinitionIntegrityError(
+            "registered Process Definition anchor has an invalid shape"
+        )
+    if anchor["schema_version"] != REGISTRATION_ANCHOR_SCHEMA_VERSION:
+        raise DefinitionIntegrityError(
+            "registered Process Definition anchor version is unsupported"
+        )
+    return anchor
+
+
+def _read_definition(path: Path, anchor: Mapping[str, Any]) -> dict[str, Any]:
+    entry = _read_storage_entry(path)
+    if entry["storage_content_digest"] != anchor.get("storage_content_digest"):
+        raise DefinitionIntegrityError(
+            "registered Process Definition differs from its immutable registration anchor"
+        )
+    return _contracts.validate_process_definition(entry["definition"])
 
 
 def _atomic_definition(path: Path, definition: Mapping[str, Any]) -> None:
@@ -183,6 +234,14 @@ class ProcessDefinitionRegistry:
         now: Callable[[], str] | None = None,
     ) -> None:
         self.root = _safe_root(root)
+        self._anchor_root = self.root / REGISTRATION_ANCHOR_DIRECTORY
+        if self._anchor_root.exists() and (
+            self._anchor_root.is_symlink() or not self._anchor_root.is_dir()
+        ):
+            raise ProcessDefinitionRegistryError(
+                "Process Definition registration-anchor root must be a real directory"
+            )
+        self._anchor_root.mkdir(parents=False, exist_ok=True)
         self._now = now or _utc_now
 
     def _definition_dir(self, definition_id: str, *, create: bool = False) -> Path:
@@ -198,19 +257,134 @@ class ProcessDefinitionRegistry:
     def _definition_path(self, definition_id: str, version: str) -> Path:
         return self._definition_dir(definition_id) / f"{_storage_key(version)}.json"
 
+    def _anchor_dir(self, definition_id: str, *, create: bool = False) -> Path:
+        directory = self._anchor_root / _storage_key(definition_id)
+        if directory.exists() and (directory.is_symlink() or not directory.is_dir()):
+            raise ProcessDefinitionRegistryError(
+                f"invalid Process Definition anchor directory: {directory}"
+            )
+        if create:
+            directory.mkdir(parents=False, exist_ok=True)
+        return directory
+
+    def _anchor_path(self, definition_id: str, version: str) -> Path:
+        return self._anchor_dir(definition_id) / f"{_storage_key(version)}.json"
+
     @staticmethod
     def _ref(definition: Mapping[str, Any]) -> dict[str, str]:
-        return {
-            "definition_id": str(definition["definition_id"]),
-            "version": str(definition["version"]),
-            "digest": str(definition["digest"]),
-        }
+        return _definition_ref(definition)
+
+    @staticmethod
+    def _verify_authoritative_canonical(definition: Mapping[str, Any]) -> None:
+        manifest = definition["package_manifest"]
+        entry_member = next(
+            member
+            for member in manifest["members"]
+            if member["member_id"] == manifest["entry_member_id"]
+        )
+        coverage = set(entry_member["identity"]["coverage"])
+        if "complete_canonical_body" not in coverage:
+            return
+        locator = entry_member["locator"]
+        if locator["kind"] != "file":
+            raise DefinitionIntegrityError(
+                "canonical-body identity requires a file locator"
+            )
+        vault_root = Path(
+            os.environ.get("ORA_VAULT_PATH")
+            or os.environ.get("ORA_VAULT")
+            or (Path.home() / "Documents" / "vault")
+        ).resolve()
+        raw_ref = Path(str(locator["ref"]))
+        canonical_path = (
+            raw_ref.resolve()
+            if raw_ref.is_absolute()
+            else (vault_root / raw_ref).resolve()
+        )
+        try:
+            canonical_path.relative_to(vault_root)
+        except ValueError as exc:
+            raise DefinitionIntegrityError(
+                "canonical Process Definition locator escapes the vault root"
+            ) from exc
+        if not canonical_path.is_file() or canonical_path.is_symlink():
+            raise DefinitionIntegrityError(
+                f"authoritative canonical Process Definition is unavailable: {canonical_path}"
+            )
+        canonical_body = canonical_path.read_text(encoding="utf-8")
+        if canonical_body.startswith("---\n"):
+            _frontmatter, separator, canonical_body = canonical_body[4:].partition(
+                "\n---\n"
+            )
+            if not separator:
+                raise DefinitionIntegrityError(
+                    "authoritative canonical Process Definition has invalid frontmatter"
+                )
+        canonical_body = canonical_body.lstrip("\n").rstrip()
+        declared = str(definition["digest"])
+        normalized = canonical_body.replace(declared, _SELF_DIGEST_PLACEHOLDER)
+        calculated = "sha256:" + hashlib.sha256(
+            normalized.encode("utf-8")
+        ).hexdigest()
+        if calculated != declared:
+            raise DefinitionIntegrityError(
+                "authoritative canonical Process Definition digest does not match "
+                "the issued identity"
+            )
+        if "embedded_kernel_projection" in coverage:
+            match = re.search(
+                r"<!-- PROGRAMMING_PROCESS_DEFINITION_BEGIN -->\n"
+                r"```json\n(.*?)\n```\n"
+                r"<!-- PROGRAMMING_PROCESS_DEFINITION_END -->",
+                canonical_body,
+                flags=re.DOTALL,
+            )
+            if match is None:
+                raise DefinitionIntegrityError(
+                    "authoritative canonical body lacks its embedded kernel projection"
+                )
+            try:
+                projected = json.loads(match.group(1))
+            except json.JSONDecodeError as exc:
+                raise DefinitionIntegrityError(
+                    "authoritative embedded kernel projection is invalid JSON"
+                ) from exc
+            if projected != definition:
+                raise DefinitionIntegrityError(
+                    "registered Process Definition differs from the authoritative "
+                    "canonical projection"
+                )
+
+    def _load_registered_definition(
+        self, definition_id: str, version: str
+    ) -> dict[str, Any]:
+        try:
+            anchor = _read_registration_anchor(
+                self._anchor_path(definition_id, version)
+            )
+        except DefinitionNotFoundError as exc:
+            raise DefinitionIntegrityError(
+                "registered Process Definition lacks its independent registration anchor"
+            ) from exc
+        definition = _read_definition(
+            self._definition_path(definition_id, version), anchor
+        )
+        if self._ref(definition) != anchor["definition_ref"]:
+            raise DefinitionIntegrityError(
+                "registered Process Definition identity differs from its registration anchor"
+            )
+        self._verify_authoritative_canonical(definition)
+        return definition
 
     def register(self, definition: Mapping[str, Any]) -> dict[str, Any]:
         """Register an approved exact definition, idempotently but never mutably."""
 
         validated = _contracts.validate_process_definition(definition)
+        self._verify_authoritative_canonical(validated)
         storage_entry = _storage_entry(validated)
+        registration_anchor = _registration_anchor(
+            validated, storage_entry["storage_content_digest"]
+        )
         if validated["status"] not in {"approved", "active"}:
             raise ProcessDefinitionRegistryError(
                 "only an approved or active Process Definition may be registered"
@@ -219,9 +393,18 @@ class ProcessDefinitionRegistry:
             path = self._definition_dir(validated["definition_id"], create=True) / (
                 f"{_storage_key(validated['version'])}.json"
             )
+            anchor_path = self._anchor_dir(
+                validated["definition_id"], create=True
+            ) / f"{_storage_key(validated['version'])}.json"
             idempotent = False
+            if path.exists() != anchor_path.exists():
+                raise DefinitionIntegrityError(
+                    "Process Definition and registration-anchor presence differ"
+                )
             if path.exists():
-                existing = _read_definition(path)
+                existing = self._load_registered_definition(
+                    validated["definition_id"], validated["version"]
+                )
                 if existing != validated:
                     raise DefinitionVersionConflict(
                         "a different Process Definition already owns "
@@ -230,6 +413,8 @@ class ProcessDefinitionRegistry:
                 idempotent = True
             else:
                 _atomic_definition(path, storage_entry)
+                _atomic_definition(anchor_path, registration_anchor)
+                os.chmod(anchor_path, 0o444)
         definition_ref = self._ref(validated)
         receipt = {
             "definition_ref": definition_ref,
@@ -254,8 +439,7 @@ class ProcessDefinitionRegistry:
         """Resolve only one exact registered identity; never select latest."""
 
         with _REGISTRY_LOCK:
-            path = self._definition_path(definition_id, version)
-            definition = _read_definition(path)
+            definition = self._load_registered_definition(definition_id, version)
         expected = {
             "definition_id": definition_id,
             "version": version,
@@ -273,12 +457,31 @@ class ProcessDefinitionRegistry:
         refs: list[dict[str, str]] = []
         with _REGISTRY_LOCK:
             for directory in sorted(self.root.iterdir()):
+                if directory == self._anchor_root:
+                    continue
                 if directory.is_symlink() or not directory.is_dir():
                     raise ProcessDefinitionRegistryError(
                         f"invalid entry in Process Definition registry: {directory}"
                     )
                 for path in sorted(directory.iterdir()):
-                    refs.append(self._ref(_read_definition(path)))
+                    entry = _read_storage_entry(path)
+                    raw_definition = entry["definition"]
+                    if not isinstance(raw_definition, dict):
+                        raise DefinitionIntegrityError(
+                            "registered Process Definition body must be a JSON object"
+                        )
+                    definition_id = str(raw_definition.get("definition_id") or "")
+                    version = str(raw_definition.get("version") or "")
+                    if path != self._definition_path(definition_id, version):
+                        raise DefinitionIntegrityError(
+                            "registered Process Definition storage path does not match "
+                            "its declared identity"
+                        )
+                    refs.append(
+                        self._ref(
+                            self._load_registered_definition(definition_id, version)
+                        )
+                    )
         return sorted(refs, key=lambda item: (item["definition_id"], item["version"]))
 
 
