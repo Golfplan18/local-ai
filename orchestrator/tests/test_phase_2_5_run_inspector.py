@@ -21,6 +21,7 @@ if str(ORCH) not in sys.path:
     sys.path.insert(0, str(ORCH))
 
 import governed_process_runtime as runtime  # noqa: E402
+import process_plan_approval as planning  # noqa: E402
 import process_run_inspector as inspector  # noqa: E402
 from server import server  # noqa: E402
 from tests import test_governed_process_runtime as runtime_fixtures  # noqa: E402
@@ -153,8 +154,103 @@ class Phase25Fixture(phase24.Phase24Fixture):
         )
         return pre_state, post_state, receipt, action
 
+    def record_repository_artifact(
+        self,
+        run_id,
+        target,
+        artifact_id,
+        *,
+        role,
+        action,
+        selector,
+        conditions,
+    ):
+        capture = planning.capture_target_identity(
+            str(target.resolve()), captured_at=NOW
+        )
+        run = self.runtime.load_run(run_id)
+        artifact = {
+            "schema_version": phase17.pc.CONTRACT_SCHEMA_VERSION,
+            "object_family": "artifact",
+            "artifact_id": artifact_id,
+            "role": role,
+            "status": "candidate",
+            "media_type": "application/vnd.ora.repository-state+json",
+            "locator": copy.deepcopy(capture["locator"]),
+            "identity": {
+                **copy.deepcopy(capture["identity"]),
+                "fresh_until": "2027-07-18T12:00:00Z",
+            },
+            "lineage": {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "producing_node_id": run["current_node_id"],
+                "source_artifact_ids": [],
+                "event_record_id": (
+                    f"event-{run_id}-{artifact_id}-"
+                    f"{capture['identity']['digest'][7:19]}"
+                ),
+            },
+            "created_at": NOW,
+        }
+        return self.runtime.record_artifact(
+            artifact,
+            action=action,
+            selectors=[selector],
+            satisfied_conditions=conditions,
+        )
+
 
 class Phase25RunInspectorTests(Phase25Fixture):
+    def test_decisions_include_authenticated_human_and_graph_routes(self):
+        state = self.approved()
+        self.delegate(state)
+
+        decisions = self.inspector.inspect(state["run_id"])["views"]["decisions"]
+        governed = decisions["governed_decisions"]
+        human = next(
+            item for item in governed
+            if item["source_node_id"] == "plan-approval"
+        )
+        route = next(
+            item for item in governed
+            if item["source_node_id"] == "post-plan-mode"
+        )
+
+        self.assertEqual(human["decision_kind"], "human_checkpoint")
+        self.assertEqual(human["outcome"], "approved")
+        self.assertEqual(human["decision_by"], "principal:user")
+        self.assertEqual(human["authority_request_type"], "plan_approval")
+        self.assertEqual(human["target_node_id"], "post-plan-mode")
+        self.assertEqual(route["decision_kind"], "decision_node")
+        self.assertEqual(route["condition"], "prg_run")
+        self.assertTrue(route["matched"])
+        self.assertFalse(route["default_used"])
+        self.assertEqual(route["target_node_id"], "execute-preflight")
+        self.assertTrue({human["record_id"], route["record_id"]}.issubset({
+            record["record_id"] for record in decisions["decision_events"]
+        }))
+
+    def test_decision_projection_rejects_a_route_that_disagrees_with_the_graph(self):
+        state = self.approved()
+        records = self.runtime.load_records(state["run_id"])
+        definition = self.runtime.load_definition(state["run_id"])
+        forged = copy.deepcopy(records)
+        checkpoint = next(
+            record for record in forged
+            if (record.get("event") or {}).get("event_type") == "node_advanced"
+            and record["node_id"] == "plan-approval"
+        )
+        checkpoint["event"]["details"]["route"]["outcome"] = "denied"
+
+        with self.assertRaisesRegex(
+            inspector.ProcessRunInspectorIntegrityError,
+            "declared graph route",
+        ):
+            inspector.ProcessRunInspectorService._governed_decisions(
+                self.runtime.load_run(state["run_id"]), definition, forged
+            )
+
     def test_all_nine_views_are_exact_restart_derived_and_read_only(self):
         state = self.approved()
         self.delegate(state)
@@ -250,6 +346,73 @@ class Phase25RunInspectorTests(Phase25Fixture):
         }])
         self.assertEqual(changes["receipts"][0]["role"], "external_effect_receipt")
         self.assertTrue(changes["state_captures"])
+
+    def test_later_unrelated_working_artifact_cannot_replace_approved_target(self):
+        state = self.approved()
+        _pre, post, _receipt, _action = self.completed_effect(state)
+        unrelated = self.root / "unrelated-target"
+        unrelated.mkdir()
+        (unrelated / "other.txt").write_text("not approved\n", encoding="utf-8")
+        run = self.runtime.load_run(state["run_id"])
+        self.record_repository_artifact(
+            state["run_id"], unrelated, "unrelated-later-working",
+            role="working",
+            action="record_programming_mutation_receipt",
+            selector="scope:declared_outputs",
+            conditions=self._grant_conditions(
+                run, "record_programming_mutation_receipt"
+            ),
+        )
+
+        repository = self.inspector.inspect(state["run_id"])["views"]["changes"][
+            "repository"
+        ]
+        self.assertEqual(repository["locator"]["ref"], str(self.target.resolve()))
+        self.assertEqual(
+            repository["expected"]["artifact_id"],
+            post["artifact"]["artifact_id"],
+        )
+        self.assertEqual(
+            repository["expected"]["identity_digest"],
+            post["artifact"]["identity"]["digest"],
+        )
+        self.assertEqual(
+            [item["locator"]["ref"] for item in repository["other_targets"]],
+            [str(unrelated.resolve())],
+        )
+
+    def test_multiple_unapproved_repository_targets_fail_closed_explicitly(self):
+        definition = runtime_fixtures.make_definition(
+            "generic/multiple-repository-targets"
+        )
+        run_id = "run-multiple-repository-targets"
+        self.runtime.create_run(
+            definition, runtime_fixtures.make_run(run_id, definition)
+        )
+        self.runtime.start_run(run_id, reason="inspect ambiguous targets")
+        targets = [self.root / "candidate-one", self.root / "candidate-two"]
+        for index, target in enumerate(targets, start=1):
+            target.mkdir()
+            (target / "result.txt").write_text(
+                f"candidate {index}\n", encoding="utf-8"
+            )
+            self.record_repository_artifact(
+                run_id, target, f"repository-candidate-{index}",
+                role="result",
+                action="produce_artifact",
+                selector=runtime_fixtures.OUTPUT,
+                conditions=runtime_fixtures.CONDITION,
+            )
+
+        repository = self.inspector.inspect(run_id)["views"]["changes"]["repository"]
+        self.assertEqual(repository["state"], "ambiguous_unbound_targets")
+        self.assertIsNone(repository["locator"])
+        self.assertIsNone(repository["expected"])
+        self.assertFalse(repository["evidence_current"])
+        self.assertEqual(
+            {item["locator"]["ref"] for item in repository["candidate_targets"]},
+            {str(target.resolve()) for target in targets},
+        )
 
     def test_external_editor_change_invalidates_current_evidence_and_shows_diff(self):
         state = self.approved()

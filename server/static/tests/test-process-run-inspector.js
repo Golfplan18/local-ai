@@ -58,7 +58,18 @@ var snapshot = {
     },
     plan: { status: 'approved', approved_contract: { plan_id: 'plan-1' } },
     current_state: { state: 'waiting_for_authority', timeline: [{ sequence: 1, kind: 'run_created' }] },
-    decisions: { required_human_decision: 'Approve the exact target mutation.', transitions: [] },
+    decisions: {
+      required_human_decision: 'Approve the exact target mutation.',
+      transitions: [],
+      decision_events: [{ record_id: 'decision-plan-approval', event: { event_type: 'node_advanced' } }],
+      governed_decisions: [{
+        record_id: 'decision-plan-approval', decision_kind: 'human_checkpoint',
+        source_node_id: 'plan-approval', target_node_id: 'post-plan-mode',
+        outcome: 'approved', decision_by: 'principal:user',
+        authority_request_type: 'plan_approval',
+        route: { outcome: 'approved', decision_by: 'principal:user', authority_request_type: 'plan_approval' },
+      }],
+    },
     changes: {
       repository: {
         state: 'external_change_detected', current: false,
@@ -148,6 +159,14 @@ async function run() {
   record('stale evidence is stated in text rather than color alone',
     modal.textContent.indexOf('does not yet support acceptance') >= 0
       && modal.dataset.evidenceCurrent === 'false');
+
+  modal.querySelector('[data-view="decisions"]').click();
+  record('Decisions exposes authenticated checkpoint outcome, maker, authority, and route',
+    modal.querySelector('[data-inspector-content]').dataset.view === 'decisions'
+      && modal.textContent.indexOf('human_checkpoint') >= 0
+      && modal.textContent.indexOf('principal:user') >= 0
+      && modal.textContent.indexOf('plan_approval') >= 0
+      && modal.textContent.indexOf('post-plan-mode') >= 0);
 
   modal.querySelector('[data-view="changes"]').click();
   record('Changes exposes external-editor invalidation and target identity',
