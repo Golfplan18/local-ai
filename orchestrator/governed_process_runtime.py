@@ -218,6 +218,29 @@ def _digest_json(value: Any) -> str:
     return _digest_text(body)
 
 
+def lifecycle_disposition_idempotency_key(
+    run_id: str,
+    disposition: str,
+    promoted_definition_ref: Mapping[str, Any] | None = None,
+    capability_artifact_id: str | None = None,
+) -> str:
+    """Return the bounded identity for one exact terminal disposition request."""
+
+    basis = {
+        "run_id": str(run_id),
+        "disposition": str(disposition),
+        "promoted_definition_ref": (
+            copy.deepcopy(dict(promoted_definition_ref))
+            if promoted_definition_ref is not None else None
+        ),
+        "capability_artifact_id": capability_artifact_id,
+    }
+    body = json.dumps(
+        basis, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    return "lifecycle:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
 def _exact_digest(value: Any, label: str) -> str:
     result = str(value or "")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", result):
@@ -976,7 +999,6 @@ class GovernedProcessRuntime:
         disposition: str,
         *,
         decision_by: str,
-        idempotency_key: str,
         promoted_definition_ref: Mapping[str, Any] | None = None,
         capability_artifact_id: str | None = None,
     ) -> dict[str, Any]:
@@ -995,9 +1017,6 @@ class GovernedProcessRuntime:
                 "lifecycle disposition must be promote, preserve, archive, or discard"
             )
         principal = str(decision_by or "").strip()
-        key = str(idempotency_key or "").strip()
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", key):
-            raise GovernedRuntimeError("lifecycle idempotency key is invalid")
 
         exact_ref = None
         exact_artifact_id = None
@@ -1030,6 +1049,12 @@ class GovernedProcessRuntime:
             raise GovernedRuntimeError(
                 "only promotion may bind a Process Definition or capability Artifact"
             )
+        key = lifecycle_disposition_idempotency_key(
+            run_id,
+            exact_disposition,
+            exact_ref,
+            exact_artifact_id,
+        )
 
         with _locked():
             run = self.load_run(run_id)
@@ -5997,4 +6022,5 @@ __all__ = [
     "TERMINAL_RUN_STATES",
     "correction_policy_defaults",
     "directive_for_failure_class",
+    "lifecycle_disposition_idempotency_key",
 ]

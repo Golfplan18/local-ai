@@ -5547,6 +5547,8 @@ def process_run_lifecycle(run_id):
                     "Run lifecycle request must be an object"
                 )
             allowed = {
+                # Accepted for compatibility with the pre-correction client,
+                # but intentionally ignored. The runtime owns the exact key.
                 "disposition", "decision_by", "idempotency_key",
                 "promoted_definition_ref", "capability_artifact_id",
             }
@@ -5561,7 +5563,6 @@ def process_run_lifecycle(run_id):
                 run_id,
                 disposition=str(payload.get("disposition") or ""),
                 decision_by=str(payload.get("decision_by") or "principal:user"),
-                idempotency_key=str(payload.get("idempotency_key") or ""),
                 promoted_definition_ref=payload.get("promoted_definition_ref"),
                 capability_artifact_id=(
                     str(payload["capability_artifact_id"])

@@ -122,11 +122,9 @@
       if (!window.confirm(`${consequence} Continue?`)) return;
     }
     const ref = option && option.definition_ref;
-    const identity = ref ? ref.digest : 'outputs';
     const body = {
       disposition,
       decision_by: lifecycle.principal_id,
-      idempotency_key: `lifecycle:${snapshot.run_id}:${disposition}:${identity}`,
     };
     if (disposition === 'promote' && option) {
       body.promoted_definition_ref = option.definition_ref;

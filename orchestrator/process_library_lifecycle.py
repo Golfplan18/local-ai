@@ -28,6 +28,7 @@ try:
         RunConflictError,
         RunNotFoundError,
         TERMINAL_RUN_STATES,
+        lifecycle_disposition_idempotency_key,
     )
     from process_definition_registry import (
         DEFAULT_PROCESS_DEFINITIONS_DIR,
@@ -44,6 +45,7 @@ except ImportError:  # pragma: no cover
         RunConflictError,
         RunNotFoundError,
         TERMINAL_RUN_STATES,
+        lifecycle_disposition_idempotency_key,
     )
     from orchestrator.process_definition_registry import (
         DEFAULT_PROCESS_DEFINITIONS_DIR,
@@ -332,6 +334,21 @@ class ProcessLibraryLifecycleService:
             raise ProcessLibraryIntegrityError(
                 "Run lifecycle disposition has an invalid authority or terminal binding"
             )
+        try:
+            expected_idempotency_key = lifecycle_disposition_idempotency_key(
+                run["run_id"],
+                details["disposition"],
+                details["promoted_definition_ref"],
+                details["capability_artifact_id"],
+            )
+        except (TypeError, ValueError) as exc:
+            raise ProcessLibraryIntegrityError(
+                "Run lifecycle disposition has an invalid idempotency identity"
+            ) from exc
+        if details["idempotency_key"] != expected_idempotency_key:
+            raise ProcessLibraryIntegrityError(
+                "Run lifecycle disposition idempotency identity does not authenticate"
+            )
         records = self.runtime.load_records(run["run_id"])
         terminal = next(
             (
@@ -608,7 +625,6 @@ class ProcessLibraryLifecycleService:
         *,
         disposition: str,
         decision_by: str,
-        idempotency_key: str,
         promoted_definition_ref: Mapping[str, Any] | None = None,
         capability_artifact_id: str | None = None,
     ) -> dict[str, Any]:
@@ -631,7 +647,6 @@ class ProcessLibraryLifecycleService:
                 run_id,
                 exact_disposition,
                 decision_by=decision_by,
-                idempotency_key=idempotency_key,
                 promoted_definition_ref=promoted_definition_ref,
                 capability_artifact_id=capability_artifact_id,
             )

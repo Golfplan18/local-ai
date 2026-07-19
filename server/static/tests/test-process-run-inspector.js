@@ -31,10 +31,11 @@ var order = [
   'overview', 'plan', 'current_state', 'decisions', 'changes',
   'evidence', 'permissions', 'artifacts', 'technical',
 ];
+var RUN_ID = 'run/grouped-result';
 var snapshot = {
   schema_version: 'ora.process-run-inspector/1.0',
   generated_at: '2026-07-18T12:00:00Z',
-  run_id: 'run-ui-proof',
+  run_id: RUN_ID,
   dialogue_ref: 'dialogue-ui-proof',
   definition_ref: {
     definition_id: 'ora/programming', version: '2.0.1', digest: 'sha256:definition',
@@ -95,7 +96,7 @@ var snapshot = {
 var fetched = [];
 var lifecycleState = {
   schema_version: 'ora.process-lifecycle-disposition/1.0',
-  run_id: 'run-ui-proof', run_state: 'waiting_for_authority',
+  run_id: RUN_ID, run_state: 'waiting_for_authority',
   principal_id: 'principal:user',
   status: 'not_terminal', available_actions: [], promote_options: [], closure: null,
 };
@@ -103,13 +104,13 @@ var lifecycleRequests = [];
 w.confirm = function () { return true; };
 global.fetch = function (url, options) {
   fetched.push(url);
-  if (url === '/api/process-runs/run-ui-proof/lifecycle') {
+  if (url === '/api/process-runs/run%2Fgrouped-result/lifecycle') {
     if (options && options.method === 'POST') {
       var request = JSON.parse(options.body);
       lifecycleRequests.push(request);
       lifecycleState = {
         schema_version: 'ora.process-lifecycle-disposition/1.0',
-        run_id: 'run-ui-proof', run_state: 'completed', status: 'closed',
+        run_id: RUN_ID, run_state: 'completed', status: 'closed',
         principal_id: 'principal:user',
         available_actions: [], promote_options: [],
         closure: {
@@ -156,7 +157,7 @@ async function run() {
     !!w.OraProcessRunInspector && order.join('|') === w.OraProcessRunInspector.viewOrder.join('|'));
 
   w.document.dispatchEvent(new w.CustomEvent('ora:process-run-inspector:open', {
-    detail: { run_id: 'run-ui-proof', trigger: origin },
+    detail: { run_id: RUN_ID, trigger: origin },
   }));
   await flush();
   await flush();
@@ -164,7 +165,7 @@ async function run() {
   var modal = w.document.querySelector('[data-process-run-inspector]');
   var tabs = Array.from(modal.querySelectorAll('[role="tab"]'));
   record('Run selection loads the exact authenticated endpoint',
-    fetched[0] === '/api/process-runs/run-ui-proof/inspector');
+    fetched[0] === '/api/process-runs/run%2Fgrouped-result/inspector');
   record('inspector opens as a modal structured Process Run view',
     !modal.hidden && modal.querySelector('[role="dialog"]').getAttribute('aria-modal') === 'true');
   record('all nine Phase 2.5 views are present in exact order',
@@ -241,7 +242,7 @@ async function run() {
   snapshot.views.current_state.state = 'completed';
   lifecycleState = {
     schema_version: 'ora.process-lifecycle-disposition/1.0',
-    run_id: 'run-ui-proof', run_state: 'completed',
+    run_id: RUN_ID, run_state: 'completed',
     principal_id: 'principal:user',
     status: 'awaiting_disposition',
     available_actions: ['promote', 'preserve', 'archive', 'discard'],
@@ -254,7 +255,7 @@ async function run() {
     closure: null,
   };
   w.document.dispatchEvent(new w.CustomEvent('ora:process-run-inspector:open', {
-    detail: { run_id: 'run-ui-proof', trigger: origin },
+    detail: { run_id: RUN_ID, trigger: origin },
   }));
   await flush();
   await flush();
@@ -268,6 +269,12 @@ async function run() {
   modal.querySelector('.process-run-inspector__lifecycle-promote').click();
   await flush();
   await flush();
+  record('slash-containing Run IDs never enter a caller-controlled idempotency key',
+    fetched.indexOf('/api/process-runs/run%2Fgrouped-result/lifecycle') >= 0
+      && lifecycleRequests.length === 1
+      && !Object.prototype.hasOwnProperty.call(
+        lifecycleRequests[0], 'idempotency_key'
+      ));
   record('Promote posts the exact capability identity and renders its receipt',
     lifecycleRequests.length === 1
       && lifecycleRequests[0].disposition === 'promote'

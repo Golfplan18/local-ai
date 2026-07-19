@@ -115,7 +115,6 @@ class Phase26Fixture(phase17.TrialCase):
             run_id,
             disposition="promote",
             decision_by="principal-001",
-            idempotency_key=f"lifecycle:{run_id}:promote",
             promoted_definition_ref=ref,
             capability_artifact_id=definition_artifact["artifact"]["artifact_id"],
         )
@@ -197,6 +196,15 @@ class Phase26ProcessLibraryTests(Phase26Fixture):
 
         self.assertEqual(lifecycle["status"], "closed")
         self.assertEqual(lifecycle["closure"]["disposition"], "promote")
+        self.assertEqual(
+            lifecycle["closure"]["idempotency_key"],
+            runtime.lifecycle_disposition_idempotency_key(
+                "run-library-promotion",
+                "promote",
+                ref,
+                lifecycle["closure"]["capability_artifact_id"],
+            ),
+        )
         self.assertEqual(item["definition_ref"], ref)
         self.assertEqual(item["lifecycle_status"], "available")
         self.assertTrue(item["manual_invocation_available"])
@@ -268,13 +276,11 @@ class Phase26LifecycleTests(Phase26Fixture):
             "run-preserve",
             disposition="preserve",
             decision_by="principal-001",
-            idempotency_key="lifecycle:preserve:1",
         )
         second = self.service.close_run(
             "run-preserve",
             disposition="preserve",
             decision_by="principal-001",
-            idempotency_key="lifecycle:preserve:1",
         )
         self.assertEqual(first, second)
         self.assertEqual(first["closure"]["disposition"], "preserve")
@@ -287,8 +293,40 @@ class Phase26LifecycleTests(Phase26Fixture):
                 "run-preserve",
                 disposition="archive",
                 decision_by="principal-001",
-                idempotency_key="lifecycle:archive:2",
             )
+
+    def test_slash_and_long_run_ids_use_bounded_deterministic_retry_identity(self):
+        run_ids = (
+            "run/grouped-result",
+            "run/" + ("long-valid-segment" * 40),
+        )
+        keys = []
+        for run_id in run_ids:
+            with self.subTest(run_id_length=len(run_id)):
+                self.completed_result_run(run_id)
+                first = self.service.close_run(
+                    run_id,
+                    disposition="preserve",
+                    decision_by="principal-001",
+                )
+                retry = self.service.close_run(
+                    run_id,
+                    disposition="preserve",
+                    decision_by="principal-001",
+                )
+                self.assertEqual(retry, first)
+                key = first["closure"]["idempotency_key"]
+                self.assertRegex(key, r"^lifecycle:[0-9a-f]{64}$")
+                self.assertEqual(len(key), 74)
+                self.assertNotIn(run_id, key)
+                self.assertEqual(
+                    key,
+                    runtime.lifecycle_disposition_idempotency_key(
+                        run_id, "preserve"
+                    ),
+                )
+                keys.append(key)
+        self.assertEqual(len(set(keys)), 2)
 
     def test_archive_and_discard_are_explicit_metadata_not_file_deletion(self):
         for disposition, expected in (("archive", "archived"), ("discard", "discarded")):
@@ -303,7 +341,6 @@ class Phase26LifecycleTests(Phase26Fixture):
                     run_id,
                     disposition=disposition,
                     decision_by="principal-001",
-                    idempotency_key=f"lifecycle:{disposition}:1",
                 )
                 self.assertTrue(artifact_path.is_file())
                 self.assertEqual(artifact_path.read_bytes(), artifact_bytes)
@@ -328,7 +365,6 @@ class Phase26LifecycleTests(Phase26Fixture):
                 "run-still-running",
                 disposition="preserve",
                 decision_by="principal-001",
-                idempotency_key="lifecycle:running:1",
             )
 
         self.completed_result_run("run-wrong-principal")
@@ -337,7 +373,6 @@ class Phase26LifecycleTests(Phase26Fixture):
                 "run-wrong-principal",
                 disposition="preserve",
                 decision_by="not-the-principal",
-                idempotency_key="lifecycle:wrong:1",
             )
         with self.assertRaises(runtime.AuthorityDeniedError):
             self.runtime.record_event(
@@ -358,7 +393,6 @@ class Phase26LifecycleTests(Phase26Fixture):
                 "run-no-capability",
                 disposition="promote",
                 decision_by="principal-001",
-                idempotency_key="lifecycle:invalid-promotion",
                 promoted_definition_ref=phase17._definition_ref(target),
             )
 
@@ -368,7 +402,6 @@ class Phase26LifecycleTests(Phase26Fixture):
             "run-tampered-lifecycle",
             disposition="preserve",
             decision_by="principal-001",
-            idempotency_key="lifecycle:tamper:1",
         )
         records_path = self.runtime._events_path("run-tampered-lifecycle")
         records = [
@@ -432,18 +465,28 @@ class Phase26ServerBoundaryTests(Phase26Fixture):
         self.assertFalse(item["standing_automation"])
 
     def test_library_and_lifecycle_endpoints_preserve_exact_contract(self):
-        self.completed_result_run("run-api-lifecycle")
+        run_id = "run/grouped-result"
+        self.completed_result_run(run_id)
         client = server.app.test_client()
         with mock.patch.object(
             server, "_process_library_service", return_value=self.service
         ):
-            before = client.get("/api/process-runs/run-api-lifecycle/lifecycle")
+            before = client.get(f"/api/process-runs/{run_id}/lifecycle")
             closed = client.post(
-                "/api/process-runs/run-api-lifecycle/lifecycle",
+                f"/api/process-runs/{run_id}/lifecycle",
                 json={
                     "disposition": "preserve",
                     "decision_by": "principal-001",
-                    "idempotency_key": "lifecycle:api:1",
+                },
+            )
+            retry = client.post(
+                f"/api/process-runs/{run_id}/lifecycle",
+                json={
+                    "disposition": "preserve",
+                    "decision_by": "principal-001",
+                    "idempotency_key": (
+                        "lifecycle:run/grouped-result:preserve:outputs"
+                    ),
                 },
             )
             catalog = client.get(
@@ -460,6 +503,11 @@ class Phase26ServerBoundaryTests(Phase26Fixture):
         self.assertEqual(
             closed.get_json()["lifecycle"]["closure"]["disposition"], "preserve"
         )
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.get_json(), closed.get_json())
+        key = closed.get_json()["lifecycle"]["closure"]["idempotency_key"]
+        self.assertRegex(key, r"^lifecycle:[0-9a-f]{64}$")
+        self.assertNotIn(run_id, key)
         self.assertEqual(catalog.status_code, 200)
         self.assertIn("catalog_digest", catalog.get_json()["library"])
 
