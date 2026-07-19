@@ -114,6 +114,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "external_action_authorized",
     "repository_state_captured",
     "repository_mutation_receipt_issued",
+    "authority_request_resolved",
     "process_invoked",
     "process_definition_registered",
     "child_return_received",
@@ -767,6 +768,12 @@ class GovernedProcessRuntime:
                     materialized["current_node_id"] = details["resume_node_id"]
                 elif event_type == "node_advanced":
                     materialized["current_node_id"] = details["to_node_id"]
+                elif event_type == "authority_request_resolved":
+                    # The authority decision is committed before its declared
+                    # graph edge.  Recovering that record must make the same
+                    # edge resumable without replaying the human decision.
+                    materialized["state"] = "running"
+                    materialized["current_node_id"] = details["source_node_id"]
                 elif event_type == "run_contracts_replaced":
                     materialized["contracts"] = copy.deepcopy(details["contracts"])
                     materialized["labels"] = list(details["labels"])
@@ -2023,6 +2030,265 @@ class GovernedProcessRuntime:
                     "authority_request_type": node["authority_request_type"],
                 },
             )
+
+    def resolve_authority_request(
+        self,
+        run_id: str,
+        request_id: str,
+        outcome: str,
+        *,
+        decision_by: str,
+    ) -> dict[str, Any]:
+        """Resolve one exact persisted ESCALATE request through its graph route.
+
+        Unlike :meth:`resolve_human_checkpoint`, this boundary is specifically
+        for a Run stopped in ``waiting_for_authority``.  The runtime, not the
+        caller, authenticates the escalation, derives the target edge, persists
+        the human decision, and then resumes traversal.  A retry can finish an
+        interrupted decision-to-route commit but can never consume a different
+        request or select an undeclared node.
+        """
+
+        request_id = str(request_id or "").strip()
+        decision_by = str(decision_by or "").strip()
+        if not request_id:
+            raise GovernedRuntimeError("authority resolution requires request_id")
+        if outcome not in {"approved", "denied", "unavailable"}:
+            raise GovernedRuntimeError(
+                "authority resolution outcome must be approved, denied, or unavailable"
+            )
+        if not decision_by:
+            raise AuthorityDeniedError(
+                "authority resolution requires a decision maker"
+            )
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            records = self.load_records(run_id)
+            principal_id = str(run["contracts"]["authority"]["principal_id"])
+            if decision_by != principal_id:
+                raise AuthorityDeniedError(
+                    "authority request may be resolved only by the Run principal"
+                )
+
+            escalations = []
+            for record in records:
+                transition = record.get("transition") or {}
+                request = transition.get("authority_request") or {}
+                if (
+                    transition.get("directive") == "ESCALATE"
+                    and request.get("request_id") == request_id
+                ):
+                    escalations.append(record)
+            if len(escalations) != 1:
+                raise RunConflictError(
+                    "authority resolution requires exactly one persisted ESCALATE request"
+                )
+            escalation = _contracts.validate_event_transition_record(escalations[0])
+            transition = escalation["transition"]
+            request = transition["authority_request"]
+            nodes = self._graph_nodes(definition)
+            source_node_id = str(transition["target_node_id"])
+            source = nodes.get(source_node_id)
+            if source is None or source.get("kind") != "human_checkpoint":
+                raise GovernedRuntimeError(
+                    "authority request does not target a human checkpoint"
+                )
+            if (
+                request["requested_from"] != principal_id
+                or request["request_type"] != source["authority_request_type"]
+                or request["request_type"]
+                not in run["contracts"]["stop_escalation"][
+                    "authority_request_types"
+                ]
+            ):
+                raise AuthorityDeniedError(
+                    "authority request is not bound to the Run principal and declared type"
+                )
+
+            target_field = {
+                "approved": "on_approved_node_id",
+                "denied": "on_denied_node_id",
+                "unavailable": "on_unavailable_node_id",
+            }[outcome]
+            if target_field not in source:
+                target_field = "on_denied_node_id"
+            target_node_id = str(source[target_field])
+            if (
+                outcome == "approved"
+                and request["resume_node_id"] != target_node_id
+            ):
+                raise GovernedRuntimeError(
+                    "authority request resume node differs from the approved graph route"
+                )
+            if target_node_id not in set(
+                run["contracts"]["approved_plan"]["approved_node_ids"]
+            ):
+                raise AuthorityDeniedError(
+                    "authority resolution target is outside the approved plan"
+                )
+
+            binding = {
+                "run_id": run_id,
+                "request_id": request_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "escalation_record_id": escalation["record_id"],
+                "request": copy.deepcopy(request),
+                "source_node_id": source_node_id,
+                "target_node_id": target_node_id,
+                "outcome": outcome,
+                "decision_by": decision_by,
+            }
+            resolution_digest = _digest_json(binding)
+            idempotency_key = (
+                "authority:" + resolution_digest.split(":", 1)[1]
+            )
+            expected_details = {
+                **binding,
+                "idempotency_key": idempotency_key,
+                "resolution_digest": resolution_digest,
+            }
+            resolutions = [
+                record
+                for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "authority_request_resolved"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "request_id"
+                )
+                == request_id
+            ]
+            if len(resolutions) > 1:
+                raise GovernedRuntimeError(
+                    "authority request has multiple authoritative resolutions"
+                )
+            resolution = resolutions[0] if resolutions else None
+            if resolution is not None:
+                resolution = _contracts.validate_event_transition_record(resolution)
+                if (
+                    resolution["event"]["details"] != expected_details
+                    or resolution["node_id"] != source_node_id
+                    or resolution["evidence_refs"] != escalation["evidence_refs"]
+                    or resolution["artifact_ids"] != escalation["artifact_ids"]
+                    or int(resolution["sequence"]) <= int(escalation["sequence"])
+                ):
+                    raise RunConflictError(
+                        "authority request was already resolved with a different identity"
+                    )
+            else:
+                if (
+                    run["state"] != "waiting_for_authority"
+                    or run["current_node_id"] != source_node_id
+                ):
+                    raise RunConflictError(
+                        "Process Run is not waiting at this authority request"
+                    )
+                run["state"] = "running"
+                resolution = self._append_event_locked(
+                    run,
+                    "authority_request_resolved",
+                    expected_details,
+                    node_id=source_node_id,
+                    evidence_refs=escalation["evidence_refs"],
+                    artifact_ids=escalation["artifact_ids"],
+                    runtime_authoritative=True,
+                )
+                records = [*records, resolution]
+
+            route_reason = (
+                f"Authority request {request_id} resolved as {outcome} by "
+                f"{decision_by}"
+            )
+            later = [
+                record
+                for record in records
+                if int(record["sequence"]) > int(resolution["sequence"])
+            ]
+            matching_routes = []
+            for record in later:
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                route = details.get("route") or {}
+                transition_after = record.get("transition") or {}
+                expected_route = {
+                    "outcome": outcome,
+                    "decision_by": decision_by,
+                    "authority_request_type": request["request_type"],
+                    "authority_request_id": request_id,
+                    "authority_resolution_record_id": resolution["record_id"],
+                    "authority_resolution_digest": resolution_digest,
+                }
+                if (
+                    event.get("event_type") == "node_advanced"
+                    and record.get("node_id") == source_node_id
+                    and set(details) == {
+                        "from_node_id", "to_node_id", "advance_kind",
+                        "reason", "route",
+                    }
+                    and details.get("from_node_id") == source_node_id
+                    and details.get("to_node_id") == target_node_id
+                    and details.get("advance_kind") == "human_checkpoint"
+                    and details.get("reason") == route_reason
+                    and route == expected_route
+                    and int(record["sequence"]) == int(resolution["sequence"]) + 1
+                ) or (
+                    transition_after.get("directive") == "BLOCKED"
+                    and record.get("node_id") == source_node_id
+                    and transition_after.get("target_node_id") == target_node_id
+                    and transition_after.get("reason") == route_reason
+                    and transition_after.get("from_state") == "running"
+                    and transition_after.get("to_state") == "blocked"
+                    and transition_after.get("evaluation_boundary")
+                    == "mechanical_graph_route"
+                    and int(record["sequence"]) == int(resolution["sequence"]) + 1
+                ):
+                    matching_routes.append(record)
+            if len(matching_routes) > 1:
+                raise GovernedRuntimeError(
+                    "authority resolution has multiple graph routes"
+                )
+            if matching_routes:
+                return {
+                    "resolution_record": copy.deepcopy(resolution),
+                    "route_record": copy.deepcopy(matching_routes[0]),
+                    "idempotent_replay": True,
+                }
+            if later:
+                raise RunConflictError(
+                    "authority resolution is followed by an unrelated runtime record"
+                )
+
+            # If the decision record was committed but its Run materialization
+            # was interrupted, load_run above restores this exact resumable state.
+            run = self.load_run(run_id)
+            if (
+                run["state"] != "running"
+                or run["current_node_id"] != source_node_id
+            ):
+                raise RunConflictError(
+                    "authority resolution cannot resume from the persisted Run state"
+                )
+            route_record = self._advance_graph_locked(
+                run,
+                definition,
+                target_node_id=target_node_id,
+                advance_kind="human_checkpoint",
+                reason=route_reason,
+                route={
+                    "outcome": outcome,
+                    "decision_by": decision_by,
+                    "authority_request_type": request["request_type"],
+                    "authority_request_id": request_id,
+                    "authority_resolution_record_id": resolution["record_id"],
+                    "authority_resolution_digest": resolution_digest,
+                },
+            )
+            return {
+                "resolution_record": copy.deepcopy(resolution),
+                "route_record": copy.deepcopy(route_record),
+                "idempotent_replay": False,
+            }
 
     def advance_bounded_loop(
         self,

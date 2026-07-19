@@ -308,6 +308,7 @@ class ProcessRunInspectorService:
         """Authenticate graph decisions against the exact issued definition."""
 
         nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        records_by_id = {str(record["record_id"]): record for record in records}
         decisions: list[dict[str, Any]] = []
         for record in records:
             event = record.get("event") or {}
@@ -346,11 +347,20 @@ class ProcessRunInspectorService:
                 "reason": details["reason"],
             }
             if source["kind"] == "human_checkpoint":
+                base_route_fields = {
+                    "outcome", "decision_by", "authority_request_type",
+                }
+                authority_route_fields = base_route_fields | {
+                    "authority_request_id",
+                    "authority_resolution_record_id",
+                    "authority_resolution_digest",
+                }
                 if (
                     details.get("advance_kind") != "human_checkpoint"
-                    or set(route) != {
-                        "outcome", "decision_by", "authority_request_type",
-                    }
+                    or (
+                        set(route) != base_route_fields
+                        and set(route) != authority_route_fields
+                    )
                     or route.get("outcome") not in {
                         "approved", "denied", "unavailable",
                     }
@@ -380,6 +390,78 @@ class ProcessRunInspectorService:
                     raise ProcessRunInspectorIntegrityError(
                         "human-checkpoint decision target is not the declared graph route"
                     )
+                if set(route) == authority_route_fields:
+                    resolution = records_by_id.get(
+                        str(route["authority_resolution_record_id"])
+                    )
+                    resolution_event = (
+                        (resolution or {}).get("event") or {}
+                    )
+                    resolution_details = resolution_event.get("details") or {}
+                    escalation = records_by_id.get(
+                        str(resolution_details.get("escalation_record_id") or "")
+                    )
+                    escalation_transition = (
+                        (escalation or {}).get("transition") or {}
+                    )
+                    request = escalation_transition.get("authority_request") or {}
+                    binding = {
+                        field: copy.deepcopy(resolution_details.get(field))
+                        for field in (
+                            "run_id", "request_id", "definition_ref",
+                            "escalation_record_id", "request", "source_node_id",
+                            "target_node_id", "outcome", "decision_by",
+                        )
+                    }
+                    expected_resolution_fields = set(binding) | {
+                        "idempotency_key", "resolution_digest",
+                    }
+                    expected_resolution_digest = _digest_json(binding)
+                    if (
+                        resolution is None
+                        or resolution.get("record_type") != "event"
+                        or resolution_event.get("event_type")
+                        != "authority_request_resolved"
+                        or resolution.get("node_id") != source_id
+                        or set(resolution_details) != expected_resolution_fields
+                        or int(resolution.get("sequence", 0))
+                        != int(record["sequence"]) - 1
+                        or resolution_details.get("resolution_digest")
+                        != expected_resolution_digest
+                        or resolution_details.get("idempotency_key")
+                        != "authority:" + expected_resolution_digest.split(":", 1)[1]
+                        or route["authority_resolution_digest"]
+                        != resolution_details.get("resolution_digest")
+                        or route["authority_request_id"]
+                        != resolution_details.get("request_id")
+                        or resolution_details.get("run_id") != run["run_id"]
+                        or resolution_details.get("definition_ref")
+                        != run["definition_ref"]
+                        or resolution_details.get("source_node_id") != source_id
+                        or resolution_details.get("target_node_id") != target_id
+                        or resolution_details.get("outcome") != route["outcome"]
+                        or resolution_details.get("decision_by")
+                        != route["decision_by"]
+                        or route["decision_by"]
+                        != run["contracts"]["authority"]["principal_id"]
+                        or escalation_transition.get("directive") != "ESCALATE"
+                        or request != resolution_details.get("request")
+                        or request.get("requested_from")
+                        != run["contracts"]["authority"]["principal_id"]
+                        or request.get("request_id")
+                        != route["authority_request_id"]
+                        or (
+                            route["outcome"] == "approved"
+                            and request.get("resume_node_id") != target_id
+                        )
+                        or resolution.get("evidence_refs")
+                        != (escalation or {}).get("evidence_refs")
+                        or resolution.get("artifact_ids")
+                        != (escalation or {}).get("artifact_ids")
+                    ):
+                        raise ProcessRunInspectorIntegrityError(
+                            "authority decision does not bind its exact persisted request"
+                        )
                 decisions.append({
                     **common,
                     "decision_kind": "human_checkpoint",
@@ -953,7 +1035,7 @@ class ProcessRunInspectorService:
                 or
                 event.get("event_type") in {
                     "final_review_completed", "delegation_activated",
-                    "external_action_authorized",
+                    "external_action_authorized", "authority_request_resolved",
                 }
                 or any(token in observation_type for token in (
                     "approved", "approval", "revision", "stale", "withheld",

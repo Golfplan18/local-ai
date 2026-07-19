@@ -5345,7 +5345,7 @@ def _process_plan_error_status(exc: Exception) -> int:
 
 
 def _process_delegation_error_status(exc: Exception) -> int:
-    from governed_process_runtime import AuthorityDeniedError
+    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
     from process_delegation_attention import (
         ProcessDelegationConflict,
         ProcessDelegationError,
@@ -5355,6 +5355,8 @@ def _process_delegation_error_status(exc: Exception) -> int:
 
     if isinstance(exc, AuthorityDeniedError):
         return 403
+    if isinstance(exc, RunNotFoundError):
+        return 404
     if isinstance(exc, ProcessDelegationInputRequired):
         return 422
     if isinstance(exc, ProcessDelegationConflict):
@@ -5721,6 +5723,38 @@ def process_attention_projection():
             _process_delegation_error_status(exc),
         )
     return _json_response({"ok": True, **projection})
+
+
+@app.route("/api/process-runs/<path:run_id>/authority", methods=["POST"])
+def process_run_authority_resolution(run_id):
+    """Resolve one exact focused authority request through the runtime."""
+
+    try:
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            from process_delegation_attention import ProcessDelegationInputRequired
+
+            raise ProcessDelegationInputRequired(
+                "authority resolution request must be an object"
+            )
+        if set(payload) != {"request_id", "outcome", "decision_by"}:
+            from process_delegation_attention import ProcessDelegationInputRequired
+
+            raise ProcessDelegationInputRequired(
+                "authority resolution requires exact request_id, outcome, and decision_by"
+            )
+        resolution = _process_delegation_service().resolve_authority_request(
+            str(run_id),
+            request_id=str(payload.get("request_id") or ""),
+            outcome=str(payload.get("outcome") or ""),
+            decision_by=str(payload.get("decision_by") or ""),
+        )
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_delegation_error_status(exc),
+        )
+    return _json_response({"ok": True, "authority_resolution": resolution})
 
 
 @app.route("/api/process-runs/<path:run_id>/inspector", methods=["GET"])

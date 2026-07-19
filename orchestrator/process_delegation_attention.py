@@ -1,4 +1,4 @@
-"""G1.1 Phase 2.4 — exact delegation and quiet attention projection.
+"""G1.1 Phase 2.4/2.8 — delegation, quiet attention, and authority return.
 
 This module does not introduce another execution engine or a Run Inspector.
 It binds an already-approved Plan Execution Contract to the generic governed
@@ -12,6 +12,8 @@ the durable objects into the three Ora management surfaces required here:
   governing Dialogue's read marker.
 
 Attention is a projection, never a Process Run or Artifact lifecycle state.
+Phase 2.8 adds only the focused principal-decision return path; the governed
+runtime still authenticates the request and owns the exact graph transition.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ try:
         GovernedProcessRuntime,
         GovernedRuntimeError,
         RunConflictError,
+        RunNotFoundError,
         TERMINAL_RUN_STATES,
     )
     from process_definition_registry import (
@@ -54,6 +57,7 @@ except ImportError:  # pragma: no cover - package-qualified imports
         GovernedProcessRuntime,
         GovernedRuntimeError,
         RunConflictError,
+        RunNotFoundError,
         TERMINAL_RUN_STATES,
     )
     from orchestrator.process_definition_registry import (
@@ -68,6 +72,7 @@ except ImportError:  # pragma: no cover - package-qualified imports
 
 DELEGATION_SCHEMA_VERSION = "ora.programming-delegation/1.0"
 ATTENTION_SCHEMA_VERSION = "ora.process-attention-projection/1.0"
+AUTHORITY_RESOLUTION_SCHEMA_VERSION = "ora.authority-resolution/1.0"
 DELEGATION_OBSERVATION_PREFIX = "programming_delegation_"
 
 _DELEGATION_LOCK = threading.RLock()
@@ -1052,6 +1057,63 @@ class ProcessDelegationAttentionService:
             str(last_read), field="Dialogue last_read_at"
         )
 
+    def resolve_authority_request(
+        self,
+        run_id: str,
+        *,
+        request_id: str,
+        outcome: str,
+        decision_by: str,
+    ) -> dict[str, Any]:
+        """Return one focused human authority decision to the governed Run."""
+
+        run_id = str(run_id or "").strip()
+        request_id = str(request_id or "").strip()
+        outcome = str(outcome or "").strip()
+        decision_by = str(decision_by or "").strip()
+        if not run_id or not request_id or not decision_by:
+            raise ProcessDelegationInputRequired(
+                "authority resolution requires run_id, request_id, and decision_by"
+            )
+        if outcome not in {"approved", "denied", "unavailable"}:
+            raise ProcessDelegationInputRequired(
+                "authority outcome must be approved, denied, or unavailable"
+            )
+        try:
+            result = self.runtime.resolve_authority_request(
+                run_id,
+                request_id,
+                outcome,
+                decision_by=decision_by,
+            )
+            run = self.runtime.load_run(run_id)
+        except AuthorityDeniedError:
+            raise
+        except RunNotFoundError:
+            raise
+        except RunConflictError as exc:
+            raise ProcessDelegationConflict(str(exc)) from exc
+        except GovernedRuntimeError as exc:
+            raise ProcessDelegationIntegrityError(str(exc)) from exc
+
+        resolution = result["resolution_record"]
+        route = result["route_record"]
+        details = resolution["event"]["details"]
+        body = {
+            "schema_version": AUTHORITY_RESOLUTION_SCHEMA_VERSION,
+            "run_id": run_id,
+            "request_id": request_id,
+            "outcome": outcome,
+            "decision_by": decision_by,
+            "resolution_record_id": resolution["record_id"],
+            "resolution_digest": details["resolution_digest"],
+            "route_record_id": route["record_id"],
+            "run_state": run["state"],
+            "current_node_id": run["current_node_id"],
+            "idempotent_replay": bool(result["idempotent_replay"]),
+        }
+        return {**body, "response_digest": _digest_json(body)}
+
     def _run_row(self, run: Mapping[str, Any]) -> tuple[dict[str, Any], bool]:
         run_id = str(run["run_id"])
         definition = self.runtime.load_definition(run_id)
@@ -1443,6 +1505,7 @@ class ProcessDelegationAttentionService:
 
 __all__ = [
     "ATTENTION_SCHEMA_VERSION",
+    "AUTHORITY_RESOLUTION_SCHEMA_VERSION",
     "DELEGATION_SCHEMA_VERSION",
     "ProcessDelegationAttentionService",
     "ProcessDelegationConflict",

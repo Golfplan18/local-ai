@@ -45,10 +45,15 @@ var snapshot = {
   views: {
     overview: {
       objective: 'Repair the report safely', title: 'Repair the report safely',
-      run_state: 'running', visible_status: 'Waiting for You',
+      run_state: 'waiting_for_authority', visible_status: 'Waiting for You',
       current_phase: { node_id: 'authority', label: 'Authority decision', kind: 'human_checkpoint' },
       credible_next_actions: [{ condition: 'approved', target_node_id: 'execute-step' }],
-      required_human_decision: 'Approve the exact target mutation.',
+      required_human_decision: {
+        request_id: 'authority-ui-001', request_type: 'scope_expansion',
+        requested_authority: ['expand_scope'],
+        options: ['Approve the exact target mutation.', 'Leave scope unchanged.'],
+        resume_node_id: 'execute-step',
+      },
       definition_ref: { definition_id: 'ora/programming', version: '2.0.1', digest: 'sha256:definition' },
       invoked_capabilities: [{ definition_id: 'ora/check', version: '1.0', digest: 'sha256:check' }],
       capabilities_created_or_modified: [{ definition_id: 'cash/report', version: '1.0', digest: 'sha256:cash' }],
@@ -101,9 +106,32 @@ var lifecycleState = {
   status: 'not_terminal', available_actions: [], promote_options: [], closure: null,
 };
 var lifecycleRequests = [];
+var authorityRequests = [];
 w.confirm = function () { return true; };
 global.fetch = function (url, options) {
   fetched.push(url);
+  if (url === '/api/process-runs/run%2Fgrouped-result/authority') {
+    var authorityRequest = JSON.parse(options.body);
+    authorityRequests.push(authorityRequest);
+    snapshot.views.overview.run_state = 'running';
+    snapshot.views.overview.visible_status = 'Operating';
+    snapshot.views.overview.current_phase = {
+      node_id: 'execute-step', label: 'Execute approved step', kind: 'action',
+    };
+    snapshot.views.overview.required_human_decision = null;
+    snapshot.views.current_state.state = 'running';
+    return Promise.resolve({
+      ok: true,
+      json: function () { return Promise.resolve({
+        ok: true,
+        authority_resolution: {
+          request_id: authorityRequest.request_id,
+          outcome: authorityRequest.outcome,
+          decision_by: authorityRequest.decision_by,
+        },
+      }); },
+    });
+  }
   if (url === '/api/process-runs/run%2Fgrouped-result/lifecycle') {
     if (options && options.method === 'POST') {
       var request = JSON.parse(options.body);
@@ -179,6 +207,12 @@ async function run() {
       && modal.textContent.indexOf('Waiting for You · Authority decision') >= 0
       && modal.textContent.indexOf('approved → execute-step') >= 0
       && modal.textContent.indexOf('Approve the exact target mutation.') >= 0);
+  record('focused authority controls are available without opening Technical',
+    !!modal.querySelector('.process-run-inspector__authority-approved')
+      && !!modal.querySelector('.process-run-inspector__authority-denied')
+      && !!modal.querySelector('.process-run-inspector__authority-unavailable')
+      && modal.textContent.indexOf('authority-ui-001') >= 0
+      && modal.textContent.indexOf('The Process will follow only its declared route') >= 0);
   record('definition version, trigger, results, capabilities, and effects are visible',
     modal.textContent.indexOf('2.0.1') >= 0
       && modal.textContent.indexOf('prg_run') >= 0
@@ -190,6 +224,24 @@ async function run() {
   record('stale evidence is stated in text rather than color alone',
     modal.textContent.indexOf('does not yet support acceptance') >= 0
       && modal.dataset.evidenceCurrent === 'false');
+
+  modal.querySelector('.process-run-inspector__authority-approved').click();
+  await flush();
+  await flush();
+  await flush();
+  record('authority action posts only the exact request, outcome, and Run principal',
+    authorityRequests.length === 1
+      && authorityRequests[0].request_id === 'authority-ui-001'
+      && authorityRequests[0].outcome === 'approved'
+      && authorityRequests[0].decision_by === 'principal:user'
+      && Object.keys(authorityRequests[0]).sort().join('|')
+        === 'decision_by|outcome|request_id');
+  record('successful authority return refreshes the authenticated Run view',
+    fetched.filter(function (url) {
+      return url === '/api/process-runs/run%2Fgrouped-result/inspector';
+    }).length === 2
+      && modal.textContent.indexOf('Operating · Execute approved step') >= 0
+      && !modal.querySelector('.process-run-inspector__authority-approved'));
 
   modal.querySelector('[data-view="decisions"]').click();
   record('Decisions exposes authenticated checkpoint outcome, maker, authority, and route',

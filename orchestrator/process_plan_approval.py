@@ -846,10 +846,21 @@ def _dialogue_lifecycle_binding(state: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _principal_projection(plan: Mapping[str, Any]) -> dict[str, Any]:
+    repository_scope = plan["repository_artifact_scope"]
     content = {
         "outcome": plan["objective"],
         "users": plan["management"]["affected_parties"],
-        "scope": plan["repository_artifact_scope"],
+        # The canonical Plan and Technical View retain the authenticated target
+        # locator, inventory, and digests.  The default approval view states
+        # only the consequential boundary a nontechnical principal is deciding.
+        "scope": {
+            "declared_scope": copy.deepcopy(repository_scope["declared_scope"]),
+            "target_kind": repository_scope["target"]["locator"]["kind"],
+            "boundary": (
+                "Only the approved target and declared items may change; "
+                "any identity drift requires a new approval."
+            ),
+        },
         "authority": plan["authority"],
         "risks": plan["risk_controls"],
         "exceptions": plan["management"]["exceptions"],

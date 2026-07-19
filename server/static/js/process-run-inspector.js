@@ -1,4 +1,4 @@
-/* G1.1 Phase 2.5/2.6 — Run Inspector with explicit terminal disposition. */
+/* G1.1 Phase 2.5/2.6/2.8 — Run inspection, disposition, and authority return. */
 (function () {
   'use strict';
 
@@ -149,6 +149,77 @@
     }
   };
 
+  const authorityRequest = async (outcome) => {
+    if (!snapshot) return;
+    const requestValue = snapshot.views.overview.required_human_decision;
+    if (!requestValue || typeof requestValue !== 'object' || !requestValue.request_id) return;
+    if ((outcome === 'denied' || outcome === 'unavailable')
+      && typeof window.confirm === 'function') {
+      const message = outcome === 'denied'
+        ? 'Deny this request and follow its declared blocked route?'
+        : 'Record that the requested authority is unavailable?';
+      if (!window.confirm(message)) return;
+    }
+    const principal = snapshot.views.permissions
+      && snapshot.views.permissions.principal_id;
+    const status = root.querySelector('[data-inspector-status]');
+    status.textContent = `Recording ${outcome} authority decision…`;
+    try {
+      await fetchJson(
+        `/api/process-runs/${encodeURIComponent(snapshot.run_id)}/authority`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            request_id: requestValue.request_id,
+            outcome,
+            decision_by: principal,
+          }),
+        }
+      );
+      await open(snapshot.run_id, returnFocus);
+    } catch (error) {
+      status.textContent = `Authority decision failed: ${error.message}`;
+    }
+  };
+
+  const renderAuthorityRequest = (container, view) => {
+    const requestValue = view.required_human_decision;
+    if (view.run_state !== 'waiting_for_authority'
+      || !requestValue || typeof requestValue !== 'object'
+      || !requestValue.request_id) return;
+    const section = el(
+      'section',
+      'process-run-inspector__section process-run-inspector__authority'
+    );
+    section.appendChild(el('h3', '', 'Authority requested'));
+    section.appendChild(el(
+      'p', '',
+      `Choose how this exact request should proceed. The Process will follow only its declared route.`
+    ));
+    appendValue(section, 'Request', {
+      request_id: requestValue.request_id,
+      request_type: requestValue.request_type,
+      requested_authority: requestValue.requested_authority,
+      options: requestValue.options,
+    }, false);
+    const actions = el('div', 'process-run-inspector__lifecycle-actions');
+    [
+      ['approved', 'Approve request'],
+      ['denied', 'Deny request'],
+      ['unavailable', 'Authority unavailable'],
+    ].forEach(([outcome, label]) => {
+      const button = el(
+        'button', `process-run-inspector__authority-${outcome}`, label
+      );
+      button.type = 'button';
+      button.addEventListener('click', () => authorityRequest(outcome));
+      actions.appendChild(button);
+    });
+    section.appendChild(actions);
+    container.appendChild(section);
+  };
+
   const renderLifecycle = (container) => {
     if (!lifecycle || lifecycle.status === 'not_terminal') return;
     const section = el(
@@ -234,6 +305,7 @@
       view.evidence_current ? 'Current evidence supports the result.' : 'Current evidence does not yet support acceptance.');
     evidence.setAttribute('role', 'status');
     container.appendChild(evidence);
+    renderAuthorityRequest(container, view);
     appendValue(container, 'Invoked capability', view.definition_ref, false);
     appendValue(container, 'Capabilities invoked by this Run', view.invoked_capabilities, false);
     appendValue(container, 'Capability created or modified', view.capabilities_created_or_modified, false);
