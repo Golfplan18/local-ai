@@ -25,6 +25,13 @@ def section(text: str, heading: str) -> str:
     return text[start:] if end < 0 else text[start:end]
 
 
+def h3_section(text: str, heading: str) -> str:
+    marker = f"### {heading}\n"
+    start = text.index(marker)
+    end = text.find("\n### ", start + len(marker))
+    return text[start:] if end < 0 else text[start:end]
+
+
 class TestPhase32ConceptualPublicGuide(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -131,6 +138,29 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
         )
         self.assertIn("Current phase:** Part 3, Phase 3.2", self.tracker)
         self.assertIn("Phase 3.3 is not authorized", self.overview)
+
+    def test_current_records_reject_obsolete_phase_1_6_future_state(self):
+        tracker_entry = h3_section(
+            self.tracker,
+            "G1.1 — Governed process construction and Programming Oversight proof of concept — 🟡",
+        )
+        design_entry = h3_section(
+            self.overview,
+            "Working — Programming Oversight Manager Design.md",
+        )
+        for current in (tracker_entry, design_entry):
+            self.assertIn("Phase 1.6", current)
+            self.assertIn("ora/programming@2.0.1", current)
+            self.assertIn(
+                "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927",
+                current,
+            )
+            self.assertIn("historical derivation evidence", current)
+            self.assertNotIn("will be regenerated in Phase 1.6", current)
+            self.assertNotIn(
+                "will be regenerated after its generating sources synchronize",
+                current,
+            )
 
 
 if __name__ == "__main__":
