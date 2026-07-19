@@ -142,18 +142,10 @@ class Phase24DelegationTests(Phase24Fixture):
         )
         run = self.runtime.load_run(run_id)
         self.assertEqual(run["current_node_id"], "execute-step")
-        receipt_conditions = self._grant_conditions(
-            run, "record_programming_mutation_receipt"
-        )
-        pre_state = self.runtime.record_inline_artifact(
-            run_id,
-            "repository-pre-state",
-            "repository composite before the approved mutation",
-            role="working",
-            node_id="execute-step",
-            action="record_programming_mutation_receipt",
-            selector="scope:declared_outputs",
-            satisfied_conditions=receipt_conditions,
+        pre_state = self.delegation.capture_repository_state(
+            "dialogue-plan",
+            artifact_id="repository-pre-state",
+            phase="pre_action",
         )
         if checkpoint:
             self.runtime.create_checkpoint(
@@ -164,37 +156,37 @@ class Phase24DelegationTests(Phase24Fixture):
             )
         return pre_state
 
-    def _post_state_and_receipt(self, state, pre_state):
-        run_id = state["run_id"]
-        run = self.runtime.load_run(run_id)
+    def _post_state(self, state):
+        run = self.runtime.load_run(state["run_id"])
         conditions = self._grant_conditions(
-            run, "record_programming_mutation_receipt"
+            run, "execute_approved_programming_step"
         )
-        post_state = self.runtime.record_inline_artifact(
-            run_id,
-            "repository-post-state",
-            "repository composite after the approved mutation",
-            role="working",
-            node_id="execute-step",
-            action="record_programming_mutation_receipt",
-            selector="scope:declared_outputs",
-            source_artifact_ids=[pre_state["artifact"]["artifact_id"]],
+        self.runtime.authorize_action(
+            state["run_id"],
+            "execute_approved_programming_step",
+            ["artifact:report.py"],
             satisfied_conditions=conditions,
+            effect_type="local_reversible",
+            scope_kind="external",
         )
-        receipt = self.runtime.record_inline_artifact(
-            run_id,
-            "repository-mutation-receipt",
-            "exact local-reversible repository mutation receipt",
-            role="external_effect_receipt",
-            node_id="execute-step",
-            action="record_programming_mutation_receipt",
-            selector="scope:declared_outputs",
-            source_artifact_ids=[
-                pre_state["artifact"]["artifact_id"],
-                post_state["artifact"]["artifact_id"],
-            ],
-            satisfied_conditions=conditions,
-            media_type="application/json",
+        report = self.target / "report.py"
+        report.write_text(
+            report.read_text(encoding="utf-8") + "# approved mutation\n",
+            encoding="utf-8",
+        )
+        return self.delegation.capture_repository_state(
+            "dialogue-plan",
+            artifact_id="repository-post-state",
+            phase="post_action",
+        )
+
+    def _post_state_and_receipt(self, state, pre_state):
+        post_state = self._post_state(state)
+        receipt = self.delegation.issue_repository_mutation_receipt(
+            "dialogue-plan",
+            artifact_id="repository-mutation-receipt",
+            pre_state_artifact_id=pre_state["artifact"]["artifact_id"],
+            post_state_artifact_id=post_state["artifact"]["artifact_id"],
         )
         return post_state, receipt
 
@@ -274,6 +266,103 @@ class Phase24DelegationTests(Phase24Fixture):
         self.assertFalse(plan_state["target_mutation_authorized"])
         self.assertEqual(plan_state["next_action"], "delegated_execution_active")
 
+    def test_mutation_authority_is_denied_at_execute_preflight(self):
+        state = self.approved()
+        self.delegate(state)
+        run = self.runtime.load_run(state["run_id"])
+        self.assertEqual(run["current_node_id"], "execute-preflight")
+        conditions = self._grant_conditions(
+            run, "execute_approved_programming_step"
+        )
+        before = self.runtime.load_records(state["run_id"])
+        with self.assertRaisesRegex(
+            runtime.AuthorityDeniedError, "only at its exact current",
+        ):
+            self.runtime.authorize_action(
+                state["run_id"],
+                "execute_approved_programming_step",
+                ["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            )
+        with self.assertRaisesRegex(
+            runtime.AuthorityDeniedError, "cannot fall through",
+        ):
+            self.runtime.record_action(
+                state["run_id"],
+                action="execute_approved_programming_step",
+                selectors=["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                external_effect=True,
+                details={"operation": "execute_approved_programming_step"},
+            )
+        self.assertEqual(self.runtime.load_records(state["run_id"]), before)
+
+    def test_mutation_authority_is_denied_before_node_local_checkpoint(self):
+        state = self.approved()
+        self._enter_external_execute_step(state, checkpoint=False)
+        run = self.runtime.load_run(state["run_id"])
+        conditions = self._grant_conditions(
+            run, "execute_approved_programming_step"
+        )
+        self.assertFalse(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+        before = self.runtime.load_records(state["run_id"])
+        with self.assertRaisesRegex(
+            runtime.AuthorityDeniedError, "node-local checkpoint",
+        ):
+            self.runtime.authorize_action(
+                state["run_id"],
+                "execute_approved_programming_step",
+                ["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            )
+        with self.assertRaisesRegex(
+            runtime.AuthorityDeniedError, "node-local checkpoint",
+        ):
+            self.runtime.record_action(
+                state["run_id"],
+                action="execute_approved_programming_step",
+                selectors=["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                external_effect=True,
+                details={"operation": "execute_approved_programming_step"},
+            )
+        self.assertEqual(self.runtime.load_records(state["run_id"]), before)
+
+    def test_mutation_authority_cannot_be_issued_after_unapproved_effect(self):
+        state = self.approved()
+        self._enter_external_execute_step(state)
+        run = self.runtime.load_run(state["run_id"])
+        conditions = self._grant_conditions(
+            run, "execute_approved_programming_step"
+        )
+        before = self.runtime.load_records(state["run_id"])
+        (self.target / "report.py").write_text(
+            "TOTAL = 99\n", encoding="utf-8"
+        )
+        self.assertFalse(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+        with self.assertRaisesRegex(
+            runtime.AuthorityDeniedError, "changed after the checkpointed pre-state",
+        ):
+            self.runtime.authorize_action(
+                state["run_id"],
+                "execute_approved_programming_step",
+                ["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            )
+        self.assertEqual(self.runtime.load_records(state["run_id"]), before)
+
     def test_external_mutation_cannot_be_mislabelled_as_ordinary_write(self):
         state = self.approved()
         pre_state = self._enter_external_execute_step(state)
@@ -299,29 +388,25 @@ class Phase24DelegationTests(Phase24Fixture):
             "execute-step",
         )
 
-    def test_external_mutation_cannot_complete_without_receipt(self):
+    def test_external_mutation_cannot_be_recorded_without_issued_receipt(self):
         state = self.approved()
         pre_state = self._enter_external_execute_step(state)
-        post_state, _receipt = self._post_state_and_receipt(state, pre_state)
+        post_state = self._post_state(state)
         run = self.runtime.load_run(state["run_id"])
         conditions = self._grant_conditions(
             run, "execute_approved_programming_step"
         )
-        self.runtime.record_action(
-            state["run_id"],
-            action="execute_approved_programming_step",
-            selectors=["artifact:report.py"],
-            satisfied_conditions=conditions,
-            effect_type="local_reversible",
-            external_effect=True,
-            details=self._mutation_details(pre_state, post_state),
-        )
-        with self.assertRaisesRegex(runtime.GovernedRuntimeError, "exact receipt"):
-            self.runtime.complete_action_node(
+        with self.assertRaisesRegex(
+            runtime.GovernedRuntimeError, "runtime-issued repository receipt",
+        ):
+            self.runtime.record_action(
                 state["run_id"],
-                "execute_approved_programming_step",
-                reason="receiptless mutation must not advance",
-                completion_details={"attempt": "receiptless"},
+                action="execute_approved_programming_step",
+                selectors=["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                external_effect=True,
+                details=self._mutation_details(pre_state, post_state),
             )
         self.assertEqual(
             self.runtime.load_run(state["run_id"])["current_node_id"],
@@ -330,61 +415,127 @@ class Phase24DelegationTests(Phase24Fixture):
 
     def test_out_of_scope_external_mutation_is_rejected(self):
         state = self.approved()
-        pre_state = self._enter_external_execute_step(state)
-        post_state, receipt = self._post_state_and_receipt(state, pre_state)
+        self._enter_external_execute_step(state)
         run = self.runtime.load_run(state["run_id"])
         conditions = self._grant_conditions(
             run, "execute_approved_programming_step"
         )
+        before_records = self.runtime.load_records(state["run_id"])
+        before_content = (self.target / "report.py").read_text(encoding="utf-8")
         with self.assertRaisesRegex(runtime.AuthorityDeniedError, "outside external"):
+            self.runtime.authorize_action(
+                state["run_id"],
+                "execute_approved_programming_step",
+                ["artifact:not-approved.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            )
+        self.assertEqual(self.runtime.load_records(state["run_id"]), before_records)
+        self.assertEqual(
+            (self.target / "report.py").read_text(encoding="utf-8"),
+            before_content,
+        )
+
+    def test_fabricated_inline_repository_state_cannot_authorize_completion(self):
+        state = self.approved()
+        authenticated_pre = self._enter_external_execute_step(state)
+        authenticated_post = self._post_state(state)
+        self.delegation.issue_repository_mutation_receipt(
+            "dialogue-plan",
+            artifact_id="authenticated-receipt",
+            pre_state_artifact_id=authenticated_pre["artifact"]["artifact_id"],
+            post_state_artifact_id=authenticated_post["artifact"]["artifact_id"],
+        )
+        run = self.runtime.load_run(state["run_id"])
+        receipt_conditions = self._grant_conditions(
+            run, "record_programming_mutation_receipt"
+        )
+        fabricated_pre = self.runtime.record_inline_artifact(
+            state["run_id"], "fabricated-pre", "not a repository capture",
+            role="working", node_id="execute-step",
+            action="record_programming_mutation_receipt",
+            selector="scope:declared_outputs",
+            satisfied_conditions=receipt_conditions,
+        )
+        fabricated_post = self.runtime.record_inline_artifact(
+            state["run_id"], "fabricated-post", "also not a repository capture",
+            role="working", node_id="execute-step",
+            action="record_programming_mutation_receipt",
+            selector="scope:declared_outputs",
+            source_artifact_ids=[fabricated_pre["artifact"]["artifact_id"]],
+            satisfied_conditions=receipt_conditions,
+        )
+        fabricated_receipt = self.runtime.record_inline_artifact(
+            state["run_id"], "fabricated-receipt", "caller-made receipt",
+            role="external_effect_receipt", node_id="execute-step",
+            action="record_programming_mutation_receipt",
+            selector="scope:declared_outputs",
+            source_artifact_ids=[
+                fabricated_pre["artifact"]["artifact_id"],
+                fabricated_post["artifact"]["artifact_id"],
+            ],
+            satisfied_conditions=receipt_conditions,
+            media_type="application/json",
+        )
+        conditions = self._grant_conditions(
+            run, "execute_approved_programming_step"
+        )
+        with self.assertRaisesRegex(
+            runtime.GovernedRuntimeError, "does not bind the exact approved",
+        ):
             self.runtime.record_action(
                 state["run_id"],
                 action="execute_approved_programming_step",
-                selectors=["artifact:not-approved.py"],
+                selectors=["artifact:report.py"],
                 satisfied_conditions=conditions,
                 effect_type="local_reversible",
                 external_effect=True,
-                receipt_artifact_id=receipt["artifact"]["artifact_id"],
-                details=self._mutation_details(pre_state, post_state),
+                receipt_artifact_id=fabricated_receipt["artifact"]["artifact_id"],
+                details=self._mutation_details(
+                    fabricated_pre, fabricated_post
+                ),
             )
-
-    def test_receipted_external_mutation_without_current_checkpoint_cannot_complete(self):
-        state = self.approved()
-        pre_state = self._enter_external_execute_step(state, checkpoint=False)
-        post_state, receipt = self._post_state_and_receipt(state, pre_state)
-        run = self.runtime.load_run(state["run_id"])
-        conditions = self._grant_conditions(
-            run, "execute_approved_programming_step"
+        self.assertEqual(
+            authenticated_pre["artifact"]["locator"]["ref"],
+            str(self.target.resolve()),
         )
-        self.runtime.record_action(
-            state["run_id"],
-            action="execute_approved_programming_step",
-            selectors=["artifact:report.py"],
-            satisfied_conditions=conditions,
-            effect_type="local_reversible",
-            external_effect=True,
-            receipt_artifact_id=receipt["artifact"]["artifact_id"],
-            details=self._mutation_details(pre_state, post_state),
-        )
-        with self.assertRaisesRegex(
-            runtime.GovernedRuntimeError, "exact pre-action checkpoint",
-        ):
-            self.runtime.complete_action_node(
-                state["run_id"],
-                "execute_approved_programming_step",
-                reason="checkpoint-free mutation must not advance",
-                completion_details={"attempt": "checkpointless"},
-            )
 
     def test_exact_checkpointed_receipted_external_mutation_advances(self):
         state = self.approved()
         pre_state = self._enter_external_execute_step(state)
         ready = self.service.get_state("dialogue-plan")
         self.assertTrue(ready["target_mutation_authorized"])
-        post_state, receipt = self._post_state_and_receipt(state, pre_state)
+        self.assertFalse(any(
+            (record.get("event") or {}).get("event_type")
+            == "external_action_authorized"
+            for record in self.runtime.load_records(state["run_id"])
+        ))
         run = self.runtime.load_run(state["run_id"])
         conditions = self._grant_conditions(
             run, "execute_approved_programming_step"
+        )
+        self.assertEqual(
+            self.runtime.authorize_action(
+                state["run_id"],
+                "execute_approved_programming_step",
+                ["artifact:report.py"],
+                satisfied_conditions=conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            ),
+            ["grant-execute-approved-step"],
+        )
+        self.assertEqual(
+            pre_state["artifact"]["locator"],
+            {"kind": "file", "ref": str(self.target.resolve())},
+        )
+        self.assertEqual(pre_state["artifact"]["identity"]["kind"], "composite")
+        post_state, receipt = self._post_state_and_receipt(state, pre_state)
+        self.assertEqual(post_state["artifact"]["locator"], pre_state["artifact"]["locator"])
+        self.assertEqual(
+            receipt["payload"]["target_binding"]["locator"],
+            pre_state["artifact"]["locator"],
         )
         action = self.runtime.record_action(
             state["run_id"],
@@ -397,6 +548,20 @@ class Phase24DelegationTests(Phase24Fixture):
             details=self._mutation_details(pre_state, post_state),
         )
         self.assertTrue(action["event"]["details"]["external_effect"])
+        event_types = [
+            (record.get("event") or {}).get("event_type")
+            for record in self.runtime.load_records(state["run_id"])
+        ]
+        self.assertLess(
+            event_types.index("external_action_authorized"),
+            event_types.index("repository_state_captured", event_types.index(
+                "external_action_authorized"
+            )),
+        )
+        self.assertLess(
+            event_types.index("repository_mutation_receipt_issued"),
+            event_types.index("action_completed"),
+        )
         self.runtime.complete_action_node(
             state["run_id"],
             "execute_approved_programming_step",

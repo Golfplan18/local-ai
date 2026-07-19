@@ -105,6 +105,9 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "dialogue_observation_recorded",
     "run_contracts_replaced",
     "delegation_activated",
+    "external_action_authorized",
+    "repository_state_captured",
+    "repository_mutation_receipt_issued",
     "process_invoked",
     "child_return_received",
     "process_returned",
@@ -123,6 +126,7 @@ _RESERVED_RUNTIME_EVENT_PREFIXES = (
     "lifecycle_",
     "node_",
     "process_",
+    "repository_",
     "recovery_",
     "return_",
     "review_",
@@ -951,6 +955,7 @@ class GovernedProcessRuntime:
         plan_ref: Mapping[str, Any],
         approval_receipt_digest: str,
         delegation_digest: str,
+        target_binding: Mapping[str, Any],
         idempotency_key: str,
         labels: Sequence[str],
     ) -> dict[str, Any]:
@@ -969,6 +974,22 @@ class GovernedProcessRuntime:
             approval_receipt_digest, "approval_receipt_digest"
         )
         exact_delegation = _exact_digest(delegation_digest, "delegation_digest")
+        exact_target = copy.deepcopy(dict(target_binding))
+        if set(exact_target) != {"locator", "baseline_identity_digest"}:
+            raise GovernedRuntimeError("delegation target binding is incomplete")
+        locator = exact_target.get("locator")
+        if (
+            not isinstance(locator, dict)
+            or set(locator) != {"kind", "ref"}
+            or locator.get("kind") not in {"file", "git_ref"}
+            or not isinstance(locator.get("ref"), str)
+            or not Path(locator["ref"]).is_absolute()
+        ):
+            raise GovernedRuntimeError("delegation target locator is invalid")
+        exact_target["baseline_identity_digest"] = _exact_digest(
+            exact_target.get("baseline_identity_digest"),
+            "target baseline_identity_digest",
+        )
         key = str(idempotency_key or "").strip()
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", key):
             raise GovernedRuntimeError("delegation idempotency key is invalid")
@@ -991,6 +1012,7 @@ class GovernedProcessRuntime:
                     or details.get("delegation_digest") != exact_delegation
                     or details.get("approval_receipt_digest") != exact_approval
                     or details.get("plan_ref") != dict(plan_ref)
+                    or details.get("target_binding") != exact_target
                     or details.get("idempotency_key") != key
                     or details.get("contracts") != replacement
                     or details.get("labels") != clean_labels
@@ -1110,6 +1132,7 @@ class GovernedProcessRuntime:
                     "plan_ref": copy.deepcopy(dict(plan_ref)),
                     "approval_receipt_digest": exact_approval,
                     "delegation_digest": exact_delegation,
+                    "target_binding": exact_target,
                     "idempotency_key": key,
                     "contracts": replacement,
                     "labels": clean_labels,
@@ -1447,7 +1470,7 @@ class GovernedProcessRuntime:
                     raise GovernedRuntimeError(
                         "action record selectors are outside the Process Definition node"
                     )
-                expected_grants = self.authorize_action(
+                expected_grants = self._authorize_action(
                     run_id,
                     str(action_details.get("action") or ""),
                     action_selectors,
@@ -1456,6 +1479,7 @@ class GovernedProcessRuntime:
                     ),
                     effect_type=str(action_details.get("effect_type") or ""),
                     scope_kind=scope_kind,
+                    effect_recording=True,
                 )
                 if action_details.get("grant_ids") != expected_grants:
                     raise GovernedRuntimeError(
@@ -1754,6 +1778,292 @@ class GovernedProcessRuntime:
             )
 
     # -------------------------------------------------------------- authority
+    @staticmethod
+    def _node_entry_sequence(
+        run: Mapping[str, Any], records: Sequence[Mapping[str, Any]]
+    ) -> int:
+        entered_sequence = 0
+        current_node_id = run["current_node_id"]
+        for record in records:
+            transition = record.get("transition") or {}
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if transition.get("target_node_id") == current_node_id:
+                entered_sequence = int(record["sequence"])
+            elif (
+                event.get("event_type") == "node_advanced"
+                and details.get("to_node_id") == current_node_id
+            ):
+                entered_sequence = int(record["sequence"])
+            elif (
+                event.get("event_type") == "run_started"
+                and details.get("entry_node_id") == current_node_id
+            ):
+                entered_sequence = int(record["sequence"])
+            elif (
+                event.get("event_type") == "run_resumed"
+                and details.get("resume_node_id") == current_node_id
+            ):
+                entered_sequence = int(record["sequence"])
+            elif (
+                event.get("event_type") == "child_return_received"
+                and details.get("return_node_id") == current_node_id
+            ):
+                entered_sequence = int(record["sequence"])
+        return entered_sequence
+
+    def _delegation_target_binding(
+        self,
+        run: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any] | None:
+        activations = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "delegation_activated"
+        ]
+        if not activations:
+            return None
+        if len(activations) != 1:
+            raise AuthorityDeniedError(
+                "delegated mutation authority has an ambiguous activation"
+            )
+        details = activations[0]["event"]["details"]
+        binding = details.get("target_binding")
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != {"locator", "baseline_identity_digest"}
+            or details.get("plan_ref")
+            != {
+                field: run["contracts"]["approved_plan"][field]
+                for field in ("plan_id", "version", "digest")
+            }
+        ):
+            raise AuthorityDeniedError(
+                "delegated mutation authority lacks its exact approved target binding"
+            )
+        locator = binding.get("locator")
+        if (
+            not isinstance(locator, dict)
+            or set(locator) != {"kind", "ref"}
+            or locator.get("kind") not in {"file", "git_ref"}
+            or not isinstance(locator.get("ref"), str)
+            or not Path(locator["ref"]).is_absolute()
+            or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}",
+                str(binding.get("baseline_identity_digest") or ""),
+            )
+        ):
+            raise AuthorityDeniedError(
+                "delegated mutation target binding is invalid"
+            )
+        return copy.deepcopy(binding)
+
+    def _delegated_mutation_authority_context(
+        self,
+        run: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        *,
+        effect_recording: bool,
+    ) -> dict[str, Any] | None:
+        target = self._delegation_target_binding(run, records)
+        if target is None:
+            return None
+        entered_sequence = self._node_entry_sequence(run, records)
+        current = [
+            record for record in records
+            if int(record["sequence"]) > entered_sequence
+            and record["node_id"] == run["current_node_id"]
+        ]
+        captures = [
+            record for record in current
+            if (record.get("event") or {}).get("event_type")
+            == "repository_state_captured"
+        ]
+        pre_captures = [
+            record for record in captures
+            if ((record.get("event") or {}).get("details") or {}).get("phase")
+            == "pre_action"
+        ]
+        post_captures = [
+            record for record in captures
+            if ((record.get("event") or {}).get("details") or {}).get("phase")
+            == "post_action"
+        ]
+        if len(pre_captures) != 1:
+            raise AuthorityDeniedError(
+                "delegated mutation authority requires one authenticated repository "
+                "pre-state capture at the current node"
+            )
+        pre = pre_captures[0]
+        pre_details = pre["event"]["details"]
+        pre_artifact = self.load_artifact(
+            str(run["run_id"]), str(pre_details.get("artifact_id") or "")
+        )
+        if (
+            pre_details.get("target_binding") != target
+            or pre_artifact["locator"] != target["locator"]
+            or pre_artifact["identity"]["kind"] != "composite"
+            or pre_artifact["identity"]["digest"]
+            != pre_details.get("identity_digest")
+            or pre_artifact["media_type"]
+            != "application/vnd.ora.repository-state+json"
+        ):
+            raise AuthorityDeniedError(
+                "repository pre-state capture does not bind the approved target"
+            )
+        checkpoints = [
+            record for record in current
+            if int(record["sequence"]) > int(pre["sequence"])
+            and (record.get("event") or {}).get("event_type")
+            == "checkpoint_created"
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "resume_node_id"
+            ) == run["current_node_id"]
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "artifact_identities", {}
+            ).get(pre_details.get("artifact_id"))
+            == pre_details.get("identity_digest")
+        ]
+        if len(checkpoints) != 1:
+            raise AuthorityDeniedError(
+                "delegated mutation authority requires one exact node-local checkpoint "
+                "after the authenticated repository pre-state"
+            )
+        checkpoint = checkpoints[0]
+        if effect_recording:
+            authorizations = [
+                record for record in current
+                if (record.get("event") or {}).get("event_type")
+                == "external_action_authorized"
+            ]
+            if len(authorizations) != 1:
+                raise AuthorityDeniedError(
+                    "recording a delegated mutation requires one prior runtime-issued "
+                    "action authorization"
+                )
+            authorization = authorizations[0]
+            authorization_details = authorization["event"]["details"]
+            if (
+                int(authorization["sequence"]) <= int(checkpoint["sequence"])
+                or authorization_details.get("node_id") != run["current_node_id"]
+                or authorization_details.get("node_external_effect") is not True
+                or authorization_details.get("checkpoint_record_id")
+                != checkpoint["record_id"]
+                or authorization_details.get("target_binding") != target
+                or authorization_details.get("approved_plan_digest")
+                != run["contracts"]["approved_plan"]["digest"]
+            ):
+                raise AuthorityDeniedError(
+                    "runtime-issued mutation authority is not bound to the current "
+                    "checkpoint and approved target"
+                )
+            if len(post_captures) != 1:
+                raise AuthorityDeniedError(
+                    "recording a delegated mutation requires one authenticated "
+                    "repository post-state capture"
+                )
+            post = post_captures[0]
+            post_details = post["event"]["details"]
+            post_artifact = self.load_artifact(
+                str(run["run_id"]), str(post_details.get("artifact_id") or "")
+            )
+            if (
+                int(post["sequence"]) <= int(checkpoint["sequence"])
+                or int(post["sequence"]) <= int(authorization["sequence"])
+                or post_details.get("target_binding") != target
+                or post_artifact["locator"] != target["locator"]
+                or post_artifact["identity"]["kind"] != "composite"
+                or post_artifact["identity"]["digest"]
+                != post_details.get("identity_digest")
+                or post_artifact["media_type"]
+                != "application/vnd.ora.repository-state+json"
+            ):
+                raise AuthorityDeniedError(
+                    "repository post-state capture does not follow the exact checkpoint"
+                )
+        else:
+            if post_captures or any(
+                (record.get("event") or {}).get("event_type")
+                in {"repository_mutation_receipt_issued", "action_completed"}
+                for record in current
+            ):
+                raise AuthorityDeniedError(
+                    "delegated mutation authority has already been exercised at this node"
+                )
+            post = None
+            authorization = None
+        return {
+            "target_binding": target,
+            "entered_sequence": entered_sequence,
+            "pre_capture": pre,
+            "checkpoint": checkpoint,
+            "post_capture": post,
+            "authorization": authorization,
+            "current_records": current,
+        }
+
+    def _assert_delegated_target_current(
+        self,
+        context: Mapping[str, Any],
+    ) -> None:
+        """Recapture the approved target immediately before authority issuance."""
+
+        try:
+            from process_plan_approval import capture_target_identity
+        except ImportError:  # pragma: no cover - package-qualified import
+            from orchestrator.process_plan_approval import capture_target_identity
+        current = capture_target_identity(
+            context["target_binding"]["locator"]["ref"],
+            captured_at=self._now(),
+        )
+        pre_details = context["pre_capture"]["event"]["details"]
+        if (
+            current["locator"] != context["target_binding"]["locator"]
+            or current["identity"]["digest"] != pre_details["identity_digest"]
+        ):
+            raise AuthorityDeniedError(
+                "approved repository target changed after the checkpointed pre-state; "
+                "mutation authority is withheld"
+            )
+
+    def preview_action_authorization(
+        self,
+        run_id: str,
+        action: str,
+        selectors: Sequence[str],
+        *,
+        satisfied_conditions: Sequence[str] = (),
+        effect_type: str | None = None,
+        scope_kind: str | None = None,
+    ) -> list[str]:
+        """Validate whether authority is issuable without issuing it."""
+
+        with _locked():
+            grant_ids = self._authorize_action(
+                run_id,
+                action,
+                selectors,
+                satisfied_conditions=satisfied_conditions,
+                effect_type=effect_type,
+                scope_kind=scope_kind,
+                effect_recording=False,
+            )
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if (
+                node["kind"] == "action"
+                and node["external_effect"] is True
+                and node["operation"] == action
+            ):
+                context = self._delegated_mutation_authority_context(
+                    run, self.load_records(run_id), effect_recording=False
+                )
+                if context is not None:
+                    self._assert_delegated_target_current(context)
+            return grant_ids
+
     def authorize_action(
         self,
         run_id: str,
@@ -1764,12 +2074,126 @@ class GovernedProcessRuntime:
         effect_type: str | None = None,
         scope_kind: str | None = None,
     ) -> list[str]:
+        with _locked():
+            grant_ids = self._authorize_action(
+                run_id,
+                action,
+                selectors,
+                satisfied_conditions=satisfied_conditions,
+                effect_type=effect_type,
+                scope_kind=scope_kind,
+                effect_recording=False,
+            )
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            records = self.load_records(run_id)
+            if (
+                node["kind"] == "action"
+                and node["external_effect"] is True
+                and node["operation"] == action
+            ):
+                context = self._delegated_mutation_authority_context(
+                    run, records, effect_recording=False
+                )
+                if context is not None:
+                    self._assert_delegated_target_current(context)
+                    authorization = {
+                        "action": action,
+                        "selectors": list(selectors),
+                        "grant_ids": grant_ids,
+                        "satisfied_conditions": list(satisfied_conditions),
+                        "effect_type": effect_type,
+                        "scope_kind": scope_kind,
+                        "node_id": run["current_node_id"],
+                        "node_external_effect": True,
+                        "checkpoint_record_id": context["checkpoint"]["record_id"],
+                        "pre_state_identity": {
+                            "artifact_id": context["pre_capture"]["event"][
+                                "details"
+                            ]["artifact_id"],
+                            "identity_digest": context["pre_capture"]["event"][
+                                "details"
+                            ]["identity_digest"],
+                        },
+                        "target_binding": context["target_binding"],
+                        "approved_plan_digest": run["contracts"]["approved_plan"][
+                            "digest"
+                        ],
+                    }
+                    prior = [
+                        record for record in context["current_records"]
+                        if (record.get("event") or {}).get("event_type")
+                        == "external_action_authorized"
+                    ]
+                    if prior:
+                        if (
+                            len(prior) != 1
+                            or prior[0]["event"]["details"] != authorization
+                        ):
+                            raise AuthorityDeniedError(
+                                "a different mutation authority was already issued "
+                                "at this node"
+                            )
+                    else:
+                        self._append_event_locked(
+                            run,
+                            "external_action_authorized",
+                            authorization,
+                            node_id=run["current_node_id"],
+                            runtime_authoritative=True,
+                        )
+            return grant_ids
+
+    def _authorize_action(
+        self,
+        run_id: str,
+        action: str,
+        selectors: Sequence[str],
+        *,
+        satisfied_conditions: Sequence[str] = (),
+        effect_type: str | None = None,
+        scope_kind: str | None = None,
+        effect_recording: bool,
+    ) -> list[str]:
         if not selectors:
             raise AuthorityDeniedError("an authorized action requires at least one selector")
         if effect_type is None:
             raise AuthorityDeniedError("an authorized action requires an explicit effect_type")
         run = self.load_run(run_id)
         self._require_mutable_run(run, f"authorize action {action}")
+        definition = self.load_definition(run_id)
+        nodes = self._graph_nodes(definition)
+        graph_bound_nodes = [
+            node for node in nodes.values()
+            if node["kind"] == "action"
+            and node["external_effect"] is True
+            and node["operation"] == action
+        ]
+        if graph_bound_nodes:
+            current_node = nodes[run["current_node_id"]]
+            if (
+                current_node["kind"] != "action"
+                or current_node["operation"] != action
+            ):
+                raise AuthorityDeniedError(
+                    "graph-bound action authority is available only at its exact "
+                    "current Process Definition node"
+                )
+            expected_scope_kind = (
+                "external" if current_node["external_effect"] else "write"
+            )
+            if scope_kind != expected_scope_kind:
+                raise AuthorityDeniedError(
+                    "graph-bound action scope must match the Process Definition "
+                    "external-effect classification"
+                )
+            if current_node["external_effect"]:
+                self._delegated_mutation_authority_context(
+                    run,
+                    self.load_records(run_id),
+                    effect_recording=effect_recording,
+                )
         authority = run["contracts"]["authority"]
         expires_at = authority.get("expires_at")
         if expires_at and _parse_time(expires_at) < _parse_time(self._now()):
@@ -1840,9 +2264,28 @@ class GovernedProcessRuntime:
         with _locked():
             run = self.load_run(run_id)
             definition = self.load_definition(run_id)
-            node = self._graph_nodes(definition)[run["current_node_id"]]
+            nodes = self._graph_nodes(definition)
+            node = nodes[run["current_node_id"]]
             requested_external = bool(external_effect)
             completion_operation = str(action_details.get("operation") or "")
+            graph_bound_action = any(
+                candidate["kind"] == "action"
+                and candidate["external_effect"] is True
+                and candidate["operation"] == action
+                for candidate in nodes.values()
+            )
+            if graph_bound_action and (
+                node["kind"] != "action" or node["operation"] != action
+            ):
+                raise AuthorityDeniedError(
+                    "graph-bound action cannot fall through to generic effect "
+                    "recording at another Process Definition node"
+                )
+            if graph_bound_action and completion_operation != action:
+                raise AuthorityDeniedError(
+                    "graph-bound action record must identify its exact current "
+                    "Process Definition operation"
+                )
             completion_bound = (
                 node["kind"] == "action"
                 and completion_operation == node["operation"]
@@ -1862,13 +2305,14 @@ class GovernedProcessRuntime:
                 authoritative_external = requested_external
 
             scope_kind = "external" if authoritative_external else "write"
-            grant_ids = self.authorize_action(
+            grant_ids = self._authorize_action(
                 run_id,
                 action,
                 selectors,
                 satisfied_conditions=satisfied_conditions,
                 effect_type=effect_type,
                 scope_kind=scope_kind,
+                effect_recording=completion_bound and authoritative_external,
             )
             if receipt_artifact_id is not None:
                 receipt = self.load_artifact(run_id, receipt_artifact_id)
@@ -1882,6 +2326,70 @@ class GovernedProcessRuntime:
                 raise GovernedRuntimeError(
                     "a receipt may be bound only to an external effect"
                 )
+            if completion_bound and authoritative_external:
+                records = self.load_records(run_id)
+                repository_context = self._delegated_mutation_authority_context(
+                    run, records, effect_recording=True
+                )
+                if repository_context is not None:
+                    issued = [
+                        record for record in repository_context["current_records"]
+                        if (record.get("event") or {}).get("event_type")
+                        == "repository_mutation_receipt_issued"
+                    ]
+                    if len(issued) != 1 or receipt is None:
+                        raise GovernedRuntimeError(
+                            "delegated mutation recording requires one runtime-issued "
+                            "repository receipt"
+                        )
+                    issued_record = issued[0]
+                    issued_details = issued_record["event"]["details"]
+                    pre_details = repository_context["pre_capture"]["event"][
+                        "details"
+                    ]
+                    post_details = repository_context["post_capture"]["event"][
+                        "details"
+                    ]
+                    authorization = repository_context["authorization"]
+                    authorization_details = authorization["event"]["details"]
+                    expected_pre = {
+                        "artifact_id": pre_details["artifact_id"],
+                        "identity_digest": pre_details["identity_digest"],
+                    }
+                    expected_post = {
+                        "artifact_id": post_details["artifact_id"],
+                        "identity_digest": post_details["identity_digest"],
+                    }
+                    if (
+                        issued_details.get("operation") != node["operation"]
+                        or authorization_details.get("action") != action
+                        or authorization_details.get("selectors") != list(selectors)
+                        or authorization_details.get("grant_ids") != grant_ids
+                        or authorization_details.get("effect_type") != effect_type
+                        or authorization_details.get("scope_kind") != "external"
+                        or int(authorization["sequence"])
+                        >= int(repository_context["post_capture"]["sequence"])
+                        or issued_details.get("target_binding")
+                        != repository_context["target_binding"]
+                        or issued_details.get("checkpoint_record_id")
+                        != repository_context["checkpoint"]["record_id"]
+                        or issued_details.get("pre_state_identity") != expected_pre
+                        or issued_details.get("post_state_identity") != expected_post
+                        or issued_details.get("receipt_artifact_id")
+                        != receipt_artifact_id
+                        or issued_details.get("receipt_identity_digest")
+                        != receipt["identity"]["digest"]
+                        or action_details.get("pre_state_identity") != expected_pre
+                        or action_details.get("post_state_identity") != expected_post
+                        or set(receipt["lineage"]["source_artifact_ids"])
+                        != {expected_pre["artifact_id"], expected_post["artifact_id"]}
+                        or int(issued_record["sequence"])
+                        <= int(repository_context["post_capture"]["sequence"])
+                    ):
+                        raise GovernedRuntimeError(
+                            "delegated mutation receipt does not bind the exact "
+                            "approved repository transition"
+                        )
             return self._record_runtime_event(
                 run_id,
                 "action_completed",
@@ -3484,6 +3992,334 @@ class GovernedProcessRuntime:
                 )
             bindings[artifact_id] = binding
         return bindings
+
+    def _record_repository_state_capture(
+        self,
+        run_id: str,
+        artifact_id: str,
+        capture: Mapping[str, Any],
+        *,
+        phase: str,
+        satisfied_conditions: Sequence[str],
+    ) -> dict[str, Any]:
+        """Persist a service-captured approved repository identity.
+
+        Only the Phase 2.4 delegation service calls this seam, after it has
+        captured the target itself.  Ordinary Artifact recording cannot mint
+        the reserved ``repository_state_captured`` authority fact.
+        """
+
+        if phase not in {"pre_action", "post_action"}:
+            raise GovernedRuntimeError(
+                "repository state phase must be pre_action or post_action"
+            )
+        exact_capture = copy.deepcopy(dict(capture))
+        if set(exact_capture) != {"locator", "identity", "state"}:
+            raise GovernedRuntimeError("repository state capture is incomplete")
+        locator = exact_capture.get("locator")
+        identity = exact_capture.get("identity")
+        state = exact_capture.get("state")
+        if (
+            not isinstance(locator, dict)
+            or set(locator) != {"kind", "ref"}
+            or not isinstance(identity, dict)
+            or set(identity) != {"kind", "digest", "coverage", "captured_at"}
+            or not isinstance(state, dict)
+            or identity.get("kind") != "composite"
+            or identity.get("digest") != _digest_json(state)
+            or state.get("root") != locator.get("ref")
+            or (
+                locator.get("kind") == "git_ref"
+                and state.get("kind") != "git_worktree_composite"
+            )
+            or (
+                locator.get("kind") == "file"
+                and state.get("kind") != "directory_composite"
+            )
+        ):
+            raise GovernedRuntimeError(
+                "repository state capture is not a normalized target composite"
+            )
+        captured_at = str(identity.get("captured_at") or "")
+        captured_time = _parse_time(captured_at)
+        fresh_until = (captured_time + timedelta(hours=1)).isoformat().replace(
+            "+00:00", "Z"
+        )
+
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "capture approved repository state")
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "action" or not node["external_effect"]:
+                raise AuthorityDeniedError(
+                    "repository state capture requires the current external-effect node"
+                )
+            records = self.load_records(run_id)
+            target = self._delegation_target_binding(run, records)
+            if target is None or locator != target["locator"]:
+                raise AuthorityDeniedError(
+                    "repository state capture locator differs from the approved target"
+                )
+            entered_sequence = self._node_entry_sequence(run, records)
+            current = [
+                record for record in records
+                if int(record["sequence"]) > entered_sequence
+                and record["node_id"] == run["current_node_id"]
+            ]
+            current_captures = [
+                record for record in current
+                if (record.get("event") or {}).get("event_type")
+                == "repository_state_captured"
+            ]
+            current_checkpoints = [
+                record for record in current
+                if (record.get("event") or {}).get("event_type")
+                == "checkpoint_created"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "resume_node_id"
+                ) == run["current_node_id"]
+            ]
+            if phase == "pre_action":
+                if current_captures or current_checkpoints:
+                    raise RunConflictError(
+                        "repository pre-state must be captured exactly once before "
+                        "the node-local checkpoint"
+                    )
+                prior_posts = [
+                    record for record in records
+                    if int(record["sequence"]) <= entered_sequence
+                    and (record.get("event") or {}).get("event_type")
+                    == "repository_state_captured"
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "phase"
+                    ) == "post_action"
+                ]
+                expected_digest = (
+                    prior_posts[-1]["event"]["details"]["identity_digest"]
+                    if prior_posts
+                    else target["baseline_identity_digest"]
+                )
+                if identity["digest"] != expected_digest:
+                    raise AuthorityDeniedError(
+                        "repository pre-state differs from the approved or last "
+                        "authenticated target identity"
+                    )
+                source_ids: list[str] = []
+            else:
+                pre_captures = [
+                    record for record in current_captures
+                    if record["event"]["details"].get("phase") == "pre_action"
+                ]
+                post_captures = [
+                    record for record in current_captures
+                    if record["event"]["details"].get("phase") == "post_action"
+                ]
+                if len(pre_captures) != 1 or post_captures:
+                    raise RunConflictError(
+                        "repository post-state requires one current pre-state and "
+                        "cannot be recorded twice"
+                    )
+                pre = pre_captures[0]
+                checkpoints = [
+                    record for record in current_checkpoints
+                    if int(record["sequence"]) > int(pre["sequence"])
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "artifact_identities", {}
+                    ).get(pre["event"]["details"]["artifact_id"])
+                    == pre["event"]["details"]["identity_digest"]
+                ]
+                if len(checkpoints) != 1:
+                    raise AuthorityDeniedError(
+                        "repository post-state requires the exact authorized checkpoint"
+                    )
+                authorizations = [
+                    record for record in current
+                    if (record.get("event") or {}).get("event_type")
+                    == "external_action_authorized"
+                ]
+                if (
+                    len(authorizations) != 1
+                    or int(authorizations[0]["sequence"])
+                    <= int(checkpoints[0]["sequence"])
+                    or authorizations[0]["event"]["details"].get(
+                        "checkpoint_record_id"
+                    ) != checkpoints[0]["record_id"]
+                    or authorizations[0]["event"]["details"].get(
+                        "target_binding"
+                    ) != target
+                    or authorizations[0]["event"]["details"].get("action")
+                    != node["operation"]
+                ):
+                    raise AuthorityDeniedError(
+                        "repository post-state requires prior runtime-issued mutation "
+                        "authority for this checkpoint"
+                    )
+                source_ids = [pre["event"]["details"]["artifact_id"]]
+
+            artifact = {
+                "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+                "object_family": "artifact",
+                "artifact_id": artifact_id,
+                "role": "working",
+                "status": "candidate",
+                "media_type": "application/vnd.ora.repository-state+json",
+                "locator": copy.deepcopy(locator),
+                "identity": {
+                    **copy.deepcopy(identity),
+                    "fresh_until": fresh_until,
+                },
+                "lineage": {
+                    "run_id": run_id,
+                    "definition_ref": copy.deepcopy(run["definition_ref"]),
+                    "producing_node_id": run["current_node_id"],
+                    "source_artifact_ids": source_ids,
+                    "event_record_id": f"event-{uuid.uuid4().hex}",
+                },
+                "created_at": captured_at,
+            }
+            recorded = self.record_artifact(
+                artifact,
+                action="record_programming_mutation_receipt",
+                selectors=["scope:declared_outputs"],
+                satisfied_conditions=satisfied_conditions,
+            )
+            materialized = self.load_run(run_id)
+            capture_record = self._append_event_locked(
+                materialized,
+                "repository_state_captured",
+                {
+                    "phase": phase,
+                    "artifact_id": artifact_id,
+                    "identity_digest": identity["digest"],
+                    "target_binding": target,
+                    "operation": node["operation"],
+                    "approved_plan_digest": run["contracts"]["approved_plan"][
+                        "digest"
+                    ],
+                },
+                node_id=run["current_node_id"],
+                artifact_ids=[artifact_id],
+                runtime_authoritative=True,
+            )
+            return {**recorded, "capture_record": capture_record}
+
+    def _issue_repository_mutation_receipt(
+        self,
+        run_id: str,
+        artifact_id: str,
+        *,
+        pre_state_artifact_id: str,
+        post_state_artifact_id: str,
+        satisfied_conditions: Sequence[str],
+    ) -> dict[str, Any]:
+        """Issue the only receipt accepted for a delegated repository mutation."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "issue repository mutation receipt")
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            if node["kind"] != "action" or not node["external_effect"]:
+                raise AuthorityDeniedError(
+                    "repository mutation receipt requires the current external-effect node"
+                )
+            records = self.load_records(run_id)
+            context = self._delegated_mutation_authority_context(
+                run, records, effect_recording=True
+            )
+            if context is None:
+                raise AuthorityDeniedError(
+                    "repository mutation receipt requires an approved delegation"
+                )
+            current_receipts = [
+                record for record in context["current_records"]
+                if (record.get("event") or {}).get("event_type")
+                == "repository_mutation_receipt_issued"
+            ]
+            if current_receipts:
+                raise RunConflictError(
+                    "repository mutation receipt was already issued at this node"
+                )
+            pre_details = context["pre_capture"]["event"]["details"]
+            post_details = context["post_capture"]["event"]["details"]
+            if (
+                pre_state_artifact_id != pre_details["artifact_id"]
+                or post_state_artifact_id != post_details["artifact_id"]
+            ):
+                raise GovernedRuntimeError(
+                    "repository receipt state IDs differ from authenticated captures"
+                )
+            payload = {
+                "schema_version": "ora.repository-mutation-receipt/1.0",
+                "operation": node["operation"],
+                "approved_plan_digest": run["contracts"]["approved_plan"]["digest"],
+                "target_binding": context["target_binding"],
+                "checkpoint_record_id": context["checkpoint"]["record_id"],
+                "pre_state_identity": {
+                    "artifact_id": pre_details["artifact_id"],
+                    "identity_digest": pre_details["identity_digest"],
+                },
+                "post_state_identity": {
+                    "artifact_id": post_details["artifact_id"],
+                    "identity_digest": post_details["identity_digest"],
+                },
+            }
+            now = self._now()
+            artifact = {
+                "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+                "object_family": "artifact",
+                "artifact_id": artifact_id,
+                "role": "external_effect_receipt",
+                "status": "verified",
+                "media_type": "application/json",
+                "locator": {
+                    "kind": "inline",
+                    "ref": f"inline:{run_id}:{artifact_id}",
+                },
+                "identity": {
+                    "kind": "content_digest",
+                    "digest": _digest_json(payload),
+                    "coverage": [
+                        "approved_target_locator", "pre_state", "post_state",
+                        "checkpoint", "operation", "approved_plan",
+                    ],
+                    "captured_at": now,
+                    "fresh_until": (
+                        _parse_time(now) + timedelta(hours=1)
+                    ).isoformat().replace("+00:00", "Z"),
+                },
+                "lineage": {
+                    "run_id": run_id,
+                    "definition_ref": copy.deepcopy(run["definition_ref"]),
+                    "producing_node_id": run["current_node_id"],
+                    "source_artifact_ids": [
+                        pre_details["artifact_id"], post_details["artifact_id"],
+                    ],
+                    "event_record_id": f"event-{uuid.uuid4().hex}",
+                },
+                "created_at": now,
+            }
+            recorded = self.record_artifact(
+                artifact,
+                action="record_programming_mutation_receipt",
+                selectors=["scope:declared_outputs"],
+                satisfied_conditions=satisfied_conditions,
+            )
+            materialized = self.load_run(run_id)
+            issued = self._append_event_locked(
+                materialized,
+                "repository_mutation_receipt_issued",
+                {
+                    **payload,
+                    "receipt_artifact_id": artifact_id,
+                    "receipt_identity_digest": artifact["identity"]["digest"],
+                },
+                node_id=run["current_node_id"],
+                artifact_ids=[artifact_id],
+                runtime_authoritative=True,
+            )
+            return {**recorded, "receipt_record": issued, "payload": payload}
 
     def record_artifact(
         self,

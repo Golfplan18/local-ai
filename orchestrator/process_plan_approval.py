@@ -1502,26 +1502,8 @@ class ProcessPlanApprovalService:
                         grant for grant in run["contracts"]["authority"]["grants"]
                         if current_node["operation"] in grant["actions"]
                     ]
-                    checkpoint_states = (
-                        (checkpoints[-1]["event"]["details"] or {}).get(
-                            "artifact_identities", {}
-                        )
-                        if checkpoints else {}
-                    )
-                    state_artifacts_current = False
-                    for artifact_id, identity_digest in checkpoint_states.items():
-                        artifact = self.runtime.load_artifact(
-                            run["run_id"], artifact_id
-                        )
-                        if artifact["identity"]["digest"] != identity_digest:
-                            raise ProcessPlanIntegrityError(
-                                "pre-action checkpoint Artifact identity drifted"
-                            )
-                        if artifact["role"] in {"input", "working", "result"}:
-                            state_artifacts_current = True
-                    target_mutation_ready = bool(
+                    mechanically_scoped = bool(
                         checkpoints
-                        and state_artifacts_current
                         and external_scope
                         and not (external_scope & write_scope)
                         and len(mutation_grants) == 1
@@ -1530,6 +1512,22 @@ class ProcessPlanApprovalService:
                         and "local_reversible"
                         in mutation_grants[0]["effect_types"]
                     )
+                    if mechanically_scoped:
+                        try:
+                            self.runtime.preview_action_authorization(
+                                run["run_id"],
+                                current_node["operation"],
+                                sorted(external_scope),
+                                satisfied_conditions=mutation_grants[0][
+                                    "conditions"
+                                ],
+                                effect_type="local_reversible",
+                                scope_kind="external",
+                            )
+                        except AuthorityDeniedError:
+                            target_mutation_ready = False
+                        else:
+                            target_mutation_ready = True
             if (
                 approval is not None
                 and export is not None

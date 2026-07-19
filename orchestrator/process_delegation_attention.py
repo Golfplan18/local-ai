@@ -552,6 +552,14 @@ class ProcessDelegationAttentionService:
                 "target_baseline_digest": plan[
                     "repository_artifact_scope"
                 ]["target"]["identity"]["digest"],
+                "target_binding": {
+                    "locator": copy.deepcopy(
+                        plan["repository_artifact_scope"]["target"]["locator"]
+                    ),
+                    "baseline_identity_digest": plan[
+                        "repository_artifact_scope"
+                    ]["target"]["identity"]["digest"],
+                },
             }
             expected_delegation_digest = _digest_json(authorization_body)
             expected_contracts = _execution_contracts(
@@ -570,6 +578,7 @@ class ProcessDelegationAttentionService:
                 or details.get("approval_receipt_digest")
                 != payload.get("approval_receipt_digest")
                 or details.get("plan_ref") != payload.get("plan_ref")
+                or details.get("target_binding") != payload.get("target_binding")
                 or details.get("idempotency_key") != payload.get("idempotency_key")
                 or details.get("contracts") != payload.get("contracts")
                 or payload.get("contracts_digest")
@@ -625,6 +634,24 @@ class ProcessDelegationAttentionService:
                 expected_materialized_contracts["continuation"][
                     "checkpoint_id"
                 ] = checkpoint_id
+            latest_checkpoint = next(
+                (
+                    record for record in reversed(
+                        self.runtime.load_records(plan_state["run_id"])
+                    )
+                    if (record.get("event") or {}).get("event_type")
+                    == "checkpoint_created"
+                ),
+                None,
+            )
+            if latest_checkpoint is not None:
+                latest_checkpoint_details = latest_checkpoint["event"]["details"]
+                expected_materialized_contracts["continuation"][
+                    "checkpoint_id"
+                ] = latest_checkpoint_details["checkpoint_id"]
+                expected_materialized_contracts["continuation"][
+                    "resume_node_id"
+                ] = latest_checkpoint_details["resume_node_id"]
             if (
                 run["contracts"] != expected_materialized_contracts
                 or run.get("labels")
@@ -827,6 +854,12 @@ class ProcessDelegationAttentionService:
                 "approval_decision": approval["decision"],
                 "requested_by": principal,
                 "target_baseline_digest": current_baseline,
+                "target_binding": {
+                    "locator": copy.deepcopy(
+                        plan["repository_artifact_scope"]["target"]["locator"]
+                    ),
+                    "baseline_identity_digest": current_baseline,
+                },
             }
             delegation_digest = _digest_json(authorization_body)
             contracts = _execution_contracts(
@@ -862,6 +895,7 @@ class ProcessDelegationAttentionService:
                 plan_ref=exact_plan_ref,
                 approval_receipt_digest=approval_digest,
                 delegation_digest=delegation_digest,
+                target_binding=authorization_body["target_binding"],
                 idempotency_key=key,
                 labels=labels,
             )
@@ -901,6 +935,97 @@ class ProcessDelegationAttentionService:
                     "delegation did not reach its exact persisted execution boundary"
                 )
             return delegated
+
+    def capture_repository_state(
+        self,
+        dialogue_ref: str,
+        *,
+        artifact_id: str,
+        phase: str,
+    ) -> dict[str, Any]:
+        """Capture the approved target itself at the current mutation node."""
+
+        with _DELEGATION_LOCK:
+            delegated = self.get_delegation(dialogue_ref)
+            plan_state = self.plan_service.get_state(dialogue_ref)
+            if (
+                delegated is None
+                or delegated.get("status") != "delegated"
+                or plan_state is None
+                or plan_state.get("current_plan") is None
+            ):
+                raise ProcessDelegationIntegrityError(
+                    "repository capture requires one active approved delegation"
+                )
+            run = self.runtime.load_run(plan_state["run_id"])
+            definition = self.runtime.load_definition(plan_state["run_id"])
+            node = {
+                item["node_id"]: item for item in definition["graph"]["nodes"]
+            }[run["current_node_id"]]
+            if (
+                node["kind"] != "action"
+                or node["external_effect"] is not True
+                or node["operation"] not in {
+                    "execute_approved_programming_step",
+                    "correct_programming_defect",
+                }
+            ):
+                raise AuthorityDeniedError(
+                    "approved repository capture requires the exact mutation node"
+                )
+            plan = plan_state["current_plan"]
+            target = plan["repository_artifact_scope"]["target"]
+            capture = capture_target_identity(
+                target["locator"]["ref"], captured_at=self._now()
+            )
+            if capture["locator"] != target["locator"]:
+                raise ProcessDelegationIntegrityError(
+                    "captured repository locator differs from the approved target"
+                )
+            conditions = next(
+                grant["conditions"]
+                for grant in run["contracts"]["authority"]["grants"]
+                if "record_programming_mutation_receipt" in grant["actions"]
+            )
+            return self.runtime._record_repository_state_capture(
+                run["run_id"], artifact_id, capture,
+                phase=phase,
+                satisfied_conditions=conditions,
+            )
+
+    def issue_repository_mutation_receipt(
+        self,
+        dialogue_ref: str,
+        *,
+        artifact_id: str,
+        pre_state_artifact_id: str,
+        post_state_artifact_id: str,
+    ) -> dict[str, Any]:
+        """Issue a receipt only for the exact authenticated target transition."""
+
+        with _DELEGATION_LOCK:
+            delegated = self.get_delegation(dialogue_ref)
+            plan_state = self.plan_service.get_state(dialogue_ref)
+            if (
+                delegated is None
+                or delegated.get("status") != "delegated"
+                or plan_state is None
+            ):
+                raise ProcessDelegationIntegrityError(
+                    "repository receipt requires one active approved delegation"
+                )
+            run = self.runtime.load_run(plan_state["run_id"])
+            conditions = next(
+                grant["conditions"]
+                for grant in run["contracts"]["authority"]["grants"]
+                if "record_programming_mutation_receipt" in grant["actions"]
+            )
+            return self.runtime._issue_repository_mutation_receipt(
+                run["run_id"], artifact_id,
+                pre_state_artifact_id=pre_state_artifact_id,
+                post_state_artifact_id=post_state_artifact_id,
+                satisfied_conditions=conditions,
+            )
 
     @staticmethod
     def _parse_time(value: str, *, field: str) -> datetime:
