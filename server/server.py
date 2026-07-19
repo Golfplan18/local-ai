@@ -5230,6 +5230,14 @@ def _process_delegation_service(plan_service=None):
     return ProcessDelegationAttentionService(repository_root=WORKSPACE)
 
 
+def _process_run_inspector_service():
+    """Construct the Phase 2.5 read-only generic Run Inspector."""
+
+    from process_run_inspector import ProcessRunInspectorService
+
+    return ProcessRunInspectorService(repository_root=WORKSPACE)
+
+
 def _process_plan_error_status(exc: Exception) -> int:
     from governed_process_runtime import AuthorityDeniedError
     from process_delegation_attention import ProcessDelegationError
@@ -5274,6 +5282,17 @@ def _process_delegation_error_status(exc: Exception) -> int:
         return 503
     if isinstance(exc, ProcessDelegationError):
         return 400
+    return 503
+
+
+def _process_run_inspector_error_status(exc: Exception) -> int:
+    from governed_process_runtime import RunNotFoundError
+    from process_run_inspector import ProcessRunInspectorError
+
+    if isinstance(exc, RunNotFoundError):
+        return 404
+    if isinstance(exc, ProcessRunInspectorError):
+        return 503
     return 503
 
 
@@ -5559,6 +5578,20 @@ def process_attention_projection():
             _process_delegation_error_status(exc),
         )
     return _json_response({"ok": True, **projection})
+
+
+@app.route("/api/process-runs/<path:run_id>/inspector", methods=["GET"])
+def process_run_inspector(run_id):
+    """Return one authenticated, read-only Phase 2.5 inspector snapshot."""
+
+    try:
+        snapshot = _process_run_inspector_service().inspect(str(run_id))
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_run_inspector_error_status(exc),
+        )
+    return _json_response({"ok": True, "inspector": snapshot})
 
 
 @app.route("/api/slash-commands", methods=["GET"])

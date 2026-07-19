@@ -260,6 +260,23 @@
       card.appendChild(detail);
     }
 
+    if (row.run_id) {
+      const inspect = document.createElement('button');
+      inspect.type = 'button';
+      inspect.className = 'process-attention-inspect';
+      inspect.dataset.processInspect = row.run_id;
+      inspect.textContent = 'Inspect';
+      inspect.setAttribute('aria-label', `Inspect Process Run ${row.title || row.run_id}`);
+      inspect.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        document.dispatchEvent(new CustomEvent('ora:process-run-inspector:open', {
+          detail: { run_id: row.run_id, trigger: inspect },
+        }));
+      });
+      card.appendChild(inspect);
+    }
+
     if (row.dialogue_ref) {
       card.tabIndex = 0;
       card.setAttribute('role', 'button');

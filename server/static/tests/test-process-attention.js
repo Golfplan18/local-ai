@@ -176,7 +176,7 @@ async function run() {
   }));
   record('healthy Process state removes process-only wordmark attraction',
     !w.document.getElementById('logo-a').classList.contains('wordmark-attract'));
-  record('no Run Inspector is introduced on Phase 2.4 cards',
+  record('Run Inspector stays progressively disclosed until selected',
     !w.document.querySelector('[data-process-run-inspector]'));
 
   var passed = results.filter(function (result) { return result.ok; }).length;

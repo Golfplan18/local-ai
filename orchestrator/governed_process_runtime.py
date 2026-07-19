@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 import threading
@@ -331,6 +332,174 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     if len(record_ids) != len(set(record_ids)):
         raise GovernedRuntimeError(f"event record_id values are not unique: {path}")
     return records
+
+
+def _git_bytes(root: Path, *args: str) -> bytes:
+    completed = subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if completed.returncode != 0:
+        raise GovernedRuntimeError(
+            "live Git identity command failed: "
+            + " ".join(args)
+            + ": "
+            + completed.stderr.decode("utf-8", errors="replace").strip()
+        )
+    return completed.stdout
+
+
+def _digest_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return "sha256:" + digest.hexdigest()
+
+
+def _capture_repository_composite_v1(root: Path) -> dict[str, Any]:
+    """Reproduce the issued Phase 1.7 repository-composite identity.
+
+    The Part 1 trial predates the planning target-composite schema.  Its issued
+    Artifact identity remains valid and therefore needs an explicit verifier,
+    rather than being silently reinterpreted as the later schema.
+    """
+
+    head = _git_bytes(root, "rev-parse", "HEAD").decode().strip()
+    status = _git_bytes(
+        root, "status", "--porcelain=v1", "-z", "--untracked-files=all"
+    )
+    listed = _git_bytes(
+        root, "ls-files", "--cached", "--others", "--exclude-standard", "-z"
+    )
+    entries: list[dict[str, Any]] = []
+    for raw_name in sorted(item for item in listed.split(b"\0") if item):
+        relative = os.fsdecode(raw_name)
+        path = root / relative
+        if path.is_symlink():
+            kind = "symlink"
+            digest = _digest_text(os.readlink(path))
+            mode = None
+        else:
+            info = path.stat()
+            if not stat.S_ISREG(info.st_mode):
+                raise GovernedRuntimeError(
+                    f"live repository identity does not support {relative!r}"
+                )
+            kind = "file"
+            digest = _digest_file(path)
+            mode = oct(info.st_mode & 0o777)
+        entries.append({
+            "path": relative,
+            "kind": kind,
+            "mode": mode,
+            "digest": digest,
+        })
+    return {
+        "schema_version": "ora.repository-composite/1.0",
+        "repository": str(root),
+        "git_head": head,
+        "git_status_digest": "sha256:" + hashlib.sha256(status).hexdigest(),
+        "worktree_entries": entries,
+    }
+
+
+def inspect_live_artifact_identity(
+    artifact: Mapping[str, Any],
+    *,
+    captured_at: str | None = None,
+) -> dict[str, Any]:
+    """Compare one persisted Artifact with the live resource it names.
+
+    This is deliberately read-only.  It supports the content-bound local
+    identity schemas Ora has actually issued.  Unsupported or unavailable
+    live resources fail closed for current-evidence purposes while remaining
+    valid historical Artifacts in the append-only Run.
+    """
+
+    candidate = _contracts.validate_artifact(artifact)
+    locator = candidate["locator"]
+    identity = candidate["identity"]
+    result: dict[str, Any] = {
+        "applicable": False,
+        "supported": False,
+        "available": True,
+        "matches": None,
+        "expected_digest": identity["digest"],
+        "current_digest": None,
+        "locator": copy.deepcopy(locator),
+        "current_state": None,
+        "reason": "Artifact locator has no live local identity boundary.",
+    }
+    if locator["kind"] not in {"file", "git_ref"}:
+        return result
+    result["applicable"] = True
+    raw_ref = str(locator["ref"])
+    supplied = Path(raw_ref)
+    try:
+        if not supplied.is_absolute() or supplied.is_symlink():
+            raise GovernedRuntimeError(
+                "live Artifact locator must be an absolute nonsymlink path"
+            )
+        target = supplied.resolve(strict=True)
+        if str(target) != raw_ref:
+            raise GovernedRuntimeError(
+                "live Artifact locator must be its canonical resolved path"
+            )
+        if identity["kind"] == "content_digest" and target.is_file():
+            current_digest = _digest_file(target)
+            state = {"kind": "file_content", "path": str(target)}
+        elif identity["kind"] == "composite" and target.is_dir():
+            coverage = set(identity["coverage"])
+            if coverage == {"git_head", "git_status", "nonignored_worktree_files"}:
+                state = _capture_repository_composite_v1(target)
+                current_digest = _digest_json(state)
+            elif {
+                "exact_target_root", "tracked_state", "unstaged_state",
+                "untracked_state", "declared_exclusions",
+            }.issubset(coverage):
+                try:
+                    from process_plan_approval import capture_target_identity
+                except ImportError:  # pragma: no cover
+                    from orchestrator.process_plan_approval import capture_target_identity
+                capture = capture_target_identity(
+                    str(target), captured_at=captured_at or _utc_now()
+                )
+                state = capture["state"]
+                current_digest = capture["identity"]["digest"]
+            else:
+                result["reason"] = (
+                    "Artifact uses an unsupported live composite identity schema."
+                )
+                return result
+        else:
+            result["reason"] = (
+                "Artifact identity kind does not match the live local resource."
+            )
+            return result
+    except (OSError, RuntimeError) as exc:
+        result.update({
+            "supported": True,
+            "available": False,
+            "matches": False,
+            "reason": f"Live Artifact resource is unavailable: {exc}",
+        })
+        return result
+    result.update({
+        "supported": True,
+        "available": True,
+        "matches": current_digest == identity["digest"],
+        "current_digest": current_digest,
+        "current_state": state,
+        "reason": (
+            "Live resource matches the persisted Artifact identity."
+            if current_digest == identity["digest"]
+            else "Live resource changed after the persisted Artifact identity was captured."
+        ),
+    })
+    return result
 
 
 @contextlib.contextmanager
@@ -4588,6 +4757,18 @@ class GovernedProcessRuntime:
             raise FinalReviewRequired(
                 f"final-review evidence is stale: {artifact_id}/{evidence_id}"
             )
+        live_evidence = inspect_live_artifact_identity(
+            evidence_artifact, captured_at=self._now()
+        )
+        if live_evidence["applicable"] and (
+            not live_evidence["supported"]
+            or not live_evidence["available"]
+            or live_evidence["matches"] is not True
+        ):
+            raise FinalReviewRequired(
+                "final-review evidence live identity is stale: "
+                f"{artifact_id}/{evidence_id}: {live_evidence['reason']}"
+            )
         self._assert_evidence_bound_to_subject(run_id, evidence_artifact, subject)
         captured = _parse_time(evidence_artifact["identity"]["captured_at"])
         fresh_until = _parse_time(evidence_artifact["identity"]["fresh_until"])
@@ -4849,6 +5030,19 @@ class GovernedProcessRuntime:
             artifact = self.load_artifact(run_id, artifact_id)
             if _parse_time(artifact["identity"]["fresh_until"]) < _parse_time(self._now()):
                 return False, f"result Artifact identity is stale: {artifact_id}"
+            live_identity = inspect_live_artifact_identity(
+                artifact, captured_at=self._now()
+            )
+            if live_identity["applicable"] and (
+                not live_identity["supported"]
+                or not live_identity["available"]
+                or live_identity["matches"] is not True
+            ):
+                return (
+                    False,
+                    "result Artifact live identity is stale: "
+                    f"{artifact_id}: {live_identity['reason']}",
+                )
             for evidence_id in requirements:
                 try:
                     self._current_passing_review(run_id, artifact_id, evidence_id)
