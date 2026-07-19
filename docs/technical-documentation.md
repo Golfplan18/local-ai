@@ -1,8 +1,8 @@
 # Ora — Technical Documentation
 
-*The deepest layer of Ora's documentation: the installed-system source of truth for engineers, architects, and evaluators. Two companion documents — an accessible overview and a how-to guide — derive from this one and are written only after it is approved.*
+*The deepest layer of Ora's documentation: the installed-system source of truth for engineers, architects, and evaluators. Two accepted companion documents — an accessible overview and a how-to guide — derive from this one.*
 
-> **Composite implementation pin.** Chapters 1–17 retain their audited commit `7a5e8f40` line-level pin except where a later currency note says otherwise. Chapter 18 is the verified G1.1 governed-process addendum pinned to `/Users/oracle/ora-msi-central-routing` commit `6740f2fcc6663b5d5e1f57db9ce57de3578ac42c`. For governed-process architecture, Chapter 18 and the versioned canonicals it cites supersede conflicting Agent, closed-suite, automatic-supervision, and fail-open gate language in the older chapters. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
+> **Composite implementation pin.** Chapters 1–17 retain their audited commit `7a5e8f40` line-level pin except where a later currency note says otherwise. Chapter 18 is the verified G1.1 governed-process addendum pinned to `/Users/oracle/ora-msi-central-routing` commit `5bcba5027dc64dad878cb79a37c845a2de492d1d`, the accepted Gate 3.3 baseline. For governed-process architecture, Chapter 18 and the versioned canonicals it cites supersede conflicting Agent, closed-suite, automatic-supervision, and fail-open gate language in the older chapters. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
 
 ---
 
@@ -52,14 +52,14 @@ This is the deepest layer of Ora's documentation — the source of truth for eng
 
 Each chapter then closes with a sixth, mandatory subsection: **Platform compatibility**, exposing the per-subsystem platform checks (see the Platform-Support Statement below for why this is non-negotiable).
 
-The chapters are grouped into five parts:
+The chapters are grouped into six parts:
 
 - **Part I — Install & Run** (chapters 1–3): getting Ora onto a machine and starting it.
 - **Part II — Analytical Core** (chapters 4–7): the pipeline, the framework suite, and the model-orchestration machinery.
 - **Part III — Knowledge, Tools & Media** (chapters 8–11): the vault, capability dispatch, and the media/visual subsystems.
 - **Part IV — Supervision & Governance** (chapters 12–15): oversight, execution review, and the governance apparatus.
 - **Part V — Operate & Extend** (chapters 16–17): running the installed system and extending it without forking core.
-- **Part VI — Governed Processes** (chapter 18): the G1.1 as-built kernel, Gear 3 boundary, management interface, exact package identity, and verified deviations.
+- **Part VI — Governed Processes** (chapter 18): the G1.1 as-built kernel, Gear 3 boundary, management interface, exact package identity, maintainer contracts/runbook, and verified deviations.
 
 Five appendices (A–E) follow the chapters. They are consolidated into this one document rather than split out, so that the source of truth stays in a single place.
 
@@ -1909,7 +1909,7 @@ The convention assumes POSIX. MSI exercises macOS (development) and Linux (the c
 
 ### Scope and implementation pin
 
-This chapter is the as-built G1.1 technical reconciliation. It describes `/Users/oracle/ora-msi-central-routing` at commit `6740f2fcc6663b5d5e1f57db9ce57de3578ac42c`, after the accepted Part 1 kernel proof and Part 2 management-interface gates. It supersedes conflicting governed-process claims in Chapters 5, 12, and 13; it does not re-audit unrelated subsystems still pinned to `7a5e8f40`, and it does not pre-empt G1.2's separately owned full Gear 1/2/3 pipeline specification.
+This chapter is the as-built G1.1 technical and maintainer reconciliation. It describes `/Users/oracle/ora-msi-central-routing` at commit `5bcba5027dc64dad878cb79a37c845a2de492d1d`, after the accepted Part 1 kernel proof, Part 2 management-interface gates, and Gate 3.3 browser plan workflow. It supersedes conflicting governed-process claims in Chapters 5, 12, and 13; it does not re-audit unrelated subsystems still pinned to `7a5e8f40`, and it does not pre-empt G1.2's separately owned full Gear 1/2/3 pipeline specification.
 
 The shipped contribution is one generic governed-process kernel, not a Programming controller. Its four root object families are Process Definition, Process Run, Artifact, and event/transition record. Plans, authority, artifact scope, evidence, bounded judgments, correction, continuation, recovery, and stop/escalation remain attached contracts. Models perform bounded judgment inside declared nodes. Process Coherence selects only among declared routes; the runtime validates and applies the resulting directive mechanically.
 
@@ -1984,10 +1984,11 @@ Run closeout is an explicit Promote, Preserve, Archive, or Discard disposition. 
 | `orchestrator/process_library_lifecycle.py` | Library, lifecycle, label gate, exact public invocation |
 | `server/server.py` | `/chat`, multipart, and governed-process API integration |
 | `server/static/js/process-entry.js` | Programming/Build entry, project confirmation, Process Library |
+| `server/static/js/process-plan-review.js` | Principal/Technical plan review, five authenticated plan actions, later delegation, reload/stale/failure state |
 | `server/static/js/sidebar-oversight.js` | Pending/Unread/Automated attention surfaces |
 | `server/static/js/process-run-inspector.js` | Modal Inspector, authority, lifecycle disposition |
 
-The public endpoints are `/api/process-entry/route`, `/api/process-entry/construction-label`, `/api/process-interview/<dialogue>`, `/api/process-plan/<dialogue>`, `/api/process-delegation/<dialogue>`, `/api/process-attention`, `/api/process-library/entries`, `/api/process-runs/<run>/inspector`, `/api/process-runs/<run>/authority`, and `/api/process-runs/<run>/lifecycle`, plus the governed branches of `/chat` and `/chat/multipart`.
+The public endpoints are `/api/process-entry/route`, `/api/process-entry/construction-label`, `/api/process-interview/<dialogue>`, `/api/process-plan-context/<dialogue>`, `/api/process-plan/<dialogue>`, `/api/process-delegation/<dialogue>`, `/api/process-attention`, `/api/process-library/entries`, `/api/process-runs/<run>/inspector`, `/api/process-runs/<run>/authority`, and `/api/process-runs/<run>/lifecycle`, plus the governed branches of `/chat` and `/chat/multipart`.
 
 ### Defaults, authority, and operational limits
 
@@ -2001,7 +2002,156 @@ G1.1 does not ship broad trigger management, autonomous scheduling, a marketplac
 
 The owning automated suites are `test_process_contracts.py`, `test_governed_process_runtime.py`, `test_phase_1_5_governed_sources.py`, `test_phase_1_6_programming_definition.py`, `test_phase_1_7_kernel_trials.py`, and `test_phase_2_1_entry_routing.py` through `test_phase_2_8_experience_validation.py`. DOM coverage is in `test-process-entry.js`, `test-process-attention.js`, `test-process-run-inspector.js`, and `test-process-surface-boundaries.js`. The accepted gates independently reproduced the focused and adjacent suites, stored-definition substitution attacks, repository-acceptance attacks, wrong-node effects, Dialogue persistence failures, long/slash Run lifecycle retries, false construction witnesses, and exact public invocation restart.
 
-The principal deviations from the early design are beneficial constraints: one generic kernel replaced the proposed outer Programming controller; bounded judgment replaced Agent classification; seven directives replaced the five-verdict table; F-Quality observations no longer ship; PEF became contingent; the Inspector landed as a modal; Programming was regenerated as one 2.0.1 canonical plus exact mirror; and Build remained an explicit post-proof label choice. The full Gear 1/2/3 specification, broad activation/trigger UX, user guide, maintainer handbook, public conceptual guide, screenshots, migration/rollback runbook, and final closeout packet belong to later authorized phases, not this reconciliation.
+The principal deviations from the early design are beneficial constraints: one generic kernel replaced the proposed outer Programming controller; bounded judgment replaced Agent classification; seven directives replaced the five-verdict table; F-Quality observations no longer ship; PEF became contingent; the Inspector landed as a modal; Programming was regenerated as one 2.0.1 canonical plus exact mirror; and Build remained an explicit post-proof label choice. The conceptual/public guide and user guide are now accepted, and the remainder of this chapter is the Phase 3.4 maintainer reference. The full Gear 1/2/3 specification, broad activation/trigger UX, rendered screenshot/accessibility packet, and final closeout evidence remain outside this phase.
+
+### Maintainer object and storage reference
+
+The four root object families and their persistence duties are deliberately small. Treat every stored identity as authenticated data, not as an advisory label.
+
+| Object | Authoritative content | Persistence and safe-reading rule |
+|---|---|---|
+| Process Definition | exact ID, version, issued digest, graph, attached contracts, input/output and package bindings | Register once through `ProcessDefinitionRegistry`; always resolve the exact triple; never edit a stored version or select “latest” |
+| Process Run | exact definition reference, graph position, state, sequence, attempt, scope, authority and relationships | One storage-keyed directory containing `run.json`, `definition.json`, `records.jsonl`, and `artifacts/`; load through `GovernedProcessRuntime`, which validates and replays records after the materialized sequence |
+| Artifact | locator, role, media/identity scheme, digest, lineage and optional repository composite | Load through the runtime and require the latest authoritative `artifact_recorded` identity to agree; an ID, filename, or inline string alone is not proof |
+| Event/transition record | append-only sequence, type, payload, time and hash-chain predecessor | Authoritative families are emitted only by dedicated validated methods; generic `record_event` accepts observations only |
+
+`create_run()` accepts only `created`, `awaiting_plan_approval`, or `ready`; lifecycle advancement is persisted as records. `completed`, `blocked`, and `cancelled` are terminal and reject later action, attempt, or Artifact mutation. The sole narrow exception is one deterministic child-return record whose exact identity and acceptance lineage have already been validated. A Run snapshot ahead of its record log, a malformed record sequence, a changed Artifact body, or an unavailable exact definition is corruption, not a cue to guess or repair in place.
+
+The contract schema is `ora.process-contracts/1.0`; the graph schema is `ora.process-graph/1.0`; the package schema is `ora.process-package/1.0`. The root families are joined by nine attached contracts: approved plan, authority, Artifact scope, bounded judgment, evidence, correction loop, continuation, recovery, and stop/escalation. When changing a contract, update its schema validator, contract-set cross-validator, runtime consumer, negative tests, and this reference together.
+
+### Judgment-step configuration
+
+A bounded judgment is configuration, not a free-form model role. Its load-bearing fields are `judgment_id`, `node_id`, `verified_circumstances`, `question`, permitted conclusions/directives/actions, authority-grant IDs, Artifact selectors, required-evidence IDs, evaluator boundary, stop conditions, exact return node, and declared escalation request types.
+
+The cross-contract validator enforces the important joins: every grant and evidence ID exists; permitted actions fit the referenced grants and do not overlap reserved actions; selectors stay inside both the grant and Artifact scope; and judgment escalation types are declared by the stop/escalation contract. At runtime the current graph node, evaluator boundary, evidence, authority, and target route are revalidated. Adding a word to a prompt cannot enlarge authority. A new judgment action therefore needs an explicit non-reserved grant and selector, an allowed graph operation, evidence, a declared transition, and adversarial tests showing neighboring authority remains unavailable.
+
+Evidence requirements declare the claim, method, producer independence (`same_step`, `independent_step`, or `external`), Artifact selectors, freshness, and whether the item is required. Acceptance is either `all_required` or a declared threshold. Stale evidence follows its declared `invalidate`, `recapture`, or `escalate` policy; it is never silently current.
+
+### Graph grammar and safe graph changes
+
+The graph node kinds are `action`, `sequence`, `parallel_branch`, `join`, `decision`, `bounded_loop`, `verification_boundary`, `human_checkpoint`, `process_call`, `process_return`, and `terminal_state`. Validation rejects unknown or extra kind-specific fields, duplicate IDs or route conditions, missing references, mismatched parallel/join branch sets, missing terminal states, and unreachable nodes.
+
+| Kind | Maintainer obligation |
+|---|---|
+| action | Bind operation, next node, authority grants, Artifact access, evidence requirements, and authoritative `external_effect`; node-bound effects cannot fall through a generic action path |
+| sequence / parallel_branch / join | Keep exact destinations and branch/join membership coherent; add traversal proof for all entry contracts |
+| decision | Declare every condition and destination; route only from authenticated decision state |
+| bounded_loop | Declare bound, body, exit, and progress/correction behavior; exhaustion cannot imply acceptance |
+| verification_boundary | Provide routes for all seven directives and keep observation (`PASS`/`FAIL`/`BROKEN`/`INDETERMINATE`) separate from directive |
+| human_checkpoint | Declare authority request type plus approved, denied, and unavailable destinations |
+| process_call / process_return | Bind exact child definition, inputs/outputs, return node and error route; preserve exact child acceptance lineage |
+| terminal_state | Make terminal status agree with the directive; only a final accepted target may complete |
+
+To change a graph, edit the vault canonical first, validate all entrypoint traversals, recompute the canonical content identity, mint a new semantic version when the issued body changes, regenerate the runtime mirror and Registry entry, and add negative reachability tests. Never change a graph while retaining an issued definition digest. Programming `2.0.1` is immutable; a semantic change requires a later version rather than an in-place patch.
+
+### Transition routing and correction
+
+The runtime recognizes seven directives with exact target-state semantics:
+
+| Directive | Target state | Meaning |
+|---|---|---|
+| `PROCEED` | `running` | Follow a declared successful intermediate route |
+| `ACCEPT` | `completed` | Final-only release with a current persisted `PASS` review bound to the exact result |
+| `REVISE` | `running` | Correct within the current approved plan/definition and correction bound |
+| `REPLAN` | `pending` | Return for a new plan; reset the attempt counter |
+| `REDEFINE` | `redefining` | Replace the Process Definition and resume only at a persisted path-legal destination |
+| `ESCALATE` | `waiting_for_authority` | Request a declared human authority type; never generic redefinition |
+| `BLOCKED` | `blocked` | Stop at a blocked terminal with no release |
+
+Failure classification is also mechanical: execution defects route to `REVISE`, plan defects to `REPLAN`, definition defects to `REDEFINE`, authority gaps to `ESCALATE`, and unsafe external state to `BLOCKED`. Infrastructure retry is an event, not a quality verdict. Correction defaults are three attempts, progress evidence required, and a repeated-defect limit of three unless a validated definition/Run supplies another bound. No-progress policy cannot manufacture `REVISE`, and exhaustion never manufactures `ACCEPT`.
+
+### Parent-child continuation and recovery
+
+A parent may invoke a child only while `running` at a `process_call` node, with exact child definition identity, authorized `invoke_process`, validated input bindings, and a parent checkpoint naming the exact return node. The parent becomes `pending`; the child stores parent, invoker, and return relationships. A return is accepted only after the child has a persisted final `ACCEPT`, result-role output Artifacts bound to the child definition, current required `PASS` reviews, and exact Artifact ID/digest acceptance evidence. The runtime records the return once, detects collision, drift, and reuse, resumes the parent at the persisted `process_return` destination, and never replays child mutations.
+
+Recovery begins from a persisted checkpoint. Every post-checkpoint external-effect receipt must still match the digest recorded with that effect. Revalidation evidence is recaptured as declared. Replay policy is one of `never_replay_effects`, `idempotent_only`, or `receipt_guarded`; `resume_run()` itself uses `replay_mutations=False`. If the external world may have changed and proof is absent, return `ESCALATE` or `BLOCKED`. Never “retry” an uncertain mutation merely because local state rolled back.
+
+### Evidence, identity, packages, and catalogs
+
+Identity precedence is: authenticated bytes/state plus their digest and lineage, then exact issued reference; labels and locators are selectors only. Repository results use a content-complete composite identity for the approved repository locator. Final review evidence must name the exact subject Artifact ID and digest, and repository acceptance additionally requires a successful completed attempt bound to the current repository composite. An unrelated inline/hash-chain Artifact cannot authorize repository completion. External effects require the exact pre-action checkpoint, runtime-issued authorization, authenticated post-state, receipt, action record, and node-local ordering.
+
+A Process Package binds an exact definition reference and unique member locators. Member roles are `process_definition`, `instruction`, `script`, `template`, `test`, `schema`, and `resource`; the entry member must be the Process Definition and its digest must match. Changing any issued semantic member or canonical body requires a new package/definition identity.
+
+Do not merge the two catalogs by assumption. `ProcessDefinitionRegistry` is immutable exact ID/version/digest storage for governed execution. The legacy framework-invocability catalog is a named-framework search and ordinary-generation surface. Process Library projects exact registered definitions plus its Programming seed. Semantic search results are not exact governed bindings, and creating a mirror or duplicate catalog entry merely for symmetry is prohibited.
+
+Normalized-JSON definitions authenticate their declared issued digest with `process_definition_content_digest()` at registration, reading, resolution, and listing. Stored entries use `ora.process-definition-registry-entry/1.0`; independent read-only anchors use `ora.process-definition-registration-anchor/1.0`. The accepted Programming definition uses its complete canonical-body digest, preserving `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`, while its storage envelope and independent anchor authenticate storage. If body, envelope, anchor, reference, or issued digest disagrees, quarantine the entry and recover from the canonical; do not recompute adjacent metadata to bless the substitution.
+
+### Lifecycle and version binding
+
+Every active Run remains pinned to its exact definition and schema. The management interview uses `ora.management-interview/1.0`; Dialogue has an immutable `ora.dialogue-process-binding/1.0` governing-process binding. The canonical execution plan uses `ora.plan-execution-contract/1.0`. Plan lifecycle is a separate `ora.dialogue-plan-lifecycle/1.0` field with only `plan:in-planning` and `plan:approved`; it never overwrites the Dialogue privacy designation. Approval uses `ora.programming-plan-state/1.0` and binds the exact plan, baseline, decision, decision maker, receipt, and idempotency identity. Process Library and terminal disposition projections use `ora.process-library/1.0` and `ora.process-lifecycle-disposition/1.0`. Missing lifecycle data, recomputation, plan substitution, or receipt substitution fails closed.
+
+Construction, registration, invocation, activation, trigger binding, external effect, promotion, and the Programming-to-Build label are distinct authorities and records. A terminal Run receives exactly one idempotent Promote, Preserve, Archive, or Discard disposition; no generic reopen exists. Archive and Discard do not delete source files. Later work creates a new Run against a retained exact identity.
+
+### Regression obligations and maintainer change protocol
+
+Use the narrowest owning suite plus adjacent seams; a positive path alone is not certification.
+
+| Change | Minimum proof obligation |
+|---|---|
+| Contract/directive/judgment | schema and contract-set positives; every contradictory directive state; reserved/granted overlap; out-of-scope selectors/actions; undeclared escalation |
+| Runtime state/evidence/effect | forged authoritative events; terminal immutability; final-review lineage; current repository attempt; wrong-node and missing-checkpoint/receipt effects; recovery replay attacks |
+| Graph/definition/package | exhaustive entrypoint/directive traversal; prohibited-node unreachability; redefinition resume; body/envelope/anchor substitution; exact package and mirror identity |
+| Controlled probe | persisted contract/pre-state; replay and ceiling; active stop; deny-default inspection; evidence-free/direct-completion and executor-bypass attacks |
+| Dialogue/interview/plan/delegation | real write/reload/restart; nonanswers and duplicate retries; plan/lifecycle/receipt tampering; stale plan; all five browser decisions and later delegation |
+| Inspector/Library/lifecycle | authenticated decisions; approved-target lineage and ambiguity; long/slash Run IDs and replay; false Build witnesses; exact public invocation restart and invalid references |
+| Documentation/source topology | canonical-to-mirror body parity; four mirrored/two direct/one documentation-only topology; Registry versions/semantics; obsolete-current-claim rejection |
+
+Before landing a change: identify the canonical and exact issued identity; capture a clean baseline and storage roots; change the smallest owning source; add an adversarial reproducer for the failure being closed; run compile, owning and adjacent suites, graph/registry/source drift checks, and `git diff --check`; verify canonical/mirror parity; inspect the diff for unrelated or later-phase work; then commit and synchronize each repository. Do not update a Registry identity until the exact body and tests agree.
+
+Representative commands from the repository root are:
+
+```bash
+python3 -m py_compile orchestrator/process_contracts.py orchestrator/governed_process_runtime.py orchestrator/process_definition_registry.py
+python3 -m pytest orchestrator/tests/test_process_contracts.py orchestrator/tests/test_governed_process_runtime.py
+python3 -m pytest orchestrator/tests/test_phase_1_6_programming_definition.py orchestrator/tests/test_phase_1_7_kernel_trials.py
+python3 -m pytest orchestrator/tests/test_phase_2_1_entry_routing.py orchestrator/tests/test_phase_2_8_experience_validation.py
+python3 scripts/verify-canonical-drift.py
+git diff --check
+```
+
+Use current test discovery when suite names move; do not preserve a green count as if it were a contract.
+
+### Migration, compatibility, disablement, and rollback
+
+G1.1 uses v1 contract/graph/package schemas and has no automatic in-place migration tool. Existing Gear 3 text frameworks remain ordinary-generation inputs unless separately formalized and registered; they are not silently converted to Process Definitions. Additive Dialogue fields preserve older envelopes, but governed bindings and approved plan lifecycles are validated when present. There is no feature flag for a second kernel: disable new governed work by stopping governed entry and continuing the legacy ordinary-generation route, not by rewriting active state.
+
+For an upgrade:
+
+1. Stop new governed intake at the deployment boundary; do not terminate active external work by deleting state.
+2. Record the code commit, configuration, `ORA_PROCESS_RUNS_DIR`, `ORA_PROCESS_DEFINITIONS_DIR`, and exact active definition references.
+3. Take recoverable, read-only snapshots of both storage roots and the affected Dialogue envelopes. Inventory registry entries through authenticated listing/resolution and Runs through `load_run()`, `load_records()`, and `load_artifact()`.
+4. Point a staged runtime at cloned roots using the two environment variables. Compile; run owning/adjacent, graph traversal, identity-substitution, source-drift, and mirror-parity checks. Load every active Run and resolve every referenced definition exactly.
+5. Promote only when the staged code reads existing state without rewriting issued digests, schemas, graph positions, or in-flight definition references. Semantic definition changes ship as a new version; existing Runs remain pinned.
+
+Rollback means restoring the prior code together with the untouched pre-upgrade store snapshot. Never partially downgrade a store already rewritten by newer code, never edit a Run to point at an older definition, and never replace the accepted Programming `2.0.1` body. Preserve the newer store separately for diagnosis. If an external effect might have occurred after the snapshot, inspect its receipt and actual external state before choosing recovery; do not replay it. Uncertain state ends in typed authority review or `BLOCKED`, not an automatic retry.
+
+### Maintainer troubleshooting
+
+| Symptom | Inspect | Safe response |
+|---|---|---|
+| Run appears stuck | current state/node, last record sequence, pending human/child relationship, attention projection | satisfy the declared checkpoint/authority or resume through the runtime; never edit `run.json` |
+| Repeated infrastructure failure | infrastructure records, provider/tool health, correction attempt and stop policy | repair infrastructure and retry only the declared idempotent operation; infrastructure failure is not `FAIL` or `ACCEPT` |
+| Repeated Artifact failure | latest Artifact identity, lineage, selector, freshness, review subject digest | recapture from the approved locator; route execution/plan/definition defects through the matching directive |
+| Wrong repository or project | approved project, exact repository locator, baseline composite, current node selector | stop before authority; return for scope change/new plan. Do not substitute an inline Artifact |
+| Dirty-worktree conflict | baseline/current composites and pre-existing change inventory | preserve user changes, narrow the selector or request authority; never clean/reset broadly |
+| Plan or evidence became stale | plan baseline, Dialogue lifecycle, evidence freshness and current Artifact digest | show stale state and require revision/recapture; do not resubmit the old decision |
+| Missing permission or credential | authority grant, reserved-action class, provider credential availability | request the exact authority/credential without logging secrets; use `ESCALATE` or remain pending |
+| Judge/executor disagreement | independent evidence, verified circumstances, permitted conclusions and directive route | preserve both records; let Process Coherence choose only a declared route; inconclusive proof cannot accept |
+| Cannot resume after restart | record/snapshot sequence, exact definition resolution, checkpoint, child/return and Dialogue bindings | restore from the last authenticated checkpoint/snapshot; quarantine tampered state and fail closed |
+| External action partly completed | pre-state/checkpoint, runtime authorization, receipt, post-state, actual external system | reconcile the external state first; never replay without proof; escalate or block if uncertain |
+| Completion evidence inconclusive | required evidence set, independence, freshness, current result/repository identity and completed attempt | recapture independent evidence or remain pending; an unrelated hash-chain/inline Artifact cannot authorize completion |
+| Registry tampering suspected | canonical body, issued digest, storage envelope, independent registration anchor, authenticated listing | quarantine the entry, restore from canonical, and rerun full substitution tests; never bless it by recomputing adjacent metadata |
+
+### Known maintainer limitations
+
+- The contract, graph, and package families are v1; no general state-migration engine or mixed-schema writer exists.
+- G1.1 proof is macOS-only. The controlled-probe sandbox and path behavior are not certified on Windows or Linux.
+- Public Process Library invocation is intentionally limited to the supported non-external entry shape; effectful and complex graphs use dedicated governed paths.
+- The exact Process Definition Registry and legacy framework-invocability catalog remain distinct by design.
+- No cognition-bearing scheduler, broad trigger-management UI, automatic optimization, marketplace, or unrestricted public external-effect executor ships in G1.1.
+- There is no general active-Run pause/stop/resume/reopen control and no user override for missing or stale acceptance evidence.
+- There is no kernel feature toggle. Operational disablement stops new governed entry and preserves exact active state.
+- DOM and server behavior are covered; the rendered screenshot/accessibility and final closeout packet belong to Phase 3.5 and are not claimed here.
 
 ---
 
@@ -2767,6 +2917,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-07-19** — Expanded Chapter 18 for G1.1 Phase 3.4 against accepted Gate 3.3 commit `5bcba502`: added the maintainer reference for runtime objects/storage, contracts and bounded judgment, graph grammar, transitions, correction, parent-child continuation, recovery, evidence/identity, packages/catalogs/versioning, lifecycle, regression/change protocol, migration/disablement/rollback, troubleshooting, and known limits. Updated the browser plan surface/API map and retained exact vault-canonical/body-mirror parity. No runtime behavior or issued definition/package changed.
 - **2026-07-19** — Added Chapter 18 as the G1.1 as-built governed-process reconciliation pinned to Ora commit `6740f2fc`. Replaced the opening closed-suite and Agent-object claims, documented the generic kernel, exact package/registry identity, Gear 3/F-Quality boundary, management interface, code/API map, authority/defaults, evidence, deviations, and limitations, and preserved G1.2's ownership of the full Gear 1/2/3 specification.
 - **2026-07-12** — Post-pin closure currency note: `commons` is the canonical runtime sentinel, `general` remains a permanent legacy input/wire alias, and Commons is the universal view rather than a stored membership—empty `project_ids` and empty YAML `nexus:` are its representation, while explicitly assigned project material also remains visible there. Commons output now defaults to the vault root; dormant config-driven layout/legacy-theme APIs and files are retired in favor of the fixed V3 workspace and V3 Theme Library; server launch paths are consolidated around a foreground launcher suitable for launchd supervision. Chapter bodies and line references remain pinned to `7a5e8f40`; this is a reader-orientation note, not a re-pin.
 - **2026-07-11** — Default project renamed in user-facing prose: General → **Commons** (nomenclature note extended; seven body mentions updated in the Operation-Matrix and project-container chapters). The internal nexus id at the pinned commit is still `general` — the code-side rename is pending — so code identifiers, quoted literals, and line references are unchanged. Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.

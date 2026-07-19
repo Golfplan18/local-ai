@@ -226,30 +226,30 @@ class TestPhase33UserGuidance(unittest.TestCase):
 
     def test_design_tracker_and_registry_expose_the_current_gate_boundary(self):
         for token in (
-            "Phase 3.3 implementation — REVISED; PENDING GATE 3.3",
+            "Phase 3.3 implementation — COMPLETE; GATE 3.3 ACCEPTED",
             "### 29.13 User guide — AS BUILT 2026-07-19",
             "[x] User guide completed.",
-            "### 29.11 Migration, compatibility, and rollback — NOT YET IMPLEMENTED",
-            "### 29.12 Troubleshooting — NOT YET IMPLEMENTED",
-            "Phase 3.4 maintainer reference",
+            "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
+            "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
+            "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
         ):
             with self.subTest(design_token=token):
                 self.assertIn(token, self.design)
 
         for token in (
-            "Current phase:** Part 3, Phase 3.3",
-            "Phase 3.3 authority boundary",
-            "Phase 3.4 maintainer reference/migration/rollback/troubleshooting material",
-            "Gate 3.3 then proved that the browser could not operate",
-            "does not change canonical package identity or enter Phase 3.4",
+            "Current phase:** Part 3, Phase 3.4",
+            "Phase 3.4 authority boundary",
+            "accepted Gate 3.3 runtime commit",
+            "Phase 3.3 passed after the browser exposed and authenticated",
+            "does not change canonical package identity or enter Phase 3.5",
         ):
             with self.subTest(tracker_token=token):
                 self.assertIn(token, self.tracker)
 
         for token in (
-            "Phase 3.3 user guidance is complete pending Gate 3.3",
-            "Phase 3.4 is not authorized",
-            "maintainer §§29.11–29.12 remain gated",
+            "Phases 3.1–3.3 are accepted",
+            "Phase 3.4 maintainer reference is complete pending Gate 3.4",
+            "Phase 3.5 is not authorized",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)

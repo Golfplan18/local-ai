@@ -136,8 +136,8 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
             "### 29.13 User guide — AS BUILT 2026-07-19",
             self.design,
         )
-        self.assertIn("Current phase:** Part 3, Phase 3.3", self.tracker)
-        self.assertIn("Phase 3.4 is not authorized", self.overview)
+        self.assertIn("Current phase:** Part 3, Phase 3.4", self.tracker)
+        self.assertIn("Phase 3.5 is not authorized", self.overview)
 
     def test_current_records_reject_obsolete_phase_1_6_future_state(self):
         tracker_entry = h3_section(

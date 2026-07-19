@@ -105,7 +105,7 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
         self.assertEqual(canonical, mirror)
         for token in (
             "Part VI — Governed Processes",
-            "6740f2fcc6663b5d5e1f57db9ce57de3578ac42c",
+            "5bcba5027dc64dad878cb79a37c845a2de492d1d",
             "ora.process-contracts/1.0",
             "ora.process-graph/1.0",
             "ora.process-package/1.0",
@@ -120,7 +120,7 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
         for section in range(1, 11):
             self.assertIn(f"### 29.{section}", design)
         self.assertNotIn("### 29.1 Release identity — NOT YET IMPLEMENTED", design)
-        self.assertIn("### 29.11 Migration, compatibility, and rollback — NOT YET IMPLEMENTED", design)
+        self.assertIn("### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19", design)
         self.assertIn("Phase 3.2", design)
 
         tracker = (VAULT_ORA / "Working — Ora Setup and Refinement.md").read_text(
@@ -139,7 +139,7 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
             "Active canonical (v4.1",
             "Active governed observation contract (v2.1",
             "Active architecture reference (v2.1",
-            "Phases 3.1 and 3.2 are accepted",
+            "Phases 3.1–3.3 are accepted",
         ):
             self.assertIn(token, overview)
 
