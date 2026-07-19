@@ -1212,6 +1212,11 @@ class TestProgrammingTrial(TrialCase):
         attempt_one_pre = self.repository_artifact(
             run_id, repository, "repository-pre-attempt-1", role="working"
         )
+        self.runtime.create_checkpoint(
+            run_id, "before-repository-attempt-1",
+            segment_id="inventory-change-attempt-1",
+            resume_node_id="execute-step",
+        )
         self._write_attempt(repository, 1)
         attempt_one_state = self.repository_artifact(
             run_id, repository, "repository-state-attempt-1", role="working"
@@ -1239,6 +1244,11 @@ class TestProgrammingTrial(TrialCase):
         self.runtime.begin_attempt(run_id, "inventory-change")
         attempt_two_pre = self.repository_artifact(
             run_id, repository, "repository-pre-attempt-2", role="working"
+        )
+        self.runtime.create_checkpoint(
+            run_id, "before-repository-attempt-2",
+            segment_id="inventory-change-attempt-2",
+            resume_node_id="correct",
         )
         self._write_attempt(repository, 2)
         attempt_two_state = self.repository_artifact(
@@ -1319,6 +1329,11 @@ class TestProgrammingTrial(TrialCase):
         self.runtime.begin_attempt(run_id, "inventory-change")
         attempt_three_pre = self.repository_artifact(
             run_id, repository, "repository-pre-attempt-3", role="working"
+        )
+        self.runtime.create_checkpoint(
+            run_id, "before-repository-attempt-3",
+            segment_id="inventory-change-attempt-3",
+            resume_node_id="execute-step",
         )
         self._write_attempt(repository, 3)
         attempt_three_state = self.repository_artifact(

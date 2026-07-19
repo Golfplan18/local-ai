@@ -1388,13 +1388,148 @@ class ProcessPlanApprovalService:
                 "phase-2.4" in run.get("labels", [])
                 and "delegated" in run.get("labels", [])
             )
+            runtime_records = (
+                self.runtime.load_records(run["run_id"])
+                if phase_2_4_active else []
+            )
+            delegation_activations = [
+                record for record in runtime_records
+                if (record.get("event") or {}).get("event_type")
+                == "delegation_activated"
+            ]
+            delegation_checkpoint = None
+            if len(delegation_activations) == 1:
+                activation = delegation_activations[0]
+                activation_details = (activation.get("event") or {}).get(
+                    "details"
+                ) or {}
+                delegation_digest = str(
+                    activation_details.get("delegation_digest") or ""
+                )
+                checkpoint_id = (
+                    "delegation-" + delegation_digest.split(":", 1)[1][:24]
+                    if re.fullmatch(r"sha256:[0-9a-f]{64}", delegation_digest)
+                    else ""
+                )
+                matching_checkpoints = [
+                    record for record in runtime_records
+                    if (record.get("event") or {}).get("event_type")
+                    == "checkpoint_created"
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "checkpoint_id"
+                    ) == checkpoint_id
+                ]
+                if len(matching_checkpoints) == 1:
+                    candidate = matching_checkpoints[0]
+                    checkpoint_details = (candidate.get("event") or {}).get(
+                        "details"
+                    ) or {}
+                    if (
+                        activation["node_id"] == "post-plan-mode"
+                        and activation_details.get("plan_ref")
+                        == {
+                            field: run["contracts"]["approved_plan"][field]
+                            for field in ("plan_id", "version", "digest")
+                        }
+                        and activation_details.get("labels") == run.get("labels")
+                        and candidate["sequence"] > activation["sequence"]
+                        and checkpoint_details.get("segment_id")
+                        == "phase-2.4-delegated-execution"
+                        and checkpoint_details.get("resume_node_id")
+                        == "execute-preflight"
+                    ):
+                        delegation_checkpoint = candidate
             phase_2_4_positioned = (
                 phase_2_4_active
                 and run["current_node_id"] != "post-plan-mode"
-                and str(
-                    run["contracts"]["continuation"].get("checkpoint_id") or ""
-                ).startswith("delegation-")
+                and delegation_checkpoint is not None
             )
+            target_mutation_ready = False
+            if (
+                phase_2_4_positioned
+                and run["state"] not in {"completed", "blocked"}
+            ):
+                definition = self.runtime.load_definition(run["run_id"])
+                nodes = {
+                    node["node_id"]: node for node in definition["graph"]["nodes"]
+                }
+                current_node = nodes[run["current_node_id"]]
+                if (
+                    current_node["kind"] == "action"
+                    and current_node["external_effect"] is True
+                    and current_node["operation"] in {
+                        "execute_approved_programming_step",
+                        "correct_programming_defect",
+                    }
+                ):
+                    records = runtime_records
+                    entered_sequence = 0
+                    for record in records:
+                        transition = record.get("transition") or {}
+                        event = record.get("event") or {}
+                        details = event.get("details") or {}
+                        if transition.get("target_node_id") == run["current_node_id"]:
+                            entered_sequence = int(record["sequence"])
+                        elif (
+                            event.get("event_type") == "node_advanced"
+                            and details.get("to_node_id") == run["current_node_id"]
+                        ):
+                            entered_sequence = int(record["sequence"])
+                        elif (
+                            event.get("event_type") == "run_resumed"
+                            and details.get("resume_node_id") == run["current_node_id"]
+                        ):
+                            entered_sequence = int(record["sequence"])
+                    checkpoints = [
+                        record for record in records
+                        if int(record["sequence"]) > entered_sequence
+                        and record["node_id"] == run["current_node_id"]
+                        and (record.get("event") or {}).get("event_type")
+                        == "checkpoint_created"
+                        and ((record.get("event") or {}).get("details") or {}).get(
+                            "resume_node_id"
+                        ) == run["current_node_id"]
+                    ]
+                    external_scope = set(
+                        run["contracts"]["artifact_scope"][
+                            "external_effect_selectors"
+                        ]
+                    )
+                    write_scope = set(
+                        run["contracts"]["artifact_scope"]["write_selectors"]
+                    )
+                    mutation_grants = [
+                        grant for grant in run["contracts"]["authority"]["grants"]
+                        if current_node["operation"] in grant["actions"]
+                    ]
+                    checkpoint_states = (
+                        (checkpoints[-1]["event"]["details"] or {}).get(
+                            "artifact_identities", {}
+                        )
+                        if checkpoints else {}
+                    )
+                    state_artifacts_current = False
+                    for artifact_id, identity_digest in checkpoint_states.items():
+                        artifact = self.runtime.load_artifact(
+                            run["run_id"], artifact_id
+                        )
+                        if artifact["identity"]["digest"] != identity_digest:
+                            raise ProcessPlanIntegrityError(
+                                "pre-action checkpoint Artifact identity drifted"
+                            )
+                        if artifact["role"] in {"input", "working", "result"}:
+                            state_artifacts_current = True
+                    target_mutation_ready = bool(
+                        checkpoints
+                        and state_artifacts_current
+                        and external_scope
+                        and not (external_scope & write_scope)
+                        and len(mutation_grants) == 1
+                        and set(mutation_grants[0]["resource_selectors"])
+                        == external_scope
+                        and "local_reversible"
+                        in mutation_grants[0]["effect_types"]
+                    )
             if (
                 approval is not None
                 and export is not None
@@ -1458,12 +1593,7 @@ class ProcessPlanApprovalService:
                 }[status],
                 "phase_2_4_authorized": phase_2_4_active,
                 "target_mutation_authorized": (
-                    phase_2_4_positioned
-                    and run["state"] not in {"completed", "blocked"}
-                    and any(
-                        "execute_approved_programming_step" in grant["actions"]
-                        for grant in run["contracts"]["authority"]["grants"]
-                    )
+                    target_mutation_ready
                 ),
             }
             try:

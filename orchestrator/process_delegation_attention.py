@@ -202,11 +202,12 @@ def _execution_contracts(
         "scope:process_definition",
         *exact_selectors,
     ]
-    write_selectors = ["scope:declared_outputs", *exact_selectors]
-    # Phase 2.4 delegates only the approved repository work. Activation,
-    # publication, remote Git, messaging, and every other external effect stay
-    # separately reserved; the approved plan contains no external-effect grant.
-    external_selectors: list[str] = []
+    # Exact target mutations are external effects because they change the
+    # repository outside the Run record. They deliberately do not overlap the
+    # ordinary write scope, which is reserved for local evidence/receipt
+    # Artifacts. Higher-order effects remain separately reserved below.
+    write_selectors = ["scope:declared_outputs"]
+    external_selectors = list(exact_selectors)
     grants = [
         {
             "grant_id": "grant-inspect",
@@ -237,10 +238,7 @@ def _execution_contracts(
                 "execute_approved_programming_step",
                 "correct_programming_defect",
             ],
-            "resource_selectors": [
-                "scope:declared_outputs",
-                *exact_selectors,
-            ],
+            "resource_selectors": list(exact_selectors),
             "effect_types": ["local_reversible"],
             "conditions": [
                 condition,
@@ -248,6 +246,13 @@ def _execution_contracts(
                 plan_condition,
                 "checkpoint_persisted_before_mutation",
             ],
+        },
+        {
+            "grant_id": "grant-record-mutation-receipt",
+            "actions": ["record_programming_mutation_receipt"],
+            "resource_selectors": ["scope:declared_outputs"],
+            "effect_types": ["local_reversible"],
+            "conditions": [condition, scope_condition, plan_condition],
         },
     ]
 

@@ -1063,6 +1063,7 @@ class GovernedProcessRuntime:
             allowed = {
                 "programming_preflight", "execute_approved_programming_step",
                 "correct_programming_defect", "inspect_programming_result",
+                "record_programming_mutation_receipt",
                 "persist_programming_resume_execute",
                 "persist_programming_resume_final",
             }
@@ -1071,11 +1072,33 @@ class GovernedProcessRuntime:
                 raise AuthorityDeniedError(
                     "delegation grants an unsupported action: " + ", ".join(outside)
                 )
-            if set(replacement["artifact_scope"]["external_effect_selectors"]) - {
-                "scope:declared_external_effects"
-            }:
+            external_selectors = set(
+                replacement["artifact_scope"]["external_effect_selectors"]
+            )
+            write_selectors = set(
+                replacement["artifact_scope"]["write_selectors"]
+            )
+            mutation_selectors = {
+                selector
+                for grant in replacement["authority"]["grants"]
+                if set(grant["actions"]) & {
+                    "execute_approved_programming_step",
+                    "correct_programming_defect",
+                }
+                for selector in grant["resource_selectors"]
+            }
+            if (
+                not external_selectors
+                or any(
+                    not selector.startswith("artifact:")
+                    for selector in external_selectors
+                )
+                or mutation_selectors != external_selectors
+                or external_selectors & write_selectors
+            ):
                 raise AuthorityDeniedError(
-                    "delegation contains an undeclared external-effect scope"
+                    "delegation must bind exact, non-write target selectors to "
+                    "its external-effect mutation grant"
                 )
 
             run["contracts"] = replacement
@@ -1359,7 +1382,7 @@ class GovernedProcessRuntime:
                     and event_details.get("return_node_id") == run["current_node_id"]
                 ):
                     entered_sequence = int(record["sequence"])
-            action_record_id = None
+            action_records: list[Mapping[str, Any]] = []
             current_artifact_records: dict[str, Mapping[str, Any]] = {}
             for record in reversed(records):
                 if int(record["sequence"]) <= entered_sequence:
@@ -1368,29 +1391,87 @@ class GovernedProcessRuntime:
                     continue
                 event = record.get("event") or {}
                 event_details = event.get("details") or {}
-                nested = event_details.get("details") or {}
                 if (
-                    action_record_id is None
-                    and event.get("event_type") == "action_completed"
-                    and nested.get("operation") == operation
-                    and set(event_details.get("selectors") or []).issubset(
-                        set(node["artifact_access"])
-                    )
+                    event.get("event_type") == "action_completed"
+                    and event_details.get("completion_operation") == operation
                 ):
-                    action_record_id = record["record_id"]
+                    action_records.append(record)
                 if event.get("event_type") == "artifact_recorded":
                     artifact_id = str(event_details.get("artifact_id") or "")
-                    current_artifact_records.setdefault(artifact_id, event_details)
+                    current_artifact_records.setdefault(artifact_id, record)
+            if len(action_records) > 1:
+                raise GovernedRuntimeError(
+                    "action completion has multiple runtime-bound action records"
+                )
+            action_record = action_records[0] if action_records else None
+            action_record_id = (
+                str(action_record["record_id"]) if action_record is not None else None
+            )
+            if action_record is not None:
+                action_details = action_record["event"]["details"]
+                if (
+                    action_details.get("node_external_effect")
+                    is not bool(node["external_effect"])
+                    or bool(action_details.get("external_effect"))
+                    != bool(node["external_effect"])
+                ):
+                    raise GovernedRuntimeError(
+                        "action record external-effect classification differs from "
+                        "the Process Definition node"
+                    )
+                action_selectors = list(action_details.get("selectors") or [])
+                scope_kind = "external" if node["external_effect"] else "write"
+                allowed_scope = set(
+                    run["contracts"]["artifact_scope"][
+                        "external_effect_selectors"
+                        if node["external_effect"]
+                        else "write_selectors"
+                    ]
+                )
+                if not action_selectors or not set(action_selectors).issubset(
+                    allowed_scope
+                ):
+                    raise GovernedRuntimeError(
+                        "action record selectors differ from the node's authoritative scope"
+                    )
+                direct_access = set(node["artifact_access"])
+                access_marker = (
+                    "scope:declared_external_effects"
+                    if node["external_effect"]
+                    else "scope:declared_outputs"
+                )
+                if (
+                    access_marker not in direct_access
+                    and not set(action_selectors).issubset(direct_access)
+                ):
+                    raise GovernedRuntimeError(
+                        "action record selectors are outside the Process Definition node"
+                    )
+                expected_grants = self.authorize_action(
+                    run_id,
+                    str(action_details.get("action") or ""),
+                    action_selectors,
+                    satisfied_conditions=list(
+                        action_details.get("satisfied_conditions") or []
+                    ),
+                    effect_type=str(action_details.get("effect_type") or ""),
+                    scope_kind=scope_kind,
+                )
+                if action_details.get("grant_ids") != expected_grants:
+                    raise GovernedRuntimeError(
+                        "action record authority grants are stale or substituted"
+                    )
             proof_artifact_ids = {
                 *artifact_ids,
                 *(str(ref.get("artifact_id") or "") for ref in evidence_refs),
             }
             exact_artifact_proof = bool(proof_artifact_ids)
             for artifact_id in proof_artifact_ids:
-                record_details = current_artifact_records.get(artifact_id)
-                if record_details is None:
+                artifact_record = current_artifact_records.get(artifact_id)
+                if artifact_record is None:
                     exact_artifact_proof = False
                     break
+                record_details = artifact_record["event"]["details"]
                 artifact = self.load_artifact(run_id, artifact_id)
                 if (
                     record_details.get("identity_digest")
@@ -1407,11 +1488,93 @@ class GovernedProcessRuntime:
                     if ref.get("identity_digest") != artifact["identity"]["digest"]:
                         exact_artifact_proof = False
                         break
-            if node["external_effect"] and action_record_id is None:
-                raise GovernedRuntimeError(
-                    "external-effect action completion requires a current validated "
-                    "action record bound to the exact operation and artifact selectors"
+            if node["external_effect"]:
+                if action_record is None:
+                    raise GovernedRuntimeError(
+                        "external-effect action completion requires a current validated "
+                        "action record bound to the exact operation and artifact selectors"
+                    )
+                action_details = action_record["event"]["details"]
+                action_sequence = int(action_record["sequence"])
+                checkpoints = [
+                    record for record in records
+                    if entered_sequence < int(record["sequence"]) < action_sequence
+                    and record["node_id"] == run["current_node_id"]
+                    and (record.get("event") or {}).get("event_type")
+                    == "checkpoint_created"
+                    and ((record.get("event") or {}).get("details") or {}).get(
+                        "resume_node_id"
+                    ) == run["current_node_id"]
+                ]
+                if not checkpoints:
+                    raise GovernedRuntimeError(
+                        "external-effect action completion requires an exact pre-action "
+                        "checkpoint created during the current node entry"
+                    )
+                checkpoint = checkpoints[-1]
+                checkpoint_details = checkpoint["event"]["details"]
+                receipt_id = str(
+                    action_details.get("receipt_artifact_id") or ""
                 )
+                receipt_digest = str(
+                    action_details.get("receipt_identity_digest") or ""
+                )
+                if not receipt_id or not receipt_digest:
+                    raise GovernedRuntimeError(
+                        "external-effect action completion requires an exact receipt"
+                    )
+                receipt = self.load_artifact(run_id, receipt_id)
+                receipt_record = current_artifact_records.get(receipt_id)
+                if (
+                    receipt["role"] != "external_effect_receipt"
+                    or receipt["identity"]["digest"] != receipt_digest
+                    or receipt_record is None
+                    or not (
+                        int(checkpoint["sequence"])
+                        < int(receipt_record["sequence"])
+                        < action_sequence
+                    )
+                    or receipt_id not in action_record["artifact_ids"]
+                ):
+                    raise GovernedRuntimeError(
+                        "external-effect receipt identity or ordering is invalid"
+                    )
+                mutation = action_details.get("details") or {}
+                pre_state = mutation.get("pre_state_identity")
+                post_state = mutation.get("post_state_identity")
+                if not isinstance(pre_state, dict) or not isinstance(post_state, dict):
+                    raise GovernedRuntimeError(
+                        "external-effect action must bind exact pre- and post-state identities"
+                    )
+                pre_id = str(pre_state.get("artifact_id") or "")
+                post_id = str(post_state.get("artifact_id") or "")
+                pre_digest = str(pre_state.get("identity_digest") or "")
+                post_digest = str(post_state.get("identity_digest") or "")
+                if not pre_id or not post_id or not pre_digest or not post_digest:
+                    raise GovernedRuntimeError(
+                        "external-effect pre/post-state identity is incomplete"
+                    )
+                pre_artifact = self.load_artifact(run_id, pre_id)
+                post_artifact = self.load_artifact(run_id, post_id)
+                post_record = current_artifact_records.get(post_id)
+                if (
+                    pre_artifact["identity"]["digest"] != pre_digest
+                    or post_artifact["identity"]["digest"] != post_digest
+                    or checkpoint_details.get("artifact_identities", {}).get(pre_id)
+                    != pre_digest
+                    or post_record is None
+                    or not (
+                        int(checkpoint["sequence"])
+                        < int(post_record["sequence"])
+                        < action_sequence
+                    )
+                    or not {pre_id, post_id}.issubset(
+                        set(receipt["lineage"]["source_artifact_ids"])
+                    )
+                ):
+                    raise GovernedRuntimeError(
+                        "external-effect checkpoint, state, and receipt lineage do not bind"
+                    )
             if action_record_id is None and not exact_artifact_proof:
                 raise GovernedRuntimeError(
                     "action completion requires a current validated action record or "
@@ -1673,40 +1836,76 @@ class GovernedProcessRuntime:
         receipt_artifact_id: str | None = None,
         details: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        scope_kind = "external" if external_effect else "write"
-        grant_ids = self.authorize_action(
-            run_id,
-            action,
-            selectors,
-            satisfied_conditions=satisfied_conditions,
-            effect_type=effect_type,
-            scope_kind=scope_kind,
-        )
-        if receipt_artifact_id is not None:
-            receipt = self.load_artifact(run_id, receipt_artifact_id)
-            if receipt["role"] != "external_effect_receipt":
-                raise GovernedRuntimeError("external-effect receipt must use that artifact role")
-        else:
-            receipt = None
-        if receipt is not None and not external_effect:
-            raise GovernedRuntimeError("a receipt may be bound only to an external effect")
-        return self._record_runtime_event(
-            run_id,
-            "action_completed",
-            {
-                "action": action,
-                "selectors": list(selectors),
-                "grant_ids": grant_ids,
-                "effect_type": effect_type,
-                "external_effect": bool(external_effect),
-                "receipt_artifact_id": receipt_artifact_id,
-                "receipt_identity_digest": (
-                    receipt["identity"]["digest"] if receipt is not None else None
-                ),
-                "details": copy.deepcopy(dict(details or {})),
-            },
-            artifact_ids=[receipt_artifact_id] if receipt_artifact_id else [],
-        )
+        action_details = copy.deepcopy(dict(details or {}))
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            node = self._graph_nodes(definition)[run["current_node_id"]]
+            requested_external = bool(external_effect)
+            completion_operation = str(action_details.get("operation") or "")
+            completion_bound = (
+                node["kind"] == "action"
+                and completion_operation == node["operation"]
+            )
+            if completion_bound:
+                declared_external = bool(node["external_effect"])
+                if requested_external != declared_external:
+                    raise AuthorityDeniedError(
+                        "action external-effect classification is fixed by the "
+                        "current Process Definition node"
+                    )
+                authoritative_external = declared_external
+            else:
+                # Generic effect observations remain useful to recovery and
+                # controlled-probe machinery, but cannot complete this action
+                # node because they carry no runtime-issued node binding.
+                authoritative_external = requested_external
+
+            scope_kind = "external" if authoritative_external else "write"
+            grant_ids = self.authorize_action(
+                run_id,
+                action,
+                selectors,
+                satisfied_conditions=satisfied_conditions,
+                effect_type=effect_type,
+                scope_kind=scope_kind,
+            )
+            if receipt_artifact_id is not None:
+                receipt = self.load_artifact(run_id, receipt_artifact_id)
+                if receipt["role"] != "external_effect_receipt":
+                    raise GovernedRuntimeError(
+                        "external-effect receipt must use that artifact role"
+                    )
+            else:
+                receipt = None
+            if receipt is not None and not authoritative_external:
+                raise GovernedRuntimeError(
+                    "a receipt may be bound only to an external effect"
+                )
+            return self._record_runtime_event(
+                run_id,
+                "action_completed",
+                {
+                    "action": action,
+                    "selectors": list(selectors),
+                    "grant_ids": grant_ids,
+                    "satisfied_conditions": list(satisfied_conditions),
+                    "effect_type": effect_type,
+                    "external_effect": authoritative_external,
+                    "node_external_effect": (
+                        bool(node["external_effect"]) if completion_bound else None
+                    ),
+                    "completion_operation": (
+                        node["operation"] if completion_bound else None
+                    ),
+                    "receipt_artifact_id": receipt_artifact_id,
+                    "receipt_identity_digest": (
+                        receipt["identity"]["digest"] if receipt is not None else None
+                    ),
+                    "details": action_details,
+                },
+                artifact_ids=[receipt_artifact_id] if receipt_artifact_id else [],
+            )
 
     # ---------------------------------------------------- controlled probes
     @staticmethod
