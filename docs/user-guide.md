@@ -227,12 +227,16 @@ Answer the question currently shown. “I do not know,” placeholders, and vagu
 
 Temporary analytical frameworks may help you think during the interview. Their results return to the same Dialogue; they do not replace the governing Process or acquire its authority.
 
+When all ten dimensions are resolved, the same management surface changes to **Prepare canonical plan**. Confirm the **Exact target folder**, then enter the exact target-relative items—one file or directory path per line. The folder and items become authenticated planning inputs, not an inferred grant. Ambiguous paths, parent-directory escapes, wildcards, missing targets, and empty scope fail closed. Choose **Prepare plan** to create the proposal; this still does not approve or start anything.
+
 ### Review and approve the plan
 
 Ora produces one canonical plan with two views:
 
 - **Principal view:** outcome, users, scope, authority, risks, exceptions, proof, and activation request.
 - **Technical view:** artifacts, architecture, dependencies, implementation sequence, tests, evidence identities, versioning, and recovery.
+
+The browser opens these as **Principal view** and **Technical view** tabs in the **Plan review** surface. The surface shows the exact plan ID, version, and digest above both projections. Switching tabs changes only the projection—not the plan being decided.
 
 Review the Principal view first. Open the Technical view when you need to confirm exact paths, selectors, commands, tests, or repository state. Both views refer to the same plan identity; changing a material field requires a new version.
 
@@ -243,6 +247,10 @@ At the approval boundary, choose one exact action:
 - **Request plan changes** keeps the objective and asks for a revised plan.
 - **Change scope or permissions** requires a revised plan with different authority or artifacts.
 - **Stop and retain the plan** ends the pre-execution Run without discarding the reviewed plan.
+
+These five buttons send authenticated actions for the exact plan shown. Actions that revise, change scope, or retain the plan ask for a material reason before submission. If the server rejects an action, the error remains visible in the Plan review surface and no success state is invented.
+
+After **Approve without starting**, the surface says execution remains withheld and shows **Start approved plan**. Use that control later to delegate the exact approved plan and approval receipt. Do not type “start” into the Inquiry pane as a substitute for this control.
 
 Check the target baseline immediately before approval. If the target changed after planning, Ora marks the plan stale and withholds approval until a revision binds the current identity.
 
@@ -262,6 +270,8 @@ After **Approve and start**, the delegated Run appears under **Processes**:
 Select a Process card to return to its governing Dialogue. Choose **Inspect** to open the authenticated Run Inspector. Opening an Unread card marks the governing Dialogue read; it does not accept the result or grant authority.
 
 You may close the browser or restart Ora. The Dialogue binding, plan, Run, artifacts, attempts, checkpoints, evidence, and receipts persist. Reopen the same Dialogue, Pending card, or Inspector after restart. Do not start a duplicate Run merely because the browser was closed.
+
+If you return while the management interview, plan review, or approved-without-start state is active, Ora reconstructs and reopens that surface for the Dialogue. It returns to the exact current question, plan version, stale state, or **Start approved plan** control. New Inquiry text cannot bypass that active management boundary.
 
 Leaving does not create an autonomous background Agent. Ora preserves exact state and advances only through supported runtime events and declared routes. It does not invent new work because you are absent.
 
@@ -375,8 +385,10 @@ There is no general **Reopen** action after lifecycle closure. If more work is r
 | A recurring setup request returned an ordinary answer | The request was classified as generation rather than construction | Use Programming/Build or restate the effect to establish; confirm that the project form appears before proceeding |
 | The interview repeats a question | The answer did not materially resolve that dimension | Give a concrete answer tied to the requested result, party, input/output, permission, evidence, or stop condition |
 | A retried answer does not advance | The original answer was already persisted | Continue from the question now shown; do not reword solely to force another state change |
+| Prepare plan rejects the target or scope | The folder is unavailable or an item is empty, ambiguous, absolute, wildcarded, or escapes the target | Confirm one exact existing target folder and enter only exact target-relative items, one per line |
+| A plan action shows an error | The exact plan, baseline, approval receipt, authority, or persisted state did not validate | Keep the surface open, read the error, reload the same Dialogue if needed, and act only on the reconstructed current plan |
 | The plan says stale | The target identity changed after planning | Request a revised plan against the current baseline; do not approve the old version |
-| Approval succeeded but execution did not start | You chose Approve without starting, or delegation was withheld | Read the plan state and choose the explicit supported start/delegation route after resolving any stale target |
+| Approval succeeded but execution did not start | You chose Approve without starting, or delegation was withheld | Reopen the same Dialogue and choose **Start approved plan** after resolving any stale target |
 | A Run appears stuck in Pending | It may be healthy, waiting at a declared boundary, blocked, or missing evidence | Open Inspect; read Overview, Current State, Evidence, and You. Do not start a duplicate Run |
 | A decision card appears | Reserved authority is required | Inspect the exact request and evidence, then Approve, Deny, mark Authority unavailable, or discuss in the governing Dialogue |
 | Evidence is stale | The result, target, or evidence artifact changed | Recapture and re-run the required inspection; stale proof cannot support `ACCEPT` |
@@ -467,7 +479,8 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
-- **2026-07-19** — G1.1 Phase 3.3: added task-indexed governed-process guidance for entry, project/artifact scope, management interview, canonical plan approval, leave-and-return, attention and decisions, evidence, technical inspection/external edits, Process Library invocation, activation/standing-automation limits, pause/stop/discussion/recovery, terminal artifact lifecycle, and user troubleshooting. Recorded the one-time `86a888bc` runtime-to-vault reconciliation provenance and restored vault-canonical body parity; no runtime behavior changed.
+- **2026-07-19** — G1.1 Phase 3.3 Gate correction: documented the shipped browser management surface, exact target/scope preparation, Principal/Technical tabs, five authenticated plan decisions, explicit later **Start approved plan** delegation, restart reconstruction, stale-plan handling, and visible failures. The correction adds only the browser-to-existing-governed-contract integration required by Gate 3.3; it does not enter Phase 3.4.
+- **2026-07-19** — G1.1 Phase 3.3: added task-indexed governed-process guidance for entry, project/artifact scope, management interview, canonical plan approval, leave-and-return, attention and decisions, evidence, technical inspection/external edits, Process Library invocation, activation/standing-automation limits, pause/stop/discussion/recovery, terminal artifact lifecycle, and user troubleshooting. Recorded the one-time `86a888bc` runtime-to-vault reconciliation provenance and restored vault-canonical body parity. No runtime behavior changed during that one-time documentation reconciliation; the later Gate 3.3 browser correction is recorded separately above.
 - **2026-07-12** — macOS operation now follows the consolidated supervision contract: `ora-launchd.sh install` is the recommended setup, `start.sh` and `stop.sh` delegate when supervision is installed, every operational step uses the exact reported port in the 5000–5010 range, and troubleshooting covers launchd logs plus the Documents/TCC permission caveat. The repository mirror remains body-identical.
 - **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (both unassigned and project-assigned Dialogues appear there); Commons saves now land at the vault root; and V3 uses one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
 - **2026-07-11** — Interface strings caught up to the nomenclature (ora PR #211): the running UI now shows these names, so the earlier "interface may still show older labels" caveat was removed. Still terminology-only; content remains pinned to `7a5e8f40`.

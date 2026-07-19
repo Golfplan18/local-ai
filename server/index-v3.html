@@ -301,6 +301,7 @@
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
 <script src="/static/js/process-entry.js?v=g11-phase-2-7" defer></script>
+<script src="/static/js/process-plan-review.js?v=g11-phase-3-3" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
@@ -1939,7 +1940,29 @@
     }
   };
 
-  const submitToMainPipeline = async (text, processEntryRequest = null) => {
+  const submitToMainPipeline = async (
+    text,
+    processEntryRequest = null,
+    processEntryContract = null
+  ) => {
+    // G1.1 Phase 3.3 — governed construction never enters the ordinary
+    // multipart generation path. The review surface owns the authenticated
+    // management interview and exact plan actions through JSON /chat.
+    if (processEntryContract
+        && processEntryContract.intent === 'capability_construction') {
+      if (!window.OraProcessPlanReview
+          || typeof window.OraProcessPlanReview.begin !== 'function') {
+        renderAssistantTurn('[Governed management review is unavailable.]');
+        return;
+      }
+      await window.OraProcessPlanReview.begin(
+        text,
+        processEntryRequest,
+        processEntryContract,
+        leftInputArea
+      );
+      return;
+    }
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', currentConversationId());
@@ -2219,24 +2242,28 @@
     ].join('\n');
   };
 
-  const submitWithFrameworkCheck = async (text, processEntryRequest = null) => {
+  const submitWithFrameworkCheck = async (
+    text,
+    processEntryRequest = null,
+    processEntryContract = null
+  ) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text, processEntryRequest);
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
     }
     // Process Definitions have their own governed entry contract. Sending
     // Programming through the legacy framework gap analyzer would confuse
     // entry routing with the later management interview and milestone
     // executor, both outside Phase 2.1.
     if (fw.kind === 'process_definition') {
-      return submitToMainPipeline(text, processEntryRequest);
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text, processEntryRequest);
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
     }
 
     // Iteration loop. Round N: analyze with priorResponses, popup if
@@ -2259,11 +2286,15 @@
         // Analyzer down — submit anyway so the user isn't trapped. Phase
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
-        return submitToMainPipeline(augmentedPrompt, processEntryRequest);
+        return submitToMainPipeline(
+          augmentedPrompt, processEntryRequest, processEntryContract
+        );
       }
 
       if (!_hasGaps(report)) {
-        return submitToMainPipeline(augmentedPrompt, processEntryRequest);
+        return submitToMainPipeline(
+          augmentedPrompt, processEntryRequest, processEntryContract
+        );
       }
 
       const choice = await window.OraFrameworkSetupPopup.show(report);
@@ -2284,7 +2315,9 @@
 
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
-        return submitToMainPipeline(augmentedPrompt + note, processEntryRequest);
+        return submitToMainPipeline(
+          augmentedPrompt + note, processEntryRequest, processEntryContract
+        );
       }
 
       // choice.action === 'continue' — loop and re-analyze. If the user's
@@ -2293,7 +2326,9 @@
     }
 
     // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(augmentedPrompt, processEntryRequest);
+    return submitToMainPipeline(
+      augmentedPrompt, processEntryRequest, processEntryContract
+    );
   };
 
   let imageGenerateMode = false;
@@ -2482,6 +2517,15 @@
       return;
     }
     if (!requireMutableInquiry()) return;
+    // A persisted management interview or plan owns this Dialogue until it is
+    // retained or terminal. Reopen the exact state instead of allowing new
+    // Inquiry text to bypass the governed action boundary after reload.
+    if (window.OraProcessPlanReview
+        && typeof window.OraProcessPlanReview.ensureActive === 'function'
+        && await window.OraProcessPlanReview.ensureActive(currentConversationId())) {
+      window.OraProcessPlanReview.open(leftInputArea);
+      return;
+    }
     const leftContent = leftInputArea.value.trim();
     const hasAttachedImages = !!(window.OraInputAttachments
       && typeof window.OraInputAttachments.imageFiles === 'function'
@@ -2543,7 +2587,7 @@
     // When no framework is selected, the wrapper passes straight through
     // to submitToMainPipeline; when one is selected, the popup may
     // intervene before submission.
-    submitWithFrameworkCheck(leftContent, prepared.request);
+    submitWithFrameworkCheck(leftContent, prepared.request, prepared.contract);
   };
 
   // Programming action and Process Library entries begin outside the Inquiry
@@ -2555,7 +2599,7 @@
     if (!requireMutableInquiry()) return;
     leftInputArea.value = '';
     renderUserTurn(prepared.objective);
-    submitToMainPipeline(prepared.objective, prepared.request);
+    submitToMainPipeline(prepared.objective, prepared.request, prepared.contract);
   });
 
   // V3 Backlog 7 — pulse the O on submit for visual feedback. The

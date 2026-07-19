@@ -209,3 +209,216 @@ body.process-entry-open { overflow: hidden; }
   .process-entry__card { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
   .process-entry__header, .process-entry__body { padding: 15px; }
 }
+
+/* G1.1 Phase 3.3 — persistent management interview and plan review. */
+.process-plan-review {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.process-plan-review[hidden] { display: none; }
+
+.process-plan-review__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 68%);
+  backdrop-filter: blur(3px);
+}
+
+.process-plan-review__dialog {
+  position: relative;
+  display: flex;
+  width: min(920px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-primary);
+  box-shadow: 0 20px 70px rgb(0 0 0 / 48%);
+  color: var(--text-normal);
+}
+
+.process-plan-review__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.process-plan-review__header h2 { margin: 2px 0 0; font-size: 1.25rem; }
+
+.process-plan-review__kicker {
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.process-plan-review__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.process-plan-review__status {
+  min-height: 3px;
+  padding: 0 20px;
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+}
+
+.process-plan-review__error,
+.process-plan-review__notice {
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-secondary);
+  line-height: 1.45;
+}
+
+.process-plan-review__error {
+  border-color: var(--text-error, #d55);
+  color: var(--text-error, #d55);
+}
+
+.process-plan-review__body {
+  overflow: auto;
+  padding: 18px 20px 22px;
+}
+
+.process-plan-review__body > p:first-child { margin-top: 0; }
+
+.process-plan-review__body label {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+}
+
+.process-plan-review__body textarea,
+.process-plan-review__body input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-primary-alt, var(--background-secondary));
+  color: var(--text-normal);
+  font: inherit;
+  font-weight: 400;
+  line-height: 1.45;
+  padding: 10px 11px;
+}
+
+.process-plan-review__body textarea { resize: vertical; }
+
+.process-plan-review__body textarea:focus,
+.process-plan-review__body input:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+  outline: none;
+}
+
+.process-plan-review__progress,
+.process-plan-review__identity {
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+}
+
+.process-plan-review__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.process-plan-review__tabs button {
+  padding: 9px 13px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.process-plan-review__tabs button[aria-selected="true"] {
+  border-bottom-color: var(--interactive-accent);
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+.process-plan-review__projection {
+  padding: 4px 2px 10px;
+}
+
+.process-plan-review__field {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.process-plan-review__field h3 { margin: 0 0 6px; font-size: var(--font-ui-medium); }
+.process-plan-review__field p, .process-plan-review__field ul { margin: 5px 0; line-height: 1.5; }
+.process-plan-review__field pre { overflow: auto; white-space: pre-wrap; }
+
+.process-plan-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.process-plan-review__actions--decision {
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.process-plan-review__button {
+  padding: 8px 13px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font: inherit;
+}
+
+.process-plan-review__button--primary {
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+}
+
+.process-plan-review__button--danger { color: var(--text-error, #d55); }
+.process-plan-review__button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.process-plan-review__reason-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+@media (max-width: 600px) {
+  .process-plan-review { padding: 8px; }
+  .process-plan-review__dialog { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  .process-plan-review__header, .process-plan-review__body { padding-left: 14px; padding-right: 14px; }
+  .process-plan-review__actions { justify-content: stretch; }
+  .process-plan-review__button { flex: 1 1 100%; }
+}

@@ -5379,6 +5379,223 @@ def _process_run_inspector_error_status(exc: Exception) -> int:
     return 503
 
 
+def _browser_process_planning_basis(
+    conversation_id: str, payload: dict, *, plan_service=None
+) -> dict:
+    """Derive a bounded plan basis from management answers and exact scope.
+
+    The browser supplies only the two facts it must make explicit after the
+    interview: the exact target root and exact target items. Everything else
+    is derived from the persisted management contract. The resulting basis
+    still crosses ``process_plan_approval._validate_basis`` and captures the
+    live repository identity before a proposal can be reviewed.
+    """
+
+    from process_plan_approval import ProcessPlanInputRequired
+
+    if plan_service is not None:
+        context = plan_service._context(conversation_id)
+        if context is None:
+            state = None
+        else:
+            binding, run, _definition = context
+            state = plan_service._interview_state(conversation_id, binding, run)
+    else:
+        state = _management_interview_service().get_state(conversation_id)
+    if state is None or state.get("status") != "ready_for_plan":
+        raise ProcessPlanInputRequired(
+            "a complete management interview is required before plan proposal"
+        )
+    target_path = str(payload.get("target_path") or "").strip()
+    supplied_target = Path(target_path)
+    if not target_path or not supplied_target.is_absolute():
+        raise ProcessPlanInputRequired("target_path must be an exact absolute path")
+    if supplied_target.is_symlink():
+        raise ProcessPlanInputRequired("target_path cannot be a symlink")
+    try:
+        target_root = supplied_target.resolve(strict=True)
+    except OSError as exc:
+        raise ProcessPlanInputRequired("target_path is unavailable") from exc
+    if not target_root.is_dir():
+        raise ProcessPlanInputRequired("target_path must identify a directory")
+
+    raw_selectors = payload.get("artifact_selectors")
+    if not isinstance(raw_selectors, list) or not raw_selectors:
+        raise ProcessPlanInputRequired(
+            "artifact_selectors must name at least one exact target item"
+        )
+    if len(raw_selectors) > 100:
+        raise ProcessPlanInputRequired("artifact_selectors exceeds the planning ceiling")
+    selectors = []
+    for raw in raw_selectors:
+        selector = str(raw or "").strip().replace("//", "/")
+        parts = Path(selector).parts
+        if (
+            not selector or len(selector) > 512 or Path(selector).is_absolute()
+            or "\\" in selector or any(part in {"", ".", ".."} for part in parts)
+            or any(character in selector for character in "*?[]\x00")
+            or selector == ".git" or selector.startswith(".git/")
+        ):
+            raise ProcessPlanInputRequired(
+                "artifact_selectors must be exact relative target paths"
+            )
+        if selector not in selectors:
+            selectors.append(selector)
+
+    answers = {
+        dimension: str(fact.get("answer") or "").strip()
+        for dimension, fact in (state.get("answers") or {}).items()
+    }
+    required_answers = {
+        "intended_result", "affected_parties", "inputs_outputs", "reuse",
+        "initiation", "authority", "exceptions", "permissions", "evidence",
+        "stopping",
+    }
+    if set(answers) != required_answers or any(
+        not answers[key] for key in required_answers
+    ):
+        raise ProcessPlanInputRequired(
+            "the persisted management contract is incomplete"
+        )
+
+    # A revised browser proposal must materially carry the exact Principal
+    # request that caused the prior version to reopen. Otherwise a generic
+    # request-changes action could regenerate the same plan while appearing to
+    # honor the requested correction.
+    revision_requirement = ""
+    if plan_service is not None:
+        current_state = plan_service.get_state(conversation_id)
+        requests = (current_state or {}).get("revision_requests") or []
+        if (
+            current_state is not None
+            and current_state.get("status") == "revision_requested"
+            and requests
+        ):
+            latest = requests[-1]
+            revision_requirement = (
+                f"Principal revision requirement ({latest['action']}): "
+                f"{latest['reason']}"
+            )
+
+    instruction_paths = [
+        Path(WORKSPACE) / "frameworks" / "book" / "programming.md",
+    ]
+    instruction_paths.extend(
+        target_root / name for name in ("AGENTS.md", "CLAUDE.md", "README.md")
+    )
+    instructions = []
+    seen_instructions = set()
+    for path in instruction_paths:
+        if path in seen_instructions or path.is_symlink() or not path.is_file():
+            continue
+        seen_instructions.add(path)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        instructions.append({
+            "source": str(path.resolve(strict=True)),
+            "digest": "sha256:" + digest,
+            "precedence": (
+                "governing Process Definition"
+                if path.name == "programming.md" else "target repository"
+            ),
+            "scope": "the exact approved target and declared items",
+        })
+    if not instructions:
+        raise ProcessPlanInputRequired(
+            "no authenticated planning instructions are available"
+        )
+
+    activation_requested = bool(re.search(
+        r"\b(?:schedule|scheduled|trigger|triggered|automatic|automated|"
+        r"hourly|daily|weekly|monthly|whenever)\b",
+        answers["initiation"],
+        flags=re.IGNORECASE,
+    ))
+    artifact_summary = ", ".join(selectors)
+    return {
+        "target_path": str(target_root),
+        "non_solutions": [
+            "Do not change artifacts outside the exact approved target items.",
+            (
+                "Do not activate, publish, message, deploy, use remote Git, or "
+                "create standing triggers without separate explicit authority."
+            ),
+        ],
+        "scope": selectors,
+        "instructions": instructions,
+        "architecture": [
+            "Preserve the target's existing architecture and authenticated instructions.",
+            "Implement only the management result and exact item scope approved here.",
+        ] + ([revision_requirement] if revision_requirement else []),
+        "dependencies": [
+            "The exact current target identity and declared instruction files.",
+            "Only dependencies already present or separately approved in a revised plan.",
+        ],
+        "implementation_sequence": [
+            {
+                "step_id": "step-implement-approved-result",
+                "description": (
+                    f"Produce {answers['intended_result']} within {artifact_summary}."
+                ),
+                "depends_on": [],
+                "artifacts": selectors,
+                "action": "mutate",
+            },
+            {
+                "step_id": "step-verify-approved-result",
+                "description": (
+                    "Run the approved inspection and evidence checks against the exact "
+                    "post-change target identity."
+                ),
+                "depends_on": ["step-implement-approved-result"],
+                "artifacts": selectors,
+                "action": "test",
+            },
+        ],
+        "expected_transitions": [
+            f"The declared target items produce this result: {answers['intended_result']}",
+            f"Inputs and outputs remain bounded as follows: {answers['inputs_outputs']}",
+        ],
+        "tool_permissions": [answers["permissions"]],
+        "tests": [answers["evidence"]],
+        "risks": [answers["exceptions"], answers["stopping"]],
+        "recovery": [
+            "Persist an exact pre-action checkpoint before any target mutation.",
+            "On failure, stop and recover only through authenticated target evidence and receipts.",
+        ],
+        "completion_criteria": [answers["evidence"]],
+        "replanning_triggers": [
+            "Target identity, declared items, instructions, authority, or architecture changes.",
+            "The approved evidence cannot prove the intended result.",
+        ],
+        "loop_policy": {
+            "max_attempts": 3,
+            "repeated_defect_limit": 2,
+            "progress_required": True,
+            "on_no_progress": "REPLAN",
+        },
+        "execution_handoff": {
+            "requested_actions": ["mutate", "test"],
+            "artifact_selectors": selectors,
+            "stop_conditions": [
+                "target baseline drift",
+                "permission or scope ambiguity",
+                "required evidence unavailable",
+            ],
+        },
+        "activation": {
+            "requested": activation_requested,
+            "mode": (
+                "requested initiation retained for separate activation review"
+                if activation_requested else "manual invocation only"
+            ),
+            "separate_approval_required": True,
+        },
+        "versioning": [
+            "Create a new plan version for every material scope, permission, target, or architecture change."
+        ],
+    }
+
+
 def _apply_process_plan_action(service, conversation_id, payload):
     """Apply one exact Phase 2.3 action without inferring execution authority."""
 
@@ -5388,9 +5605,14 @@ def _apply_process_plan_action(service, conversation_id, payload):
         raise ProcessPlanInputRequired("management_plan must be an object")
     action = str(payload.get("action") or "").strip()
     if action == "propose":
+        planning_basis = payload.get("planning_basis")
+        if planning_basis is None:
+            planning_basis = _browser_process_planning_basis(
+                conversation_id, payload, plan_service=service
+            )
         return service.propose(
             conversation_id,
-            payload.get("planning_basis"),
+            planning_basis,
             planner_id=str(payload.get("planner_id") or "planner:programming"),
             idempotency_key=str(payload.get("idempotency_key") or ""),
         )
@@ -5754,6 +5976,54 @@ def process_management_interview_state(conversation_id):
     if state is None:
         return _json_response({"ok": False, "error": "management_interview_not_found"}, 404)
     return _json_response({"ok": True, "interview": state})
+
+
+@app.route("/api/process-plan-context/<conversation_id>", methods=["GET"])
+def process_plan_context(conversation_id):
+    """Return the exact browser planning context for a completed interview.
+
+    The project selection is not silently treated as a filesystem grant. A
+    registered project root is a useful suggestion; otherwise the user must
+    confirm an exact target folder in the plan-review surface. Ora's own
+    container project resolves to this checkout because it has no plugin root.
+    """
+
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+    try:
+        state = _management_interview_service().get_state(conversation_id)
+        if state is None:
+            return _json_response({
+                "ok": False, "error": "management_interview_not_found",
+            }, 404)
+        suggested_target = ""
+        project_ref = str(state.get("project_ref") or "").strip()
+        try:
+            from project_registry import get_project
+
+            project = get_project(project_ref)
+        except Exception:
+            project = None
+        if project is not None:
+            suggested_target = str(Path(project.root).resolve(strict=True))
+        elif project_ref == "ora":
+            suggested_target = str(Path(WORKSPACE).resolve(strict=True))
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _management_interview_error_status(exc),
+        )
+    return _json_response({
+        "ok": True,
+        "planning_context": {
+            "dialogue_ref": conversation_id,
+            "run_id": state["run_id"],
+            "binding_digest": state["binding_digest"],
+            "project_ref": state["project_ref"],
+            "interview_status": state["status"],
+            "suggested_target_path": suggested_target,
+        },
+    })
 
 
 @app.route("/api/process-plan/<conversation_id>", methods=["GET", "POST"])
@@ -9516,6 +9786,44 @@ def chat_multipart():
         _delete_pending_submission(submission_id)
         return _json_response({
             "error": process_entry["status"],
+            "entry": process_entry,
+        }, 409)
+    try:
+        from conversation_memory import load_governing_process_binding
+
+        governing_binding = load_governing_process_binding(panel_id)
+        active_plan = None
+        active_interview = None
+        if governing_binding is not None:
+            active_plan = _process_plan_service().get_state(panel_id)
+            if active_plan is None:
+                active_interview = _management_interview_service().get_state(panel_id)
+        if active_plan is not None and active_plan.get("run_state") in {
+            "completed", "blocked",
+        }:
+            active_plan = None
+    except Exception as exc:
+        _delete_pending_submission(submission_id)
+        return _json_response({"error": str(exc)}, 503)
+    if active_plan is not None or active_interview is not None:
+        _delete_pending_submission(submission_id)
+        payload = {
+            "error": "governed_management_requires_json_chat",
+            "required_endpoint": "/chat",
+        }
+        if active_plan is not None:
+            payload["process_plan"] = active_plan
+        if active_interview is not None:
+            payload["management_interview"] = active_interview
+        return _json_response(payload, 409)
+    if (
+        process_entry is not None
+        and process_entry.get("intent") == "capability_construction"
+    ):
+        _delete_pending_submission(submission_id)
+        return _json_response({
+            "error": "governed_management_requires_json_chat",
+            "required_endpoint": "/chat",
             "entry": process_entry,
         }, 409)
     if (process_entry is not None

@@ -1,8 +1,8 @@
 """G1.1 Phase 3.3 — canonical user guidance and mirror reconciliation."""
 from __future__ import annotations
 
-import ast
 import os
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -70,7 +70,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "6740f2fcc6663b5d5e1f57db9ce57de3578ac42c",
             "does not reverse the standing direction of truth",
             "future guide edits begin here",
-            "no runtime behavior changed",
+            "No runtime behavior changed during that one-time documentation reconciliation",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, self.guide)
@@ -80,7 +80,8 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "verified general-operation behavior from runtime guide commit `86a888bc`",
             "promoted into the vault once",
             "does not reverse the vault-first direction of truth",
-            "No runtime behavior changed",
+            "changed no runtime behavior",
+            "Gate 3.3 subsequently found",
             "exactly synchronized",
         ):
             with self.subTest(registry_token=token):
@@ -124,6 +125,8 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for label in (
             "Approve and start",
             "Approve without starting",
+            "Start approved plan",
+            "Prepare plan",
             "Request plan changes",
             "Change scope or permissions",
             "Stop and retain the plan",
@@ -152,23 +155,24 @@ class TestPhase33UserGuidance(unittest.TestCase):
             with self.subTest(view=view):
                 self.assertIn(f"| **{view}** |", self.guide)
 
-        server = (ROOT / "server" / "server.py").read_text(encoding="utf-8")
-        server_literals = "\n".join(
-            node.value
-            for node in ast.walk(ast.parse(server))
-            if isinstance(node, ast.Constant) and isinstance(node.value, str)
-        )
+        index = (ROOT / "server" / "index-v3.html").read_text(encoding="utf-8")
+        plan_review = (
+            ROOT / "server" / "static" / "js" / "process-plan-review.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/static/js/process-plan-review.js?v=g11-phase-3-3", index)
+        self.assertIn("processEntryContract.intent === 'capability_construction'", index)
         inspector = (ROOT / "server" / "static" / "js" / "process-run-inspector.js").read_text(
             encoding="utf-8"
         )
-        for phrase in (
-            "approve and start",
-            "approve without starting",
-            "request plan changes",
-            "change scope or permissions",
-            "stop and retain the plan",
+        for contract in (
+            "'approve_and_start'",
+            "'approve_without_start'",
+            "'request_changes'",
+            "'change_scope_or_permissions'",
+            "'stop_and_retain'",
+            "'delegate'",
         ):
-            self.assertIn(phrase, server_literals)
+            self.assertIn(contract, plan_review)
         for label in (
             "Authority requested",
             "Approve request",
@@ -179,6 +183,19 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "Current evidence does not yet support acceptance.",
         ):
             self.assertIn(label, inspector)
+
+    def test_plan_review_controls_execute_in_a_real_dom(self):
+        result = subprocess.run(
+            ["node", "server/static/tests/test-process-plan-review.js"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("16/16 passed", result.stdout)
 
     def test_construction_invocation_activation_and_effects_stay_separate(self):
         for token in (
@@ -209,7 +226,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
 
     def test_design_tracker_and_registry_expose_the_current_gate_boundary(self):
         for token in (
-            "Phase 3.3 implementation — COMPLETE; PENDING GATE 3.3",
+            "Phase 3.3 implementation — REVISED; PENDING GATE 3.3",
             "### 29.13 User guide — AS BUILT 2026-07-19",
             "[x] User guide completed.",
             "### 29.11 Migration, compatibility, and rollback — NOT YET IMPLEMENTED",
@@ -222,8 +239,9 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for token in (
             "Current phase:** Part 3, Phase 3.3",
             "Phase 3.3 authority boundary",
-            "Do not write the Phase 3.4 maintainer reference",
-            "Phase 3.3 documents accepted behavior and limitations without changing runtime behavior",
+            "Phase 3.4 maintainer reference/migration/rollback/troubleshooting material",
+            "Gate 3.3 then proved that the browser could not operate",
+            "does not change canonical package identity or enter Phase 3.4",
         ):
             with self.subTest(tracker_token=token):
                 self.assertIn(token, self.tracker)

@@ -330,12 +330,6 @@ class Phase27AsideAndExhibitsTests(unittest.TestCase):
         invoke.assert_not_called()
 
     def test_historical_exhibits_are_withheld_from_a_new_governed_entry(self):
-        captured = {}
-
-        def invoke(*args, **kwargs):
-            captured["extra_context"] = kwargs.get("extra_context")
-            return server._json_response({"status": "ok"})
-
         objective = "Build a reusable cash-flow review."
         entry_request = {
             "source": "construction_action",
@@ -344,7 +338,8 @@ class Phase27AsideAndExhibitsTests(unittest.TestCase):
             "project_confirmed": True,
         }
         with mock.patch.object(server, "_log_pending_submission", return_value="submission-governed"), \
-             mock.patch.object(server, "_invoke_pipeline", side_effect=invoke), \
+             mock.patch.object(server, "_delete_pending_submission"), \
+             mock.patch.object(server, "_invoke_pipeline") as invoke, \
              mock.patch(
                  "conversation_memory.get_prior_spatial_state",
                  return_value=_valid_spatial_rep(),
@@ -357,16 +352,15 @@ class Phase27AsideAndExhibitsTests(unittest.TestCase):
                 "conversation_id": "phase-2-7-prior-exhibits",
                 "process_entry_request": json.dumps(entry_request),
             }, content_type="multipart/form-data")
-        self.assertEqual(response.status_code, 200)
-        context = captured["extra_context"]
-        self.assertNotIn("prior_spatial_representation", context)
-        self.assertNotIn("prior_annotations", context)
-        self.assertNotIn("exhibits_submission", context)
+        self.assertEqual(response.status_code, 409)
         self.assertEqual(
-            context["prior_exhibits_withheld"]["reason"],
-            "explicit_current_submission_required",
+            response.get_json()["error"], "governed_management_requires_json_chat"
         )
-        self.assertEqual(context["prior_exhibits_withheld"]["run_effects"], [])
+        self.assertEqual(response.get_json()["required_endpoint"], "/chat")
+        invoke.assert_not_called()
+        self.assertEqual(
+            response.get_json()["entry"]["intent"], "capability_construction"
+        )
 
     def test_autosave_path_cannot_enter_the_pipeline(self):
         with mock.patch(

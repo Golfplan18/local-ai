@@ -855,6 +855,166 @@ class Phase23ServerTests(Phase23Fixture):
         self.assertEqual(state["status"], "awaiting_approval")
         persist.assert_called_once()
 
+    def test_browser_proposal_derives_both_views_from_interview_and_exact_scope(self):
+        saved = server._json_response({"status": "ok", "chunk_id": "chunk-browser-plan"})
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-browser-plan",
+        ), mock.patch.object(
+            server, "_persist_process_plan_exchange", return_value=saved,
+        ):
+            response = self.post(
+                "Prepare the exact canonical plan for review.",
+                management_plan={
+                    "action": "propose",
+                    "target_path": str(self.target),
+                    "artifact_selectors": ["report.py", "tests/test_report.py"],
+                    "planner_id": "planner:programming",
+                    "idempotency_key": "plan-ui:propose:browser",
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        state = self.service.get_state("dialogue-plan")
+        self.assertEqual(state["status"], "awaiting_approval")
+        plan = state["current_plan"]
+        self.assertEqual(
+            plan["repository_artifact_scope"]["declared_scope"],
+            ["report.py", "tests/test_report.py"],
+        )
+        self.assertEqual(
+            plan["principal_view"]["plan_ref"],
+            {field: plan[field] for field in ("plan_id", "version", "digest")},
+        )
+        self.assertEqual(
+            plan["technical_view"]["plan_ref"],
+            plan["principal_view"]["plan_ref"],
+        )
+        instruction_names = {
+            Path(item["source"]).name for item in plan["applicable_instructions"]
+        }
+        self.assertIn("programming.md", instruction_names)
+        self.assertIn("AGENTS.md", instruction_names)
+        self.assertEqual(
+            plan["execution_handoff"]["artifact_selectors"],
+            ["report.py", "tests/test_report.py"],
+        )
+
+    def test_browser_proposal_rejects_ambiguous_or_escaping_scope(self):
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-browser-invalid",
+        ):
+            response = self.post(
+                "Prepare the plan.",
+                management_plan={
+                    "action": "propose",
+                    "target_path": str(self.target),
+                    "artifact_selectors": ["../outside.py"],
+                    "planner_id": "planner:programming",
+                    "idempotency_key": "plan-ui:propose:invalid",
+                },
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("exact relative target paths", response.get_json()["error"])
+        self.assertIsNone(self.service.get_state("dialogue-plan"))
+
+    def test_browser_revision_carries_the_exact_principal_requirement(self):
+        proposal = {
+            "action": "propose",
+            "target_path": str(self.target),
+            "artifact_selectors": ["report.py", "tests/test_report.py"],
+            "planner_id": "planner:programming",
+            "idempotency_key": "plan-ui:propose:first",
+        }
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-browser-first",
+        ), mock.patch.object(
+            server, "_persist_process_plan_exchange",
+            return_value=server._json_response({"status": "ok"}),
+        ):
+            self.post("Prepare the plan.", management_plan=proposal)
+        first = self.service.get_state("dialogue-plan")["current_plan"]
+        self.service.request_revision(
+            "dialogue-plan",
+            action="request_changes",
+            plan_ref={
+                field: first[field] for field in ("plan_id", "version", "digest")
+            },
+            reason="Add an explicit audit-log verification step.",
+            idempotency_key="plan-ui:request-changes:browser",
+        )
+        proposal["idempotency_key"] = "plan-ui:propose:revised"
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-browser-revised",
+        ), mock.patch.object(
+            server, "_persist_process_plan_exchange",
+            return_value=server._json_response({"status": "ok"}),
+        ):
+            response = self.post("Prepare the revised plan.", management_plan=proposal)
+        self.assertEqual(response.status_code, 200, response.get_json())
+        revised = self.service.get_state("dialogue-plan")["current_plan"]
+        self.assertEqual(revised["version"], "2.0")
+        self.assertNotEqual(revised["digest"], first["digest"])
+        self.assertIn(
+            "Principal revision requirement (request_changes): Add an explicit "
+            "audit-log verification step.",
+            revised["architecture"],
+        )
+
+    def test_browser_planning_context_is_interview_bound_and_non_authoritative(self):
+        with mock.patch("project_registry.get_project", return_value=None):
+            response = self.client.get("/api/process-plan-context/dialogue-plan")
+        self.assertEqual(response.status_code, 200)
+        context = response.get_json()["planning_context"]
+        self.assertEqual(context["dialogue_ref"], "dialogue-plan")
+        self.assertEqual(context["run_id"], self.interview_state["run_id"])
+        self.assertEqual(
+            context["binding_digest"], self.interview_state["binding_digest"]
+        )
+        self.assertEqual(context["suggested_target_path"], str(ROOT))
+        self.assertNotIn("authority", context)
+
+    def test_multipart_cannot_bypass_active_plan_or_start_construction(self):
+        self.propose()
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-multipart-plan",
+        ), mock.patch.object(server, "_delete_pending_submission"):
+            active = self.client.post("/chat/multipart", data={
+                "message": "Continue as ordinary generation.",
+                "conversation_id": "dialogue-plan",
+                "panel_id": "dialogue-plan",
+                "is_main_feed": "true",
+            })
+        self.assertEqual(active.status_code, 409)
+        self.assertEqual(
+            active.get_json()["error"], "governed_management_requires_json_chat"
+        )
+        self.assertEqual(active.get_json()["process_plan"]["status"], "awaiting_approval")
+
+        request = {
+            "source": "inquiry",
+            "objective": "Set up a repeatable monthly cash-flow review.",
+            "project_ref": "ora",
+            "project_confirmed": True,
+        }
+        with mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-multipart-new",
+        ), mock.patch.object(
+            server, "_delete_pending_submission"
+        ), mock.patch.object(
+            server, "_process_entry_project_visible", return_value=True
+        ):
+            construction = self.client.post("/chat/multipart", data={
+                "message": request["objective"],
+                "conversation_id": "dialogue-browser-new",
+                "panel_id": "dialogue-browser-new",
+                "is_main_feed": "true",
+                "process_entry_request": json.dumps(request),
+            })
+        self.assertEqual(construction.status_code, 409, construction.get_json())
+        self.assertEqual(
+            construction.get_json()["error"],
+            "governed_management_requires_json_chat",
+        )
+
     def test_chat_proposal_retry_after_dialogue_save_failure_is_idempotent(self):
         payload = {
             "action": "propose",
