@@ -191,9 +191,12 @@ class Phase24DelegationTests(Phase24Fixture):
         return post_state, receipt
 
     @staticmethod
-    def _mutation_details(pre_state, post_state):
+    def _mutation_details(
+        pre_state, post_state,
+        operation="execute_approved_programming_step",
+    ):
         return {
-            "operation": "execute_approved_programming_step",
+            "operation": operation,
             "pre_state_identity": {
                 "artifact_id": pre_state["artifact"]["artifact_id"],
                 "identity_digest": pre_state["artifact"]["identity"]["digest"],
@@ -567,6 +570,144 @@ class Phase24DelegationTests(Phase24Fixture):
             "execute_approved_programming_step",
             reason="exact approved mutation completed with recovery proof",
             artifact_ids=[receipt["artifact"]["artifact_id"]],
+        )
+        self.assertEqual(
+            self.runtime.load_run(state["run_id"])["current_node_id"],
+            "attempt-review",
+        )
+        self.assertFalse(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+
+    def test_exact_checkpointed_correction_mutation_returns_to_attempt_review(self):
+        state = self.approved()
+        pre_state = self._enter_external_execute_step(state)
+        post_state, receipt = self._post_state_and_receipt(state, pre_state)
+        run = self.runtime.load_run(state["run_id"])
+        execute_conditions = self._grant_conditions(
+            run, "execute_approved_programming_step"
+        )
+        self.runtime.record_action(
+            state["run_id"],
+            action="execute_approved_programming_step",
+            selectors=["artifact:report.py"],
+            satisfied_conditions=execute_conditions,
+            effect_type="local_reversible",
+            external_effect=True,
+            receipt_artifact_id=receipt["artifact"]["artifact_id"],
+            details=self._mutation_details(pre_state, post_state),
+        )
+        self.runtime.complete_action_node(
+            state["run_id"],
+            "execute_approved_programming_step",
+            reason="first attempt exposes a correctable defect",
+            artifact_ids=[receipt["artifact"]["artifact_id"]],
+        )
+
+        run = self.runtime.load_run(state["run_id"])
+        review_conditions = self._grant_conditions(run, "inspect_programming_result")
+        review = self.runtime.record_inline_artifact(
+            state["run_id"], "correctable-defect-evidence",
+            "The current report has one bounded local defect.",
+            role="evidence", node_id="attempt-review",
+            action="inspect_programming_result",
+            selector="scope:declared_outputs",
+            satisfied_conditions=review_conditions,
+        )
+        review_refs = [
+            {
+                "evidence_id": evidence_id,
+                "artifact_id": review["artifact"]["artifact_id"],
+                "identity_digest": review["artifact"]["identity"]["digest"],
+                "outcome": "FAIL",
+            }
+            for evidence_id in ("ev-identity", "ev-delta", "ev-check", "ev-review")
+        ]
+        self.runtime.apply_transition(
+            state["run_id"], "REVISE",
+            target_node_id="revision-route",
+            reason="independent review found a bounded execution defect",
+            evaluation_boundary="delegated-programming-attempt-review",
+            evidence_refs=review_refs,
+        )
+        self.runtime.advance_decision(
+            state["run_id"], "prg_run",
+            reason="PRG-Run permits bounded correction",
+        )
+        self.runtime.advance_bounded_loop(
+            state["run_id"], continue_loop=True,
+            reason="enter the bounded correction body",
+        )
+        self.assertEqual(
+            self.runtime.load_run(state["run_id"])["current_node_id"], "correct"
+        )
+        self.assertFalse(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+
+        correction_pre = self.delegation.capture_repository_state(
+            "dialogue-plan",
+            artifact_id="correction-pre-state",
+            phase="pre_action",
+        )
+        self.assertFalse(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+        self.runtime.create_checkpoint(
+            state["run_id"], "before-approved-correction",
+            segment_id="approved-report-correction",
+            resume_node_id="correct",
+        )
+        self.assertTrue(
+            self.service.get_state("dialogue-plan")["target_mutation_authorized"]
+        )
+        run = self.runtime.load_run(state["run_id"])
+        correction_conditions = self._grant_conditions(
+            run, "correct_programming_defect"
+        )
+        self.assertEqual(
+            self.runtime.authorize_action(
+                state["run_id"], "correct_programming_defect",
+                ["artifact:report.py"],
+                satisfied_conditions=correction_conditions,
+                effect_type="local_reversible",
+                scope_kind="external",
+            ),
+            ["grant-execute-approved-step"],
+        )
+        report = self.target / "report.py"
+        report.write_text(
+            report.read_text(encoding="utf-8") + "# bounded correction\n",
+            encoding="utf-8",
+        )
+        correction_post = self.delegation.capture_repository_state(
+            "dialogue-plan",
+            artifact_id="correction-post-state",
+            phase="post_action",
+        )
+        correction_receipt = self.delegation.issue_repository_mutation_receipt(
+            "dialogue-plan",
+            artifact_id="correction-mutation-receipt",
+            pre_state_artifact_id=correction_pre["artifact"]["artifact_id"],
+            post_state_artifact_id=correction_post["artifact"]["artifact_id"],
+        )
+        self.runtime.record_action(
+            state["run_id"],
+            action="correct_programming_defect",
+            selectors=["artifact:report.py"],
+            satisfied_conditions=correction_conditions,
+            effect_type="local_reversible",
+            external_effect=True,
+            receipt_artifact_id=correction_receipt["artifact"]["artifact_id"],
+            details=self._mutation_details(
+                correction_pre, correction_post,
+                operation="correct_programming_defect",
+            ),
+        )
+        self.runtime.complete_action_node(
+            state["run_id"], "correct_programming_defect",
+            reason="bounded correction completed with exact repository evidence",
+            artifact_ids=[correction_receipt["artifact"]["artifact_id"]],
         )
         self.assertEqual(
             self.runtime.load_run(state["run_id"])["current_node_id"],

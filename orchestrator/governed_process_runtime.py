@@ -1457,15 +1457,8 @@ class GovernedProcessRuntime:
                     raise GovernedRuntimeError(
                         "action record selectors differ from the node's authoritative scope"
                     )
-                direct_access = set(node["artifact_access"])
-                access_marker = (
-                    "scope:declared_external_effects"
-                    if node["external_effect"]
-                    else "scope:declared_outputs"
-                )
-                if (
-                    access_marker not in direct_access
-                    and not set(action_selectors).issubset(direct_access)
+                if not self._node_allows_action_selectors(
+                    run, node, action_selectors, records
                 ):
                     raise GovernedRuntimeError(
                         "action record selectors are outside the Process Definition node"
@@ -2027,6 +2020,35 @@ class GovernedProcessRuntime:
                 "mutation authority is withheld"
             )
 
+    def _node_allows_action_selectors(
+        self,
+        run: Mapping[str, Any],
+        node: Mapping[str, Any],
+        selectors: Sequence[str],
+        records: Sequence[Mapping[str, Any]],
+    ) -> bool:
+        """Resolve graph access markers without widening delegated selectors."""
+
+        direct_access = set(node["artifact_access"])
+        exact_selectors = set(selectors)
+        if exact_selectors.issubset(direct_access):
+            return True
+        if not node["external_effect"]:
+            return "scope:declared_outputs" in direct_access
+        if "scope:declared_external_effects" in direct_access:
+            return True
+        delegated_target = self._delegation_target_binding(run, records)
+        external_scope = set(
+            run["contracts"]["artifact_scope"]["external_effect_selectors"]
+        )
+        return bool(
+            delegated_target is not None
+            and "scope:declared_outputs" in direct_access
+            and exact_selectors
+            and exact_selectors.issubset(external_scope)
+            and all(selector.startswith("artifact:") for selector in exact_selectors)
+        )
+
     def preview_action_authorization(
         self,
         run_id: str,
@@ -2170,6 +2192,7 @@ class GovernedProcessRuntime:
             and node["external_effect"] is True
             and node["operation"] == action
         ]
+        bound_node = None
         if graph_bound_nodes:
             current_node = nodes[run["current_node_id"]]
             if (
@@ -2194,6 +2217,7 @@ class GovernedProcessRuntime:
                     self.load_records(run_id),
                     effect_recording=effect_recording,
                 )
+            bound_node = current_node
         authority = run["contracts"]["authority"]
         expires_at = authority.get("expires_at")
         if expires_at and _parse_time(expires_at) < _parse_time(self._now()):
@@ -2222,6 +2246,16 @@ class GovernedProcessRuntime:
             raise AuthorityDeniedError(
                 f"selector(s) outside {scope_kind or 'declared'} artifact scope: "
                 f"{', '.join(outside_scope)}"
+            )
+        if bound_node is not None and not self._node_allows_action_selectors(
+            run,
+            bound_node,
+            selectors,
+            self.load_records(run_id),
+        ):
+            raise AuthorityDeniedError(
+                "graph-bound action selectors are outside the Process Definition "
+                "node access contract"
             )
         satisfied = set(satisfied_conditions)
         matched_ids: set[str] = set()
