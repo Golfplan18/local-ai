@@ -10,9 +10,9 @@ Design, convert, render, and audit AI instruction frameworks. Default output is 
 
 _A Meta-Framework for Formalizing Domain Expertise into Executable AI Specifications_
 
-_Version 2.5_
+_Version 2.6_
 
-_v2.5 formalizes reusable procedures as exact versioned Process Definitions over the domain-general graph grammar, replaces Multi-stage runtime renderings with bounded-judgment and multi-stage runtime projections, and requires all seven Process Run directives with final-only ACCEPT. v2.4 added domain-neutral formalization of externally acting process applications, preserved PIF-inferred verification boundaries, and defined the standalone human-readable PROCESS APPLICATION CONTRACT in §2.13._
+_v2.6 records the verified G1.1 registry, package, and generic-kernel binding for reusable definitions. v2.5 formalizes reusable procedures as exact versioned Process Definitions over the domain-general graph grammar, replaces Multi-stage runtime renderings with bounded-judgment and multi-stage runtime projections, and requires all seven Process Run directives with final-only ACCEPT. v2.4 added domain-neutral formalization of externally acting process applications, preserved PIF-inferred verification boundaries, and defined the standalone human-readable PROCESS APPLICATION CONTRACT in §2.13._
 
 _v2.3 update: semantically reconciled the two competing v2.2 canonicals. The full milestone, anatomy, recovery, rendering, variable-fidelity, and CFF/OFF integration specification was preserved together with the single-file default, approval gates, audit nuance, quality bars, and operational safeguards. At the v2.3 release, this file and its Ora runtime mirror were exact body copies._
 
@@ -2215,6 +2215,7 @@ These findings are design inputs, not a substitute for current empirical testing
 - **v2.3:** Reconciled two divergent v2.2 lines into this single canonical. Preserved the richer full specification and the concise operational safeguards, standardized the Display Description limit at 500 characters, corrected the framework end marker, and restored exact vault-to-Ora body parity.
 - **v2.4:** Added domain-neutral externally acting process formalization in §2.13; made PIF verification boundaries authoritative design inputs placed either as formal milestones or process-internal verification points; reserved Boundary Change Rationales for substantive boundary changes; allowed optional YAML runtime identifiers as navigation bindings while keeping all operational meaning in Markdown; formalized artifacts, identity, authorized actions, planning and execution nodes, acceptance, evidence, bounded loops, transitions, unresolved bindings, and an independent final gate in the standalone PROCESS APPLICATION CONTRACT. This is an untested capability release; Programming Oversight derivation and cross-domain trials remain pending.
 - **v2.5:** Recast externally acting frameworks as exact versioned Process Definitions over the domain-general graph grammar; replaced durable-actor-specific renderings and provenance with bounded-judgment and multi-stage runtime projections; added Process Run continuation/recovery and package-manifest semantics; required all seven directives with intermediate `PROCEED`, final-only `ACCEPT`, generic `REDEFINE`, and typed-authority `ESCALATE`; and retained `PASS` / `FAIL` / `BROKEN` only as local observations.
+- **v2.6:** Reconciled PFF with the accepted G1.1 implementation. `orchestrator/process_contracts.py` enforces `ora.process-contracts/1.0`, `ora.process-graph/1.0`, and `ora.process-package/1.0`; `orchestrator/process_definition_registry.py` authenticates exact issued identities with an independent registration anchor; and the generic kernel constructs, verifies, registers, resolves, and invokes content-bound non-programming definitions. The Programming package remains issued as `ora/programming@2.0.1` with digest `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`; this reconciliation does not rewrite that immutable package.
 
 ---
 
@@ -2224,4 +2225,4 @@ These findings are design inputs, not a substitute for current empirical testing
 
 ---
 
-**END OF PROCESS FORMALIZATION FRAMEWORK v2.5**
+**END OF PROCESS FORMALIZATION FRAMEWORK v2.6**

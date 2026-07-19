@@ -2,7 +2,7 @@
 
 *The deepest layer of Ora's documentation: the installed-system source of truth for engineers, architects, and evaluators. Two companion documents — an accessible overview and a how-to guide — derive from this one and are written only after it is approved.*
 
-> **Installed system described at commit `7a5e8f40`** (`~/ora`, PR #181). This document is the vault canonical; its repository mirror is `~/ora/docs/technical-documentation.md` (see Appendix C — Vault↔Repo Mirror Parity Rule). Status labels — implemented / partial / planned / deferred / unmerged-code-review / stale — are defined in Part 0 under "How To Read the Status Labels."
+> **Composite implementation pin.** Chapters 1–17 retain their audited commit `7a5e8f40` line-level pin except where a later currency note says otherwise. Chapter 18 is the verified G1.1 governed-process addendum pinned to `/Users/oracle/ora-msi-central-routing` commit `6740f2fcc6663b5d5e1f57db9ce57de3578ac42c`. For governed-process architecture, Chapter 18 and the versioned canonicals it cites supersede conflicting Agent, closed-suite, automatic-supervision, and fail-open gate language in the older chapters. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
 
 ---
 
@@ -14,9 +14,9 @@ The reframe this whole system rests on is assisted human intelligence. Ora is no
 
 Two distinctions run through the entire architecture and are worth fixing at the outset.
 
-The first is **foreground versus background execution**. This is the operative runtime distinction in Ora — not "manual versus agentic." Foreground execution is work the operator initiates and waits on. Background execution is work a framework carries out on its own schedule or in response to events, after the operator has submitted and moved on. An "agent," in Ora's vocabulary, is precisely a framework that can execute in the background; the word carries no further mystique. Where you see the proper noun **Agent Identity Framework**, read it as a named subsystem, not as a claim that the system is an autonomous agent.
+The first is **governed execution versus ordinary generation**. Ordinary generation remains a foreground analytical pipeline. Governed execution adds durable Process Definitions, Process Runs, Artifacts, and event/transition records, with explicit authority, evidence, correction, continuation, and recovery. A model contributes bounded judgment inside declared steps; Ora does not use Agent as a canonical runtime object, lifecycle, authority source, or UI category. Historical Agent terminology elsewhere in the old pin is noncanonical.
 
-The second is the **closed six-member framework suite**. Ora's analytical method is carried by exactly six formal frameworks, and this set is closed — no seventh is planned, and additions are not how the system grows:
+The second is an **open versioned capability system with a stable historical analytical suite**. PEF, PIF, PFF, CFF, OFF, and DCA remain important named frameworks, but the registry is not closed: PFF can formalize additional exact Process Definitions and governed Runs can construct, register, and invoke them. The historical analytical suite is:
 
 - **PEF** — Problem Evolution Framework
 - **PIF** — Process Inference Framework
@@ -25,7 +25,7 @@ The second is the **closed six-member framework suite**. Ora's analytical method
 - **OFF** — Output Formalization Framework
 - **DCA** — Decision Clarity Analysis
 
-Each is defined in its own chapter. When one is named in prose I use its acronym after the first full-name introduction, and I do not treat the suite as open-ended.
+Each is defined in its own canonical. New Process Definitions do not expand the primitive kernel; they bind new graphs and contracts to it.
 
 ## Why This Document Leads With Reliability
 
@@ -59,6 +59,7 @@ The chapters are grouped into five parts:
 - **Part III — Knowledge, Tools & Media** (chapters 8–11): the vault, capability dispatch, and the media/visual subsystems.
 - **Part IV — Supervision & Governance** (chapters 12–15): oversight, execution review, and the governance apparatus.
 - **Part V — Operate & Extend** (chapters 16–17): running the installed system and extending it without forking core.
+- **Part VI — Governed Processes** (chapter 18): the G1.1 as-built kernel, Gear 3 boundary, management interface, exact package identity, and verified deviations.
 
 Five appendices (A–E) follow the chapters. They are consolidated into this one document rather than split out, so that the source of truth stays in a single place.
 
@@ -1902,6 +1903,108 @@ The convention assumes POSIX. MSI exercises macOS (development) and Linux (the c
 
 ---
 
+# Part VI — Governed Processes
+
+## 18. G1.1 Governed Process Kernel and Management Interface
+
+### Scope and implementation pin
+
+This chapter is the as-built G1.1 technical reconciliation. It describes `/Users/oracle/ora-msi-central-routing` at commit `6740f2fcc6663b5d5e1f57db9ce57de3578ac42c`, after the accepted Part 1 kernel proof and Part 2 management-interface gates. It supersedes conflicting governed-process claims in Chapters 5, 12, and 13; it does not re-audit unrelated subsystems still pinned to `7a5e8f40`, and it does not pre-empt G1.2's separately owned full Gear 1/2/3 pipeline specification.
+
+The shipped contribution is one generic governed-process kernel, not a Programming controller. Its four root object families are Process Definition, Process Run, Artifact, and event/transition record. Plans, authority, artifact scope, evidence, bounded judgments, correction, continuation, recovery, and stop/escalation remain attached contracts. Models perform bounded judgment inside declared nodes. Process Coherence selects only among declared routes; the runtime validates and applies the resulting directive mechanically.
+
+### Architecture and Gear 3 boundary
+
+```mermaid
+flowchart LR
+    U["Five public entry surfaces"] --> R["process_entry_routing"]
+    R -->|ordinary or legacy framework| B["Existing boot.py Gear pipeline"]
+    R -->|construct| I["Management interview"]
+    I --> P["Canonical plan and exact approval"]
+    P --> D["Delegated graph execution"]
+    R -->|exact Process Library invocation| D
+    D --> K["GovernedProcessRuntime"]
+    K --> X["Artifacts / evidence / attempts / checkpoints / receipts"]
+    X --> Q["Independent PASS / FAIL / BROKEN observation"]
+    Q --> C["Process Coherence"]
+    C --> T["Mechanical seven-directive transition"]
+    T --> K
+    K --> V["Attention / Inspector / Library / lifecycle"]
+```
+
+The existing Gear 3 and Gear 4 analytical paths remain in `orchestrator/boot.py`. F-Quality Gate returns a local `PASS`, `FAIL`, or `BROKEN` observation. A governed Run changes state only through `PROCEED`, `ACCEPT`, `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, or `BLOCKED`. `ACCEPT` is final-only and requires a current persisted `PASS` review bound to the exact result Artifact ID and digest. Repository completion additionally requires a successful completed attempt whose evidence and mutation lineage bind the current repository composite identity. Attempt exhaustion, a broken reviewer, or a generic event never releases a result.
+
+No Gear 3.5 or coding-specific pipeline exists. Programming is `ora/programming@2.0.1`, a 40-node Process Definition with four entry contracts over the generic kernel. Its vault canonical and runtime body mirror carry the issued digest `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`.
+
+### Contracts, storage, and exact identity
+
+`orchestrator/process_contracts.py` defines `ora.process-contracts/1.0`, `ora.process-graph/1.0`, and `ora.process-package/1.0`. The validators enforce the four object families, graph-node grammar, seven directive/state pairings, final-only acceptance, artifact scope, bounded action grants, reserved-action separation, evidence requirements, correction bounds, continuation/recovery, and typed escalation.
+
+`orchestrator/governed_process_runtime.py` stores each Run under `ORA_PROCESS_RUNS_DIR` or the runtime data default. The definition and current Run are validated JSON; event/transition records are append-only JSONL; Artifacts are independently validated JSON. Creation accepts only initial states. Terminal Runs reject later action, attempt, and artifact mutation except the one explicitly safe deterministic child-return record. Generic `record_event` is observation-only; lifecycle, action, attempt, artifact, review, checkpoint, recovery, invocation, return, infrastructure, and other authoritative families are reserved for validated methods.
+
+`orchestrator/process_definition_registry.py` stores exact registered definitions under `ORA_PROCESS_DEFINITIONS_DIR` or `data/process-definitions`. Each version has a registry envelope and an independently stored registration anchor. Normalized-JSON definitions must recompute their issued digest through `process_definition_content_digest()`; the Programming definition separately preserves its accepted complete-canonical-body identity while authenticating stored content. Resolution and listing fail when the definition body, envelope digest, anchor, version, or issued digest is substituted.
+
+The Programming package manifest remains embedded in the immutable canonical. It binds package `ora/programming@2.0.1`, the definition reference, entry member, canonical locator, complete body, embedded kernel projection, and the same issued digest. Phase 3.1 does not mint a cosmetic replacement package.
+
+### Capability inference, construction, and invocation
+
+`orchestrator/process_capability_discovery.py` queries tools, skills, frameworks, registered Process Definitions, and solution patterns rather than asking the user to inventory inspectable resources. It classifies each operation as inspection or mutation. A controlled probe persists an immutable Run/definition/plan/pre-state/capability/action/selector/recovery/ceiling/stop contract before acting. Attempts, replay, and active stops come from persisted state. Inspection executes through a deny-default boundary that prohibits writes, network use, process signalling/control, and other undeclared host mutation channels. Mutation requires exact pre-state, checkpoint, authority, post-state, receipt, evidence, and runtime-issued execution ordering.
+
+PIF may operate an inferable procedure only inside its originating governed Run. PFF is required before durable registration, activation, cross-Run invocation, promotion, or definition replacement. PEF is contingent: the Phase 1.7 proof uses it only where a second interim goal genuinely depends on evidence from the first; an ordinary inferable case bypasses it.
+
+The minimal Process Library in `orchestrator/process_library_lifecycle.py` resolves exact approved or active registered definitions with project/universal scope and package/lifecycle metadata. Public Dialogue invocation currently supports a bounded generic shape: a non-external action entry followed by an exact verification boundary. It validates the definition input schema, binds Dialogue, project, objective, request context, exact definition reference, and entry contract to a deterministic Run, captures the exact persisted output bytes, and records result/evidence lineage. Retry and restart return the same Run/result without model re-execution. The result remains pending independent acceptance; invocation cannot manufacture `ACCEPT`.
+
+### Management interface
+
+The five entry surfaces are the Inquiry path, the Programming/Build action, the shared framework/process picker, the Process Library, and direct natural-language invocation. `orchestrator/process_entry_routing.py` distinguishes ordinary generation, exact capability invocation, capability construction/modification, and activation. Construction always requires visible project confirmation. Capability names used as documentation subjects, examples, or comparison targets remain ordinary generation; a named capability acting as operator routes to invocation. Inactive, stale, forged, unavailable, and out-of-scope exact references fail closed.
+
+`orchestrator/process_management_interview.py` binds one Dialogue to the governing Run and asks only unresolved questions across intended result, affected parties, inputs/outputs, reuse, initiation, authority, exceptions, permissions, evidence, and stopping. Vague objectives and nonanswers do not advance. Answers bind the exact question and idempotency identity; retry after partial persistence returns the recorded answer instead of consuming the next question. Temporary framework calls return to the same governing interview.
+
+`orchestrator/process_plan_approval.py` produces one `ora.plan-execution-contract/1.0` with Principal and Technical projections. The projections are views of the same digest, not competing plans. `plan:in-planning` and `plan:approved` persist in a separate authenticated Dialogue lifecycle field, leaving the privacy tag unchanged. Approval binds the exact plan and receipt and exports the execution contract to the confirmed project.
+
+`orchestrator/process_delegation_attention.py` grants only the approved target selector and reports `target_mutation_authorized` only when the exact current node, operation, external-effect flag, repository locator/identity, and node-local checkpoint make the mutation mechanically executable. Initial execution and bounded correction require the same pre-state, authorization, post-state, receipt, and action ordering. Remote Git, activation, publication, messaging, and other reserved effects are not implied by local reversible target authority.
+
+Pending, Unread, and Automated Processes are authenticated projections, not state stores. The Run Inspector (`orchestrator/process_run_inspector.py` plus `server/static/js/process-run-inspector.js`) provides Overview, Plan, Current State, Decisions, Changes, Evidence, Permissions, Artifacts, and Technical views. Governed human and graph decisions are projected from authoritative records. Repository changes follow the approved locator and mutation lineage; multiple unbound targets fail closed instead of selecting the newest Artifact globally.
+
+Run closeout is an explicit Promote, Preserve, Archive, or Discard disposition. Its idempotency key is a bounded digest of the exact Run, disposition, and promotion identity, so slash-containing and long valid Run IDs remain closable and replay-safe. The Programming-to-Build label gate requires authenticated construct-node completion, runtime-issued registration lineage, and exact later invocation of a non-Programming definition; out-of-band registration plus copied artifacts cannot unlock it, and the user still chooses the label.
+
+### Code and API map
+
+| Surface | As-built responsibility |
+|---|---|
+| `orchestrator/process_contracts.py` | Schemas and machine validation |
+| `orchestrator/governed_process_runtime.py` | Run state, graph advancement, authority, Artifacts, evidence, effects, recovery, call/return |
+| `orchestrator/process_definition_registry.py` | Exact version/content registration, independent anchors, listing/resolution |
+| `orchestrator/process_capability_discovery.py` | Capability queries and controlled probes |
+| `orchestrator/process_entry_routing.py` | Entry classification and exact capability selection |
+| `orchestrator/process_management_interview.py` | Dialogue-bound persistent interview |
+| `orchestrator/process_plan_approval.py` | Canonical plan, projections, approval, export, lifecycle binding |
+| `orchestrator/process_delegation_attention.py` | Delegated repository effects and attention projections |
+| `orchestrator/process_run_inspector.py` | Nine authenticated inspection views |
+| `orchestrator/process_library_lifecycle.py` | Library, lifecycle, label gate, exact public invocation |
+| `server/server.py` | `/chat`, multipart, and governed-process API integration |
+| `server/static/js/process-entry.js` | Programming/Build entry, project confirmation, Process Library |
+| `server/static/js/sidebar-oversight.js` | Pending/Unread/Automated attention surfaces |
+| `server/static/js/process-run-inspector.js` | Modal Inspector, authority, lifecycle disposition |
+
+The public endpoints are `/api/process-entry/route`, `/api/process-entry/construction-label`, `/api/process-interview/<dialogue>`, `/api/process-plan/<dialogue>`, `/api/process-delegation/<dialogue>`, `/api/process-attention`, `/api/process-library/entries`, `/api/process-runs/<run>/inspector`, `/api/process-runs/<run>/authority`, and `/api/process-runs/<run>/lifecycle`, plus the governed branches of `/chat` and `/chat/multipart`.
+
+### Defaults, authority, and operational limits
+
+Programming's graph bounds correction at 12 iterations; the generic runtime default is read through `correction_policy_defaults()` and a definition/Run may set the validated bound. A hard limit stops churn but does not diagnose the failure class or force escalation. Storage roots are configurable through `ORA_PROCESS_RUNS_DIR` and `ORA_PROCESS_DEFINITIONS_DIR`. Project identity is mandatory for construction and public library invocation. No feature flag creates a second runtime; legacy analytical generation continues normally when entry routing selects it.
+
+Authority is explicit by action and resource selector. Construct, test, register, invoke, activate, local mutation, local Git, remote Git, and external effects are separate. Describing an action never grants it. Destructive or remote effects require their own typed authority and receipt. Repository work preserves pre-existing changes by capturing a content-complete composite identity and refusing ambiguous or fabricated inline substitutes.
+
+G1.1 does not ship broad trigger management, autonomous scheduling, a marketplace, analytics, automatic optimization, or unrestricted external-effect execution from public library invocation. Leave-and-return means durable restart-safe state and quiet attention semantics; it does not mean an Agent daemon continues inventing work. Non-macOS behavior for these new surfaces remains unverified in the G1.1 gate evidence.
+
+### Verification evidence and design deviations
+
+The owning automated suites are `test_process_contracts.py`, `test_governed_process_runtime.py`, `test_phase_1_5_governed_sources.py`, `test_phase_1_6_programming_definition.py`, `test_phase_1_7_kernel_trials.py`, and `test_phase_2_1_entry_routing.py` through `test_phase_2_8_experience_validation.py`. DOM coverage is in `test-process-entry.js`, `test-process-attention.js`, `test-process-run-inspector.js`, and `test-process-surface-boundaries.js`. The accepted gates independently reproduced the focused and adjacent suites, stored-definition substitution attacks, repository-acceptance attacks, wrong-node effects, Dialogue persistence failures, long/slash Run lifecycle retries, false construction witnesses, and exact public invocation restart.
+
+The principal deviations from the early design are beneficial constraints: one generic kernel replaced the proposed outer Programming controller; bounded judgment replaced Agent classification; seven directives replaced the five-verdict table; F-Quality observations no longer ship; PEF became contingent; the Inspector landed as a modal; Programming was regenerated as one 2.0.1 canonical plus exact mirror; and Build remained an explicit post-proof label choice. The full Gear 1/2/3 specification, broad activation/trigger UX, user guide, maintainer handbook, public conceptual guide, screenshots, migration/rollback runbook, and final closeout packet belong to later authorized phases, not this reconciliation.
+
+---
+
 # Appendices
 
 ## Appendix A — Platform Compatibility Matrix
@@ -2664,6 +2767,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-07-19** — Added Chapter 18 as the G1.1 as-built governed-process reconciliation pinned to Ora commit `6740f2fc`. Replaced the opening closed-suite and Agent-object claims, documented the generic kernel, exact package/registry identity, Gear 3/F-Quality boundary, management interface, code/API map, authority/defaults, evidence, deviations, and limitations, and preserved G1.2's ownership of the full Gear 1/2/3 specification.
 - **2026-07-12** — Post-pin closure currency note: `commons` is the canonical runtime sentinel, `general` remains a permanent legacy input/wire alias, and Commons is the universal view rather than a stored membership—empty `project_ids` and empty YAML `nexus:` are its representation, while explicitly assigned project material also remains visible there. Commons output now defaults to the vault root; dormant config-driven layout/legacy-theme APIs and files are retired in favor of the fixed V3 workspace and V3 Theme Library; server launch paths are consolidated around a foreground launcher suitable for launchd supervision. Chapter bodies and line references remain pinned to `7a5e8f40`; this is a reader-orientation note, not a re-pin.
 - **2026-07-11** — Default project renamed in user-facing prose: General → **Commons** (nomenclature note extended; seven body mentions updated in the Operation-Matrix and project-container chapters). The internal nexus id at the pinned commit is still `general` — the code-side rename is pending — so code identifiers, quoted literals, and line references are unchanged. Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
 - **2026-07-11** — Currency note added: the code-level rename referenced above landed the same day on `main` at commit `062b67a7` (well after this document's `7a5e8f40` pin) — internal nexus id `general` → `commons`, with `general` still recognized permanently as a legacy value. Chapter bodies, tests, and line references throughout this document remain pinned to `7a5e8f40` and reflect the pre-rename state; this is a reader-orientation note, not a re-pin, and the parity audit was not re-run.

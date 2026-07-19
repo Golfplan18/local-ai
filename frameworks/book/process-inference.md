@@ -9,9 +9,9 @@ Discover unknown transformation processes from defined endpoints by querying the
 
 *A Framework for Discovering Unknown Processes from Defined Endpoints*
 
-*Version 1.4*
+*Version 1.5*
 
-*v1.4 requires environment-backed capability queries, declared inspection-versus-mutation classification, and governed execution of worthwhile controlled probes with exact authority, evidence, receipt, recovery, and stop contracts. v1.3 made capability routing conditional, permitted bounded direct operation inside the originating PIF Process Run when the complete procedure and governing contracts are already sufficient, and required PFF before durable reuse. P-Debug, P-Decompose, and P-Feasibility retain their prior mode contracts.*
+*v1.5 records the verified G1.1 runtime binding for capability discovery, controlled probes, same-Run direct operation, and conditional PEF bypass. v1.4 requires environment-backed capability queries, declared inspection-versus-mutation classification, and governed execution of worthwhile controlled probes with exact authority, evidence, receipt, recovery, and stop contracts. v1.3 made capability routing conditional, permitted bounded direct operation inside the originating PIF Process Run when the complete procedure and governing contracts are already sufficient, and required PFF before durable reuse. P-Debug, P-Decompose, and P-Feasibility retain their prior mode contracts.*
 
 *Canonical Specification — Produced via F-Convert from the Process Inference Overview*
 
@@ -1282,6 +1282,7 @@ NEW ASSUMPTIONS LOGGED:
 
 ## VERSION HISTORY
 
+- **v1.5 (2026-07-19):** Reconciled the framework with the accepted G1.1 implementation. Capability discovery is implemented by `orchestrator/process_capability_discovery.py`; immutable probe contracts, attempts, stop state, execution records, evidence, checkpoints, receipts, and completion authority are enforced by `orchestrator/governed_process_runtime.py`. The deny-default inspection boundary and the mutation ordering rules are covered by adversarial regressions. The Phase 1.7 trials prove both an inferable ordinary path that bypasses PEF and a genuinely contingent PEF path that returns through PIF/PFF. No new PIF engine or scheduled probe worker was introduced.
 - **v1.4 (2026-07-16):** Required environment-backed queries across tools, skills, frameworks, approved Process Definitions, and solution patterns; separated inspection from mutation using declared capability metadata; and added controlled-probe execution inside the same governed PIF Run with authority/scope preflight, exact evidence, reversible mutation checkpoints and receipts, attempt ceilings, recovery, and fail-closed stop conditions.
 - **v1.3 (2026-07-16):** Made capability routing conditional; permitted P-Infer to operate a complete inferred procedure only as an action segment of the same governed Process Run; required PFF before durable reuse, registration, activation, cross-Run invocation, promotion, or definition replacement; and separated local observations from the seven Process Run directives.
 - **v1.2 (2026-07-14):** Added domain-neutral discovery of external artifacts and state, authorized actions, evidence and identity capabilities, bounded-loop and final-gate needs, production verification-boundary inference, and the enriched PIF→PFF handoff in P-Infer and P-Formalize only. Preserved the v1.1 P-Debug, P-Decompose, and P-Feasibility contracts. Established the consolidated Markdown file as the standalone executable framework. This is an untested capability release; Programming Oversight derivation and cross-domain trials remain pending.
@@ -1296,4 +1297,4 @@ NEW ASSUMPTIONS LOGGED:
 
 ---
 
-**END OF PROCESS INFERENCE FRAMEWORK v1.4**
+**END OF PROCESS INFERENCE FRAMEWORK v1.5**

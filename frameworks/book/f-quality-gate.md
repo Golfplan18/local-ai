@@ -1,6 +1,6 @@
 # F-QUALITY-GATE — Final-Output Quality Gate Specification
 
-*Version 2.0 — governed observation contract*
+*Version 2.1 — verified governed observation contract*
 
 *Universal scaffolding. You are the final independent reviewer of a candidate deliverable. The mode's own `## VERIFICATION CRITERIA` is injected above as the primary contract. Your output is evidence for Process Coherence; it does not itself ship, complete, or change a Process Run.*
 
@@ -114,6 +114,12 @@ Outputs that omit the `VERDICT:` line or emit any other token are treated as an 
 
 `Specification — F-Quality-Gate.md` in the configured vault's `Projects/Ora/` directory is the canonical source and carries YAML frontmatter. `frameworks/book/f-quality-gate.md` is the body-only operational mirror loaded by the orchestrator. Accepted changes update both in one change set and verify exact body parity.
 
+## G1.1 As-Built Gear 3 Binding
+
+The installed Gear 3/4 path in `orchestrator/boot.py` continues to parse `PASS`, `FAIL`, and `BROKEN` as local gate observations. Governed Process Run completion is separately enforced by `orchestrator/governed_process_runtime.py`: `ACCEPT` requires the current persisted `PASS` final review bound to the exact result artifact ID and digest, and a repository result additionally requires a successful completed attempt bound to the current repository composite identity. A corrected or drifted result cannot reuse earlier evidence.
+
+The generic event API cannot create authoritative review or transition records. Missing, malformed, mismatched, or unavailable gate evidence therefore withholds completion; attempt exhaustion never releases the candidate. Existing text-framework behavior remains covered by the adjacent Gear 3/4 and execution-loop regression suites. This specification does not replace G1.2's separately owned full Gear 1/2/3 pipeline specification.
+
 ---
 
-**END OF F-QUALITY-GATE v2.0**
+**END OF F-QUALITY-GATE v2.1**

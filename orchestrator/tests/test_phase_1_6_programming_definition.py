@@ -544,7 +544,7 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
                     ),
                 )
 
-    def test_overview_registry_records_phase_1_7_without_part_2_exposure(self):
+    def test_overview_registry_preserves_phase_1_7_and_records_part_2_exposure(self):
         text = (VAULT_ORA / "Registry — Ora Overview and Document Registry.md").read_text(
             encoding="utf-8"
         )
@@ -555,7 +555,9 @@ class TestProgrammingRegistryAndExposure(unittest.TestCase):
             "G1.1 Phase 1.7 evidence",
             "twelve bounded attempts",
             "reserved tax-settlement exception",
-            "public picker exposure",
+            "Part 2 services provide entry",
+            "public invocation surfaces",
+            "Parts 1 and 2 are accepted",
         ):
             self.assertIn(token, entry)
         definition = embedded_definition(body(CANONICAL))

@@ -43,10 +43,10 @@ def _body(path: Path) -> str:
 
 class TestGeneratingSourceTopology(unittest.TestCase):
     PAIRS = (
-        ("Framework — Process Inference.md", "process-inference.md", "1.4"),
-        ("Framework — Process Formalization.md", "process-formalization.md", "2.5"),
-        ("Framework — Problem Evolution.md", "problem-evolution.md", "3.1"),
-        ("Specification — F-Quality-Gate.md", "f-quality-gate.md", "2.0"),
+        ("Framework — Process Inference.md", "process-inference.md", "1.5"),
+        ("Framework — Process Formalization.md", "process-formalization.md", "2.6"),
+        ("Framework — Problem Evolution.md", "problem-evolution.md", "3.2"),
+        ("Specification — F-Quality-Gate.md", "f-quality-gate.md", "2.1"),
     )
 
     def test_four_real_mirrors_have_exact_versioned_digest_parity(self):
@@ -78,14 +78,14 @@ class TestGeneratingSourceTopology(unittest.TestCase):
         expected = VAULT_ORA / "Framework — Process Coherence.md"
         self.assertEqual(Path(router.PROCESS_COHERENCE_PATH).resolve(), expected)
         self.assertTrue(expected.is_file())
-        self.assertIn("Version 4.0", expected.read_text(encoding="utf-8"))
+        self.assertIn("Version 4.1", expected.read_text(encoding="utf-8"))
 
     def test_oversight_configuration_registry_resolves_direct_source(self):
         resolved = discovery.resolve_registered_vault_framework(
             ROOT / "frameworks" / "framework-registry.md",
             "Oversight Configuration",
             vault_root=VAULT,
-            expected_version="2.0",
+            expected_version="2.1",
             required_source_tokens=(
                 "OS-Setup",
                 "OS-Modify",
@@ -98,7 +98,7 @@ class TestGeneratingSourceTopology(unittest.TestCase):
         )
         canonical = VAULT_ORA / "Framework — Oversight Configuration.md"
         self.assertEqual(Path(resolved["source_path"]), canonical)
-        self.assertEqual(resolved["version"], "2.0")
+        self.assertEqual(resolved["version"], "2.1")
         self.assertRegex(resolved["source_digest"], r"^sha256:[0-9a-f]{64}$")
 
     def test_direct_registry_resolution_fails_on_stale_metadata(self):
@@ -110,17 +110,17 @@ class TestGeneratingSourceTopology(unittest.TestCase):
             stale.write_text(
                 discovery.markdown_registry_entry(
                     registry, "Oversight Configuration"
-                ).replace("- **Version:** 2.0", "- **Version:** 1.0"),
+                ).replace("- **Version:** 2.1", "- **Version:** 1.0"),
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(
-                discovery.CapabilityDiscoveryError, "current version 2.0"
+                discovery.CapabilityDiscoveryError, "current version 2.1"
             ):
                 discovery.resolve_registered_vault_framework(
                     stale,
                     "Oversight Configuration",
                     vault_root=VAULT,
-                    expected_version="2.0",
+                    expected_version="2.1",
                 )
 
     def test_documentation_only_architecture_names_actual_runtime_surfaces(self):
@@ -938,20 +938,20 @@ class TestCapabilityDiscoveryAndControlledProbes(unittest.TestCase):
 
 class TestRegistrySemanticConsistency(unittest.TestCase):
     FRAMEWORK_ENTRIES = {
-        "Problem Evolution": ("3.1", ("contingent route", "bypass")),
-        "Process Formalization": ("2.5", ("Process Definition", "seven directives")),
-        "Process Inference": ("1.4", ("capability queries", "controlled probes")),
-        "Oversight Configuration": ("2.0", ("seven directives", "directly registered")),
-        "Process Coherence": ("4.0", ("seven Process Run directives", "mechanical dispatch")),
+        "Problem Evolution": ("3.2", ("contingent route", "bypass")),
+        "Process Formalization": ("2.6", ("Process Definition", "seven directives")),
+        "Process Inference": ("1.5", ("capability queries", "controlled probes")),
+        "Oversight Configuration": ("2.1", ("seven directives", "directly registered")),
+        "Process Coherence": ("4.1", ("seven Process Run directives", "mechanical dispatch")),
     }
     OVERVIEW_ENTRIES = {
-        "Framework — Oversight Configuration.md": ("2.0", ("seven directives", "direct vault source")),
-        "Framework — Problem Evolution.md": ("3.1", ("contingent route", "bypass")),
-        "Framework — Process Coherence.md": ("4.0", ("seven directives", "direct vault source")),
-        "Framework — Process Formalization.md": ("2.5", ("Process Definition", "seven directives")),
-        "Framework — Process Inference.md": ("1.4", ("capability queries", "controlled probes")),
-        "Specification — F-Quality-Gate.md": ("2.0", ("observations", "ACCEPT")),
-        "Reference — Meta-Layer Architecture.md": ("2.0", ("documentation-only", "runtime-first")),
+        "Framework — Oversight Configuration.md": ("2.1", ("seven directives", "direct vault source")),
+        "Framework — Problem Evolution.md": ("3.2", ("contingent route", "bypass")),
+        "Framework — Process Coherence.md": ("4.1", ("seven directives", "direct vault source")),
+        "Framework — Process Formalization.md": ("2.6", ("Process Definition", "seven directives")),
+        "Framework — Process Inference.md": ("1.5", ("capability queries", "controlled probes")),
+        "Specification — F-Quality-Gate.md": ("2.1", ("observations", "ACCEPT")),
+        "Reference — Meta-Layer Architecture.md": ("2.1", ("documentation-only", "runtime-first")),
     }
 
     def test_both_framework_registries_match_current_versions_and_semantics(self):

@@ -9,9 +9,9 @@ Iterative strategic-layer evolution and matrix supervision across all matrix typ
 
 *A Framework for Iterative Problem Definition, Project Navigation, MOM-Supervised Milestone Formulation, and Downstream Framework Routing*
 
-*Version 3.1*
+*Version 3.2*
 
-*Canonical Specification — v3.1 makes PEF contingent: invoke it only when the next responsible direction depends on evidence that bounded interim progress must first produce. Ordinary known or currently inferable work bypasses PEF. v3.0 added matrix-type-aware strategic evolution, MOM integration, Excluded Outcome checks, and Terrain Mapping when a problem is genuinely not yet definable.*
+*Canonical Specification — v3.2 records the verified G1.1 runtime and trial binding for contingent invocation and exact return. v3.1 makes PEF contingent: invoke it only when the next responsible direction depends on evidence that bounded interim progress must first produce. Ordinary known or currently inferable work bypasses PEF. v3.0 added matrix-type-aware strategic evolution, MOM integration, Excluded Outcome checks, and Terrain Mapping when a problem is genuinely not yet definable.*
 
 ---
 
@@ -1414,6 +1414,14 @@ When loading the PED into a session:
 - **Load compressed:** Iterations 3-5 as three to five line summaries. Iterations older than 5 as single-line entries.
 - **Load on demand:** Decision Log entries with resolved revisit triggers (retrieve only when a recursive loop activates the relevant topic). Completed sub-project details. Full Terrain Map Artifact body content (reference stays in the Terrain Maps section; the artifact itself loads when the current work needs it).
 - **Never compress:** Mission (Resolution Statement is Lock-protected current-state), Excluded Outcomes (Lock-protected), Constraints (Lock-protected Hard and Soft entries; Working Assumption revisit triggers), Decision Log.
+
+---
+
+## G1.1 As-Built Runtime Binding
+
+The accepted G1.1 implementation preserves PEF as a contingent definition, not a universal wrapper. Parent/child invocation and return are persisted by `orchestrator/governed_process_runtime.py` with exact definition, output-artifact, review, receipt, and resume bindings. The Phase 1.7 proof path completed two genuinely dependent interim goals, selecting the second only after the first returned new evidence; the paired ordinary inferable case bypassed PEF. `orchestrator/process_entry_routing.py` and the Process Library do not insert PEF merely because work is multi-step or reusable.
+
+This binding adds no PEF-specific controller, Run type, queue, or scheduled continuation service. A PEF Run uses the same contracts, checkpoints, seven directives, and recovery path as every other governed Run. The runtime tests remain the operational proof; this framework remains the cognitive-process specification.
 
 ---
 
