@@ -479,14 +479,302 @@ class ProcessLibraryLifecycleService:
             })
         return promoted
 
+    def _authenticated_construction_registration(
+        self,
+        run: Mapping[str, Any],
+        definition_ref: Mapping[str, Any],
+        registration_record: Mapping[str, Any],
+        registry: ProcessDefinitionRegistry,
+    ) -> dict[str, Any]:
+        """Reauthenticate one exact construction and registration chain."""
+
+        ref = _normalize_ref(definition_ref)
+        details = (registration_record.get("event") or {}).get("details") or {}
+        required_details = {
+            "operation", "authority_grant_ids", "construction_node_id",
+            "construction_completion_record_id", "registration_node_id",
+            "definition_ref", "definition_artifact_id",
+            "definition_artifact_digest", "registration_artifact_id",
+            "registration_artifact_digest", "registration_artifact_record_id",
+            "registration_receipt", "registration_selector",
+            "registry_locator", "registry_root_digest",
+            "registry_storage_content_digest", "registry_receipt_digest",
+        }
+        if (
+            registration_record.get("record_type") != "event"
+            or (registration_record.get("event") or {}).get("event_type")
+            != "process_definition_registered"
+            or set(details) != required_details
+            or details.get("operation")
+            != "register_reusable_process_definition"
+            or details.get("definition_ref") != ref
+        ):
+            raise ProcessLibraryIntegrityError(
+                "runtime registration record has an invalid authoritative envelope"
+            )
+        try:
+            registered_definition = registry.resolve(
+                ref["definition_id"], ref["version"], ref["digest"]
+            )
+        except ProcessDefinitionRegistryError as exc:
+            raise ProcessLibraryIntegrityError(
+                "runtime registration no longer resolves its exact stored definition"
+            ) from exc
+
+        construction_definition = self.runtime.load_definition(run["run_id"])
+        nodes = {
+            node["node_id"]: node
+            for node in construction_definition["graph"]["nodes"]
+        }
+        construction_node_id = str(details.get("construction_node_id") or "")
+        registration_node_id = str(details.get("registration_node_id") or "")
+        construction_node = nodes.get(construction_node_id)
+        registration_node = nodes.get(registration_node_id)
+        target_contract = (
+            (((construction_definition.get("input_schema") or {}).get(
+                "properties"
+            ) or {}).get("target_definition_ref") or {}).get("const")
+        )
+        if (
+            construction_node is None
+            or construction_node.get("kind") != "action"
+            or construction_node.get("operation")
+            != "construct_reusable_process_definition"
+            or construction_node.get("external_effect") is not False
+            or construction_node.get("next_node_id") != registration_node_id
+            or registration_node is None
+            or registration_node.get("kind") != "action"
+            or registration_node.get("operation")
+            != "register_reusable_process_definition"
+            or registration_node.get("external_effect") is not False
+            or target_contract != ref
+            or registration_record.get("node_id") != registration_node_id
+        ):
+            raise ProcessLibraryIntegrityError(
+                "runtime registration is not bound to the exact construction graph nodes"
+            )
+
+        records = self.runtime.load_records(run["run_id"])
+        construction_completion = next(
+            (
+                record for record in records
+                if record["record_id"]
+                == details.get("construction_completion_record_id")
+            ),
+            None,
+        )
+        construction_route = (
+            (((construction_completion or {}).get("event") or {}).get(
+                "details"
+            ) or {}).get("route") or {}
+        )
+        definition_artifact_id = str(
+            details.get("definition_artifact_id") or ""
+        )
+        if (
+            construction_completion is None
+            or (construction_completion.get("event") or {}).get("event_type")
+            != "node_advanced"
+            or construction_completion.get("node_id") != construction_node_id
+            or construction_completion["event"]["details"].get("from_node_id")
+            != construction_node_id
+            or construction_completion["event"]["details"].get("to_node_id")
+            != registration_node_id
+            or construction_completion["event"]["details"].get("advance_kind")
+            != "action"
+            or construction_route.get("operation")
+            != "construct_reusable_process_definition"
+            or definition_artifact_id
+            not in construction_completion.get("artifact_ids", [])
+            or int(construction_completion["sequence"])
+            >= int(registration_record["sequence"])
+        ):
+            raise ProcessLibraryIntegrityError(
+                "runtime registration lacks exact construction-node completion"
+            )
+
+        registration_completions = [
+            record for record in records
+            if int(record["sequence"]) > int(registration_record["sequence"])
+            and (record.get("event") or {}).get("event_type")
+            == "node_advanced"
+            and record.get("node_id") == registration_node_id
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "from_node_id"
+            ) == registration_node_id
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "to_node_id"
+            ) == registration_node.get("next_node_id")
+            and ((record.get("event") or {}).get("details") or {}).get(
+                "advance_kind"
+            ) == "action"
+            and ((((record.get("event") or {}).get("details") or {}).get(
+                "route"
+            ) or {}).get("operation"))
+            == "register_reusable_process_definition"
+        ]
+        if len(registration_completions) != 1:
+            raise ProcessLibraryIntegrityError(
+                "runtime registration lacks exact registration-node completion"
+            )
+        registration_completion = registration_completions[0]
+        registration_artifact_id = str(
+            details.get("registration_artifact_id") or ""
+        )
+        if registration_artifact_id not in registration_completion.get(
+            "artifact_ids", []
+        ):
+            raise ProcessLibraryIntegrityError(
+                "registration-node completion omits its exact receipt Artifact"
+            )
+
+        definition_artifact = self.runtime.load_artifact(
+            run["run_id"], definition_artifact_id
+        )
+        registration_artifact = self.runtime.load_artifact(
+            run["run_id"], registration_artifact_id
+        )
+        registration_artifact_record = next(
+            (
+                record for record in records
+                if record["record_id"]
+                == details.get("registration_artifact_record_id")
+            ),
+            None,
+        )
+        registration_record_details = (
+            ((registration_artifact_record or {}).get("event") or {}).get(
+                "details"
+            ) or {}
+        )
+        expected_definition_digest = _canonical_definition_artifact_digest(
+            registered_definition
+        )
+        receipt = details.get("registration_receipt")
+        receipt_fields = {
+            "definition_ref", "registered_at", "registry_locator",
+            "idempotent", "activated", "storage_content_digest",
+            "receipt_digest",
+        }
+        if not isinstance(receipt, Mapping) or set(receipt) != receipt_fields:
+            raise ProcessLibraryIntegrityError(
+                "runtime registration receipt has an invalid shape"
+            )
+        receipt_body = {
+            key: copy.deepcopy(value)
+            for key, value in receipt.items()
+            if key != "receipt_digest"
+        }
+        expected_locator = (
+            "registry:process-definitions/"
+            f"{ref['definition_id']}@{ref['version']}"
+        )
+        expected_registration_digest = _digest_text(json.dumps(
+            dict(receipt), sort_keys=True, ensure_ascii=False
+        ))
+        accepted_result = self._accepted_linked_result(
+            run, definition_artifact_id
+        )
+        if (
+            definition_artifact["role"] != "process_definition"
+            or definition_artifact["lineage"]["producing_node_id"]
+            != construction_node_id
+            or definition_artifact["identity"]["kind"] != "content_digest"
+            or "complete_content"
+            not in definition_artifact["identity"]["coverage"]
+            or definition_artifact["identity"]["digest"]
+            != expected_definition_digest
+            or details.get("definition_artifact_digest")
+            != expected_definition_digest
+            or registration_artifact["role"] != "result"
+            or registration_artifact["lineage"]["producing_node_id"]
+            != registration_node_id
+            or registration_artifact["lineage"]["source_artifact_ids"]
+            != [definition_artifact_id]
+            or registration_artifact_record is None
+            or (registration_artifact_record.get("event") or {}).get(
+                "event_type"
+            ) != "artifact_recorded"
+            or registration_artifact_record.get("node_id")
+            != registration_node_id
+            or registration_record_details.get("artifact_id")
+            != registration_artifact_id
+            or registration_artifact["lineage"]["event_record_id"]
+            != registration_artifact_record["record_id"]
+            or registration_record_details.get("identity_digest")
+            != registration_artifact["identity"]["digest"]
+            or registration_record_details.get("action")
+            != "register_definition"
+            or registration_record_details.get("selectors")
+            != [details.get("registration_selector")]
+            or registration_record_details.get("grant_ids")
+            != details.get("authority_grant_ids")
+            or not details.get("authority_grant_ids")
+            or not set(details.get("authority_grant_ids") or []).issubset(
+                set(registration_node["authority_grant_ids"])
+            )
+            or details.get("registration_selector")
+            not in registration_node["artifact_access"]
+            or int(registration_artifact_record["sequence"])
+            >= int(registration_record["sequence"])
+            or registration_artifact["identity"]["digest"]
+            != expected_registration_digest
+            or details.get("registration_artifact_digest")
+            != expected_registration_digest
+            or registration_record.get("artifact_ids")
+            != [definition_artifact_id, registration_artifact_id]
+            or receipt.get("definition_ref") != ref
+            or receipt.get("registry_locator") != expected_locator
+            or receipt.get("activated") is not False
+            or not isinstance(receipt.get("idempotent"), bool)
+            or receipt.get("storage_content_digest")
+            != _digest_json(registered_definition)
+            or receipt.get("receipt_digest") != _digest_json(receipt_body)
+            or details.get("registry_locator") != expected_locator
+            or details.get("registry_root_digest")
+            != _digest_text(str(registry.root.resolve()))
+            or details.get("registry_storage_content_digest")
+            != receipt.get("storage_content_digest")
+            or details.get("registry_receipt_digest")
+            != receipt.get("receipt_digest")
+            or accepted_result is None
+            or accepted_result["artifact_id"] != registration_artifact_id
+        ):
+            raise ProcessLibraryIntegrityError(
+                "construction, registration, registry, and acceptance identities differ"
+            )
+        return {
+            "run_id": run["run_id"],
+            "construction_node_id": construction_node_id,
+            "construction_completion_record_id": construction_completion[
+                "record_id"
+            ],
+            "registration_node_id": registration_node_id,
+            "registration_record_id": registration_record["record_id"],
+            "registration_completion_record_id": registration_completion[
+                "record_id"
+            ],
+            "definition_artifact_id": definition_artifact_id,
+            "definition_artifact_digest": expected_definition_digest,
+            "accepted_result_artifact_id": registration_artifact_id,
+            "accepted_result_digest": expected_registration_digest,
+            "registry_locator": expected_locator,
+            "registry_root_digest": details["registry_root_digest"],
+            "registry_storage_content_digest": receipt[
+                "storage_content_digest"
+            ],
+            "registry_receipt_digest": receipt["receipt_digest"],
+        }
+
     def _construction_label_witnesses(self) -> list[dict[str, Any]]:
         """Return exact construct/register/invoke bridge evidence.
 
-        Registration alone is insufficient.  A witness requires one completed
-        construction Run containing the complete definition Artifact and its
-        currently accepted derived registration result, plus a separate
-        runtime-issued ``process_invoked`` record for that exact registered
-        identity.  Programming itself is deliberately excluded.
+        Registration alone is insufficient. A witness requires one completed
+        Run whose exact construction node, runtime-issued registration record,
+        exact registry identity, registration-node completion, and accepted
+        receipt all authenticate, plus a separate runtime-issued
+        ``process_invoked`` record for that exact registered identity.
+        Programming itself is deliberately excluded.
         """
 
         registry = self._registry_for_read()
@@ -506,31 +794,42 @@ class ProcessLibraryLifecycleService:
             return []
 
         runs = self._iter_runs()
+        registered_refs = {
+            (ref["definition_id"], ref["version"], ref["digest"]): ref
+            for ref in refs
+        }
         constructions: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
-        for ref in refs:
+        for run in runs:
+            registration_records = [
+                record for record in self.runtime.load_records(run["run_id"])
+                if (record.get("event") or {}).get("event_type")
+                == "process_definition_registered"
+            ]
+            if not registration_records:
+                continue
+            if run["state"] != "completed" or len(registration_records) != 1:
+                raise ProcessLibraryIntegrityError(
+                    "construction-label registration evidence is ambiguous or nonterminal"
+                )
+            details = registration_records[0]["event"]["details"]
+            try:
+                ref = _normalize_ref(details.get("definition_ref"))
+            except ProcessLibraryInputRequired as exc:
+                raise ProcessLibraryIntegrityError(
+                    "construction-label registration has an invalid definition identity"
+                ) from exc
             key = (ref["definition_id"], ref["version"], ref["digest"])
-            for run in runs:
-                if run["state"] != "completed":
-                    continue
-                try:
-                    binding = self._promotion_binding(run, ref)
-                except ProcessLibraryInputRequired:
-                    continue
-                constructions.setdefault(key, []).append({
-                    "run_id": run["run_id"],
-                    "definition_artifact_id": binding[
-                        "capability_artifact"
-                    ]["artifact_id"],
-                    "definition_artifact_digest": binding[
-                        "capability_artifact"
-                    ]["identity"]["digest"],
-                    "accepted_result_artifact_id": binding[
-                        "accepted_result"
-                    ]["artifact_id"],
-                    "accepted_result_digest": binding[
-                        "accepted_result"
-                    ]["identity"]["digest"],
-                })
+            if key not in registered_refs:
+                raise ProcessLibraryIntegrityError(
+                    "runtime registration no longer resolves its exact registry identity"
+                )
+            construction = self._authenticated_construction_registration(
+                run,
+                ref,
+                registration_records[0],
+                registry,
+            )
+            constructions.setdefault(key, []).append(construction)
 
         witnesses: list[dict[str, Any]] = []
         for parent in runs:

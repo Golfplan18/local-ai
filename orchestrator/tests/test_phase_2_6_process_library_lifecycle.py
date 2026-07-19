@@ -86,19 +86,21 @@ class Phase26Fixture(phase17.TrialCase):
             reason="exact definition constructed",
             artifact_ids=[definition_artifact["artifact"]["artifact_id"]],
         )
-        registration = self.registry.register(target)
-        result = self.runtime.record_inline_artifact(
+        result = self.runtime.register_process_definition(
             run_id,
-            "registration-result",
-            json.dumps(registration, sort_keys=True),
-            role="result",
-            node_id="register-definition",
-            action="register_definition",
+            self.registry,
+            target,
+            definition_artifact_id=definition_artifact["artifact"]["artifact_id"],
+            registration_artifact_id="registration-result",
             selector=phase17.DEFINITION_SCOPE,
-            source_artifact_ids=[definition_artifact["artifact"]["artifact_id"]],
             satisfied_conditions=phase17.CONDITIONS,
-            media_type="application/json",
         )
+        registration = result["registration"]
+        self.assertEqual(
+            result["registration_record"]["event"]["details"]["definition_ref"],
+            phase17._definition_ref(target),
+        )
+        self.assertEqual(registration["definition_ref"], phase17._definition_ref(target))
         self.runtime.complete_action_node(
             run_id,
             "register_reusable_process_definition",

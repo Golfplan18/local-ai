@@ -76,9 +76,111 @@ class Phase27LabelGateTests(phase26.Phase26Fixture):
         witness = gate["qualifying_witnesses"][0]
         self.assertEqual(witness["definition_ref"], phase17._definition_ref(target))
         self.assertEqual(
+            witness["construction"]["construction_node_id"],
+            "construct-definition",
+        )
+        self.assertEqual(
+            witness["construction"]["registration_node_id"],
+            "register-definition",
+        )
+        self.assertRegex(
+            witness["construction"]["registry_receipt_digest"],
+            r"^sha256:[0-9a-f]{64}$",
+        )
+        self.assertRegex(
+            witness["construction"]["registry_root_digest"],
+            r"^sha256:[0-9a-f]{64}$",
+        )
+        self.assertEqual(
             witness["invocation"]["record_id"],
             invocation["parent_record"]["record_id"],
         )
+
+    def test_out_of_band_registration_and_copied_artifacts_cannot_unlock_build(self):
+        target = phase17._cash_review_definition()
+        self.create("run-ordinary-calculation-not-construction", target)
+        definition_artifact = self.runtime.record_inline_artifact(
+            "run-ordinary-calculation-not-construction",
+            "copied-definition",
+            json.dumps(target, sort_keys=True),
+            role="process_definition",
+            node_id="calculate",
+            action="construct_definition",
+            selector=phase17.DEFINITION_SCOPE,
+            satisfied_conditions=phase17.CONDITIONS,
+            media_type="application/vnd.ora.process-definition+json",
+        )
+        before = self.runtime.load_records(
+            "run-ordinary-calculation-not-construction"
+        )
+        with self.assertRaises(phase26.runtime.GovernedRuntimeError):
+            self.runtime.register_process_definition(
+                "run-ordinary-calculation-not-construction",
+                self.registry,
+                target,
+                definition_artifact_id=definition_artifact["artifact"][
+                    "artifact_id"
+                ],
+                registration_artifact_id="forbidden-runtime-registration",
+                selector=phase17.DEFINITION_SCOPE,
+                satisfied_conditions=phase17.CONDITIONS,
+            )
+        with self.assertRaises(phase26.runtime.AuthorityDeniedError):
+            self.runtime.record_event(
+                "run-ordinary-calculation-not-construction",
+                "process_definition_registered",
+                {"definition_ref": phase17._definition_ref(target)},
+                node_id="calculate",
+            )
+        self.assertEqual(
+            self.runtime.load_records(
+                "run-ordinary-calculation-not-construction"
+            ),
+            before,
+        )
+        out_of_band_receipt = self.registry.register(target)
+        copied_registration = self.runtime.record_inline_artifact(
+            "run-ordinary-calculation-not-construction",
+            "copied-registration-result",
+            json.dumps(out_of_band_receipt, sort_keys=True),
+            role="result",
+            node_id="calculate",
+            action="produce_artifact",
+            selector=phase17.OUTPUT,
+            source_artifact_ids=[definition_artifact["artifact"]["artifact_id"]],
+            satisfied_conditions=phase17.CONDITIONS,
+            media_type="application/json",
+        )
+        self.runtime.complete_action_node(
+            "run-ordinary-calculation-not-construction",
+            "calculate_permitted_cash_flow",
+            reason="copied registration-shaped result",
+            artifact_ids=[copied_registration["artifact"]["artifact_id"]],
+        )
+        self.accept_existing_result(
+            "run-ordinary-calculation-not-construction",
+            copied_registration["artifact"]["artifact_id"],
+        )
+        # This is the exact artifact-shape proof the former gate accepted.
+        former_binding = self.service._promotion_binding(
+            self.runtime.load_run("run-ordinary-calculation-not-construction"),
+            phase17._definition_ref(target),
+        )
+        self.assertEqual(
+            former_binding["capability_artifact"]["artifact_id"],
+            "copied-definition",
+        )
+        self._invoke_constructed_definition(target)
+
+        gate = self.service.get_construction_label_gate()
+        self.assertEqual(gate["current_label"], "Programming")
+        self.assertEqual(gate["status"], "bridge_trial_incomplete")
+        self.assertFalse(gate["decision_available"])
+        self.assertEqual(gate["qualifying_witnesses"], [])
+        with self.assertRaises(library.ProcessLibraryInputRequired):
+            self.service.decide_construction_label(
+                "use_build", decision_by="principal:user"
+            )
 
     def test_explicit_build_choice_survives_restart_without_identity_rewrite(self):
         target, _definition_artifact, _result, _invocation = self._complete_bridge()

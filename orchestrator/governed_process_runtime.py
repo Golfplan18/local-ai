@@ -40,6 +40,11 @@ try:
 except ImportError:  # pragma: no cover
     from orchestrator import runtime_paths as _runtime_paths
 
+try:
+    from process_definition_registry import ProcessDefinitionRegistry
+except ImportError:  # pragma: no cover
+    from orchestrator.process_definition_registry import ProcessDefinitionRegistry
+
 
 PROCESS_RUNS_DIR = os.path.join(
     os.environ.get("ORA_HOME", str(Path.home() / "ora")),
@@ -110,6 +115,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "repository_state_captured",
     "repository_mutation_receipt_issued",
     "process_invoked",
+    "process_definition_registered",
     "child_return_received",
     "process_returned",
     "lifecycle_disposition_recorded",
@@ -4714,6 +4720,261 @@ class GovernedProcessRuntime:
                 runtime_authoritative=True,
             )
             return {**recorded, "receipt_record": issued, "payload": payload}
+
+    def register_process_definition(
+        self,
+        run_id: str,
+        registry: ProcessDefinitionRegistry,
+        definition: Mapping[str, Any],
+        *,
+        definition_artifact_id: str,
+        registration_artifact_id: str,
+        selector: str,
+        satisfied_conditions: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        """Register one constructed definition and issue an exact runtime receipt.
+
+        This is the only runtime-authoritative registration bridge used by the
+        Phase 2.7 construction-label gate.  It requires the Run to have just
+        completed the declared construction operation, performs the immutable
+        registry write itself, re-resolves the exact stored identity, records
+        the registry receipt as a lineage-bound Artifact, and finally emits a
+        reserved event that generic observation APIs cannot forge.
+        """
+
+        definition_copy = _contracts.validate_process_definition(definition)
+        definition_ref = {
+            "definition_id": definition_copy["definition_id"],
+            "version": definition_copy["version"],
+            "digest": definition_copy["digest"],
+        }
+        with _locked():
+            run = self.load_run(run_id)
+            self._require_mutable_run(run, "register a Process Definition")
+            if run["state"] != "running":
+                raise RunConflictError(
+                    "Process Definition registration requires a running Process Run"
+                )
+            construction_definition = self.load_definition(run_id)
+            nodes = self._graph_nodes(construction_definition)
+            registration_node = nodes[run["current_node_id"]]
+            if (
+                registration_node["kind"] != "action"
+                or registration_node["operation"]
+                != "register_reusable_process_definition"
+                or registration_node["external_effect"] is not False
+            ):
+                raise GovernedRuntimeError(
+                    "Process Definition registration requires the exact governed "
+                    "registration operation"
+                )
+            if selector not in registration_node["artifact_access"]:
+                raise AuthorityDeniedError(
+                    "definition registration selector is outside the exact graph node"
+                )
+            registration_grant_ids = self.authorize_action(
+                run_id,
+                "register_definition",
+                [selector],
+                satisfied_conditions=satisfied_conditions,
+                effect_type="local_reversible",
+                scope_kind="write",
+            )
+            if not set(registration_grant_ids).issubset(
+                set(registration_node["authority_grant_ids"])
+            ):
+                raise AuthorityDeniedError(
+                    "definition registration authority is outside the exact graph node"
+                )
+            target_contract = (
+                (((construction_definition.get("input_schema") or {}).get(
+                    "properties"
+                ) or {}).get("target_definition_ref") or {}).get("const")
+            )
+            if target_contract != definition_ref:
+                raise GovernedRuntimeError(
+                    "construction Run target does not bind the exact definition identity"
+                )
+
+            definition_artifact = self.load_artifact(
+                run_id, definition_artifact_id
+            )
+            expected_definition_digest = _digest_text(json.dumps(
+                definition_copy, sort_keys=True, ensure_ascii=False
+            ))
+            construction_node_id = str(
+                definition_artifact["lineage"]["producing_node_id"]
+            )
+            construction_node = nodes.get(construction_node_id)
+            if (
+                definition_artifact["role"] != "process_definition"
+                or definition_artifact["identity"]["kind"] != "content_digest"
+                or "complete_content"
+                not in definition_artifact["identity"]["coverage"]
+                or definition_artifact["identity"]["digest"]
+                != expected_definition_digest
+                or construction_node is None
+                or construction_node["kind"] != "action"
+                or construction_node["operation"]
+                != "construct_reusable_process_definition"
+                or construction_node["external_effect"] is not False
+                or construction_node.get("next_node_id") != run["current_node_id"]
+            ):
+                raise GovernedRuntimeError(
+                    "registration requires the exact complete Artifact produced by "
+                    "the governed construction operation"
+                )
+
+            records = self.load_records(run_id)
+            construction_completions = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "node_advanced"
+                and record["node_id"] == construction_node_id
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "from_node_id"
+                ) == construction_node_id
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "to_node_id"
+                ) == run["current_node_id"]
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "advance_kind"
+                ) == "action"
+                and ((((record.get("event") or {}).get("details") or {}).get(
+                    "route"
+                ) or {}).get("operation"))
+                == "construct_reusable_process_definition"
+                and definition_artifact_id in record.get("artifact_ids", [])
+            ]
+            if len(construction_completions) != 1:
+                raise GovernedRuntimeError(
+                    "registration requires one runtime-authenticated construction "
+                    "node completion"
+                )
+            if any(
+                (record.get("event") or {}).get("event_type")
+                == "process_definition_registered"
+                for record in records
+            ):
+                raise RunConflictError(
+                    "Process Run already contains a definition registration record"
+                )
+            if type(registry) is not ProcessDefinitionRegistry:
+                raise GovernedRuntimeError(
+                    "registration requires an exact Process Definition registry"
+                )
+            registry_root = registry.root.resolve()
+            if (
+                not registry_root.is_dir()
+                or registry.root.is_symlink()
+            ):
+                raise GovernedRuntimeError(
+                    "registration requires a real canonical registry root"
+                )
+            registry_root_digest = _digest_text(str(registry_root))
+
+            try:
+                receipt = copy.deepcopy(registry.register(definition_copy))
+                resolved = registry.resolve(
+                    definition_ref["definition_id"],
+                    definition_ref["version"],
+                    definition_ref["digest"],
+                )
+            except Exception as exc:
+                raise GovernedRuntimeError(
+                    f"Process Definition registry rejected the exact identity: {exc}"
+                ) from exc
+            receipt_fields = {
+                "definition_ref", "registered_at", "registry_locator",
+                "idempotent", "activated", "storage_content_digest",
+                "receipt_digest",
+            }
+            receipt_body = {
+                key: copy.deepcopy(value)
+                for key, value in receipt.items()
+                if key != "receipt_digest"
+            }
+            expected_locator = (
+                "registry:process-definitions/"
+                f"{definition_ref['definition_id']}@{definition_ref['version']}"
+            )
+            if (
+                set(receipt) != receipt_fields
+                or resolved != definition_copy
+                or receipt.get("definition_ref") != definition_ref
+                or receipt.get("registry_locator") != expected_locator
+                or receipt.get("activated") is not False
+                or not isinstance(receipt.get("idempotent"), bool)
+                or receipt.get("storage_content_digest")
+                != _digest_json(definition_copy)
+                or receipt.get("receipt_digest") != _digest_json(receipt_body)
+            ):
+                raise GovernedRuntimeError(
+                    "registry receipt does not authenticate the exact stored definition"
+                )
+
+            recorded = self.record_inline_artifact(
+                run_id,
+                registration_artifact_id,
+                json.dumps(receipt, sort_keys=True, ensure_ascii=False),
+                role="result",
+                node_id=run["current_node_id"],
+                action="register_definition",
+                selector=selector,
+                source_artifact_ids=[definition_artifact_id],
+                satisfied_conditions=satisfied_conditions,
+                media_type="application/vnd.ora.process-definition-registration+json",
+            )
+            registration_artifact = recorded["artifact"]
+            artifact_record = recorded["record"]
+            if artifact_record["event"]["details"].get(
+                "grant_ids"
+            ) != registration_grant_ids:
+                raise GovernedRuntimeError(
+                    "registration Artifact authority differs from its pre-write grant"
+                )
+            materialized = self.load_run(run_id)
+            registration_record = self._append_event_locked(
+                materialized,
+                "process_definition_registered",
+                {
+                    "operation": "register_reusable_process_definition",
+                    "construction_node_id": construction_node_id,
+                    "construction_completion_record_id": construction_completions[
+                        0
+                    ]["record_id"],
+                    "registration_node_id": run["current_node_id"],
+                    "definition_ref": copy.deepcopy(definition_ref),
+                    "definition_artifact_id": definition_artifact_id,
+                    "definition_artifact_digest": definition_artifact[
+                        "identity"
+                    ]["digest"],
+                    "registration_artifact_id": registration_artifact_id,
+                    "registration_artifact_digest": registration_artifact[
+                        "identity"
+                    ]["digest"],
+                    "registration_artifact_record_id": artifact_record[
+                        "record_id"
+                    ],
+                    "registration_selector": selector,
+                    "authority_grant_ids": registration_grant_ids,
+                    "registration_receipt": copy.deepcopy(receipt),
+                    "registry_locator": receipt["registry_locator"],
+                    "registry_root_digest": registry_root_digest,
+                    "registry_storage_content_digest": receipt[
+                        "storage_content_digest"
+                    ],
+                    "registry_receipt_digest": receipt["receipt_digest"],
+                },
+                node_id=run["current_node_id"],
+                artifact_ids=[definition_artifact_id, registration_artifact_id],
+                runtime_authoritative=True,
+            )
+            return {
+                **recorded,
+                "registration": receipt,
+                "registration_record": registration_record,
+            }
 
     def record_artifact(
         self,
