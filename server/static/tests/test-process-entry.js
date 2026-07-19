@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* G1.1 Phase 2.1/2.6 — governed entry and Process Library UI tests. */
+/* G1.1 Phase 2.1/2.6/2.7 — governed entry, Library, and label UI tests. */
 
 'use strict';
 
@@ -55,6 +55,21 @@ w.OraSidebar = { getActiveProject: function () { return 'ora'; } };
 
 var routeRequests = [];
 global.fetch = function (url, options) {
+  if (url === '/api/process-entry/construction-label') {
+    return Promise.resolve({
+      ok: true,
+      json: function () {
+        return Promise.resolve({
+          ok: true,
+          gate: {
+            current_label: 'Programming', automatic_rename: false,
+            decision_available: false, status: 'bridge_trial_incomplete',
+            decision: null, qualifying_witnesses: [],
+          },
+        });
+      },
+    });
+  }
   if (url === '/api/projects/meta?status=active') {
     return Promise.resolve({
       ok: true,

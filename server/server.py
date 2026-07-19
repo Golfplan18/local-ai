@@ -8,7 +8,7 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid, shutil, io, zipfile
+import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
@@ -5246,7 +5246,7 @@ def _process_run_inspector_service():
 
 
 def _process_library_service():
-    """Construct the Phase 2.6 exact-version Library/lifecycle service."""
+    """Construct the Phase 2.6/2.7 Library, lifecycle, and label service."""
 
     from process_entry_routing import load_programming_definition
     from process_library_lifecycle import ProcessLibraryLifecycleService
@@ -5278,6 +5278,45 @@ def _process_library_error_status(exc: Exception) -> int:
     if isinstance(exc, ProcessLibraryError):
         return 400
     return 503
+
+
+@app.route("/api/process-entry/construction-label", methods=["GET", "POST"])
+def process_entry_construction_label():
+    """Evidence-gated Programming/Build bridge-trial decision.
+
+    Eligibility never changes the label.  Only this explicit user decision
+    may select Build, and it has no effect on the exact Programming definition
+    identity or on Process authority.
+    """
+
+    service = _process_library_service()
+    try:
+        if request.method == "GET":
+            gate = service.get_construction_label_gate()
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                from process_library_lifecycle import ProcessLibraryInputRequired
+
+                raise ProcessLibraryInputRequired(
+                    "construction-label request must be an object"
+                )
+            if set(payload) != {"decision", "decision_by"}:
+                from process_library_lifecycle import ProcessLibraryInputRequired
+
+                raise ProcessLibraryInputRequired(
+                    "construction-label request requires exact decision and decision_by"
+                )
+            gate = service.decide_construction_label(
+                str(payload.get("decision") or ""),
+                decision_by=str(payload.get("decision_by") or ""),
+            )
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_library_error_status(exc),
+        )
+    return _json_response({"ok": True, "gate": gate})
 
 
 def _process_plan_error_status(exc: Exception) -> int:
@@ -9155,6 +9194,9 @@ def chat_multipart():
     # Install Chunk 2c — same config_name field as /chat for per-request
     # named-configuration selection.
     config_name           = (form.get("config_name") or "").strip() or None
+    exhibits_submission_intent = (
+        form.get("exhibits_submission_intent") or ""
+    ).strip()
 
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -9173,6 +9215,11 @@ def chat_multipart():
             return json.dumps({
                 "error": "conversation_id and panel_id must match",
             }), 400
+    if exhibits_submission_intent not in {"", "explicit_send"}:
+        return _json_response({
+            "error": "invalid Exhibits submission intent",
+            "required": "explicit_send",
+        }, 422)
 
     # Serialize artifact capture with Delete Forever. If deletion starts
     # while this block is active it waits, then removes every upload/log this
@@ -9228,6 +9275,7 @@ def chat_multipart():
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
+            "exhibits_submission_intent": exhibits_submission_intent,
         })
 
     try:
@@ -9332,6 +9380,46 @@ def chat_multipart():
         extra_context["image_source"]          = "canvas_preview"
     if annotations_payload is not None:
         extra_context["annotations"] = annotations_payload
+    if (
+        spatial_rep is not None
+        or canvas_preview_path is not None
+        or annotations_payload is not None
+    ):
+        spatial_digest = None
+        if spatial_rep is not None:
+            spatial_body = json.dumps(
+                spatial_rep,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode("utf-8")
+            spatial_digest = "sha256:" + hashlib.sha256(spatial_body).hexdigest()
+        annotations_digest = None
+        if annotations_payload is not None:
+            annotations_body = json.dumps(
+                annotations_payload,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode("utf-8")
+            annotations_digest = (
+                "sha256:" + hashlib.sha256(annotations_body).hexdigest()
+            )
+        extra_context["exhibits_submission"] = {
+            "schema_version": "ora.exhibits-submission/1.0",
+            "transfer_method": (
+                "explicit_send"
+                if exhibits_submission_intent == "explicit_send"
+                else "explicit_multipart_submission"
+            ),
+            "conversation_id": conversation_id,
+            "submission_id": submission_id,
+            "spatial_identity_digest": spatial_digest,
+            "annotations_identity_digest": annotations_digest,
+            "canvas_preview_attached": canvas_preview_path is not None,
+            "authoritative": False,
+            "run_effects": [],
+        }
     if process_entry is not None:
         extra_context["process_entry"] = process_entry
 
@@ -9343,11 +9431,31 @@ def chat_multipart():
     try:
         from conversation_memory import get_prior_spatial_state, get_prior_annotations
         prior_spatial = get_prior_spatial_state(conversation_id, history)
-        if prior_spatial:
+        governed_entry = (
+            isinstance(process_entry, dict)
+            and process_entry.get("intent") != "ordinary_generation"
+        )
+        if prior_spatial and not governed_entry:
             extra_context["prior_spatial_representation"] = prior_spatial
+        elif prior_spatial and governed_entry:
+            # Dialogue continuity is not attachment authority.  A historical
+            # Exhibits canvas remains available in the Dialogue, but its body
+            # does not cross a governed Process boundary until the user sends
+            # the current canvas state with that exact turn.
+            extra_context["prior_exhibits_withheld"] = {
+                "reason": "explicit_current_submission_required",
+                "authoritative": False,
+                "run_effects": [],
+            }
         prior_annots = get_prior_annotations(conversation_id, history)
-        if prior_annots:
+        if prior_annots and not governed_entry:
             extra_context["prior_annotations"] = prior_annots
+        elif prior_annots and governed_entry:
+            extra_context.setdefault("prior_exhibits_withheld", {
+                "reason": "explicit_current_submission_required",
+                "authoritative": False,
+                "run_effects": [],
+            })
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
 
@@ -12767,6 +12875,15 @@ def api_scratchpad():
     except Exception:
         return json.dumps({"error": "invalid JSON body"}), 400
 
+    if not isinstance(data, dict):
+        return json.dumps({"error": "Aside request must be an object"}), 400
+    unexpected = sorted(set(data) - {"prompt"})
+    if unexpected:
+        return json.dumps({
+            "error": "Aside is informational and cannot carry Run or transfer fields",
+            "unsupported_fields": unexpected,
+        }), 422
+
     prompt = (data.get("prompt") or "").strip()
     if not prompt:
         return json.dumps({"error": "prompt is required"}), 400
@@ -12810,7 +12927,16 @@ def api_scratchpad():
                 print(f"[aside] {error}", file=sys.stderr, flush=True)
                 return json.dumps({"error": error})
             window.add_exchange(prompt, answer)
-        return json.dumps({"answer": answer})
+        return json.dumps({
+            "answer": answer,
+            "surface_contract": {
+                "surface": "aside",
+                "persisted": False,
+                "authoritative": False,
+                "run_effects": [],
+                "transfer_requires": "explicit_send_or_attachment",
+            },
+        })
     except Exception as e:
         print(f"[aside] request failed open: {e}", file=sys.stderr, flush=True)
         return json.dumps({"error": str(e)})

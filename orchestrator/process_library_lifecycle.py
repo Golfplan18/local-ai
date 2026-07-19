@@ -1,4 +1,4 @@
-"""G1.1 Phase 2.6 — exact Process Library and terminal Run lifecycle.
+"""G1.1 Phase 2.6/2.7 — Library, Run lifecycle, and bridge-label evidence.
 
 The Process Definition registry remains immutable exact-version storage. This
 service adds no marketplace and no standing automation. It projects registry
@@ -6,6 +6,8 @@ entries for discovery, enforces project/universal scope for manual invocation,
 and treats one authenticated terminal Run disposition as the only source of
 promotion authority. Promotion makes an accepted registered definition
 available for manual invocation; it never creates triggers or deployment.
+Phase 2.7 derives the Programming/Build label decision from authenticated
+construct/register/invoke evidence and never renames the surface automatically.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import copy
 import hashlib
 import json
 import os
+import threading
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +39,7 @@ try:
         ProcessDefinitionRegistry,
         ProcessDefinitionRegistryError,
     )
+    import runtime_paths as _runtime_paths
 except ImportError:  # pragma: no cover
     from orchestrator.active_project import canonicalize_project_nexus
     from orchestrator.governed_process_runtime import (
@@ -53,12 +57,20 @@ except ImportError:  # pragma: no cover
         ProcessDefinitionRegistry,
         ProcessDefinitionRegistryError,
     )
+    from orchestrator import runtime_paths as _runtime_paths
 
 
 LIBRARY_SCHEMA_VERSION = "ora.process-library/1.0"
 LIFECYCLE_SCHEMA_VERSION = "ora.process-lifecycle-disposition/1.0"
+CONSTRUCTION_LABEL_SCHEMA_VERSION = "ora.construction-label-decision/1.0"
 LIFECYCLE_DISPOSITIONS = ("promote", "preserve", "archive", "discard")
 _OUTPUT_ROLES = frozenset({"working", "result", "process_definition"})
+_PROGRAMMING_DEFINITION_ID = "ora/programming"
+_CONSTRUCTION_LABEL_DECISIONS = {
+    "keep_programming": "Programming",
+    "use_build": "Build",
+}
+_construction_label_lock = threading.RLock()
 
 
 class ProcessLibraryError(RuntimeError):
@@ -138,6 +150,7 @@ class ProcessLibraryLifecycleService:
         registry: ProcessDefinitionRegistry | None = None,
         registry_root: str | Path | None = None,
         seed_definitions: Sequence[Mapping[str, Any]] = (),
+        construction_label_path: str | Path | None = None,
         now: Callable[[], str] | None = None,
     ) -> None:
         self.runtime = runtime or GovernedProcessRuntime()
@@ -148,6 +161,14 @@ class ProcessLibraryLifecycleService:
             or DEFAULT_PROCESS_DEFINITIONS_DIR
         ).expanduser().resolve()
         self.seed_definitions = [copy.deepcopy(dict(item)) for item in seed_definitions]
+        raw_label_path = (
+            Path(construction_label_path)
+            if construction_label_path is not None
+            else self.runtime.root.parent / "process-construction-label.json"
+        )
+        self.construction_label_path = Path(
+            os.path.abspath(os.path.expanduser(str(raw_label_path)))
+        )
         self._now = now or _utc_now
 
     def _registry_for_read(self) -> ProcessDefinitionRegistry | None:
@@ -458,6 +479,230 @@ class ProcessLibraryLifecycleService:
             })
         return promoted
 
+    def _construction_label_witnesses(self) -> list[dict[str, Any]]:
+        """Return exact construct/register/invoke bridge evidence.
+
+        Registration alone is insufficient.  A witness requires one completed
+        construction Run containing the complete definition Artifact and its
+        currently accepted derived registration result, plus a separate
+        runtime-issued ``process_invoked`` record for that exact registered
+        identity.  Programming itself is deliberately excluded.
+        """
+
+        registry = self._registry_for_read()
+        if registry is None:
+            return []
+        try:
+            refs = [
+                _normalize_ref(ref)
+                for ref in registry.list_definition_refs()
+                if ref.get("definition_id") != _PROGRAMMING_DEFINITION_ID
+            ]
+        except ProcessDefinitionRegistryError as exc:
+            raise ProcessLibraryIntegrityError(
+                "construction-label registry integrity failed"
+            ) from exc
+        if not refs:
+            return []
+
+        runs = self._iter_runs()
+        constructions: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for ref in refs:
+            key = (ref["definition_id"], ref["version"], ref["digest"])
+            for run in runs:
+                if run["state"] != "completed":
+                    continue
+                try:
+                    binding = self._promotion_binding(run, ref)
+                except ProcessLibraryInputRequired:
+                    continue
+                constructions.setdefault(key, []).append({
+                    "run_id": run["run_id"],
+                    "definition_artifact_id": binding[
+                        "capability_artifact"
+                    ]["artifact_id"],
+                    "definition_artifact_digest": binding[
+                        "capability_artifact"
+                    ]["identity"]["digest"],
+                    "accepted_result_artifact_id": binding[
+                        "accepted_result"
+                    ]["artifact_id"],
+                    "accepted_result_digest": binding[
+                        "accepted_result"
+                    ]["identity"]["digest"],
+                })
+
+        witnesses: list[dict[str, Any]] = []
+        for parent in runs:
+            for record in self.runtime.load_records(parent["run_id"]):
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if event.get("event_type") != "process_invoked":
+                    continue
+                try:
+                    ref = _normalize_ref(details.get("child_definition_ref"))
+                except ProcessLibraryInputRequired as exc:
+                    raise ProcessLibraryIntegrityError(
+                        "persisted invocation has an invalid definition identity"
+                    ) from exc
+                key = (ref["definition_id"], ref["version"], ref["digest"])
+                if key not in constructions:
+                    continue
+                try:
+                    child = self.runtime.load_run(str(details["child_run_id"]))
+                except (KeyError, GovernedRuntimeError) as exc:
+                    raise ProcessLibraryIntegrityError(
+                        "persisted invocation no longer resolves its exact child Run"
+                    ) from exc
+                if (
+                    child["definition_ref"] != ref
+                    or child["relationships"]["invoked_by_run_id"] != parent["run_id"]
+                ):
+                    raise ProcessLibraryIntegrityError(
+                        "persisted invocation differs from its child definition binding"
+                    )
+                for construction in constructions[key]:
+                    witness = {
+                        "definition_ref": copy.deepcopy(ref),
+                        "construction": copy.deepcopy(construction),
+                        "invocation": {
+                            "parent_run_id": parent["run_id"],
+                            "record_id": record["record_id"],
+                            "sequence": record["sequence"],
+                            "child_run_id": child["run_id"],
+                        },
+                    }
+                    witnesses.append({
+                        **witness,
+                        "witness_digest": _digest_json(witness),
+                    })
+        witnesses.sort(key=lambda item: (
+            item["definition_ref"]["definition_id"],
+            item["definition_ref"]["version"],
+            item["construction"]["run_id"],
+            item["invocation"]["parent_run_id"],
+            item["invocation"]["sequence"],
+        ))
+        return witnesses
+
+    def _read_construction_label_decision(
+        self,
+        witnesses: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any] | None:
+        path = self.construction_label_path
+        if not path.exists():
+            return None
+        if not path.is_file() or path.is_symlink():
+            raise ProcessLibraryIntegrityError(
+                "construction-label decision path is not a real file"
+            )
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ProcessLibraryIntegrityError(
+                "construction-label decision cannot be read"
+            ) from exc
+        required = {
+            "schema_version", "decision", "label", "decision_by",
+            "recorded_at", "witness", "witness_digest", "record_digest",
+        }
+        if not isinstance(record, dict) or set(record) != required:
+            raise ProcessLibraryIntegrityError(
+                "construction-label decision has an invalid envelope"
+            )
+        decision = record.get("decision")
+        witness = record.get("witness")
+        body = {key: copy.deepcopy(value) for key, value in record.items()
+                if key != "record_digest"}
+        if (
+            record.get("schema_version") != CONSTRUCTION_LABEL_SCHEMA_VERSION
+            or decision not in _CONSTRUCTION_LABEL_DECISIONS
+            or record.get("label") != _CONSTRUCTION_LABEL_DECISIONS[decision]
+            or record.get("decision_by") != "principal:user"
+            or not isinstance(witness, Mapping)
+            or record.get("witness_digest")
+            != (witness.get("witness_digest") if isinstance(witness, Mapping) else None)
+            or record.get("record_digest") != _digest_json(body)
+            or witness not in witnesses
+        ):
+            raise ProcessLibraryIntegrityError(
+                "construction-label decision no longer authenticates its bridge evidence"
+            )
+        return copy.deepcopy(record)
+
+    def get_construction_label_gate(self) -> dict[str, Any]:
+        """Project the bridge-trial label without ever renaming automatically."""
+
+        with _construction_label_lock:
+            witnesses = self._construction_label_witnesses()
+            decision = self._read_construction_label_decision(witnesses)
+        body = {
+            "schema_version": CONSTRUCTION_LABEL_SCHEMA_VERSION,
+            "current_label": decision["label"] if decision else "Programming",
+            "automatic_rename": False,
+            "decision_available": bool(witnesses) and decision is None,
+            "status": (
+                "decided" if decision is not None
+                else "awaiting_user_decision" if witnesses
+                else "bridge_trial_incomplete"
+            ),
+            "decision": copy.deepcopy(decision),
+            "qualifying_witnesses": copy.deepcopy(witnesses),
+        }
+        return {**body, "gate_digest": _digest_json(body)}
+
+    def decide_construction_label(
+        self,
+        decision: str,
+        *,
+        decision_by: str,
+    ) -> dict[str, Any]:
+        exact_decision = str(decision or "").strip()
+        if exact_decision not in _CONSTRUCTION_LABEL_DECISIONS:
+            raise ProcessLibraryInputRequired(
+                "decision must be keep_programming or use_build"
+            )
+        if str(decision_by or "").strip() != "principal:user":
+            raise AuthorityDeniedError(
+                "only principal:user may decide the construction entry label"
+            )
+        with _construction_label_lock:
+            witnesses = self._construction_label_witnesses()
+            existing = self._read_construction_label_decision(witnesses)
+            if existing is not None:
+                if existing["decision"] != exact_decision:
+                    raise ProcessLibraryConflict(
+                        "construction entry label was already decided"
+                    )
+                return self.get_construction_label_gate()
+            if not witnesses:
+                raise ProcessLibraryInputRequired(
+                    "Build is unavailable until a non-Programming Process Definition "
+                    "has been constructed, registered, and invoked"
+                )
+            witness = copy.deepcopy(witnesses[0])
+            record = {
+                "schema_version": CONSTRUCTION_LABEL_SCHEMA_VERSION,
+                "decision": exact_decision,
+                "label": _CONSTRUCTION_LABEL_DECISIONS[exact_decision],
+                "decision_by": "principal:user",
+                "recorded_at": self._now(),
+                "witness": witness,
+                "witness_digest": witness["witness_digest"],
+            }
+            record["record_digest"] = _digest_json(record)
+            path = self.construction_label_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.parent.is_symlink() or path.is_symlink():
+                raise ProcessLibraryIntegrityError(
+                    "construction-label decision path may not use symlinks"
+                )
+            _runtime_paths.atomic_write_text(
+                path,
+                json.dumps(record, sort_keys=True, ensure_ascii=False, indent=2) + "\n",
+            )
+        return self.get_construction_label_gate()
+
     @staticmethod
     def _scope_visible(scope: Mapping[str, Any], project_ref: str | None) -> bool:
         if project_ref is None:
@@ -668,6 +913,7 @@ class ProcessLibraryLifecycleService:
 
 
 __all__ = [
+    "CONSTRUCTION_LABEL_SCHEMA_VERSION",
     "LIBRARY_SCHEMA_VERSION",
     "LIFECYCLE_DISPOSITIONS",
     "LIFECYCLE_SCHEMA_VERSION",

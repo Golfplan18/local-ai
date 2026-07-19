@@ -300,7 +300,7 @@
 <script src="/static/js/style-audience-toggle.js?v=g136-20260701" defer></script>
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
-<script src="/static/js/process-entry.js?v=g11-phase-2-6" defer></script>
+<script src="/static/js/process-entry.js?v=g11-phase-2-7" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
@@ -1122,7 +1122,10 @@
   <div class="right-column">
     <div class="chat-zone" id="chatZone">
       <div class="pane chat-input-pane">
-        <textarea spellcheck="false"></textarea>
+        <textarea spellcheck="false"
+                  aria-label="Aside (informational, not saved or sent to Runs)"
+                  placeholder="Ask Aside — informational only"
+                  data-authoritative="false" data-persisted="false"></textarea>
         <button type="button" class="chat-zone-minimize-btn" id="chatZoneMinimizeBtn"
                 aria-label="Minimize Aside" title="Minimize Aside">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
@@ -1975,7 +1978,8 @@
       }
     } catch (e) {}
 
-    // V3 Phase 7.2 — include canvas content if any. captureFromPanel
+    // V3 Phase 7.2 / G1.1 Phase 2.7 — include canvas content only in this
+    // explicit Inquiry submission. captureFromPanel
     // returns null when the userInputLayer has no shapes, in which case
     // we omit the field. /chat/multipart accepts spatial-only or
     // text-only or combined.
@@ -1985,6 +1989,7 @@
         const spatial = window.OraCanvas.capture();
         if (spatial) {
           body.append('spatial_representation', JSON.stringify(spatial));
+          body.append('exhibits_submission_intent', 'explicit_send');
           canvasHasContent = true;
         }
       } catch (e) {

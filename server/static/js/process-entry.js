@@ -1,4 +1,4 @@
-/* G1.1 Phase 2.1/2.6 — governed Process entry and exact-version Library.
+/* G1.1 Phase 2.1/2.6/2.7 — governed entry, Library, and bridge label.
  *
  * This module deliberately stops at an authority-neutral routing contract.
  * It can classify an Inquiry, require an explicit project choice for
@@ -11,9 +11,17 @@
   const ROUTE_URL = '/api/process-entry/route';
   const LIBRARY_URL = '/api/process-library/entries';
   const PROJECTS_URL = '/api/projects/meta?status=active';
+  const CONSTRUCTION_LABEL_URL = '/api/process-entry/construction-label';
 
   let overlay = null;
   let pendingResolve = null;
+  let constructionLabel = 'Programming';
+  let constructionLabelGate = null;
+  let constructionDecisionPromise = null;
+  let constructionOpenPromise = null;
+  let constructionLabelRequestSequence = 0;
+  let constructionLabelAppliedSequence = 0;
+  let initialized = false;
 
   const activeProject = () => {
     if (window.OraSidebar && typeof window.OraSidebar.getActiveProject === 'function') {
@@ -94,6 +102,83 @@
       body: JSON.stringify(request),
     });
     return payload.entry;
+  }
+
+  function applyConstructionLabel(gate) {
+    const label = gate && gate.current_label === 'Build' ? 'Build' : 'Programming';
+    constructionLabel = label;
+    constructionLabelGate = gate || null;
+    const button = document.getElementById('inputToolbarProgramming');
+    if (button) {
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+      button.dataset.constructionEntryLabel = label.toLowerCase();
+    }
+    return label;
+  }
+
+  async function refreshConstructionLabel() {
+    const requestSequence = ++constructionLabelRequestSequence;
+    const payload = await fetchJson(CONSTRUCTION_LABEL_URL);
+    if (requestSequence >= constructionLabelAppliedSequence) {
+      constructionLabelAppliedSequence = requestSequence;
+      applyConstructionLabel(payload.gate);
+    }
+    return payload.gate;
+  }
+
+  async function showConstructionLabelDecision(gate) {
+    ensureOverlay();
+    const body = overlay.querySelector('.process-entry__body');
+    overlay.querySelector('.process-entry__title').textContent = 'Programming or Build?';
+    body.innerHTML = [
+      '<p class="process-entry__notice">Ora has now constructed, registered, and invoked a non-Programming Process Definition. Keep the entry label Programming, or use Build. This changes only the label—not the Process Definition, routing, or authority.</p>',
+      '<div class="process-entry__actions">',
+      '  <button class="process-entry__button process-entry__button--secondary" type="button" data-construction-label="keep_programming">Keep Programming</button>',
+      '  <button class="process-entry__button process-entry__button--primary" type="button" data-construction-label="use_build">Use Build</button>',
+      '</div>',
+    ].join('');
+    show();
+    const result = new Promise((resolve) => { pendingResolve = resolve; });
+    body.querySelectorAll('[data-construction-label]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        body.querySelectorAll('button').forEach((item) => { item.disabled = true; });
+        try {
+          const payload = await fetchJson(CONSTRUCTION_LABEL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decision: button.dataset.constructionLabel,
+              decision_by: 'principal:user',
+            }),
+          });
+          constructionLabelAppliedSequence = ++constructionLabelRequestSequence;
+          applyConstructionLabel(payload.gate);
+          close(payload.gate);
+        } catch (error) {
+          body.prepend(errorNode(error.message));
+          body.querySelectorAll('button').forEach((item) => { item.disabled = false; });
+        }
+      });
+    });
+    return result;
+  }
+
+  async function ensureConstructionLabelDecision() {
+    if (constructionDecisionPromise) return constructionDecisionPromise;
+    let gate = constructionLabelGate;
+    try {
+      gate = await refreshConstructionLabel();
+    } catch (error) {
+      console.warn('[process-entry] construction label gate unavailable:', error);
+      applyConstructionLabel(null);
+      return true;
+    }
+    if (!gate || !gate.decision_available) return true;
+    constructionDecisionPromise = showConstructionLabelDecision(gate)
+      .then((decision) => !!decision)
+      .finally(() => { constructionDecisionPromise = null; });
+    return constructionDecisionPromise;
   }
 
   async function loadProjects() {
@@ -345,17 +430,22 @@
     return { request, contract, objective: request.objective };
   }
 
-  async function openConstruction() {
-    const result = await showEntryForm({
-      source: 'construction_action',
-      objective: '',
-      projectRef: activeProject(),
-      title: 'Programming',
-    });
-    if (result) {
-      document.dispatchEvent(new CustomEvent('ora:process-entry:ready', { detail: result }));
-    }
-    return result;
+  function openConstruction() {
+    if (constructionOpenPromise) return constructionOpenPromise;
+    constructionOpenPromise = (async () => {
+      if (!(await ensureConstructionLabelDecision())) return null;
+      const result = await showEntryForm({
+        source: 'construction_action',
+        objective: '',
+        projectRef: activeProject(),
+        title: constructionLabel,
+      });
+      if (result) {
+        document.dispatchEvent(new CustomEvent('ora:process-entry:ready', { detail: result }));
+      }
+      return result;
+    })().finally(() => { constructionOpenPromise = null; });
+    return constructionOpenPromise;
   }
 
   async function openLibrary() {
@@ -375,7 +465,13 @@
   }
 
   function init() {
+    if (initialized) return;
+    initialized = true;
     ensureOverlay();
+    refreshConstructionLabel().catch((error) => {
+      console.warn('[process-entry] construction label hydration failed:', error);
+      applyConstructionLabel(null);
+    });
     document.addEventListener('ora:input-toolbar:programming', openConstruction);
     const libraryButton = document.getElementById('sidebarProcessLibraryOpen');
     if (libraryButton) libraryButton.addEventListener('click', openLibrary);
@@ -391,6 +487,8 @@
     prepareInquiry,
     openConstruction,
     openLibrary,
+    refreshConstructionLabel,
+    getConstructionLabel: () => constructionLabel,
     close,
   };
 })();
