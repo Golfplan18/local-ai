@@ -126,9 +126,8 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
         tracker = (VAULT_ORA / "Working — Ora Setup and Refinement.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("Current phase:** Part 3, Phase 3.1", tracker)
         self.assertIn("Phase 3.2", tracker)
-        self.assertIn("not yet authorized", tracker)
+        self.assertIn("Phase 3.1 passed", tracker)
 
         overview = (
             VAULT_ORA / "Registry — Ora Overview and Document Registry.md"
@@ -140,7 +139,7 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
             "Active canonical (v4.1",
             "Active governed observation contract (v2.1",
             "Active architecture reference (v2.1",
-            "G1.1 is in Part 3, Phase 3.1",
+            "Phase 3.1 accepted",
         ):
             self.assertIn(token, overview)
 
