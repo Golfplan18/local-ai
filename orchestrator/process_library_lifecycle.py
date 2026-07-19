@@ -1,4 +1,4 @@
-"""G1.1 Phase 2.6/2.7 — Library, Run lifecycle, and bridge-label evidence.
+"""G1.1 Phase 2.6–2.8 — Library lifecycle and governed invocation.
 
 The Process Definition registry remains immutable exact-version storage. This
 service adds no marketplace and no standing automation. It projects registry
@@ -8,6 +8,8 @@ promotion authority. Promotion makes an accepted registered definition
 available for manual invocation; it never creates triggers or deployment.
 Phase 2.7 derives the Programming/Build label decision from authenticated
 construct/register/invoke evidence and never renames the surface automatically.
+Phase 2.8 binds a ready Library selection to one exact, restart-safe governed
+Run and its authenticated result without fabricating independent acceptance.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from typing import Any
 
 try:
     from active_project import canonicalize_project_nexus
+    import process_contracts as _contracts
     from governed_process_runtime import (
         AuthorityDeniedError,
         GovernedProcessRuntime,
@@ -42,6 +45,7 @@ try:
     import runtime_paths as _runtime_paths
 except ImportError:  # pragma: no cover
     from orchestrator.active_project import canonicalize_project_nexus
+    from orchestrator import process_contracts as _contracts
     from orchestrator.governed_process_runtime import (
         AuthorityDeniedError,
         GovernedProcessRuntime,
@@ -63,6 +67,7 @@ except ImportError:  # pragma: no cover
 LIBRARY_SCHEMA_VERSION = "ora.process-library/1.0"
 LIFECYCLE_SCHEMA_VERSION = "ora.process-lifecycle-disposition/1.0"
 CONSTRUCTION_LABEL_SCHEMA_VERSION = "ora.construction-label-decision/1.0"
+MANUAL_INVOCATION_SCHEMA_VERSION = "ora.manual-process-invocation/1.0"
 LIFECYCLE_DISPOSITIONS = ("promote", "preserve", "archive", "discard")
 _OUTPUT_ROLES = frozenset({"working", "result", "process_definition"})
 _PROGRAMMING_DEFINITION_ID = "ora/programming"
@@ -138,6 +143,293 @@ def _canonical_definition_artifact_digest(definition: Mapping[str, Any]) -> str:
     return _digest_text(
         json.dumps(definition, sort_keys=True, ensure_ascii=False)
     )
+
+
+def _validate_definition_inputs(
+    definition: Mapping[str, Any], value: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    if value is None:
+        inputs: dict[str, Any] = {}
+    elif isinstance(value, Mapping):
+        inputs = copy.deepcopy(dict(value))
+    else:
+        raise ProcessLibraryInputRequired(
+            "manual invocation inputs must be an object"
+        )
+    try:
+        from jsonschema import Draft202012Validator
+
+        errors = sorted(
+            Draft202012Validator(definition["input_schema"]).iter_errors(inputs),
+            key=lambda item: list(item.absolute_path),
+        )
+    except Exception as exc:
+        if exc.__class__.__module__.startswith("jsonschema"):
+            raise ProcessLibraryIntegrityError(
+                "registered Process Definition has an invalid input schema"
+            ) from exc
+        raise ProcessLibraryIntegrityError(
+            "manual invocation input validation is unavailable"
+        ) from exc
+    if errors:
+        locations = []
+        for error in errors[:5]:
+            path = ".".join(str(item) for item in error.absolute_path) or "$"
+            locations.append(f"{path}: {error.message}")
+        raise ProcessLibraryInputRequired(
+            "manual invocation inputs do not satisfy the exact definition: "
+            + "; ".join(locations)
+        )
+    return inputs
+
+
+def _manual_execution_contract(
+    definition: Mapping[str, Any], inputs: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Project the exact graph operation supported by the Dialogue executor."""
+
+    nodes = {
+        str(node["node_id"]): node
+        for node in definition["graph"]["nodes"]
+    }
+    entry_node_id = str(definition["graph"]["entry_node_id"])
+    entry_node = nodes[entry_node_id]
+    next_node = nodes.get(str(entry_node.get("next_node_id") or ""))
+    if (
+        entry_node.get("kind") != "action"
+        or entry_node.get("external_effect") is not False
+        or not entry_node.get("operation")
+        or not entry_node.get("artifact_access")
+        or next_node is None
+        or next_node.get("kind") != "verification_boundary"
+    ):
+        raise ProcessLibraryConflict(
+            "manual Dialogue invocation requires a non-external action entry "
+            "followed by an exact verification boundary"
+        )
+    body = {
+        "definition_ref": _definition_ref(definition),
+        "title": str(definition["title"]),
+        "purpose": str(definition["purpose"]),
+        "definition_inputs": copy.deepcopy(dict(inputs)),
+        "entry_node": {
+            "node_id": entry_node_id,
+            "label": str(entry_node["label"]),
+            "operation": str(entry_node["operation"]),
+            "external_effect": False,
+            "artifact_access": copy.deepcopy(entry_node["artifact_access"]),
+            "next_node_id": str(entry_node["next_node_id"]),
+        },
+        "verification_boundary": {
+            "node_id": str(next_node["node_id"]),
+            "label": str(next_node["label"]),
+            "required_evidence_ids": copy.deepcopy(
+                next_node["evidence_requirement_ids"]
+            ),
+            "routes": copy.deepcopy(next_node["routes"]),
+        },
+        "output_schema": copy.deepcopy(definition["output_schema"]),
+    }
+    return {**body, "execution_contract_digest": _digest_json(body)}
+
+
+def _manual_invocation_contracts(
+    definition: Mapping[str, Any],
+    *,
+    invocation_id: str,
+    objective: str,
+    principal_id: str,
+    now: str,
+) -> dict[str, Any]:
+    """Derive a no-external-effect execution envelope from the exact graph."""
+
+    nodes = list(definition["graph"]["nodes"])
+    node_ids = [str(node["node_id"]) for node in nodes]
+    action_nodes = [node for node in nodes if node["kind"] == "action"]
+    selectors = sorted({
+        str(selector)
+        for node in action_nodes
+        for selector in node.get("artifact_access", [])
+    })
+    if not selectors:
+        selectors = ["scope:declared_outputs"]
+    output_selector = (
+        "scope:declared_outputs"
+        if "scope:declared_outputs" in selectors else selectors[0]
+    )
+    grant_ids = sorted({
+        str(grant_id)
+        for node in action_nodes
+        for grant_id in node.get("authority_grant_ids", [])
+    }) or ["manual-invocation-grant"]
+    conditions = ["exact_manual_invocation_binding"]
+    safe_actions = ["evaluate_evidence", "produce_artifact", "record_evidence"]
+    grants = [
+        {
+            "grant_id": grant_id,
+            "actions": safe_actions,
+            "resource_selectors": selectors,
+            "effect_types": ["local_reversible"],
+            "conditions": conditions,
+        }
+        for grant_id in grant_ids
+    ]
+    verification_nodes = [
+        node for node in nodes if node["kind"] == "verification_boundary"
+    ]
+    declared_evidence_ids = sorted({
+        str(evidence_id)
+        for node in nodes
+        for evidence_id in node.get("evidence_requirement_ids", [])
+    })
+    requirements = [
+        {
+            "evidence_id": evidence_id,
+            "claim": "The exact manual invocation result satisfies the declared criterion.",
+            "method": "independent_manual_invocation_review",
+            "producer_independence": "independent_step",
+            "artifact_selectors": [output_selector],
+            "freshness_seconds": 86400,
+            "required": True,
+        }
+        for evidence_id in declared_evidence_ids
+    ]
+    if not requirements:
+        requirements = [{
+            "evidence_id": "manual_invocation_result_authenticated",
+            "claim": "The exact pipeline result is bound to this invocation.",
+            "method": "runtime_result_identity_binding",
+            "producer_independence": "same_step",
+            "artifact_selectors": [output_selector],
+            "freshness_seconds": 86400,
+            "required": False,
+        }]
+    escalation_types = sorted({
+        str(node["authority_request_type"])
+        for node in nodes if node["kind"] == "human_checkpoint"
+    })
+    if any("ESCALATE" in (node.get("routes") or {}) for node in verification_nodes):
+        escalation_types = sorted({*escalation_types, "manual_authority_request"})
+    judgments = []
+    for node in verification_nodes:
+        directives = sorted(str(item) for item in node["routes"])
+        judgments.append({
+            "judgment_id": f"manual-judgment-{node['node_id']}",
+            "node_id": node["node_id"],
+            "verified_circumstances": [
+                "The exact invocation, result Artifact, and current evidence are bound."
+            ],
+            "question": "Which declared graph route is supported by current evidence?",
+            "permitted_conclusions": [
+                "criteria_met", "correction_required", "authority_required", "blocked",
+            ],
+            "permitted_directives": directives,
+            "permitted_actions": ["evaluate_evidence"],
+            "authority_grant_ids": [grant_ids[0]],
+            "artifact_selectors": [output_selector],
+            "required_evidence_ids": list(node["evidence_requirement_ids"]),
+            "evaluator_boundary": f"manual-review-{node['node_id']}",
+            "stop_conditions": ["missing_evidence", "unsupported_route"],
+            "return_node_id": node["node_id"],
+            "escalation_request_types": escalation_types,
+        })
+    if not judgments:
+        judgments = [{
+            "judgment_id": "manual-invocation-boundary",
+            "node_id": definition["graph"]["entry_node_id"],
+            "verified_circumstances": ["The exact invocation identity is bound."],
+            "question": "Must this unsupported invocation stop?",
+            "permitted_conclusions": ["blocked"],
+            "permitted_directives": ["BLOCKED"],
+            "permitted_actions": [],
+            "authority_grant_ids": [],
+            "artifact_selectors": [],
+            "required_evidence_ids": [],
+            "evaluator_boundary": "manual-invocation-boundary",
+            "stop_conditions": ["unsupported_graph"],
+            "return_node_id": definition["graph"]["entry_node_id"],
+            "escalation_request_types": [],
+        }]
+    correction_directives = [
+        "REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED",
+    ]
+    return {
+        "approved_plan": {
+            "plan_id": f"plan-{invocation_id}",
+            "version": "1.0",
+            "digest": _digest_json({
+                "invocation_id": invocation_id,
+                "definition_ref": _definition_ref(definition),
+                "objective": objective,
+                "approved_node_ids": node_ids,
+            }),
+            "objective": objective,
+            "approved_by": principal_id,
+            "approved_at": now,
+            "approved_node_ids": node_ids,
+            "constraints": [
+                "Bind the exact registered Process Definition and manual invocation inputs.",
+                "No external effect, activation, publication, or scope expansion is granted.",
+            ],
+            "non_goals": ["Standing automation and undeclared external effects."],
+        },
+        "authority": {
+            "principal_id": principal_id,
+            "grants": grants,
+            "reserved_actions": [
+                "activate", "expand_scope", "external_effect", "mutate",
+                "publish", "register_definition", "remote_git", "send_external",
+            ],
+        },
+        "artifact_scope": {
+            "read_selectors": selectors,
+            "write_selectors": selectors,
+            "external_effect_selectors": [],
+        },
+        "bounded_judgment": judgments,
+        "evidence": {
+            "requirements": requirements,
+            "acceptance_rule": "all_required",
+            "stale_evidence_policy": "invalidate",
+        },
+        "correction_loop": {
+            "max_attempts": 3,
+            "attempt": 0,
+            "progress_evidence_required": True,
+            "repeated_defect_limit": 2,
+            "allowed_directives": correction_directives,
+            "no_progress_directives": [
+                "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED",
+            ],
+        },
+        "continuation": {
+            "checkpoint_id": f"checkpoint-{invocation_id}",
+            "resume_node_id": definition["graph"]["entry_node_id"],
+            "required_state_fields": [
+                "current_node_id", "last_sequence", "artifact_ids", "input_bindings",
+            ],
+            "child_return_fields": [],
+            "parent_run_id": None,
+            "child_run_ids": [],
+        },
+        "recovery": {
+            "replay_policy": "never_replay_effects",
+            "checkpoint_ref": f"checkpoint:{invocation_id}",
+            "external_effect_receipts_required": True,
+            "revalidation_evidence_ids": declared_evidence_ids,
+            "on_recovery_failure": "BLOCKED",
+        },
+        "stop_escalation": {
+            "stop_conditions": [
+                "missing_input", "missing_evidence", "external_effect_requested",
+            ],
+            "blocked_conditions": [
+                "definition_unavailable", "identity_drift", "unsupported_graph",
+            ],
+            "authority_request_types": escalation_types,
+            "authority_return_target": principal_id,
+        },
+    }
 
 
 class ProcessLibraryLifecycleService:
@@ -1106,6 +1398,531 @@ class ProcessLibraryLifecycleService:
             "standing_automation_included": False,
         }
         return {**body, "catalog_digest": _digest_json(body)}
+
+    @staticmethod
+    def _validate_ready_invocation_entry(
+        entry_contract: Mapping[str, Any],
+        *,
+        definition_ref: Mapping[str, Any],
+        objective: str,
+        project_ref: str,
+    ) -> dict[str, Any]:
+        fields = {
+            "schema_version", "source", "objective", "project_ref",
+            "project_confirmed", "intent", "classification_basis", "status",
+            "next_action", "definition_ref", "framework_id", "authority_effects",
+            "creates_process_run", "contract_digest",
+        }
+        if not isinstance(entry_contract, Mapping) or set(entry_contract) != fields:
+            raise ProcessLibraryInputRequired(
+                "manual invocation requires an exact ready entry contract"
+            )
+        contract = copy.deepcopy(dict(entry_contract))
+        digest_body = {
+            key: copy.deepcopy(value)
+            for key, value in contract.items() if key != "contract_digest"
+        }
+        canonical_project = canonicalize_project_nexus(project_ref)
+        if (
+            contract["contract_digest"] != _digest_json(digest_body)
+            or contract["source"] != "process_library"
+            or contract["objective"] != objective
+            or contract["project_ref"] != canonical_project
+            or contract["intent"] != "capability_invocation"
+            or contract["status"] != "ready"
+            or contract["next_action"] != "begin_exact_definition_invocation"
+            or contract["definition_ref"] != dict(definition_ref)
+            or contract["framework_id"] is not None
+            or contract["authority_effects"] != []
+            or contract["creates_process_run"] is not False
+        ):
+            raise ProcessLibraryConflict(
+                "entry contract does not authorize this exact manual invocation"
+            )
+        return contract
+
+    def _manual_invocation_state(self, run_id: str) -> dict[str, Any]:
+        try:
+            run = self.runtime.load_run(run_id)
+            records = self.runtime.load_records(run_id)
+            definition = self.runtime.load_definition(run_id)
+        except GovernedRuntimeError as exc:
+            raise ProcessLibraryIntegrityError(
+                "manual invocation Run integrity failed"
+            ) from exc
+        invocation_records = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "manual_process_invoked"
+        ]
+        result_records = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "manual_process_result_recorded"
+        ]
+        capture_records = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "manual_process_output_captured"
+        ]
+        if (
+            len(invocation_records) != 1
+            or len(capture_records) > 1
+            or len(result_records) > 1
+            or (result_records and not capture_records)
+        ):
+            raise ProcessLibraryIntegrityError(
+                "manual invocation records are missing or ambiguous"
+            )
+        invocation = invocation_records[0]
+        details = invocation["event"]["details"]
+        execution_contract = _manual_execution_contract(
+            definition, details.get("definition_inputs") or {}
+        )
+        details_body = {
+            key: copy.deepcopy(value)
+            for key, value in details.items() if key != "invocation_digest"
+        }
+        if (
+            details.get("definition_ref") != run["definition_ref"]
+            or details.get("entry_node_id")
+            != definition["graph"]["entry_node_id"]
+            or details.get("invocation_digest") != _digest_json(details_body)
+            or run["input_bindings"] != {
+                key: copy.deepcopy(details[key])
+                for key in (
+                    "invocation_id", "dialogue_ref", "project_ref", "objective",
+                    "definition_inputs", "definition_input_digest",
+                    "entry_contract_digest", "request_context_digest",
+                )
+            }
+        ):
+            raise ProcessLibraryIntegrityError(
+                "manual invocation record differs from its exact Run binding"
+            )
+        result_view = None
+        response_text = None
+        if capture_records:
+            capture = capture_records[0]
+            capture_details = capture["event"]["details"]
+            capture_body = {
+                key: copy.deepcopy(value)
+                for key, value in capture_details.items()
+                if key != "output_capture_digest"
+            }
+            if (
+                capture_details.get("invocation_record_id")
+                != invocation["record_id"]
+                or capture_details.get("invocation_id")
+                != details["invocation_id"]
+                or capture_details.get("invocation_digest")
+                != details["invocation_digest"]
+                or capture_details.get("definition_ref") != run["definition_ref"]
+                or capture_details.get("entry_node_id")
+                != definition["graph"]["entry_node_id"]
+                or capture_details.get("response_digest")
+                != _digest_text(str(capture_details.get("response_text") or ""))
+                or capture_details.get("output_capture_digest")
+                != _digest_json(capture_body)
+            ):
+                raise ProcessLibraryIntegrityError(
+                    "manual invocation output capture is invalid"
+                )
+            response_text = str(capture_details["response_text"])
+        if result_records:
+            result_record = result_records[0]
+            result_details = result_record["event"]["details"]
+            result_body = {
+                key: copy.deepcopy(value)
+                for key, value in result_details.items()
+                if key != "result_binding_digest"
+            }
+            try:
+                result = self.runtime.load_artifact(
+                    run_id, result_details["result_artifact_id"]
+                )
+                evidence = self.runtime.load_artifact(
+                    run_id, result_details["evidence_artifact_id"]
+                )
+            except (KeyError, GovernedRuntimeError) as exc:
+                raise ProcessLibraryIntegrityError(
+                    "manual invocation result Artifacts are unavailable"
+                ) from exc
+            if (
+                result_record["node_id"]
+                != result_details.get("current_node_id")
+                or result_record["node_id"] not in {
+                    node["node_id"]
+                    for node in self.runtime.load_definition(run_id)["graph"]["nodes"]
+                }
+                or result_details.get("invocation_record_id")
+                != invocation["record_id"]
+                or result_details.get("invocation_digest")
+                != details["invocation_digest"]
+                or result_details.get("definition_ref") != run["definition_ref"]
+                or result_details.get("result_binding_digest")
+                != _digest_json(result_body)
+                or result_details.get("response_digest")
+                != _digest_text(response_text or "")
+                or result_details.get("response_text") != response_text
+                or result_details.get("result_identity_digest")
+                != result["identity"]["digest"]
+                or result_details.get("evidence_identity_digest")
+                != evidence["identity"]["digest"]
+                or result["role"] != "result"
+                or evidence["role"] != "evidence"
+                or result["artifact_id"]
+                not in evidence["lineage"]["source_artifact_ids"]
+            ):
+                raise ProcessLibraryIntegrityError(
+                    "manual invocation result binding is invalid"
+                )
+            result_view = {
+                "record_id": result_record["record_id"],
+                "result_artifact_id": result["artifact_id"],
+                "result_identity_digest": result["identity"]["digest"],
+                "evidence_artifact_id": evidence["artifact_id"],
+                "evidence_identity_digest": evidence["identity"]["digest"],
+                "acceptance_status": "pending_independent_review",
+            }
+        body = {
+            "schema_version": MANUAL_INVOCATION_SCHEMA_VERSION,
+            "status": (
+                "result_recorded" if result_view
+                else "output_captured" if capture_records
+                else "running"
+            ),
+            "run_id": run_id,
+            "run_state": run["state"],
+            "current_node_id": run["current_node_id"],
+            "invocation_id": details["invocation_id"],
+            "invocation_record_id": invocation["record_id"],
+            "invocation_digest": details["invocation_digest"],
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "dialogue_ref": details["dialogue_ref"],
+            "project_ref": details["project_ref"],
+            "objective": details["objective"],
+            "definition_inputs": copy.deepcopy(details["definition_inputs"]),
+            "definition_input_digest": details["definition_input_digest"],
+            "entry_contract_digest": details["entry_contract_digest"],
+            "request_context_digest": details["request_context_digest"],
+            "execution_contract": execution_contract,
+            "result": result_view,
+            "response_text": response_text,
+        }
+        return {**body, "state_digest": _digest_json(body)}
+
+    def begin_manual_invocation(
+        self,
+        *,
+        dialogue_ref: str,
+        project_ref: str,
+        objective: str,
+        definition_ref: Mapping[str, Any],
+        definition_inputs: Mapping[str, Any] | None,
+        entry_contract: Mapping[str, Any],
+        request_context: Mapping[str, Any],
+        principal_id: str = "principal:user",
+    ) -> dict[str, Any]:
+        """Create or resume one exact, restart-safe Process Library Run."""
+
+        ref = _normalize_ref(definition_ref)
+        canonical_project = canonicalize_project_nexus(project_ref)
+        if not dialogue_ref or not objective or not principal_id:
+            raise ProcessLibraryInputRequired(
+                "manual invocation requires Dialogue, project, objective, and principal"
+            )
+        contract = self._validate_ready_invocation_entry(
+            entry_contract,
+            definition_ref=ref,
+            objective=objective,
+            project_ref=canonical_project,
+        )
+        catalog = self.list_entries(project_ref=canonical_project)
+        matches = [
+            item for item in catalog["entries"]
+            if item["definition_ref"] == ref
+        ]
+        if len(matches) != 1 or not matches[0]["manual_invocation_available"]:
+            raise ProcessLibraryConflict(
+                "exact Process Definition is unavailable for manual invocation"
+            )
+        registry = self._registry_for_read()
+        if registry is None:
+            raise ProcessLibraryIntegrityError(
+                "manual invocation requires the authenticated definition registry"
+            )
+        try:
+            definition = registry.resolve(
+                ref["definition_id"], ref["version"], ref["digest"]
+            )
+        except ProcessDefinitionRegistryError as exc:
+            raise ProcessLibraryIntegrityError(
+                "exact Process Definition could not be resolved"
+            ) from exc
+        if definition["status"] not in {"approved", "active"}:
+            raise ProcessLibraryConflict(
+                "inactive Process Definition cannot be manually invoked"
+            )
+        inputs = _validate_definition_inputs(definition, definition_inputs)
+        _manual_execution_contract(definition, inputs)
+        if not isinstance(request_context, Mapping):
+            raise ProcessLibraryInputRequired(
+                "manual invocation request context must be an object"
+            )
+        context = copy.deepcopy(dict(request_context))
+        try:
+            json.dumps(context, sort_keys=True, ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            raise ProcessLibraryInputRequired(
+                "manual invocation request context must be JSON-serializable"
+            ) from exc
+        definition_input_digest = _digest_json(inputs)
+        request_context_digest = _digest_json(context)
+        invocation_basis = {
+            "dialogue_ref": dialogue_ref,
+            "project_ref": canonical_project,
+            "objective": objective,
+            "definition_ref": ref,
+            "definition_input_digest": definition_input_digest,
+            "entry_contract_digest": contract["contract_digest"],
+            "request_context_digest": request_context_digest,
+        }
+        identity = _digest_json(invocation_basis).split(":", 1)[1]
+        invocation_id = "invocation-" + identity[:32]
+        run_id = "run-invocation-" + identity[:40]
+        input_bindings = {
+            "invocation_id": invocation_id,
+            "dialogue_ref": dialogue_ref,
+            "project_ref": canonical_project,
+            "objective": objective,
+            "definition_inputs": inputs,
+            "definition_input_digest": definition_input_digest,
+            "entry_contract_digest": contract["contract_digest"],
+            "request_context_digest": request_context_digest,
+        }
+        try:
+            run = self.runtime.load_run(run_id)
+            if (
+                run["definition_ref"] != ref
+                or run["input_bindings"] != input_bindings
+            ):
+                raise ProcessLibraryConflict(
+                    "manual invocation identity resolves to a different Run"
+                )
+        except RunNotFoundError:
+            now = self._now()
+            entrypoint = str(inputs.get("entrypoint") or "manual")
+            run = {
+                "schema_version": _contracts.CONTRACT_SCHEMA_VERSION,
+                "object_family": "process_run",
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(ref),
+                "state": "ready",
+                "entrypoint": entrypoint,
+                "current_node_id": definition["graph"]["entry_node_id"],
+                "input_bindings": copy.deepcopy(input_bindings),
+                "contracts": _manual_invocation_contracts(
+                    definition,
+                    invocation_id=invocation_id,
+                    objective=objective,
+                    principal_id=principal_id,
+                    now=now,
+                ),
+                "relationships": {
+                    "parent_run_id": None,
+                    "invoked_by_run_id": None,
+                    "invoked_definition_refs": [],
+                    "constructed_definition_refs": [],
+                    "return_to_run_id": None,
+                },
+                "artifact_ids": [],
+                "last_sequence": 0,
+                "created_at": now,
+                "updated_at": now,
+                "labels": ["governed", "manual-invocation"],
+            }
+            self.runtime.create_run(definition, run)
+        invocation = self.runtime.bind_manual_process_invocation(
+            run_id,
+            invocation_id=invocation_id,
+            dialogue_ref=dialogue_ref,
+            project_ref=canonical_project,
+            objective=objective,
+            definition_inputs=inputs,
+            definition_input_digest=definition_input_digest,
+            entry_contract_digest=contract["contract_digest"],
+            request_context_digest=request_context_digest,
+        )
+        run = self.runtime.load_run(run_id)
+        if run["state"] == "ready":
+            self.runtime.start_run(
+                run_id, reason="Exact Process Library invocation started"
+            )
+        state = self._manual_invocation_state(run_id)
+        if state["invocation_record_id"] != invocation["record_id"]:
+            raise ProcessLibraryIntegrityError(
+                "manual invocation response differs from its runtime record"
+            )
+        if state["status"] == "output_captured":
+            state = self.complete_manual_invocation(
+                run_id, str(state["response_text"])
+            )
+        return state
+
+    def complete_manual_invocation(
+        self,
+        run_id: str,
+        response_text: str,
+    ) -> dict[str, Any]:
+        """Persist a model-produced result without fabricating acceptance."""
+
+        state = self._manual_invocation_state(run_id)
+        matches = [
+            item
+            for item in self.list_entries(project_ref=state["project_ref"])[
+                "entries"
+            ]
+            if item["definition_ref"] == state["definition_ref"]
+        ]
+        if len(matches) != 1 or not matches[0]["manual_invocation_available"]:
+            raise ProcessLibraryConflict(
+                "manual invocation definition became unavailable before result binding"
+            )
+        registry = self._registry_for_read()
+        if registry is None:
+            raise ProcessLibraryIntegrityError(
+                "manual invocation result requires the authenticated registry"
+            )
+        try:
+            registered_definition = registry.resolve(
+                state["definition_ref"]["definition_id"],
+                state["definition_ref"]["version"],
+                state["definition_ref"]["digest"],
+            )
+        except ProcessDefinitionRegistryError as exc:
+            raise ProcessLibraryIntegrityError(
+                "manual invocation definition failed result-time authentication"
+            ) from exc
+        if registered_definition != self.runtime.load_definition(run_id):
+            raise ProcessLibraryIntegrityError(
+                "manual invocation Run definition differs from the exact registry body"
+            )
+        if state["status"] == "result_recorded":
+            if state["response_text"] != response_text:
+                raise ProcessLibraryConflict(
+                    "manual invocation already returned a different result"
+                )
+            return state
+        capture = self.runtime.capture_manual_process_output(
+            run_id,
+            invocation_record_id=state["invocation_record_id"],
+            response_text=response_text,
+        )
+        if capture["event"]["details"]["response_digest"] != _digest_text(
+            response_text
+        ):
+            raise ProcessLibraryIntegrityError(
+                "manual invocation output capture differs from its response"
+            )
+        run = self.runtime.load_run(run_id)
+        definition = self.runtime.load_definition(run_id)
+        nodes = {
+            node["node_id"]: node for node in definition["graph"]["nodes"]
+        }
+        invocation = next(
+            record for record in self.runtime.load_records(run_id)
+            if (record.get("event") or {}).get("event_type")
+            == "manual_process_invoked"
+        )
+        entry_node_id = invocation["event"]["details"]["entry_node_id"]
+        entry_node = nodes[entry_node_id]
+        if (
+            entry_node["kind"] != "action"
+            or entry_node.get("external_effect") is not False
+        ):
+            raise ProcessLibraryConflict(
+                "manual Dialogue execution supports only a non-external action entry"
+            )
+        verification_node_id = str(entry_node["next_node_id"])
+        verification_node = nodes.get(verification_node_id)
+        if verification_node is None or verification_node["kind"] != "verification_boundary":
+            raise ProcessLibraryConflict(
+                "manual Dialogue result requires a declared verification boundary"
+            )
+        selector = (
+            "scope:declared_outputs"
+            if "scope:declared_outputs" in entry_node["artifact_access"]
+            else str(entry_node["artifact_access"][0])
+        )
+        conditions = ["exact_manual_invocation_binding"]
+        suffix = state["invocation_id"].rsplit("-", 1)[-1]
+        result_id = "manual-result-" + suffix
+        evidence_id = "manual-execution-evidence-" + suffix
+        try:
+            result = self.runtime.load_artifact(run_id, result_id)
+            if result["identity"]["digest"] != _digest_text(response_text):
+                raise ProcessLibraryConflict(
+                    "persisted manual result differs from the current response"
+                )
+        except RunNotFoundError:
+            result = self.runtime.record_inline_artifact(
+                run_id,
+                result_id,
+                response_text,
+                role="result",
+                node_id=entry_node_id,
+                action="produce_artifact",
+                selector=selector,
+                satisfied_conditions=conditions,
+            )["artifact"]
+        run = self.runtime.load_run(run_id)
+        if run["current_node_id"] == entry_node_id:
+            self.runtime.complete_action_node(
+                run_id,
+                entry_node["operation"],
+                reason="Exact manual invocation result produced",
+                artifact_ids=[result_id],
+            )
+        elif run["current_node_id"] != verification_node_id:
+            raise ProcessLibraryConflict(
+                "manual invocation moved outside its result verification boundary"
+            )
+        evidence_text = json.dumps({
+            "schema_version": "ora.manual-invocation-evidence/1.0",
+            "invocation_record_id": state["invocation_record_id"],
+            "invocation_digest": state["invocation_digest"],
+            "result_artifact_id": result_id,
+            "result_identity_digest": result["identity"]["digest"],
+            "observation": "Pipeline returned this exact response; acceptance is pending independent review.",
+        }, sort_keys=True, ensure_ascii=False)
+        try:
+            evidence = self.runtime.load_artifact(run_id, evidence_id)
+            if evidence["identity"]["digest"] != _digest_text(evidence_text):
+                raise ProcessLibraryConflict(
+                    "persisted manual execution evidence has drifted"
+                )
+        except RunNotFoundError:
+            evidence = self.runtime.record_inline_artifact(
+                run_id,
+                evidence_id,
+                evidence_text,
+                role="evidence",
+                node_id=verification_node_id,
+                action="record_evidence",
+                selector=selector,
+                source_artifact_ids=[result_id],
+                satisfied_conditions=conditions,
+                media_type="application/json",
+            )["artifact"]
+        self.runtime.record_manual_process_result(
+            run_id,
+            invocation_record_id=state["invocation_record_id"],
+            result_artifact_id=result_id,
+            evidence_artifact_id=evidence_id,
+            response_text=response_text,
+        )
+        return self._manual_invocation_state(run_id)
 
     def get_run_lifecycle(self, run_id: str) -> dict[str, Any]:
         try:

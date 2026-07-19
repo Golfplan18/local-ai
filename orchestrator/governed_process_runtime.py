@@ -115,6 +115,9 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "repository_state_captured",
     "repository_mutation_receipt_issued",
     "authority_request_resolved",
+    "manual_process_invoked",
+    "manual_process_output_captured",
+    "manual_process_result_recorded",
     "process_invoked",
     "process_definition_registered",
     "child_return_received",
@@ -1004,6 +1007,352 @@ class GovernedProcessRuntime:
                 node_id=target,
                 evidence_refs=evidence_refs,
                 artifact_ids=artifact_ids,
+            )
+
+    def bind_manual_process_invocation(
+        self,
+        run_id: str,
+        *,
+        invocation_id: str,
+        dialogue_ref: str,
+        project_ref: str,
+        objective: str,
+        definition_inputs: Mapping[str, Any],
+        definition_input_digest: str,
+        entry_contract_digest: str,
+        request_context_digest: str,
+    ) -> dict[str, Any]:
+        """Persist one exact top-level manual invocation before execution."""
+
+        body = {
+            "invocation_id": str(invocation_id),
+            "dialogue_ref": str(dialogue_ref),
+            "project_ref": str(project_ref),
+            "objective": str(objective),
+            "definition_inputs": copy.deepcopy(dict(definition_inputs)),
+            "definition_input_digest": str(definition_input_digest),
+            "entry_contract_digest": str(entry_contract_digest),
+            "request_context_digest": str(request_context_digest),
+        }
+        for field in (
+            "invocation_id", "dialogue_ref", "project_ref", "objective",
+            "definition_input_digest", "entry_contract_digest",
+            "request_context_digest",
+        ):
+            if not body[field]:
+                raise GovernedRuntimeError(
+                    f"manual Process invocation requires {field}"
+                )
+        _exact_digest(
+            body["definition_input_digest"], "definition_input_digest"
+        )
+        _exact_digest(body["entry_contract_digest"], "entry_contract_digest")
+        _exact_digest(body["request_context_digest"], "request_context_digest")
+        _require_json(body["definition_inputs"], "definition_inputs")
+
+        with _locked():
+            run = self.load_run(run_id)
+            if run["input_bindings"] != body:
+                raise RunConflictError(
+                    "manual invocation differs from the persisted Run inputs"
+                )
+            details_body = {
+                **body,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "entry_node_id": self.load_definition(run_id)["graph"][
+                    "entry_node_id"
+                ],
+            }
+            details = {
+                **details_body,
+                "invocation_digest": _digest_json(details_body),
+            }
+            existing = [
+                record for record in self.load_records(run_id)
+                if (record.get("event") or {}).get("event_type")
+                == "manual_process_invoked"
+            ]
+            if len(existing) > 1:
+                raise GovernedRuntimeError(
+                    "Process Run has multiple manual invocation records"
+                )
+            if existing:
+                if existing[0]["event"]["details"] != details:
+                    raise RunConflictError(
+                        "manual invocation record differs from the exact request"
+                    )
+                return copy.deepcopy(existing[0])
+            if run["state"] != "ready":
+                raise RunConflictError(
+                    "manual invocation must be bound before the Process Run starts"
+                )
+            return self._append_event_locked(
+                run,
+                "manual_process_invoked",
+                details,
+                node_id=run["current_node_id"],
+                runtime_authoritative=True,
+            )
+
+    def record_manual_process_result(
+        self,
+        run_id: str,
+        *,
+        invocation_record_id: str,
+        result_artifact_id: str,
+        evidence_artifact_id: str,
+        response_text: str,
+    ) -> dict[str, Any]:
+        """Bind a pipeline response to exact result and execution evidence."""
+
+        if not response_text:
+            raise GovernedRuntimeError(
+                "manual Process result requires a non-empty response"
+            )
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            records = self.load_records(run_id)
+            invocations = [
+                record for record in records
+                if record["record_id"] == invocation_record_id
+                and (record.get("event") or {}).get("event_type")
+                == "manual_process_invoked"
+            ]
+            if len(invocations) != 1:
+                raise GovernedRuntimeError(
+                    "manual result lacks its exact runtime invocation record"
+                )
+            invocation = invocations[0]
+            entry_node_id = str(
+                invocation["event"]["details"].get("entry_node_id") or ""
+            )
+            nodes = self._graph_nodes(definition)
+            entry_node = nodes.get(entry_node_id)
+            if (
+                entry_node is None
+                or entry_node.get("kind") != "action"
+                or entry_node.get("external_effect") is not False
+                or run["current_node_id"] != entry_node.get("next_node_id")
+                or nodes[run["current_node_id"]].get("kind")
+                != "verification_boundary"
+            ):
+                raise GovernedRuntimeError(
+                    "manual result is outside its exact non-external execution path"
+                )
+            result = self.load_artifact(run_id, result_artifact_id)
+            evidence = self.load_artifact(run_id, evidence_artifact_id)
+            if (
+                result["role"] != "result"
+                or result["identity"]["digest"] != _digest_text(response_text)
+                or evidence["role"] != "evidence"
+                or result_artifact_id
+                not in evidence["lineage"]["source_artifact_ids"]
+                or result["lineage"]["producing_node_id"] != entry_node_id
+                or evidence["lineage"]["producing_node_id"]
+                != run["current_node_id"]
+            ):
+                raise GovernedRuntimeError(
+                    "manual result and execution evidence identities do not bind"
+                )
+            started = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type") == "run_started"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "entry_node_id"
+                ) == entry_node_id
+            ]
+            captures = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "manual_process_output_captured"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "invocation_record_id"
+                ) == invocation_record_id
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "response_digest"
+                ) == _digest_text(response_text)
+            ]
+            result_artifact_records = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "artifact_recorded"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "artifact_id"
+                ) == result_artifact_id
+            ]
+            action_advances = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type") == "node_advanced"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "from_node_id"
+                ) == entry_node_id
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "to_node_id"
+                ) == run["current_node_id"]
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "advance_kind"
+                ) == "action"
+                and (((record.get("event") or {}).get("details") or {}).get(
+                    "route"
+                ) or {}).get("operation") == entry_node["operation"]
+                and result_artifact_id in record.get("artifact_ids", [])
+            ]
+            evidence_artifact_records = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "artifact_recorded"
+                and ((record.get("event") or {}).get("details") or {}).get(
+                    "artifact_id"
+                ) == evidence_artifact_id
+            ]
+            if not all(len(group) == 1 for group in (
+                started,
+                captures,
+                result_artifact_records,
+                action_advances,
+                evidence_artifact_records,
+            )):
+                raise GovernedRuntimeError(
+                    "manual result lacks one exact runtime execution sequence"
+                )
+            ordered = [
+                int(invocation["sequence"]),
+                int(started[0]["sequence"]),
+                int(captures[0]["sequence"]),
+                int(result_artifact_records[0]["sequence"]),
+                int(action_advances[0]["sequence"]),
+                int(evidence_artifact_records[0]["sequence"]),
+            ]
+            if ordered != sorted(set(ordered)):
+                raise GovernedRuntimeError(
+                    "manual invocation, execution, and evidence ordering is invalid"
+                )
+            details_body = {
+                "invocation_id": invocation["event"]["details"]["invocation_id"],
+                "invocation_record_id": invocation_record_id,
+                "invocation_digest": invocation["event"]["details"][
+                    "invocation_digest"
+                ],
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "result_artifact_id": result_artifact_id,
+                "result_identity_digest": result["identity"]["digest"],
+                "evidence_artifact_id": evidence_artifact_id,
+                "evidence_identity_digest": evidence["identity"]["digest"],
+                "response_text": response_text,
+                "response_digest": _digest_text(response_text),
+                "current_node_id": run["current_node_id"],
+            }
+            details = {
+                **details_body,
+                "result_binding_digest": _digest_json(details_body),
+            }
+            existing = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "manual_process_result_recorded"
+            ]
+            if len(existing) > 1:
+                raise GovernedRuntimeError(
+                    "Process Run has multiple manual result records"
+                )
+            if existing:
+                if existing[0]["event"]["details"] != details:
+                    raise RunConflictError(
+                        "manual result was already recorded with another identity"
+                    )
+                return copy.deepcopy(existing[0])
+            if run["state"] not in {"running", "pending"}:
+                raise RunConflictError(
+                    "manual result requires a live Process Run"
+                )
+            return self._append_event_locked(
+                run,
+                "manual_process_result_recorded",
+                details,
+                node_id=run["current_node_id"],
+                artifact_ids=[result_artifact_id, evidence_artifact_id],
+                runtime_authoritative=True,
+            )
+
+    def capture_manual_process_output(
+        self,
+        run_id: str,
+        *,
+        invocation_record_id: str,
+        response_text: str,
+    ) -> dict[str, Any]:
+        """Durably capture exact pipeline bytes before result graph mutation."""
+
+        if not response_text:
+            raise GovernedRuntimeError(
+                "manual Process output capture requires a non-empty response"
+            )
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            records = self.load_records(run_id)
+            invocations = [
+                record for record in records
+                if record["record_id"] == invocation_record_id
+                and (record.get("event") or {}).get("event_type")
+                == "manual_process_invoked"
+            ]
+            if len(invocations) != 1:
+                raise GovernedRuntimeError(
+                    "manual output capture lacks its exact invocation record"
+                )
+            invocation = invocations[0]
+            entry_node_id = str(
+                invocation["event"]["details"].get("entry_node_id") or ""
+            )
+            entry_node = self._graph_nodes(definition).get(entry_node_id)
+            details_body = {
+                "invocation_id": invocation["event"]["details"]["invocation_id"],
+                "invocation_record_id": invocation_record_id,
+                "invocation_digest": invocation["event"]["details"][
+                    "invocation_digest"
+                ],
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "entry_node_id": entry_node_id,
+                "response_text": response_text,
+                "response_digest": _digest_text(response_text),
+            }
+            details = {
+                **details_body,
+                "output_capture_digest": _digest_json(details_body),
+            }
+            existing = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "manual_process_output_captured"
+            ]
+            if len(existing) > 1:
+                raise GovernedRuntimeError(
+                    "Process Run has multiple manual output captures"
+                )
+            if existing:
+                if existing[0]["event"]["details"] != details:
+                    raise RunConflictError(
+                        "manual Process output was already captured differently"
+                    )
+                return copy.deepcopy(existing[0])
+            if (
+                run["state"] not in {"running", "pending"}
+                or entry_node is None
+                or entry_node.get("kind") != "action"
+                or entry_node.get("external_effect") is not False
+                or run["current_node_id"] != entry_node_id
+            ):
+                raise GovernedRuntimeError(
+                    "manual output capture is outside its exact execution entry"
+                )
+            return self._append_event_locked(
+                run,
+                "manual_process_output_captured",
+                details,
+                node_id=entry_node_id,
+                runtime_authoritative=True,
             )
 
     def record_lifecycle_disposition(

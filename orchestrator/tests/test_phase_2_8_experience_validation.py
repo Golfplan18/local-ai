@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -19,6 +20,7 @@ if str(ORCH) not in sys.path:
     sys.path.insert(0, str(ORCH))
 
 import governed_process_runtime as runtime  # noqa: E402
+import boot as boot_runtime  # noqa: E402
 import process_definition_registry as registry_module  # noqa: E402
 import process_delegation_attention as delegation  # noqa: E402
 import process_entry_routing as entry  # noqa: E402
@@ -339,11 +341,181 @@ class Phase28ResultingCapabilityTests(phase26.Phase26Fixture):
             "run-phase-2-8-capability"
         )
         ref = phase17._definition_ref(target)
-        item = self.service.list_entries(project_ref="project:trial")["entries"][0]
+        objective = "Use the approved cash-flow review now."
+        request = {
+            "source": "process_library",
+            "objective": objective,
+            "project_ref": "project:trial",
+            "project_confirmed": False,
+            "selected_definition_ref": ref,
+        }
+        response_text = "Closing cash is 105000 after the approved review."
+        definition_inputs = {"repository_ref": "repo:cash-flow-trial"}
+        captured = {}
+
+        def fake_stream(clean_input, history, **kwargs):
+            captured["clean_input"] = clean_input
+            captured["extra_context"] = kwargs.get("extra_context")
+            yield server._sse("pipeline_stage", stage="complete", gear=3)
+            yield server._sse("response", text=response_text)
+
+        class NoopThread:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def start(self):
+                pass
+
+        client = server.app.test_client()
+        with mock.patch.object(
+            server, "_process_library_service", return_value=self.service
+        ), mock.patch.object(
+            server, "_process_entry_project_visible", return_value=True
+        ), mock.patch.object(
+            server, "_log_pending_submission", return_value="submission-invocation"
+        ), mock.patch.object(
+            server, "_finalize_pending_submission"
+        ), mock.patch.object(
+            server, "_save_conversation", return_value="chunk-invocation"
+        ), mock.patch.object(
+            server, "agentic_loop_stream", side_effect=fake_stream
+        ) as stream, mock.patch.object(
+            server.threading, "Thread", NoopThread
+        ):
+            response = client.post("/chat", json={
+                "message": objective,
+                "conversation_id": "dialogue-phase-2-8-invocation",
+                "history": [],
+                "process_entry_request": request,
+                "process_invocation_inputs": definition_inputs,
+            })
+            retry = client.post("/chat", json={
+                "message": objective,
+                "conversation_id": "dialogue-phase-2-8-invocation",
+                "history": [],
+                "process_entry_request": request,
+                "process_invocation_inputs": definition_inputs,
+            })
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.get_data(as_text=True))
+        invocation = payload["process_invocation"]
+        self.assertEqual(invocation["status"], "result_recorded")
+        self.assertEqual(invocation["definition_ref"], ref)
+        self.assertEqual(invocation["dialogue_ref"], "dialogue-phase-2-8-invocation")
+        self.assertEqual(invocation["project_ref"], "project:trial")
+        self.assertEqual(invocation["definition_inputs"], definition_inputs)
+        self.assertEqual(
+            invocation["result"]["acceptance_status"],
+            "pending_independent_review",
+        )
+        self.assertEqual(retry.status_code, 200)
+        self.assertTrue(retry.get_json()["idempotent_replay"])
+        self.assertEqual(
+            retry.get_json()["process_invocation"]["run_id"],
+            invocation["run_id"],
+        )
+        self.assertEqual(stream.call_count, 1)
+        self.assertEqual(captured["clean_input"], objective)
+        self.assertEqual(
+            captured["extra_context"]["governed_process_invocation"][
+                "definition_ref"
+            ],
+            ref,
+        )
+        execution = captured["extra_context"]["governed_process_invocation"][
+            "execution_contract"
+        ]
+        self.assertEqual(
+            execution["entry_node"]["operation"],
+            "calculate_permitted_cash_flow",
+        )
+        self.assertFalse(execution["entry_node"]["external_effect"])
+        self.assertEqual(execution["definition_ref"], ref)
+        self.assertEqual(execution["definition_inputs"], definition_inputs)
+        prompt = boot_runtime.build_system_prompt_for_gear({
+            "mode_text": (
+                ROOT / "modes" / "root-cause-analysis.md"
+            ).read_text(encoding="utf-8"),
+            "mode_name": "root-cause-analysis",
+            "conversation_rag": "",
+            "concept_rag": "",
+            "relationship_rag": "",
+            "process_entry": captured["extra_context"]["process_entry"],
+            "governed_process_invocation": captured["extra_context"][
+                "governed_process_invocation"
+            ],
+        })
+        self.assertIn("GOVERNED PROCESS INVOCATION (RUNTIME-AUTHORITATIVE)", prompt)
+        self.assertIn("calculate_permitted_cash_flow", prompt)
+        self.assertIn(ref["digest"], prompt)
+        self.assertIn("Do not activate, publish", prompt)
+
+        run = self.runtime.load_run(invocation["run_id"])
+        self.assertEqual(run["definition_ref"], ref)
+        self.assertEqual(run["input_bindings"]["dialogue_ref"], invocation["dialogue_ref"])
+        self.assertEqual(run["input_bindings"]["project_ref"], "project:trial")
+        self.assertEqual(
+            run["input_bindings"]["definition_inputs"], definition_inputs
+        )
+        records = self.runtime.load_records(invocation["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "manual_process_invoked"
+            for record in records
+        ), 1)
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "manual_process_result_recorded"
+            for record in records
+        ), 1)
+        result = self.runtime.load_artifact(
+            invocation["run_id"], invocation["result"]["result_artifact_id"]
+        )
+        evidence = self.runtime.load_artifact(
+            invocation["run_id"], invocation["result"]["evidence_artifact_id"]
+        )
+        self.assertEqual(result["identity"]["digest"], phase17._digest_text(response_text))
+        self.assertIn(result["artifact_id"], evidence["lineage"]["source_artifact_ids"])
+
+        restarted = phase26.library.ProcessLibraryLifecycleService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.runtime.root, now=lambda: phase17.NOW
+            ),
+            registry=registry_module.ProcessDefinitionRegistry(
+                self.registry_root, now=lambda: phase17.NOW
+            ),
+            now=lambda: phase17.NOW,
+        )
         routed = entry.route_process_entry(
+            request,
+            catalog=restarted.list_entries(project_ref="project:trial")["entries"],
+            project_visible=lambda _project: True,
+        )
+        recovered = restarted.begin_manual_invocation(
+            dialogue_ref="dialogue-phase-2-8-invocation",
+            project_ref="project:trial",
+            objective=objective,
+            definition_ref=ref,
+            definition_inputs=definition_inputs,
+            entry_contract=routed,
+            request_context=server._process_invocation_request_context(
+                surface="chat", history=[], attachments=[]
+            ),
+        )
+        self.assertEqual(recovered["status"], "result_recorded")
+        self.assertEqual(recovered["run_id"], invocation["run_id"])
+        self.assertEqual(recovered["response_text"], response_text)
+
+    def test_manual_invocation_reauthenticates_availability_scope_and_entry(self):
+        target, _artifact, _result, _lifecycle = self.promote(
+            "run-phase-2-8-invocation-guards"
+        )
+        ref = phase17._definition_ref(target)
+        item = self.service.list_entries(project_ref="project:trial")["entries"][0]
+        contract = entry.route_process_entry(
             {
                 "source": "process_library",
-                "objective": "Use the approved cash-flow review now.",
+                "objective": "Run the exact review.",
                 "project_ref": "project:trial",
                 "project_confirmed": False,
                 "selected_definition_ref": ref,
@@ -351,10 +523,350 @@ class Phase28ResultingCapabilityTests(phase26.Phase26Fixture):
             catalog=[item],
             project_visible=lambda _project: True,
         )
-        self.assertEqual(routed["status"], "ready")
-        self.assertEqual(routed["definition_ref"], ref)
-        self.assertEqual(routed["next_action"], "begin_exact_definition_invocation")
-        self.assertFalse(item["standing_automation"])
+        forged = copy.deepcopy(contract)
+        forged["objective"] = "Substituted objective."
+        before = list(self.runtime.root.iterdir())
+        with self.assertRaises(phase26.library.ProcessLibraryConflict):
+            self.service.begin_manual_invocation(
+                dialogue_ref="dialogue-forged",
+                project_ref="project:trial",
+                objective="Substituted objective.",
+                definition_ref=ref,
+                definition_inputs={},
+                entry_contract=forged,
+                request_context={},
+            )
+        self.assertEqual(list(self.runtime.root.iterdir()), before)
+
+        out_of_scope = copy.deepcopy(contract)
+        out_of_scope["project_ref"] = "project:other"
+        out_of_scope["contract_digest"] = phase26.library._digest_json({
+            key: value for key, value in out_of_scope.items()
+            if key != "contract_digest"
+        })
+        with self.assertRaises(phase26.library.ProcessLibraryConflict):
+            self.service.begin_manual_invocation(
+                dialogue_ref="dialogue-out-of-scope",
+                project_ref="project:other",
+                objective=contract["objective"],
+                definition_ref=ref,
+                definition_inputs={},
+                entry_contract=out_of_scope,
+                request_context={},
+            )
+
+        stale = copy.deepcopy(contract)
+        stale["definition_ref"]["digest"] = "sha256:" + "0" * 64
+        stale["contract_digest"] = phase26.library._digest_json({
+            key: value for key, value in stale.items()
+            if key != "contract_digest"
+        })
+        with self.assertRaises(phase26.library.ProcessLibraryConflict):
+            self.service.begin_manual_invocation(
+                dialogue_ref="dialogue-stale",
+                project_ref="project:trial",
+                objective=contract["objective"],
+                definition_ref=stale["definition_ref"],
+                definition_inputs={},
+                entry_contract=stale,
+                request_context={},
+            )
+
+        unavailable = phase17._definition("business/unavailable-review")
+        unavailable = phase17._seal_definition(unavailable)
+        self.registry.register(unavailable)
+        unavailable_contract = copy.deepcopy(contract)
+        unavailable_contract["definition_ref"] = phase17._definition_ref(
+            unavailable
+        )
+        unavailable_contract["contract_digest"] = phase26.library._digest_json({
+            key: value for key, value in unavailable_contract.items()
+            if key != "contract_digest"
+        })
+        with self.assertRaises(phase26.library.ProcessLibraryConflict):
+            self.service.begin_manual_invocation(
+                dialogue_ref="dialogue-unavailable",
+                project_ref="project:trial",
+                objective=contract["objective"],
+                definition_ref=unavailable_contract["definition_ref"],
+                definition_inputs={},
+                entry_contract=unavailable_contract,
+                request_context={},
+            )
+
+        inactive = phase17._definition("business/inactive-review")
+        inactive["status"] = "draft"
+        inactive = phase17._seal_definition(inactive)
+        inactive_contract = copy.deepcopy(contract)
+        inactive_contract["definition_ref"] = phase17._definition_ref(inactive)
+        inactive_contract["contract_digest"] = phase26.library._digest_json({
+            key: value for key, value in inactive_contract.items()
+            if key != "contract_digest"
+        })
+        with mock.patch.object(
+            self.service,
+            "list_entries",
+            return_value={
+                "entries": [{
+                    "definition_ref": inactive_contract["definition_ref"],
+                    "manual_invocation_available": True,
+                }]
+            },
+        ), mock.patch.object(self.registry, "resolve", return_value=inactive):
+            with self.assertRaises(phase26.library.ProcessLibraryConflict):
+                self.service.begin_manual_invocation(
+                    dialogue_ref="dialogue-inactive",
+                    project_ref="project:trial",
+                    objective=contract["objective"],
+                    definition_ref=inactive_contract["definition_ref"],
+                    definition_inputs={},
+                    entry_contract=inactive_contract,
+                    request_context={},
+                )
+        self.assertFalse(any(
+            path.name.startswith("run-invocation-")
+            for path in self.runtime.root.iterdir()
+        ))
+
+    def test_public_entry_rejects_invalid_definition_inputs_before_execution(self):
+        target, _artifact, _result, _lifecycle = self.promote(
+            "run-phase-2-8-invalid-input"
+        )
+        objective = "Use the approved cash-flow review now."
+        request = {
+            "source": "process_library",
+            "objective": objective,
+            "project_ref": "project:trial",
+            "project_confirmed": False,
+            "selected_definition_ref": phase17._definition_ref(target),
+        }
+        client = server.app.test_client()
+        with mock.patch.object(
+            server, "_process_library_service", return_value=self.service
+        ), mock.patch.object(
+            server, "_process_entry_project_visible", return_value=True
+        ), mock.patch.object(
+            server, "_log_pending_submission", return_value="invalid-input"
+        ), mock.patch.object(
+            server, "_delete_pending_submission"
+        ), mock.patch.object(server, "agentic_loop_stream") as stream:
+            response = client.post("/chat", json={
+                "message": objective,
+                "conversation_id": "dialogue-invalid-definition-input",
+                "history": [],
+                "process_entry_request": request,
+                "process_invocation_inputs": {"unexpected": True},
+            })
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("do not satisfy", response.get_json()["error"])
+        stream.assert_not_called()
+        self.assertFalse(any(
+            path.name.startswith("run-invocation-")
+            for path in self.runtime.root.iterdir()
+        ))
+
+    def test_result_requires_runtime_traversal_and_reserved_events_cannot_be_forged(self):
+        target, _artifact, _result, _lifecycle = self.promote(
+            "run-phase-2-8-runtime-guards"
+        )
+        ref = phase17._definition_ref(target)
+        objective = "Use the exact review."
+        request = {
+            "source": "process_library",
+            "objective": objective,
+            "project_ref": "project:trial",
+            "project_confirmed": False,
+            "selected_definition_ref": ref,
+        }
+        contract = entry.route_process_entry(
+            request,
+            catalog=self.service.list_entries(project_ref="project:trial")["entries"],
+            project_visible=lambda _project: True,
+        )
+        state = self.service.begin_manual_invocation(
+            dialogue_ref="dialogue-runtime-guards",
+            project_ref="project:trial",
+            objective=objective,
+            definition_ref=ref,
+            definition_inputs={},
+            entry_contract=contract,
+            request_context={},
+        )
+        with self.assertRaises(runtime.AuthorityDeniedError):
+            self.runtime.record_event(
+                state["run_id"], "manual_process_invoked", {"forged": True}
+            )
+        result = self.runtime.record_inline_artifact(
+            state["run_id"],
+            "premature-result",
+            "not executed",
+            role="result",
+            node_id="calculate",
+            action="produce_artifact",
+            selector=phase17.OUTPUT,
+            satisfied_conditions=["exact_manual_invocation_binding"],
+        )
+        evidence = self.runtime.record_inline_artifact(
+            state["run_id"],
+            "premature-evidence",
+            "not executed",
+            role="evidence",
+            node_id="calculate",
+            action="record_evidence",
+            selector=phase17.OUTPUT,
+            source_artifact_ids=[result["artifact"]["artifact_id"]],
+            satisfied_conditions=["exact_manual_invocation_binding"],
+        )
+        with self.assertRaises(runtime.GovernedRuntimeError):
+            self.runtime.record_manual_process_result(
+                state["run_id"],
+                invocation_record_id=state["invocation_record_id"],
+                result_artifact_id=result["artifact"]["artifact_id"],
+                evidence_artifact_id=evidence["artifact"]["artifact_id"],
+                response_text="not executed",
+            )
+
+    def test_dialogue_save_failure_replays_authenticated_result_without_reexecution(self):
+        target, _artifact, _result, _lifecycle = self.promote(
+            "run-phase-2-8-save-recovery"
+        )
+        objective = "Use the approved cash-flow review after restart."
+        request = {
+            "source": "process_library",
+            "objective": objective,
+            "project_ref": "project:trial",
+            "project_confirmed": False,
+            "selected_definition_ref": phase17._definition_ref(target),
+        }
+        response_text = "Authenticated result survives the Dialogue-save fault."
+
+        def fake_stream(*_args, **_kwargs):
+            yield server._sse("response", text=response_text)
+
+        class NoopThread:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def start(self):
+                pass
+
+        client = server.app.test_client()
+        with mock.patch.object(
+            server, "_process_library_service", return_value=self.service
+        ), mock.patch.object(
+            server, "_process_entry_project_visible", return_value=True
+        ), mock.patch.object(
+            server, "_log_pending_submission", return_value="save-recovery"
+        ), mock.patch.object(
+            server, "_finalize_pending_submission"
+        ), mock.patch.object(
+            server, "_save_conversation",
+            side_effect=[RuntimeError("injected save fault"), "replayed-chunk"],
+        ) as save, mock.patch.object(
+            server, "agentic_loop_stream", side_effect=fake_stream
+        ) as stream, mock.patch.object(
+            server.threading, "Thread", NoopThread
+        ):
+            first = client.post("/chat", json={
+                "message": objective,
+                "conversation_id": "dialogue-save-recovery",
+                "history": [],
+                "process_entry_request": request,
+            })
+            retry = client.post("/chat", json={
+                "message": objective,
+                "conversation_id": "dialogue-save-recovery",
+                "history": [],
+                "process_entry_request": request,
+            })
+        self.assertEqual(
+            json.loads(first.get_data(as_text=True))["status"], "errored"
+        )
+        self.assertEqual(retry.status_code, 200)
+        self.assertTrue(retry.get_json()["idempotent_replay"])
+        self.assertEqual(stream.call_count, 1)
+        self.assertEqual(save.call_count, 2)
+
+    def test_restart_finishes_captured_output_after_mid_completion_failure(self):
+        target, _artifact, _result, _lifecycle = self.promote(
+            "run-phase-2-8-mid-completion"
+        )
+        ref = phase17._definition_ref(target)
+        objective = "Use the exact review with restart recovery."
+        request = {
+            "source": "process_library",
+            "objective": objective,
+            "project_ref": "project:trial",
+            "project_confirmed": False,
+            "selected_definition_ref": ref,
+        }
+        contract = entry.route_process_entry(
+            request,
+            catalog=self.service.list_entries(project_ref="project:trial")["entries"],
+            project_visible=lambda _project: True,
+        )
+        context = {"surface": "chat", "delivery": "mid-completion"}
+        state = self.service.begin_manual_invocation(
+            dialogue_ref="dialogue-mid-completion",
+            project_ref="project:trial",
+            objective=objective,
+            definition_ref=ref,
+            definition_inputs={},
+            entry_contract=contract,
+            request_context=context,
+        )
+        response_text = "The exact output was captured before the injected fault."
+        original = self.runtime.record_inline_artifact
+        failed = False
+
+        def fail_evidence_once(*args, **kwargs):
+            nonlocal failed
+            artifact_id = args[1] if len(args) > 1 else kwargs.get("artifact_id")
+            if str(artifact_id).startswith("manual-execution-evidence-") and not failed:
+                failed = True
+                raise RuntimeError("injected failure after graph advancement")
+            return original(*args, **kwargs)
+
+        with mock.patch.object(
+            self.runtime,
+            "record_inline_artifact",
+            side_effect=fail_evidence_once,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "injected failure"):
+                self.service.complete_manual_invocation(
+                    state["run_id"], response_text
+                )
+        partial = self.service._manual_invocation_state(state["run_id"])
+        self.assertEqual(partial["status"], "output_captured")
+        self.assertEqual(partial["response_text"], response_text)
+        self.assertEqual(partial["current_node_id"], "review")
+
+        restarted = phase26.library.ProcessLibraryLifecycleService(
+            runtime=runtime.GovernedProcessRuntime(
+                self.runtime.root, now=lambda: phase17.NOW
+            ),
+            registry=registry_module.ProcessDefinitionRegistry(
+                self.registry_root, now=lambda: phase17.NOW
+            ),
+            now=lambda: phase17.NOW,
+        )
+        recovered = restarted.begin_manual_invocation(
+            dialogue_ref="dialogue-mid-completion",
+            project_ref="project:trial",
+            objective=objective,
+            definition_ref=ref,
+            definition_inputs={},
+            entry_contract=contract,
+            request_context=context,
+        )
+        self.assertEqual(recovered["status"], "result_recorded")
+        self.assertEqual(recovered["response_text"], response_text)
+        records = restarted.runtime.load_records(recovered["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "manual_process_output_captured"
+            for record in records
+        ), 1)
 
 
 if __name__ == "__main__":  # pragma: no cover

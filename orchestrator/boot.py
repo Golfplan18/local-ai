@@ -8707,6 +8707,36 @@ def build_system_prompt_for_gear(
             ),
         ))
 
+    # G1.1 Phase 2.8 — unlike the routing contract above, this envelope is
+    # emitted only after the exact Process Definition has been resolved and a
+    # governed Run plus runtime-issued invocation record have been persisted.
+    # It is the production execution instruction for a ready Process Library
+    # invocation; the response is subsequently bound to that same Run before
+    # the Dialogue is saved.
+    governed_invocation = context_package.get("governed_process_invocation")
+    if isinstance(governed_invocation, dict):
+        execution_contract = governed_invocation.get("execution_contract")
+        if not isinstance(execution_contract, dict):
+            raise ValueError(
+                "governed Process invocation lacks its exact execution contract"
+            )
+        parts.append(_fenced(
+            "GOVERNED PROCESS INVOCATION (RUNTIME-AUTHORITATIVE)",
+            json.dumps(
+                execution_contract,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ),
+            note=(
+                "Execute the exact entry-node operation for this persisted Run "
+                "using only its bound inputs and non-external authority. Produce "
+                "the requested result for the declared verification boundary. "
+                "Do not activate, publish, mutate external state, change the "
+                "definition identity, or claim independent acceptance."
+            ),
+        ))
+
     # Baseline criteria injection (2026-05-24): every role-specific step
     # gets the BRIEF + EC and VERIFICATION CRITERIA up front, so the
     # analyst sees what good looks like before writing, the evaluator and

@@ -8,7 +8,7 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib
+import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
@@ -5246,7 +5246,7 @@ def _process_run_inspector_service():
 
 
 def _process_library_service():
-    """Construct the Phase 2.6/2.7 Library, lifecycle, and label service."""
+    """Construct the Phase 2.6–2.8 Library and governed-invocation service."""
 
     from process_entry_routing import load_programming_definition
     from process_library_lifecycle import ProcessLibraryLifecycleService
@@ -5543,6 +5543,113 @@ def _decode_process_entry_request(raw, objective: str, framework_selected: str =
                 "shared-picker framework entry must match framework_selected"
             )
     return _route_process_entry_request(payload)
+
+
+def _decode_process_invocation_inputs(raw):
+    """Decode exact definition inputs without treating the Inquiry as schema data."""
+
+    if raw is None or raw == "":
+        return {}
+    value = raw
+    if isinstance(raw, str):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            from process_library_lifecycle import ProcessLibraryInputRequired
+
+            raise ProcessLibraryInputRequired(
+                f"process_invocation_inputs is invalid JSON: {exc}"
+            ) from exc
+    if not isinstance(value, dict):
+        from process_library_lifecycle import ProcessLibraryInputRequired
+
+        raise ProcessLibraryInputRequired(
+            "process_invocation_inputs must be an object"
+        )
+    return value
+
+
+def _assert_manual_invocation_output_boundary(user_input, output_destination):
+    """Prevent Dialogue invocation from acquiring undeclared file effects."""
+
+    from process_library_lifecycle import ProcessLibraryConflict
+
+    _clean, _pipeline, output_target, _style = parse_user_command(user_input)
+    if output_target != "screen" or str(output_destination or "").strip():
+        raise ProcessLibraryConflict(
+            "manual Process invocation permits Dialogue output only; file and "
+            "external output require separately governed authority"
+        )
+
+
+def _process_invocation_request_context(*, surface, history, attachments):
+    """Return bounded digests that make one delivery retry deterministic."""
+
+    def digest(value):
+        encoded = json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+    return {
+        "surface": str(surface),
+        "history_digest": digest(history if isinstance(history, list) else []),
+        "attachments_digest": digest(attachments),
+    }
+
+
+def _public_process_invocation(state):
+    return {
+        key: copy.deepcopy(value)
+        for key, value in state.items()
+        if key != "response_text"
+    }
+
+
+def _persist_manual_invocation_replay(
+    *, user_input, state, history, panel_id, tag, submission_id,
+    output_destination="",
+):
+    """Restore a saved runtime result to its Dialogue without re-execution."""
+
+    response_text = str(state.get("response_text") or "")
+    if state.get("status") != "result_recorded" or not response_text:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": "manual invocation replay lacks its exact result",
+        }, 500)
+    try:
+        chunk_id = _save_conversation(
+            user_input,
+            response_text,
+            panel_id,
+            len(history) == 0,
+            tag,
+            output_destination=output_destination,
+            trace_ref=None,
+        )
+    except Exception as exc:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": f"manual invocation Dialogue save failed: {exc}",
+        }, 500)
+    if not chunk_id:
+        return _json_response({
+            "status": "errored",
+            "conversation_id": panel_id,
+            "failure_summary": "manual invocation Dialogue save produced no chunk",
+        }, 500)
+    if submission_id:
+        _finalize_pending_submission(submission_id)
+    return _json_response({
+        "status": "ok",
+        "conversation_id": panel_id,
+        "chunk_id": chunk_id,
+        "process_invocation": _public_process_invocation(state),
+        "idempotent_replay": True,
+    })
 
 
 @app.route("/api/process-library/entries", methods=["GET"])
@@ -8211,6 +8318,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     cfg            = None
     ep             = None
     trace_ref      = None
+    process_invocation_state = None
 
     try:
         # MLX per-machine serialization lives inside call_model
@@ -8303,8 +8411,34 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     # user effectively saw.
                     final_response = routed
 
+            # Bind the exact bytes that the Dialogue will persist—not the
+            # pre-warning/pre-routing model text—to the governed result
+            # Artifact.  This happens before Dialogue save so a crash between
+            # the two can replay the authenticated result without rerunning
+            # the capability.
+            governed_invocation = (
+                (extra_context or {}).get("governed_process_invocation")
+                if isinstance(extra_context, dict) else None
+            )
+            if isinstance(governed_invocation, dict):
+                try:
+                    process_invocation_state = (
+                        _process_library_service().complete_manual_invocation(
+                            str(governed_invocation["run_id"]),
+                            final_response,
+                        )
+                    )
+                except Exception as exc:
+                    failure_summary = (
+                        "governed Process invocation result persistence failed: "
+                        f"{exc}"
+                    )
+                    final_response = None
+                    print(f"[ERROR] {failure_summary}")
+
             # Sidebar window: record exchange in rolling window
-            if is_sidebar and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None:
+            if (final_response is not None and is_sidebar
+                    and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None):
                 sidebar_win.add_exchange(clean_input, final_response)
 
             is_new_session = len(history) == 0
@@ -8312,7 +8446,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             # Initialize session data only while the lifecycle lock is held.
             # A Delete Forever tombstone may be set while the model is still
             # running; in that case no late in-memory or on-disk state is made.
-            if not _is_conversation_deleted(panel_id):
+            if final_response is not None and not _is_conversation_deleted(panel_id):
                 if is_new_session or panel_id not in _session_data:
                     _session_data[panel_id] = {
                         "raw_path": "",  # populated by _save_conversation
@@ -8326,15 +8460,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             # so the chunk_id is known before we reply. The submission
             # log finalizer + orphan-marker clear run inline; spatial
             # state and end-of-session pipeline still fire async.
-            try:
-                chunk_id = _save_conversation(
-                    clean_input, final_response, panel_id,
-                    is_new_session, tag,
-                    output_destination=output_destination,
-                    trace_ref=trace_ref)
-            except Exception as e:
-                failure_summary = f"_save_conversation failed: {e}"
-                print(f"[ERROR] _save_conversation: {e}")
+            if final_response is not None:
+                try:
+                    chunk_id = _save_conversation(
+                        clean_input, final_response, panel_id,
+                        is_new_session, tag,
+                        output_destination=output_destination,
+                        trace_ref=trace_ref)
+                except Exception as e:
+                    failure_summary = f"_save_conversation failed: {e}"
+                    print(f"[ERROR] _save_conversation: {e}")
 
             # Clear orphan-recovery markers if this conversation was
             # previously interrupted. A successful save means we caught
@@ -8417,11 +8552,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
 
     # ── Build the plain-HTTP reply ──────────────────────────────────────
     if final_response is not None and chunk_id:
-        return json.dumps({
+        payload = {
             "status":          "ok",
             "conversation_id": panel_id,
             "chunk_id":        chunk_id,
-        })
+        }
+        if process_invocation_state is not None:
+            payload["process_invocation"] = _public_process_invocation(
+                process_invocation_state
+            )
+        return json.dumps(payload)
 
     # Failure path. Mark the conversation envelope errored so the sidebar
     # surfaces the failure in the Errored group; the existing Backlog 2D
@@ -8737,6 +8877,7 @@ def chat():
     manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
     framework_selected    = (data.get("framework_selected") or "").strip()
     process_entry_raw     = data.get("process_entry_request")
+    process_invocation_inputs_raw = data.get("process_invocation_inputs")
     management_answer_raw = data.get("management_interview_answer")
     management_plan_raw   = data.get("management_plan")
     # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
@@ -8794,6 +8935,7 @@ def chat():
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
             "process_entry_request": process_entry_raw,
+            "process_invocation_inputs": process_invocation_inputs_raw,
             "management_interview_answer": management_answer_raw,
             "management_plan":          management_plan_raw,
             "output_destination":    output_destination,
@@ -9102,6 +9244,49 @@ def chat():
     if text_parts:
         user_input = user_input + "\n\n" + "\n\n".join(text_parts)
 
+    manual_invocation = None
+    if (
+        process_entry is not None
+        and process_entry.get("intent") == "capability_invocation"
+        and process_entry.get("definition_ref") is not None
+        and process_entry.get("framework_id") is None
+    ):
+        try:
+            _assert_manual_invocation_output_boundary(
+                user_input, output_destination
+            )
+            definition_inputs = _decode_process_invocation_inputs(
+                process_invocation_inputs_raw
+            )
+            manual_invocation = _process_library_service().begin_manual_invocation(
+                dialogue_ref=panel_id,
+                project_ref=process_entry["project_ref"],
+                objective=process_entry["objective"],
+                definition_ref=process_entry["definition_ref"],
+                definition_inputs=definition_inputs,
+                entry_contract=process_entry,
+                request_context=_process_invocation_request_context(
+                    surface="chat",
+                    history=history,
+                    attachments=raw_attachments,
+                ),
+            )
+        except Exception as exc:
+            _delete_pending_submission(submission_id)
+            return _json_response(
+                {"error": str(exc)}, _process_library_error_status(exc)
+            )
+        if manual_invocation["status"] == "result_recorded":
+            return _persist_manual_invocation_replay(
+                user_input=user_input,
+                state=manual_invocation,
+                history=history,
+                panel_id=panel_id,
+                tag=tag,
+                submission_id=submission_id,
+                output_destination=output_destination,
+            )
+
     extra_context = {"visual_kind": manual_visual_type} if manual_visual_type else None
     if trace_debug_payload:
         extra_context = dict(extra_context or {})
@@ -9109,6 +9294,11 @@ def chat():
     if process_entry is not None:
         extra_context = dict(extra_context or {})
         extra_context["process_entry"] = process_entry
+    if manual_invocation is not None:
+        extra_context = dict(extra_context or {})
+        extra_context["governed_process_invocation"] = (
+            _public_process_invocation(manual_invocation)
+        )
     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
                              extra_context=extra_context,
                              tag=tag,
@@ -9222,6 +9412,7 @@ def chat_multipart():
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
     process_entry_raw     = form.get("process_entry_request", "")
+    process_invocation_inputs_raw = form.get("process_invocation_inputs", "")
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
@@ -9305,6 +9496,7 @@ def chat_multipart():
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
             "process_entry_request": process_entry_raw,
+            "process_invocation_inputs": process_invocation_inputs_raw,
             "output_destination":    output_destination,
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
@@ -9492,6 +9684,56 @@ def chat_multipart():
             })
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
+
+    manual_invocation = None
+    if (
+        process_entry is not None
+        and process_entry.get("intent") == "capability_invocation"
+        and process_entry.get("definition_ref") is not None
+        and process_entry.get("framework_id") is None
+    ):
+        try:
+            _assert_manual_invocation_output_boundary(
+                user_input, output_destination
+            )
+            manual_invocation = _process_library_service().begin_manual_invocation(
+                dialogue_ref=panel_id,
+                project_ref=process_entry["project_ref"],
+                objective=process_entry["objective"],
+                definition_ref=process_entry["definition_ref"],
+                definition_inputs=_decode_process_invocation_inputs(
+                    process_invocation_inputs_raw
+                ),
+                entry_contract=process_entry,
+                request_context=_process_invocation_request_context(
+                    surface="chat_multipart",
+                    history=history,
+                    attachments={
+                        "exhibits_submission": extra_context.get(
+                            "exhibits_submission"
+                        ),
+                        "image_attached": bool(image_path or canvas_preview_path),
+                    },
+                ),
+            )
+        except Exception as exc:
+            _delete_pending_submission(submission_id)
+            return _json_response(
+                {"error": str(exc)}, _process_library_error_status(exc)
+            )
+        if manual_invocation["status"] == "result_recorded":
+            return _persist_manual_invocation_replay(
+                user_input=user_input,
+                state=manual_invocation,
+                history=history,
+                panel_id=panel_id,
+                tag=tag,
+                submission_id=submission_id,
+                output_destination=output_destination,
+            )
+        extra_context["governed_process_invocation"] = (
+            _public_process_invocation(manual_invocation)
+        )
 
     # Emit a log line so operators can see the merged inputs reached the server.
     annot_count = 0
