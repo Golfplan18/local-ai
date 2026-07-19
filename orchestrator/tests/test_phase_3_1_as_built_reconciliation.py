@@ -139,7 +139,7 @@ class TestPhase31AsBuiltReconciliation(unittest.TestCase):
             "Active canonical (v4.1",
             "Active governed observation contract (v2.1",
             "Active architecture reference (v2.1",
-            "Phase 3.1 accepted",
+            "Phases 3.1 and 3.2 are accepted",
         ):
             self.assertIn(token, overview)
 

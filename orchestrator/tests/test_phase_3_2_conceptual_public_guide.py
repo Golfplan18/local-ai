@@ -125,7 +125,7 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
             self.assertIn(token, entry)
 
         self.assertIn(
-            "Phase 3.2 implementation — COMPLETE; PENDING GATE 3.2",
+            "Phase 3.2 implementation — COMPLETE; GATE 3.2 ACCEPTED",
             self.design,
         )
         self.assertIn(
@@ -133,11 +133,11 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
             self.design,
         )
         self.assertIn(
-            "### 29.13 User guide — NOT YET IMPLEMENTED",
+            "### 29.13 User guide — AS BUILT 2026-07-19",
             self.design,
         )
-        self.assertIn("Current phase:** Part 3, Phase 3.2", self.tracker)
-        self.assertIn("Phase 3.3 is not authorized", self.overview)
+        self.assertIn("Current phase:** Part 3, Phase 3.3", self.tracker)
+        self.assertIn("Phase 3.4 is not authorized", self.overview)
 
     def test_current_records_reject_obsolete_phase_1_6_future_state(self):
         tracker_entry = h3_section(
