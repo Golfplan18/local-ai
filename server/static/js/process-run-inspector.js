@@ -1,4 +1,4 @@
-/* G1.1 Phase 2.5 — generic, progressively disclosed Process Run Inspector. */
+/* G1.1 Phase 2.5/2.6 — Run Inspector with explicit terminal disposition. */
 (function () {
   'use strict';
 
@@ -14,6 +14,7 @@
 
   let root = null;
   let snapshot = null;
+  let lifecycle = null;
   let activeView = 'overview';
   let returnFocus = null;
 
@@ -25,6 +26,16 @@
   };
 
   const pretty = value => JSON.stringify(value, null, 2);
+
+  const fetchJson = async (url, options) => {
+    const response = await fetch(url, options);
+    let payload = null;
+    try { payload = await response.json(); } catch (_) { payload = {}; }
+    if (!response.ok || !payload || payload.ok === false) {
+      throw new Error((payload && payload.error) || `HTTP ${response.status}`);
+    }
+    return payload;
+  };
 
   const ensureRoot = () => {
     if (root) return root;
@@ -101,6 +112,107 @@
     container.appendChild(section);
   };
 
+  const lifecycleRequest = async (disposition, option) => {
+    if (!snapshot) return;
+    const consequential = disposition === 'archive' || disposition === 'discard';
+    if (consequential && typeof window.confirm === 'function') {
+      const consequence = disposition === 'discard'
+        ? 'Discard marks the Run outputs discarded. It does not delete source files.'
+        : 'Archive marks the Run outputs archived without deleting them.';
+      if (!window.confirm(`${consequence} Continue?`)) return;
+    }
+    const ref = option && option.definition_ref;
+    const identity = ref ? ref.digest : 'outputs';
+    const body = {
+      disposition,
+      decision_by: lifecycle.principal_id,
+      idempotency_key: `lifecycle:${snapshot.run_id}:${disposition}:${identity}`,
+    };
+    if (disposition === 'promote' && option) {
+      body.promoted_definition_ref = option.definition_ref;
+      body.capability_artifact_id = option.capability_artifact_id;
+    }
+    const status = root.querySelector('[data-inspector-status]');
+    status.textContent = `Recording ${disposition} disposition…`;
+    try {
+      const payload = await fetchJson(
+        `/api/process-runs/${encodeURIComponent(snapshot.run_id)}/lifecycle`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
+      lifecycle = payload.lifecycle;
+      status.textContent = `Run closed: ${disposition}.`;
+      renderView();
+    } catch (error) {
+      status.textContent = `Run lifecycle failed: ${error.message}`;
+    }
+  };
+
+  const renderLifecycle = (container) => {
+    if (!lifecycle || lifecycle.status === 'not_terminal') return;
+    const section = el(
+      'section',
+      'process-run-inspector__section process-run-inspector__lifecycle'
+    );
+    section.appendChild(el('h3', '', 'Run lifecycle'));
+    if (lifecycle.status === 'closed') {
+      const closure = lifecycle.closure || {};
+      section.appendChild(el(
+        'p', '', `Closed with ${closure.disposition || 'an exact disposition'}.`
+      ));
+      appendValue(section, 'Lifecycle receipt', {
+        record_id: closure.record_id,
+        recorded_at: closure.recorded_at,
+        decision_by: closure.decision_by,
+        promoted_definition_ref: closure.promoted_definition_ref,
+        effective_artifacts: closure.effective_artifacts,
+      }, false);
+      container.appendChild(section);
+      return;
+    }
+    section.appendChild(el(
+      'p',
+      'process-run-inspector__lifecycle-help',
+      'Choose exactly what should happen to this Run’s outputs. No choice activates standing automation or deletes repository files.'
+    ));
+    const options = Array.isArray(lifecycle.promote_options)
+      ? lifecycle.promote_options : [];
+    let selector = null;
+    if (options.length) {
+      selector = el('select', 'process-run-inspector__lifecycle-select');
+      selector.setAttribute('aria-label', 'Capability to promote');
+      options.forEach((option, index) => {
+        const choice = el(
+          'option', '',
+          `${option.display_name} · ${option.definition_ref.definition_id}@${option.definition_ref.version}`
+        );
+        choice.value = String(index);
+        selector.appendChild(choice);
+      });
+      section.appendChild(selector);
+    }
+    const actions = el('div', 'process-run-inspector__lifecycle-actions');
+    (lifecycle.available_actions || []).forEach((action) => {
+      const button = el(
+        'button',
+        `process-run-inspector__lifecycle-${action}`,
+        action.charAt(0).toUpperCase() + action.slice(1)
+      );
+      button.type = 'button';
+      button.addEventListener('click', () => {
+        const option = action === 'promote' && selector
+          ? options[Number(selector.value)] : null;
+        lifecycleRequest(action, option);
+      });
+      actions.appendChild(button);
+    });
+    section.appendChild(actions);
+    container.appendChild(section);
+  };
+
   const renderOverview = (container, view) => {
     const questions = el('div', 'process-run-inspector__questions');
     [
@@ -130,6 +242,7 @@
     appendValue(container, 'Result artifacts', view.result_artifacts, false);
     appendValue(container, 'External effects', view.external_effects, false);
     appendValue(container, 'Trigger', view.trigger, false);
+    renderLifecycle(container);
   };
 
   const renderView = () => {
@@ -189,6 +302,7 @@
 
   const renderSnapshot = value => {
     snapshot = value;
+    lifecycle = null;
     activeView = 'overview';
     const overview = value.views.overview;
     root.querySelector('#processRunInspectorTitle').textContent = overview.title || 'Process Run';
@@ -216,14 +330,24 @@
     modal.querySelector('[data-inspector-status]').textContent = 'Loading authenticated Run state…';
     modal.querySelector('[data-inspector-content]').innerHTML = '';
     try {
-      const response = await fetch(`/api/process-runs/${encodeURIComponent(runId)}/inspector`);
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Run Inspector unavailable');
+      const payload = await fetchJson(
+        `/api/process-runs/${encodeURIComponent(runId)}/inspector`
+      );
       const value = payload.inspector;
       if (!value || pretty(value.view_order) !== pretty(VIEW_ORDER)) {
         throw new Error('Run Inspector view contract is incomplete');
       }
       renderSnapshot(value);
+      try {
+        const lifecyclePayload = await fetchJson(
+          `/api/process-runs/${encodeURIComponent(runId)}/lifecycle`
+        );
+        lifecycle = lifecyclePayload.lifecycle;
+        renderView();
+      } catch (error) {
+        modal.querySelector('[data-inspector-status]').textContent =
+          `Run lifecycle unavailable: ${error.message}`;
+      }
       modal.querySelector('.process-run-inspector__close').focus();
     } catch (error) {
       modal.querySelector('[data-inspector-status]').textContent = error.message || String(error);

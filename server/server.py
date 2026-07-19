@@ -5146,10 +5146,17 @@ def frameworks_picker():
     return json.dumps({"frameworks": rows}), 200, {"Content-Type": "application/json"}
 
 
-def _process_entry_catalog():
-    from process_entry_routing import list_entry_definitions
-
-    return list_entry_definitions(WORKSPACE)
+def _process_entry_catalog(
+    project_ref=None,
+    *,
+    include_archived=False,
+    full=False,
+):
+    library = _process_library_service().list_entries(
+        project_ref=project_ref,
+        include_archived=include_archived,
+    )
+    return library if full else library["entries"]
 
 
 def _process_entry_project_visible(project_ref: str) -> bool:
@@ -5236,6 +5243,41 @@ def _process_run_inspector_service():
     from process_run_inspector import ProcessRunInspectorService
 
     return ProcessRunInspectorService(repository_root=WORKSPACE)
+
+
+def _process_library_service():
+    """Construct the Phase 2.6 exact-version Library/lifecycle service."""
+
+    from process_entry_routing import load_programming_definition
+    from process_library_lifecycle import ProcessLibraryLifecycleService
+
+    return ProcessLibraryLifecycleService(
+        seed_definitions=[load_programming_definition(WORKSPACE)]
+    )
+
+
+def _process_library_error_status(exc: Exception) -> int:
+    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
+    from process_library_lifecycle import (
+        ProcessLibraryConflict,
+        ProcessLibraryError,
+        ProcessLibraryInputRequired,
+        ProcessLibraryIntegrityError,
+    )
+
+    if isinstance(exc, RunNotFoundError):
+        return 404
+    if isinstance(exc, AuthorityDeniedError):
+        return 403
+    if isinstance(exc, ProcessLibraryInputRequired):
+        return 422
+    if isinstance(exc, ProcessLibraryConflict):
+        return 409
+    if isinstance(exc, ProcessLibraryIntegrityError):
+        return 503
+    if isinstance(exc, ProcessLibraryError):
+        return 400
+    return 503
 
 
 def _process_plan_error_status(exc: Exception) -> int:
@@ -5464,13 +5506,74 @@ def _decode_process_entry_request(raw, objective: str, framework_selected: str =
 
 @app.route("/api/process-library/entries", methods=["GET"])
 def process_library_entry_catalog():
-    """Entry-only authenticated Process Definition catalog for Phase 2.1."""
+    """Authenticated exact-version Process Library for Phase 2.6."""
 
     try:
-        definitions = _process_entry_catalog()
+        raw_project = request.args.get("project_ref")
+        include_archived = request.args.get("include_archived", "").lower() in {
+            "1", "true", "yes", "on",
+        }
+        library = _process_entry_catalog(
+            raw_project,
+            include_archived=include_archived,
+            full=True,
+        )
     except Exception as exc:
-        return _json_response({"ok": False, "error": str(exc), "definitions": []}, 503)
-    return _json_response({"ok": True, "definitions": definitions})
+        return _json_response(
+            {"ok": False, "error": str(exc), "definitions": []},
+            _process_library_error_status(exc),
+        )
+    return _json_response({
+        "ok": True,
+        "definitions": library["entries"],
+        "library": library,
+    })
+
+
+@app.route("/api/process-runs/<path:run_id>/lifecycle", methods=["GET", "POST"])
+def process_run_lifecycle(run_id):
+    """Read or apply one exact principal-authorized terminal disposition."""
+
+    service = _process_library_service()
+    try:
+        if request.method == "GET":
+            lifecycle = service.get_run_lifecycle(run_id)
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                from process_library_lifecycle import ProcessLibraryInputRequired
+
+                raise ProcessLibraryInputRequired(
+                    "Run lifecycle request must be an object"
+                )
+            allowed = {
+                "disposition", "decision_by", "idempotency_key",
+                "promoted_definition_ref", "capability_artifact_id",
+            }
+            unexpected = sorted(set(payload) - allowed)
+            if unexpected:
+                from process_library_lifecycle import ProcessLibraryInputRequired
+
+                raise ProcessLibraryInputRequired(
+                    "unsupported Run lifecycle fields: " + ", ".join(unexpected)
+                )
+            lifecycle = service.close_run(
+                run_id,
+                disposition=str(payload.get("disposition") or ""),
+                decision_by=str(payload.get("decision_by") or "principal:user"),
+                idempotency_key=str(payload.get("idempotency_key") or ""),
+                promoted_definition_ref=payload.get("promoted_definition_ref"),
+                capability_artifact_id=(
+                    str(payload["capability_artifact_id"])
+                    if payload.get("capability_artifact_id") is not None else None
+                ),
+            )
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_library_error_status(exc),
+        )
+    return _json_response({"ok": True, "lifecycle": lifecycle})
 
 
 @app.route("/api/process-entry/route", methods=["POST"])

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* G1.1 Phase 2.1 — governed Process entry UI tests. */
+/* G1.1 Phase 2.1/2.6 — governed entry and Process Library UI tests. */
 
 'use strict';
 
@@ -26,6 +26,14 @@ var PROGRAMMING = {
   display_name: 'Programming',
   display_description: 'Governed programming work.',
   definition_ref: PROGRAMMING_REF,
+  scope: { kind: 'project', selector: 'project:ora' },
+  lifecycle_status: 'registered',
+  package: {
+    package_id: 'ora/programming',
+    package_version: '2.0.1',
+    entry_member_id: 'programming',
+    members: [{ member_id: 'programming' }, { member_id: 'verification' }],
+  },
   activated: false,
 };
 
@@ -61,7 +69,7 @@ global.fetch = function (url, options) {
       },
     });
   }
-  if (url === '/api/process-library/entries') {
+  if (url.indexOf('/api/process-library/entries?project_ref=') === 0) {
     return Promise.resolve({
       ok: true,
       json: function () { return Promise.resolve({ ok: true, definitions: [PROGRAMMING] }); },
@@ -196,6 +204,18 @@ async function run() {
   record('Library exposes exact issued version',
     w.document.querySelector('.process-entry__library-identity').textContent
       === 'ora/programming@2.0.1');
+  record('Library exposes lifecycle, exact scope, digest, and package membership',
+    /registered/.test(w.document.querySelector('.process-entry__library-lifecycle').textContent)
+      && /project:ora/.test(w.document.querySelector('.process-entry__library-lifecycle').textContent)
+      && /sha256:b79d06b401/.test(
+        w.document.querySelector('.process-entry__library-lifecycle').textContent
+      )
+      && /ora\/programming@2.0.1/.test(
+        w.document.querySelector('.process-entry__library-lifecycle').textContent
+      )
+      && /2 members/.test(
+        w.document.querySelector('.process-entry__library-lifecycle').textContent
+      ));
   w.document.querySelector('.process-entry__library-row').click();
   await flush();
   record('inactive definition invocation stops at activation boundary',

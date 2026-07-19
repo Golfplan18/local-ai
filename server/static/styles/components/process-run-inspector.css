@@ -1,3 +1,4 @@
+/* G1.1 Phase 2.5/2.6 — Run inspection and explicit terminal lifecycle. */
 .process-run-inspector[hidden] { display: none; }
 
 .process-run-inspector {
@@ -187,6 +188,51 @@
 
 .process-run-inspector__empty { color: var(--text-muted); }
 .process-attention-inspect { margin-top: 5px; padding: 3px 7px; font-size: 11px; }
+
+.process-run-inspector__lifecycle-help {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.45;
+}
+
+.process-run-inspector__lifecycle-select {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.process-run-inspector__lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.process-run-inspector__lifecycle-actions button {
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.process-run-inspector__lifecycle-actions button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.process-run-inspector__lifecycle-promote {
+  border-color: var(--interactive-accent) !important;
+}
+
+.process-run-inspector__lifecycle-discard {
+  color: var(--text-error, #d55) !important;
+}
 
 @media (max-width: 760px) {
   .process-run-inspector { padding: 0; }

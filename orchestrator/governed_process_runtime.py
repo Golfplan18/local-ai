@@ -112,6 +112,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "process_invoked",
     "child_return_received",
     "process_returned",
+    "lifecycle_disposition_recorded",
 })
 
 _RESERVED_RUNTIME_EVENT_PREFIXES = (
@@ -869,9 +870,15 @@ class GovernedProcessRuntime:
                 f"{event_type!r}"
             )
         if allow_terminal_metadata:
-            if not runtime_authoritative or event_type != "process_returned":
+            if (
+                not runtime_authoritative
+                or event_type not in {
+                    "process_returned", "lifecycle_disposition_recorded",
+                }
+            ):
                 raise GovernedRuntimeError(
-                    "only a deterministic process_returned record is safe terminal metadata"
+                    "only deterministic return or lifecycle disposition records are "
+                    "safe terminal metadata"
                 )
         else:
             self._require_mutable_run(run, f"record {event_type}")
@@ -961,6 +968,165 @@ class GovernedProcessRuntime:
                 node_id=target,
                 evidence_refs=evidence_refs,
                 artifact_ids=artifact_ids,
+            )
+
+    def record_lifecycle_disposition(
+        self,
+        run_id: str,
+        disposition: str,
+        *,
+        decision_by: str,
+        idempotency_key: str,
+        promoted_definition_ref: Mapping[str, Any] | None = None,
+        capability_artifact_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Record one principal-authorized post-terminal Run disposition.
+
+        This is safe terminal metadata only. It neither rewrites the Run nor
+        mutates, activates, archives, or deletes an Artifact. The owning
+        Process Library service independently validates any promotion against
+        the exact registry definition and capability Artifact before treating
+        this record as manual-invocation authority.
+        """
+
+        exact_disposition = str(disposition or "").strip().lower()
+        if exact_disposition not in {"promote", "preserve", "archive", "discard"}:
+            raise GovernedRuntimeError(
+                "lifecycle disposition must be promote, preserve, archive, or discard"
+            )
+        principal = str(decision_by or "").strip()
+        key = str(idempotency_key or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", key):
+            raise GovernedRuntimeError("lifecycle idempotency key is invalid")
+
+        exact_ref = None
+        exact_artifact_id = None
+        if exact_disposition == "promote":
+            if not isinstance(promoted_definition_ref, Mapping):
+                raise GovernedRuntimeError(
+                    "promotion requires an exact promoted_definition_ref"
+                )
+            exact_ref = copy.deepcopy(dict(promoted_definition_ref))
+            if set(exact_ref) != {"definition_id", "version", "digest"}:
+                raise GovernedRuntimeError(
+                    "promoted_definition_ref must contain exact ID, version, and digest"
+                )
+            for field in ("definition_id", "version"):
+                if not isinstance(exact_ref[field], str) or not exact_ref[field]:
+                    raise GovernedRuntimeError(
+                        f"promoted_definition_ref {field} must be non-empty"
+                    )
+            exact_ref["digest"] = _exact_digest(
+                exact_ref["digest"], "promoted_definition_ref digest"
+            )
+            exact_artifact_id = str(capability_artifact_id or "").strip()
+            if not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9._:/-]*", exact_artifact_id
+            ):
+                raise GovernedRuntimeError(
+                    "promotion requires an exact capability_artifact_id"
+                )
+        elif promoted_definition_ref is not None or capability_artifact_id is not None:
+            raise GovernedRuntimeError(
+                "only promotion may bind a Process Definition or capability Artifact"
+            )
+
+        with _locked():
+            run = self.load_run(run_id)
+            if run["state"] not in TERMINAL_RUN_STATES:
+                raise RunConflictError(
+                    "Run lifecycle disposition requires a terminal Process Run"
+                )
+            if principal != run["contracts"]["authority"]["principal_id"]:
+                raise AuthorityDeniedError(
+                    "Run lifecycle disposition must come from the Run principal"
+                )
+            if exact_disposition == "promote" and run["state"] != "completed":
+                raise AuthorityDeniedError(
+                    "only an accepted completed Run may promote a capability"
+                )
+
+            records = self.load_records(run_id)
+            existing = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "lifecycle_disposition_recorded"
+            ]
+            artifacts = [
+                self.load_artifact(run_id, artifact_id)
+                for artifact_id in run["artifact_ids"]
+            ]
+            output_bindings = [
+                {
+                    "artifact_id": artifact["artifact_id"],
+                    "role": artifact["role"],
+                    "identity_digest": artifact["identity"]["digest"],
+                    "recorded_status": artifact["status"],
+                }
+                for artifact in artifacts
+                if artifact["role"] in {"working", "result", "process_definition"}
+            ]
+            output_bindings.sort(key=lambda item: item["artifact_id"])
+            terminal_record = next(
+                (
+                    record for record in reversed(records)
+                    if record.get("record_type") == "transition"
+                    and (record.get("transition") or {}).get("to_state")
+                    == run["state"]
+                ),
+                None,
+            )
+            if terminal_record is None:
+                raise GovernedRuntimeError(
+                    "terminal Process Run lacks its authoritative terminal transition"
+                )
+            if exact_disposition == "promote":
+                artifact = next(
+                    (
+                        item for item in artifacts
+                        if item["artifact_id"] == exact_artifact_id
+                    ),
+                    None,
+                )
+                if artifact is None or artifact["role"] != "process_definition":
+                    raise AuthorityDeniedError(
+                        "promotion requires the exact Process Definition Artifact"
+                    )
+
+            details = {
+                "schema_version": "ora.process-lifecycle-disposition/1.0",
+                "disposition": exact_disposition,
+                "decision_by": principal,
+                "idempotency_key": key,
+                "terminal_state": run["state"],
+                "terminal_record_id": terminal_record["record_id"],
+                "terminal_sequence": terminal_record["sequence"],
+                "output_bindings": output_bindings,
+                "output_bindings_digest": _digest_json(output_bindings),
+                "promoted_definition_ref": exact_ref,
+                "capability_artifact_id": exact_artifact_id,
+            }
+            if existing:
+                if len(existing) != 1 or existing[0]["event"]["details"] != details:
+                    raise RunConflictError(
+                        "Process Run already has a different lifecycle disposition"
+                    )
+                return copy.deepcopy(existing[0])
+
+            evidence_refs = copy.deepcopy(terminal_record["evidence_refs"])
+            record_id = "event-lifecycle-" + hashlib.sha256(
+                f"{run_id}\0{key}".encode("utf-8")
+            ).hexdigest()[:32]
+            return self._append_event_locked(
+                run,
+                "lifecycle_disposition_recorded",
+                details,
+                node_id=run["current_node_id"],
+                evidence_refs=evidence_refs,
+                artifact_ids=[item["artifact_id"] for item in output_bindings],
+                record_id=record_id,
+                allow_terminal_metadata=True,
+                runtime_authoritative=True,
             )
 
     def _record_dialogue_observation(

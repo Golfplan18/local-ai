@@ -1,4 +1,4 @@
-/* G1.1 Phase 2.1 — authority-neutral Process entry and entry-only Library. */
+/* G1.1 Phase 2.1/2.6 — governed entry and exact-version Process Library. */
 
 body.process-entry-open { overflow: hidden; }
 
@@ -199,6 +199,11 @@ body.process-entry-open { overflow: hidden; }
 .process-entry__library-name { font-size: var(--font-ui-medium); font-weight: 600; }
 .process-entry__library-description { color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.4; }
 .process-entry__library-identity { color: var(--text-faint); font-family: var(--font-monospace); font-size: var(--font-ui-smaller); }
+.process-entry__library-lifecycle {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+}
 
 @media (max-width: 520px) {
   .process-entry__card { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }

@@ -599,6 +599,25 @@ def route_process_entry(
         raise ProcessEntryRoutingError(
             f"project is not available for new governed work: {project_ref}"
         )
+    if (
+        named_entry is not None
+        and intent in {"capability_invocation", "capability_activation"}
+    ):
+        definition_scope = named_entry.get("scope")
+        if (
+            not isinstance(definition_scope, Mapping)
+            or set(definition_scope) != {"kind", "selector"}
+        ):
+            raise ProcessEntryRoutingError(
+                "selected Process Definition lacks an exact scope binding"
+            )
+        if (
+            definition_scope["kind"] != "universal"
+            and definition_scope["selector"] != project_ref
+        ):
+            raise ProcessEntryRoutingError(
+                "selected Process Definition is outside the confirmed project scope"
+            )
 
     status = "ready"
     next_action = {
@@ -610,8 +629,16 @@ def route_process_entry(
     if intent == "capability_construction" and not raw_confirmed:
         status = "awaiting_project_confirmation"
         next_action = "choose_project"
-    elif (intent == "capability_invocation" and named_entry is not None
-          and not bool(named_entry.get("activated"))):
+    elif (
+        intent == "capability_invocation"
+        and named_entry is not None
+        and not bool(
+            named_entry.get(
+                "manual_invocation_available",
+                named_entry.get("activated"),
+            )
+        )
+    ):
         status = "awaiting_activation"
         next_action = "begin_activation_review"
     elif (intent in {"capability_invocation", "capability_activation"}

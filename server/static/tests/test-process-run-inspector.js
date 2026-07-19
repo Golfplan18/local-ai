@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* G1.1 Phase 2.5 — progressive Run Inspector DOM boundary tests. */
+/* G1.1 Phase 2.5/2.6 — Run Inspector and lifecycle DOM boundary tests. */
 
 'use strict';
 
@@ -93,8 +93,38 @@ var snapshot = {
 };
 
 var fetched = [];
-global.fetch = function (url) {
+var lifecycleState = {
+  schema_version: 'ora.process-lifecycle-disposition/1.0',
+  run_id: 'run-ui-proof', run_state: 'waiting_for_authority',
+  principal_id: 'principal:user',
+  status: 'not_terminal', available_actions: [], promote_options: [], closure: null,
+};
+var lifecycleRequests = [];
+w.confirm = function () { return true; };
+global.fetch = function (url, options) {
   fetched.push(url);
+  if (url === '/api/process-runs/run-ui-proof/lifecycle') {
+    if (options && options.method === 'POST') {
+      var request = JSON.parse(options.body);
+      lifecycleRequests.push(request);
+      lifecycleState = {
+        schema_version: 'ora.process-lifecycle-disposition/1.0',
+        run_id: 'run-ui-proof', run_state: 'completed', status: 'closed',
+        principal_id: 'principal:user',
+        available_actions: [], promote_options: [],
+        closure: {
+          record_id: 'event-lifecycle-ui', recorded_at: '2026-07-18T12:10:00Z',
+          disposition: request.disposition, decision_by: request.decision_by,
+          promoted_definition_ref: request.promoted_definition_ref || null,
+          effective_artifacts: [{ artifact_id: 'report-result', lifecycle_status: 'preserved' }],
+        },
+      };
+    }
+    return Promise.resolve({
+      ok: true,
+      json: function () { return Promise.resolve({ ok: true, lifecycle: lifecycleState }); },
+    });
+  }
   return Promise.resolve({
     ok: true,
     json: function () { return Promise.resolve({ ok: true, inspector: snapshot }); },
@@ -201,6 +231,51 @@ async function run() {
   record('discussion returns through the exact governing Dialogue',
     selected.length === 1 && selected[0].conversation_id === 'dialogue-ui-proof');
   record('closing returns focus to the invoking control', modal.hidden && w.document.activeElement === origin);
+
+  snapshot.views.overview.run_state = 'completed';
+  snapshot.views.overview.visible_status = 'Completed';
+  snapshot.views.overview.current_phase = {
+    node_id: 'accepted', label: 'Accepted', kind: 'terminal_state',
+  };
+  snapshot.views.overview.required_human_decision = null;
+  snapshot.views.current_state.state = 'completed';
+  lifecycleState = {
+    schema_version: 'ora.process-lifecycle-disposition/1.0',
+    run_id: 'run-ui-proof', run_state: 'completed',
+    principal_id: 'principal:user',
+    status: 'awaiting_disposition',
+    available_actions: ['promote', 'preserve', 'archive', 'discard'],
+    promote_options: [{
+      display_name: 'Cash Review', capability_artifact_id: 'cash-definition',
+      definition_ref: {
+        definition_id: 'business/cash-review', version: '1.0.0', digest: 'sha256:cash',
+      },
+    }],
+    closure: null,
+  };
+  w.document.dispatchEvent(new w.CustomEvent('ora:process-run-inspector:open', {
+    detail: { run_id: 'run-ui-proof', trigger: origin },
+  }));
+  await flush();
+  await flush();
+  record('terminal Run exposes all four explicit lifecycle choices',
+    modal.textContent.indexOf('Run lifecycle') >= 0
+      && !!modal.querySelector('.process-run-inspector__lifecycle-promote')
+      && !!modal.querySelector('.process-run-inspector__lifecycle-preserve')
+      && !!modal.querySelector('.process-run-inspector__lifecycle-archive')
+      && !!modal.querySelector('.process-run-inspector__lifecycle-discard')
+      && modal.textContent.indexOf('No choice activates standing automation') >= 0);
+  modal.querySelector('.process-run-inspector__lifecycle-promote').click();
+  await flush();
+  await flush();
+  record('Promote posts the exact capability identity and renders its receipt',
+    lifecycleRequests.length === 1
+      && lifecycleRequests[0].disposition === 'promote'
+      && lifecycleRequests[0].capability_artifact_id === 'cash-definition'
+      && lifecycleRequests[0].promoted_definition_ref.definition_id === 'business/cash-review'
+      && modal.textContent.indexOf('Closed with promote') >= 0
+      && modal.textContent.indexOf('event-lifecycle-ui') >= 0);
+  w.OraProcessRunInspector.close();
 
   var indexSource = fs.readFileSync(path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8');
   var cssSource = fs.readFileSync(path.resolve(__dirname, '..', 'styles', 'ora-default.css'), 'utf8');

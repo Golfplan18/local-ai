@@ -1,10 +1,11 @@
-/* G1.1 Phase 2.1 — governed Process entry and routing surfaces.
+/* G1.1 Phase 2.1/2.6 — governed Process entry and exact-version Library.
  *
  * This module deliberately stops at an authority-neutral routing contract.
  * It can classify an Inquiry, require an explicit project choice for
  * construction, and select an exact authenticated Process Definition.  It
- * does not create a Process Run, conduct the management interview, activate a
- * definition, or expose lifecycle controls (all later phases).
+ * does not create a Process Run or conduct the management interview. Phase
+ * 2.6 library rows expose authenticated scope, package, lifecycle, and exact
+ * promotion state; routing remains the authority boundary for invocation.
  */
 (() => {
   const ROUTE_URL = '/api/process-entry/route';
@@ -214,7 +215,9 @@
     show();
     const result = new Promise((resolve) => { pendingResolve = resolve; });
     try {
-      const payload = await fetchJson(LIBRARY_URL);
+      const payload = await fetchJson(
+        `${LIBRARY_URL}?project_ref=${encodeURIComponent(activeProject())}`
+      );
       const definitions = Array.isArray(payload.definitions) ? payload.definitions : [];
       if (!definitions.length) {
         list.appendChild(errorNode('No authenticated Process Definitions are available.'));
@@ -232,8 +235,22 @@
         const identity = document.createElement('span');
         identity.className = 'process-entry__library-identity';
         const ref = exactRef(entry);
-        identity.textContent = ref ? `${ref.definition_id}@${ref.version}` : 'Unavailable identity';
-        button.append(name, description, identity);
+        identity.textContent = ref
+          ? `${ref.definition_id}@${ref.version}`
+          : 'Unavailable identity';
+        const lifecycle = document.createElement('span');
+        lifecycle.className = 'process-entry__library-lifecycle';
+        const scope = entry.scope || {};
+        const packageInfo = entry.package || {};
+        const memberCount = Array.isArray(packageInfo.members)
+          ? packageInfo.members.length : 0;
+        lifecycle.textContent = [
+          entry.lifecycle_status || entry.status || 'unknown',
+          ref ? `${String(ref.digest).slice(0, 18)}…` : 'unbound digest',
+          `${scope.kind || 'unknown'}:${scope.selector || '?'}`,
+          `${packageInfo.package_id || 'unbound package'}@${packageInfo.package_version || '?'} (${memberCount} member${memberCount === 1 ? '' : 's'})`,
+        ].join(' · ');
+        button.append(name, description, identity, lifecycle);
         button.addEventListener('click', () => close(entry));
         list.appendChild(button);
       });
