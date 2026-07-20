@@ -122,6 +122,9 @@
   let creationRows = [];
   let creationSelectedRefs = new Set();
   let creationReviewToken = '';
+  let creationContractToken = '';
+  let creationContractDigest = '';
+  let creationContractFingerprint = '';
   let creationReviewedDescription = '';
   let creationTag = '';
   let creationIncludedRef = '';
@@ -882,11 +885,31 @@
     return text.length >= 20 && text.length <= 4000 && terms.length >= 3;
   };
 
+  const currentCreationContractFingerprint = () => JSON.stringify({
+    title: creationTitle ? creationTitle.value.trim().replace(/\s+/g, ' ') : '',
+    description: creationDescription ? creationDescription.value.trim() : '',
+    review_token: creationReviewToken,
+    contributors: Array.from(creationSelectedRefs),
+    tag: creationTag,
+    acknowledged: true,
+  });
+
+  const invalidateCreationAcceptance = () => {
+    creationContractToken = '';
+    creationContractDigest = '';
+    creationContractFingerprint = '';
+    if (creationReviewCheck) creationReviewCheck.checked = false;
+    updateCreationCommitState();
+  };
+
   const resetCreationReview = () => {
     creationReviewToken = '';
     creationReviewedDescription = '';
     creationRows = [];
     creationSelectedRefs = new Set();
+    creationContractToken = '';
+    creationContractDigest = '';
+    creationContractFingerprint = '';
     if (creationReviewCheck) {
       creationReviewCheck.checked = false;
       creationReviewCheck.disabled = true;
@@ -902,8 +925,11 @@
     const exactReview = !!creationReviewToken
       && creationDescription
       && creationReviewedDescription === creationDescription.value.trim();
+    const exactAcceptance = !!creationContractToken
+      && creationContractFingerprint === currentCreationContractFingerprint();
     creationCommit.disabled = creationBusy || !titleReady || !creationDescriptionReady()
-      || !exactReview || !creationReviewCheck || !creationReviewCheck.checked;
+      || !exactReview || !exactAcceptance
+      || !creationReviewCheck || !creationReviewCheck.checked;
   };
 
   const closeCreation = () => {
@@ -1002,6 +1028,7 @@
         } else {
           creationSelectedRefs.add(row.conversation_id);
         }
+        invalidateCreationAcceptance();
         renderCreationRows();
       });
       actions.appendChild(add);
@@ -1058,6 +1085,9 @@
       creationRows = data.rows || [];
       creationReviewToken = data.review_token;
       creationReviewedDescription = description;
+      creationContractToken = '';
+      creationContractDigest = '';
+      creationContractFingerprint = '';
       creationSelectedRefs = new Set(
         Array.from(creationSelectedRefs).filter(ref =>
           creationRows.some(row => row.conversation_id === ref))
@@ -1080,6 +1110,51 @@
     }
   };
 
+  const acknowledgeCreationReview = async () => {
+    if (!creationReviewCheck || !creationReviewCheck.checked) {
+      invalidateCreationAcceptance();
+      return;
+    }
+    const fingerprint = currentCreationContractFingerprint();
+    creationBusy = true;
+    creationContractToken = '';
+    creationContractDigest = '';
+    creationContractFingerprint = '';
+    updateCreationCommitState();
+    creationStatus.textContent = 'Binding your review to this exact creation contract…';
+    try {
+      const resp = await fetch('/api/conversations/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: creationTitle.value.trim(),
+          description: creationDescription.value.trim(),
+          review_token: creationReviewToken,
+          contributors: Array.from(creationSelectedRefs),
+          tag: creationTag,
+          acknowledged: true,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.creation_token || !data.contract_digest) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      if (!creationReviewCheck.checked || currentCreationContractFingerprint() !== fingerprint) {
+        return;
+      }
+      creationContractToken = data.creation_token;
+      creationContractDigest = data.contract_digest;
+      creationContractFingerprint = fingerprint;
+      creationStatus.textContent = 'Review confirmed for this exact title, description, privacy, and contributor set.';
+    } catch (e) {
+      invalidateCreationAcceptance();
+      creationStatus.textContent = 'Review confirmation failed: ' + (e.message || e);
+    } finally {
+      creationBusy = false;
+      updateCreationCommitState();
+    }
+  };
+
   const commitCreation = async () => {
     if (!creationCommit || creationCommit.disabled) return;
     creationBusy = true;
@@ -1091,11 +1166,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: creationTitle.value.trim(),
-          description,
           review_token: creationReviewToken,
-          contributors: Array.from(creationSelectedRefs),
-          tag: creationTag,
+          creation_token: creationContractToken,
         }),
       });
       const data = await resp.json();
@@ -1177,12 +1249,15 @@
     creationOverlay.querySelector('.conversation-create-cancel').addEventListener('click', closeCreation);
     creationOverlay.querySelector('.conversation-create-discover').addEventListener('click', discoverForCreation);
     creationCommit.addEventListener('click', commitCreation);
-    creationTitle.addEventListener('input', updateCreationCommitState);
+    creationTitle.addEventListener('input', () => {
+      invalidateCreationAcceptance();
+      updateCreationCommitState();
+    });
     creationDescription.addEventListener('input', () => {
       if (creationDescription.value.trim() !== creationReviewedDescription) resetCreationReview();
       updateCreationCommitState();
     });
-    creationReviewCheck.addEventListener('change', updateCreationCommitState);
+    creationReviewCheck.addEventListener('change', acknowledgeCreationReview);
     creationOverlay.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();

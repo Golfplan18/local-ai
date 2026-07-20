@@ -11496,7 +11496,30 @@ def _browser_row_for_creation_ref(ref: str) -> dict | None:
     return row
 
 
-def _register_conversation_discovery(description: str, rows: list[dict]) -> str:
+def _prune_conversation_discoveries_locked(now: float) -> None:
+    expired = [
+        key for key, value in _conversation_discovery_reviews.items()
+        if now - float(value.get("created_at") or 0) > _CONVERSATION_DISCOVERY_TTL_SECONDS
+    ]
+    for key in expired:
+        _conversation_discovery_reviews.pop(key, None)
+
+
+def _active_conversation_discovery_locked(token: str) -> dict:
+    now = time.time()
+    _prune_conversation_discoveries_locked(now)
+    review = _conversation_discovery_reviews.get(token)
+    if review is None:
+        raise ValueError("discovery review is missing or expired")
+    return review
+
+
+def _register_conversation_discovery(
+    description: str,
+    rows: list[dict],
+    *,
+    target_tag: str,
+) -> str:
     now = time.time()
     candidates: dict[str, dict] = {}
     for row in rows:
@@ -11505,12 +11528,7 @@ def _register_conversation_discovery(description: str, rows: list[dict]) -> str:
             candidates[str(row["conversation_id"])] = contributor
     token = "review-" + uuid.uuid4().hex
     with _conversation_discovery_lock:
-        expired = [
-            key for key, value in _conversation_discovery_reviews.items()
-            if now - float(value.get("created_at") or 0) > _CONVERSATION_DISCOVERY_TTL_SECONDS
-        ]
-        for key in expired:
-            _conversation_discovery_reviews.pop(key, None)
+        _prune_conversation_discoveries_locked(now)
         while len(_conversation_discovery_reviews) >= _CONVERSATION_DISCOVERY_LIMIT:
             oldest = min(
                 _conversation_discovery_reviews,
@@ -11519,24 +11537,12 @@ def _register_conversation_discovery(description: str, rows: list[dict]) -> str:
             _conversation_discovery_reviews.pop(oldest, None)
         _conversation_discovery_reviews[token] = {
             "description": description,
+            "target_tag": target_tag,
             "candidates": candidates,
             "created_at": now,
+            "accepted_contract": None,
         }
     return token
-
-
-def _read_conversation_discovery(token: str, description: str) -> dict:
-    with _conversation_discovery_lock:
-        review = copy.deepcopy(_conversation_discovery_reviews.get(token))
-    if review is None:
-        raise ValueError("discovery review is missing or expired")
-    if time.time() - float(review.get("created_at") or 0) > _CONVERSATION_DISCOVERY_TTL_SECONDS:
-        with _conversation_discovery_lock:
-            _conversation_discovery_reviews.pop(token, None)
-        raise ValueError("discovery review is missing or expired")
-    if review.get("description") != description:
-        raise ValueError("description changed after discovery review")
-    return review
 
 
 def _browser_parse_bool(value: str | None, default: bool = True) -> bool:
@@ -12249,7 +12255,9 @@ def conversations_browser():
     }
     if purpose == "creation":
         payload["review_token"] = _register_conversation_discovery(
-            query, visible_rows
+            query,
+            visible_rows,
+            target_tag=target_tag,
         )
     return _json_response(payload)
 
@@ -12322,9 +12330,58 @@ def _resolve_reviewed_contributors(
     return contributors
 
 
-@app.route("/api/conversations/create", methods=["POST"])
-def conversations_create():
-    """Commit a reviewed description-rich Dialogue exactly once."""
+def _normalized_creation_title(value) -> str:
+    if not isinstance(value, str):
+        raise ValueError("title must be a string")
+    title = re.sub(r"\s+", " ", value).strip()
+    if not title or len(title) > 200:
+        raise ValueError("title must contain 1 to 200 characters")
+    return title
+
+
+def _normalized_creation_refs(value) -> list[str]:
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError("contributors must be a list of at most 20 reviewed refs")
+    refs: list[str] = []
+    seen: set[str] = set()
+    for raw in value:
+        if not isinstance(raw, str) or not raw.strip():
+            raise ValueError("contributor refs must be nonempty strings")
+        ref = raw.strip()
+        if ref not in seen:
+            refs.append(ref)
+            seen.add(ref)
+    return refs
+
+
+def _conversation_creation_digest(contract: dict) -> str:
+    canonical = json.dumps(
+        contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def _envelope_matches_creation_contract(envelope: dict, contract: dict) -> bool:
+    """Authenticate a deterministic create recovered after an interrupted reply."""
+
+    return bool(
+        isinstance(envelope, dict)
+        and envelope.get("conversation_id") == contract.get("conversation_id")
+        and envelope.get("display_name") == contract.get("title")
+        and envelope.get("description") == contract.get("description")
+        and envelope.get("tag", "") == contract.get("tag", "")
+        and envelope.get("project_ids", []) == contract.get("project_ids", [])
+        and envelope.get("contributors", []) == contract.get("contributors", [])
+        and envelope.get("parent_conversation_id") is None
+    )
+
+
+@app.route("/api/conversations/review", methods=["POST"])
+def conversations_review():
+    """Issue an exact creation contract after explicit human acknowledgment."""
 
     cross_site = _cross_site_mutation_response()
     if cross_site is not None:
@@ -12332,51 +12389,163 @@ def conversations_create():
     body = request.get_json(force=True, silent=True)
     if not isinstance(body, dict):
         return _json_response({"error": "request body must be an object"}, 400)
-    title = body.get("title")
+    if body.get("acknowledged") is not True:
+        return _json_response({"error": "explicit review acknowledgment is required"}, 400)
+    review_token = body.get("review_token")
     description = body.get("description")
-    token = body.get("review_token")
     tag = body.get("tag", "")
-    if not isinstance(description, str) or not isinstance(token, str):
+    if not isinstance(review_token, str) or not isinstance(description, str):
         return _json_response({"error": "description and review_token are required"}, 400)
     if tag not in _VALID_CONVERSATION_TAGS:
         return _json_response({"error": "invalid creation tag"}, 400)
     try:
-        review = _read_conversation_discovery(token, description.strip())
-        contributors = _resolve_reviewed_contributors(
-            review,
-            body.get("contributors", []),
-            target_tag=tag,
-        )
+        title = _normalized_creation_title(body.get("title"))
+        description = description.strip()
+        selected_refs = _normalized_creation_refs(body.get("contributors", []))
         from active_project import get_active_project, resolve_project_ids
-        from conversation_memory import create_conversation_envelope
         project_ids = resolve_project_ids(get_active_project())
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        conversation_id = f"thread-{stamp}-{uuid.uuid4().hex[:8]}"
-        with _conversation_lifecycle_lock(conversation_id):
-            _assert_no_casefold_session_collision(conversation_id)
-            envelope = create_conversation_envelope(
-                conversation_id,
-                title=title,
-                description=description,
-                contributors=contributors,
-                tag=tag,
-                project_ids=project_ids,
+        with _conversation_discovery_lock:
+            review = _active_conversation_discovery_locked(review_token)
+            if review.get("description") != description:
+                raise ValueError("description changed after discovery review")
+            if review.get("target_tag") != tag:
+                raise ValueError("privacy target changed after discovery review")
+            contributors = _resolve_reviewed_contributors(
+                review,
+                selected_refs,
+                target_tag=tag,
             )
-    except (ValueError, FileExistsError) as exc:
+            digest_input = {
+                "contract_version": 1,
+                "title": title,
+                "description": description,
+                "selected_refs": selected_refs,
+                "contributors": contributors,
+                "tag": tag,
+                "project_ids": project_ids,
+                "acknowledged": True,
+            }
+            contract_digest = _conversation_creation_digest(digest_input)
+            accepted = review.get("accepted_contract")
+            if isinstance(accepted, dict) and accepted.get("response") is not None:
+                if accepted.get("contract_digest") != contract_digest:
+                    raise ValueError("discovery review already created a different contract")
+                return _json_response({
+                    "ok": True,
+                    "creation_token": accepted["creation_token"],
+                    "contract_digest": accepted["contract_digest"],
+                    "conversation_id": accepted["conversation_id"],
+                    "already_committed": True,
+                })
+            if not isinstance(accepted, dict) or accepted.get("contract_digest") != contract_digest:
+                creation_token = "creation-" + uuid.uuid4().hex
+                conversation_id = "thread-reviewed-" + hashlib.sha256(
+                    f"{review_token}\0{contract_digest}".encode("utf-8")
+                ).hexdigest()[:24]
+                accepted = {
+                    **digest_input,
+                    "contract_digest": contract_digest,
+                    "creation_token": creation_token,
+                    "conversation_id": conversation_id,
+                    "accepted_at": time.time(),
+                    "response": None,
+                }
+                review["accepted_contract"] = accepted
+    except ValueError as exc:
         return _json_response({"error": str(exc)}, 409)
-    except OSError as exc:
-        return _json_response({"error": f"Dialogue creation failed: {exc}"}, 500)
-    with _conversation_discovery_lock:
-        _conversation_discovery_reviews.pop(token, None)
     return _json_response({
         "ok": True,
-        "conversation_id": conversation_id,
-        "display_name": envelope["display_name"],
-        "description": envelope["description"],
-        "tag": envelope["tag"],
-        "project_ids": envelope["project_ids"],
-        "contributors": envelope["contributors"],
-    }, 201)
+        "creation_token": accepted["creation_token"],
+        "contract_digest": accepted["contract_digest"],
+        "conversation_id": accepted["conversation_id"],
+        "already_committed": False,
+    })
+
+
+@app.route("/api/conversations/create", methods=["POST"])
+def conversations_create():
+    """Commit one server-issued creation contract exactly once."""
+
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    body = request.get_json(force=True, silent=True)
+    if not isinstance(body, dict):
+        return _json_response({"error": "request body must be an object"}, 400)
+    if set(body) - {"review_token", "creation_token"}:
+        return _json_response({
+            "error": "creation accepts only a server-issued reviewed contract",
+        }, 400)
+    review_token = body.get("review_token")
+    creation_token = body.get("creation_token")
+    if not isinstance(review_token, str) or not isinstance(creation_token, str):
+        return _json_response({"error": "review_token and creation_token are required"}, 400)
+
+    status = 201
+    try:
+        # The discovery lock is deliberately held through the exclusive file
+        # create and response recording. Concurrent deliveries therefore
+        # serialize on one accepted contract and observe one committed result.
+        with _conversation_discovery_lock:
+            review = _active_conversation_discovery_locked(review_token)
+            contract = review.get("accepted_contract")
+            if not isinstance(contract, dict) or contract.get("creation_token") != creation_token:
+                raise ValueError("explicit reviewed creation contract is missing or stale")
+            if contract.get("response") is not None:
+                response_payload = copy.deepcopy(contract["response"])
+                response_payload["idempotent_replay"] = True
+                status = 200
+            else:
+                current_contributors = _resolve_reviewed_contributors(
+                    review,
+                    contract["selected_refs"],
+                    target_tag=contract["tag"],
+                )
+                if current_contributors != contract["contributors"]:
+                    raise ValueError("reviewed contributors changed before creation")
+                from conversation_memory import (
+                    create_conversation_envelope,
+                    load_conversation_json,
+                )
+                conversation_id = contract["conversation_id"]
+                with _conversation_lifecycle_lock(conversation_id):
+                    envelope = load_conversation_json(conversation_id)
+                    if envelope is None:
+                        _assert_no_casefold_session_collision(conversation_id)
+                        try:
+                            envelope = create_conversation_envelope(
+                                conversation_id,
+                                title=contract["title"],
+                                description=contract["description"],
+                                contributors=contract["contributors"],
+                                tag=contract["tag"],
+                                project_ids=contract["project_ids"],
+                            )
+                        except FileExistsError:
+                            envelope = load_conversation_json(conversation_id)
+                    if not _envelope_matches_creation_contract(envelope, contract):
+                        raise ValueError("deterministic Dialogue identity does not match its creation contract")
+                response_payload = {
+                    "ok": True,
+                    "conversation_id": conversation_id,
+                    "display_name": envelope["display_name"],
+                    "description": envelope["description"],
+                    "tag": envelope["tag"],
+                    "project_ids": envelope["project_ids"],
+                    "contributors": envelope["contributors"],
+                    "contract_digest": contract["contract_digest"],
+                    "idempotent_replay": False,
+                }
+                contract["response"] = copy.deepcopy(response_payload)
+                contract["committed_at"] = time.time()
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 409)
+    except OSError as exc:
+        # The accepted contract remains available. If the write completed
+        # before an interrupted reply, its deterministic identity is recovered
+        # and authenticated on retry instead of creating a second Dialogue.
+        return _json_response({"error": f"Dialogue creation failed: {exc}"}, 500)
+    return _json_response(response_payload, status)
 
 
 @app.route("/api/conversation/<conversation_id>/restore", methods=["POST"])

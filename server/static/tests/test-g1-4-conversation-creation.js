@@ -32,10 +32,12 @@ var dom = new jsdom.JSDOM(
 
 var w = dom.window;
 var createRequests = [];
+var reviewRequests = [];
 var browserUrls = [];
 var forkRequests = 0;
 var envelopeRequests = [];
 var failNextCreate = false;
+var acceptedReview = null;
 var description = 'Explore cash-flow exception patterns and decide a reusable response.';
 var envelopes = {
   'source-live': {
@@ -93,9 +95,23 @@ w.fetch = function (url, opts) {
       return result(false, { error: 'discovery review is missing or expired' }, 409);
     }
     return result(true, {
-      conversation_id: 'created-live', display_name: body.title,
-      description: body.description, tag: body.tag, contributors: body.contributors,
+      conversation_id: 'created-live', display_name: acceptedReview.title,
+      description: acceptedReview.description, tag: acceptedReview.tag,
+      contributors: acceptedReview.contributors, contract_digest: 'sha256:contract',
     }, 201);
+  }
+  if (decoded === '/api/conversations/review') {
+    var reviewBody = JSON.parse(opts.body);
+    reviewRequests.push(reviewBody);
+    if (reviewBody.acknowledged !== true) {
+      return result(false, { error: 'explicit review acknowledgment is required' }, 400);
+    }
+    acceptedReview = reviewBody;
+    return result(true, {
+      creation_token: 'creation-token-' + reviewRequests.length,
+      contract_digest: 'sha256:contract',
+      conversation_id: 'created-live',
+    });
   }
   if (/^\/api\/conversation\/[^/]+\/fork$/.test(decoded)) {
     forkRequests += 1;
@@ -186,17 +202,31 @@ async function run() {
   var reviewed = modal.querySelector('.conversation-create-reviewed input');
   reviewed.checked = true;
   reviewed.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush(); await flush();
   record('explicit review unlocks exact creation',
-    modal.querySelector('.conversation-create-commit').disabled === false);
+    modal.querySelector('.conversation-create-commit').disabled === false &&
+    reviewRequests.length === 1 && reviewRequests[0].acknowledged === true);
   modal.querySelector('.conversation-create-commit').click();
   await flush(); await flush(); await flush();
   record('accepted contributor identity reaches the create contract',
     createRequests.length === 1 &&
-    createRequests[0].contributors.length === 1 &&
-    createRequests[0].contributors[0] === 'source-live');
+    reviewRequests[0].contributors.length === 1 &&
+    reviewRequests[0].contributors[0] === 'source-live' &&
+    Object.keys(createRequests[0]).sort().join(',') === 'creation_token,review_token');
   record('created zero-turn Dialogue restores description as an unsent draft',
     envelopeRequests.indexOf('created-live') !== -1 &&
     w.document.querySelector('.input-pane textarea').value === description);
+
+  await openAndDiscover();
+  reviewed = modal.querySelector('.conversation-create-reviewed input');
+  reviewed.checked = true;
+  reviewed.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush(); await flush();
+  input('.conversation-create-title', 'Changed after confirmation');
+  record('changing a bound creation input invalidates server confirmation',
+    modal.querySelector('.conversation-create-commit').disabled === true &&
+    reviewed.checked === false);
+  modal.querySelector('.conversation-create-cancel').click();
 
   await openAndDiscover();
   var createsBeforeContinue = createRequests.length;
@@ -238,6 +268,7 @@ async function run() {
   reviewed = modal.querySelector('.conversation-create-reviewed input');
   reviewed.checked = true;
   reviewed.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await flush(); await flush();
   failNextCreate = true;
   modal.querySelector('.conversation-create-commit').click();
   await flush(); await flush();
