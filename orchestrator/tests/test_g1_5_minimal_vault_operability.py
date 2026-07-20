@@ -12,13 +12,18 @@ from unittest import mock
 
 
 ORCHESTRATOR = Path(__file__).resolve().parents[1]
+ROOT = ORCHESTRATOR.parent
+os.environ.setdefault("ORA_HOME", str(ROOT))
 if str(ORCHESTRATOR) not in sys.path:
     sys.path.insert(0, str(ORCHESTRATOR))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import boot  # noqa: E402
 import matrix_payload  # noqa: E402
 import operation_matrix  # noqa: E402
 import project_status  # noqa: E402
+from server import server  # noqa: E402
 
 
 def _write(path: Path, text: str) -> None:
@@ -279,6 +284,42 @@ class PipelineStatusContextTests(unittest.TestCase):
                 ),
             )
             build.assert_called_once()
+
+
+class PublicChatStatusBoundaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.client = server.app.test_client()
+
+    def test_public_chat_status_requests_reach_ordinary_pipeline(self) -> None:
+        requests = (
+            "What's the status of Ora?",
+            "What's the status of MSI?",
+            "What's the status of Ora and MSI?",
+        )
+        for index, message in enumerate(requests):
+            response_value = server._json_response({"status": "ok"})
+            with self.subTest(message=message), mock.patch.object(
+                server,
+                "_log_pending_submission",
+                return_value=f"g1-5-status-{index}",
+            ), mock.patch.object(
+                server,
+                "_invoke_pipeline",
+                return_value=response_value,
+            ) as invoke:
+                response = self.client.post("/chat", json={
+                    "message": message,
+                    "conversation_id": f"g1-5-public-status-{index}",
+                })
+            self.assertEqual(200, response.status_code)
+            invoke.assert_called_once()
+            kwargs = invoke.call_args.kwargs
+            self.assertEqual(message, invoke.call_args.args[0])
+            contract = kwargs["extra_context"]["process_entry"]
+            self.assertEqual("ordinary_generation", contract["intent"])
+            self.assertEqual("ready", contract["status"])
+            self.assertEqual("submit_ordinary_generation", contract["next_action"])
 
 
 class AcceptedVaultSourceTests(unittest.TestCase):
