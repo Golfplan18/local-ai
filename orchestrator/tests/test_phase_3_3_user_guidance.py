@@ -232,25 +232,25 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
             "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
             "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
-            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
+            "Phase 3.5 implementation — COMPLETE; GATE 3.5 ACCEPTED",
         ):
             with self.subTest(design_token=token):
                 self.assertIn(token, self.design)
 
         for token in (
-            "Current phase:** Part 3, Phase 3.5",
-            "Phase 3.5 authority boundary",
-            "accepted Gate 3.4 documentation/test baseline",
+            "Final disposition:** G1.1 complete",
+            "Accepted Phase 3.5 authority boundary",
+            "accepted Gate 3.5 runtime closeout commit",
             "Phase 3.3 passed after the browser exposed and authenticated",
-            "Phase 3.5 changes no canonical package identity or runtime behavior",
+            "G1.2 separately owns the complete Gear 1/2/3 specification",
         ):
             with self.subTest(tracker_token=token):
                 self.assertIn(token, self.tracker)
 
         for token in (
-            "Parts 1 and 2 plus Phases 3.1–3.4 are accepted",
-            "Phase 3.5 closeout execution is complete pending independent Gate 3.5",
-            "G1.1 remains `🟡` until that verdict",
+            "Parts 1 and 2 plus Phases 3.1–3.5 accepted",
+            "G1.1 is complete after independent Gate 3.5 acceptance",
+            "G1.2 is the active Gate 1 priority",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)
@@ -260,9 +260,11 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
             "Current phase:** Part 3, Phase 3.4",
             "Phase 3.5 is not authorized",
+            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
         ):
             self.assertNotIn(obsolete, current_records)
-        self.assertNotIn("GATE 3.5 ACCEPTED", current_records)
+        self.assertIn("GATE 3.5 ACCEPTED", current_records)
+        self.assertIn("G1.1 is complete", current_records)
 
     def test_conceptual_and_implementation_companions_are_permanent(self):
         self.assertIn(

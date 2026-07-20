@@ -136,18 +136,18 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
             "### 29.13 User guide — AS BUILT 2026-07-19",
             self.design,
         )
-        self.assertIn("Current phase:** Part 3, Phase 3.5", self.tracker)
+        self.assertIn("Final disposition:** G1.1 complete", self.tracker)
         self.assertIn(
-            "Phase 3.5 closeout execution is complete pending independent Gate 3.5",
+            "G1.1 is complete after independent Gate 3.5 acceptance",
             self.overview,
         )
         self.assertNotIn("Phase 3.5 is not authorized", self.overview)
-        self.assertNotIn("GATE 3.5 ACCEPTED", self.overview)
+        self.assertIn("Gate 3.5 passed", self.overview)
 
     def test_current_records_reject_obsolete_phase_1_6_future_state(self):
         tracker_entry = h3_section(
             self.tracker,
-            "G1.1 — Governed process construction and Programming Oversight proof of concept — 🟡",
+            "G1.1 — Governed process construction and Programming Oversight proof of concept — ✅",
         )
         design_entry = h3_section(
             self.overview,

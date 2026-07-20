@@ -163,15 +163,15 @@ class TestPhase34MaintainerReference(unittest.TestCase):
         for token in (
             "Phase 3.3 implementation — COMPLETE; GATE 3.3 ACCEPTED",
             "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
-            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
+            "Phase 3.5 implementation — COMPLETE; GATE 3.5 ACCEPTED",
             "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
             "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
             "- [x] Migration, rollback, recovery, and troubleshooting documented.",
         ):
             self.assertIn(token, self.design)
         for token in (
-            "Current phase:** Part 3, Phase 3.5",
-            "Phase 3.5 authority boundary",
+            "Final disposition:** G1.1 complete",
+            "Accepted Phase 3.5 authority boundary",
             "Phase 3.4 passed after the maintainer reference",
         ):
             self.assertIn(token, self.tracker)
@@ -182,7 +182,7 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "eleven-node graph grammar",
             "staged migration/disablement/rollback",
             "Gate 3.4 documentation/test acceptance at `6824bb03`",
-            "Phase 3.5 evidence is complete pending Gate 3.5",
+            "Gate 3.5 passed at runtime closeout commit `71f0ecf7`",
         ):
             self.assertIn(token, technical)
 
@@ -198,11 +198,11 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "maintainer §§29.11–29.12 remain gated",
             "- [ ] Migration, rollback, recovery, and troubleshooting documented.",
             "Phase 3.5 remains unauthorized",
+            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
         ):
             self.assertNotIn(obsolete, current_records)
-        self.assertIn("pending independent Gate 3.5", current_records)
-        self.assertNotIn("GATE 3.5 ACCEPTED", current_records)
-        self.assertNotIn("G1.1 is complete", current_records)
+        self.assertIn("GATE 3.5 ACCEPTED", current_records)
+        self.assertIn("G1.1 is complete", current_records)
 
 
 if __name__ == "__main__":

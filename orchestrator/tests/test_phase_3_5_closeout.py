@@ -266,52 +266,62 @@ class TestPhase35Closeout(unittest.TestCase):
         self.assertIn("### Phase 3.5 closeout evidence", technical)
         self.assertIn("not a comprehensive cross-platform accessibility certification", technical)
 
-    def test_design_checklist_and_gate_boundary_are_exact(self):
+    def test_design_checklist_and_external_gate_acceptance_are_exact(self):
         for token in (
             "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
-            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
+            "Phase 3.5 implementation — COMPLETE; GATE 3.5 ACCEPTED",
             "### 29.14 G1.1 closeout evidence — AS BUILT 2026-07-19",
             "- [x] UI screenshots rendered and verified.",
-            "- [x] G1.1 exit criteria verified and tracker disposition updated; independent Gate 3.5 acceptance remains pending.",
-            "G1.1 remains `🟡` until an independent judge accepts Gate 3.5",
+            "- [x] G1.1 exit criteria verified, Gate 3.5 independently accepted, and tracker disposition closed.",
+            "The independent judge returned `PASS — ACCEPT` for Gate 3.5",
+            "runtime commit `71f0ecf72802a4e54c3a8f2cd12223cf8628e309`",
+            "G1.1 is complete",
         ):
             self.assertIn(token, self.design)
         self.assertNotIn("- [ ] UI screenshots rendered and verified.", self.design)
         self.assertNotIn("- [ ] G1.1 exit criteria verified", self.design)
+        self.assertNotIn("Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5", self.design)
 
-    def test_tracker_reconciles_phase_without_premature_completion(self):
+    def test_tracker_closes_g11_and_advances_only_to_existing_g12_scope(self):
         g11 = self.tracker[
             self.tracker.index("### G1.1 —") : self.tracker.index("\n### G1.2 —")
         ]
         for token in (
-            "### G1.1 — Governed process construction and Programming Oversight proof of concept — 🟡",
-            "Parts 1 and 2 plus Phases 3.1–3.4 accepted",
-            "Current phase:** Part 3, Phase 3.5",
-            "Phase 3.5 authority boundary",
-            "G1.1 remains `🟡` until the independent Gate 3.5 verdict",
+            "### G1.1 — Governed process construction and Programming Oversight proof of concept — ✅",
+            "completed 2026-07-19 after Parts 1 and 2 plus Phases 3.1–3.5 passed independent judgment",
+            "Final disposition:** G1.1 complete",
+            "Accepted Phase 3.5 authority boundary",
+            "authorized G1.2 under G1.2's existing scope only",
+            "G1.2 separately owns the complete Gear 1/2/3 specification",
         ):
             self.assertIn(token, g11)
         for obsolete in (
             "Phase 3.4 current",
             "Current phase:** Part 3, Phase 3.4",
+            "Current phase:** Part 3, Phase 3.5",
             "Phase 3.5 remains gated",
             "Phase 3.5 remains unauthorized",
+            "pending independent Gate 3.5",
         ):
             self.assertNotIn(obsolete, g11)
 
-    def test_registry_records_acceptance_provenance_and_pending_final_gate(self):
+    def test_registry_records_gate_3_5_acceptance_and_g11_completion(self):
         technical = h3_section(self.registry, "Reference — Ora Technical Documentation.md")
         tracker = h3_section(self.registry, "Working — Ora Setup and Refinement.md")
         design = h3_section(self.registry, "Working — Programming Oversight Manager Design.md")
         self.assertIn("Gate 3.4 documentation/test acceptance at `6824bb03`", technical)
-        self.assertIn("Phase 3.5 evidence is complete pending Gate 3.5", technical)
-        self.assertIn("Phase 3.5 closeout execution is complete pending independent Gate 3.5", tracker)
-        self.assertIn("Phase 3.5 closeout evidence is complete pending Gate 3.5", design)
+        self.assertIn("Gate 3.5 passed at runtime closeout commit `71f0ecf7`; G1.1 is complete", technical)
+        self.assertIn("G1.1 is complete after independent Gate 3.5 acceptance", tracker)
+        self.assertIn("G1.2 is the active Gate 1 priority", tracker)
+        self.assertIn("Parts 1 and 2 plus Phases 3.1–3.5 are accepted", design)
+        self.assertIn("G1.1 is complete", design)
         current = "\n".join((technical, tracker, design))
         for obsolete in (
             "Phase 3.4 is complete pending Gate 3.4",
             "Phase 3.5 remains unauthorized",
             "Screenshot and final closeout sections remain explicitly unimplemented",
+            "Phase 3.5 evidence is complete pending Gate 3.5",
+            "pending independent Gate 3.5",
         ):
             self.assertNotIn(obsolete, current)
 
