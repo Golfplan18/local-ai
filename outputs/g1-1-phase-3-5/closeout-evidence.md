@@ -90,21 +90,140 @@ No scheduled synchronization or unnecessary mirror was introduced.
 
 ## Regression and integrity matrix
 
-The final distinct matrix passed **471 Python tests plus 355 subtests** and **83 browser DOM tests**.
+The final distinct matrix passed **472 Python tests plus 401 subtests** and **83 browser DOM tests**. The commands below are the literal copy-paste provenance rerun. They were executed sequentially in one `zsh` shell.
 
-| Layer | Exact scope | Result |
-|---|---|---|
-| Part 1 kernel, trials, and adjacent execution/review | `test_process_contracts.py`, `test_governed_process_runtime.py`, Phase 1.5–1.7, `test_verifier_retry.py`, `test_execution_loop.py`, `test_execution_review.py` | 217 passed; 120 subtests passed |
-| Part 2 management experience | Phase 2.1–2.8 owning Python suites | 213 passed; 63 subtests passed |
-| Part 3 reconciliation and documentation | Phase 3.1–3.4 owning Python suites | 29 passed; 161 subtests passed |
-| Phase 3.5 closeout | `test_phase_3_5_closeout.py` | 12 passed; 11 subtests passed |
-| Shipped browser surfaces | `test-process-entry.js`, `test-process-plan-review.js`, `test-process-attention.js`, `test-process-run-inspector.js`, `test-process-surface-boundaries.js` | 21 + 16 + 14 + 24 + 8 = 83 passed |
-| Compilation | `python3 -m py_compile` on the five changed Phase 3 test modules | passed |
-| Canonical drift | `python3 scripts/verify-implementation.py --check drift` | 1 passed; 0 failed; 0 skipped |
-| Artifact and record integrity | Phase 3.5 digest/dimension, workbook, mirror/topology, obsolete-status, fixture-cleanup, and gate-boundary assertions | passed inside the 12-test closeout suite |
-| Repository integrity | `git diff --check` in both repositories; exact changed-file review; post-commit upstream comparison | passed |
+### Execution environment
 
-The matrix verifies body/mirror parity, image/workbook digests, obsolete-status rejection, temporary-fixture absence, diff integrity, exact scope, and upstream synchronization without substituting a self-issued Gate 3.5 verdict.
+```sh
+cd /Users/oracle/ora-msi-central-routing
+export ORA_VAULT_PATH=/Users/oracle/Documents/vault
+python3 --version
+node --version
+```
+
+Observed exit status: `0`. Environment result: `Python 3.14.3`, `Node v22.22.3`; runtime working directory `/Users/oracle/ora-msi-central-routing`; vault canonical root `/Users/oracle/Documents/vault`.
+
+### Python kernel, trial, interface, and documentation matrix
+
+Part 1 kernel, trials, and adjacent execution/review:
+
+```sh
+python3 -m pytest -q \
+  orchestrator/tests/test_process_contracts.py \
+  orchestrator/tests/test_governed_process_runtime.py \
+  orchestrator/tests/test_phase_1_5_governed_sources.py \
+  orchestrator/tests/test_phase_1_6_programming_definition.py \
+  orchestrator/tests/test_phase_1_7_kernel_trials.py \
+  orchestrator/tests/test_verifier_retry.py \
+  orchestrator/tests/test_execution_loop.py \
+  orchestrator/tests/test_execution_review.py
+```
+
+Observed exit status: `0`. Result: `217 passed, 120 subtests passed`.
+
+Part 2 management experience:
+
+```sh
+python3 -m pytest -q \
+  orchestrator/tests/test_phase_2_1_entry_routing.py \
+  orchestrator/tests/test_phase_2_2_management_interview.py \
+  orchestrator/tests/test_phase_2_3_plan_approval.py \
+  orchestrator/tests/test_phase_2_4_delegation_attention.py \
+  orchestrator/tests/test_phase_2_5_run_inspector.py \
+  orchestrator/tests/test_phase_2_6_process_library_lifecycle.py \
+  orchestrator/tests/test_phase_2_7_surface_boundaries.py \
+  orchestrator/tests/test_phase_2_8_experience_validation.py
+```
+
+Observed exit status: `0`. Result: `213 passed, 63 subtests passed`; two Python 3.14 `datetime.utcnow()` deprecation warnings were non-failing.
+
+Part 3 reconciliation and documentation through accepted Gate 3.4:
+
+```sh
+python3 -m pytest -q \
+  orchestrator/tests/test_phase_3_1_as_built_reconciliation.py \
+  orchestrator/tests/test_phase_3_2_conceptual_public_guide.py \
+  orchestrator/tests/test_phase_3_3_user_guidance.py \
+  orchestrator/tests/test_phase_3_4_maintainer_reference.py
+```
+
+Observed exit status: `0`. Result: `29 passed, 161 subtests passed`.
+
+Phase 3.5 closeout and command-provenance regression:
+
+```sh
+python3 -m pytest -q orchestrator/tests/test_phase_3_5_closeout.py
+```
+
+Observed exit status: `0`. Result: `13 passed, 57 subtests passed`.
+
+### Browser DOM matrix
+
+```sh
+for test_file in \
+  server/static/tests/test-process-entry.js \
+  server/static/tests/test-process-plan-review.js \
+  server/static/tests/test-process-attention.js \
+  server/static/tests/test-process-run-inspector.js \
+  server/static/tests/test-process-surface-boundaries.js; do
+  node "$test_file" || exit $?
+done
+```
+
+Observed exit status: `0`. Result: `21 + 16 + 14 + 24 + 8 = 83 passed`.
+
+### Python compilation
+
+```sh
+python3 -m py_compile \
+  orchestrator/tests/test_phase_3_1_as_built_reconciliation.py \
+  orchestrator/tests/test_phase_3_2_conceptual_public_guide.py \
+  orchestrator/tests/test_phase_3_3_user_guidance.py \
+  orchestrator/tests/test_phase_3_4_maintainer_reference.py \
+  orchestrator/tests/test_phase_3_5_closeout.py
+```
+
+Observed exit status: `0`. Result: no stderr or stdout; all five modules compiled.
+
+### Canonical drift
+
+```sh
+python3 scripts/verify-implementation.py --check drift
+```
+
+Observed exit status: `0`. Result: `Passed: 1`, `Failed: 0`, `Skipped: 0`.
+
+### Artifact integrity
+
+```sh
+python3 -m pytest -q \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_immutable_programming_identity_is_consistent \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_all_four_trial_paths_are_bound \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_rendered_manifest_is_exact_and_images_are_reviewable \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_four_mirrors_two_direct_and_one_documentation_only_are_preserved \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_user_and_technical_mirrors_are_body_identical \
+  orchestrator/tests/test_phase_3_5_closeout.py::TestPhase35Closeout::test_temporary_visual_fixture_is_not_release_state
+```
+
+Observed exit status: `0`. Result: `6 passed, 11 subtests passed`; this command recomputes the seven JPEG hashes/dimensions and workbook hash, compares the exact canonical/mirror bodies and source topology, verifies immutable Programming identity, and rejects temporary fixture residue.
+
+### Repository integrity and synchronization
+
+```sh
+set -e
+git diff --check 6824bb03bf8bf9a94c1e87020c40d7007457608a..HEAD
+git diff --check 7675124ec1b2b4ddfd512e901a611ab63224b5bb..HEAD
+git diff --name-only 7675124ec1b2b4ddfd512e901a611ab63224b5bb..HEAD
+git status --short
+test "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')"
+git -C /Users/oracle/Documents/vault diff --check
+git -C /Users/oracle/Documents/vault status --short
+test "$(git -C /Users/oracle/Documents/vault rev-parse HEAD)" = "$(git -C /Users/oracle/Documents/vault rev-parse '@{u}')"
+```
+
+Observed exit status: `0`. Correction-scope output contains exactly `orchestrator/tests/test_phase_3_5_closeout.py` and `outputs/g1-1-phase-3-5/closeout-evidence.md`. Runtime status contains only the accepted `data/conversation-manifest.jsonl.lock`; vault status is empty; both HEADs equal their tracking upstreams.
+
+These commands verify behavior, body/mirror parity, image/workbook digests, obsolete-status rejection, temporary-fixture absence, diff integrity, exact correction scope, and upstream synchronization without substituting a self-issued Gate 3.5 verdict.
 
 ## Deferred beyond G1.1
 

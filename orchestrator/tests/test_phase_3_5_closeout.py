@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import unittest
 from pathlib import Path
 
@@ -113,6 +114,73 @@ class TestPhase35Closeout(unittest.TestCase):
         self.assertNotIn("PENDING_PHASE35_MATRIX", self.packet)
         self.assertNotIn("GATE 3.5 ACCEPTED", self.packet)
         self.assertNotIn("G1.1 is complete", self.packet)
+
+    def test_command_provenance_is_copy_pasteable_and_exit_bound(self):
+        blocks = re.findall(r"```sh\n(.*?)\n```", self.packet, flags=re.DOTALL)
+        self.assertEqual(len(blocks), 10)
+        commands = "\n".join(blocks)
+
+        for heading in (
+            "### Execution environment",
+            "### Python kernel, trial, interface, and documentation matrix",
+            "### Browser DOM matrix",
+            "### Python compilation",
+            "### Canonical drift",
+            "### Artifact integrity",
+            "### Repository integrity and synchronization",
+        ):
+            with self.subTest(heading=heading):
+                self.assertIn(heading, self.packet)
+
+        for token in (
+            "cd /Users/oracle/ora-msi-central-routing",
+            "export ORA_VAULT_PATH=/Users/oracle/Documents/vault",
+            "python3 --version",
+            "node --version",
+            "python3 -m pytest -q",
+            "orchestrator/tests/test_process_contracts.py",
+            "orchestrator/tests/test_governed_process_runtime.py",
+            "orchestrator/tests/test_phase_1_5_governed_sources.py",
+            "orchestrator/tests/test_phase_1_6_programming_definition.py",
+            "orchestrator/tests/test_phase_1_7_kernel_trials.py",
+            "orchestrator/tests/test_verifier_retry.py",
+            "orchestrator/tests/test_execution_loop.py",
+            "orchestrator/tests/test_execution_review.py",
+            "orchestrator/tests/test_phase_2_1_entry_routing.py",
+            "orchestrator/tests/test_phase_2_8_experience_validation.py",
+            "orchestrator/tests/test_phase_3_1_as_built_reconciliation.py",
+            "orchestrator/tests/test_phase_3_4_maintainer_reference.py",
+            "orchestrator/tests/test_phase_3_5_closeout.py",
+            "server/static/tests/test-process-entry.js",
+            "server/static/tests/test-process-plan-review.js",
+            "server/static/tests/test-process-attention.js",
+            "server/static/tests/test-process-run-inspector.js",
+            "server/static/tests/test-process-surface-boundaries.js",
+            "python3 -m py_compile",
+            "python3 scripts/verify-implementation.py --check drift",
+            "::TestPhase35Closeout::test_rendered_manifest_is_exact_and_images_are_reviewable",
+            "git diff --check 6824bb03bf8bf9a94c1e87020c40d7007457608a..HEAD",
+            "git diff --check 7675124ec1b2b4ddfd512e901a611ab63224b5bb..HEAD",
+            "git diff --name-only 7675124ec1b2b4ddfd512e901a611ab63224b5bb..HEAD",
+            "git -C /Users/oracle/Documents/vault diff --check",
+            "git -C /Users/oracle/Documents/vault status --short",
+            "rev-parse '@{u}'",
+        ):
+            with self.subTest(command_token=token):
+                self.assertIn(token, commands)
+
+        self.assertEqual(self.packet.count("Observed exit status: `0`."), 10)
+        for result in (
+            "217 passed, 120 subtests passed",
+            "213 passed, 63 subtests passed",
+            "29 passed, 161 subtests passed",
+            "13 passed, 57 subtests passed",
+            "21 + 16 + 14 + 24 + 8 = 83 passed",
+            "6 passed, 11 subtests passed",
+            "both HEADs equal their tracking upstreams",
+        ):
+            with self.subTest(result=result):
+                self.assertIn(result, self.packet)
 
     def test_immutable_programming_identity_is_consistent(self):
         for text in (self.packet, self.design, self.tracker, self.registry):
