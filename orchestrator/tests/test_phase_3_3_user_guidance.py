@@ -231,28 +231,38 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "[x] User guide completed.",
             "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
             "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
-            "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
+            "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
+            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
         ):
             with self.subTest(design_token=token):
                 self.assertIn(token, self.design)
 
         for token in (
-            "Current phase:** Part 3, Phase 3.4",
-            "Phase 3.4 authority boundary",
-            "accepted Gate 3.3 runtime commit",
+            "Current phase:** Part 3, Phase 3.5",
+            "Phase 3.5 authority boundary",
+            "accepted Gate 3.4 documentation/test baseline",
             "Phase 3.3 passed after the browser exposed and authenticated",
-            "does not change canonical package identity or enter Phase 3.5",
+            "Phase 3.5 changes no canonical package identity or runtime behavior",
         ):
             with self.subTest(tracker_token=token):
                 self.assertIn(token, self.tracker)
 
         for token in (
-            "Phases 3.1–3.3 are accepted",
-            "Phase 3.4 maintainer reference is complete pending Gate 3.4",
-            "Phase 3.5 is not authorized",
+            "Parts 1 and 2 plus Phases 3.1–3.4 are accepted",
+            "Phase 3.5 closeout execution is complete pending independent Gate 3.5",
+            "G1.1 remains `🟡` until that verdict",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)
+
+        current_records = "\n".join((self.design, self.tracker, self.registry))
+        for obsolete in (
+            "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
+            "Current phase:** Part 3, Phase 3.4",
+            "Phase 3.5 is not authorized",
+        ):
+            self.assertNotIn(obsolete, current_records)
+        self.assertNotIn("GATE 3.5 ACCEPTED", current_records)
 
     def test_conceptual_and_implementation_companions_are_permanent(self):
         self.assertIn(

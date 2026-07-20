@@ -136,8 +136,13 @@ class TestPhase32ConceptualPublicGuide(unittest.TestCase):
             "### 29.13 User guide — AS BUILT 2026-07-19",
             self.design,
         )
-        self.assertIn("Current phase:** Part 3, Phase 3.4", self.tracker)
-        self.assertIn("Phase 3.5 is not authorized", self.overview)
+        self.assertIn("Current phase:** Part 3, Phase 3.5", self.tracker)
+        self.assertIn(
+            "Phase 3.5 closeout execution is complete pending independent Gate 3.5",
+            self.overview,
+        )
+        self.assertNotIn("Phase 3.5 is not authorized", self.overview)
+        self.assertNotIn("GATE 3.5 ACCEPTED", self.overview)
 
     def test_current_records_reject_obsolete_phase_1_6_future_state(self):
         tracker_entry = h3_section(

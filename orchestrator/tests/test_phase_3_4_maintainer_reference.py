@@ -159,29 +159,30 @@ class TestPhase34MaintainerReference(unittest.TestCase):
         self.assertIn("`/api/process-plan-context/<dialogue>`", self.canonical)
         self.assertIn("/api/process-plan-context/", server)
 
-    def test_design_tracker_and_registry_expose_gate_3_4_only(self):
+    def test_design_tracker_and_registry_preserve_accepted_gate_3_4(self):
         for token in (
             "Phase 3.3 implementation — COMPLETE; GATE 3.3 ACCEPTED",
-            "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
+            "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
+            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
             "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
             "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
             "- [x] Migration, rollback, recovery, and troubleshooting documented.",
         ):
             self.assertIn(token, self.design)
         for token in (
-            "Current phase:** Part 3, Phase 3.4",
-            "Phase 3.4 authority boundary",
-            "Phase 3.5 remains gated",
+            "Current phase:** Part 3, Phase 3.5",
+            "Phase 3.5 authority boundary",
+            "Phase 3.4 passed after the maintainer reference",
         ):
             self.assertIn(token, self.tracker)
 
         technical = h3_section(self.registry, "Reference — Ora Technical Documentation.md")
         for token in (
-            "accepted Gate 3.3 runtime `5bcba502`",
+            "pinned for runtime behavior to Gate 3.3 commit `5bcba502`",
             "eleven-node graph grammar",
             "staged migration/disablement/rollback",
-            "Phase 3.4 is complete pending Gate 3.4",
-            "Phase 3.5 remains unauthorized",
+            "Gate 3.4 documentation/test acceptance at `6824bb03`",
+            "Phase 3.5 evidence is complete pending Gate 3.5",
         ):
             self.assertIn(token, technical)
 
@@ -192,12 +193,15 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "### 29.12 Troubleshooting — NOT YET IMPLEMENTED",
             "Current phase:** Part 3, Phase 3.3",
             "Phase 3.4 is not authorized",
+            "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
+            "Phase 3.4 is complete pending Gate 3.4",
             "maintainer §§29.11–29.12 remain gated",
             "- [ ] Migration, rollback, recovery, and troubleshooting documented.",
+            "Phase 3.5 remains unauthorized",
         ):
             self.assertNotIn(obsolete, current_records)
-        self.assertIn("Phase 3.5 remains unauthorized", current_records)
-        self.assertNotIn("Gate 3.4 accepted", current_records)
+        self.assertIn("pending independent Gate 3.5", current_records)
+        self.assertNotIn("GATE 3.5 ACCEPTED", current_records)
         self.assertNotIn("G1.1 is complete", current_records)
 
 

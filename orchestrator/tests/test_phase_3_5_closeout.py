@@ -1,0 +1,274 @@
+"""G1.1 Phase 3.5 closeout artifacts, reconciliation, and negative status checks."""
+from __future__ import annotations
+
+import hashlib
+import os
+import unittest
+from pathlib import Path
+
+
+ORCH = Path(__file__).resolve().parents[1]
+ROOT = ORCH.parent
+VAULT = Path(
+    os.environ.get("ORA_VAULT_PATH")
+    or os.environ.get("ORA_VAULT")
+    or (Path.home() / "Documents" / "vault")
+).resolve()
+VAULT_ORA = VAULT / "Projects" / "Ora"
+
+PACKET_DIR = ROOT / "outputs" / "g1-1-phase-3-5"
+PACKET = PACKET_DIR / "closeout-evidence.md"
+WORKBOOK = ROOT / "outputs" / "g1-1-phase-1-7" / "cash-flow-exception-trial.xlsx"
+DESIGN = VAULT_ORA / "Working — Programming Oversight Manager Design.md"
+TRACKER = VAULT_ORA / "Working — Ora Setup and Refinement.md"
+REGISTRY = VAULT_ORA / "Registry — Ora Overview and Document Registry.md"
+TECHNICAL = VAULT_ORA / "Reference — Ora Technical Documentation.md"
+TECHNICAL_MIRROR = ROOT / "docs" / "technical-documentation.md"
+
+PROGRAMMING_DIGEST = (
+    "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927"
+)
+WORKBOOK_DIGEST = "f84131073851245560d4c29c29c33f2e47cd757c85e175eb7b4eb3ceeafe066e"
+SCREENSHOTS = {
+    "01-governed-entry.jpg": "ba45c05d59ab3a98c5bf68d8d7c923f1b5df61bb7fb9142b23f4256ff4cd0c24",
+    "02-plan-review-principal.jpg": "a8b0322f3074b4a676058e39a53c52b00fced542d73d6ead875cebe0a6d67a29",
+    "03-plan-review-technical.jpg": "a7af6026682a8759373232ac1ba4755bfd8991c61438521bae102451189cd54f",
+    "04-run-inspector-overview.jpg": "a9fb76295d2924273eb3ec59840f270a2781306fcc8c195f0bd0f76035d70a77",
+    "05-run-inspector-evidence.jpg": "ddea775460da41dfa99e7c397ac310a0aaf2d6f7a01f992c4459778be0c1c4ec",
+    "06-workspace-surfaces.jpg": "ed62fd2825e8f200ec13a9eaad6d209604d1f6e5d6a74d169da1fdc8a44b0ec3",
+    "07-process-library.jpg": "82173acbac77e84911452cc0e73c9ffd71d4c36e32f7ba1d0a125f3f8c67dc22",
+}
+
+
+def body(path: Path) -> str:
+    text = path.read_text(encoding="utf-8")
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end < 0:
+            raise AssertionError(f"unterminated frontmatter: {path}")
+        text = text[end + 5 :]
+    return text.lstrip("\n").rstrip()
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def h3_section(text: str, heading: str) -> str:
+    marker = f"### {heading}\n"
+    start = text.index(marker)
+    end = text.find("\n### ", start + len(marker))
+    return text[start:] if end < 0 else text[start:end]
+
+
+def jpeg_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()
+    if not data.startswith(b"\xff\xd8"):
+        raise AssertionError(f"not a JPEG: {path}")
+    pos = 2
+    sof = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+    while pos + 4 <= len(data):
+        while pos < len(data) and data[pos] != 0xFF:
+            pos += 1
+        while pos < len(data) and data[pos] == 0xFF:
+            pos += 1
+        if pos >= len(data):
+            break
+        marker = data[pos]
+        pos += 1
+        if marker in {0xD8, 0xD9}:
+            continue
+        if marker == 0xDA or pos + 2 > len(data):
+            break
+        length = int.from_bytes(data[pos : pos + 2], "big")
+        if marker in sof and pos + 7 <= len(data):
+            height = int.from_bytes(data[pos + 3 : pos + 5], "big")
+            width = int.from_bytes(data[pos + 5 : pos + 7], "big")
+            return width, height
+        pos += length
+    raise AssertionError(f"JPEG dimensions not found: {path}")
+
+
+class TestPhase35Closeout(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.packet = PACKET.read_text(encoding="utf-8")
+        cls.design = DESIGN.read_text(encoding="utf-8")
+        cls.tracker = TRACKER.read_text(encoding="utf-8")
+        cls.registry = REGISTRY.read_text(encoding="utf-8")
+
+    def test_packet_is_complete_without_self_issuing_gate_acceptance(self):
+        for token in (
+            "State: execution evidence complete; independent Gate 3.5 judgment pending",
+            "## Candidate salvage disposition",
+            "## Trial packets",
+            "## Rendered interface manifest",
+            "## As-built and documentation set",
+            "## Source topology and synchronization",
+            "## Regression and integrity matrix",
+            "## Deferred beyond G1.1",
+            "## Gate boundary",
+        ):
+            self.assertIn(token, self.packet)
+        self.assertNotIn("PENDING_PHASE35_MATRIX", self.packet)
+        self.assertNotIn("GATE 3.5 ACCEPTED", self.packet)
+        self.assertNotIn("G1.1 is complete", self.packet)
+
+    def test_immutable_programming_identity_is_consistent(self):
+        for text in (self.packet, self.design, self.tracker, self.registry):
+            self.assertIn("ora/programming@2.0.1", text)
+            self.assertIn(PROGRAMMING_DIGEST, text)
+        self.assertEqual(
+            body(VAULT_ORA / "Framework — Programming.md"),
+            body(ROOT / "frameworks" / "book" / "programming.md"),
+        )
+
+    def test_candidate_disposition_rejects_integration_baselines(self):
+        for token in (
+            "codex/programming-candidate-preservation",
+            "`97a8b98e`",
+            "codex/programming-candidate-separation",
+            "`7d6fc7c2`",
+            "never an integration baseline",
+            "No dedicated Programming dispatch/compiler/controller/runtime was imported",
+            "Concurrent MSI `model_dispatch.py` and `router.py` material remains excluded",
+        ):
+            self.assertIn(token, self.packet)
+
+    def test_all_four_trial_paths_are_bound(self):
+        for token in (
+            "TestProgrammingTrial",
+            "TestCrossDomainReusableDefinitionTrial",
+            "TestProblemEvolutionContingentTrial",
+            "test_known_procedure_routes_directly_without_problem_evolution",
+            "test_phase_2_8_experience_validation.py",
+            "run-management-d816843a71653e1715e45481",
+            "mutation was not authorized",
+        ):
+            self.assertIn(token, self.packet)
+        self.assertTrue(WORKBOOK.is_file())
+        self.assertEqual(sha256(WORKBOOK), WORKBOOK_DIGEST)
+
+    def test_rendered_manifest_is_exact_and_images_are_reviewable(self):
+        actual = {path.name for path in PACKET_DIR.glob("*.jpg")}
+        self.assertEqual(actual, set(SCREENSHOTS))
+        for name, expected_digest in SCREENSHOTS.items():
+            with self.subTest(name=name):
+                path = PACKET_DIR / name
+                self.assertGreater(path.stat().st_size, 30_000)
+                self.assertEqual(sha256(path), expected_digest)
+                self.assertEqual(jpeg_size(path), (1280, 720))
+                self.assertIn(expected_digest, self.packet)
+
+    def test_four_mirrors_two_direct_and_one_documentation_only_are_preserved(self):
+        pairs = (
+            ("Framework — Process Inference.md", "process-inference.md"),
+            ("Framework — Process Formalization.md", "process-formalization.md"),
+            ("Framework — Problem Evolution.md", "problem-evolution.md"),
+            ("Specification — F-Quality-Gate.md", "f-quality-gate.md"),
+        )
+        for canonical_name, mirror_name in pairs:
+            with self.subTest(canonical=canonical_name):
+                self.assertEqual(
+                    body(VAULT_ORA / canonical_name),
+                    body(ROOT / "frameworks" / "book" / mirror_name),
+                )
+        for absent in (
+            "process-coherence.md",
+            "oversight-configuration.md",
+            "meta-layer-architecture.md",
+        ):
+            self.assertFalse((ROOT / "frameworks" / "book" / absent).exists())
+        for token in (
+            "four exact canonical/runtime mirror pairs",
+            "loaded directly from the vault",
+            "registered against the vault canonical",
+            "documentation-only",
+            "No scheduled synchronization or unnecessary mirror was introduced",
+        ):
+            self.assertIn(token, self.packet)
+
+    def test_user_and_technical_mirrors_are_body_identical(self):
+        self.assertEqual(
+            body(VAULT_ORA / "Guide — Using Ora.md"),
+            body(ROOT / "docs" / "user-guide.md"),
+        )
+        self.assertEqual(body(TECHNICAL), body(TECHNICAL_MIRROR))
+        technical = body(TECHNICAL)
+        self.assertIn("### Phase 3.5 closeout evidence", technical)
+        self.assertIn("not a comprehensive cross-platform accessibility certification", technical)
+
+    def test_design_checklist_and_gate_boundary_are_exact(self):
+        for token in (
+            "Phase 3.4 implementation — COMPLETE; GATE 3.4 ACCEPTED",
+            "Phase 3.5 implementation — COMPLETE; PENDING GATE 3.5",
+            "### 29.14 G1.1 closeout evidence — AS BUILT 2026-07-19",
+            "- [x] UI screenshots rendered and verified.",
+            "- [x] G1.1 exit criteria verified and tracker disposition updated; independent Gate 3.5 acceptance remains pending.",
+            "G1.1 remains `🟡` until an independent judge accepts Gate 3.5",
+        ):
+            self.assertIn(token, self.design)
+        self.assertNotIn("- [ ] UI screenshots rendered and verified.", self.design)
+        self.assertNotIn("- [ ] G1.1 exit criteria verified", self.design)
+
+    def test_tracker_reconciles_phase_without_premature_completion(self):
+        g11 = self.tracker[
+            self.tracker.index("### G1.1 —") : self.tracker.index("\n### G1.2 —")
+        ]
+        for token in (
+            "### G1.1 — Governed process construction and Programming Oversight proof of concept — 🟡",
+            "Parts 1 and 2 plus Phases 3.1–3.4 accepted",
+            "Current phase:** Part 3, Phase 3.5",
+            "Phase 3.5 authority boundary",
+            "G1.1 remains `🟡` until the independent Gate 3.5 verdict",
+        ):
+            self.assertIn(token, g11)
+        for obsolete in (
+            "Phase 3.4 current",
+            "Current phase:** Part 3, Phase 3.4",
+            "Phase 3.5 remains gated",
+            "Phase 3.5 remains unauthorized",
+        ):
+            self.assertNotIn(obsolete, g11)
+
+    def test_registry_records_acceptance_provenance_and_pending_final_gate(self):
+        technical = h3_section(self.registry, "Reference — Ora Technical Documentation.md")
+        tracker = h3_section(self.registry, "Working — Ora Setup and Refinement.md")
+        design = h3_section(self.registry, "Working — Programming Oversight Manager Design.md")
+        self.assertIn("Gate 3.4 documentation/test acceptance at `6824bb03`", technical)
+        self.assertIn("Phase 3.5 evidence is complete pending Gate 3.5", technical)
+        self.assertIn("Phase 3.5 closeout execution is complete pending independent Gate 3.5", tracker)
+        self.assertIn("Phase 3.5 closeout evidence is complete pending Gate 3.5", design)
+        current = "\n".join((technical, tracker, design))
+        for obsolete in (
+            "Phase 3.4 is complete pending Gate 3.4",
+            "Phase 3.5 remains unauthorized",
+            "Screenshot and final closeout sections remain explicitly unimplemented",
+        ):
+            self.assertNotIn(obsolete, current)
+
+    def test_closeout_deferrals_preserve_adjacent_ownership(self):
+        for token in (
+            "G1.2's full Gear 1/2/3 specification",
+            "Windows/Linux portability",
+            "Broad standing-trigger management",
+            "external-effect or complex-entry graphs",
+            "active-Run pause/stop/resume/reopen",
+            "general in-place state migration engine",
+            "assistive-technology and cross-platform visual certification",
+            "Marketplace, analytics, automatic optimization",
+        ):
+            self.assertIn(token, self.packet)
+
+    def test_temporary_visual_fixture_is_not_release_state(self):
+        for path in (
+            ROOT / "sessions" / "g11-phase35-interface-evidence",
+            ROOT / "sessions" / "thread-20260720-004435-ovas59",
+            ROOT / "data" / "process-runs" / "id-0da66b9a2380e4912837b059",
+            ROOT / "data" / "pipeline-traces" / "thread-20260720-004435-ovas59",
+        ):
+            self.assertFalse(path.exists(), str(path))
+
+
+if __name__ == "__main__":
+    unittest.main()
