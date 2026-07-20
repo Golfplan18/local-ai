@@ -165,6 +165,7 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "Phase 3.4 implementation — COMPLETE; PENDING GATE 3.4",
             "### 29.11 Migration, compatibility, and rollback — AS BUILT 2026-07-19",
             "### 29.12 Troubleshooting — AS BUILT 2026-07-19",
+            "- [x] Migration, rollback, recovery, and troubleshooting documented.",
         ):
             self.assertIn(token, self.design)
         for token in (
@@ -192,6 +193,7 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "Current phase:** Part 3, Phase 3.3",
             "Phase 3.4 is not authorized",
             "maintainer §§29.11–29.12 remain gated",
+            "- [ ] Migration, rollback, recovery, and troubleshooting documented.",
         ):
             self.assertNotIn(obsolete, current_records)
         self.assertIn("Phase 3.5 remains unauthorized", current_records)
