@@ -700,7 +700,15 @@
     // unsendable local draft under a synthetic archive/engram id.
     if (state.readOnlySource) clearDraft(conversation_id);
     if (leftInput) {
-      leftInput.value = state.readOnlySource ? '' : loadDraft(conversation_id);
+      const suppliedDraft = typeof opts.draftMessage === 'string'
+        ? opts.draftMessage
+        : null;
+      leftInput.value = state.readOnlySource
+        ? ''
+        : (suppliedDraft !== null ? suppliedDraft : loadDraft(conversation_id));
+      if (!state.readOnlySource && suppliedDraft !== null) {
+        saveDraft(conversation_id, suppliedDraft);
+      }
     }
 
     // The visual pane must track the turn being shown. Clear stale state
@@ -1618,7 +1626,17 @@
     }
 
     document.addEventListener('ora:new-thread-requested', (e) => {
-      startFresh((e && e.detail) || {});
+      const detail = (e && e.detail) || {};
+      if (detail.bootstrap === true || detail.dossier === true) {
+        return;
+      }
+      if (detail.skip_creation_review === true) {
+        startFresh(detail);
+      } else if (window.OraSidebar && typeof window.OraSidebar.openCreation === 'function') {
+        window.OraSidebar.openCreation(detail);
+      } else {
+        startFresh(detail);
+      }
     });
     document.addEventListener('ora:fork-conversation-requested', (e) => {
       forkActive((e && e.detail) || {});
@@ -1658,7 +1676,8 @@
       const id = e.detail && e.detail.conversation_id;
       const turnIndex = e.detail && e.detail.matched_turn_index;
       const tag = e.detail && e.detail.tag;
-      if (id) load(id, { turnIndex, tag });
+      const draftMessage = e.detail && e.detail.draft_message;
+      if (id) load(id, { turnIndex, tag, draftMessage });
     });
 
     document.addEventListener('click', (event) => {

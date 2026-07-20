@@ -58,7 +58,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "  - documentation",
             "  - guide",
             "date created: 2026-07-04",
-            "date modified: 2026-07-19",
+            "date modified: 2026-07-20",
         ):
             self.assertIn(token, self.guide_raw)
         self.assertFalse(self.mirror_raw.startswith("---\n"))
@@ -250,7 +250,8 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for token in (
             "Parts 1 and 2 plus Phases 3.1–3.5 accepted",
             "G1.1 is complete after independent Gate 3.5 acceptance",
-            "G1.2 is the active Gate 1 priority",
+            "G1.4 is the current item",
+            "G1.3 is authorized but user-deferred",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)

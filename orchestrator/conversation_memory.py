@@ -16,6 +16,12 @@ may be changed explicitly through the lifecycle API. Per-turn request payloads
 never retag an existing envelope. The value is used by close-out dispatch and
 by RAG queries to filter private content.
 
+G1.4 adds a bounded ``description`` plus ``contributors`` to the envelope.
+Contributors are reference identities, not copied text: a Dialogue may cite
+another live/archive Dialogue or an exact atomic-note path without acquiring
+fork ancestry.  The server resolves those references into read-only RAG
+context on each turn.
+
 Persistence surface
 -------------------
 
@@ -152,6 +158,67 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 # existing envelope.
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
+CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
+MAX_CONTRIBUTORS = 20
+
+
+def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str, str]]:
+    """Return the canonical additive contributor-reference shape.
+
+    Conversation references use the browser/runtime identity under ``ref``
+    (a live id or an ``archive:`` id). Atomic notes use one absolute ``path``.
+    ``title`` is display-only provenance; runtime reads never trust it to
+    locate content. Unknown or malformed legacy values are ignored on normal
+    reads and rejected for authoritative creation when ``strict=True``.
+    """
+
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        if strict:
+            raise ValueError("contributors must be a list")
+        return []
+    if len(value) > MAX_CONTRIBUTORS:
+        if strict:
+            raise ValueError(f"contributors exceeds the {MAX_CONTRIBUTORS}-item limit")
+        value = value[:MAX_CONTRIBUTORS]
+
+    normalized: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in value:
+        if not isinstance(item, dict):
+            if strict:
+                raise ValueError("contributor entries must be objects")
+            continue
+        kind = item.get("kind")
+        locator_key = "ref" if kind == "conversation" else "path"
+        allowed = {"kind", locator_key, "title"}
+        locator = item.get(locator_key)
+        title = item.get("title", "")
+        valid = (
+            kind in CONTRIBUTOR_KINDS
+            and set(item).issubset(allowed)
+            and isinstance(locator, str)
+            and bool(locator.strip())
+            and len(locator.strip()) <= 4096
+            and isinstance(title, str)
+            and len(title.strip()) <= 300
+        )
+        if not valid:
+            if strict:
+                raise ValueError("contributor entry is invalid")
+            continue
+        locator = locator.strip()
+        identity = (kind, locator)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        normalized.append({
+            "kind": kind,
+            locator_key: locator,
+            "title": title.strip(),
+        })
+    return normalized
 
 
 def normalize_project_ids(project_ids: Any) -> list[str]:
@@ -256,6 +323,9 @@ def _read_normalized_envelope(
     normalized = normalize_project_ids(data.get("project_ids"))
     needs_heal = "project_ids" in data and data.get("project_ids") != normalized
     data["project_ids"] = normalized
+    # Contributors are an additive v0 field. Sanitise the outward snapshot but
+    # do not churn every pre-G1.4 envelope merely to add an empty list.
+    data["contributors"] = normalize_contributors(data.get("contributors"))
     if not (needs_heal and persist_heal):
         return data
 
@@ -279,6 +349,9 @@ def _read_normalized_envelope(
                     and current.get("project_ids") != current_normalized
                 )
                 current["project_ids"] = current_normalized
+                current["contributors"] = normalize_contributors(
+                    current.get("contributors")
+                )
                 if current_needs_heal:
                     _atomic_write_envelope(path, current)
                 return current
@@ -311,6 +384,9 @@ def _mutate_conversation_envelope(
                 if not isinstance(data, dict):
                     return None
                 data["project_ids"] = normalize_project_ids(data.get("project_ids"))
+                data["contributors"] = normalize_contributors(
+                    data.get("contributors")
+                )
                 mutate(data)
                 return path if _atomic_write_envelope(path, data) else None
         except (OSError, TimeoutError):
@@ -670,6 +746,7 @@ def ensure_conversation_envelope(
         "parent_conversation_id": None,
         "fork_point_chunk_id": None,
         "project_ids": normalize_project_ids(project_ids),
+        "contributors": [],
         "messages": [],
     }
     with _conversation_write_lock(cid):
@@ -705,6 +782,72 @@ def ensure_conversation_envelope(
                 flush=True,
             )
             return None
+
+
+def create_conversation_envelope(
+    conversation_id: str,
+    *,
+    title: str,
+    description: str,
+    contributors: list[dict[str, str]] | None = None,
+    tag: str = "",
+    project_ids: list[str] | None = None,
+    sessions_root: Path | None = None,
+    timestamp: str | None = None,
+) -> dict[str, Any]:
+    """Exclusively create one reviewed, zero-turn G1.4 Dialogue.
+
+    The description is durable creation intent but is not silently recorded as
+    a user turn. The browser restores it as an unsent draft after selecting
+    the new Dialogue, preserving the user's final control over submission.
+    """
+
+    from datetime import datetime as _dt
+
+    cid = validate_conversation_id(conversation_id)
+    if not isinstance(title, str):
+        raise ValueError("title must be a string")
+    clean_title = re.sub(r"\s+", " ", title).strip()
+    if not clean_title or len(clean_title) > 200:
+        raise ValueError("title must contain 1 to 200 characters")
+    if not isinstance(description, str):
+        raise ValueError("description must be a string")
+    clean_description = description.strip()
+    meaningful_terms = re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]+", clean_description)
+    if (
+        len(clean_description) < 20
+        or len(clean_description) > 4000
+        or len(meaningful_terms) < 3
+    ):
+        raise ValueError(
+            "description must contain 20 to 4000 characters and at least 3 terms"
+        )
+    if tag not in CONVERSATION_TAGS:
+        raise ValueError("invalid conversation tag")
+    clean_contributors = normalize_contributors(contributors, strict=True)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    path = _conversation_path(cid, root, create_parent=True)
+    created = timestamp or _dt.now().isoformat(timespec="seconds")
+    envelope: dict[str, Any] = {
+        "conversation_id": cid,
+        "display_name": clean_title,
+        "description": clean_description,
+        "tag": tag,
+        "created": created,
+        "parent_conversation_id": None,
+        "fork_point_chunk_id": None,
+        "project_ids": normalize_project_ids(project_ids),
+        "contributors": clean_contributors,
+        "messages": [],
+    }
+    with _conversation_write_lock(cid):
+        with _rp.locked_file(path):
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(json.dumps(envelope, indent=2, ensure_ascii=False))
+                stream.flush()
+                os.fsync(stream.fileno())
+    return copy.deepcopy(envelope)
 
 
 def save_turn_spatial_state(
@@ -856,6 +999,7 @@ def _do_write(
             "parent_conversation_id":  None,
             "fork_point_chunk_id":     None,
             "project_ids":             normalize_project_ids(project_ids),
+            "contributors":            [],
             "messages":                [],
         }
     else:
@@ -874,6 +1018,9 @@ def _do_write(
         # Preserve real memberships, but lazily heal legacy/default sentinels
         # and malformed values whenever an envelope is written.
         existing["project_ids"] = normalize_project_ids(existing.get("project_ids"))
+        existing["contributors"] = normalize_contributors(
+            existing.get("contributors")
+        )
 
     # Normalize annotations payload: accept either wrapper dict or bare list.
     annotations_normalized: Any
@@ -1209,6 +1356,11 @@ def iter_conversations(
                 if isinstance(data.get("fork_point_chunk_id"), str) else None
             ),
             "project_ids": list(data.get("project_ids") or []),
+            "description": (
+                data.get("description")
+                if isinstance(data.get("description"), str) else ""
+            ),
+            "contributors": copy.deepcopy(data.get("contributors") or []),
         })
     return summaries
 
@@ -1431,6 +1583,7 @@ def fork_conversation(
 
     # A fork stays in the same projects as its parent (G1.33).
     parent_projects = normalize_project_ids(parent.get("project_ids"))
+    parent_contributors = normalize_contributors(parent.get("contributors"))
 
     child = {
         "conversation_id":         new_id,
@@ -1441,6 +1594,11 @@ def fork_conversation(
         "fork_point_chunk_id":     fork_point_chunk_id,
         "forked_at":               forked_at,
         "project_ids":             list(parent_projects),
+        "description":             (
+            parent.get("description")
+            if isinstance(parent.get("description"), str) else ""
+        ),
+        "contributors":            copy.deepcopy(parent_contributors),
         "messages":                copy.deepcopy(parent_messages),
     }
 
@@ -1656,6 +1814,8 @@ __all__ = [
     "MUTABLE_PRIVACY_TAGS",
     "ConversationPlanLifecycleError",
     "validate_conversation_id",
+    "normalize_contributors",
+    "create_conversation_envelope",
     "WELCOME_CONVERSATION_ID",
     "WELCOME_PLACEHOLDER_BODY",
     "load_conversation_json",

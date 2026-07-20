@@ -9074,6 +9074,11 @@ def build_system_prompt_for_gear(
     if context_package["conversation_rag"]:
         reference_blocks.append(_fenced(
             "CONVERSATION CONTEXT", context_package["conversation_rag"]))
+    if context_package.get("contributor_context"):
+        reference_blocks.append(_fenced(
+            "DIALOGUE CONTRIBUTORS (explicit creation-time references)",
+            context_package["contributor_context"],
+        ))
     if context_package["concept_rag"]:
         reference_blocks.append(_fenced(
             "KNOWLEDGE CONTEXT", context_package["concept_rag"]))

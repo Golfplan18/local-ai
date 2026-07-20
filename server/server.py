@@ -9573,6 +9573,10 @@ def chat():
         extra_context["governed_process_invocation"] = (
             _public_process_invocation(manual_invocation)
         )
+    contributor_context = build_contributor_context(panel_id, target_tag=tag)
+    if contributor_context:
+        extra_context = dict(extra_context or {})
+        extra_context["contributor_context"] = contributor_context
     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
                              extra_context=extra_context,
                              tag=tag,
@@ -9996,6 +10000,10 @@ def chat_multipart():
             })
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
+
+    contributor_context = build_contributor_context(panel_id, target_tag=tag)
+    if contributor_context:
+        extra_context["contributor_context"] = contributor_context
 
     manual_invocation = None
     if (
@@ -10474,6 +10482,7 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
                 title = str(msg.get("content") or "").strip().replace("\n", " ")[:80]
                 break
     title_l = title.lower()
+    description = _clean_conversation_browser_text(data.get("description") or "")
     best = {
         "score": 0,
         "snippet": "",
@@ -10484,6 +10493,13 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
         hits = sum(1 for t in terms if t in title_l)
         if hits:
             best.update({"score": hits * 4, "snippet": title[:220]})
+    if terms and description:
+        description_hits = sum(1 for term in terms if term in description.lower())
+        if description_hits and description_hits * 3.5 > best["score"]:
+            best.update({
+                "score": description_hits * 3.5,
+                "snippet": _browser_snippet_from_text(description, query),
+            })
 
     last_text = ""
     turn_idx = -1
@@ -10519,7 +10535,7 @@ def _conversation_search_snippet(data: dict, query: str) -> dict:
     if not terms:
         snippet, msg_idx, fallback_turn_idx = _fallback_conversation_browser_snippet(messages, title)
         best["score"] = 1
-        best["snippet"] = snippet or (last_text or title or "").strip()[:420]
+        best["snippet"] = snippet or (description or last_text or title or "").strip()[:420]
         best["matched_message_index"] = msg_idx
         best["matched_turn_index"] = fallback_turn_idx
     return best
@@ -11382,6 +11398,147 @@ def _browser_source_counts(rows: list[dict]) -> dict:
     return counts
 
 
+_conversation_discovery_lock = threading.RLock()
+_conversation_discovery_reviews: dict[str, dict] = {}
+_CONVERSATION_DISCOVERY_TTL_SECONDS = 1800
+_CONVERSATION_DISCOVERY_LIMIT = 256
+
+
+def _browser_atomic_creation_row(row: dict) -> bool:
+    """Creation discovery admits Dialogues and explicitly atomic notes only."""
+
+    kind = row.get("source_kind") or "live"
+    if kind in {"live", "archive"}:
+        return True
+    return kind == "engram" and "atomic" in _browser_normalize_tags(
+        row.get("tags") or row.get("tag")
+    )
+
+
+def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
+    if not _browser_atomic_creation_row(row):
+        return False
+    if (row.get("source_kind") or "live") == "engram":
+        return True
+    source_tag = row.get("tag") if row.get("tag") in _VALID_CONVERSATION_TAGS else ""
+    return _contributor_privacy_allows(source_tag, target_tag)
+
+
+def _review_contributor_from_row(row: dict) -> dict | None:
+    kind = row.get("source_kind") or "live"
+    title = _clean_conversation_browser_text(row.get("title") or "")[:300]
+    if kind in {"live", "archive"}:
+        ref = str(row.get("conversation_id") or "").strip()
+        if not ref:
+            return None
+        return {"kind": "conversation", "ref": ref, "title": title}
+    if kind == "engram" and _browser_atomic_creation_row(row):
+        ref = str(row.get("conversation_id") or "").strip()
+        path = _browser_decode_source_id("engram", ref)
+        if not path:
+            path = str(row.get("path") or row.get("source_conversation_id") or "").strip()
+        if not path:
+            return None
+        return {"kind": "atomic_note", "path": path, "title": title}
+    return None
+
+
+def _browser_row_for_creation_ref(ref: str) -> dict | None:
+    """Resolve one explicit Library Add action without trusting client row data."""
+
+    ref = str(ref or "").strip()
+    if not ref:
+        return None
+    if ref.startswith("archive:"):
+        envelope = _browser_archive_envelope(ref)
+        kind = "archive"
+    elif ref.startswith("engram:"):
+        envelope = _browser_engram_envelope(ref)
+        kind = "engram"
+    else:
+        try:
+            from conversation_memory import load_conversation_json
+            envelope = load_conversation_json(ref)
+        except Exception:
+            envelope = None
+        kind = "live"
+    if not isinstance(envelope, dict):
+        return None
+    title = envelope.get("display_name") or ref
+    row = {
+        "conversation_id": ref,
+        "source_kind": kind,
+        "result_type": envelope.get("result_type") or f"{kind}_conversation",
+        "tag": envelope.get("tag") or "",
+        "tags": _browser_normalize_tags(envelope.get("tag")),
+        "title": title,
+        "snippet": _conversation_search_snippet(envelope, "").get("snippet") or "",
+        "score": 1000.0,
+        "search_relevance": 100.0,
+        "relevance": 100.0,
+        "last_activity_at": envelope.get("last_activity_at") or "",
+        "closed": bool(envelope.get("closed")),
+    }
+    if kind == "engram":
+        path = _browser_decode_source_id("engram", ref)
+        if not path:
+            return None
+        try:
+            exact_path = _validated_atomic_contributor_path(path)
+        except ValueError:
+            return None
+        content = exact_path.read_text(encoding="utf-8")
+        row["path"] = str(exact_path)
+        row["source_conversation_id"] = str(exact_path)
+        row["tags"] = _browser_frontmatter_tags(content, path=str(exact_path))
+        row["tag"] = ", ".join(row["tags"])
+        row["result_type"] = "vault_note"
+    return row
+
+
+def _register_conversation_discovery(description: str, rows: list[dict]) -> str:
+    now = time.time()
+    candidates: dict[str, dict] = {}
+    for row in rows:
+        contributor = _review_contributor_from_row(row)
+        if contributor is not None:
+            candidates[str(row["conversation_id"])] = contributor
+    token = "review-" + uuid.uuid4().hex
+    with _conversation_discovery_lock:
+        expired = [
+            key for key, value in _conversation_discovery_reviews.items()
+            if now - float(value.get("created_at") or 0) > _CONVERSATION_DISCOVERY_TTL_SECONDS
+        ]
+        for key in expired:
+            _conversation_discovery_reviews.pop(key, None)
+        while len(_conversation_discovery_reviews) >= _CONVERSATION_DISCOVERY_LIMIT:
+            oldest = min(
+                _conversation_discovery_reviews,
+                key=lambda key: _conversation_discovery_reviews[key]["created_at"],
+            )
+            _conversation_discovery_reviews.pop(oldest, None)
+        _conversation_discovery_reviews[token] = {
+            "description": description,
+            "candidates": candidates,
+            "created_at": now,
+        }
+    return token
+
+
+def _read_conversation_discovery(token: str, description: str) -> dict:
+    with _conversation_discovery_lock:
+        review = copy.deepcopy(_conversation_discovery_reviews.get(token))
+    if review is None:
+        raise ValueError("discovery review is missing or expired")
+    if time.time() - float(review.get("created_at") or 0) > _CONVERSATION_DISCOVERY_TTL_SECONDS:
+        with _conversation_discovery_lock:
+            _conversation_discovery_reviews.pop(token, None)
+        raise ValueError("discovery review is missing or expired")
+    if review.get("description") != description:
+        raise ValueError("description changed after discovery review")
+    return review
+
+
 def _browser_parse_bool(value: str | None, default: bool = True) -> bool:
     if value is None:
         return default
@@ -11665,6 +11822,94 @@ def _browser_memory_envelope(conversation_id: str) -> dict | None:
     )
 
 
+def _contributor_privacy_allows(source_tag: str, target_tag: str) -> bool:
+    if source_tag == "stealth":
+        return target_tag == "stealth"
+    if source_tag == "private":
+        return target_tag in {"private", "stealth"}
+    return True
+
+
+def _conversation_contributor_excerpt(envelope: dict, *, limit: int = 6000) -> str:
+    parts: list[str] = []
+    description = _clean_conversation_browser_text(envelope.get("description") or "")
+    if description:
+        parts.append("Creation description: " + description)
+    messages = envelope.get("messages") if isinstance(envelope.get("messages"), list) else []
+    selected: list[str] = []
+    size = 0
+    for message in reversed(messages):
+        if not isinstance(message, dict) or message.get("role") not in {"user", "assistant"}:
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        role = "User" if message.get("role") == "user" else "Ora"
+        chunk = f"{role}: {content}"
+        remaining = max(0, limit - size)
+        if remaining <= 0:
+            break
+        selected.append(chunk[:remaining])
+        size += min(len(chunk), remaining)
+    if selected:
+        parts.append("\n\n".join(reversed(selected)))
+    return "\n\n".join(parts)[:limit]
+
+
+def build_contributor_context(
+    conversation_id: str,
+    *,
+    target_tag: str = "",
+    total_limit: int = 24000,
+) -> str:
+    """Resolve authenticated contributor refs into bounded read-only context."""
+
+    try:
+        from conversation_memory import load_conversation_json, normalize_contributors
+        envelope = load_conversation_json(conversation_id)
+    except Exception:
+        envelope = None
+    if not isinstance(envelope, dict):
+        return ""
+    contributors = normalize_contributors(envelope.get("contributors"), strict=True)
+    blocks: list[str] = []
+    used = 0
+    for contributor in contributors:
+        title = contributor.get("title") or "Contributor"
+        body = ""
+        identity = ""
+        if contributor["kind"] == "conversation":
+            ref = contributor["ref"]
+            source = load_conversation_json(ref)
+            if source is None:
+                source = _browser_memory_envelope(ref)
+            if source is None:
+                body = "[Unavailable: the referenced Dialogue no longer resolves.]"
+            else:
+                source_tag = source.get("tag") if source.get("tag") in _VALID_CONVERSATION_TAGS else ""
+                if not _contributor_privacy_allows(source_tag, target_tag):
+                    body = "[Withheld: the contributor has a stricter privacy boundary.]"
+                else:
+                    body = _conversation_contributor_excerpt(source)
+            identity = f"Dialogue {ref}"
+        else:
+            try:
+                path = _validated_atomic_contributor_path(contributor["path"])
+                content = path.read_text(encoding="utf-8")
+                body = content[:6000]
+                identity = f"Atomic note {path}"
+            except (OSError, ValueError):
+                body = "[Unavailable: the referenced atomic note no longer authenticates.]"
+                identity = f"Atomic note {contributor['path']}"
+        block = f"### {title}\nSource identity: {identity}\n\n{body}".strip()
+        remaining = total_limit - used
+        if remaining <= 0:
+            break
+        blocks.append(block[:remaining])
+        used += min(len(block), remaining)
+    return "\n\n".join(blocks)
+
+
 def _browser_archive_related_rows(
     conversation_id: str,
     limit: int = 100,
@@ -11845,6 +12090,16 @@ def _browser_engram_related_rows(
 def conversations_browser():
     """Search or browse live sessions plus archived conversation memory."""
     query = (request.args.get("q") or "").strip()
+    purpose = (request.args.get("purpose") or "browse").strip().lower()
+    if purpose not in {"browse", "creation"}:
+        return _json_response({"error": "invalid browser purpose"}, status=400)
+    if purpose == "creation" and (
+        len(query) < 20
+        or len(re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]+", query)) < 3
+    ):
+        return _json_response({
+            "error": "creation discovery requires a concrete description",
+        }, status=400)
     sort_mode = (request.args.get("sort") or ("relevance" if query else "recency")).strip().lower()
     if sort_mode not in {"relevance", "recency"}:
         sort_mode = "relevance" if query else "recency"
@@ -11960,18 +12215,168 @@ def conversations_browser():
         show_archived=show_archived,
     )
     rows = _browser_sort_rows(rows, sort_mode)
-    return _json_response({
+    if purpose == "creation":
+        target_tag = (request.args.get("target_tag") or "").strip().lower()
+        if target_tag not in _VALID_CONVERSATION_TAGS:
+            return _json_response({"error": "invalid creation target tag"}, status=400)
+        rows = [
+            row for row in rows
+            if _browser_creation_row_allowed(row, target_tag)
+        ]
+        include_ref = (request.args.get("include_ref") or "").strip()
+        if include_ref and not any(
+            row.get("conversation_id") == include_ref for row in rows
+        ):
+            included = _browser_row_for_creation_ref(include_ref)
+            if included is None or not _browser_creation_row_allowed(included, target_tag):
+                return _json_response({
+                    "error": "requested contributor no longer resolves",
+                }, status=409)
+            rows.insert(0, included)
+    visible_rows = rows[:limit]
+    payload = {
         "query": query,
+        "purpose": purpose,
         "sort": sort_mode,
         "include_conversations": include_conversations,
         "include_engrams": include_engrams,
         "tags": required_tags,
         "show_archived": show_archived,
         "min_relevance": min_relevance,
-        "rows": rows[:limit],
+        "rows": visible_rows,
         "total": len(rows),
         "source_counts": _browser_source_counts(rows),
-    })
+    }
+    if purpose == "creation":
+        payload["review_token"] = _register_conversation_discovery(
+            query, visible_rows
+        )
+    return _json_response(payload)
+
+
+def _validated_atomic_contributor_path(path_value: str) -> Path:
+    path = Path(os.path.abspath(os.path.expanduser(path_value)))
+    vault = Path(rp.vault_dir()).resolve()
+    if path.is_symlink() or not path.is_file() or path.suffix.lower() != ".md":
+        raise ValueError("atomic-note contributor is unavailable")
+    resolved = path.resolve()
+    if not rp.within_base(resolved, vault):
+        raise ValueError("atomic-note contributor escapes the configured vault")
+    try:
+        content = resolved.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError("atomic-note contributor is unreadable") from exc
+    if "atomic" not in _browser_frontmatter_tags(content, path=str(resolved)):
+        raise ValueError("contributor path is not an atomic note")
+    return resolved
+
+
+def _resolve_reviewed_contributors(
+    review: dict,
+    selected_refs,
+    *,
+    target_tag: str,
+) -> list[dict]:
+    if not isinstance(selected_refs, list) or len(selected_refs) > 20:
+        raise ValueError("contributors must be a list of at most 20 reviewed refs")
+    candidates = review.get("candidates") or {}
+    contributors: list[dict] = []
+    seen: set[str] = set()
+    for raw_ref in selected_refs:
+        if not isinstance(raw_ref, str) or raw_ref in seen:
+            if not isinstance(raw_ref, str):
+                raise ValueError("contributor refs must be strings")
+            continue
+        seen.add(raw_ref)
+        candidate = candidates.get(raw_ref)
+        if not isinstance(candidate, dict):
+            raise ValueError("contributor was not part of the reviewed result set")
+        if candidate.get("kind") == "atomic_note":
+            exact_path = _validated_atomic_contributor_path(candidate["path"])
+            contributors.append({
+                "kind": "atomic_note",
+                "path": str(exact_path),
+                "title": candidate.get("title") or exact_path.stem,
+            })
+            continue
+        ref = str(candidate.get("ref") or "")
+        try:
+            from conversation_memory import load_conversation_json
+            source = load_conversation_json(ref)
+        except Exception:
+            source = None
+        if source is None:
+            source = _browser_memory_envelope(ref)
+        if source is None:
+            raise ValueError("Dialogue contributor is unavailable")
+        source_tag = source.get("tag") if source.get("tag") in _VALID_CONVERSATION_TAGS else ""
+        if source_tag == "private" and target_tag == "":
+            raise ValueError("Private Dialogue cannot contribute to a Standard Dialogue")
+        if source_tag == "stealth" and target_tag != "stealth":
+            raise ValueError("Stealth Dialogue cannot contribute outside Stealth")
+        contributors.append({
+            "kind": "conversation",
+            "ref": ref,
+            "title": candidate.get("title") or source.get("display_name") or ref,
+        })
+    return contributors
+
+
+@app.route("/api/conversations/create", methods=["POST"])
+def conversations_create():
+    """Commit a reviewed description-rich Dialogue exactly once."""
+
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    body = request.get_json(force=True, silent=True)
+    if not isinstance(body, dict):
+        return _json_response({"error": "request body must be an object"}, 400)
+    title = body.get("title")
+    description = body.get("description")
+    token = body.get("review_token")
+    tag = body.get("tag", "")
+    if not isinstance(description, str) or not isinstance(token, str):
+        return _json_response({"error": "description and review_token are required"}, 400)
+    if tag not in _VALID_CONVERSATION_TAGS:
+        return _json_response({"error": "invalid creation tag"}, 400)
+    try:
+        review = _read_conversation_discovery(token, description.strip())
+        contributors = _resolve_reviewed_contributors(
+            review,
+            body.get("contributors", []),
+            target_tag=tag,
+        )
+        from active_project import get_active_project, resolve_project_ids
+        from conversation_memory import create_conversation_envelope
+        project_ids = resolve_project_ids(get_active_project())
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        conversation_id = f"thread-{stamp}-{uuid.uuid4().hex[:8]}"
+        with _conversation_lifecycle_lock(conversation_id):
+            _assert_no_casefold_session_collision(conversation_id)
+            envelope = create_conversation_envelope(
+                conversation_id,
+                title=title,
+                description=description,
+                contributors=contributors,
+                tag=tag,
+                project_ids=project_ids,
+            )
+    except (ValueError, FileExistsError) as exc:
+        return _json_response({"error": str(exc)}, 409)
+    except OSError as exc:
+        return _json_response({"error": f"Dialogue creation failed: {exc}"}, 500)
+    with _conversation_discovery_lock:
+        _conversation_discovery_reviews.pop(token, None)
+    return _json_response({
+        "ok": True,
+        "conversation_id": conversation_id,
+        "display_name": envelope["display_name"],
+        "description": envelope["description"],
+        "tag": envelope["tag"],
+        "project_ids": envelope["project_ids"],
+        "contributors": envelope["contributors"],
+    }, 201)
 
 
 @app.route("/api/conversation/<conversation_id>/restore", methods=["POST"])

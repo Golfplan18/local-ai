@@ -112,6 +112,21 @@
   let browserFetchTimer = null;
   let browserFilterTimer = null;
   let browserReturnFocus = null;
+  let creationOverlay = null;
+  let creationTitle = null;
+  let creationDescription = null;
+  let creationResults = null;
+  let creationStatus = null;
+  let creationReviewCheck = null;
+  let creationCommit = null;
+  let creationRows = [];
+  let creationSelectedRefs = new Set();
+  let creationReviewToken = '';
+  let creationReviewedDescription = '';
+  let creationTag = '';
+  let creationIncludedRef = '';
+  let creationReturnFocus = null;
+  let creationBusy = false;
   const lifecycleBusyIds = new Set();
 
   const setExpanded = (on) => {
@@ -861,6 +876,359 @@
     }));
   };
 
+  const creationDescriptionReady = () => {
+    const text = creationDescription ? creationDescription.value.trim() : '';
+    const terms = text.match(/[A-Za-z0-9][A-Za-z0-9_-]+/g) || [];
+    return text.length >= 20 && text.length <= 4000 && terms.length >= 3;
+  };
+
+  const resetCreationReview = () => {
+    creationReviewToken = '';
+    creationReviewedDescription = '';
+    creationRows = [];
+    creationSelectedRefs = new Set();
+    if (creationReviewCheck) {
+      creationReviewCheck.checked = false;
+      creationReviewCheck.disabled = true;
+    }
+    if (creationResults) creationResults.innerHTML = '';
+    updateCreationCommitState();
+  };
+
+  const updateCreationCommitState = () => {
+    if (!creationCommit) return;
+    const titleReady = !!(creationTitle && creationTitle.value.trim()
+      && creationTitle.value.trim().length <= 200);
+    const exactReview = !!creationReviewToken
+      && creationDescription
+      && creationReviewedDescription === creationDescription.value.trim();
+    creationCommit.disabled = creationBusy || !titleReady || !creationDescriptionReady()
+      || !exactReview || !creationReviewCheck || !creationReviewCheck.checked;
+  };
+
+  const closeCreation = () => {
+    const wasOpen = !!(creationOverlay && creationOverlay.classList.contains('is-open'));
+    if (creationOverlay) creationOverlay.classList.remove('is-open');
+    if (!wasOpen) return;
+    const target = creationReturnFocus && creationReturnFocus.isConnected
+      ? creationReturnFocus
+      : newThreadCmd;
+    creationReturnFocus = null;
+    if (target && typeof target.focus === 'function') {
+      try { target.focus(); } catch (e) {}
+    }
+  };
+
+  const continueFromCreation = (row) => {
+    if (!row || row.source_kind !== 'live') return;
+    const draft = creationDescription ? creationDescription.value.trim() : '';
+    closeCreation();
+    document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+      detail: {
+        conversation_id: row.conversation_id,
+        tag: row.tag || '',
+        title: row.title,
+        draft_message: draft,
+        source: 'creation-discovery-continue',
+      },
+    }));
+  };
+
+  const forkDiscoveredRow = async (row, draftMessage, tag, source) => {
+    if (!row || row.source_kind !== 'live' || !row.conversation_id) return;
+    try {
+      const resp = await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/fork`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: tag || '' }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.new_conversation_id) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      closeCreation();
+      closeBrowser();
+      document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+        detail: {
+          conversation_id: data.new_conversation_id,
+          tag: data.tag || tag || '',
+          title: data.new_conversation_id,
+          draft_message: draftMessage || '',
+          source: source || 'library-fork',
+        },
+      }));
+      fetchList();
+    } catch (e) {
+      if (creationStatus && creationOverlay && creationOverlay.classList.contains('is-open')) {
+        creationStatus.textContent = 'Fork failed: ' + (e.message || e);
+      } else {
+        window.alert('Fork failed: ' + (e.message || e));
+      }
+    }
+  };
+
+  const renderCreationRows = () => {
+    if (!creationResults) return;
+    creationResults.innerHTML = '';
+    creationRows.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'conversation-create-result';
+      item.dataset.conversationId = row.conversation_id || '';
+
+      const copy = document.createElement('div');
+      copy.className = 'conversation-create-result-copy';
+      const kind = document.createElement('span');
+      kind.className = 'conversation-create-result-kind';
+      kind.textContent = row.source_kind === 'engram' ? 'Atomic note' : 'Dialogue';
+      const title = document.createElement('strong');
+      title.textContent = row.title || row.conversation_id || '(untitled)';
+      const snippet = document.createElement('span');
+      snippet.className = 'conversation-create-result-snippet';
+      snippet.textContent = row.snippet || '';
+      copy.append(kind, title, snippet);
+      item.appendChild(copy);
+
+      const actions = document.createElement('div');
+      actions.className = 'conversation-create-result-actions';
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'conversation-create-add';
+      const selected = creationSelectedRefs.has(row.conversation_id);
+      add.textContent = selected ? 'Added' : 'Add contributor';
+      add.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      add.addEventListener('click', () => {
+        if (creationSelectedRefs.has(row.conversation_id)) {
+          creationSelectedRefs.delete(row.conversation_id);
+        } else {
+          creationSelectedRefs.add(row.conversation_id);
+        }
+        renderCreationRows();
+      });
+      actions.appendChild(add);
+      if (row.source_kind === 'live') {
+        const continueButton = document.createElement('button');
+        continueButton.type = 'button';
+        continueButton.className = 'conversation-create-continue';
+        continueButton.textContent = 'Continue';
+        continueButton.addEventListener('click', () => continueFromCreation(row));
+        const forkButton = document.createElement('button');
+        forkButton.type = 'button';
+        forkButton.className = 'conversation-create-fork';
+        forkButton.textContent = 'Fork';
+        forkButton.addEventListener('click', () => forkDiscoveredRow(
+          row,
+          creationDescription ? creationDescription.value.trim() : '',
+          creationTag,
+          'creation-discovery-fork'
+        ));
+        actions.append(continueButton, forkButton);
+      }
+      item.appendChild(actions);
+      creationResults.appendChild(item);
+    });
+  };
+
+  const discoverForCreation = async () => {
+    if (!creationDescriptionReady()) {
+      creationStatus.textContent = 'Describe the intended subject in at least 20 characters and 3 terms.';
+      resetCreationReview();
+      return;
+    }
+    creationBusy = true;
+    updateCreationCommitState();
+    creationStatus.textContent = 'Searching Dialogues and atomic notes…';
+    const description = creationDescription.value.trim();
+    try {
+      const params = new URLSearchParams({
+        q: description,
+        purpose: 'creation',
+        conversations: '1',
+        engrams: '1',
+        show_archived: '0',
+        sort: 'relevance',
+        limit: '40',
+      });
+      params.set('target_tag', creationTag);
+      if (creationIncludedRef) params.set('include_ref', creationIncludedRef);
+      const resp = await fetch('/api/conversations/browser?' + params.toString());
+      const data = await resp.json();
+      if (!resp.ok || !data.review_token) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      creationRows = data.rows || [];
+      creationReviewToken = data.review_token;
+      creationReviewedDescription = description;
+      creationSelectedRefs = new Set(
+        Array.from(creationSelectedRefs).filter(ref =>
+          creationRows.some(row => row.conversation_id === ref))
+      );
+      if (creationIncludedRef && creationRows.some(row => row.conversation_id === creationIncludedRef)) {
+        creationSelectedRefs.add(creationIncludedRef);
+      }
+      renderCreationRows();
+      creationReviewCheck.disabled = false;
+      creationReviewCheck.checked = false;
+      creationStatus.textContent = creationRows.length
+        ? `${creationRows.length} related item${creationRows.length === 1 ? '' : 's'} found. Review them before creating.`
+        : 'No related Dialogues or atomic notes found. Confirm that result before creating.';
+    } catch (e) {
+      resetCreationReview();
+      creationStatus.textContent = 'Discovery failed: ' + (e.message || e);
+    } finally {
+      creationBusy = false;
+      updateCreationCommitState();
+    }
+  };
+
+  const commitCreation = async () => {
+    if (!creationCommit || creationCommit.disabled) return;
+    creationBusy = true;
+    updateCreationCommitState();
+    creationStatus.textContent = 'Creating Dialogue…';
+    const description = creationDescription.value.trim();
+    try {
+      const resp = await fetch('/api/conversations/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: creationTitle.value.trim(),
+          description,
+          review_token: creationReviewToken,
+          contributors: Array.from(creationSelectedRefs),
+          tag: creationTag,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.conversation_id) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      closeCreation();
+      document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+        detail: {
+          conversation_id: data.conversation_id,
+          tag: data.tag || '',
+          title: data.display_name,
+          draft_message: description,
+          source: 'reviewed-dialogue-creation',
+        },
+      }));
+      fetchList();
+    } catch (e) {
+      const message = e.message || String(e);
+      if (/missing or expired|changed after discovery/i.test(message)) {
+        resetCreationReview();
+      }
+      creationStatus.textContent = 'Creation failed: ' + message;
+    } finally {
+      creationBusy = false;
+      updateCreationCommitState();
+    }
+  };
+
+  const ensureCreation = () => {
+    if (creationOverlay) return creationOverlay;
+    creationOverlay = document.createElement('div');
+    creationOverlay.className = 'conversation-create-overlay';
+    creationOverlay.setAttribute('role', 'dialog');
+    creationOverlay.setAttribute('aria-modal', 'true');
+    creationOverlay.setAttribute('aria-labelledby', 'conversationCreateHeading');
+    creationOverlay.innerHTML = `
+      <div class="conversation-create-panel">
+        <div class="conversation-create-header">
+          <div>
+            <h2 id="conversationCreateHeading">New Dialogue</h2>
+            <p>Describe the work, review related material, then choose whether to create, continue, or fork.</p>
+          </div>
+          <button class="conversation-create-close" type="button" aria-label="Cancel new Dialogue">×</button>
+        </div>
+        <label class="conversation-create-field">
+          <span>Title</span>
+          <input class="conversation-create-title" maxlength="200" autocomplete="off" />
+        </label>
+        <label class="conversation-create-field">
+          <span>Expanded description</span>
+          <textarea class="conversation-create-description" minlength="20" maxlength="4000" rows="5"
+            placeholder="What do you want to explore or accomplish, and what should related material be about?"></textarea>
+        </label>
+        <div class="conversation-create-discovery-row">
+          <button class="conversation-create-discover" type="button">Find related material</button>
+          <span class="conversation-create-status" aria-live="polite">Nothing is created until you confirm.</span>
+        </div>
+        <div class="conversation-create-results" aria-label="Related Dialogues and atomic notes"></div>
+        <div class="conversation-create-footer">
+          <label class="conversation-create-reviewed">
+            <input type="checkbox" disabled>
+            <span>I reviewed these suggestions and they match my intended subject.</span>
+          </label>
+          <div class="conversation-create-footer-actions">
+            <button class="conversation-create-cancel" type="button">Cancel</button>
+            <button class="conversation-create-commit" type="button" disabled>Create Dialogue</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(creationOverlay);
+    creationTitle = creationOverlay.querySelector('.conversation-create-title');
+    creationDescription = creationOverlay.querySelector('.conversation-create-description');
+    creationResults = creationOverlay.querySelector('.conversation-create-results');
+    creationStatus = creationOverlay.querySelector('.conversation-create-status');
+    creationReviewCheck = creationOverlay.querySelector('.conversation-create-reviewed input');
+    creationCommit = creationOverlay.querySelector('.conversation-create-commit');
+    creationOverlay.querySelector('.conversation-create-close').addEventListener('click', closeCreation);
+    creationOverlay.querySelector('.conversation-create-cancel').addEventListener('click', closeCreation);
+    creationOverlay.querySelector('.conversation-create-discover').addEventListener('click', discoverForCreation);
+    creationCommit.addEventListener('click', commitCreation);
+    creationTitle.addEventListener('input', updateCreationCommitState);
+    creationDescription.addEventListener('input', () => {
+      if (creationDescription.value.trim() !== creationReviewedDescription) resetCreationReview();
+      updateCreationCommitState();
+    });
+    creationReviewCheck.addEventListener('change', updateCreationCommitState);
+    creationOverlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCreation();
+        return;
+      }
+      if (event.key === 'Tab') {
+        const focusable = Array.from(creationOverlay.querySelectorAll(
+          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        )).filter(el => el.offsetParent !== null || el === document.activeElement);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    });
+    return creationOverlay;
+  };
+
+  const openCreation = (detail = {}) => {
+    ensureCreation();
+    closeBrowser();
+    const active = document.activeElement;
+    creationReturnFocus = active && active !== document.body && typeof active.focus === 'function'
+      ? active
+      : newThreadCmd;
+    creationTag = detail.tag === 'private' || detail.tag === 'stealth' ? detail.tag : '';
+    creationIncludedRef = detail.prefill_row && detail.prefill_row.conversation_id
+      ? detail.prefill_row.conversation_id
+      : '';
+    creationTitle.value = '';
+    creationDescription.value = detail.description || '';
+    creationStatus.textContent = 'Nothing is created until you confirm.';
+    resetCreationReview();
+    creationOverlay.classList.add('is-open');
+    const heading = creationOverlay.querySelector('#conversationCreateHeading');
+    heading.textContent = `New ${creationTag === 'private' ? 'Private ' : creationTag === 'stealth' ? 'Stealth ' : ''}Dialogue`;
+    setTimeout(() => creationTitle.focus(), 0);
+  };
+
   const ensureBrowser = () => {
     if (browserOverlay) return browserOverlay;
     browserOverlay = document.createElement('div');
@@ -1216,6 +1584,9 @@
       });
       item.appendChild(title);
 
+      const actions = document.createElement('div');
+      actions.className = 'conversation-browser-actions';
+
       const related = document.createElement('button');
       related.type = 'button';
       related.className = 'conversation-browser-related';
@@ -1225,7 +1596,44 @@
         e.stopPropagation();
         fetchRelated(row.conversation_id);
       });
-      item.appendChild(related);
+      actions.appendChild(related);
+
+      const addContributor = document.createElement('button');
+      addContributor.type = 'button';
+      addContributor.className = 'conversation-browser-add-contributor';
+      addContributor.textContent = 'Add contributor';
+      addContributor.setAttribute('aria-label', `Start a new Dialogue with ${rowTitle} as a contributor`);
+      addContributor.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCreation({ prefill_row: row });
+      });
+      actions.appendChild(addContributor);
+
+      if (row.source_kind === 'live') {
+        const continueButton = document.createElement('button');
+        continueButton.type = 'button';
+        continueButton.className = 'conversation-browser-continue';
+        continueButton.textContent = 'Continue';
+        continueButton.setAttribute('aria-label', `Continue ${rowTitle}`);
+        continueButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeBrowser();
+          activateBrowserRow(row);
+        });
+        actions.appendChild(continueButton);
+
+        const forkButton = document.createElement('button');
+        forkButton.type = 'button';
+        forkButton.className = 'conversation-browser-fork';
+        forkButton.textContent = 'Fork';
+        forkButton.setAttribute('aria-label', `Fork ${rowTitle}`);
+        forkButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          forkDiscoveredRow(row, '', row.tag || '', 'library-fork');
+        });
+        actions.appendChild(forkButton);
+      }
+      item.appendChild(actions);
 
       const dismiss = document.createElement('button');
       dismiss.type = 'button';
@@ -1405,6 +1813,13 @@
     setExpanded(false);
   });
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape'
+        && creationOverlay
+        && creationOverlay.classList.contains('is-open')) {
+      e.preventDefault();
+      closeCreation();
+      return;
+    }
     // The Library is non-modal, so focus may legitimately be elsewhere in
     // the workspace. Escape still closes it before any sidebar shortcut runs.
     if (e.key === 'Escape'
@@ -1621,6 +2036,8 @@
     refreshProjectScope: refreshProjectScopedList,
     refreshProjects: fetchProjects,
     setActiveProject: (nexus, name) => setActiveProject(nexus, name),
+    openCreation,
+    closeCreation,
   };
 
   // The server pointer determines where NEW Dialogues are stamped. Reconcile
