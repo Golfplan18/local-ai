@@ -252,11 +252,11 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             self.assertIn(f"SHA-256 `{digest}`", closeout)
 
-    def test_tracker_and_registry_record_corrected_g1_2_resubmission(self):
+    def test_tracker_and_registry_record_accepted_g1_2_disposition(self):
         tracker = TRACKER.read_text(encoding="utf-8")
         section = h3_section(
-            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — 🟡")
-        current = section[section.rindex("**Gate correction 2026-07-19"):]
+            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — ✅")
+        correction = section[section.index("**Gate correction 2026-07-19"):]
         for token in (
             "revised and resubmitted",
             "works without `ORA_HOME` or `ORA_CAMPAIGN_DIR`",
@@ -265,7 +265,15 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             "792 accepted Ora traces",
             "789 historical traces",
             "limitation distinct from 198/198 row completeness",
-            "G1.3 remains unauthorized",
+        ):
+            self.assertIn(token, correction)
+        current = section[section.rindex("**Gate acceptance 2026-07-20"):]
+        for token in (
+            "G1.2 accepted and complete",
+            "71 focused tests plus 67 subtests",
+            "789 historical health gaps remain a disclosed limitation",
+            "not retroactively certified",
+            "G1.3 is authorized",
         ):
             self.assertIn(token, current)
 
@@ -282,8 +290,9 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             self.assertNotIn("candidate v0.9", entry)
         tracker_entry = h3_section(
             registry, "Working — Ora Setup and Refinement.md")
-        self.assertIn("Gate G1.2 remains closed pending re-judgment", tracker_entry)
-        self.assertIn("G1.3 is unauthorized", tracker_entry)
+        self.assertIn("G1.2 is complete after independent acceptance", tracker_entry)
+        self.assertIn("789 historical trace-health gaps remain disclosed", tracker_entry)
+        self.assertIn("G1.3 is authorized and active", tracker_entry)
 
 
 if __name__ == "__main__":
