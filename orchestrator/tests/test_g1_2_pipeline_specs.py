@@ -201,6 +201,16 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         self.assertIn("1,188 captures — six lanes", guide)
         self.assertNotIn("990 captures — five lanes", guide)
 
+        sites_tracker = (
+            VAULT_ORA / "Working — Project — Ora Sites Build Tracker.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Six-lane capture per campaign entry", sites_tracker)
+        self.assertIn(
+            "raw 9B control (`single-pass-9b`)", sites_tracker)
+        self.assertIn("The six campaign lanes per entry", sites_tracker)
+        self.assertNotIn("Five-lane capture", sites_tracker)
+        self.assertNotIn("The five campaign lanes per entry", sites_tracker)
+
         registry = REGISTRY.read_text(encoding="utf-8")
         corpus_entry = h3_section(registry, "Reference — Trigger Prompt Corpus.md")
         self.assertIn("documents all six lanes", corpus_entry)
