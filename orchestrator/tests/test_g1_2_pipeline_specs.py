@@ -1,4 +1,4 @@
-"""G1.2 — candidate Gear 1/2/3 routing, specifications, and record parity."""
+"""G1.2 — frozen Gear 1/2/3 routing, specifications, and record parity."""
 from __future__ import annotations
 
 import os
@@ -76,7 +76,7 @@ class TestG12PipelineSpecifications(unittest.TestCase):
                 self.assertFalse(mirror.read_text(encoding="utf-8").startswith("---\n"))
                 self.assertEqual(body(canonical), body(mirror))
 
-    def test_installed_mode_gear_assignments_match_candidate_contract(self):
+    def test_installed_mode_gear_assignments_match_frozen_contract(self):
         by_gear = defaultdict(list)
         for path in sorted((ROOT / "modes").glob("*.md")):
             if path.name == "INDEX.md":
@@ -178,22 +178,23 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         )
         self.assertEqual(tool_modes, ["argument-audit"])
 
-    def test_tracker_and_registry_record_open_g1_2_disposition(self):
+    def test_tracker_and_registry_record_completed_g1_2_disposition(self):
         tracker = TRACKER.read_text(encoding="utf-8")
         section = h3_section(
-            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — 🟡")
-        current = section[section.rindex("**Status 2026-07-19"):]
+            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — ✅")
+        current = section[section.rindex("**Final disposition 2026-07-19"):]
         for token in (
-            "one external authentication blocker",
-            "197/198",
-            "`premium/structured-output`",
-            "Not logged in · Please run /login",
-            "fails fast rather than sleeping or substituting",
-            "not frozen or issued",
-            "G1.3 has not started",
+            "G1.2 complete",
+            "All three failed campaign rows",
+            "`complete_main4=198`",
+            "`claude-code:claude-haiku-4.5`",
+            "four-gear taxonomy is retained",
+            "No new medium-fast global slot",
+            "No mode, lens, `## ANALYTICAL PERSPECTIVES`, or `## TOOLS` edit",
+            "Two consecutive accepted targeted runs",
+            "G1.3 was not started",
         ):
             self.assertIn(token, current)
-        self.assertNotIn("G1.2 complete", current)
 
         registry = REGISTRY.read_text(encoding="utf-8")
         for heading in (
@@ -202,14 +203,14 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             "Framework — Gear 3 Pipeline Specifications.md",
         ):
             entry = h3_section(registry, heading)
-            self.assertIn("Canonical candidate v0.9", entry)
-            self.assertIn("final 198/198 audit", entry)
-            self.assertIn("Not yet issued", entry)
+            self.assertIn("Active canonical v1.0", entry)
+            self.assertIn("final campaign audit passed 198/198", entry)
             self.assertIn("body-identically", entry)
+            self.assertNotIn("candidate v0.9", entry)
         tracker_entry = h3_section(
             registry, "Working — Ora Setup and Refinement.md")
-        self.assertIn("G1.2 is now the active priority", tracker_entry)
-        self.assertNotIn("G1.2 is complete", tracker_entry)
+        self.assertIn("G1.2 is complete", tracker_entry)
+        self.assertIn("G1.3 is next", tracker_entry)
 
 
 if __name__ == "__main__":

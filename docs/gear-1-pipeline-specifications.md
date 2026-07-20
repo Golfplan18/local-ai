@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-This is the candidate as-built specification for Ora's Gear 1 response path. It is not issued as the frozen G1.2 specification until the remaining premium campaign row is rerun under its exact authenticated subscription path and the final campaign audit passes. It describes the installed behavior; it does not replace the executable source. `orchestrator/boot.py`, `orchestrator/router.py`, the active named configuration, and `modes/simple.md` remain mechanically authoritative. The paired runtime reference is `docs/gear-1-pipeline-specifications.md`; its body must remain identical to this canonical body.
+This is the active as-built specification for Ora's frozen Gear 1 response path after the complete G1.2 campaign audit passed 198/198 in every lane. It describes the installed behavior; it does not replace the executable source. `orchestrator/boot.py`, `orchestrator/router.py`, the active named configuration, and `modes/simple.md` remain mechanically authoritative. The paired runtime reference is `docs/gear-1-pipeline-specifications.md`; its body must remain identical to this canonical body.
 
 Gear 1 remains separate from Gear 2. The evaluation did not support compression: Gear 1 is a direct conversational path, while Gear 2 deliberately assembles retrieval and tool context. No new medium-fast global slot was added. The existing `utility.classification` and `utility.gear2_rag_lookup` cells already express the needed separation.
 
@@ -63,4 +63,4 @@ When tracing is enabled, the turn records pre-routing, selected mode and gear, e
 
 ## G1.2 evaluation disposition
 
-The accepted evidence to date supports retaining the existing `simple` contract. It did not show a mode-specific defect that justified editing `## ANALYTICAL PERSPECTIVES` or adding `## TOOLS`. Preloading the final mode before Phase A was rejected because the mode is not yet known at that boundary and the first response-producing call already receives the routed mode contract. This disposition remains a freeze candidate until the blocked premium row completes and the final G1.2 audit passes.
+The complete campaign evidence supports retaining the existing `simple` contract. It did not show a mode-specific defect that justified editing `## ANALYTICAL PERSPECTIVES` or adding `## TOOLS`. Preloading the final mode before Phase A was rejected because the mode is not yet known at that boundary and the first response-producing call already receives the routed mode contract. Gear 1 is frozen in this shape until new trace evidence demonstrates a concrete defect.

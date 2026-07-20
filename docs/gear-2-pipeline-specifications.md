@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-This is the candidate as-built specification for Ora's Gear 2 single-pass path. It is not issued as the frozen G1.2 specification until the remaining premium campaign row is rerun under its exact authenticated subscription path and the final campaign audit passes. Executable truth remains in `orchestrator/boot.py`, `orchestrator/router.py`, the selected named configuration, and the selected mode file. The paired runtime reference is `docs/gear-2-pipeline-specifications.md`; its body must remain identical to this canonical body.
+This is the active as-built specification for Ora's frozen Gear 2 single-pass path after the complete G1.2 campaign audit passed 198/198 in every lane. Executable truth remains in `orchestrator/boot.py`, `orchestrator/router.py`, the selected named configuration, and the selected mode file. The paired runtime reference is `docs/gear-2-pipeline-specifications.md`; its body must remain identical to this canonical body.
 
 Gear 2 remains separate from Gear 1 because retrieval, consultation, and transformation context are load-bearing here. It remains separate from Gear 3 because it performs one response-producing pass without an adversarial review cascade. No new medium-fast global slot was needed: the installed Fast-1 selector already populates `utility.gear2_rag_lookup`, while Gear 3 owns separate depth and breadth cells.
 
@@ -79,4 +79,4 @@ With tracing enabled, Ora records routing, mode/gear identity, RAG retrieval pat
 
 ## G1.2 evaluation disposition
 
-The accepted rerun evidence and campaign scoring to date did not justify edits to Gear 2 mode text, `## ANALYTICAL PERSPECTIVES`, or `## TOOLS`. The observed weak structured-output scores were tied to universal visual/corpus fidelity conditions or endpoint-contract defects, which were corrected in shared plumbing. No capture demonstrated that adding a deterministic tool to another mode causally improved its answer, so `argument-audit` remains the only existing tool-declaration exemplar and no speculative tool seeding was performed. This disposition remains a freeze candidate until the blocked premium row completes and the final G1.2 audit passes.
+The complete rerun evidence and campaign scoring did not justify edits to Gear 2 mode text, `## ANALYTICAL PERSPECTIVES`, or `## TOOLS`. The observed weak structured-output scores were tied to universal visual/corpus fidelity conditions or endpoint-contract defects, which were corrected in shared plumbing. No capture demonstrated that adding a deterministic tool to another mode causally improved its answer, so `argument-audit` remains the only existing tool-declaration exemplar and no speculative tool seeding was performed. Gear 2 is frozen in this shape until new trace evidence supports a specific change.
