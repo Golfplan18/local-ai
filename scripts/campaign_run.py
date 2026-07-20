@@ -67,7 +67,13 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
+# Resolve relative to the runner's own checkout by default.  ``~/ora`` was a
+# historical deployment assumption; it made an accepted-runtime checkout read
+# a different repository's traces and falsely fail otherwise valid reruns.
+# ORA_HOME remains an explicit override for packaged/custom layouts.
+ORA_HOME = Path(
+    os.environ.get("ORA_HOME") or Path(__file__).resolve().parent.parent
+).resolve()
 CONFIG_DIR = ORA_HOME / "config"
 CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
 CAMPAIGN_DIR = ORA_HOME / "data" / "campaign"
@@ -812,6 +818,17 @@ def run_ora_pipeline(server: str, config_name: str, technique: Technique,
         # listed type). Empty for non-visual techniques → no override.
         "manual_visual_type": technique.target_visual or "",
     }
+    assistant_count_before = 0
+    try:
+        with urllib.request.urlopen(
+                f"{server}/api/conversation/{conv_id}", timeout=30) as prior_resp:
+            prior = json.loads(prior_resp.read())
+        assistant_count_before = sum(
+            1 for m in (prior.get("messages") or [])
+            if m.get("role") == "assistant")
+    except Exception:
+        pass
+
     req = urllib.request.Request(
         f"{server}/chat", data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
@@ -821,17 +838,35 @@ def run_ora_pipeline(server: str, config_name: str, technique: Technique,
         raise RuntimeError(
             f"pipeline {d.get('status') or 'failed'}: "
             f"{str(d.get('failure_summary') or d)[:300]}")
-    with urllib.request.urlopen(f"{server}/api/conversation/{conv_id}",
-                                timeout=60) as r:
-        conv = json.loads(r.read())
-    assistant = [m for m in (conv.get("messages") or [])
-                 if m.get("role") == "assistant"]
-    if not assistant:
-        raise RuntimeError("no assistant message in conversation after run")
-    text = strip_system_banners(assistant[-1].get("content") or "")
+    # The /chat write and the conversation read model are intentionally
+    # file-backed. On a busy run, the synchronous response can arrive a few
+    # milliseconds before the new assistant turn is visible through the read
+    # endpoint. Poll for an assistant count increase so a retry cannot consume
+    # an older result or declare a successfully persisted turn missing.
+    assistant = []
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(
+                    f"{server}/api/conversation/{conv_id}", timeout=30) as r:
+                conv = json.loads(r.read())
+            assistant = [m for m in (conv.get("messages") or [])
+                         if m.get("role") == "assistant"]
+            if len(assistant) > assistant_count_before:
+                break
+        except Exception:
+            pass
+        time.sleep(0.25)
+    if len(assistant) <= assistant_count_before:
+        raise RuntimeError(
+            "new assistant message not visible in conversation after run")
+    result_message = assistant[-1]
+    text = strip_system_banners(result_message.get("content") or "")
     if not text.strip():
         raise RuntimeError("empty assistant response")
-    return {"text": text, "trace_dir": _latest_trace_dir(conv_id)}
+    trace_ref = str(result_message.get("trace_ref") or "").strip()
+    trace_dir = str(TRACES_DIR / trace_ref) if trace_ref else _latest_trace_dir(conv_id)
+    return {"text": text, "trace_dir": trace_dir}
 
 
 def _latest_trace_dir(conv_id: str) -> str | None:
@@ -965,6 +1000,45 @@ def load_expected_primaries(config_name: str) -> set:
     return expected
 
 
+def load_fidelity_contract(config_name: str) -> dict:
+    """Load the exact cell-primary contract for one frozen campaign lane."""
+    config = json.loads((CONFIGURATIONS_DIR / f"{config_name}.json").read_text())
+    return {
+        "config_name": config_name,
+        "cells": config.get("cells") or {},
+    }
+
+
+def _call_contract_primary(contract: dict, call: dict) -> str | None:
+    """Resolve the primary that an authenticated physical call should use."""
+    slot = str(call.get("slot") or "")
+    gear = call.get("gear")
+    cells = contract.get("cells") or {}
+    path = None
+    if slot in {"sidebar", "step1_cleanup"}:
+        path = ("utility", "step1_cleanup")
+    elif slot in {"fast", "gear2_rag_lookup"}:
+        path = ("utility", "gear2_rag_lookup")
+    elif slot in {"rag_planner", "classification"}:
+        path = ("utility", slot)
+    elif slot in {"depth", "breadth"} and gear in {3, 4}:
+        path = ("analysis", f"gear{gear}", slot)
+    elif slot in {"consolidator", "consolidation"}:
+        path = ("post_analysis", "consolidation")
+    elif slot in {"evaluator", "verification"}:
+        path = ("post_analysis", "verification")
+    elif slot in {"formatter", "formatting"}:
+        path = ("post_analysis", "formatter")
+    if path is None:
+        return None
+    node = cells
+    for key in path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node.get("primary") if isinstance(node, dict) else None
+
+
 _OK_FINISH = {"", "stop", "end_turn", "stop_sequence", "eos", "none"}
 
 
@@ -978,7 +1052,8 @@ def _finish_ok(finish_reason) -> bool:
     return s in _OK_FINISH
 
 
-def verify_trace_fidelity(trace_dir: str | None, expected: set) -> dict:
+def verify_trace_fidelity(trace_dir: str | None, expected: set,
+                          contract: dict | None = None) -> dict:
     """Audit a completed run's trace against the configured primaries.
 
     Checks:
@@ -987,8 +1062,12 @@ def verify_trace_fidelity(trace_dir: str | None, expected: set) -> dict:
          and OpenRouter transports record the same endpoint_id, so a
          same-model transport fallback passes — only a MODEL substitution
          fails.
-      2. No step file recorded ok=false (silent step degradation).
-      3. finish_reason anomalies (length/content_filter/429 markers) are
+      2. When a cell contract is supplied, each physical call must name that
+         configuration and execute the primary for its exact slot and gear.
+         Unused cells are not required: path-legal Gear-1/2/3 runs must not be
+         rejected because a Gear-4 consolidator correctly did not execute.
+      3. No step file recorded ok=false (silent step degradation).
+      4. finish_reason anomalies (length/content_filter/429 markers) are
          surfaced as warnings — the step may have self-healed, but the
          reviewer should know.
 
@@ -1023,7 +1102,81 @@ def verify_trace_fidelity(trace_dir: str | None, expected: set) -> dict:
             result["warnings"].append({
                 "kind": "finish_reason", "model": eid,
                 "finish_reason": str(fr), "step_hint": rec.get("step_hint")})
-    for step_file in sorted(tdir.glob("step*.json")):
+    if contract is not None:
+        call_path = tdir / "model-call-config.jsonl"
+        if not call_path.exists():
+            result["violations"].append({
+                "kind": "no_call_contract",
+                "detail": "trace has no authenticated physical-call records",
+            })
+        else:
+            calls = []
+            for line in call_path.read_text().splitlines():
+                try:
+                    call = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if call.get("physical_attempt"):
+                    calls.append(call)
+            if not calls:
+                result["violations"].append({
+                    "kind": "no_call_contract",
+                    "detail": "trace has no physical model-call records",
+                })
+            for call in calls:
+                eid = call.get("endpoint_id") or call.get("model_id") or "?"
+                declared_config = call.get("config_name")
+                if declared_config != contract.get("config_name"):
+                    result["violations"].append({
+                        "kind": "configuration_identity_mismatch",
+                        "model": eid,
+                        "declared_config": declared_config,
+                        "expected_config": contract.get("config_name"),
+                        "step": call.get("step"),
+                    })
+                    continue
+                primary = _call_contract_primary(contract, call)
+                if primary is None:
+                    result["violations"].append({
+                        "kind": "unbound_model_call",
+                        "model": eid,
+                        "step": call.get("step"),
+                        "slot": call.get("slot"),
+                        "gear": call.get("gear"),
+                    })
+                elif eid != primary:
+                    result["violations"].append({
+                        "kind": "cell_primary_mismatch",
+                        "model": eid,
+                        "expected_model": primary,
+                        "step": call.get("step"),
+                        "slot": call.get("slot"),
+                        "gear": call.get("gear"),
+                    })
+    step_files = sorted(tdir.glob("step*.json"))
+
+    # A bounded quality-gate correction deliberately leaves the failed first
+    # inspection in the trace.  That record is evidence for why correction
+    # fired, not the terminal release decision.  Gear 3 writes an explicit
+    # summary after all inspections; Gear 4 writes numbered pass records, so
+    # its highest pass number is authoritative.  Auditing every file as if it
+    # were terminal made a successful FAIL -> correction -> PASS sequence
+    # impossible to accept and needlessly re-executed paid campaign lanes.
+    quality_summaries = {
+        path for path in step_files
+        if re.fullmatch(r"step\d+(?:_\d+)?-quality-gate", path.stem)
+    }
+    numbered_quality_passes: list[tuple[int, Path]] = []
+    for path in step_files:
+        match = re.fullmatch(
+            r"step\d+(?:_\d+)?-quality-gate-pass-?(\d+)", path.stem)
+        if match:
+            numbered_quality_passes.append((int(match.group(1)), path))
+    terminal_quality_files = set(quality_summaries)
+    if not quality_summaries and numbered_quality_passes:
+        terminal_quality_files.add(max(numbered_quality_passes)[1])
+
+    for step_file in step_files:
         try:
             d = json.loads(step_file.read_text())
         except (OSError, json.JSONDecodeError):
@@ -1032,18 +1185,30 @@ def verify_trace_fidelity(trace_dir: str | None, expected: set) -> dict:
             result["violations"].append({
                 "kind": "step_failed", "step": step_file.stem,
                 "detail": str(d.get("reason"))[:200]})
-    # Subscription primaries MUST have executed. They dispatch only via
-    # the claude-code CLI (no same-id transport fallback), so their
-    # absence from the census means a throttle handed their step to a
-    # fallback-chain model — undetectable above when that model is a
-    # legitimate primary of some OTHER cell (e.g. optimum-plus: a
-    # throttled Opus consolidator falling back to the gemini big-2).
-    for mid in expected:
-        if mid.startswith("claude-code:") and mid not in result["executed"]:
+        if (
+            isinstance(d, dict)
+            and step_file in terminal_quality_files
+            and (d.get("released") is False
+                 or str(d.get("verdict_resolved") or "").upper()
+                 in {"FAIL", "BROKEN"})
+        ):
             result["violations"].append({
-                "kind": "required_model_missing", "model": mid,
-                "detail": "subscription primary never executed — its step "
-                          "was served by a fallback or skipped"})
+                "kind": "quality_gate_not_passed",
+                "step": step_file.stem,
+                "verdict": d.get("verdict_resolved"),
+                "released": d.get("released"),
+            })
+    # Legacy traces do not have cell-bound physical-call records. Preserve the
+    # old subscription-presence safeguard only for that compatibility path.
+    # Current captures use the stronger slot-level check above, which detects
+    # same-config fallback without treating path-legal non-use as failure.
+    if contract is None:
+        for mid in expected:
+            if mid.startswith("claude-code:") and mid not in result["executed"]:
+                result["violations"].append({
+                    "kind": "required_model_missing", "model": mid,
+                    "detail": "subscription primary never executed — its step "
+                              "was served by a fallback or skipped"})
     result["ok"] = not result["violations"]
     return result
 
@@ -1392,6 +1557,10 @@ def run_sweep(args) -> int:
         p: load_expected_primaries(cfg) for p, cfg in ORA_PIPELINES.items()
         if p in pipelines
     }
+    fidelity_contracts = {
+        p: load_fidelity_contract(cfg) for p, cfg in ORA_PIPELINES.items()
+        if p in pipelines
+    }
 
     # Rate map for API-equivalent pricing of lanes the registry can't
     # price (subscription endpoints): union of every config's bake-time
@@ -1435,6 +1604,7 @@ def run_sweep(args) -> int:
         "sp9b_ep": sp9b_ep,
         "sp9b_pricing": sp9b_pricing,
         "expected_primaries": expected_primaries,
+        "fidelity_contracts": fidelity_contracts,
         "rate_map": rate_map,
         "subscription_lanes": subscription_lanes,
     }
@@ -1494,38 +1664,114 @@ def run_sweep(args) -> int:
     return 1 if failures else 0
 
 
-def _wait_for_subscription_window(max_wait_s: int = 86400) -> None:
+def _default_mode_gear(tech: Technique) -> int | None:
+    """Read the pinned mode's declared runtime gear from the frozen source."""
+    mode_id = str(tech.intended_mode or "").strip()
+    if not mode_id:
+        return None
+    path = ORA_HOME / "modes" / f"{mode_id}.md"
+    try:
+        text = path.read_text()
+    except OSError:
+        return None
+    match = re.search(
+        r"^## DEFAULT GEAR\s*$[\s\S]{0,120}?^Gear\s+([1-4])\s*$",
+        text,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    return int(match.group(1)) if match else None
+
+
+def _subscription_probe_endpoint(tech: Technique, contract: dict) -> str | None:
+    """Return the subscription model reachable on the pinned mode's path."""
+    gear = _default_mode_gear(tech)
+    cells = contract.get("cells") or {}
+    if gear == 1:
+        paths = [("utility", "classification")]
+    elif gear == 2:
+        paths = [
+            ("utility", "gear2_rag_lookup"),
+            ("utility", "step1_cleanup"),
+        ]
+    elif gear == 3:
+        paths = [
+            ("analysis", "gear3", "depth"),
+            ("analysis", "gear3", "breadth"),
+        ]
+    elif gear == 4:
+        paths = [
+            ("analysis", "gear4", "depth"),
+            ("analysis", "gear4", "breadth"),
+        ]
+    else:
+        return None
+    for path in paths:
+        node = cells
+        for key in path:
+            node = node.get(key) if isinstance(node, dict) else None
+        primary = node.get("primary") if isinstance(node, dict) else None
+        if str(primary or "").startswith("claude-code:"):
+            return primary
+    return None
+
+
+def _wait_for_subscription_window(endpoint_id: str = CLAUDE_CODE_OPUS,
+                                  max_wait_s: int = 86400) -> None:
     """Block until the Claude subscription accepts calls again. Probes
-    with a tiny *Opus* completion; on a rate-limit reply, sleeps 15 min
+    with a tiny completion from the exact subscription model reachable on
+    this capture's declared path; on a rate-limit reply, sleeps 15 min
     and re-probes (the 5-hour rolling windows and weekly caps mean a
     long sweep simply pauses instead of failing or falling back to the
     metered API).
 
-    Probe model = Opus, deliberately: Max plans cap Opus far tighter than
-    Haiku, so a Haiku probe reports the window 'open' while Opus is already
-    exhausted — the lane then starts captures that die on the Opus step and
-    fall back to a metered model. Probing the model the premium lane
-    actually depends on makes the pacing reflect real Opus availability."""
+    Gear-4 captures therefore probe Opus, while Gear-1/2/3 captures that can
+    legally execute only Haiku do not wait on an unreachable Opus cell."""
     import subprocess
     cli = os.environ.get("ORA_CLAUDE_CODE_BIN") or "claude"
     env = _claude_code_env()
+    model_id = next(
+        (ep["model_id"] for ep in CLAUDE_CODE_ENDPOINTS
+         if ep["id"] == endpoint_id),
+        endpoint_id.split(":", 1)[-1],
+    )
     waited = 0
     while True:
         try:
             r = subprocess.run(
-                [cli, "-p", "--model", "claude-opus-4-8",
+                [cli, "-p", "--model", model_id,
                  "--output-format", "text", "--tools", ""],
                 input="Reply with exactly: OK", capture_output=True,
                 text=True, timeout=180, env=env)
             blob = ((r.stdout or "") + (r.stderr or "")).lower()
-            if r.returncode == 0 and "limit" not in blob:
-                return
-        except Exception:
+        except Exception as exc:
+            raise RuntimeError(
+                f"subscription probe failed before a rate-window verdict: {exc}"
+            ) from exc
+
+        rate_markers = ("limit", "rate limit", "usage cap", "capacity")
+        auth_markers = (
+            "not logged in", "please run /login", "authentication",
+            "unauthorized", "oauth", "invalid credentials",
+        )
+        if r.returncode == 0 and not any(m in blob for m in rate_markers):
+            return
+        if any(m in blob for m in auth_markers):
+            detail = ((r.stderr or r.stdout or "").strip()[:240]
+                      or "Claude CLI authentication unavailable")
+            raise RuntimeError(
+                f"subscription authentication unavailable: {detail}")
+        if not any(m in blob for m in rate_markers):
+            detail = ((r.stderr or r.stdout or "").strip()[:240]
+                      or f"Claude CLI exited {r.returncode}")
+            raise RuntimeError(f"subscription probe failed: {detail}")
+        if r.returncode == 0:
+            # Some CLI builds report a rate-window warning in a successful
+            # envelope. It is still closed for campaign purposes.
             pass
         if waited >= max_wait_s:
             raise RuntimeError(
                 f"subscription window did not reopen within {max_wait_s}s")
-        print("    [pacing] subscription window closed — sleeping 15 min",
+        print(f"    [pacing] {model_id} window closed — sleeping 15 min",
               flush=True)
         time.sleep(900)
         waited += 900
@@ -1545,12 +1791,21 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
            "mode": tech.intended_mode, "pipeline": pipe,
            "at": _now_iso(), "attempts": 0}
     last_err = None
+    subscription_probe = (
+        _subscription_probe_endpoint(tech, ctx["fidelity_contracts"][pipe])
+        if pipe in ctx["subscription_lanes"] and pipe in ctx["fidelity_contracts"]
+        else None
+    )
     for attempt in (1, 2):  # one retry on transient failure
         rec["attempts"] = attempt
         try:
             if pipe in ctx["subscription_lanes"]:
-                # Don't start a long pipeline run into a closed window.
-                _wait_for_subscription_window()
+                # Don't start a long pipeline run into a closed window, but
+                # probe only a subscription model reachable on this pinned
+                # mode's path. An unused Gear-4 Opus cell must not block a
+                # legitimate Gear-2 Haiku capture.
+                if subscription_probe:
+                    _wait_for_subscription_window(subscription_probe)
             if pipe == "single-pass":
                 sp = single_pass_call(ctx["flagship_ep"], tech.prompt)
                 cost = price_single_pass(sp, ctx["flagship_pricing"])
@@ -1602,7 +1857,10 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
                 # 429/throttle cascade to a fallback model, or a silently
                 # failed step, invalidates the run.
                 fidelity = verify_trace_fidelity(
-                    res["trace_dir"], ctx["expected_primaries"][pipe])
+                    res["trace_dir"],
+                    ctx["expected_primaries"][pipe],
+                    ctx["fidelity_contracts"][pipe],
+                )
                 rec["executed_models"] = fidelity["executed"]
                 rec["fidelity_warnings"] = fidelity["warnings"]
                 if not fidelity["ok"]:
@@ -1665,18 +1923,22 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
             # before the retry instead of burning it immediately.
             if "rate-limited" in last_err and pipe in ctx["subscription_lanes"]:
                 try:
-                    _wait_for_subscription_window()
+                    if subscription_probe:
+                        _wait_for_subscription_window(subscription_probe)
                 except RuntimeError:
                     break
                 time.sleep(5)
-            elif ("required_model_missing" in last_err
+            elif (("required_model_missing" in last_err
+                   or "cell_primary_mismatch" in last_err)
                   and pipe in ctx["subscription_lanes"]):
-                # Opus is exhausted: the heavy gear-4 calls fail while the tiny
-                # window-probe still passes, so the lane would otherwise burn
-                # capture after capture producing nothing. Back off before
-                # retrying so a held subscription lane idles cheaply and
-                # auto-resumes once the allocation returns.
-                time.sleep(int(os.environ.get("ORA_SUBSCRIPTION_BACKOFF", "1800")))
+                # A subscription cell fell through to another configured
+                # primary. Revalidate the exact path model before retrying.
+                try:
+                    if subscription_probe:
+                        _wait_for_subscription_window(subscription_probe)
+                except RuntimeError:
+                    break
+                time.sleep(5)
             else:
                 time.sleep(5)
     rec.update(status="failed", error=last_err,

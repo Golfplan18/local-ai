@@ -959,6 +959,13 @@ class Router:
         """
         if slot in ("step1_cleanup", "rag_planner", "classification"):
             return ["utility", slot]
+        if slot in ("fast", "gear2_rag_lookup"):
+            # ``fast 1`` is persisted in two cells by active_configuration:
+            # gear3.depth for sequential work and gear2_rag_lookup for the
+            # single-pass RAG path. The runtime must resolve the latter
+            # directly; aliasing ``fast`` to step1_cleanup silently discarded
+            # the selected fast model on browser Gear-2 requests.
+            return ["utility", "gear2_rag_lookup"]
         if slot == "sidebar":
             # ``sidebar`` is the project-tool entry point for utility-class
             # calls (small / cheap model). Configurations from auto-populate

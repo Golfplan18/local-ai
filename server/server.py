@@ -75,10 +75,12 @@ def _model_refresh_env() -> dict:
 # Import all shared functions from orchestrator
 from boot import (
     load_boot_md, load_routing_config as load_config, get_active_endpoint as get_endpoint,
-    get_slot_endpoint, get_endpoint_by_id, list_interactive_endpoints, call_model,
+    get_slot_endpoint, resolve_single_pass_endpoint, get_endpoint_by_id,
+    list_interactive_endpoints, call_model,
     parse_tool_calls, strip_tool_calls, execute_tool,
     run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
-    run_gear3, run_gear4, _run_model_with_tools, run_pipeline, parse_user_command,
+    run_gear3, run_gear4, _run_model_with_tools, run_single_pass_with_tools,
+    run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
     list_pickable_frameworks, vision_capable_for_endpoint,
     compose_dispatch_announcement, stage3_input_completeness_check,
@@ -3379,8 +3381,13 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     endpoint = get_endpoint(config)
 
     if gear <= 2:
-        system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
-        ep = endpoint  # Gear 1/2: single model, use active endpoint
+        system_prompt = (
+            load_boot_md()
+            if gear == 1
+            else build_system_prompt_for_gear(context_pkg, "breadth")
+        )
+        ep, fast_slot = resolve_single_pass_endpoint(
+            config, gear, config_name=config_name)
         if ep is None:
             if turn_state is not None:
                 turn_state["status"] = "error"
@@ -3390,7 +3397,13 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         if history:
             messages.extend([m for m in history if m["role"] != "system"])
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
-        response = _run_model_with_tools(messages, ep, images=images)
+        response = run_single_pass_with_tools(
+            messages, ep,
+            slot=fast_slot,
+            gear=gear,
+            config_name=config_name,
+            images=images,
+        )
 
     elif gear == 3:
         response = run_gear3(context_pkg, config, history, images=images, config_name=config_name)
@@ -4239,27 +4252,18 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         yield _sse("response", text=pre_routing["pending_clarification"])
         return
 
-    # --- Phase 9 fall-through to direct stream for non-analytical prompts ---
-    # Three cases where the analytical pipeline can't or shouldn't run, all
-    # of which previously produced empty "pipeline produced no response"
-    # errors on the plain HTTP `/chat` endpoint:
+    # --- Legacy direct fallback for unresolved clarification only ---------
+    # ``simple`` is an installed Gear-1 mode, not a placeholder. Routed
+    # direct-response turns must continue through Step 2 and the Gear-1
+    # executor so ``utility.classification``, the named configuration, and
+    # physical-call trace identity remain authoritative. Explicit ``/direct``
+    # still uses ``_direct_stream`` at its separate command boundary.
     #
-    #   (1) bypass_to_direct_response: True — Stage 1 matched a greeting / ack
-    #       / system command / lookup trigger.
-    #   (2) mode == "simple" or "standard" — the placeholder modes set by
-    #       run_step1_cleanup for bypasses and catch-all dispatches. The
-    #       Phase 9 archive removed both mode files; load_mode() returns ""
-    #       so the analytical pipeline drops the response silently.
-    #   (3) The pre-routing pipeline returned a pending clarification but the
-    #       caller is the plain HTTP endpoint that can't render the
-    #       clarification UI. Ask the model directly instead — the reply
-    #       itself can carry the disambiguation question if the model wants.
-    #
-    # All three cases delegate to _direct_stream which calls the model with
-    # boot.md as the system prompt and yields a real `response` event.
+    # The only compatibility fallback here is an unresolved clarification on
+    # a caller that cannot render the clarification surface. Let the direct
+    # model carry that question rather than returning an empty response.
     fallback_to_direct = (
-        pre_routing.get("bypass_to_direct_response")
-        or step1.get("mode") in ("simple", "standard")
+        step1.get("mode") == "standard"
         or pre_routing.get("pending_clarification")
     )
     if fallback_to_direct:

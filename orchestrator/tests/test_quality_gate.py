@@ -220,6 +220,19 @@ def _bind_run(ctx, runtime, run_id, evaluator=None):
 
 
 class TestGear3QualityGate(unittest.TestCase):
+    def test_gate_receives_runtime_issued_exact_subject_identity(self):
+        h = _Harness(["## QUALITY GATE\nall good\nVERDICT: PASS"])
+        with _patched(h):
+            boot.run_gear3(_ctx(), {}, config_name=None)
+        gate_prompts = [user for step, user in h.calls
+                        if step == "quality-gate"]
+        self.assertEqual(len(gate_prompts), 1)
+        prompt = gate_prompts[0]
+        self.assertIn("## REVIEW SUBJECT IDENTITY (runtime-issued)", prompt)
+        self.assertIn("Process Run: pipeline-trace:", prompt)
+        self.assertIn("Candidate Artifact: inline-response:", prompt)
+        self.assertRegex(prompt, r"Candidate Artifact: .* sha256:[0-9a-f]{64}")
+
     def test_pass_ships_without_redo(self):
         h = _Harness(["## QUALITY GATE\nall good\nVERDICT: PASS"])
         with _patched(h):

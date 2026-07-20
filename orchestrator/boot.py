@@ -706,10 +706,14 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
 
     def _call_fn(prompt: str) -> str:
-        return call_model(
+        return call_model_for_cell(
             [{"role": "system", "content": SYSTEM_PROMPT},
              {"role": "user", "content": prompt}],
             endpoint,
+            step_name="visual-synthesis",
+            slot="gear2_rag_lookup",
+            gear=2,
+            config_name=config_name,
         )
 
     env, attempts = synthesize_envelope(clean_prose, mode or "unknown", target_types, _call_fn)
@@ -1572,7 +1576,10 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
     router = _get_router()
     if router:
         # Map v1 slot names to v2 resolution
-        if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
+        if slot in (
+            "sidebar", "step1_cleanup", "rag_planner", "classification",
+            "fast", "gear2_rag_lookup",
+        ):
             ep = router.resolve_utility_slot(slot, context, config_name=config_name)
         elif slot in ("consolidator", "consolidation"):
             ep = router.resolve_post_analysis_slot("consolidation", context, config_name=config_name)
@@ -1628,6 +1635,54 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
                 if (e.get("id") or e.get("name")) == model_id:
                     return e
     return None
+
+
+def resolve_single_pass_endpoint(config: dict, gear: int,
+                                 config_name: str | None = None) -> tuple:
+    """Resolve a Gear-1/2 endpoint and its authoritative cell name.
+
+    Named configurations fail closed instead of falling through to the active
+    profile. Gear 2 uses the dedicated ``gear2_rag_lookup`` cell populated by
+    the Fast-1 selector; ``step1_cleanup`` remains a backward-compatible cell
+    fallback inside the same named configuration.
+    """
+    if gear == 1:
+        return (
+            get_slot_endpoint(config, "classification", config_name=config_name),
+            "classification",
+        )
+    if gear == 2:
+        endpoint = (
+            get_slot_endpoint(config, "fast", config_name=config_name)
+            or get_slot_endpoint(
+                config, "step1_cleanup", config_name=config_name)
+            or (get_active_endpoint(config) if config_name is None else None)
+        )
+        return endpoint, "gear2_rag_lookup"
+    raise ValueError("single-pass endpoint resolution only supports Gear 1 or 2")
+
+
+def get_analysis_slot_endpoint(config: dict, slot: str, gear: int,
+                               context: str = "interactive",
+                               config_name: str | None = None) -> dict | None:
+    """Resolve one analysis slot from the exact requested gear.
+
+    ``get_slot_endpoint`` intentionally prefers the richer Gear-4 cell for
+    ad-hoc depth/breadth lookups. A running Gear-3 pipeline must not use that
+    convenience order: doing so executes the wrong model and makes its retry
+    appear to be a fallback when it is actually the first legal Gear-3 model.
+    """
+    if slot not in {"depth", "breadth"} or gear not in {3, 4}:
+        raise ValueError("analysis slot resolution requires depth/breadth at Gear 3/4")
+    router = _get_router()
+    if router:
+        ep = router.resolve_endpoint(
+            slot, gear, context, config_name=config_name)
+        if ep:
+            return router._to_v1_endpoint(ep)
+    if config_name is not None:
+        return None
+    return get_slot_endpoint(config, slot, context=context)
 
 
 def get_endpoint_by_id(endpoint_id: str) -> dict | None:
@@ -6170,9 +6225,69 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
     # expansion. Fixes the detector-layering bug where Phase A's expanded
     # operational notation either masked or false-positive-matched the
     # post-expansion Stage 1 detector. When this fires, Phase A AND
-    # pre-routing are skipped entirely; the raw prompt goes through as
-    # the cleaned prompt, mode=simple, gear=2.
+    # pre-routing are skipped entirely. Direct bypasses keep the raw prompt
+    # and dispatch ``simple`` (Gear 1); retrieval-without-judgment requests
+    # dispatch ``factual-lookup`` (Gear 2). The two outcomes must not share a
+    # branch: treating the Gear-2 dispatch dict as a generic bypass silently
+    # removed retrieval, tools, and the dedicated fast cell.
     early_bypass = pre_phase_a_bypass_check(raw_prompt)
+    if early_bypass is not None and early_bypass.get("gear2_rag_dispatch"):
+        dispatched_mode = (
+            early_bypass.get("dispatched_mode_id") or "factual-lookup")
+        result = {
+            "cleaned_prompt": raw_prompt,
+            "operational_notation": raw_prompt,
+            "mode": dispatched_mode,
+            "triage_tier": 1,
+            "corrections_log": "",
+            "inferred_items": "",
+            "raw_response": "",
+            "detected_invocation": dispatched_mode,
+            "classification_confidence": "high",
+            "classification_runner_up": "",
+            "classification_reasoning": early_bypass["rationale"],
+            "classification_intent": "LOOKUP",
+            "pre_routing": {
+                "dispatched_mode_id": dispatched_mode,
+                "territory": "T0",
+                "bypass_to_direct_response": False,
+                "gear2_rag_dispatch": True,
+                "pending_clarification": None,
+                "pending_clarification_stage": None,
+                "completeness_gaps": [],
+                "dispatch_announcement": None,
+                "lighter_sibling_mode_id": None,
+                "confidence": "high",
+                "stage1_match_count": 1,
+                "pre_phase_a_bypass": False,
+                "pre_phase_a_rationale": early_bypass["rationale"],
+            },
+        }
+        if PIPELINE_TRACE_AVAILABLE:
+            pipeline_trace.write_step(trace_dir, "step1-phase-a", {
+                "status": "skipped_pre_phase_a_gear2_dispatch",
+                "raw_prompt": raw_prompt,
+                "conversation_context_present": bool(conversation_context),
+                "ambiguity_mode": ambiguity_mode,
+                "dispatch_rationale": early_bypass["rationale"],
+                "dispatched_mode_id": dispatched_mode,
+            }, markdown=(
+                "# Step 1 — Phase A SKIPPED (pre-Phase-A Gear 2 dispatch)\n\n"
+                f"**Raw prompt:** {raw_prompt}\n\n"
+                f"**Dispatch rationale:** {early_bypass['rationale']}\n\n"
+                "The prompt requires retrieval but no judgment. It dispatches "
+                f"to mode=`{dispatched_mode}`, gear=2.\n"
+            ))
+            pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
+                "status": "dispatched_pre_phase_a_gear2",
+                "dispatched_mode_id": dispatched_mode,
+                "rationale": early_bypass["rationale"],
+            }, markdown=(
+                "# Step 1 — Pre-Routing Gear 2 Dispatch\n\n"
+                f"**Mode:** `{dispatched_mode}`  \n"
+                f"**Rationale:** {early_bypass['rationale']}\n"
+            ))
+        return result
     if early_bypass is not None:
         result = {
             "cleaned_prompt": raw_prompt,
@@ -6216,7 +6331,7 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                 "Phase A and the four-stage pre-routing pipeline were "
                 "both skipped. The prompt was detected as a "
                 "chitchat / lookup / system-command by the pre-Phase-A "
-                "trigger scan on the raw prompt. mode=`simple`, gear=2.\n"
+                "trigger scan on the raw prompt. mode=`simple`, gear=1.\n"
             ))
             pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
                 "status": "skipped_pre_phase_a_bypass",
@@ -6289,8 +6404,38 @@ AMBIGUITY_MODE: {ambiguity_mode}
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_msg},
     ]
-    cleanup_response = call_model(messages, endpoint)
-    step1_result = parse_step1_output(cleanup_response)
+    _step_token = _CURRENT_STEP_CV.set("step1-phase-a")
+    _meta_token = _CALL_METADATA_CV.set({
+        "step": "step1-phase-a",
+        "slot": "step1_cleanup",
+        "gear": 1,
+        "config_name": config_name,
+    })
+    try:
+        cleanup_response = call_model(messages, endpoint)
+    finally:
+        _CALL_METADATA_CV.reset(_meta_token)
+        _CURRENT_STEP_CV.reset(_step_token)
+    cleanup_healthy, cleanup_health_reason = _step_output_health(
+        cleanup_response, "phase-a", min_chars=1)
+    if cleanup_healthy:
+        step1_result = parse_step1_output(cleanup_response)
+    else:
+        # A provider error is not a cleaned prompt.  Keep the user's exact
+        # input as both natural-language and operational fallbacks so routing
+        # and later stages never analyse an authentication/transport message.
+        step1_result = {
+            "cleaned_prompt": raw_prompt,
+            "operational_notation": raw_prompt,
+            "mode": "adversarial",
+            "triage_tier": 1,
+            "corrections_log": "",
+            "inferred_items": "",
+            "raw_response": cleanup_response,
+            "detected_invocation": "",
+            "phase_a_transport_failed": True,
+            "phase_a_failure_reason": cleanup_health_reason,
+        }
     # Preserve the user's actual sentence on step1_result so downstream
     # steps (step 2 context assembly, the analyst/eval/verify user-message
     # construction) can present the user's actual words alongside Phase
@@ -6302,8 +6447,18 @@ AMBIGUITY_MODE: {ambiguity_mode}
     # --- Trace: Phase A inputs and parsed outputs ---
     if PIPELINE_TRACE_AVAILABLE:
         pipeline_trace.write_step(trace_dir, "step1-phase-a", {
-            "status": "parse_failed" if step1_result.get("phase_a_parse_failed") else "ok",
+            "status": (
+                "model_error_passthrough"
+                if step1_result.get("phase_a_transport_failed")
+                else "parse_failed"
+                if step1_result.get("phase_a_parse_failed")
+                else "ok"
+            ),
             "phase_a_parse_failed": bool(step1_result.get("phase_a_parse_failed")),
+            "phase_a_transport_failed": bool(
+                step1_result.get("phase_a_transport_failed")),
+            "phase_a_failure_reason": step1_result.get(
+                "phase_a_failure_reason"),
             "raw_prompt": raw_prompt,
             "conversation_context": conversation_context,
             "conversation_context_present": bool(conversation_context),
@@ -7101,10 +7256,14 @@ def _build_rag_selection(config: dict, config_name: str | None = None):
         gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
         if gate_ep is not None:
             def _gate_call(system: str, user: str) -> str:
-                return call_model(
+                return call_model_for_cell(
                     [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
                     gate_ep,
+                    step_name="rag-fit-gate",
+                    slot=slot,
+                    gear=1,
+                    config_name=config_name,
                 )
             fit_gate = make_fit_gate(_gate_call)
     except Exception as exc:
@@ -7154,10 +7313,14 @@ def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
             gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
             if gate_ep is not None:
                 def _gate_call(system: str, user: str) -> str:
-                    return call_model(
+                    return call_model_for_cell(
                         [{"role": "system", "content": system},
                          {"role": "user", "content": user}],
                         gate_ep,
+                        step_name="web-extraction-fit-gate",
+                        slot=slot,
+                        gear=1,
+                        config_name=config_name,
                     )
                 fit_gate = make_fit_gate(_gate_call)
         except Exception as exc:
@@ -7566,10 +7729,15 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                                       "reason": "no_fast_endpoint"}
             else:
                 _wx = _build_web_extraction(config, config_name=config_name)
+                # F-Consult may issue more than one physical call (intent
+                # discovery, prompt sanity, conflict checks).  Carry the
+                # frozen named configuration across every one of them.
+                _consultation_call = _make_web_consultation_invoker(
+                    config_name, _WEB_CONSULT_DEFAULT_SLOT)
                 try:
                     wc_result = assemble_consultation_package(
                         user_prompt=cleaned_prompt or cleaned_nl or raw_prompt,
-                        call_model=call_model,
+                        call_model=_consultation_call,
                         fast_endpoint=fast_ep,
                         conversation_context=(
                             conv_rag[:2000] if conv_rag else ""
@@ -8746,8 +8914,9 @@ def build_system_prompt_for_gear(
     #
     # The role-specific section (depth/breadth guidance for analyst,
     # revision guidance for reviser, etc.) layers ON TOP of this baseline.
-    # Gear 1 is structurally protected — it doesn't route through
-    # build_system_prompt_for_gear at all.
+    # Gear 1 is structurally protected: its exact endpoint/configuration is
+    # resolved by the single-pass dispatcher, but its prompt uses boot.md
+    # directly and does not route through this analytical-step builder.
     if brief_and_eval:
         parts.append(_fenced(
             f"MODE BRIEF & EVALUATION CRITERIA — {mode_name}", brief_and_eval,
@@ -9213,16 +9382,43 @@ def _make_criteria_invoker(config: dict, config_name: str | None):
     case the criteria pass records absence rather than failing (condition 6
     distinguishes 'no model' from 'model failed')."""
     try:
-        endpoint = (get_slot_endpoint(config, "sidebar", config_name=config_name)
-                    or get_active_endpoint(config))
+        endpoint = (
+            get_slot_endpoint(config, "sidebar", config_name=config_name)
+            or (get_active_endpoint(config) if config_name is None else None)
+        )
     except Exception:
         endpoint = None
     if endpoint is None:
         return None
 
     def _invoke(system: str, user: str) -> str:
-        return call_model([{"role": "system", "content": system},
-                           {"role": "user", "content": user}], endpoint)
+        step_token = _CURRENT_STEP_CV.set("planning-criteria")
+        meta_token = _CALL_METADATA_CV.set({
+            "step": "planning-criteria",
+            "slot": "sidebar",
+            "gear": 1,
+            "config_name": config_name,
+        })
+        try:
+            return call_model([{"role": "system", "content": system},
+                               {"role": "user", "content": user}], endpoint)
+        finally:
+            _CALL_METADATA_CV.reset(meta_token)
+            _CURRENT_STEP_CV.reset(step_token)
+    return _invoke
+
+
+def _make_web_consultation_invoker(config_name: str | None, slot: str):
+    """Return an F-Consult callback carrying the exact utility-cell identity."""
+    def _invoke(messages, endpoint):
+        return call_model_for_cell(
+            messages,
+            endpoint,
+            step_name="web-consultation",
+            slot=slot,
+            gear=1,
+            config_name=config_name,
+        )
     return _invoke
 
 
@@ -9856,21 +10052,13 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     #     analysis modes that explicitly opt in.
     if gear <= 2:
         # Gear 1-2: Single model pass with context package.
-        system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
-        if gear == 1:
-            endpoint = get_slot_endpoint(config, "classification",
-                                         config_name=config_name)
-        else:
-            # Gear 2: prefer the `fast` slot (new in the 2026-05-24 redesign,
-            # being wired by the parallel model-selector thread). Fall back
-            # to `step1_cleanup` then to active endpoint when fast is not yet
-            # configured — so the dispatch is safe before the slot lands.
-            endpoint = (
-                get_slot_endpoint(config, "fast", config_name=config_name)
-                or get_slot_endpoint(config, "step1_cleanup",
-                                     config_name=config_name)
-                or get_active_endpoint(config)
-            )
+        system_prompt = (
+            load_boot_md()
+            if gear == 1
+            else build_system_prompt_for_gear(context_pkg, "breadth")
+        )
+        endpoint, fast_slot = resolve_single_pass_endpoint(
+            config, gear, config_name=config_name)
         if endpoint is None:
             turn_state["status"] = "error"
             return "[No AI endpoints configured.]"
@@ -9882,7 +10070,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
 
         # Run agentic loop for tool support
-        response = _run_model_with_tools(messages, endpoint)
+        response = run_single_pass_with_tools(
+            messages, endpoint,
+            slot=fast_slot,
+            gear=gear,
+            config_name=config_name,
+        )
 
     elif gear == 3:
         # Gear 3: Sequential review — Depth analyzes, Breadth reviews, Depth revises.
@@ -10045,6 +10238,52 @@ def _run_model_with_tools(messages: list, endpoint: dict,
         except Exception:
             pass
     return stripped
+
+
+def run_single_pass_with_tools(messages: list, endpoint: dict, *,
+                               slot: str, gear: int,
+                               config_name: str | None,
+                               images: list | None = None) -> str:
+    """Run a Gear-1/2 call under an authenticated cell identity.
+
+    The browser path previously invoked ``_run_model_with_tools`` without
+    carrying its named configuration into the physical-call trace. That both
+    hid active-profile substitution and made slot-level campaign fidelity
+    impossible to prove. Keep the metadata scope across every tool-loop call.
+    """
+    step_name = f"gear{gear}-single-pass"
+    step_token = _CURRENT_STEP_CV.set(step_name)
+    meta_token = _CALL_METADATA_CV.set({
+        "step": step_name,
+        "slot": slot,
+        "gear": gear,
+        "config_name": config_name,
+    })
+    try:
+        return _run_model_with_tools(
+            messages, endpoint, images=images, step_name=step_name)
+    finally:
+        _CALL_METADATA_CV.reset(meta_token)
+        _CURRENT_STEP_CV.reset(step_token)
+
+
+def call_model_for_cell(messages: list, endpoint: dict, *,
+                        step_name: str, slot: str, gear: int,
+                        config_name: str | None,
+                        images: list | None = None) -> str:
+    """Call one model while binding the exact named-configuration cell."""
+    step_token = _CURRENT_STEP_CV.set(step_name)
+    meta_token = _CALL_METADATA_CV.set({
+        "step": step_name,
+        "slot": slot,
+        "gear": gear,
+        "config_name": config_name,
+    })
+    try:
+        return call_model(messages, endpoint, images=images)
+    finally:
+        _CALL_METADATA_CV.reset(meta_token)
+        _CURRENT_STEP_CV.reset(step_token)
 
 
 _INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
@@ -11595,9 +11834,19 @@ def _run_unflagged_claim_scan(
         }, []
 
     try:
+        def _scan_call(messages: list, endpoint: dict, images=None):
+            return call_model_for_cell(
+                messages, endpoint,
+                step_name="unflagged-claim-scan",
+                slot=_WEB_CONSULT_DEFAULT_SLOT,
+                gear=1,
+                config_name=config_name,
+                images=images,
+            )
+
         result = extract_and_verify_unflagged_claims(
             revised_draft, flagged_claims,
-            call_model=call_model,
+            call_model=_scan_call,
             fast_endpoint=fast_ep,
         )
     except Exception as exc:
@@ -11634,8 +11883,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     ``config_name`` (install Chunk 2c) selects a named configuration from
     config/configurations/ instead of the legacy pipelines[context] block.
     """
-    depth_endpoint = get_slot_endpoint(config, "depth", config_name=config_name)
-    breadth_endpoint = get_slot_endpoint(config, "breadth", config_name=config_name)
+    depth_endpoint = get_analysis_slot_endpoint(
+        config, "depth", 3, config_name=config_name)
+    breadth_endpoint = get_analysis_slot_endpoint(
+        config, "breadth", 3, config_name=config_name)
 
     if depth_endpoint is None and breadth_endpoint is None:
         # S11 (2026-05-22): when the cascade comes up empty, surface
@@ -11653,7 +11904,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             except ImportError:
                 from orchestrator import endpoint_health as _eh
             for label, slot_name in (("depth", "depth"), ("breadth", "breadth")):
-                chain = router_obj.get_slot_chain(slot_name, 4, config_name)
+                chain = router_obj.get_slot_chain(slot_name, 3, config_name)
                 if not chain:
                     chain_lines.append(f"  {label} chain: (no chain declared in {config_name!r})")
                     continue
@@ -12250,8 +12501,38 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     def _run_gear3_final_gate(candidate: str, pass_number: int,
                               prior_findings: str | None = None):
         nonlocal _governed_binding_fault
+        candidate_body = extract_revised_draft_section(candidate) or candidate
+        candidate_digest = hashlib.sha256(
+            (candidate_body or "").encode("utf-8")).hexdigest()
+        mode_digest = hashlib.sha256(
+            (context_pkg.get("mode_text") or "").encode("utf-8")).hexdigest()
+        if _bound_runtime is not None:
+            subject_run_id = _bound_run_id
+            subject_artifact_id = _process_binding["final_review"][
+                "candidate_artifact_id"]
+        else:
+            trace_identity = str(trace_dir or f"inline:{candidate_digest}")
+            subject_run_id = f"pipeline-trace:{trace_identity}"
+            subject_artifact_id = f"inline-response:{candidate_digest}"
+        evidence_artifact_id = (
+            f"quality-gate:{candidate_digest}:pass-{pass_number}")
+        subject_identity = (
+            "## REVIEW SUBJECT IDENTITY (runtime-issued)\n"
+            f"- Process Run: {subject_run_id}\n"
+            f"- Process Definition: mode:{context_pkg.get('mode_name') or 'unknown'}"
+            f"@runtime sha256:{mode_digest}\n"
+            f"- Candidate Artifact: {subject_artifact_id} "
+            f"sha256:{candidate_digest}\n"
+            f"- Evidence Artifact: {evidence_artifact_id} "
+            "(content digest assigned from this returned review)\n"
+            "- Review Boundary: final-output-quality-gate\n"
+            "The Candidate Artifact digest binds exactly the `## REVISED DRAFT` "
+            "body below; pipeline scaffolding is context, not part of the "
+            "released artifact.\n\n"
+        )
         gate_user = (
-            f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            subject_identity
+            + f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
             "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
             "is its `## REVISED DRAFT` body — the other sections are pipeline "
             f"scaffolding)\n\n{candidate}\n\n"
@@ -12376,8 +12657,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "call_reason": call_reason,
             "governed_directive": governed_directive,
             "candidate_identity": (
-                "sha256:" + hashlib.sha256((candidate or "").encode("utf-8")).hexdigest()
+                "sha256:" + candidate_digest
             ),
+            "candidate_artifact_id": subject_artifact_id,
+            "evidence_artifact_id": evidence_artifact_id,
             "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
         }, markdown=(
             f"# Step 6.5 — Final-output quality gate (Gear 3, pass {pass_number})\n\n"
