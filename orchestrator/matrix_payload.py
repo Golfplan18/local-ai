@@ -54,7 +54,6 @@ _PASSION_NEWER_SECTIONS = [
 _OPERATION_SECTIONS = [
     "Mission", "Excluded Outcomes", "Objectives", "Constraints",
     "Cadence and Deliverables", "Coordinated Corpora", "Coordinated Outputs",
-    "Active Milestones", "Aspirational Milestones",
     "Performance Log", "Incident Log",
     "Open Questions / Strategic Topics",
     "Spawned Activity Registry", "Iteration History", "Decision Log",
@@ -265,8 +264,36 @@ def _read_passion(text: str) -> dict[str, Any]:
 
 
 def _read_operation(text: str) -> dict[str, Any]:
-    """Operation payload: all Operation-shape sections."""
-    return _read_sections_with_tasks(text, _OPERATION_SECTIONS, _TASK_LIST_SECTIONS)
+    """Operation payload: all Operation-shape sections.
+
+    Operations Manifest Appendix A qualifies both milestone headings.  The
+    original payload reader looked only for the shortened names, silently
+    dropping milestones from canonical Operation matrices.  Return the stable
+    API keys while accepting the canonical headings first and the old headings
+    as compatibility fallbacks.
+    """
+    payload = _read_sections_with_tasks(
+        text, _OPERATION_SECTIONS, _TASK_LIST_SECTIONS
+    )
+    aliases = {
+        "Active Milestones": (
+            "Active Milestones (Recurring)",
+            "Active Milestones",
+        ),
+        "Aspirational Milestones": (
+            "Aspirational Milestones (Maturity Gates)",
+            "Aspirational Milestones",
+        ),
+    }
+    for key, headings in aliases.items():
+        body = ""
+        for heading in headings:
+            body = _extract_section(text, heading)
+            if body:
+                break
+        if body:
+            payload[key] = {"raw": body, "tasks": _parse_tasks(body)}
+    return payload
 
 
 def _read_incubator(text: str) -> dict[str, Any]:

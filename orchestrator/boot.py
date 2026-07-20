@@ -8024,6 +8024,39 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                 + "\n"
             ))
 
+    # G1.5 — direct Operation-Matrix status retrieval.  Matrix sources are a
+    # small identity-bound lane, separate from semantic vault RAG: explicit
+    # status questions must resolve the exact operation nexus and its registered
+    # children even when ordinary retrieval is unavailable or the turn routes
+    # to Gear 1.  The resolver is read-only and emits its own fail-closed source
+    # warning on missing, ambiguous, or invalid records.
+    project_status_context = ""
+    try:
+        try:
+            from project_status import build_project_status_context
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator.project_status import build_project_status_context
+        project_status_context = build_project_status_context(cleaned_prompt)
+    except Exception as exc:
+        print(f"[project-status] deterministic retrieval failed: {exc}",
+              file=sys.stderr, flush=True)
+        _status_text = cleaned_prompt.casefold()
+        if (
+            any(term in _status_text for term in (
+                "status", "progress", "current state", "what's happening",
+                "what is happening", "where do we stand",
+            ))
+            and any(name in _status_text for name in (
+                "ora", "msi", "main street independent",
+            ))
+        ):
+            project_status_context = (
+                "## FAIL-CLOSED STATUS\n\nThe deterministic Operation-Matrix "
+                "resolver failed before it could authenticate the requested "
+                "project source. Do not infer current status from conversation "
+                "memory or unrelated RAG."
+            )
+
     return {
         # `cleaned_prompt` is Phase A's repaired natural-language prompt.
         # It is the prompt the downstream pipeline sees after typo cleanup,
@@ -8053,6 +8086,9 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
+        # G1.5 authenticated Operation-Matrix + registered-child context.
+        # Empty for every non-status request.
+        "project_status_context": project_status_context,
         # Step 2 F-Consult web-consultation context (empty string when
         # the consultation didn't run or no intents were emitted).
         # Injected by build_system_prompt_for_gear as the ## WEB CONTEXT
@@ -9085,6 +9121,17 @@ def build_system_prompt_for_gear(
     if context_package.get("relationship_rag"):
         reference_blocks.append(_fenced(
             "RELATIONSHIP CONTEXT", context_package["relationship_rag"]))
+    if context_package.get("project_status_context"):
+        reference_blocks.append(_fenced(
+            "PROJECT STATUS (authenticated Operation Matrix and registered children)",
+            context_package["project_status_context"],
+            note=(
+                "Use these exact vault sources for the requested current status. "
+                "Distinguish completed, active, deferred, blocked, and merely "
+                "intended work. Source warnings fail closed; do not replace a "
+                "missing status with conversation memory or unrelated RAG."
+            ),
+        ))
     if context_package.get("web_rag"):
         reference_blocks.append(_fenced(
             "WEB CONTEXT (Step 2 F-Consult consultation)", context_package["web_rag"]))
@@ -9281,6 +9328,19 @@ def build_system_prompt_for_gear(
             f"{_criteria}\n")
 
     return "\n".join(parts)
+
+
+def _single_pass_system_prompt(context_package: dict, gear: int) -> str:
+    """Select the Gear-1/2 system prompt without losing G1.5 status data.
+
+    Gear 1 normally receives the deliberately small boot prompt.  An explicit
+    project-status request is the one bounded exception: its deterministic
+    Matrix context must reach the model even when the general RAG lanes stay
+    off.  Gear 2 already uses the full context-package builder.
+    """
+    if gear == 1 and not context_package.get("project_status_context"):
+        return load_boot_md()
+    return build_system_prompt_for_gear(context_package, "breadth")
 
 
 def format_for_vault(response: str, context_pkg: dict = None) -> str:
@@ -10057,11 +10117,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     #     analysis modes that explicitly opt in.
     if gear <= 2:
         # Gear 1-2: Single model pass with context package.
-        system_prompt = (
-            load_boot_md()
-            if gear == 1
-            else build_system_prompt_for_gear(context_pkg, "breadth")
-        )
+        system_prompt = _single_pass_system_prompt(context_pkg, gear)
         endpoint, fast_slot = resolve_single_pass_endpoint(
             config, gear, config_name=config_name)
         if endpoint is None:
