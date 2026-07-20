@@ -4,7 +4,7 @@
 Reproducible capture harness for the 198-entry campaign described in
 the vault doc "Working — Campaign Run Plan 2026-06-06" and published on
 ora-ai.app. For each selected campaign entry it takes prompt #1 (the prime)
-and runs it through five lanes, capturing text, visual artifact,
+and runs it through six lanes, capturing text, visual artifact,
 token usage, and cost:
 
   premium      — Ora server, campaign-premium configuration (gear 4)
@@ -19,6 +19,7 @@ token usage, and cost:
                  The flagship is whatever the premium configuration's
                  big-1 slot picked (auto-selected by the same picker
                  algorithm that baked the configs).
+  single-pass-9b — ONE bare ~9B call, no harness. Control twin for qwen9b.
 
 Subcommands
 -----------
@@ -29,13 +30,14 @@ Subcommands
                  per-model pricing.
   list           Parse the corpus; print counts + technique ids.
   run            Execute the sweep. --techniques all | some | id[,id...]
-                 --pipelines premium,qwen9b,optimum,optimum-plus,single-pass
+                 --pipelines premium,qwen9b,optimum,optimum-plus,single-pass,
+                             single-pass-9b
                  Resumable: completed (technique, pipeline) pairs are
                  skipped on re-run via the manifest.
   aggregate      Build cost tables (per pipeline + grand total) from the
                  manifest → cost-summary.md / cost-summary.json.
   render-doc     Assemble the long capture document (one section per
-                 campaign entry: prompt, then the five answers + visuals).
+                 campaign entry: prompt, then the six answers + visuals).
   all            bake-configs → run → aggregate → render-doc.
 
 Reproducibility notes for third parties
@@ -56,6 +58,7 @@ Reproducibility notes for third parties
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -76,7 +79,35 @@ ORA_HOME = Path(
 ).resolve()
 CONFIG_DIR = ORA_HOME / "config"
 CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
-CAMPAIGN_DIR = ORA_HOME / "data" / "campaign"
+
+
+def resolve_campaign_dir(ora_home: Path = ORA_HOME,
+                         user_home: Path | None = None,
+                         env: dict | None = None) -> Path:
+    """Resolve the authoritative append-only campaign store.
+
+    New/check-out-local campaigns live under the checkout.  The completed
+    reference campaign predates the accepted runtime checkout and remains at
+    ``~/ora/data/campaign``.  Prefer an explicit ORA_CAMPAIGN_DIR, then a local
+    manifest, then that historical authoritative manifest.  This keeps code,
+    configuration, and trace validation anchored in the accepted checkout
+    without requiring the obsolete ORA_HOME override merely to audit evidence.
+    """
+    source_env = os.environ if env is None else env
+    explicit = str(source_env.get("ORA_CAMPAIGN_DIR") or "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    local = Path(ora_home).resolve() / "data" / "campaign"
+    if (local / "campaign-manifest.jsonl").is_file():
+        return local
+    home = Path.home() if user_home is None else Path(user_home)
+    historical = home / "ora" / "data" / "campaign"
+    if (historical / "campaign-manifest.jsonl").is_file():
+        return historical.resolve()
+    return local
+
+
+CAMPAIGN_DIR = resolve_campaign_dir()
 CAPTURES_DIR = CAMPAIGN_DIR / "captures"
 MANIFEST_PATH = CAMPAIGN_DIR / "campaign-manifest.jsonl"
 SNAPSHOT_PATH = CAMPAIGN_DIR / "campaign-configs-snapshot.json"
@@ -84,8 +115,8 @@ TRACES_DIR = ORA_HOME / "data" / "pipeline-traces"
 RENDER_ENVELOPE_JS = (
     ORA_HOME / "server" / "static" / "ora-visual-compiler" / "tools" / "render-envelope.js"
 )
-DEFAULT_CORPUS = Path(os.path.expanduser(
-    "~/Documents/vault/Reference — Trigger Prompt Corpus.md"))
+DEFAULT_CORPUS = Path.home() / "Documents" / "vault" / "Projects" / "Ora" / \
+    "Reference — Trigger Prompt Corpus.md"
 DEFAULT_SERVER = "http://localhost:5000"
 
 ORA_PIPELINES = {
@@ -753,11 +784,12 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
 # ─── Manifest (resume + retry bookkeeping) ───────────────────────────────
 
 
-def load_manifest() -> dict:
+def load_manifest(manifest_path: Path | None = None) -> dict:
     """(technique_key, pipeline) → latest record."""
     done: dict = {}
-    if MANIFEST_PATH.exists():
-        for line in MANIFEST_PATH.read_text().splitlines():
+    source = Path(manifest_path or MANIFEST_PATH)
+    if source.exists():
+        for line in source.read_text().splitlines():
             try:
                 rec = json.loads(line)
                 done[(manifest_key_for_record(rec), rec["pipeline"])] = rec
@@ -2095,7 +2127,8 @@ def _read_step_health(trace_dir: str | None) -> dict | None:
 
 
 def audit_campaign(corpus_path: Path,
-                   pipelines: list[str] | None = None) -> dict:
+                   pipelines: list[str] | None = None,
+                   campaign_dir: Path | None = None) -> dict:
     """Read corpus + latest manifest records and summarize campaign state.
 
     The audit intentionally looks at the latest accepted manifest record per
@@ -2104,8 +2137,15 @@ def audit_campaign(corpus_path: Path,
     accepted capture exists.
     """
     selected_pipelines = pipelines or ALL_PIPELINES
+    corpus_path = Path(corpus_path).expanduser().resolve()
+    source_dir = Path(campaign_dir or CAMPAIGN_DIR).expanduser().resolve()
+    manifest_path = source_dir / "campaign-manifest.jsonl"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(
+            "authoritative campaign manifest not found: "
+            f"{manifest_path}; pass --campaign-dir explicitly")
     techs = parse_corpus(corpus_path)
-    done = load_manifest()
+    done = load_manifest(manifest_path)
     corpus_keys = {t.key for t in techs}
 
     duplicates: dict[str, list[str]] = {}
@@ -2158,6 +2198,7 @@ def audit_campaign(corpus_path: Path,
     severity_counts: dict[str, int] = {k: 0 for k in _SEVERITY_RANK}
     traces_with_contingencies: list[dict] = []
     accepted_trace_count = 0
+    bare_control_records_excluded = 0
     accepted_trace_missing_health: list[dict] = []
 
     for tech in techs:
@@ -2165,8 +2206,11 @@ def audit_campaign(corpus_path: Path,
             rec = done.get((tech.key, pipe)) or {}
             if rec.get("status") != "ok":
                 continue
-            # Single-pass controls have no Ora pipeline trace.
-            if pipe == "single-pass":
+            # Both bare controls intentionally have no Ora pipeline trace.
+            # Counting either as missing step-health turns control shape into
+            # a false runtime-integrity finding.
+            if pipe in {"single-pass", "single-pass-9b"}:
+                bare_control_records_excluded += 1
                 continue
             accepted_trace_count += 1
             health = _read_step_health(rec.get("trace_dir"))
@@ -2200,8 +2244,26 @@ def audit_campaign(corpus_path: Path,
         if key and key not in corpus_keys
     })
 
+    accepted_trace_with_health = (
+        accepted_trace_count - len(accepted_trace_missing_health))
+    snapshot_at = max(
+        (str(rec.get("at") or "") for rec in done.values()),
+        default="",
+    ) or None
+    manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    corpus_sha256 = hashlib.sha256(corpus_path.read_bytes()).hexdigest()
+
     return {
-        "generated_at": _now_iso(),
+        # Deterministic: rerunning against unchanged canonical inputs produces
+        # byte-identical evidence instead of changing only a wall-clock stamp.
+        "generated_at": snapshot_at,
+        "source": {
+            "campaign_dir": str(source_dir),
+            "manifest_path": str(manifest_path),
+            "manifest_sha256": manifest_sha256,
+            "corpus_path": str(corpus_path),
+            "corpus_sha256": corpus_sha256,
+        },
         "corpus": {
             "entries": len(techs),
             "unique_keys": len(corpus_keys),
@@ -2221,7 +2283,16 @@ def audit_campaign(corpus_path: Path,
         },
         "accepted_trace_health": {
             "accepted_trace_count": accepted_trace_count,
+            "accepted_trace_with_health": accepted_trace_with_health,
             "accepted_trace_missing_health": accepted_trace_missing_health,
+            "bare_control_records_excluded": bare_control_records_excluded,
+            "historical_step_health_limitation": (
+                f"{len(accepted_trace_missing_health)} of "
+                f"{accepted_trace_count} accepted Ora pipeline traces predate "
+                "step-health persistence or lack a retained step-health file. "
+                "This historical coverage gap is distinct from campaign-row "
+                "completeness and is not represented as trace-health success."
+            ),
             "severity_counts": severity_counts,
             "category_counts": category_counts,
             "contingency_label_counts": label_counts,
@@ -2231,10 +2302,12 @@ def audit_campaign(corpus_path: Path,
     }
 
 
-def write_campaign_audit(summary: dict) -> tuple[Path, Path]:
-    CAMPAIGN_DIR.mkdir(parents=True, exist_ok=True)
-    json_path = CAMPAIGN_DIR / "campaign-audit.json"
-    md_path = CAMPAIGN_DIR / "campaign-audit.md"
+def write_campaign_audit(summary: dict,
+                         output_dir: Path | None = None) -> tuple[Path, Path]:
+    destination = Path(output_dir or CAMPAIGN_DIR).expanduser().resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    json_path = destination / "campaign-audit.json"
+    md_path = destination / "campaign-audit.md"
     json_path.write_text(json.dumps(summary, indent=2) + "\n")
 
     comp = summary["completeness"]
@@ -2243,6 +2316,13 @@ def write_campaign_audit(summary: dict) -> tuple[Path, Path]:
         "# Campaign Audit",
         "",
         f"_Generated {summary['generated_at']}_",
+        "",
+        "## Authenticated Sources",
+        "",
+        f"- Manifest: `{summary['source']['manifest_path']}`",
+        f"- Manifest SHA-256: `{summary['source']['manifest_sha256']}`",
+        f"- Corpus: `{summary['source']['corpus_path']}`",
+        f"- Corpus SHA-256: `{summary['source']['corpus_sha256']}`",
         "",
         "## Corpus",
         "",
@@ -2284,10 +2364,20 @@ def write_campaign_audit(summary: dict) -> tuple[Path, Path]:
         "",
         "## Accepted Trace Health",
         "",
-        f"- Accepted Ora traces audited: {health['accepted_trace_count']}",
-        f"- Accepted traces missing step-health: {len(health['accepted_trace_missing_health'])}",
+        f"- Bare control rows excluded from trace-health accounting: {health['bare_control_records_excluded']}",
+        f"- Accepted Ora pipeline traces in scope: {health['accepted_trace_count']}",
+        f"- Accepted Ora traces with retained step-health: {health['accepted_trace_with_health']}",
+        f"- Historical Ora traces missing step-health: {len(health['accepted_trace_missing_health'])}",
         f"- Traces with contingencies: {len(health['traces_with_contingencies'])}",
         f"- Severity counts: {health['severity_counts']}",
+        "",
+        "### Historical Coverage Limitation",
+        "",
+        health["historical_step_health_limitation"],
+        "",
+        "Campaign-row completeness and trace-health coverage are separate. "
+        "The 198/198 result certifies accepted row presence in every lane; "
+        "it does not claim that historical step-health exists for every Ora trace.",
         "",
         "### Contingency Categories",
         "",
@@ -2335,7 +2425,7 @@ def render_doc(corpus_path: Path) -> Path:
     kind_label = {"mode": "Analysis mode", "visual": "Visual tool", "lens": "Lens"}
     lines = ["# Comparative Evaluation Campaign — captures", "",
              f"_Assembled {_now_iso()}. One section per campaign entry: the prime "
-             f"prompt, then the five lane answers. Visuals are embedded "
+             f"prompt, then the six lane answers. Visuals are embedded "
              f"as PNG (SVG + envelope JSON sit alongside in captures/)._", ""]
     included = 0
     for tech in techniques:
@@ -2425,8 +2515,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("audit", help="Audit campaign completeness and trace health.")
     sp.add_argument("--corpus", default=str(DEFAULT_CORPUS))
     sp.add_argument("--pipelines", default=",".join(ALL_PIPELINES))
+    sp.add_argument(
+        "--campaign-dir",
+        default=str(CAMPAIGN_DIR),
+        help="authoritative campaign directory containing campaign-manifest.jsonl; "
+             "defaults to the checkout-local manifest, then the historical "
+             "~/ora reference-campaign manifest",
+    )
+    sp.add_argument(
+        "--output-dir",
+        default="",
+        help="write campaign-audit.json/.md here (default: campaign source dir)",
+    )
     sp.add_argument("--no-write", action="store_true",
-                    help="Print the summary without writing data/campaign/campaign-audit.*")
+                    help="print the summary without writing campaign-audit.*")
     sp.set_defaults(func=cmd_audit)
 
     sp = sub.add_parser("render-doc", help="Assemble the capture document.")
@@ -2473,7 +2575,11 @@ def cmd_audit(args) -> int:
     unknown = [p for p in pipelines if p not in ALL_PIPELINES]
     if unknown:
         raise SystemExit(f"unknown pipeline(s): {unknown}; choose from {ALL_PIPELINES}")
-    summary = audit_campaign(Path(args.corpus), pipelines=pipelines)
+    summary = audit_campaign(
+        Path(args.corpus),
+        pipelines=pipelines,
+        campaign_dir=Path(args.campaign_dir),
+    )
     comp = summary["completeness"]
     health = summary["accepted_trace_health"]
     print(
@@ -2487,16 +2593,27 @@ def cmd_audit(args) -> int:
             f"missing={row['missing']} total={row['total']}"
         )
     print(
-        f"[audit] accepted_traces={health['accepted_trace_count']} "
+        f"[audit] ora_traces={health['accepted_trace_count']} "
+        f"health_present={health['accepted_trace_with_health']} "
         f"with_contingencies={len(health['traces_with_contingencies'])} "
-        f"missing_health={len(health['accepted_trace_missing_health'])}"
+        f"historical_missing_health={len(health['accepted_trace_missing_health'])} "
+        f"bare_controls_excluded={health['bare_control_records_excluded']}"
     )
     print(f"[audit] severity_counts={health['severity_counts']}")
+    print(
+        f"[audit] manifest={summary['source']['manifest_path']} "
+        f"sha256={summary['source']['manifest_sha256']}"
+    )
+    print(
+        f"[audit] corpus={summary['source']['corpus_path']} "
+        f"sha256={summary['source']['corpus_sha256']}"
+    )
     if not args.no_write:
-        json_path, md_path = write_campaign_audit(summary)
+        output_dir = Path(args.output_dir) if args.output_dir else None
+        json_path, md_path = write_campaign_audit(summary, output_dir=output_dir)
         print(f"[audit] wrote {json_path}")
         print(f"[audit] wrote {md_path}")
-    return 0
+    return 0 if comp["complete_selected"] == summary["corpus"]["entries"] else 1
 
 
 def cmd_all(args) -> int:

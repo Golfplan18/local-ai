@@ -1,6 +1,8 @@
 """G1.2 — frozen Gear 1/2/3 routing, specifications, and record parity."""
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import sys
 import unittest
@@ -178,21 +180,82 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         )
         self.assertEqual(tool_modes, ["argument-audit"])
 
-    def test_tracker_and_registry_record_completed_g1_2_disposition(self):
+    def test_six_lane_topology_is_consistent_across_active_sources(self):
+        corpus = (VAULT_ORA / "Reference — Trigger Prompt Corpus.md").read_text(
+            encoding="utf-8")
+        self.assertIn("### The six campaign lanes", corpus)
+        self.assertIn("**Single-pass 9B (`single-pass-9b`).**", corpus)
+        self.assertIn("across all six lanes", corpus)
+        self.assertNotIn("### The five campaign lanes", corpus)
+        self.assertNotIn("across all five lanes", corpus)
+
+        runner = (ROOT / "scripts" / "campaign_run.py").read_text(
+            encoding="utf-8")
+        self.assertIn("and runs it through six lanes", runner)
+        self.assertIn('"single-pass", "single-pass-9b"', runner)
+        self.assertNotIn("then the five answers", runner)
+
+        guide = (
+            VAULT / "Projects" / "ora-ai-app" / "Guide — Campaign Capture Run.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("1,188 captures — six lanes", guide)
+        self.assertNotIn("990 captures — five lanes", guide)
+
+        registry = REGISTRY.read_text(encoding="utf-8")
+        corpus_entry = h3_section(registry, "Reference — Trigger Prompt Corpus.md")
+        self.assertIn("documents all six lanes", corpus_entry)
+        self.assertIn("single-pass-9b", corpus_entry)
+        self.assertNotIn("documents the five lanes", corpus_entry)
+
+    def test_tracked_audit_evidence_authenticates_corrected_accounting(self):
+        evidence = ROOT / "outputs" / "g1-2"
+        json_path = evidence / "campaign-audit.json"
+        md_path = evidence / "campaign-audit.md"
+        closeout_path = evidence / "closeout-evidence.md"
+        for path in (json_path, md_path, closeout_path):
+            self.assertTrue(path.is_file(), path)
+
+        audit = json.loads(json_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            audit["pipelines"],
+            ["premium", "qwen9b", "optimum", "optimum-plus",
+             "single-pass", "single-pass-9b"],
+        )
+        for row in audit["completeness"]["per_pipeline"].values():
+            self.assertEqual(
+                row, {"ok": 198, "failed": 0, "missing": 0, "total": 198})
+        health = audit["accepted_trace_health"]
+        self.assertEqual(health["bare_control_records_excluded"], 396)
+        self.assertEqual(health["accepted_trace_count"], 792)
+        self.assertEqual(health["accepted_trace_with_health"], 3)
+        self.assertEqual(len(health["accepted_trace_missing_health"]), 789)
+        self.assertIn("distinct from campaign-row completeness",
+                      health["historical_step_health_limitation"])
+
+        closeout = closeout_path.read_text(encoding="utf-8")
+        self.assertIn(
+            "python3 scripts/campaign_run.py audit --output-dir outputs/g1-2",
+            closeout,
+        )
+        self.assertIn("Exit status: `0`", closeout)
+        for path in (json_path, md_path):
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertIn(f"SHA-256 `{digest}`", closeout)
+
+    def test_tracker_and_registry_record_corrected_g1_2_resubmission(self):
         tracker = TRACKER.read_text(encoding="utf-8")
         section = h3_section(
-            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — ✅")
-        current = section[section.rindex("**Final disposition 2026-07-19"):]
+            tracker, "G1.2 — Trigger Prompt Evaluation Sequence — 🟡")
+        current = section[section.rindex("**Gate correction 2026-07-19"):]
         for token in (
-            "G1.2 complete",
-            "All three failed campaign rows",
-            "`complete_main4=198`",
-            "`claude-code:claude-haiku-4.5`",
-            "four-gear taxonomy is retained",
-            "No new medium-fast global slot",
-            "No mode, lens, `## ANALYTICAL PERSPECTIVES`, or `## TOOLS` edit",
-            "Two consecutive accepted targeted runs",
-            "G1.3 was not started",
+            "revised and resubmitted",
+            "works without `ORA_HOME` or `ORA_CAMPAIGN_DIR`",
+            "All active campaign sources specify six lanes",
+            "396 control rows",
+            "792 accepted Ora traces",
+            "789 historical traces",
+            "limitation distinct from 198/198 row completeness",
+            "G1.3 remains unauthorized",
         ):
             self.assertIn(token, current)
 
@@ -209,8 +272,8 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             self.assertNotIn("candidate v0.9", entry)
         tracker_entry = h3_section(
             registry, "Working — Ora Setup and Refinement.md")
-        self.assertIn("G1.2 is complete", tracker_entry)
-        self.assertIn("G1.3 is next", tracker_entry)
+        self.assertIn("Gate G1.2 remains closed pending re-judgment", tracker_entry)
+        self.assertIn("G1.3 is unauthorized", tracker_entry)
 
 
 if __name__ == "__main__":

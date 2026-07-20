@@ -1,0 +1,4073 @@
+{
+  "generated_at": "2026-07-20T03:27:14+00:00",
+  "source": {
+    "campaign_dir": "/Users/oracle/ora/data/campaign",
+    "manifest_path": "/Users/oracle/ora/data/campaign/campaign-manifest.jsonl",
+    "manifest_sha256": "e0c3aaf8fa3f65f59c8a8341595891c3493b45e2d75b20c0f6615b3db1160f43",
+    "corpus_path": "/Users/oracle/Documents/vault/Projects/Ora/Reference \u2014 Trigger Prompt Corpus.md",
+    "corpus_sha256": "a251ff4d6751e5f7c22da073ff5a040e8c22d09697f821a99217e54b1d9571fd"
+  },
+  "corpus": {
+    "entries": 198,
+    "unique_keys": 198,
+    "by_kind": {
+      "mode": 60,
+      "visual": 22,
+      "lens": 116
+    },
+    "duplicate_public_ids": {
+      "causal-dag": [
+        "mode:causal-dag",
+        "visual:causal-dag"
+      ],
+      "fishbone-diagram": [
+        "visual:fishbone-diagram",
+        "lens:fishbone-diagram"
+      ]
+    }
+  },
+  "pipelines": [
+    "premium",
+    "qwen9b",
+    "optimum",
+    "optimum-plus",
+    "single-pass",
+    "single-pass-9b"
+  ],
+  "completeness": {
+    "complete_main4": 198,
+    "complete_selected": 198,
+    "per_pipeline": {
+      "premium": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      },
+      "qwen9b": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      },
+      "optimum": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      },
+      "optimum-plus": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      },
+      "single-pass": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      },
+      "single-pass-9b": {
+        "ok": 198,
+        "failed": 0,
+        "missing": 0,
+        "total": 198
+      }
+    },
+    "missing_by_pipeline": {
+      "premium": [],
+      "qwen9b": [],
+      "optimum": [],
+      "optimum-plus": [],
+      "single-pass": [],
+      "single-pass-9b": []
+    },
+    "failed_latest_by_pipeline": {
+      "premium": [],
+      "qwen9b": [],
+      "optimum": [],
+      "optimum-plus": [],
+      "single-pass": [],
+      "single-pass-9b": []
+    }
+  },
+  "accepted_trace_health": {
+    "accepted_trace_count": 792,
+    "accepted_trace_with_health": 3,
+    "accepted_trace_missing_health": [
+      {
+        "technique_key": "mode:argument-audit",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-argument-audit-premium/20260613T005757Z"
+      },
+      {
+        "technique_key": "mode:argument-audit",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-argument-audit-qwen9b/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:argument-audit",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-argument-audit-optimum/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:argument-audit",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-argument-audit-optimum-plus/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:coherence-audit",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-coherence-audit-premium/20260613T011152Z"
+      },
+      {
+        "technique_key": "mode:coherence-audit",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-coherence-audit-qwen9b/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:coherence-audit",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-coherence-audit-optimum/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:coherence-audit",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-coherence-audit-optimum-plus/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:frame-audit",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-audit-premium/20260613T012822Z"
+      },
+      {
+        "technique_key": "mode:frame-audit",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-audit-qwen9b/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:frame-audit",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-audit-optimum/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:frame-audit",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-audit-optimum-plus/20260613T005750Z"
+      },
+      {
+        "technique_key": "mode:propaganda-audit",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-propaganda-audit-premium/20260613T014414Z"
+      },
+      {
+        "technique_key": "mode:propaganda-audit",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-propaganda-audit-qwen9b/20260613T011625Z"
+      },
+      {
+        "technique_key": "mode:propaganda-audit",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-propaganda-audit-optimum/20260613T011540Z"
+      },
+      {
+        "technique_key": "mode:propaganda-audit",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-propaganda-audit-optimum-plus/20260613T011146Z"
+      },
+      {
+        "technique_key": "mode:boundary-critique",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-boundary-critique-premium/20260613T015758Z"
+      },
+      {
+        "technique_key": "mode:boundary-critique",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-boundary-critique-qwen9b/20260613T011626Z"
+      },
+      {
+        "technique_key": "mode:boundary-critique",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-boundary-critique-optimum/20260613T011725Z"
+      },
+      {
+        "technique_key": "mode:boundary-critique",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-boundary-critique-optimum-plus/20260613T011401Z"
+      },
+      {
+        "technique_key": "mode:cui-bono",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cui-bono-premium/20260613T021448Z"
+      },
+      {
+        "technique_key": "mode:cui-bono",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cui-bono-qwen9b/20260613T012655Z"
+      },
+      {
+        "technique_key": "mode:cui-bono",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cui-bono-optimum/20260612T214632Z"
+      },
+      {
+        "technique_key": "mode:cui-bono",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cui-bono-optimum-plus/20260613T011947Z"
+      },
+      {
+        "technique_key": "mode:decision-clarity",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-clarity-premium/20260613T023531Z"
+      },
+      {
+        "technique_key": "mode:decision-clarity",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-clarity-qwen9b/20260613T013553Z"
+      },
+      {
+        "technique_key": "mode:decision-clarity",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-clarity-optimum/20260613T012143Z"
+      },
+      {
+        "technique_key": "mode:decision-clarity",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-clarity-optimum-plus/20260613T013157Z"
+      },
+      {
+        "technique_key": "mode:wicked-problems",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-problems-premium/20260613T024954Z"
+      },
+      {
+        "technique_key": "mode:wicked-problems",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-problems-qwen9b/20260613T013840Z"
+      },
+      {
+        "technique_key": "mode:wicked-problems",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-problems-optimum/20260613T014228Z"
+      },
+      {
+        "technique_key": "mode:wicked-problems",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-problems-optimum-plus/20260613T013431Z"
+      },
+      {
+        "technique_key": "mode:constraint-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-constraint-mapping-premium/20260613T031024Z"
+      },
+      {
+        "technique_key": "mode:constraint-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-constraint-mapping-qwen9b/20260613T015028Z"
+      },
+      {
+        "technique_key": "mode:constraint-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-constraint-mapping-optimum/20260613T014258Z"
+      },
+      {
+        "technique_key": "mode:constraint-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-constraint-mapping-optimum-plus/20260613T014811Z"
+      },
+      {
+        "technique_key": "mode:decision-architecture",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-architecture-premium/20260613T032532Z"
+      },
+      {
+        "technique_key": "mode:decision-architecture",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-architecture-qwen9b/20260613T015522Z"
+      },
+      {
+        "technique_key": "mode:decision-architecture",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-architecture-optimum/20260613T014424Z"
+      },
+      {
+        "technique_key": "mode:decision-architecture",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-architecture-optimum-plus/20260613T015615Z"
+      },
+      {
+        "technique_key": "mode:decision-under-uncertainty",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-under-uncertainty-premium/20260613T034909Z"
+      },
+      {
+        "technique_key": "mode:decision-under-uncertainty",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-under-uncertainty-qwen9b/20260613T020959Z"
+      },
+      {
+        "technique_key": "mode:decision-under-uncertainty",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-under-uncertainty-optimum/20260613T020745Z"
+      },
+      {
+        "technique_key": "mode:decision-under-uncertainty",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-under-uncertainty-optimum-plus/20260613T015855Z"
+      },
+      {
+        "technique_key": "mode:multi-criteria-decision",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-multi-criteria-decision-premium/20260613T040851Z"
+      },
+      {
+        "technique_key": "mode:multi-criteria-decision",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-multi-criteria-decision-qwen9b/20260613T021433Z"
+      },
+      {
+        "technique_key": "mode:multi-criteria-decision",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-multi-criteria-decision-optimum/20260613T020906Z"
+      },
+      {
+        "technique_key": "mode:multi-criteria-decision",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-multi-criteria-decision-optimum-plus/20260613T021435Z"
+      },
+      {
+        "technique_key": "mode:causal-dag",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-premium/20260613T042528Z"
+      },
+      {
+        "technique_key": "mode:causal-dag",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-qwen9b/20260613T021746Z"
+      },
+      {
+        "technique_key": "mode:causal-dag",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-optimum/20260613T021328Z"
+      },
+      {
+        "technique_key": "mode:causal-dag",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-optimum-plus/20260613T022508Z"
+      },
+      {
+        "technique_key": "mode:process-tracing",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-tracing-premium/20260613T044054Z"
+      },
+      {
+        "technique_key": "mode:process-tracing",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-tracing-qwen9b/20260613T022940Z"
+      },
+      {
+        "technique_key": "mode:process-tracing",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-tracing-optimum/20260613T022520Z"
+      },
+      {
+        "technique_key": "mode:process-tracing",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-tracing-optimum-plus/20260613T022647Z"
+      },
+      {
+        "technique_key": "mode:root-cause-analysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-root-cause-analysis-premium/20260613T050044Z"
+      },
+      {
+        "technique_key": "mode:root-cause-analysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-root-cause-analysis-qwen9b/20260613T023410Z"
+      },
+      {
+        "technique_key": "mode:root-cause-analysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-root-cause-analysis-optimum/20260613T023428Z"
+      },
+      {
+        "technique_key": "mode:root-cause-analysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-root-cause-analysis-optimum-plus/20260613T022946Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-causal",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-causal-premium/20260613T051251Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-causal",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-causal-qwen9b/20260613T023442Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-causal",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-causal-optimum/20260613T023624Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-causal",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-causal-optimum-plus/20260613T024753Z"
+      },
+      {
+        "technique_key": "mode:bayesian-hypothesis-network",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-hypothesis-network-premium/20260613T053203Z"
+      },
+      {
+        "technique_key": "mode:bayesian-hypothesis-network",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-hypothesis-network-qwen9b/20260613T025745Z"
+      },
+      {
+        "technique_key": "mode:bayesian-hypothesis-network",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-hypothesis-network-optimum/20260613T025227Z"
+      },
+      {
+        "technique_key": "mode:bayesian-hypothesis-network",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-hypothesis-network-optimum-plus/20260613T025000Z"
+      },
+      {
+        "technique_key": "mode:competing-hypotheses",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-competing-hypotheses-premium/20260613T062436Z"
+      },
+      {
+        "technique_key": "mode:competing-hypotheses",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-competing-hypotheses-qwen9b/20260613T030357Z"
+      },
+      {
+        "technique_key": "mode:competing-hypotheses",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-competing-hypotheses-optimum/20260613T025704Z"
+      },
+      {
+        "technique_key": "mode:competing-hypotheses",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-competing-hypotheses-optimum-plus/20260613T025703Z"
+      },
+      {
+        "technique_key": "mode:differential-diagnosis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-premium/20260613T064653Z"
+      },
+      {
+        "technique_key": "mode:differential-diagnosis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-qwen9b/20260613T030545Z"
+      },
+      {
+        "technique_key": "mode:differential-diagnosis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-optimum/20260613T030126Z"
+      },
+      {
+        "technique_key": "mode:differential-diagnosis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-optimum-plus/20260613T031232Z"
+      },
+      {
+        "technique_key": "mode:consequences-and-sequel",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-consequences-and-sequel-premium/20260613T070234Z"
+      },
+      {
+        "technique_key": "mode:consequences-and-sequel",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-consequences-and-sequel-qwen9b/20260613T031838Z"
+      },
+      {
+        "technique_key": "mode:consequences-and-sequel",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-consequences-and-sequel-optimum/20260613T031754Z"
+      },
+      {
+        "technique_key": "mode:consequences-and-sequel",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-consequences-and-sequel-optimum-plus/20260613T032705Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-action",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-action-premium/20260613T072239Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-action",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-action-qwen9b/20260613T032751Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-action",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-action-optimum/20260613T032240Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-action",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-action-optimum-plus/20260613T032936Z"
+      },
+      {
+        "technique_key": "mode:probabilistic-forecasting",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-probabilistic-forecasting-premium/20260613T074103Z"
+      },
+      {
+        "technique_key": "mode:probabilistic-forecasting",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-probabilistic-forecasting-qwen9b/20260613T034102Z"
+      },
+      {
+        "technique_key": "mode:probabilistic-forecasting",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-probabilistic-forecasting-optimum/20260613T033052Z"
+      },
+      {
+        "technique_key": "mode:probabilistic-forecasting",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-probabilistic-forecasting-optimum-plus/20260613T033613Z"
+      },
+      {
+        "technique_key": "mode:scenario-planning",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scenario-planning-premium/20260613T075734Z"
+      },
+      {
+        "technique_key": "mode:scenario-planning",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scenario-planning-qwen9b/20260613T034531Z"
+      },
+      {
+        "technique_key": "mode:scenario-planning",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scenario-planning-optimum/20260613T034043Z"
+      },
+      {
+        "technique_key": "mode:scenario-planning",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scenario-planning-optimum-plus/20260613T034739Z"
+      },
+      {
+        "technique_key": "mode:wicked-future",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-future-premium/20260613T081751Z"
+      },
+      {
+        "technique_key": "mode:wicked-future",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-future-qwen9b/20260613T034548Z"
+      },
+      {
+        "technique_key": "mode:wicked-future",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-future-optimum/20260613T034507Z"
+      },
+      {
+        "technique_key": "mode:wicked-future",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wicked-future-optimum-plus/20260613T035039Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-fragility",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-fragility-premium/20260613T084124Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-fragility",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-fragility-qwen9b/20260613T042028Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-fragility",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-fragility-optimum/20260614T175452Z"
+      },
+      {
+        "technique_key": "mode:pre-mortem-fragility",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pre-mortem-fragility-optimum-plus/20260613T035945Z"
+      },
+      {
+        "technique_key": "mode:fragility-antifragility-audit",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fragility-antifragility-audit-premium/20260613T090000Z"
+      },
+      {
+        "technique_key": "mode:fragility-antifragility-audit",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fragility-antifragility-audit-qwen9b/20260613T040459Z"
+      },
+      {
+        "technique_key": "mode:fragility-antifragility-audit",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fragility-antifragility-audit-optimum/20260613T040522Z"
+      },
+      {
+        "technique_key": "mode:fragility-antifragility-audit",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fragility-antifragility-audit-optimum-plus/20260613T041309Z"
+      },
+      {
+        "technique_key": "mode:stakeholder-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-mapping-premium/20260613T091857Z"
+      },
+      {
+        "technique_key": "mode:stakeholder-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-mapping-qwen9b/20260613T041046Z"
+      },
+      {
+        "technique_key": "mode:stakeholder-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-mapping-optimum/20260613T041241Z"
+      },
+      {
+        "technique_key": "mode:stakeholder-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-mapping-optimum-plus/20260613T041326Z"
+      },
+      {
+        "technique_key": "mode:frame-comparison",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-comparison-premium/20260613T093517Z"
+      },
+      {
+        "technique_key": "mode:frame-comparison",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-comparison-qwen9b/20260613T042332Z"
+      },
+      {
+        "technique_key": "mode:frame-comparison",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-comparison-optimum/20260613T042843Z"
+      },
+      {
+        "technique_key": "mode:frame-comparison",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-frame-comparison-optimum-plus/20260613T041756Z"
+      },
+      {
+        "technique_key": "mode:paradigm-suspension",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-paradigm-suspension-premium/20260613T095156Z"
+      },
+      {
+        "technique_key": "mode:paradigm-suspension",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-paradigm-suspension-qwen9b/20260613T043226Z"
+      },
+      {
+        "technique_key": "mode:paradigm-suspension",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-paradigm-suspension-optimum/20260613T044506Z"
+      },
+      {
+        "technique_key": "mode:paradigm-suspension",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-paradigm-suspension-optimum-plus/20260613T043529Z"
+      },
+      {
+        "technique_key": "mode:worldview-cartography",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-worldview-cartography-premium/20260613T100720Z"
+      },
+      {
+        "technique_key": "mode:worldview-cartography",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-worldview-cartography-qwen9b/20260613T044131Z"
+      },
+      {
+        "technique_key": "mode:worldview-cartography",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-worldview-cartography-optimum/20260613T044541Z"
+      },
+      {
+        "technique_key": "mode:worldview-cartography",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-worldview-cartography-optimum-plus/20260613T043857Z"
+      },
+      {
+        "technique_key": "mode:conceptual-engineering",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-conceptual-engineering-premium/20260613T102645Z"
+      },
+      {
+        "technique_key": "mode:conceptual-engineering",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-conceptual-engineering-qwen9b/20260613T044232Z"
+      },
+      {
+        "technique_key": "mode:conceptual-engineering",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-conceptual-engineering-optimum/20260613T045328Z"
+      },
+      {
+        "technique_key": "mode:conceptual-engineering",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-conceptual-engineering-optimum-plus/20260613T044438Z"
+      },
+      {
+        "technique_key": "mode:deep-clarification",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-deep-clarification-premium/20260613T104303Z"
+      },
+      {
+        "technique_key": "mode:deep-clarification",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-deep-clarification-qwen9b/20260613T044540Z"
+      },
+      {
+        "technique_key": "mode:deep-clarification",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-deep-clarification-optimum/20260613T050722Z"
+      },
+      {
+        "technique_key": "mode:deep-clarification",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-deep-clarification-optimum-plus/20260613T045726Z"
+      },
+      {
+        "technique_key": "mode:relationship-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-relationship-mapping-premium/20260613T105733Z"
+      },
+      {
+        "technique_key": "mode:relationship-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-relationship-mapping-qwen9b/20260613T045121Z"
+      },
+      {
+        "technique_key": "mode:relationship-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-relationship-mapping-optimum/20260613T051339Z"
+      },
+      {
+        "technique_key": "mode:relationship-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-relationship-mapping-optimum-plus/20260613T050711Z"
+      },
+      {
+        "technique_key": "mode:spatial-reasoning",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-spatial-reasoning-premium/20260613T111435Z"
+      },
+      {
+        "technique_key": "mode:spatial-reasoning",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-spatial-reasoning-qwen9b/20260613T045940Z"
+      },
+      {
+        "technique_key": "mode:spatial-reasoning",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-spatial-reasoning-optimum/20260613T051354Z"
+      },
+      {
+        "technique_key": "mode:spatial-reasoning",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-spatial-reasoning-optimum-plus/20260614T175452Z"
+      },
+      {
+        "technique_key": "mode:dialectical-analysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-dialectical-analysis-premium/20260613T112721Z"
+      },
+      {
+        "technique_key": "mode:dialectical-analysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-dialectical-analysis-qwen9b/20260613T050046Z"
+      },
+      {
+        "technique_key": "mode:dialectical-analysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-dialectical-analysis-optimum/20260613T061158Z"
+      },
+      {
+        "technique_key": "mode:dialectical-analysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-dialectical-analysis-optimum-plus/20260613T051350Z"
+      },
+      {
+        "technique_key": "mode:synthesis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-synthesis-premium/20260613T114625Z"
+      },
+      {
+        "technique_key": "mode:synthesis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-synthesis-qwen9b/20260613T050713Z"
+      },
+      {
+        "technique_key": "mode:synthesis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-synthesis-optimum/20260613T053507Z"
+      },
+      {
+        "technique_key": "mode:synthesis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-synthesis-optimum-plus/20260613T060355Z"
+      },
+      {
+        "technique_key": "mode:interest-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-interest-mapping-premium/20260613T120210Z"
+      },
+      {
+        "technique_key": "mode:interest-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-interest-mapping-qwen9b/20260613T051114Z"
+      },
+      {
+        "technique_key": "mode:interest-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-interest-mapping-optimum/20260613T054245Z"
+      },
+      {
+        "technique_key": "mode:interest-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-interest-mapping-optimum-plus/20260613T060627Z"
+      },
+      {
+        "technique_key": "mode:principled-negotiation",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principled-negotiation-premium/20260613T121434Z"
+      },
+      {
+        "technique_key": "mode:principled-negotiation",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principled-negotiation-qwen9b/20260613T060848Z"
+      },
+      {
+        "technique_key": "mode:principled-negotiation",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principled-negotiation-optimum/20260613T055926Z"
+      },
+      {
+        "technique_key": "mode:principled-negotiation",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principled-negotiation-optimum-plus/20260613T060158Z"
+      },
+      {
+        "technique_key": "mode:third-side",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-third-side-premium/20260613T123107Z"
+      },
+      {
+        "technique_key": "mode:third-side",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-third-side-qwen9b/20260613T060924Z"
+      },
+      {
+        "technique_key": "mode:third-side",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-third-side-optimum/20260613T060117Z"
+      },
+      {
+        "technique_key": "mode:third-side",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-third-side-optimum-plus/20260613T062732Z"
+      },
+      {
+        "technique_key": "mode:domain-induction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-domain-induction-premium/20260613T124451Z"
+      },
+      {
+        "technique_key": "mode:domain-induction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-domain-induction-qwen9b/20260613T061348Z"
+      },
+      {
+        "technique_key": "mode:domain-induction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-domain-induction-optimum/20260613T063429Z"
+      },
+      {
+        "technique_key": "mode:domain-induction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-domain-induction-optimum-plus/20260613T063128Z"
+      },
+      {
+        "technique_key": "mode:quick-orientation",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quick-orientation-premium/20260613T130747Z"
+      },
+      {
+        "technique_key": "mode:quick-orientation",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quick-orientation-qwen9b/20260613T063244Z"
+      },
+      {
+        "technique_key": "mode:quick-orientation",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quick-orientation-optimum/20260613T063736Z"
+      },
+      {
+        "technique_key": "mode:quick-orientation",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quick-orientation-optimum-plus/20260613T063349Z"
+      },
+      {
+        "technique_key": "mode:terrain-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-terrain-mapping-premium/20260613T131716Z"
+      },
+      {
+        "technique_key": "mode:terrain-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-terrain-mapping-qwen9b/20260613T063609Z"
+      },
+      {
+        "technique_key": "mode:terrain-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-terrain-mapping-optimum/20260613T063827Z"
+      },
+      {
+        "technique_key": "mode:terrain-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-terrain-mapping-optimum-plus/20260613T064925Z"
+      },
+      {
+        "technique_key": "mode:balanced-critique",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-balanced-critique-premium/20260613T133353Z"
+      },
+      {
+        "technique_key": "mode:balanced-critique",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-balanced-critique-qwen9b/20260613T063936Z"
+      },
+      {
+        "technique_key": "mode:balanced-critique",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-balanced-critique-optimum/20260613T065317Z"
+      },
+      {
+        "technique_key": "mode:balanced-critique",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-balanced-critique-optimum-plus/20260613T065310Z"
+      },
+      {
+        "technique_key": "mode:benefits-analysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-benefits-analysis-premium/20260613T135308Z"
+      },
+      {
+        "technique_key": "mode:benefits-analysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-benefits-analysis-qwen9b/20260613T064726Z"
+      },
+      {
+        "technique_key": "mode:benefits-analysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-benefits-analysis-optimum/20260613T065704Z"
+      },
+      {
+        "technique_key": "mode:benefits-analysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-benefits-analysis-optimum-plus/20260613T070627Z"
+      },
+      {
+        "technique_key": "mode:red-team-advocate",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-advocate-premium/20260613T141059Z"
+      },
+      {
+        "technique_key": "mode:red-team-advocate",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-advocate-qwen9b/20260613T064734Z"
+      },
+      {
+        "technique_key": "mode:red-team-advocate",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-advocate-optimum/20260613T065707Z"
+      },
+      {
+        "technique_key": "mode:red-team-advocate",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-advocate-optimum-plus/20260613T074847Z"
+      },
+      {
+        "technique_key": "mode:red-team-assessment",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-assessment-premium/20260613T143753Z"
+      },
+      {
+        "technique_key": "mode:red-team-assessment",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-assessment-qwen9b/20260613T072233Z"
+      },
+      {
+        "technique_key": "mode:red-team-assessment",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-assessment-optimum/20260613T072201Z"
+      },
+      {
+        "technique_key": "mode:red-team-assessment",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-team-assessment-optimum-plus/20260613T071638Z"
+      },
+      {
+        "technique_key": "mode:steelman-construction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-steelman-construction-premium/20260613T145750Z"
+      },
+      {
+        "technique_key": "mode:steelman-construction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-steelman-construction-qwen9b/20260613T070542Z"
+      },
+      {
+        "technique_key": "mode:steelman-construction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-steelman-construction-optimum/20260613T072730Z"
+      },
+      {
+        "technique_key": "mode:steelman-construction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-steelman-construction-optimum-plus/20260613T072406Z"
+      },
+      {
+        "technique_key": "mode:mechanism-understanding",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-understanding-premium/20260613T151418Z"
+      },
+      {
+        "technique_key": "mode:mechanism-understanding",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-understanding-qwen9b/20260613T070726Z"
+      },
+      {
+        "technique_key": "mode:mechanism-understanding",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-understanding-optimum/20260613T073456Z"
+      },
+      {
+        "technique_key": "mode:mechanism-understanding",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-understanding-optimum-plus/20260613T074537Z"
+      },
+      {
+        "technique_key": "mode:market-dynamics",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-market-dynamics-premium/20260613T152849Z"
+      },
+      {
+        "technique_key": "mode:market-dynamics",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-market-dynamics-qwen9b/20260613T072539Z"
+      },
+      {
+        "technique_key": "mode:market-dynamics",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-market-dynamics-optimum/20260613T074749Z"
+      },
+      {
+        "technique_key": "mode:market-dynamics",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-market-dynamics-optimum-plus/20260613T075159Z"
+      },
+      {
+        "technique_key": "mode:process-mapping",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-mapping-premium/20260613T155000Z"
+      },
+      {
+        "technique_key": "mode:process-mapping",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-mapping-qwen9b/20260613T073317Z"
+      },
+      {
+        "technique_key": "mode:process-mapping",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-mapping-optimum/20260613T074841Z"
+      },
+      {
+        "technique_key": "mode:process-mapping",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-process-mapping-optimum-plus/20260613T080206Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-structural",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-structural-premium/20260613T155749Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-structural",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-structural-qwen9b/20260613T082140Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-structural",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-structural-optimum/20260613T075413Z"
+      },
+      {
+        "technique_key": "mode:systems-dynamics-structural",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-systems-dynamics-structural-optimum-plus/20260613T081616Z"
+      },
+      {
+        "technique_key": "mode:mechanism-design",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-design-premium/20260613T161857Z"
+      },
+      {
+        "technique_key": "mode:mechanism-design",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-design-qwen9b/20260613T075028Z"
+      },
+      {
+        "technique_key": "mode:mechanism-design",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-design-optimum/20260613T081223Z"
+      },
+      {
+        "technique_key": "mode:mechanism-design",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mechanism-design-optimum-plus/20260613T084044Z"
+      },
+      {
+        "technique_key": "mode:strategic-interaction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-strategic-interaction-premium/20260613T163523Z"
+      },
+      {
+        "technique_key": "mode:strategic-interaction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-strategic-interaction-qwen9b/20260613T075642Z"
+      },
+      {
+        "technique_key": "mode:strategic-interaction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-strategic-interaction-optimum/20260613T081234Z"
+      },
+      {
+        "technique_key": "mode:strategic-interaction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-strategic-interaction-optimum-plus/20260613T082045Z"
+      },
+      {
+        "technique_key": "mode:compositional-dynamics",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-compositional-dynamics-premium/20260613T165823Z"
+      },
+      {
+        "technique_key": "mode:compositional-dynamics",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-compositional-dynamics-qwen9b/20260613T081716Z"
+      },
+      {
+        "technique_key": "mode:compositional-dynamics",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-compositional-dynamics-optimum/20260613T082015Z"
+      },
+      {
+        "technique_key": "mode:compositional-dynamics",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-compositional-dynamics-optimum-plus/20260613T084241Z"
+      },
+      {
+        "technique_key": "mode:information-density",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-information-density-premium/20260613T170724Z"
+      },
+      {
+        "technique_key": "mode:information-density",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-information-density-qwen9b/20260613T082438Z"
+      },
+      {
+        "technique_key": "mode:information-density",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-information-density-optimum/20260613T084151Z"
+      },
+      {
+        "technique_key": "mode:information-density",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-information-density-optimum-plus/20260613T085113Z"
+      },
+      {
+        "technique_key": "mode:ma-reading",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ma-reading-premium/20260613T172200Z"
+      },
+      {
+        "technique_key": "mode:ma-reading",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ma-reading-qwen9b/20260613T084231Z"
+      },
+      {
+        "technique_key": "mode:ma-reading",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ma-reading-optimum/20260613T084306Z"
+      },
+      {
+        "technique_key": "mode:ma-reading",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ma-reading-optimum-plus/20260613T091715Z"
+      },
+      {
+        "technique_key": "mode:place-reading-genius-loci",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-place-reading-genius-loci-premium/20260613T172951Z"
+      },
+      {
+        "technique_key": "mode:place-reading-genius-loci",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-place-reading-genius-loci-qwen9b/20260613T084430Z"
+      },
+      {
+        "technique_key": "mode:place-reading-genius-loci",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-place-reading-genius-loci-optimum/20260613T084325Z"
+      },
+      {
+        "technique_key": "mode:place-reading-genius-loci",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-place-reading-genius-loci-optimum-plus/20260613T090443Z"
+      },
+      {
+        "technique_key": "mode:passion-exploration",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-passion-exploration-premium/20260613T175032Z"
+      },
+      {
+        "technique_key": "mode:passion-exploration",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-passion-exploration-qwen9b/20260613T084545Z"
+      },
+      {
+        "technique_key": "mode:passion-exploration",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-passion-exploration-optimum/20260613T085358Z"
+      },
+      {
+        "technique_key": "mode:project-mode",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-project-mode-premium/20260613T180034Z"
+      },
+      {
+        "technique_key": "mode:project-mode",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-project-mode-qwen9b/20260613T085248Z"
+      },
+      {
+        "technique_key": "mode:project-mode",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-project-mode-optimum/20260613T090436Z"
+      },
+      {
+        "technique_key": "mode:project-mode",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-project-mode-optimum-plus/20260613T093248Z"
+      },
+      {
+        "technique_key": "mode:structured-output",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora-msi-central-routing/data/pipeline-traces/campaign-structured-output-premium/20260720T032718Z"
+      },
+      {
+        "technique_key": "mode:structured-output",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-structured-output-qwen9b/20260613T085625Z"
+      },
+      {
+        "technique_key": "mode:structured-output",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-structured-output-optimum/20260613T090821Z"
+      },
+      {
+        "technique_key": "mode:structured-output",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora-msi-central-routing/data/pipeline-traces/campaign-structured-output-optimum-plus/20260720T030023Z"
+      },
+      {
+        "technique_key": "visual:ach-matrix",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ach-matrix-premium/20260612T231810Z"
+      },
+      {
+        "technique_key": "visual:ach-matrix",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ach-matrix-qwen9b/20260612T090400Z"
+      },
+      {
+        "technique_key": "visual:ach-matrix",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ach-matrix-optimum/20260613T001637Z"
+      },
+      {
+        "technique_key": "visual:ach-matrix",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ach-matrix-optimum-plus/20260613T001637Z"
+      },
+      {
+        "technique_key": "visual:bow-tie-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bow-tie-diagram-premium/20260614T171644Z"
+      },
+      {
+        "technique_key": "visual:bow-tie-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bow-tie-diagram-qwen9b/20260618T000303Z"
+      },
+      {
+        "technique_key": "visual:bow-tie-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bow-tie-diagram-optimum/20260614T070016Z"
+      },
+      {
+        "technique_key": "visual:bow-tie-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bow-tie-diagram-optimum-plus/20260616T004405Z"
+      },
+      {
+        "technique_key": "visual:c4-architecture",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-c4-architecture-premium/20260613T183153Z"
+      },
+      {
+        "technique_key": "visual:c4-architecture",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-c4-architecture-qwen9b/20260613T090408Z"
+      },
+      {
+        "technique_key": "visual:c4-architecture",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-c4-architecture-optimum-plus/20260613T094423Z"
+      },
+      {
+        "technique_key": "visual:causal-dag",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-premium/20260614T163448Z"
+      },
+      {
+        "technique_key": "visual:causal-dag",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-qwen9b/20260614T062544Z"
+      },
+      {
+        "technique_key": "visual:causal-dag",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-optimum/20260614T062822Z"
+      },
+      {
+        "technique_key": "visual:causal-dag",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-dag-optimum-plus/20260614T164345Z"
+      },
+      {
+        "technique_key": "visual:causal-loop-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-loop-diagram-premium/20260614T164647Z"
+      },
+      {
+        "technique_key": "visual:causal-loop-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-loop-diagram-qwen9b/20260614T062814Z"
+      },
+      {
+        "technique_key": "visual:causal-loop-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-loop-diagram-optimum/20260614T063149Z"
+      },
+      {
+        "technique_key": "visual:causal-loop-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-causal-loop-diagram-optimum-plus/20260614T164356Z"
+      },
+      {
+        "technique_key": "visual:comparison-chart",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-comparison-chart-premium/20260614T175458Z"
+      },
+      {
+        "technique_key": "visual:comparison-chart",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-comparison-chart-qwen9b/20260614T072703Z"
+      },
+      {
+        "technique_key": "visual:comparison-chart",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-comparison-chart-optimum/20260614T074304Z"
+      },
+      {
+        "technique_key": "visual:comparison-chart",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-comparison-chart-optimum-plus/20260614T175925Z"
+      },
+      {
+        "technique_key": "visual:concept-map",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-concept-map-premium/20260613T193203Z"
+      },
+      {
+        "technique_key": "visual:concept-map",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-concept-map-qwen9b/20260613T100033Z"
+      },
+      {
+        "technique_key": "visual:concept-map",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-concept-map-optimum/20260613T100311Z"
+      },
+      {
+        "technique_key": "visual:concept-map",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-concept-map-optimum-plus/20260613T101901Z"
+      },
+      {
+        "technique_key": "visual:decision-tree",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-tree-premium/20260613T194650Z"
+      },
+      {
+        "technique_key": "visual:decision-tree",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-tree-qwen9b/20260613T100913Z"
+      },
+      {
+        "technique_key": "visual:decision-tree",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-tree-optimum/20260613T102937Z"
+      },
+      {
+        "technique_key": "visual:decision-tree",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-tree-optimum-plus/20260613T101910Z"
+      },
+      {
+        "technique_key": "visual:distribution-plot",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-distribution-plot-premium/20260614T175458Z"
+      },
+      {
+        "technique_key": "visual:distribution-plot",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-distribution-plot-qwen9b/20260614T071115Z"
+      },
+      {
+        "technique_key": "visual:distribution-plot",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-distribution-plot-optimum/20260614T072919Z"
+      },
+      {
+        "technique_key": "visual:distribution-plot",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-distribution-plot-optimum-plus/20260614T180809Z"
+      },
+      {
+        "technique_key": "visual:fishbone-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-premium/20260613T202346Z"
+      },
+      {
+        "technique_key": "visual:fishbone-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-qwen9b/20260613T102520Z"
+      },
+      {
+        "technique_key": "visual:fishbone-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-optimum/20260613T104542Z"
+      },
+      {
+        "technique_key": "visual:fishbone-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-optimum-plus/20260613T104347Z"
+      },
+      {
+        "technique_key": "visual:flowchart",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-flowchart-premium/20260614T162114Z"
+      },
+      {
+        "technique_key": "visual:flowchart",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-flowchart-qwen9b/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:flowchart",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-flowchart-optimum/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:flowchart",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-flowchart-optimum-plus/20260614T162108Z"
+      },
+      {
+        "technique_key": "visual:heatmap",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-heatmap-premium/20260614T175457Z"
+      },
+      {
+        "technique_key": "visual:heatmap",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-heatmap-qwen9b/20260614T071049Z"
+      },
+      {
+        "technique_key": "visual:heatmap",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-heatmap-optimum/20260614T072340Z"
+      },
+      {
+        "technique_key": "visual:heatmap",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-heatmap-optimum-plus/20260614T230232Z"
+      },
+      {
+        "technique_key": "visual:ibis-argument",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ibis-argument-premium/20260613T211548Z"
+      },
+      {
+        "technique_key": "visual:ibis-argument",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ibis-argument-qwen9b/20260613T105438Z"
+      },
+      {
+        "technique_key": "visual:ibis-argument",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ibis-argument-optimum/20260613T111729Z"
+      },
+      {
+        "technique_key": "visual:ibis-argument",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ibis-argument-optimum-plus/20260613T110821Z"
+      },
+      {
+        "technique_key": "visual:influence-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-influence-diagram-premium/20260614T165139Z"
+      },
+      {
+        "technique_key": "visual:influence-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-influence-diagram-qwen9b/20260614T064422Z"
+      },
+      {
+        "technique_key": "visual:influence-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-influence-diagram-optimum/20260614T063808Z"
+      },
+      {
+        "technique_key": "visual:influence-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-influence-diagram-optimum-plus/20260614T164603Z"
+      },
+      {
+        "technique_key": "visual:pro-con-tree",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pro-con-tree-premium/20260613T215539Z"
+      },
+      {
+        "technique_key": "visual:pro-con-tree",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pro-con-tree-qwen9b/20260613T113502Z"
+      },
+      {
+        "technique_key": "visual:pro-con-tree",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pro-con-tree-optimum/20260613T113444Z"
+      },
+      {
+        "technique_key": "visual:pro-con-tree",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pro-con-tree-optimum-plus/20260613T113337Z"
+      },
+      {
+        "technique_key": "visual:quadrant-matrix",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quadrant-matrix-premium/20260614T175902Z"
+      },
+      {
+        "technique_key": "visual:quadrant-matrix",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quadrant-matrix-qwen9b/20260614T072940Z"
+      },
+      {
+        "technique_key": "visual:quadrant-matrix",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quadrant-matrix-optimum/20260614T075335Z"
+      },
+      {
+        "technique_key": "visual:quadrant-matrix",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-quadrant-matrix-optimum-plus/20260616T014850Z"
+      },
+      {
+        "technique_key": "visual:scatter-plot",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scatter-plot-premium/20260614T181115Z"
+      },
+      {
+        "technique_key": "visual:scatter-plot",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scatter-plot-qwen9b/20260614T065834Z"
+      },
+      {
+        "technique_key": "visual:scatter-plot",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scatter-plot-optimum/20260614T070949Z"
+      },
+      {
+        "technique_key": "visual:scatter-plot",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scatter-plot-optimum-plus/20260614T173512Z"
+      },
+      {
+        "technique_key": "visual:sequence-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sequence-diagram-premium/20260614T162112Z"
+      },
+      {
+        "technique_key": "visual:sequence-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sequence-diagram-qwen9b/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:sequence-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sequence-diagram-optimum/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:sequence-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sequence-diagram-optimum-plus/20260614T162108Z"
+      },
+      {
+        "technique_key": "visual:state-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-state-diagram-premium/20260614T163440Z"
+      },
+      {
+        "technique_key": "visual:state-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-state-diagram-qwen9b/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:state-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-state-diagram-optimum/20260614T061629Z"
+      },
+      {
+        "technique_key": "visual:state-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-state-diagram-optimum-plus/20260614T162108Z"
+      },
+      {
+        "technique_key": "visual:stock-and-flow",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stock-and-flow-premium/20260618T003905Z"
+      },
+      {
+        "technique_key": "visual:stock-and-flow",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stock-and-flow-qwen9b/20260614T065810Z"
+      },
+      {
+        "technique_key": "visual:stock-and-flow",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stock-and-flow-optimum/20260614T070458Z"
+      },
+      {
+        "technique_key": "visual:stock-and-flow",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stock-and-flow-optimum-plus/20260614T172026Z"
+      },
+      {
+        "technique_key": "visual:time-series",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-time-series-premium/20260618T002445Z"
+      },
+      {
+        "technique_key": "visual:time-series",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-time-series-qwen9b/20260614T071129Z"
+      },
+      {
+        "technique_key": "visual:time-series",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-time-series-optimum/20260614T073407Z"
+      },
+      {
+        "technique_key": "visual:time-series",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-time-series-optimum-plus/20260616T020846Z"
+      },
+      {
+        "technique_key": "visual:tornado-chart",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tornado-chart-premium/20260613T234102Z"
+      },
+      {
+        "technique_key": "visual:tornado-chart",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tornado-chart-qwen9b/20260613T115923Z"
+      },
+      {
+        "technique_key": "visual:tornado-chart",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tornado-chart-optimum-plus/20260613T121300Z"
+      },
+      {
+        "technique_key": "lens:affect-heuristic",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-affect-heuristic-premium/20260613T235749Z"
+      },
+      {
+        "technique_key": "lens:affect-heuristic",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-affect-heuristic-qwen9b/20260613T120531Z"
+      },
+      {
+        "technique_key": "lens:affect-heuristic",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-affect-heuristic-optimum/20260613T124046Z"
+      },
+      {
+        "technique_key": "lens:affect-heuristic",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-affect-heuristic-optimum-plus/20260613T122600Z"
+      },
+      {
+        "technique_key": "lens:anchoring",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-anchoring-premium/20260614T000525Z"
+      },
+      {
+        "technique_key": "lens:anchoring",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-anchoring-qwen9b/20260613T120945Z"
+      },
+      {
+        "technique_key": "lens:anchoring",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-anchoring-optimum/20260613T124633Z"
+      },
+      {
+        "technique_key": "lens:anchoring",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-anchoring-optimum-plus/20260613T123340Z"
+      },
+      {
+        "technique_key": "lens:availability-heuristic",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-availability-heuristic-premium/20260614T001804Z"
+      },
+      {
+        "technique_key": "lens:availability-heuristic",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-availability-heuristic-qwen9b/20260613T121920Z"
+      },
+      {
+        "technique_key": "lens:availability-heuristic",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-availability-heuristic-optimum/20260613T125610Z"
+      },
+      {
+        "technique_key": "lens:availability-heuristic",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-availability-heuristic-optimum-plus/20260613T123353Z"
+      },
+      {
+        "technique_key": "lens:choice-architecture",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-choice-architecture-premium/20260614T003252Z"
+      },
+      {
+        "technique_key": "lens:choice-architecture",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-choice-architecture-qwen9b/20260613T122515Z"
+      },
+      {
+        "technique_key": "lens:choice-architecture",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-choice-architecture-optimum/20260613T125805Z"
+      },
+      {
+        "technique_key": "lens:choice-architecture",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-choice-architecture-optimum-plus/20260613T124507Z"
+      },
+      {
+        "technique_key": "lens:commitment-consistency",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-commitment-consistency-premium/20260614T004450Z"
+      },
+      {
+        "technique_key": "lens:commitment-consistency",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-commitment-consistency-qwen9b/20260613T122743Z"
+      },
+      {
+        "technique_key": "lens:commitment-consistency",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-commitment-consistency-optimum/20260613T130914Z"
+      },
+      {
+        "technique_key": "lens:commitment-consistency",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-commitment-consistency-optimum-plus/20260613T125322Z"
+      },
+      {
+        "technique_key": "lens:entman-framing-functions",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-entman-framing-functions-premium/20260614T181227Z"
+      },
+      {
+        "technique_key": "lens:entman-framing-functions",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-entman-framing-functions-qwen9b/20260613T125457Z"
+      },
+      {
+        "technique_key": "lens:entman-framing-functions",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-entman-framing-functions-optimum/20260613T131413Z"
+      },
+      {
+        "technique_key": "lens:entman-framing-functions",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-entman-framing-functions-optimum-plus/20260613T125445Z"
+      },
+      {
+        "technique_key": "lens:goffman-frame-analysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-goffman-frame-analysis-premium/20260614T181321Z"
+      },
+      {
+        "technique_key": "lens:goffman-frame-analysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-goffman-frame-analysis-qwen9b/20260613T124853Z"
+      },
+      {
+        "technique_key": "lens:goffman-frame-analysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-goffman-frame-analysis-optimum/20260613T131536Z"
+      },
+      {
+        "technique_key": "lens:goffman-frame-analysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-goffman-frame-analysis-optimum-plus/20260613T130704Z"
+      },
+      {
+        "technique_key": "lens:scarcity",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scarcity-premium/20260614T230235Z"
+      },
+      {
+        "technique_key": "lens:scarcity",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scarcity-qwen9b/20260613T125225Z"
+      },
+      {
+        "technique_key": "lens:scarcity",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scarcity-optimum/20260613T132708Z"
+      },
+      {
+        "technique_key": "lens:scarcity",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scarcity-optimum-plus/20260613T131046Z"
+      },
+      {
+        "technique_key": "lens:social-proof",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-social-proof-premium/20260614T230432Z"
+      },
+      {
+        "technique_key": "lens:social-proof",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-social-proof-qwen9b/20260613T131206Z"
+      },
+      {
+        "technique_key": "lens:social-proof",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-social-proof-optimum/20260613T133836Z"
+      },
+      {
+        "technique_key": "lens:social-proof",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-social-proof-optimum-plus/20260613T131126Z"
+      },
+      {
+        "technique_key": "lens:stanley-propaganda",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stanley-propaganda-premium/20260614T235835Z"
+      },
+      {
+        "technique_key": "lens:stanley-propaganda",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stanley-propaganda-qwen9b/20260613T131252Z"
+      },
+      {
+        "technique_key": "lens:stanley-propaganda",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stanley-propaganda-optimum/20260613T134114Z"
+      },
+      {
+        "technique_key": "lens:stanley-propaganda",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stanley-propaganda-optimum-plus/20260613T132901Z"
+      },
+      {
+        "technique_key": "lens:walton-schemes-and-critical-questions",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-walton-schemes-and-critical-questions-premium/20260615T000002Z"
+      },
+      {
+        "technique_key": "lens:walton-schemes-and-critical-questions",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-walton-schemes-and-critical-questions-qwen9b/20260613T132152Z"
+      },
+      {
+        "technique_key": "lens:walton-schemes-and-critical-questions",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-walton-schemes-and-critical-questions-optimum/20260613T134924Z"
+      },
+      {
+        "technique_key": "lens:walton-schemes-and-critical-questions",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-walton-schemes-and-critical-questions-optimum-plus/20260613T133039Z"
+      },
+      {
+        "technique_key": "lens:arrows-impossibility-theorem",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arrows-impossibility-theorem-premium/20260615T001008Z"
+      },
+      {
+        "technique_key": "lens:arrows-impossibility-theorem",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arrows-impossibility-theorem-qwen9b/20260613T133557Z"
+      },
+      {
+        "technique_key": "lens:arrows-impossibility-theorem",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arrows-impossibility-theorem-optimum/20260613T135709Z"
+      },
+      {
+        "technique_key": "lens:arrows-impossibility-theorem",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arrows-impossibility-theorem-optimum-plus/20260613T133644Z"
+      },
+      {
+        "technique_key": "lens:bounded-rationality",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bounded-rationality-premium/20260615T001318Z"
+      },
+      {
+        "technique_key": "lens:bounded-rationality",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bounded-rationality-qwen9b/20260613T133606Z"
+      },
+      {
+        "technique_key": "lens:bounded-rationality",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bounded-rationality-optimum/20260613T140144Z"
+      },
+      {
+        "technique_key": "lens:bounded-rationality",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bounded-rationality-optimum-plus/20260613T134934Z"
+      },
+      {
+        "technique_key": "lens:free-rider-problem",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-free-rider-problem-premium/20260614T010707Z"
+      },
+      {
+        "technique_key": "lens:free-rider-problem",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-free-rider-problem-qwen9b/20260613T133832Z"
+      },
+      {
+        "technique_key": "lens:free-rider-problem",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-free-rider-problem-optimum/20260613T140610Z"
+      },
+      {
+        "technique_key": "lens:free-rider-problem",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-free-rider-problem-optimum-plus/20260613T134947Z"
+      },
+      {
+        "technique_key": "lens:tragedy-of-the-commons",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tragedy-of-the-commons-premium/20260615T002633Z"
+      },
+      {
+        "technique_key": "lens:tragedy-of-the-commons",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tragedy-of-the-commons-qwen9b/20260613T134815Z"
+      },
+      {
+        "technique_key": "lens:tragedy-of-the-commons",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tragedy-of-the-commons-optimum/20260613T141536Z"
+      },
+      {
+        "technique_key": "lens:tragedy-of-the-commons",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tragedy-of-the-commons-optimum-plus/20260613T135949Z"
+      },
+      {
+        "technique_key": "lens:ulrich-csh-boundary-categories",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ulrich-csh-boundary-categories-premium/20260615T002917Z"
+      },
+      {
+        "technique_key": "lens:ulrich-csh-boundary-categories",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ulrich-csh-boundary-categories-qwen9b/20260613T135340Z"
+      },
+      {
+        "technique_key": "lens:ulrich-csh-boundary-categories",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ulrich-csh-boundary-categories-optimum/20260613T142036Z"
+      },
+      {
+        "technique_key": "lens:ulrich-csh-boundary-categories",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ulrich-csh-boundary-categories-optimum-plus/20260613T140805Z"
+      },
+      {
+        "technique_key": "lens:bottlenecks",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bottlenecks-premium/20260615T180947Z"
+      },
+      {
+        "technique_key": "lens:bottlenecks",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bottlenecks-qwen9b/20260613T140113Z"
+      },
+      {
+        "technique_key": "lens:bottlenecks",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bottlenecks-optimum/20260613T142744Z"
+      },
+      {
+        "technique_key": "lens:bottlenecks",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bottlenecks-optimum-plus/20260613T141732Z"
+      },
+      {
+        "technique_key": "lens:decision-trees",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-trees-premium/20260615T182955Z"
+      },
+      {
+        "technique_key": "lens:decision-trees",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-trees-qwen9b/20260613T140152Z"
+      },
+      {
+        "technique_key": "lens:decision-trees",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-trees-optimum/20260613T143538Z"
+      },
+      {
+        "technique_key": "lens:decision-trees",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-decision-trees-optimum-plus/20260613T143258Z"
+      },
+      {
+        "technique_key": "lens:endowment-effect",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-endowment-effect-premium/20260615T185203Z"
+      },
+      {
+        "technique_key": "lens:endowment-effect",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-endowment-effect-qwen9b/20260613T141339Z"
+      },
+      {
+        "technique_key": "lens:endowment-effect",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-endowment-effect-optimum/20260613T144400Z"
+      },
+      {
+        "technique_key": "lens:endowment-effect",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-endowment-effect-optimum-plus/20260613T143445Z"
+      },
+      {
+        "technique_key": "lens:loss-aversion",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-loss-aversion-premium/20260615T191230Z"
+      },
+      {
+        "technique_key": "lens:loss-aversion",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-loss-aversion-qwen9b/20260613T143711Z"
+      },
+      {
+        "technique_key": "lens:loss-aversion",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-loss-aversion-optimum/20260613T144544Z"
+      },
+      {
+        "technique_key": "lens:loss-aversion",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-loss-aversion-optimum-plus/20260613T143914Z"
+      },
+      {
+        "technique_key": "lens:mcdm-methods",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mcdm-methods-premium/20260615T192807Z"
+      },
+      {
+        "technique_key": "lens:mcdm-methods",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mcdm-methods-qwen9b/20260613T141653Z"
+      },
+      {
+        "technique_key": "lens:mcdm-methods",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mcdm-methods-optimum/20260613T145315Z"
+      },
+      {
+        "technique_key": "lens:mcdm-methods",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mcdm-methods-optimum-plus/20260613T145707Z"
+      },
+      {
+        "technique_key": "lens:prospect-theory",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prospect-theory-premium/20260614T012637Z"
+      },
+      {
+        "technique_key": "lens:prospect-theory",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prospect-theory-qwen9b/20260613T143652Z"
+      },
+      {
+        "technique_key": "lens:prospect-theory",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prospect-theory-optimum/20260613T151337Z"
+      },
+      {
+        "technique_key": "lens:prospect-theory",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prospect-theory-optimum-plus/20260613T150223Z"
+      },
+      {
+        "technique_key": "lens:satisficing",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-satisficing-premium/20260614T014309Z"
+      },
+      {
+        "technique_key": "lens:satisficing",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-satisficing-qwen9b/20260613T143825Z"
+      },
+      {
+        "technique_key": "lens:satisficing",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-satisficing-optimum/20260613T151916Z"
+      },
+      {
+        "technique_key": "lens:satisficing",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-satisficing-optimum-plus/20260613T150618Z"
+      },
+      {
+        "technique_key": "lens:sunk-cost-fallacy",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sunk-cost-fallacy-premium/20260615T194159Z"
+      },
+      {
+        "technique_key": "lens:sunk-cost-fallacy",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sunk-cost-fallacy-qwen9b/20260613T150136Z"
+      },
+      {
+        "technique_key": "lens:sunk-cost-fallacy",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sunk-cost-fallacy-optimum/20260613T151927Z"
+      },
+      {
+        "technique_key": "lens:sunk-cost-fallacy",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sunk-cost-fallacy-optimum-plus/20260613T151726Z"
+      },
+      {
+        "technique_key": "lens:trade-offs",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-trade-offs-premium/20260615T200436Z"
+      },
+      {
+        "technique_key": "lens:trade-offs",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-trade-offs-qwen9b/20260613T153350Z"
+      },
+      {
+        "technique_key": "lens:trade-offs",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-trade-offs-optimum/20260613T153558Z"
+      },
+      {
+        "technique_key": "lens:trade-offs",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-trade-offs-optimum-plus/20260613T152858Z"
+      },
+      {
+        "technique_key": "lens:bennett-checkel-process-tracing-tests",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bennett-checkel-process-tracing-tests-premium/20260614T021255Z"
+      },
+      {
+        "technique_key": "lens:bennett-checkel-process-tracing-tests",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bennett-checkel-process-tracing-tests-qwen9b/20260613T150402Z"
+      },
+      {
+        "technique_key": "lens:bennett-checkel-process-tracing-tests",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bennett-checkel-process-tracing-tests-optimum/20260613T154710Z"
+      },
+      {
+        "technique_key": "lens:bennett-checkel-process-tracing-tests",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bennett-checkel-process-tracing-tests-optimum-plus/20260613T153339Z"
+      },
+      {
+        "technique_key": "lens:fishbone-diagram",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-premium/20260614T170806Z"
+      },
+      {
+        "technique_key": "lens:fishbone-diagram",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-qwen9b/20260614T063454Z"
+      },
+      {
+        "technique_key": "lens:fishbone-diagram",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-optimum/20260614T064940Z"
+      },
+      {
+        "technique_key": "lens:fishbone-diagram",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fishbone-diagram-optimum-plus/20260615T043700Z"
+      },
+      {
+        "technique_key": "lens:five-whys",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-five-whys-premium/20260614T024733Z"
+      },
+      {
+        "technique_key": "lens:five-whys",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-five-whys-qwen9b/20260613T153517Z"
+      },
+      {
+        "technique_key": "lens:five-whys",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-five-whys-optimum/20260613T160828Z"
+      },
+      {
+        "technique_key": "lens:five-whys",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-five-whys-optimum-plus/20260613T155625Z"
+      },
+      {
+        "technique_key": "lens:fundamental-attribution-error",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fundamental-attribution-error-premium/20260614T030243Z"
+      },
+      {
+        "technique_key": "lens:fundamental-attribution-error",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fundamental-attribution-error-qwen9b/20260613T155000Z"
+      },
+      {
+        "technique_key": "lens:fundamental-attribution-error",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fundamental-attribution-error-optimum/20260613T161320Z"
+      },
+      {
+        "technique_key": "lens:fundamental-attribution-error",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fundamental-attribution-error-optimum-plus/20260613T160640Z"
+      },
+      {
+        "technique_key": "lens:pearl-causal-graphs",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-causal-graphs-premium/20260614T032114Z"
+      },
+      {
+        "technique_key": "lens:pearl-causal-graphs",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-causal-graphs-qwen9b/20260613T160915Z"
+      },
+      {
+        "technique_key": "lens:pearl-causal-graphs",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-causal-graphs-optimum/20260613T162400Z"
+      },
+      {
+        "technique_key": "lens:pearl-causal-graphs",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-causal-graphs-optimum-plus/20260613T161331Z"
+      },
+      {
+        "technique_key": "lens:pearl-do-calculus",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-do-calculus-premium/20260614T033932Z"
+      },
+      {
+        "technique_key": "lens:pearl-do-calculus",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-do-calculus-qwen9b/20260613T161115Z"
+      },
+      {
+        "technique_key": "lens:pearl-do-calculus",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-do-calculus-optimum/20260613T162722Z"
+      },
+      {
+        "technique_key": "lens:pearl-do-calculus",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pearl-do-calculus-optimum-plus/20260613T161816Z"
+      },
+      {
+        "technique_key": "lens:reward-undermining",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-reward-undermining-premium/20260615T202054Z"
+      },
+      {
+        "technique_key": "lens:reward-undermining",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-reward-undermining-qwen9b/20260613T161307Z"
+      },
+      {
+        "technique_key": "lens:reward-undermining",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-reward-undermining-optimum/20260613T163602Z"
+      },
+      {
+        "technique_key": "lens:reward-undermining",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-reward-undermining-optimum-plus/20260613T162840Z"
+      },
+      {
+        "technique_key": "lens:base-rate-neglect",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-base-rate-neglect-premium/20260615T204146Z"
+      },
+      {
+        "technique_key": "lens:base-rate-neglect",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-base-rate-neglect-qwen9b/20260613T161957Z"
+      },
+      {
+        "technique_key": "lens:base-rate-neglect",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-base-rate-neglect-optimum/20260613T164235Z"
+      },
+      {
+        "technique_key": "lens:base-rate-neglect",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-base-rate-neglect-optimum-plus/20260613T163601Z"
+      },
+      {
+        "technique_key": "lens:bayesian-reasoning",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-reasoning-premium/20260615T205607Z"
+      },
+      {
+        "technique_key": "lens:bayesian-reasoning",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-reasoning-qwen9b/20260613T162327Z"
+      },
+      {
+        "technique_key": "lens:bayesian-reasoning",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-reasoning-optimum/20260613T164315Z"
+      },
+      {
+        "technique_key": "lens:bayesian-reasoning",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bayesian-reasoning-optimum-plus/20260613T163602Z"
+      },
+      {
+        "technique_key": "lens:confirmation-bias",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-confirmation-bias-premium/20260615T210745Z"
+      },
+      {
+        "technique_key": "lens:confirmation-bias",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-confirmation-bias-qwen9b/20260613T163146Z"
+      },
+      {
+        "technique_key": "lens:confirmation-bias",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-confirmation-bias-optimum/20260613T165658Z"
+      },
+      {
+        "technique_key": "lens:confirmation-bias",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-confirmation-bias-optimum-plus/20260613T165028Z"
+      },
+      {
+        "technique_key": "lens:differential-diagnosis-schema",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-schema-premium/20260615T213154Z"
+      },
+      {
+        "technique_key": "lens:differential-diagnosis-schema",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-schema-qwen9b/20260613T163357Z"
+      },
+      {
+        "technique_key": "lens:differential-diagnosis-schema",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-schema-optimum/20260613T165904Z"
+      },
+      {
+        "technique_key": "lens:differential-diagnosis-schema",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-differential-diagnosis-schema-optimum-plus/20260613T165217Z"
+      },
+      {
+        "technique_key": "lens:falsifiability",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-falsifiability-premium/20260615T214656Z"
+      },
+      {
+        "technique_key": "lens:falsifiability",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-falsifiability-qwen9b/20260613T163450Z"
+      },
+      {
+        "technique_key": "lens:falsifiability",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-falsifiability-optimum/20260613T170244Z"
+      },
+      {
+        "technique_key": "lens:falsifiability",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-falsifiability-optimum-plus/20260613T170706Z"
+      },
+      {
+        "technique_key": "lens:representativeness-heuristic",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-representativeness-heuristic-premium/20260615T220311Z"
+      },
+      {
+        "technique_key": "lens:representativeness-heuristic",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-representativeness-heuristic-qwen9b/20260613T164311Z"
+      },
+      {
+        "technique_key": "lens:representativeness-heuristic",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-representativeness-heuristic-optimum/20260613T171937Z"
+      },
+      {
+        "technique_key": "lens:representativeness-heuristic",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-representativeness-heuristic-optimum-plus/20260613T171235Z"
+      },
+      {
+        "technique_key": "lens:klein-pre-mortem",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-klein-pre-mortem-premium/20260617T015506Z"
+      },
+      {
+        "technique_key": "lens:klein-pre-mortem",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-klein-pre-mortem-qwen9b/20260613T165458Z"
+      },
+      {
+        "technique_key": "lens:klein-pre-mortem",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-klein-pre-mortem-optimum/20260613T172422Z"
+      },
+      {
+        "technique_key": "lens:klein-pre-mortem",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-klein-pre-mortem-optimum-plus/20260613T171930Z"
+      },
+      {
+        "technique_key": "lens:premortem-analysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-premortem-analysis-premium/20260617T021328Z"
+      },
+      {
+        "technique_key": "lens:premortem-analysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-premortem-analysis-qwen9b/20260613T165840Z"
+      },
+      {
+        "technique_key": "lens:premortem-analysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-premortem-analysis-optimum/20260613T172614Z"
+      },
+      {
+        "technique_key": "lens:premortem-analysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-premortem-analysis-optimum-plus/20260613T172302Z"
+      },
+      {
+        "technique_key": "lens:regression-to-mean",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-regression-to-mean-premium/20260617T023406Z"
+      },
+      {
+        "technique_key": "lens:regression-to-mean",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-regression-to-mean-qwen9b/20260613T165959Z"
+      },
+      {
+        "technique_key": "lens:regression-to-mean",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-regression-to-mean-optimum/20260613T173700Z"
+      },
+      {
+        "technique_key": "lens:regression-to-mean",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-regression-to-mean-optimum-plus/20260613T173157Z"
+      },
+      {
+        "technique_key": "lens:second-order-thinking",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-second-order-thinking-premium/20260617T025108Z"
+      },
+      {
+        "technique_key": "lens:second-order-thinking",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-second-order-thinking-qwen9b/20260613T170845Z"
+      },
+      {
+        "technique_key": "lens:second-order-thinking",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-second-order-thinking-optimum/20260613T174517Z"
+      },
+      {
+        "technique_key": "lens:second-order-thinking",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-second-order-thinking-optimum-plus/20260613T174244Z"
+      },
+      {
+        "technique_key": "lens:sensemaking",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sensemaking-premium/20260617T030807Z"
+      },
+      {
+        "technique_key": "lens:sensemaking",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sensemaking-qwen9b/20260613T170847Z"
+      },
+      {
+        "technique_key": "lens:sensemaking",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sensemaking-optimum/20260613T175015Z"
+      },
+      {
+        "technique_key": "lens:sensemaking",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-sensemaking-optimum-plus/20260613T174303Z"
+      },
+      {
+        "technique_key": "lens:tetlock-superforecasting",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tetlock-superforecasting-premium/20260617T225633Z"
+      },
+      {
+        "technique_key": "lens:tetlock-superforecasting",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tetlock-superforecasting-qwen9b/20260613T171216Z"
+      },
+      {
+        "technique_key": "lens:tetlock-superforecasting",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tetlock-superforecasting-optimum/20260613T175538Z"
+      },
+      {
+        "technique_key": "lens:tetlock-superforecasting",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tetlock-superforecasting-optimum-plus/20260613T174649Z"
+      },
+      {
+        "technique_key": "lens:wisdom-of-crowds",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wisdom-of-crowds-premium/20260617T035851Z"
+      },
+      {
+        "technique_key": "lens:wisdom-of-crowds",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wisdom-of-crowds-qwen9b/20260613T171833Z"
+      },
+      {
+        "technique_key": "lens:wisdom-of-crowds",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wisdom-of-crowds-optimum/20260613T180734Z"
+      },
+      {
+        "technique_key": "lens:wisdom-of-crowds",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-wisdom-of-crowds-optimum-plus/20260613T180036Z"
+      },
+      {
+        "technique_key": "lens:margin-of-safety",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-margin-of-safety-premium/20260617T041552Z"
+      },
+      {
+        "technique_key": "lens:margin-of-safety",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-margin-of-safety-qwen9b/20260613T172117Z"
+      },
+      {
+        "technique_key": "lens:margin-of-safety",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-margin-of-safety-optimum/20260613T181128Z"
+      },
+      {
+        "technique_key": "lens:margin-of-safety",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-margin-of-safety-optimum-plus/20260613T180618Z"
+      },
+      {
+        "technique_key": "lens:normal-accident-theory",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normal-accident-theory-premium/20260617T043228Z"
+      },
+      {
+        "technique_key": "lens:normal-accident-theory",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normal-accident-theory-qwen9b/20260613T172406Z"
+      },
+      {
+        "technique_key": "lens:normal-accident-theory",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normal-accident-theory-optimum/20260613T181957Z"
+      },
+      {
+        "technique_key": "lens:normal-accident-theory",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normal-accident-theory-optimum-plus/20260613T182053Z"
+      },
+      {
+        "technique_key": "lens:normalization-of-deviance",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normalization-of-deviance-premium/20260617T050538Z"
+      },
+      {
+        "technique_key": "lens:normalization-of-deviance",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normalization-of-deviance-qwen9b/20260613T172848Z"
+      },
+      {
+        "technique_key": "lens:normalization-of-deviance",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normalization-of-deviance-optimum/20260613T182814Z"
+      },
+      {
+        "technique_key": "lens:normalization-of-deviance",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-normalization-of-deviance-optimum-plus/20260613T182510Z"
+      },
+      {
+        "technique_key": "lens:recovery-window",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-recovery-window-premium/20260617T054122Z"
+      },
+      {
+        "technique_key": "lens:recovery-window",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-recovery-window-qwen9b/20260613T173218Z"
+      },
+      {
+        "technique_key": "lens:recovery-window",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-recovery-window-optimum/20260613T182927Z"
+      },
+      {
+        "technique_key": "lens:recovery-window",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-recovery-window-optimum-plus/20260613T182607Z"
+      },
+      {
+        "technique_key": "lens:swiss-cheese-model",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-swiss-cheese-model-premium/20260617T060341Z"
+      },
+      {
+        "technique_key": "lens:swiss-cheese-model",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-swiss-cheese-model-qwen9b/20260613T173747Z"
+      },
+      {
+        "technique_key": "lens:swiss-cheese-model",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-swiss-cheese-model-optimum/20260613T184758Z"
+      },
+      {
+        "technique_key": "lens:swiss-cheese-model",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-swiss-cheese-model-optimum-plus/20260613T184049Z"
+      },
+      {
+        "technique_key": "lens:taleb-fragility-antifragility",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-taleb-fragility-antifragility-premium/20260617T062253Z"
+      },
+      {
+        "technique_key": "lens:taleb-fragility-antifragility",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-taleb-fragility-antifragility-qwen9b/20260613T174130Z"
+      },
+      {
+        "technique_key": "lens:taleb-fragility-antifragility",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-taleb-fragility-antifragility-optimum/20260613T184844Z"
+      },
+      {
+        "technique_key": "lens:taleb-fragility-antifragility",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-taleb-fragility-antifragility-optimum-plus/20260613T184354Z"
+      },
+      {
+        "technique_key": "lens:incentives",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-incentives-premium/20260617T064828Z"
+      },
+      {
+        "technique_key": "lens:incentives",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-incentives-qwen9b/20260613T174534Z"
+      },
+      {
+        "technique_key": "lens:incentives",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-incentives-optimum/20260613T185029Z"
+      },
+      {
+        "technique_key": "lens:incentives",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-incentives-optimum-plus/20260613T184651Z"
+      },
+      {
+        "technique_key": "lens:stakeholder-analysis-frameworks",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-analysis-frameworks-premium/20260617T070332Z"
+      },
+      {
+        "technique_key": "lens:stakeholder-analysis-frameworks",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-analysis-frameworks-qwen9b/20260613T174937Z"
+      },
+      {
+        "technique_key": "lens:stakeholder-analysis-frameworks",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-analysis-frameworks-optimum/20260613T190250Z"
+      },
+      {
+        "technique_key": "lens:stakeholder-analysis-frameworks",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-stakeholder-analysis-frameworks-optimum-plus/20260613T185712Z"
+      },
+      {
+        "technique_key": "lens:framing-effect",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-framing-effect-premium/20260617T071718Z"
+      },
+      {
+        "technique_key": "lens:framing-effect",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-framing-effect-qwen9b/20260613T175356Z"
+      },
+      {
+        "technique_key": "lens:framing-effect",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-framing-effect-optimum/20260613T190526Z"
+      },
+      {
+        "technique_key": "lens:framing-effect",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-framing-effect-optimum-plus/20260613T190351Z"
+      },
+      {
+        "technique_key": "lens:lakoff-conceptual-metaphor",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lakoff-conceptual-metaphor-premium/20260617T073255Z"
+      },
+      {
+        "technique_key": "lens:lakoff-conceptual-metaphor",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lakoff-conceptual-metaphor-qwen9b/20260613T175839Z"
+      },
+      {
+        "technique_key": "lens:lakoff-conceptual-metaphor",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lakoff-conceptual-metaphor-optimum/20260613T191339Z"
+      },
+      {
+        "technique_key": "lens:lakoff-conceptual-metaphor",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lakoff-conceptual-metaphor-optimum-plus/20260613T191524Z"
+      },
+      {
+        "technique_key": "lens:cappelen-plunkett-conceptual-engineering",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cappelen-plunkett-conceptual-engineering-premium/20260617T074845Z"
+      },
+      {
+        "technique_key": "lens:cappelen-plunkett-conceptual-engineering",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cappelen-plunkett-conceptual-engineering-qwen9b/20260613T180134Z"
+      },
+      {
+        "technique_key": "lens:cappelen-plunkett-conceptual-engineering",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cappelen-plunkett-conceptual-engineering-optimum/20260613T192229Z"
+      },
+      {
+        "technique_key": "lens:cappelen-plunkett-conceptual-engineering",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cappelen-plunkett-conceptual-engineering-optimum-plus/20260613T191637Z"
+      },
+      {
+        "technique_key": "lens:map-territory",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-map-territory-premium/20260617T080947Z"
+      },
+      {
+        "technique_key": "lens:map-territory",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-map-territory-qwen9b/20260613T181148Z"
+      },
+      {
+        "technique_key": "lens:map-territory",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-map-territory-optimum/20260613T192305Z"
+      },
+      {
+        "technique_key": "lens:map-territory",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-map-territory-optimum-plus/20260613T192239Z"
+      },
+      {
+        "technique_key": "lens:system-one-system-two",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-system-one-system-two-premium/20260617T082610Z"
+      },
+      {
+        "technique_key": "lens:system-one-system-two",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-system-one-system-two-qwen9b/20260613T181229Z"
+      },
+      {
+        "technique_key": "lens:system-one-system-two",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-system-one-system-two-optimum/20260613T193612Z"
+      },
+      {
+        "technique_key": "lens:system-one-system-two",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-system-one-system-two-optimum-plus/20260613T193407Z"
+      },
+      {
+        "technique_key": "lens:niches",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-niches-premium/20260617T231654Z"
+      },
+      {
+        "technique_key": "lens:niches",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-niches-qwen9b/20260613T181537Z"
+      },
+      {
+        "technique_key": "lens:niches",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-niches-optimum/20260613T193708Z"
+      },
+      {
+        "technique_key": "lens:niches",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-niches-optimum-plus/20260613T193721Z"
+      },
+      {
+        "technique_key": "lens:scale",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scale-premium/20260617T233228Z"
+      },
+      {
+        "technique_key": "lens:scale",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scale-qwen9b/20260613T182310Z"
+      },
+      {
+        "technique_key": "lens:scale",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scale-optimum/20260613T195252Z"
+      },
+      {
+        "technique_key": "lens:scale",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-scale-optimum-plus/20260613T194316Z"
+      },
+      {
+        "technique_key": "lens:allisons-three-lenses",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-allisons-three-lenses-premium/20260618T015934Z"
+      },
+      {
+        "technique_key": "lens:allisons-three-lenses",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-allisons-three-lenses-qwen9b/20260613T183303Z"
+      },
+      {
+        "technique_key": "lens:allisons-three-lenses",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-allisons-three-lenses-optimum/20260613T195329Z"
+      },
+      {
+        "technique_key": "lens:allisons-three-lenses",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-allisons-three-lenses-optimum-plus/20260613T195307Z"
+      },
+      {
+        "technique_key": "lens:evolution-natural-selection",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-evolution-natural-selection-premium/20260618T022055Z"
+      },
+      {
+        "technique_key": "lens:evolution-natural-selection",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-evolution-natural-selection-qwen9b/20260613T183455Z"
+      },
+      {
+        "technique_key": "lens:evolution-natural-selection",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-evolution-natural-selection-optimum/20260613T195339Z"
+      },
+      {
+        "technique_key": "lens:evolution-natural-selection",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-evolution-natural-selection-optimum-plus/20260613T195343Z"
+      },
+      {
+        "technique_key": "lens:batna",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-batna-premium/20260618T023909Z"
+      },
+      {
+        "technique_key": "lens:batna",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-batna-qwen9b/20260613T184253Z"
+      },
+      {
+        "technique_key": "lens:batna",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-batna-optimum/20260613T201032Z"
+      },
+      {
+        "technique_key": "lens:batna",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-batna-optimum-plus/20260613T200445Z"
+      },
+      {
+        "technique_key": "lens:cooperation",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cooperation-premium/20260618T025106Z"
+      },
+      {
+        "technique_key": "lens:cooperation",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cooperation-qwen9b/20260613T184410Z"
+      },
+      {
+        "technique_key": "lens:cooperation",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cooperation-optimum/20260613T201042Z"
+      },
+      {
+        "technique_key": "lens:cooperation",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cooperation-optimum-plus/20260613T200929Z"
+      },
+      {
+        "technique_key": "lens:fisher-ury-principled-negotiation",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fisher-ury-principled-negotiation-premium/20260618T030646Z"
+      },
+      {
+        "technique_key": "lens:fisher-ury-principled-negotiation",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fisher-ury-principled-negotiation-qwen9b/20260613T184943Z"
+      },
+      {
+        "technique_key": "lens:fisher-ury-principled-negotiation",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fisher-ury-principled-negotiation-optimum/20260613T202330Z"
+      },
+      {
+        "technique_key": "lens:fisher-ury-principled-negotiation",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-fisher-ury-principled-negotiation-optimum-plus/20260613T201618Z"
+      },
+      {
+        "technique_key": "lens:procedural-justice",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-procedural-justice-premium/20260618T032131Z"
+      },
+      {
+        "technique_key": "lens:procedural-justice",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-procedural-justice-qwen9b/20260613T185343Z"
+      },
+      {
+        "technique_key": "lens:procedural-justice",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-procedural-justice-optimum/20260613T203044Z"
+      },
+      {
+        "technique_key": "lens:procedural-justice",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-procedural-justice-optimum-plus/20260613T202706Z"
+      },
+      {
+        "technique_key": "lens:psychological-safety",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-psychological-safety-premium/20260618T033754Z"
+      },
+      {
+        "technique_key": "lens:psychological-safety",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-psychological-safety-qwen9b/20260613T185643Z"
+      },
+      {
+        "technique_key": "lens:psychological-safety",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-psychological-safety-optimum/20260613T203115Z"
+      },
+      {
+        "technique_key": "lens:psychological-safety",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-psychological-safety-optimum-plus/20260613T203130Z"
+      },
+      {
+        "technique_key": "lens:ury-third-side",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ury-third-side-premium/20260618T035409Z"
+      },
+      {
+        "technique_key": "lens:ury-third-side",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ury-third-side-qwen9b/20260613T190129Z"
+      },
+      {
+        "technique_key": "lens:ury-third-side",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ury-third-side-optimum/20260613T205436Z"
+      },
+      {
+        "technique_key": "lens:ury-third-side",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ury-third-side-optimum-plus/20260613T203817Z"
+      },
+      {
+        "technique_key": "lens:circle-of-competence",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-circle-of-competence-premium/20260618T040605Z"
+      },
+      {
+        "technique_key": "lens:circle-of-competence",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-circle-of-competence-qwen9b/20260613T190235Z"
+      },
+      {
+        "technique_key": "lens:circle-of-competence",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-circle-of-competence-optimum/20260613T205505Z"
+      },
+      {
+        "technique_key": "lens:circle-of-competence",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-circle-of-competence-optimum-plus/20260613T204634Z"
+      },
+      {
+        "technique_key": "lens:cynefin-framework",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cynefin-framework-premium/20260618T042540Z"
+      },
+      {
+        "technique_key": "lens:cynefin-framework",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cynefin-framework-qwen9b/20260613T190956Z"
+      },
+      {
+        "technique_key": "lens:cynefin-framework",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cynefin-framework-optimum/20260613T205738Z"
+      },
+      {
+        "technique_key": "lens:cynefin-framework",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cynefin-framework-optimum-plus/20260613T204649Z"
+      },
+      {
+        "technique_key": "lens:ooda-loop",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ooda-loop-premium/20260618T044011Z"
+      },
+      {
+        "technique_key": "lens:ooda-loop",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ooda-loop-qwen9b/20260613T191056Z"
+      },
+      {
+        "technique_key": "lens:ooda-loop",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ooda-loop-optimum/20260613T211018Z"
+      },
+      {
+        "technique_key": "lens:ooda-loop",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-ooda-loop-optimum-plus/20260613T205816Z"
+      },
+      {
+        "technique_key": "lens:pareto-principle",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pareto-principle-premium/20260618T050049Z"
+      },
+      {
+        "technique_key": "lens:pareto-principle",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pareto-principle-qwen9b/20260613T191454Z"
+      },
+      {
+        "technique_key": "lens:pareto-principle",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pareto-principle-optimum/20260613T211609Z"
+      },
+      {
+        "technique_key": "lens:pareto-principle",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-pareto-principle-optimum-plus/20260613T210213Z"
+      },
+      {
+        "technique_key": "lens:cia-tradecraft-red-team",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cia-tradecraft-red-team-premium/20260618T050926Z"
+      },
+      {
+        "technique_key": "lens:cia-tradecraft-red-team",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cia-tradecraft-red-team-qwen9b/20260613T192111Z"
+      },
+      {
+        "technique_key": "lens:cia-tradecraft-red-team",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cia-tradecraft-red-team-optimum/20260613T212931Z"
+      },
+      {
+        "technique_key": "lens:cia-tradecraft-red-team",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cia-tradecraft-red-team-optimum-plus/20260613T210747Z"
+      },
+      {
+        "technique_key": "lens:devils-advocacy",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-devils-advocacy-premium/20260618T052554Z"
+      },
+      {
+        "technique_key": "lens:devils-advocacy",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-devils-advocacy-qwen9b/20260613T192750Z"
+      },
+      {
+        "technique_key": "lens:devils-advocacy",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-devils-advocacy-optimum/20260613T213011Z"
+      },
+      {
+        "technique_key": "lens:devils-advocacy",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-devils-advocacy-optimum-plus/20260613T211546Z"
+      },
+      {
+        "technique_key": "lens:groupthink",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-groupthink-premium/20260618T172604Z"
+      },
+      {
+        "technique_key": "lens:groupthink",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-groupthink-qwen9b/20260613T192945Z"
+      },
+      {
+        "technique_key": "lens:groupthink",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-groupthink-optimum/20260613T213224Z"
+      },
+      {
+        "technique_key": "lens:groupthink",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-groupthink-optimum-plus/20260613T211921Z"
+      },
+      {
+        "technique_key": "lens:hanlons-razor",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hanlons-razor-premium/20260618T174312Z"
+      },
+      {
+        "technique_key": "lens:hanlons-razor",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hanlons-razor-qwen9b/20260613T194655Z"
+      },
+      {
+        "technique_key": "lens:hanlons-razor",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hanlons-razor-optimum/20260613T215003Z"
+      },
+      {
+        "technique_key": "lens:hanlons-razor",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hanlons-razor-optimum-plus/20260613T213628Z"
+      },
+      {
+        "technique_key": "lens:hindsight-bias",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hindsight-bias-premium/20260618T180043Z"
+      },
+      {
+        "technique_key": "lens:hindsight-bias",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hindsight-bias-qwen9b/20260613T193713Z"
+      },
+      {
+        "technique_key": "lens:hindsight-bias",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hindsight-bias-optimum/20260613T215403Z"
+      },
+      {
+        "technique_key": "lens:hindsight-bias",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-hindsight-bias-optimum-plus/20260613T213647Z"
+      },
+      {
+        "technique_key": "lens:narrative-instinct",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-narrative-instinct-premium/20260618T181419Z"
+      },
+      {
+        "technique_key": "lens:narrative-instinct",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-narrative-instinct-qwen9b/20260613T194119Z"
+      },
+      {
+        "technique_key": "lens:narrative-instinct",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-narrative-instinct-optimum/20260613T220250Z"
+      },
+      {
+        "technique_key": "lens:narrative-instinct",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-narrative-instinct-optimum-plus/20260613T214740Z"
+      },
+      {
+        "technique_key": "lens:occams-razor",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-occams-razor-premium/20260618T183227Z"
+      },
+      {
+        "technique_key": "lens:occams-razor",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-occams-razor-qwen9b/20260613T194612Z"
+      },
+      {
+        "technique_key": "lens:occams-razor",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-occams-razor-optimum/20260613T220704Z"
+      },
+      {
+        "technique_key": "lens:occams-razor",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-occams-razor-optimum-plus/20260613T215514Z"
+      },
+      {
+        "technique_key": "lens:emergence",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-emergence-premium/20260618T184532Z"
+      },
+      {
+        "technique_key": "lens:emergence",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-emergence-qwen9b/20260613T195013Z"
+      },
+      {
+        "technique_key": "lens:emergence",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-emergence-optimum/20260613T221024Z"
+      },
+      {
+        "technique_key": "lens:emergence",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-emergence-optimum-plus/20260613T220040Z"
+      },
+      {
+        "technique_key": "lens:first-principles",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-first-principles-premium/20260618T191339Z"
+      },
+      {
+        "technique_key": "lens:first-principles",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-first-principles-qwen9b/20260613T195455Z"
+      },
+      {
+        "technique_key": "lens:first-principles",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-first-principles-optimum/20260613T221628Z"
+      },
+      {
+        "technique_key": "lens:first-principles",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-first-principles-optimum-plus/20260613T220136Z"
+      },
+      {
+        "technique_key": "lens:creative-destruction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-creative-destruction-premium/20260618T194242Z"
+      },
+      {
+        "technique_key": "lens:creative-destruction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-creative-destruction-qwen9b/20260613T195631Z"
+      },
+      {
+        "technique_key": "lens:creative-destruction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-creative-destruction-optimum/20260613T222240Z"
+      },
+      {
+        "technique_key": "lens:creative-destruction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-creative-destruction-optimum-plus/20260613T220614Z"
+      },
+      {
+        "technique_key": "lens:critical-mass",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-critical-mass-premium/20260618T200001Z"
+      },
+      {
+        "technique_key": "lens:critical-mass",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-critical-mass-qwen9b/20260613T200044Z"
+      },
+      {
+        "technique_key": "lens:critical-mass",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-critical-mass-optimum/20260613T223026Z"
+      },
+      {
+        "technique_key": "lens:critical-mass",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-critical-mass-optimum-plus/20260613T221803Z"
+      },
+      {
+        "technique_key": "lens:diminishing-returns",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-diminishing-returns-premium/20260618T201615Z"
+      },
+      {
+        "technique_key": "lens:diminishing-returns",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-diminishing-returns-qwen9b/20260613T200357Z"
+      },
+      {
+        "technique_key": "lens:diminishing-returns",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-diminishing-returns-optimum/20260613T223257Z"
+      },
+      {
+        "technique_key": "lens:diminishing-returns",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-diminishing-returns-optimum-plus/20260613T222207Z"
+      },
+      {
+        "technique_key": "lens:equilibrium",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-equilibrium-premium/20260618T203059Z"
+      },
+      {
+        "technique_key": "lens:equilibrium",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-equilibrium-qwen9b/20260613T200624Z"
+      },
+      {
+        "technique_key": "lens:equilibrium",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-equilibrium-optimum/20260613T224445Z"
+      },
+      {
+        "technique_key": "lens:equilibrium",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-equilibrium-optimum-plus/20260613T223337Z"
+      },
+      {
+        "technique_key": "lens:feedback-loops",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-feedback-loops-premium/20260618T204436Z"
+      },
+      {
+        "technique_key": "lens:feedback-loops",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-feedback-loops-qwen9b/20260613T201225Z"
+      },
+      {
+        "technique_key": "lens:feedback-loops",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-feedback-loops-optimum/20260613T225024Z"
+      },
+      {
+        "technique_key": "lens:feedback-loops",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-feedback-loops-optimum-plus/20260613T223554Z"
+      },
+      {
+        "technique_key": "lens:greshams-law",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-greshams-law-premium/20260618T235808Z"
+      },
+      {
+        "technique_key": "lens:greshams-law",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-greshams-law-qwen9b/20260613T201358Z"
+      },
+      {
+        "technique_key": "lens:greshams-law",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-greshams-law-optimum/20260613T225053Z"
+      },
+      {
+        "technique_key": "lens:greshams-law",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-greshams-law-optimum-plus/20260613T224350Z"
+      },
+      {
+        "technique_key": "lens:leverage",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-leverage-premium/20260619T001352Z"
+      },
+      {
+        "technique_key": "lens:leverage",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-leverage-qwen9b/20260613T201424Z"
+      },
+      {
+        "technique_key": "lens:leverage",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-leverage-optimum/20260613T230239Z"
+      },
+      {
+        "technique_key": "lens:leverage",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-leverage-optimum-plus/20260613T224847Z"
+      },
+      {
+        "technique_key": "lens:practical-drift",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-practical-drift-premium/20260619T003627Z"
+      },
+      {
+        "technique_key": "lens:practical-drift",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-practical-drift-qwen9b/20260613T203856Z"
+      },
+      {
+        "technique_key": "lens:practical-drift",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-practical-drift-optimum/20260613T230927Z"
+      },
+      {
+        "technique_key": "lens:practical-drift",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-practical-drift-optimum-plus/20260613T225918Z"
+      },
+      {
+        "technique_key": "lens:red-queen-effect",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-queen-effect-premium/20260619T005609Z"
+      },
+      {
+        "technique_key": "lens:red-queen-effect",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-queen-effect-qwen9b/20260613T202342Z"
+      },
+      {
+        "technique_key": "lens:red-queen-effect",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-queen-effect-optimum/20260613T231137Z"
+      },
+      {
+        "technique_key": "lens:red-queen-effect",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-red-queen-effect-optimum-plus/20260613T230300Z"
+      },
+      {
+        "technique_key": "lens:supply-demand",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-supply-demand-premium/20260619T011103Z"
+      },
+      {
+        "technique_key": "lens:supply-demand",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-supply-demand-qwen9b/20260613T202734Z"
+      },
+      {
+        "technique_key": "lens:supply-demand",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-supply-demand-optimum/20260613T232610Z"
+      },
+      {
+        "technique_key": "lens:supply-demand",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-supply-demand-optimum-plus/20260613T231317Z"
+      },
+      {
+        "technique_key": "lens:adverse-selection",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-adverse-selection-premium/20260619T012118Z"
+      },
+      {
+        "technique_key": "lens:adverse-selection",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-adverse-selection-qwen9b/20260613T203416Z"
+      },
+      {
+        "technique_key": "lens:adverse-selection",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-adverse-selection-optimum/20260613T232951Z"
+      },
+      {
+        "technique_key": "lens:adverse-selection",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-adverse-selection-optimum-plus/20260613T232224Z"
+      },
+      {
+        "technique_key": "lens:asymmetric-warfare",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-asymmetric-warfare-premium/20260619T013950Z"
+      },
+      {
+        "technique_key": "lens:asymmetric-warfare",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-asymmetric-warfare-qwen9b/20260613T203749Z"
+      },
+      {
+        "technique_key": "lens:asymmetric-warfare",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-asymmetric-warfare-optimum/20260613T233030Z"
+      },
+      {
+        "technique_key": "lens:asymmetric-warfare",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-asymmetric-warfare-optimum-plus/20260613T232352Z"
+      },
+      {
+        "technique_key": "lens:backward-induction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-backward-induction-premium/20260619T015706Z"
+      },
+      {
+        "technique_key": "lens:backward-induction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-backward-induction-qwen9b/20260613T204517Z"
+      },
+      {
+        "technique_key": "lens:backward-induction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-backward-induction-optimum/20260613T234423Z"
+      },
+      {
+        "technique_key": "lens:backward-induction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-backward-induction-optimum-plus/20260613T232838Z"
+      },
+      {
+        "technique_key": "lens:brinkmanship",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-brinkmanship-premium/20260619T021132Z"
+      },
+      {
+        "technique_key": "lens:brinkmanship",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-brinkmanship-qwen9b/20260613T204814Z"
+      },
+      {
+        "technique_key": "lens:brinkmanship",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-brinkmanship-optimum/20260613T234912Z"
+      },
+      {
+        "technique_key": "lens:brinkmanship",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-brinkmanship-optimum-plus/20260613T234306Z"
+      },
+      {
+        "technique_key": "lens:moral-hazard",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-moral-hazard-premium/20260619T023036Z"
+      },
+      {
+        "technique_key": "lens:moral-hazard",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-moral-hazard-qwen9b/20260613T204833Z"
+      },
+      {
+        "technique_key": "lens:moral-hazard",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-moral-hazard-optimum/20260613T234932Z"
+      },
+      {
+        "technique_key": "lens:moral-hazard",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-moral-hazard-optimum-plus/20260613T234801Z"
+      },
+      {
+        "technique_key": "lens:mutually-assured-destruction",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mutually-assured-destruction-premium/20260619T024511Z"
+      },
+      {
+        "technique_key": "lens:mutually-assured-destruction",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mutually-assured-destruction-qwen9b/20260613T205531Z"
+      },
+      {
+        "technique_key": "lens:mutually-assured-destruction",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mutually-assured-destruction-optimum/20260614T000337Z"
+      },
+      {
+        "technique_key": "lens:mutually-assured-destruction",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-mutually-assured-destruction-optimum-plus/20260613T235034Z"
+      },
+      {
+        "technique_key": "lens:nash-equilibrium",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-nash-equilibrium-premium/20260619T030126Z"
+      },
+      {
+        "technique_key": "lens:nash-equilibrium",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-nash-equilibrium-qwen9b/20260613T205811Z"
+      },
+      {
+        "technique_key": "lens:nash-equilibrium",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-nash-equilibrium-optimum/20260614T000400Z"
+      },
+      {
+        "technique_key": "lens:nash-equilibrium",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-nash-equilibrium-optimum-plus/20260614T000406Z"
+      },
+      {
+        "technique_key": "lens:principal-agent-problem",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principal-agent-problem-premium/20260619T031610Z"
+      },
+      {
+        "technique_key": "lens:principal-agent-problem",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principal-agent-problem-qwen9b/20260613T210128Z"
+      },
+      {
+        "technique_key": "lens:principal-agent-problem",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principal-agent-problem-optimum/20260614T001134Z"
+      },
+      {
+        "technique_key": "lens:principal-agent-problem",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-principal-agent-problem-optimum-plus/20260614T000451Z"
+      },
+      {
+        "technique_key": "lens:prisoners-dilemma",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prisoners-dilemma-premium/20260619T033135Z"
+      },
+      {
+        "technique_key": "lens:prisoners-dilemma",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prisoners-dilemma-qwen9b/20260613T210718Z"
+      },
+      {
+        "technique_key": "lens:prisoners-dilemma",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prisoners-dilemma-optimum/20260614T001952Z"
+      },
+      {
+        "technique_key": "lens:prisoners-dilemma",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-prisoners-dilemma-optimum-plus/20260614T000816Z"
+      },
+      {
+        "technique_key": "lens:schelling-point",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-schelling-point-premium/20260619T034657Z"
+      },
+      {
+        "technique_key": "lens:schelling-point",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-schelling-point-qwen9b/20260613T211009Z"
+      },
+      {
+        "technique_key": "lens:schelling-point",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-schelling-point-optimum/20260614T002149Z"
+      },
+      {
+        "technique_key": "lens:schelling-point",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-schelling-point-optimum-plus/20260614T001900Z"
+      },
+      {
+        "technique_key": "lens:signaling",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-signaling-premium/20260619T040310Z"
+      },
+      {
+        "technique_key": "lens:signaling",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-signaling-qwen9b/20260613T211216Z"
+      },
+      {
+        "technique_key": "lens:signaling",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-signaling-optimum/20260614T002805Z"
+      },
+      {
+        "technique_key": "lens:signaling",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-signaling-optimum-plus/20260614T002356Z"
+      },
+      {
+        "technique_key": "lens:tit-for-tat",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tit-for-tat-premium/20260619T042251Z"
+      },
+      {
+        "technique_key": "lens:tit-for-tat",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tit-for-tat-qwen9b/20260613T211740Z"
+      },
+      {
+        "technique_key": "lens:tit-for-tat",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tit-for-tat-optimum/20260614T003344Z"
+      },
+      {
+        "technique_key": "lens:tit-for-tat",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tit-for-tat-optimum-plus/20260614T002557Z"
+      },
+      {
+        "technique_key": "lens:winners-curse",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-winners-curse-premium/20260619T044137Z"
+      },
+      {
+        "technique_key": "lens:winners-curse",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-winners-curse-qwen9b/20260613T212514Z"
+      },
+      {
+        "technique_key": "lens:winners-curse",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-winners-curse-optimum/20260614T003942Z"
+      },
+      {
+        "technique_key": "lens:winners-curse",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-winners-curse-optimum-plus/20260614T003641Z"
+      },
+      {
+        "technique_key": "lens:alexander-pattern-language",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-alexander-pattern-language-premium/20260619T045609Z"
+      },
+      {
+        "technique_key": "lens:alexander-pattern-language",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-alexander-pattern-language-qwen9b/20260613T212657Z"
+      },
+      {
+        "technique_key": "lens:alexander-pattern-language",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-alexander-pattern-language-optimum/20260614T175452Z"
+      },
+      {
+        "technique_key": "lens:alexander-pattern-language",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-alexander-pattern-language-optimum-plus/20260616T235222Z"
+      },
+      {
+        "technique_key": "lens:appleton-prospect-refuge",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-appleton-prospect-refuge-premium/20260619T051409Z"
+      },
+      {
+        "technique_key": "lens:appleton-prospect-refuge",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-appleton-prospect-refuge-qwen9b/20260613T213014Z"
+      },
+      {
+        "technique_key": "lens:appleton-prospect-refuge",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-appleton-prospect-refuge-optimum/20260614T175452Z"
+      },
+      {
+        "technique_key": "lens:appleton-prospect-refuge",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-appleton-prospect-refuge-optimum-plus/20260616T035529Z"
+      },
+      {
+        "technique_key": "lens:arnheim-compositional-forces",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arnheim-compositional-forces-premium/20260619T052814Z"
+      },
+      {
+        "technique_key": "lens:arnheim-compositional-forces",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arnheim-compositional-forces-qwen9b/20260613T213301Z"
+      },
+      {
+        "technique_key": "lens:arnheim-compositional-forces",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arnheim-compositional-forces-optimum/20260614T180946Z"
+      },
+      {
+        "technique_key": "lens:arnheim-compositional-forces",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-arnheim-compositional-forces-optimum-plus/20260616T042433Z"
+      },
+      {
+        "technique_key": "lens:bachelard-topoanalysis",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bachelard-topoanalysis-premium/20260619T054448Z"
+      },
+      {
+        "technique_key": "lens:bachelard-topoanalysis",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bachelard-topoanalysis-qwen9b/20260613T213506Z"
+      },
+      {
+        "technique_key": "lens:bachelard-topoanalysis",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bachelard-topoanalysis-optimum/20260614T181739Z"
+      },
+      {
+        "technique_key": "lens:bachelard-topoanalysis",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bachelard-topoanalysis-optimum-plus/20260616T045347Z"
+      },
+      {
+        "technique_key": "lens:bertin-visual-variables",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bertin-visual-variables-premium/20260619T060431Z"
+      },
+      {
+        "technique_key": "lens:bertin-visual-variables",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bertin-visual-variables-qwen9b/20260613T214441Z"
+      },
+      {
+        "technique_key": "lens:bertin-visual-variables",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bertin-visual-variables-optimum/20260614T182148Z"
+      },
+      {
+        "technique_key": "lens:bertin-visual-variables",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-bertin-visual-variables-optimum-plus/20260616T053017Z"
+      },
+      {
+        "technique_key": "lens:cleveland-mcgill-perceptual-tasks",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cleveland-mcgill-perceptual-tasks-premium/20260619T063039Z"
+      },
+      {
+        "technique_key": "lens:cleveland-mcgill-perceptual-tasks",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cleveland-mcgill-perceptual-tasks-qwen9b/20260613T214655Z"
+      },
+      {
+        "technique_key": "lens:cleveland-mcgill-perceptual-tasks",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cleveland-mcgill-perceptual-tasks-optimum/20260614T183002Z"
+      },
+      {
+        "technique_key": "lens:cleveland-mcgill-perceptual-tasks",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-cleveland-mcgill-perceptual-tasks-optimum-plus/20260616T060209Z"
+      },
+      {
+        "technique_key": "lens:gestalt-grouping-principles",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-gestalt-grouping-principles-premium/20260619T064717Z"
+      },
+      {
+        "technique_key": "lens:gestalt-grouping-principles",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-gestalt-grouping-principles-qwen9b/20260613T214703Z"
+      },
+      {
+        "technique_key": "lens:gestalt-grouping-principles",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-gestalt-grouping-principles-optimum/20260614T184727Z"
+      },
+      {
+        "technique_key": "lens:gestalt-grouping-principles",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-gestalt-grouping-principles-optimum-plus/20260616T145551Z"
+      },
+      {
+        "technique_key": "lens:japanese-aesthetics-catalog",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-japanese-aesthetics-catalog-premium/20260619T065950Z"
+      },
+      {
+        "technique_key": "lens:japanese-aesthetics-catalog",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-japanese-aesthetics-catalog-qwen9b/20260613T215533Z"
+      },
+      {
+        "technique_key": "lens:japanese-aesthetics-catalog",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-japanese-aesthetics-catalog-optimum/20260614T184826Z"
+      },
+      {
+        "technique_key": "lens:japanese-aesthetics-catalog",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-japanese-aesthetics-catalog-optimum-plus/20260616T073712Z"
+      },
+      {
+        "technique_key": "lens:kaplan-attention-restoration",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-kaplan-attention-restoration-premium/20260619T071225Z"
+      },
+      {
+        "technique_key": "lens:kaplan-attention-restoration",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-kaplan-attention-restoration-qwen9b/20260613T215833Z"
+      },
+      {
+        "technique_key": "lens:kaplan-attention-restoration",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-kaplan-attention-restoration-optimum/20260614T184910Z"
+      },
+      {
+        "technique_key": "lens:kaplan-attention-restoration",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-kaplan-attention-restoration-optimum-plus/20260616T075906Z"
+      },
+      {
+        "technique_key": "lens:lynch-image-of-the-city",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lynch-image-of-the-city-premium/20260619T072820Z"
+      },
+      {
+        "technique_key": "lens:lynch-image-of-the-city",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lynch-image-of-the-city-qwen9b/20260613T220035Z"
+      },
+      {
+        "technique_key": "lens:lynch-image-of-the-city",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lynch-image-of-the-city-optimum/20260614T190217Z"
+      },
+      {
+        "technique_key": "lens:lynch-image-of-the-city",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-lynch-image-of-the-city-optimum-plus/20260617T001826Z"
+      },
+      {
+        "technique_key": "lens:norberg-schulz-genius-loci",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-norberg-schulz-genius-loci-premium/20260619T074414Z"
+      },
+      {
+        "technique_key": "lens:norberg-schulz-genius-loci",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-norberg-schulz-genius-loci-qwen9b/20260613T220957Z"
+      },
+      {
+        "technique_key": "lens:norberg-schulz-genius-loci",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-norberg-schulz-genius-loci-optimum/20260614T190254Z"
+      },
+      {
+        "technique_key": "lens:norberg-schulz-genius-loci",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-norberg-schulz-genius-loci-optimum-plus/20260616T095509Z"
+      },
+      {
+        "technique_key": "lens:tufte-data-ink-chartjunk",
+        "pipeline": "premium",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tufte-data-ink-chartjunk-premium/20260619T080027Z"
+      },
+      {
+        "technique_key": "lens:tufte-data-ink-chartjunk",
+        "pipeline": "qwen9b",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tufte-data-ink-chartjunk-qwen9b/20260613T221232Z"
+      },
+      {
+        "technique_key": "lens:tufte-data-ink-chartjunk",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tufte-data-ink-chartjunk-optimum/20260614T190428Z"
+      },
+      {
+        "technique_key": "lens:tufte-data-ink-chartjunk",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tufte-data-ink-chartjunk-optimum-plus/20260617T002910Z"
+      }
+    ],
+    "bare_control_records_excluded": 396,
+    "historical_step_health_limitation": "789 of 792 accepted Ora pipeline traces predate step-health persistence or lack a retained step-health file. This historical coverage gap is distinct from campaign-row completeness and is not represented as trace-health success.",
+    "severity_counts": {
+      "clean": 2,
+      "info": 0,
+      "review": 1,
+      "verification_gap": 0,
+      "critical": 0
+    },
+    "category_counts": {
+      "unclassified": 1
+    },
+    "contingency_label_counts": {
+      "step6_5-gear3-quality-gate-PASS": 1
+    },
+    "traces_with_contingencies": [
+      {
+        "technique_key": "mode:passion-exploration",
+        "pipeline": "optimum-plus",
+        "severity": "review",
+        "contingencies": [
+          "step6_5-gear3-quality-gate-PASS"
+        ],
+        "trace_dir": "/Users/oracle/ora-msi-central-routing/data/pipeline-traces/campaign-passion-exploration-optimum-plus/20260720T024858Z"
+      }
+    ]
+  },
+  "stale_manifest_keys": []
+}

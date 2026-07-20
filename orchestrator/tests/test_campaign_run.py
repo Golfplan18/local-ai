@@ -100,6 +100,43 @@ class TestRunnerRoot(unittest.TestCase):
     def test_default_root_is_the_checkout_containing_the_runner(self):
         self.assertEqual(campaign.ORA_HOME, REPO_ROOT.resolve())
 
+    def test_default_corpus_uses_active_projects_ora_path(self):
+        self.assertEqual(
+            campaign.DEFAULT_CORPUS,
+            Path.home() / "Documents" / "vault" / "Projects" / "Ora"
+            / "Reference — Trigger Prompt Corpus.md",
+        )
+
+    def test_campaign_source_prefers_local_then_historical_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            checkout = root / "accepted"
+            historical = root / "ora" / "data" / "campaign"
+            historical.mkdir(parents=True)
+            (historical / "campaign-manifest.jsonl").write_text("\n")
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    checkout, user_home=root, env={}),
+                historical.resolve(),
+            )
+            local = checkout / "data" / "campaign"
+            local.mkdir(parents=True)
+            (local / "campaign-manifest.jsonl").write_text("\n")
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    checkout, user_home=root, env={}),
+                local.resolve(),
+            )
+
+    def test_explicit_campaign_source_wins(self):
+        with tempfile.TemporaryDirectory() as td:
+            explicit = Path(td) / "evidence"
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    REPO_ROOT, env={"ORA_CAMPAIGN_DIR": str(explicit)}),
+                explicit.resolve(),
+            )
+
 
 class TestParseCorpus(unittest.TestCase):
     def setUp(self):
@@ -317,10 +354,45 @@ class TestCampaignAudit(unittest.TestCase):
         self.assertEqual(summary["completeness"]["complete_selected"], 1)
         health = summary["accepted_trace_health"]
         self.assertEqual(health["accepted_trace_count"], 2)
+        self.assertEqual(health["accepted_trace_with_health"], 2)
+        self.assertEqual(health["bare_control_records_excluded"], 1)
         self.assertEqual(health["severity_counts"]["clean"], 1)
         self.assertEqual(health["severity_counts"]["verification_gap"], 1)
         self.assertEqual(health["category_counts"]["verification_gap"], 1)
         self.assertEqual(summary["stale_manifest_keys"], ["mode:old-tech"])
+
+    def test_both_bare_controls_are_excluded_from_trace_health(self):
+        clean = self._trace("trace-clean", [])
+        for pipe, trace in (
+            ("premium", clean),
+            ("single-pass", None),
+            ("single-pass-9b", None),
+        ):
+            campaign.append_manifest({
+                "technique": "argument-audit",
+                "kind": "mode",
+                "pipeline": pipe,
+                "status": "ok",
+                "trace_dir": trace,
+                "at": "2026-07-20T03:27:14+00:00",
+            })
+        summary = campaign.audit_campaign(
+            self.corpus_path,
+            pipelines=["premium", "single-pass", "single-pass-9b"],
+        )
+        health = summary["accepted_trace_health"]
+        self.assertEqual(health["accepted_trace_count"], 1)
+        self.assertEqual(health["accepted_trace_with_health"], 1)
+        self.assertEqual(health["bare_control_records_excluded"], 2)
+        self.assertEqual(health["accepted_trace_missing_health"], [])
+
+    def test_missing_manifest_fails_closed(self):
+        with self.assertRaisesRegex(
+                FileNotFoundError, "authoritative campaign manifest not found"):
+            campaign.audit_campaign(
+                self.corpus_path,
+                campaign_dir=self.root / "missing-campaign",
+            )
 
     def test_write_campaign_audit_outputs_json_and_markdown(self):
         campaign.append_manifest({
@@ -333,7 +405,13 @@ class TestCampaignAudit(unittest.TestCase):
         self.assertTrue(json_path.exists())
         self.assertTrue(md_path.exists())
         self.assertIn("Premium Resume Selector", md_path.read_text())
+        self.assertIn("Historical Coverage Limitation", md_path.read_text())
+        self.assertIn("Campaign-row completeness and trace-health coverage are separate", md_path.read_text())
         self.assertEqual(json.loads(json_path.read_text())["corpus"]["entries"], 6)
+        self.assertEqual(
+            json.loads(json_path.read_text())["source"]["manifest_path"],
+            str(campaign.MANIFEST_PATH.resolve()),
+        )
 
 
 class TestVisualExtraction(unittest.TestCase):
