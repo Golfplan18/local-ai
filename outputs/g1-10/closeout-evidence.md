@@ -207,8 +207,13 @@ git -C /home/oracle/ora diff --quiet f3ba698c..HEAD -- . \
 test -z "$(git -C /home/oracle/ora status --porcelain --untracked-files=no)"
 test "$(crontab -l | sha256sum | awk "{print \$1}")" = b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd
 test "$(crontab -l | grep -v "^[[:space:]]*#" | grep -v "^[[:space:]]*$" | wc -l)" -eq 1
-test "$(git -C /home/oracle/work/main-streetindependent rev-parse HEAD)" = "$(git -C /home/oracle/work/main-streetindependent rev-parse origin/main)"
-test -z "$(git -C /home/oracle/work/main-streetindependent status --porcelain --untracked-files=no)"
+msi_repo=/home/oracle/work/main-streetindependent
+test -d "$msi_repo/.git"
+msi_head=$(git -C "$msi_repo" rev-parse HEAD)
+msi_upstream=$(git -C "$msi_repo" rev-parse origin/main)
+test -n "$msi_head"
+test "$msi_head" = "$msi_upstream"
+test -z "$(git -C "$msi_repo" status --porcelain --untracked-files=no)"
 systemctl is-active --quiet msi-unified-production.service
 python3 -m json.tool /home/oracle/.local/state/ora/g1-10-cloud-cutover.json >/dev/null
 '

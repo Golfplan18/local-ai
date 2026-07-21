@@ -127,6 +127,8 @@ class OperationalIdentityTests(unittest.TestCase):
             "codex/g1-10-live-cutover",
             "g1-10-macos-cutover.json",
             "g1-10-cloud-cutover.json",
+            'test -d "$msi_repo/.git"',
+            'test -n "$msi_head"',
             "rollback-macos-cutover.sh",
             "rollback-cloud-cutover.sh",
             "G1.24",
@@ -136,6 +138,10 @@ class OperationalIdentityTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertIn(value, text)
         self.assertGreaterEqual(text.count("Observed exit status: `0`"), 8)
+        self.assertNotIn(
+            'test "$(git -C /home/oracle/work/main-streetindependent rev-parse HEAD)" =',
+            text,
+        )
         self.assertNotIn("G1.10 is accepted", text)
 
     def test_exact_expiry_refuses_replacement_at_same_locator(self):
