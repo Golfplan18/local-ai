@@ -16,6 +16,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = ROOT / "operations" / "g1-10-baseline"
 CURRENT = ROOT / "operations" / "g1-10-current"
+CLOSEOUT = ROOT / "outputs" / "g1-10" / "closeout-evidence.md"
 VAULT = Path(os.environ.get("ORA_VAULT") or
              "/Users/oracle/Documents/vault")
 
@@ -112,6 +113,30 @@ class OperationalIdentityTests(unittest.TestCase):
         self.assertNotIn("reset --hard", ora)
         self.assertNotIn("reset --hard", msi)
         self.assertIn("merge --ff-only", msi)
+
+    def test_closeout_has_reproducible_commands_and_installed_state(self):
+        text = CLOSEOUT.read_text(encoding="utf-8")
+        required = (
+            "cd /Users/oracle/ora-msi-central-routing",
+            "python3 -m unittest \\",
+            "python3 scripts/verify-implementation.py --check drift",
+            "python3 -m py_compile",
+            "find operations/g1-10-current -type f -name '*.sh' -print0",
+            "ssh cloud-ora",
+            "curl -fsS http://localhost:5000/health",
+            "codex/g1-10-live-cutover",
+            "g1-10-macos-cutover.json",
+            "g1-10-cloud-cutover.json",
+            "rollback-macos-cutover.sh",
+            "rollback-cloud-cutover.sh",
+            "G1.24",
+            "independent Gate G1.10 judgment pending",
+        )
+        for value in required:
+            with self.subTest(value=value):
+                self.assertIn(value, text)
+        self.assertGreaterEqual(text.count("Observed exit status: `0`"), 8)
+        self.assertNotIn("G1.10 is accepted", text)
 
     def test_exact_expiry_refuses_replacement_at_same_locator(self):
         source = CURRENT / "cloud" / "scripts" / "gear4-expiration.py"
