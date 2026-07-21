@@ -32,6 +32,10 @@ TECHNICAL_NON_STATUS_REQUESTS = (
     "Explain Ora’s current state machine.",
     "How does MSI report progress events?",
     "Compare status-code handling in Ora and MSI.",
+    "How is Ora going to handle HTTP status codes?",
+    "How is Ora doing status-code normalization?",
+    "Where does Ora stand up its HTTP status handler?",
+    "Explain Ora’s update mechanism.",
 )
 
 
@@ -198,6 +202,8 @@ class ProjectStatusResolutionTests(unittest.TestCase):
     def test_natural_project_status_relationships_remain_supported(self) -> None:
         cases = {
             "How's Ora doing?": ["ora"],
+            "How is Ora doing?": ["ora"],
+            "Where does Ora stand?": ["ora"],
             "Where do we stand on MSI?": ["main-street-independent"],
             "Give me the project update for Ora and MSI.": [
                 "ora",
@@ -370,31 +376,96 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
             self.assertEqual("submit_ordinary_generation", contract["next_action"])
 
     def test_public_chat_technical_questions_do_not_trigger_status_retrieval(self) -> None:
+        original_context_assembly = server.run_step2_context_assembly
+
+        def stub_step1(user_input, *_args, **_kwargs):
+            return {
+                "mode": "simple",
+                "raw_prompt": user_input,
+                "cleaned_prompt": user_input,
+                "operational_notation": user_input,
+                "triage_tier": 1,
+                "classification_confidence": "high",
+                "classification_intent": "ordinary",
+                "detected_invocation": "",
+                "pre_routing": {
+                    "dispatched_mode_id": "simple",
+                    "territory": "T0",
+                    "bypass_to_direct_response": False,
+                    "pending_clarification": None,
+                    "pending_clarification_stage": None,
+                    "completeness_gaps": [],
+                    "dispatch_announcement": None,
+                    "confidence": "high",
+                    "stage1_output": {"matches": []},
+                },
+            }
+
+        config = {
+            "rag_isolation": "web_only",
+            "cells": {},
+            "endpoints": [{"name": "g1-5-test-stub"}],
+        }
         for index, message in enumerate(TECHNICAL_NON_STATUS_REQUESTS):
-            response_value = server._json_response({"status": "ok"})
-            with self.subTest(message=message), mock.patch.object(
-                server,
-                "_log_pending_submission",
-                return_value=f"g1-5-negative-{index}",
-            ), mock.patch.object(
-                server,
-                "_invoke_pipeline",
-                return_value=response_value,
-            ) as invoke, mock.patch.object(
-                project_status,
-                "build_project_status_context",
-                wraps=project_status.build_project_status_context,
-            ) as status_context:
-                response = self.client.post("/chat", json={
-                    "message": message,
-                    "conversation_id": f"g1-5-public-negative-{index}",
-                })
+            events = []
+            contexts = []
+
+            def capture_context(*args, **kwargs):
+                context = original_context_assembly(*args, **kwargs)
+                contexts.append(context)
+                events.append("status-context-resolved")
+                return context
+
+            def stub_execution(*_args, **_kwargs):
+                events.append("model-execution-stubbed")
+                return "G1.5 execution stub"
+
+            panel_id = f"g1-5-public-negative-{index}"
+            try:
+                with self.subTest(message=message), mock.patch.object(
+                    server,
+                    "_log_pending_submission",
+                    return_value=f"g1-5-negative-{index}",
+                ), mock.patch.object(
+                    server, "_finalize_pending_submission",
+                ), mock.patch.object(
+                    server, "_save_conversation", return_value="g1-5-test-chunk",
+                ), mock.patch.object(
+                    server, "load_config", return_value=config,
+                ), mock.patch.object(
+                    server, "get_endpoint", return_value={"name": "g1-5-test-stub"},
+                ), mock.patch.object(
+                    server,
+                    "resolve_single_pass_endpoint",
+                    return_value=({"name": "g1-5-test-stub"}, "fast"),
+                ), mock.patch.object(
+                    server, "run_step1_cleanup", side_effect=stub_step1,
+                ), mock.patch.object(
+                    server,
+                    "run_step2_context_assembly",
+                    side_effect=capture_context,
+                ), mock.patch.object(
+                    server,
+                    "run_single_pass_with_tools",
+                    side_effect=stub_execution,
+                ) as execute, mock.patch(
+                    "conversation_memory.load_governing_process_binding",
+                    return_value=None,
+                ):
+                    response = self.client.post("/chat", json={
+                        "message": message,
+                        "conversation_id": panel_id,
+                        "tag": "stealth",
+                    })
+            finally:
+                server._session_data.pop(panel_id, None)
             self.assertEqual(200, response.status_code)
-            invoke.assert_called_once()
-            status_context.assert_not_called()
-            contract = invoke.call_args.kwargs["extra_context"]["process_entry"]
-            self.assertEqual("ordinary_generation", contract["intent"])
-            self.assertEqual("ready", contract["status"])
+            execute.assert_called_once()
+            self.assertEqual(1, len(contexts))
+            self.assertEqual("", contexts[0]["project_status_context"])
+            self.assertEqual(
+                ["status-context-resolved", "model-execution-stubbed"], events
+            )
 
 
 class AcceptedVaultSourceTests(unittest.TestCase):

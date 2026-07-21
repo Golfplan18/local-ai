@@ -58,6 +58,9 @@ _PROJECTS: tuple[dict[str, Any], ...] = (
 )
 
 _PROJECT_ALIAS_SOURCE = r"(?:ora|msi|main\s+street\s+independent)"
+_TERMINAL_STATUS_SUFFIX = (
+    r"(?:\s+(?:right\s+now|today|currently|overall))?\s*[?!.]*\s*$"
+)
 _PROJECT_STATUS_RELATION_PATTERNS = tuple(
     re.compile(pattern, re.IGNORECASE) for pattern in (
         # "What's the status of Ora?", "Give me an update on MSI."
@@ -67,20 +70,24 @@ _PROJECT_STATUS_RELATION_PATTERNS = tuple(
         r"\bwhat(?:'s|\s+is)\s+happening\s+(?:with|on)\s+"
         r"(?P<target>[^.!?\n]+)",
         # "How is MSI doing?"
-        r"\bhow(?:'s|\s+(?:is|are))\s+(?P<target>.+?)\s+"
-        r"(?:doing|going|progressing)\b",
+        rf"\bhow(?:'s|\s+(?:is|are))\s+(?P<target>.+?)\s+"
+        rf"(?:doing|going|progressing){_TERMINAL_STATUS_SUFFIX}",
         # "Where does Ora stand?"
-        r"\bwhere\s+(?:does|do|is|are)\s+(?P<target>.+?)\s+stand\b",
+        rf"\bwhere\s+(?:does|do|is|are)\s+(?P<target>.+?)\s+stand"
+        rf"{_TERMINAL_STATUS_SUFFIX}",
         # "Where do we stand on Ora?"
         r"\bwhere\s+(?:do|are)\s+we\s+stand\s+(?:on|with)\s+"
         r"(?P<target>[^.!?\n]+)",
-        # "Ora's project status" / "MSI progress". The relationship word
-        # must immediately qualify the named project; technical compounds such
-        # as status-code and progress-event therefore do not match.
+        # "Ora's project status" / "MSI progress". These shorthand forms
+        # must terminate as status questions; trailing mechanism/handler nouns
+        # turn the project into technical subject matter instead.
         rf"\b(?P<target>{_PROJECT_ALIAS_SOURCE})(?:['’]s)?\s+"
-        r"(?:project\s+)?(?:status|progress|current\s+state|update)\b"
-        r"(?!\s+(?:code|codes|event|events|machine|machines|model|models|"
-        r"handler|handlers|handling|transition|transitions))",
+        rf"(?:project\s+)?(?:status|progress|current\s+(?:state|status))"
+        rf"{_TERMINAL_STATUS_SUFFIX}",
+        # Bare "Ora update" is ambiguous with software mechanisms. Retain
+        # only the explicit project-qualified shorthand.
+        rf"\b(?P<target>{_PROJECT_ALIAS_SOURCE})(?:['’]s)?\s+project\s+update"
+        rf"{_TERMINAL_STATUS_SUFFIX}",
     )
 )
 _ALLOWED_TARGET_WORDS = frozenset({
