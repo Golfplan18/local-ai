@@ -22,8 +22,17 @@ if str(ROOT) not in sys.path:
 import boot  # noqa: E402
 import matrix_payload  # noqa: E402
 import operation_matrix  # noqa: E402
+import process_entry_routing  # noqa: E402
 import project_status  # noqa: E402
 from server import server  # noqa: E402
+
+
+TECHNICAL_NON_STATUS_REQUESTS = (
+    "What does Ora do with HTTP status 500?",
+    "Explain Ora’s current state machine.",
+    "How does MSI report progress events?",
+    "Compare status-code handling in Ora and MSI.",
+)
 
 
 def _write(path: Path, text: str) -> None:
@@ -186,12 +195,51 @@ class ProjectStatusResolutionTests(unittest.TestCase):
             [item["nexus"] for item in result["projects"]],
         )
 
+    def test_natural_project_status_relationships_remain_supported(self) -> None:
+        cases = {
+            "How's Ora doing?": ["ora"],
+            "Where do we stand on MSI?": ["main-street-independent"],
+            "Give me the project update for Ora and MSI.": [
+                "ora",
+                "main-street-independent",
+            ],
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(
+                    expected,
+                    [item["nexus"] for item in project_status.requested_projects(message)],
+                )
+
     def test_non_status_mention_is_no_op(self) -> None:
         result = project_status.resolve_status_request(
             "Explain Ora's architecture.", vault=self.vault
         )
         self.assertFalse(result["matched"])
         self.assertEqual("", result["context"])
+
+    def test_technical_status_words_do_not_create_project_status_intent(self) -> None:
+        catalog = process_entry_routing.list_entry_definitions(ROOT)
+        for message in TECHNICAL_NON_STATUS_REQUESTS:
+            with self.subTest(message=message):
+                self.assertEqual([], project_status.requested_projects(message))
+                result = project_status.resolve_status_request(
+                    message, vault=self.vault
+                )
+                self.assertFalse(result["matched"])
+                self.assertEqual("", result["context"])
+                route = process_entry_routing.route_process_entry(
+                    {
+                        "source": "inquiry",
+                        "objective": message,
+                        "project_ref": "commons",
+                        "project_confirmed": False,
+                    },
+                    catalog=catalog,
+                    project_visible=lambda _project: True,
+                )
+                self.assertEqual("ordinary_generation", route["intent"])
+                self.assertEqual("ready", route["status"])
 
     def test_duplicate_nexus_fails_closed(self) -> None:
         _write(
@@ -321,6 +369,33 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
             self.assertEqual("ready", contract["status"])
             self.assertEqual("submit_ordinary_generation", contract["next_action"])
 
+    def test_public_chat_technical_questions_do_not_trigger_status_retrieval(self) -> None:
+        for index, message in enumerate(TECHNICAL_NON_STATUS_REQUESTS):
+            response_value = server._json_response({"status": "ok"})
+            with self.subTest(message=message), mock.patch.object(
+                server,
+                "_log_pending_submission",
+                return_value=f"g1-5-negative-{index}",
+            ), mock.patch.object(
+                server,
+                "_invoke_pipeline",
+                return_value=response_value,
+            ) as invoke, mock.patch.object(
+                project_status,
+                "build_project_status_context",
+                wraps=project_status.build_project_status_context,
+            ) as status_context:
+                response = self.client.post("/chat", json={
+                    "message": message,
+                    "conversation_id": f"g1-5-public-negative-{index}",
+                })
+            self.assertEqual(200, response.status_code)
+            invoke.assert_called_once()
+            status_context.assert_not_called()
+            contract = invoke.call_args.kwargs["extra_context"]["process_entry"]
+            self.assertEqual("ordinary_generation", contract["intent"])
+            self.assertEqual("ready", contract["status"])
+
 
 class AcceptedVaultSourceTests(unittest.TestCase):
     @classmethod
@@ -355,6 +430,29 @@ class AcceptedVaultSourceTests(unittest.TestCase):
         self.assertEqual([], result["warnings"])
         self.assertIn("G1.5 is the current increment", result["context"])
         self.assertIn("headless harness", result["context"])
+        self.assertIn("First publisher-machine publication run", result["context"])
+        self.assertIn("61eaa80", result["context"])
+        self.assertIn("Milestone A2", result["context"])
+        self.assertIn("B1 remains open", result["context"])
+
+    def test_msi_matrix_adjudicates_first_run_without_overclaiming_b1(self) -> None:
+        matrix = (
+            self.vault / "Matrix" / "Project Matrix Main Street Independent.md"
+        ).read_text(encoding="utf-8")
+        tracker = (
+            self.vault / "Projects" / "MSI" / "Reference — MSI Tracker.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "### First publisher-machine publication run — 2026-05-11",
+            tracker,
+        )
+        self.assertIn("`61eaa80`", matrix)
+        self.assertIn("Milestone A2 satisfied for this cycle", matrix)
+        self.assertIn("B1 remains open", matrix)
+        self.assertNotIn(
+            "When will the publisher activate the first real news-plus-opinion cycle",
+            matrix,
+        )
 
     def test_legacy_wisdom_nexus_mission_is_absent_from_current_ora_matrix(self) -> None:
         matrix = self.vault / "Matrix" / "Project Matrix Ora.md"

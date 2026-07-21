@@ -57,16 +57,36 @@ _PROJECTS: tuple[dict[str, Any], ...] = (
     },
 )
 
-_STATUS_INTENT_RE = re.compile(
-    r"\b(?:status|progress|current\s+state|where\s+(?:are|do)\s+we\s+stand|"
-    r"what(?:'s|\s+is)\s+happening)\b",
-    re.IGNORECASE,
+_PROJECT_ALIAS_SOURCE = r"(?:ora|msi|main\s+street\s+independent)"
+_PROJECT_STATUS_RELATION_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE) for pattern in (
+        # "What's the status of Ora?", "Give me an update on MSI."
+        r"\b(?:the\s+)?(?:project\s+)?(?:status|progress|current\s+state|update)"
+        r"\s+(?:of|for|on)\s+(?P<target>[^.!?\n]+)",
+        # "What's happening with Ora and MSI?"
+        r"\bwhat(?:'s|\s+is)\s+happening\s+(?:with|on)\s+"
+        r"(?P<target>[^.!?\n]+)",
+        # "How is MSI doing?"
+        r"\bhow(?:'s|\s+(?:is|are))\s+(?P<target>.+?)\s+"
+        r"(?:doing|going|progressing)\b",
+        # "Where does Ora stand?"
+        r"\bwhere\s+(?:does|do|is|are)\s+(?P<target>.+?)\s+stand\b",
+        # "Where do we stand on Ora?"
+        r"\bwhere\s+(?:do|are)\s+we\s+stand\s+(?:on|with)\s+"
+        r"(?P<target>[^.!?\n]+)",
+        # "Ora's project status" / "MSI progress". The relationship word
+        # must immediately qualify the named project; technical compounds such
+        # as status-code and progress-event therefore do not match.
+        rf"\b(?P<target>{_PROJECT_ALIAS_SOURCE})(?:['’]s)?\s+"
+        r"(?:project\s+)?(?:status|progress|current\s+state|update)\b"
+        r"(?!\s+(?:code|codes|event|events|machine|machines|model|models|"
+        r"handler|handlers|handling|transition|transitions))",
+    )
 )
-_EXPLICIT_TAIL_RE = re.compile(
-    r"(?:status|progress|current\s+state)\s+(?:of|for|on)\s+(?P<tail>.+)$|"
-    r"what(?:'s|\s+is)\s+happening\s+(?:with|on)\s+(?P<happening>.+)$",
-    re.IGNORECASE,
-)
+_ALLOWED_TARGET_WORDS = frozenset({
+    "and", "the", "both", "project", "projects", "operation", "operations",
+    "please", "right", "now", "today", "currently", "overall", "s",
+})
 _WIKILINK_RE = re.compile(
     r"\[\[(?P<path>[^\]|#]+?)(?:#(?P<fragment>[^\]|]+))?"
     r"(?:\|[^\]]+)?\]\]"
@@ -97,25 +117,51 @@ def _vault_root(vault: Path | None = None) -> Path:
     return (Path.home() / "Documents" / "vault").resolve()
 
 
-def _matches_project(text: str, project: dict[str, Any]) -> bool:
-    return any(re.search(pattern, text, re.IGNORECASE) for pattern in project["aliases"])
+def _projects_in_relationship_target(target_text: str) -> list[dict[str, Any]]:
+    """Accept a target composed of project identities and connective words.
+
+    This is the key subject/object boundary.  A target such as ``Ora and MSI``
+    is project-shaped.  ``Ora's state machine`` or ``MSI progress events`` is
+    not: after removing project aliases, material technical nouns remain.
+    """
+    remaining = str(target_text or "").casefold()
+    matched: list[dict[str, Any]] = []
+    for project in _PROJECTS:
+        found = False
+        for alias in project["aliases"]:
+            if re.search(alias, remaining, re.IGNORECASE):
+                found = True
+                remaining = re.sub(alias, " ", remaining, flags=re.IGNORECASE)
+        if found:
+            matched.append(project)
+    if not matched:
+        return []
+    words = re.findall(r"[a-z0-9]+", remaining.replace("’", "'"))
+    if any(word not in _ALLOWED_TARGET_WORDS for word in words):
+        return []
+    return matched
 
 
 def requested_projects(prompt: str) -> list[dict[str, Any]]:
     """Return exact G1.5 project targets for an explicit status request.
 
-    When the prompt contains an explicit ``status of ...`` tail, aliases before
-    that tail are ignored.  Thus ``Ask Ora for the status of MSI`` selects MSI,
-    not both projects.  A conjunction inside the tail still selects both.
+    A status-like word is insufficient.  A recognized grammatical relationship
+    must make the named project the subject of status/progress/update, and the
+    target may contain only registered project names plus connective words.
+    Thus ``Ask Ora for the status of MSI`` selects MSI, while ``HTTP status 500
+    in Ora`` and ``MSI progress events`` select nothing.
     """
-    text = str(prompt or "").strip()
-    if not text or not _STATUS_INTENT_RE.search(text):
+    text = str(prompt or "").strip().replace("’", "'")
+    if not text:
         return []
-    explicit = _EXPLICIT_TAIL_RE.search(text)
-    target_text = text
-    if explicit:
-        target_text = explicit.group("tail") or explicit.group("happening") or ""
-    return [project for project in _PROJECTS if _matches_project(target_text, project)]
+    for pattern in _PROJECT_STATUS_RELATION_PATTERNS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        projects = _projects_in_relationship_target(match.group("target"))
+        if projects:
+            return projects
+    return []
 
 
 def _extract_heading(text: str, heading: str) -> str:

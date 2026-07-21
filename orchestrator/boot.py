@@ -8031,25 +8031,25 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
     # to Gear 1.  The resolver is read-only and emits its own fail-closed source
     # warning on missing, ambiguous, or invalid records.
     project_status_context = ""
+    project_status_requested = False
     try:
         try:
-            from project_status import build_project_status_context
+            from project_status import (
+                build_project_status_context,
+                requested_projects,
+            )
         except ImportError:  # pragma: no cover - package import context
-            from orchestrator.project_status import build_project_status_context
-        project_status_context = build_project_status_context(cleaned_prompt)
+            from orchestrator.project_status import (
+                build_project_status_context,
+                requested_projects,
+            )
+        project_status_requested = bool(requested_projects(cleaned_prompt))
+        if project_status_requested:
+            project_status_context = build_project_status_context(cleaned_prompt)
     except Exception as exc:
         print(f"[project-status] deterministic retrieval failed: {exc}",
               file=sys.stderr, flush=True)
-        _status_text = cleaned_prompt.casefold()
-        if (
-            any(term in _status_text for term in (
-                "status", "progress", "current state", "what's happening",
-                "what is happening", "where do we stand",
-            ))
-            and any(name in _status_text for name in (
-                "ora", "msi", "main street independent",
-            ))
-        ):
+        if project_status_requested:
             project_status_context = (
                 "## FAIL-CLOSED STATUS\n\nThe deterministic Operation-Matrix "
                 "resolver failed before it could authenticate the requested "
