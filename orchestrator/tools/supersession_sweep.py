@@ -47,12 +47,15 @@ from orchestrator.historical import run_news_supersession_resolver as news_res
 from orchestrator.historical import supersession_judge as judge
 
 import sqlite3
+from pathlib import Path
 
 from orchestrator.runtime_hygiene import (
     EventLedger,
     MutationTransaction,
     artifact_identity,
     event_identity,
+    mutation_path_locks,
+    sha256_file,
 )
 
 
@@ -236,6 +239,97 @@ def _event_engram_candidates(path: str) -> list[tuple[dict, dict]]:
     )
 
 
+def _bind_judgment_inputs(subject: dict, exact_subject: str,
+                          pairs: list[tuple[dict, dict, dict]]) -> list[dict]:
+    paths = {os.path.realpath(exact_subject)}
+    for newer, older, _hint in pairs:
+        paths.update({os.path.realpath(newer["path"]), os.path.realpath(older["path"])})
+    identities = [artifact_identity(path) for path in sorted(paths)]
+    subject_now = next(
+        (value for value in identities if value["path"] == os.path.realpath(exact_subject)),
+        None,
+    )
+    if subject_now != subject:
+        raise RuntimeError("event subject drifted before judgment")
+    return identities
+
+
+def _reauthenticate_judgment_inputs(identities: list[dict]) -> None:
+    for expected in identities:
+        try:
+            current = artifact_identity(expected["path"])
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"judgment input drifted before mutation: {expected['path']}"
+            ) from exc
+        if current != expected:
+            raise RuntimeError(
+                f"judgment input drifted before mutation: {expected['path']}"
+            )
+
+
+def _restored_snapshot_receipt(event: dict) -> dict:
+    manifest_path = event.get("rollback_manifest")
+    if not manifest_path:
+        raise RuntimeError("index restoration lacks a rollback manifest")
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    restored = []
+    for snapshot in manifest.get("snapshots", []):
+        path = Path(snapshot["path"])
+        if snapshot.get("existed"):
+            if not path.is_file() or sha256_file(path) != snapshot.get("before_sha256"):
+                raise RuntimeError(f"file rollback did not restore exact pre-state: {path}")
+            restored.append(artifact_identity(path))
+        else:
+            if path.exists():
+                raise RuntimeError(f"file rollback did not remove created artifact: {path}")
+            restored.append({"path": str(path), "exists": False})
+    return {
+        "rollback_manifest": str(Path(manifest_path).resolve()),
+        "restored_identities": restored,
+    }
+
+
+def _restore_index_after_rollback(*, ledger: EventLedger, event_id: str,
+                                  kind: str, affected: set[str],
+                                  original_error: Exception) -> dict:
+    try:
+        current = ledger.get(event_id) or {}
+        receipt = _restored_snapshot_receipt(current)
+        refresh = (news_res.refresh_chromadb(affected)
+                   if kind == "news_supersession"
+                   else eng_res.refresh_chromadb(affected))
+        if isinstance(refresh, dict) and refresh.get("errors"):
+            raise RuntimeError(f"restored index refresh failed: {refresh}")
+        receipt.update({
+            "affected_slugs": sorted(affected),
+            "refresh_result": refresh,
+            "restored_at": datetime.now().isoformat(),
+        })
+        ledger.append_evidence(event_id, "index_restoration_completed", receipt=receipt)
+        return ledger.transition(
+            event_id, {"failed"}, "failed",
+            error=str(original_error), index_restoration_receipt=receipt,
+        )
+    except Exception as restoration_exc:
+        ledger.append_evidence(
+            event_id, "index_restoration_failed",
+            original_error=str(original_error),
+            restoration_error=str(restoration_exc),
+        )
+        current = ledger.get(event_id) or {}
+        current_status = str(current.get("status") or "")
+        if current_status not in {"claimed", "prepared", "applying", "failed"}:
+            raise RuntimeError(
+                f"cannot surface broken index restoration from {current_status}"
+            ) from restoration_exc
+        return ledger.transition(
+            event_id, {current_status}, "infrastructure_broken",
+            error=str(original_error),
+            index_restoration_error=str(restoration_exc),
+        )
+
+
 def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
     """Autonomously evaluate one exact written Resource or Engram.
 
@@ -284,86 +378,112 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
                 "basis": "exact-neighborhood one-directional contradicts date gap",
             }) for newer, older in _event_engram_candidates(exact)]
 
-        judgments = []
-        for newer, older, hint in pairs:
-            jr = judge.judge_pair(
-                newer["h1"], newer.get("date_created") or eng_det.engram_date(newer) or "?",
-                _note_body(newer["path"]),
-                older["h1"], older.get("date_created") or eng_det.engram_date(older) or "?",
-                _note_body(older["path"]),
-                kind="news" if kind == "news_supersession" else "engram",
-                hint=json.dumps(hint, sort_keys=True),
-            )
-            if jr.decision not in {"supersede", "skip"}:
-                raise RuntimeError(
-                    f"model judgment failed for {newer['slug']}→{older['slug']}: {jr.reason}"
-                )
-            judgments.append((newer, older, jr, hint))
-
-        ledger.append_evidence(
-            resolved_event_id, "bounded_neighborhood_judged",
-            candidate_count=len(judgments),
-            ceiling=(MAX_EVENT_NEWS_PAIRS if kind == "news_supersession"
-                     else MAX_EVENT_ENGRAM_PAIRS),
-            judgments=[{
-                "source": newer["slug"], "target": older["slug"],
-                "hint": hint, **_judgment_evidence(jr),
-            } for newer, older, jr, hint in judgments],
-            human_triage=False,
-        )
-        if not judgments:
-            return ledger.transition(
-                resolved_event_id, {"claimed"}, "completed",
-                mutation_count=0, candidates=0, completed_at=datetime.now().isoformat(),
-            )
-
         log_file = news_res.LOG_FILE if kind == "news_supersession" else eng_res.LOG_FILE
-        transaction_paths = {log_file}
-        for newer, older, _jr, _hint in judgments:
+        transaction_paths = {exact, log_file}
+        for newer, older, _hint in pairs:
             transaction_paths.update({newer["path"], older["path"]})
+        with mutation_path_locks(transaction_paths):
+            bound_inputs = _bind_judgment_inputs(subject, exact, pairs)
+            ledger.append_evidence(
+                resolved_event_id, "judgment_inputs_bound",
+                identities=bound_inputs,
+            )
+            judgments = []
+            for newer, older, hint in pairs:
+                jr = judge.judge_pair(
+                    newer["h1"],
+                    newer.get("date_created") or eng_det.engram_date(newer) or "?",
+                    _note_body(newer["path"]),
+                    older["h1"],
+                    older.get("date_created") or eng_det.engram_date(older) or "?",
+                    _note_body(older["path"]),
+                    kind="news" if kind == "news_supersession" else "engram",
+                    hint=json.dumps(hint, sort_keys=True),
+                )
+                if jr.decision not in {"supersede", "skip"}:
+                    raise RuntimeError(
+                        f"model judgment failed for {newer['slug']}→{older['slug']}: "
+                        f"{jr.reason}"
+                    )
+                judgments.append((newer, older, jr, hint))
 
-        mutated: list[str] = []
-        affected: set[str] = set()
-        with MutationTransaction(ledger, resolved_event_id, transaction_paths) as tx:
-            for newer, older, jr, _hint in judgments:
-                if jr.decision == "supersede":
-                    if kind == "news_supersession":
-                        outcome = news_res.apply_supersession(
-                            newer["slug"], older["slug"], older["h1"], dry_run=False,
-                        )
-                        header = _news_log_header()
-                    else:
-                        outcome = eng_res.apply_changed_mind(
-                            newer["slug"], older["slug"], older["h1"], dry_run=False,
-                        )
-                        header = _engram_log_header()
-                    if outcome.get("errors"):
-                        raise RuntimeError(str(outcome["errors"]))
-                    mutated.extend(outcome.get("mutated_files", []))
-                    affected.update({newer["slug"], older["slug"]})
-                    resolution = "changed-mind:source-supersedes-target"
-                else:
-                    header = (_news_log_header() if kind == "news_supersession"
-                              else _engram_log_header())
-                    outcome = {"mutated_files": [], "errors": []}
-                    resolution = "skip"
-                _append_judged_log(
-                    log_file, header,
-                    source_slug=newer["slug"], target_slug=older["slug"],
-                    resolution=resolution, judge_result=jr,
-                    mutated_files=outcome["mutated_files"], errors=[],
+            ledger.append_evidence(
+                resolved_event_id, "bounded_neighborhood_judged",
+                candidate_count=len(judgments),
+                ceiling=(MAX_EVENT_NEWS_PAIRS if kind == "news_supersession"
+                         else MAX_EVENT_ENGRAM_PAIRS),
+                judgments=[{
+                    "source": newer["slug"], "target": older["slug"],
+                    "hint": hint, **_judgment_evidence(jr),
+                } for newer, older, jr, hint in judgments],
+                human_triage=False,
+            )
+            _reauthenticate_judgment_inputs(bound_inputs)
+            if not judgments:
+                return ledger.transition(
+                    resolved_event_id, {"claimed"}, "completed",
+                    mutation_count=0, candidates=0,
+                    completed_at=datetime.now().isoformat(),
                 )
 
-            if affected:
-                refresh = (news_res.refresh_chromadb(affected)
-                           if kind == "news_supersession"
-                           else eng_res.refresh_chromadb(affected))
-                if isinstance(refresh, dict) and refresh.get("errors"):
-                    raise RuntimeError(f"index refresh failed: {refresh}")
-            return tx.commit(
-                mutation_count=len(mutated), mutated_files=mutated,
-                autonomous_judgment=True, human_triage=False,
-            )
+            mutated: list[str] = []
+            affected: set[str] = set()
+            index_refresh_attempted = False
+            try:
+                with MutationTransaction(
+                    ledger, resolved_event_id, transaction_paths,
+                    expected_identities=bound_inputs,
+                ) as tx:
+                    for newer, older, jr, _hint in judgments:
+                        if jr.decision == "supersede":
+                            if kind == "news_supersession":
+                                outcome = news_res.apply_supersession(
+                                    newer["slug"], older["slug"], older["h1"],
+                                    dry_run=False,
+                                )
+                                header = _news_log_header()
+                            else:
+                                outcome = eng_res.apply_changed_mind(
+                                    newer["slug"], older["slug"], older["h1"],
+                                    dry_run=False,
+                                )
+                                header = _engram_log_header()
+                            if outcome.get("errors"):
+                                raise RuntimeError(str(outcome["errors"]))
+                            mutated.extend(outcome.get("mutated_files", []))
+                            affected.update({newer["slug"], older["slug"]})
+                            resolution = "changed-mind:source-supersedes-target"
+                        else:
+                            header = (_news_log_header() if kind == "news_supersession"
+                                      else _engram_log_header())
+                            outcome = {"mutated_files": [], "errors": []}
+                            resolution = "skip"
+                        _append_judged_log(
+                            log_file, header,
+                            source_slug=newer["slug"], target_slug=older["slug"],
+                            resolution=resolution, judge_result=jr,
+                            mutated_files=outcome["mutated_files"], errors=[],
+                        )
+
+                    if affected:
+                        index_refresh_attempted = True
+                        refresh = (news_res.refresh_chromadb(affected)
+                                   if kind == "news_supersession"
+                                   else eng_res.refresh_chromadb(affected))
+                        if isinstance(refresh, dict) and refresh.get("errors"):
+                            raise RuntimeError(f"index refresh failed: {refresh}")
+                    return tx.commit(
+                        mutation_count=len(mutated), mutated_files=mutated,
+                        autonomous_judgment=True, human_triage=False,
+                        judgment_input_identities=bound_inputs,
+                    )
+            except Exception as mutation_exc:
+                if index_refresh_attempted:
+                    return _restore_index_after_rollback(
+                        ledger=ledger, event_id=resolved_event_id, kind=kind,
+                        affected=affected, original_error=mutation_exc,
+                    )
+                raise
     except Exception as exc:
         current = ledger.get(resolved_event_id)
         if current and current.get("status") == "claimed":

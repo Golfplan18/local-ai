@@ -45,6 +45,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def normalized_instant(value: str) -> str:
+    """Return one timezone-aware timestamp as a canonical UTC instant."""
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("deadline must include a timezone")
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
+def instant_timestamp(value: str) -> float:
+    return datetime.fromisoformat(normalized_instant(value)).timestamp()
+
+
 def sha256_file(path: str | Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -95,6 +107,21 @@ def _exclusive(lock_path: Path):
             yield
         finally:
             fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def mutation_path_locks(paths: Iterable[str | Path]):
+    """Hold deterministic cross-process locks for an exact mutation set."""
+    exact = sorted({str(Path(path).expanduser().resolve()) for path in paths})
+    locks = [
+        _root() / "path-locks" /
+        (hashlib.sha256(path.encode("utf-8")).hexdigest() + ".lock")
+        for path in exact
+    ]
+    with contextlib.ExitStack() as stack:
+        for lock in locks:
+            stack.enter_context(_exclusive(lock))
+        yield exact
 
 
 class EventLedger:
@@ -215,16 +242,30 @@ class Snapshot:
 class MutationTransaction:
     """Persisted rollback material for an exact event mutation set."""
 
-    def __init__(self, ledger: EventLedger, event_id: str, paths: Iterable[str | Path]):
+    def __init__(self, ledger: EventLedger, event_id: str,
+                 paths: Iterable[str | Path], *,
+                 expected_identities: Iterable[dict] | None = None):
         self.ledger = ledger
         self.event_id = event_id
         self.paths = sorted({str(Path(path).expanduser().resolve()) for path in paths})
         self.directory = _root() / "rollback" / event_id
         self.manifest = self.directory / "manifest.json"
         self.snapshots: list[Snapshot] = []
+        self.expected_identities = {
+            str(Path(value["path"]).expanduser().resolve()): dict(value)
+            for value in (expected_identities or [])
+        }
         self._committed = False
 
     def prepare(self) -> None:
+        for raw, expected in self.expected_identities.items():
+            path = Path(raw)
+            try:
+                current = artifact_identity(path)
+            except FileNotFoundError as exc:
+                raise RuntimeError(f"judgment input drifted before mutation: {path}") from exc
+            if current != expected:
+                raise RuntimeError(f"judgment input drifted before mutation: {path}")
         self.directory.mkdir(parents=True, exist_ok=False)
         for index, raw in enumerate(self.paths):
             path = Path(raw)
@@ -398,19 +439,23 @@ class DeadlineQueue:
             return {"schema_version": SCHEMA_VERSION, "deadlines": {}}
 
     def put(self, key: str, due_at: str, event_type: str, payload: dict) -> dict:
-        due = datetime.fromisoformat(due_at)
-        if due.tzinfo is None:
-            raise ValueError("deadline must include a timezone")
+        due = normalized_instant(due_at)
         record = {
-            "key": key, "due_at": due.isoformat(), "event_type": event_type,
+            "key": key, "due_at": due, "event_type": event_type,
             "payload": payload, "status": "pending",
         }
         with _PROCESS_LOCK, _exclusive(self.lock_path):
             state = self._load()
             existing = state["deadlines"].get(key)
-            immutable = ("key", "due_at", "event_type", "payload")
             if existing is not None:
-                if any(existing.get(field) != record.get(field) for field in immutable):
+                same_instant = (
+                    instant_timestamp(str(existing.get("due_at")))
+                    == instant_timestamp(record["due_at"])
+                )
+                if (not same_instant
+                        or existing.get("key") != key
+                        or existing.get("event_type") != event_type
+                        or existing.get("payload") != payload):
                     raise ValueError("deadline key already binds a different contract")
                 return dict(existing)
             state["deadlines"][key] = record
@@ -428,7 +473,35 @@ class DeadlineQueue:
         with _PROCESS_LOCK, _exclusive(self.lock_path):
             pending = [value for value in self._load()["deadlines"].values()
                        if value.get("status") == "pending"]
-        return min(pending, key=lambda value: value["due_at"]) if pending else None
+        return min(
+            pending,
+            key=lambda value: (instant_timestamp(value["due_at"]), value["key"]),
+        ) if pending else None
+
+    def get(self, key: str) -> dict | None:
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            value = self._load()["deadlines"].get(key)
+            return dict(value) if value is not None else None
+
+    def cancel(self, key: str, *, reason: str) -> dict | None:
+        """Cancel one pending contract under queue lock, preserving evidence."""
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            state = self._load()
+            current = state["deadlines"].get(key)
+            if current is None:
+                return None
+            if current.get("status") != "pending":
+                return dict(current)
+            current = {
+                **current, "status": "cancelled", "cancelled_at": _now(),
+                "cancellation_reason": reason,
+            }
+            state["deadlines"][key] = current
+            _atomic_json(self.path, state)
+            self._append("deadline_cancelled", current)
+        with self._condition:
+            self._condition.notify_all()
+        return dict(current)
 
     def run(self, handlers: dict[str, Callable[[dict], None]], stop: threading.Event) -> None:
         """Sleep to the exact next due time; wake only on queue changes."""
@@ -440,7 +513,7 @@ class DeadlineQueue:
                 with self._condition:
                     self._condition.wait()
                 continue
-            due = datetime.fromisoformat(next_record["due_at"]).timestamp()
+            due = instant_timestamp(next_record["due_at"])
             delay = max(0.0, due - time.time())
             if delay:
                 with self._condition:
@@ -476,6 +549,166 @@ class DeadlineQueue:
                         "deadline_failed" if error else "deadline_completed",
                         current,
                     )
+
+
+class RetentionIntentStore:
+    """Write-ahead retention contracts recovered once at runtime startup."""
+
+    def __init__(self, storage_root: str | Path | None = None):
+        self.storage_root = (Path(storage_root).expanduser().resolve()
+                             if storage_root is not None else _root())
+
+    @property
+    def path(self) -> Path:
+        return self.storage_root / "retention-intents.json"
+
+    @property
+    def audit_path(self) -> Path:
+        return self.storage_root / "retention-intent-events.jsonl"
+
+    @property
+    def lock_path(self) -> Path:
+        return self.storage_root / ".retention-intents.lock"
+
+    def _load(self) -> dict:
+        try:
+            value = json.loads(self.path.read_text(encoding="utf-8"))
+            if value.get("schema_version") != SCHEMA_VERSION:
+                raise ValueError("unsupported retention-intent store")
+            return value
+        except FileNotFoundError:
+            return {"schema_version": SCHEMA_VERSION, "intents": {}}
+
+    def _append(self, kind: str, record: dict) -> None:
+        self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        envelope = {
+            "schema_version": SCHEMA_VERSION, "kind": kind,
+            "recorded_at": _now(), **record,
+        }
+        with self.audit_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(envelope, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def put(self, *, key: str, due_at: str, event_type: str,
+            payload: dict, guard: dict) -> dict:
+        record = {
+            "key": key, "due_at": normalized_instant(due_at),
+            "event_type": event_type, "payload": payload,
+            "guard": guard, "status": "pending", "created_at": _now(),
+        }
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            state = self._load()
+            existing = state["intents"].get(key)
+            if existing is not None:
+                immutable = ("key", "due_at", "event_type", "payload", "guard")
+                if any(existing.get(field) != record.get(field) for field in immutable):
+                    raise ValueError("retention intent key collision")
+                return dict(existing)
+            state["intents"][key] = record
+            _atomic_json(self.path, state)
+            self._append("retention_intent_persisted", record)
+            return dict(record)
+
+    def pending(self) -> list[dict]:
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            return [dict(value) for value in self._load()["intents"].values()
+                    if value.get("status") == "pending"]
+
+    def get(self, key: str) -> dict | None:
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            value = self._load()["intents"].get(key)
+            return dict(value) if value is not None else None
+
+    def mark_registered(self, key: str, deadline: dict) -> dict:
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            state = self._load()
+            current = state["intents"].get(key)
+            if current is None:
+                raise KeyError(key)
+            if current.get("status") == "registered":
+                return dict(current)
+            if current.get("status") != "pending":
+                raise ValueError("retention intent is not pending")
+            updated = {
+                **current, "status": "registered", "registered_at": _now(),
+                "deadline_receipt": deadline,
+            }
+            state["intents"][key] = updated
+            _atomic_json(self.path, state)
+            self._append("retention_intent_registered", updated)
+            return dict(updated)
+
+    def record_failure(self, key: str, error: str) -> None:
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            state = self._load()
+            current = state["intents"].get(key)
+            if current is None or current.get("status") != "pending":
+                return
+            current = {**current, "last_error": error, "last_failed_at": _now()}
+            state["intents"][key] = current
+            _atomic_json(self.path, state)
+            self._append("retention_intent_registration_failed", current)
+
+
+def retention_intent_store(data_dir: str | Path | None = None) -> RetentionIntentStore:
+    storage = ((Path(data_dir).expanduser().resolve() / "runtime-hygiene")
+               if data_dir is not None else _root().resolve())
+    return RetentionIntentStore(storage)
+
+
+def _retention_guard_matches(guard: dict) -> bool:
+    try:
+        value = json.loads(Path(guard["manifest_path"]).read_text(encoding="utf-8"))
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        return False
+    if value.get("finalized_at") != guard.get("finalized_at"):
+        return False
+    required = guard.get("retention_state")
+    if required == "finalized":
+        return True
+    current = value.get("retention_state", "default")
+    return current == required
+
+
+def register_retention_intent(key: str, *,
+                              store: RetentionIntentStore | None = None,
+                              queue: DeadlineQueue | None = None) -> dict:
+    store = store or retention_intent_store()
+    queue = queue or deadline_queue()
+    record = store.get(key)
+    if record is None:
+        raise KeyError(key)
+    if record.get("status") == "registered":
+        return record
+    if record.get("status") != "pending":
+        raise ValueError("retention intent is not pending")
+    if not _retention_guard_matches(record["guard"]):
+        raise RuntimeError("retention intent guard does not match lifecycle state")
+    try:
+        deadline = queue.put(
+            record["key"], record["due_at"], record["event_type"],
+            record["payload"],
+        )
+        return store.mark_registered(key, deadline)
+    except Exception as exc:
+        store.record_failure(key, str(exc))
+        raise
+
+
+def recover_retention_intents(*, store: RetentionIntentStore | None = None,
+                              queue: DeadlineQueue | None = None) -> dict:
+    """Replay exact pending intents once on startup; never scan trace trees."""
+    store = store or retention_intent_store()
+    queue = queue or deadline_queue()
+    report = {"registered": [], "failed": []}
+    for record in store.pending():
+        try:
+            register_retention_intent(record["key"], store=store, queue=queue)
+            report["registered"].append(record["key"])
+        except Exception as exc:
+            report["failed"].append({"key": record["key"], "error": str(exc)})
+    return report
 
 
 _DEADLINE_QUEUES: dict[str, DeadlineQueue] = {}

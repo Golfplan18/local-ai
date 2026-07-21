@@ -1015,30 +1015,60 @@ def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
             raise ValueError("cannot pin an open trace")
         manifest = dict(manifest)
         previous_state = manifest.get("retention_state", "default")
-        manifest["retention_state"] = state
-        _atomic_write_json(str(owned / MANIFEST_FILENAME), manifest)
+        retention = None
         if state == "default" and previous_state == "pinned":
             # A trace whose original expiry fired while pinned needs a new,
             # exact lifecycle event when it becomes eligible again. Register
             # from the unpin instant; never resurrect a periodic directory
             # sweep to rediscover it.
+            from orchestrator.runtime_hygiene import retention_intent_store
+            from datetime import datetime as _deadline_datetime, timedelta
+            days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
+            if days > 0:
+                unpinned_at = _deadline_datetime.now(_dt.timezone.utc).isoformat()
+                due = (_deadline_datetime.fromisoformat(unpinned_at)
+                       + timedelta(days=days)).isoformat()
+                key = "trace-retention-unpin:" + hashlib.sha256(
+                    f"{trace_ref}\0{unpinned_at}".encode("utf-8")
+                ).hexdigest()
+                payload = {
+                    "trace_ref": trace_ref,
+                    "finalized_at": manifest.get("finalized_at"),
+                }
+                guard = {
+                    "manifest_path": str(owned / MANIFEST_FILENAME),
+                    "finalized_at": manifest.get("finalized_at"),
+                    "retention_state": "default",
+                }
+                # This is the write-ahead boundary. If it fails, the trace
+                # remains pinned and no lifecycle success is persisted.
+                store = retention_intent_store(_rp.DATA_DIR_STR)
+                retention = store.put(
+                    key=key, due_at=due, event_type="trace_retention",
+                    payload=payload, guard=guard,
+                )
+        manifest["retention_state"] = state
+        if retention is not None:
+            manifest["retention_deadline"] = {
+                "key": retention["key"], "due_at": retention["due_at"],
+                "status": retention["status"],
+            }
+        _atomic_write_json(str(owned / MANIFEST_FILENAME), manifest)
+        if retention is not None and retention["status"] == "pending":
             try:
-                from orchestrator.runtime_hygiene import deadline_queue
-                from datetime import datetime as _deadline_datetime, timedelta
-                days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
-                if days > 0:
-                    unpinned_at = _deadline_datetime.now(_dt.timezone.utc).isoformat()
-                    due = (_deadline_datetime.now(_dt.timezone.utc)
-                           + timedelta(days=days)).isoformat()
-                    key = "trace-retention-unpin:" + hashlib.sha256(
-                        f"{trace_ref}\0{unpinned_at}".encode("utf-8")
-                    ).hexdigest()
-                    deadline_queue(_rp.DATA_DIR_STR).put(
-                        key, due, "trace_retention",
-                        {"trace_ref": trace_ref,
-                         "finalized_at": manifest.get("finalized_at")},
-                    )
+                from orchestrator.runtime_hygiene import (
+                    deadline_queue,
+                    register_retention_intent,
+                )
+                registered = register_retention_intent(
+                    retention["key"], store=store,
+                    queue=deadline_queue(_rp.DATA_DIR_STR),
+                )
+                manifest["retention_deadline"]["status"] = registered["status"]
+                _atomic_write_json(str(owned / MANIFEST_FILENAME), manifest)
             except Exception as retention_exc:
+                # The exact intent is already durable. Startup replays only
+                # that contract; no periodic trace-tree recovery exists.
                 print(f"[pipeline_trace] unpin retention registration failed: "
                       f"{retention_exc}", file=sys.stderr)
         return manifest
@@ -1275,30 +1305,57 @@ def finalize_manifest(trace_dir: str | None,
                 if isinstance(ref, str) and ref not in merged:
                     merged.append(ref)
             manifest["child_trace_refs"] = merged
-        _atomic_write_json(manifest_path, manifest)
-        # Finalization is the creation event for retention. Bind one exact
-        # deadline now; no periodic trace-directory discovery is required.
-        try:
-            from orchestrator.runtime_hygiene import deadline_queue
+        # Finalization is the creation event for retention. Persist the exact
+        # intent before persisting terminal lifecycle success. A failed queue
+        # write after this boundary is restart-recoverable from the intent;
+        # a failed intent write leaves the on-disk manifest open.
+        retention = None
+        trace_ref = trace_ref_for_dir(trace_dir)
+        days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
+        if trace_ref and days > 0:
+            from orchestrator.runtime_hygiene import retention_intent_store
             from datetime import datetime as _deadline_datetime, timedelta
-            trace_ref = trace_ref_for_dir(trace_dir)
-            if trace_ref:
-                days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
-                if days > 0:
-                    finalized = str(manifest["finalized_at"])
-                    finalized_dt = _deadline_datetime.fromisoformat(
-                        finalized.replace("Z", "+00:00"))
-                    due = (finalized_dt + timedelta(days=days)).isoformat()
-                    key = "trace-retention:" + hashlib.sha256(
-                        f"{trace_ref}\0{finalized}".encode("utf-8")
-                    ).hexdigest()
-                    deadline_queue(_rp.DATA_DIR_STR).put(
-                        key, due, "trace_retention",
-                        {"trace_ref": trace_ref, "finalized_at": finalized},
-                    )
-        except Exception as retention_exc:
-            print(f"[pipeline_trace] retention deadline registration failed: "
-                  f"{retention_exc}", file=sys.stderr)
+            finalized = str(manifest["finalized_at"])
+            finalized_dt = _deadline_datetime.fromisoformat(
+                finalized.replace("Z", "+00:00"))
+            due = (finalized_dt + timedelta(days=days)).isoformat()
+            key = "trace-retention:" + hashlib.sha256(
+                f"{trace_ref}\0{finalized}".encode("utf-8")
+            ).hexdigest()
+            payload = {"trace_ref": trace_ref, "finalized_at": finalized}
+            guard = {
+                "manifest_path": manifest_path,
+                "finalized_at": finalized,
+                # The handler evaluates pin state at the due instant. The
+                # write-ahead contract authenticates the exact finalization,
+                # not a mutable later pin/unpin designation.
+                "retention_state": "finalized",
+            }
+            store = retention_intent_store(_rp.DATA_DIR_STR)
+            retention = store.put(
+                key=key, due_at=due, event_type="trace_retention",
+                payload=payload, guard=guard,
+            )
+            manifest["retention_deadline"] = {
+                "key": retention["key"], "due_at": retention["due_at"],
+                "status": retention["status"],
+            }
+        _atomic_write_json(manifest_path, manifest)
+        if retention is not None and retention["status"] == "pending":
+            try:
+                from orchestrator.runtime_hygiene import (
+                    deadline_queue,
+                    register_retention_intent,
+                )
+                registered = register_retention_intent(
+                    retention["key"], store=store,
+                    queue=deadline_queue(_rp.DATA_DIR_STR),
+                )
+                manifest["retention_deadline"]["status"] = registered["status"]
+                _atomic_write_json(manifest_path, manifest)
+            except Exception as retention_exc:
+                print(f"[pipeline_trace] retention deadline registration failed: "
+                      f"{retention_exc}", file=sys.stderr)
     except Exception as e:
         # Fail-open (design-gate Q1): the manifest must never break a turn.
         print(f"[pipeline_trace] finalize_manifest failed: {e}",

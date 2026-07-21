@@ -29,6 +29,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import oversight_daemon as od  # noqa: E402
+from orchestrator import runtime_hygiene  # noqa: E402
 from oversight_sandbox import redirect_oversight_logs  # noqa: E402
 
 
@@ -55,6 +56,27 @@ class RuntimePathTests(unittest.TestCase):
                 "running": True, "event_lane": True, "deadline_lane": True,
             })
 
+    def test_startup_recovers_exact_retention_intents_before_lanes_start(self):
+        daemon = od.OversightDaemon()
+        queue = mock.MagicMock()
+        thread = mock.MagicMock()
+        with (
+            mock.patch.dict(
+                "sys.modules", {"oversight_router": mock.MagicMock()},
+            ),
+            mock.patch.object(runtime_hygiene, "deadline_queue", return_value=queue),
+            mock.patch.object(
+                runtime_hygiene, "recover_retention_intents",
+                return_value={"registered": ["intent-a"], "failed": []},
+            ) as recover,
+            mock.patch.object(daemon, "_ensure_daily_note_deadline") as daily,
+            mock.patch.object(od.threading, "Thread", return_value=thread),
+        ):
+            daemon.start()
+        recover.assert_called_once_with(queue=queue)
+        daily.assert_called_once_with()
+        self.assertEqual(thread.start.call_count, 4)
+
     def test_daily_deadline_uses_persisted_day_and_chains_missed_day(self):
         daemon = od.OversightDaemon()
         daemon._deadline_queue = mock.MagicMock()
@@ -65,13 +87,17 @@ class RuntimePathTests(unittest.TestCase):
         ) as task:
             receipt = daemon._handle_daily_note_deadline({
                 "completed_date": "2026-07-19",
+                "timezone": "America/Los_Angeles",
             })
         task.assert_called_once_with(date_str="2026-07-19")
         self.assertEqual(receipt["completed_date"], "2026-07-19")
         args = daemon._deadline_queue.put.call_args.args
-        self.assertEqual(args[0], "daily-note:2026-07-20")
+        self.assertTrue(args[0].startswith("daily-note-v2:2026-07-20:"))
         self.assertEqual(args[2], "daily_note")
-        self.assertEqual(args[3], {"completed_date": "2026-07-20"})
+        self.assertEqual(args[3], {
+            "completed_date": "2026-07-20",
+            "timezone": "America/Los_Angeles",
+        })
 
     def test_failed_daily_deadline_still_chains_distinct_next_day(self):
         daemon = od.OversightDaemon()
@@ -80,11 +106,68 @@ class RuntimePathTests(unittest.TestCase):
         with mock.patch(
             "orchestrator.tools.daily_note.task_daily_note", return_value=failed,
         ), self.assertRaisesRegex(RuntimeError, "bounded failure"):
+            daemon._handle_daily_note_deadline({
+                "completed_date": "2026-07-19",
+                "timezone": "America/Los_Angeles",
+            })
+        self.assertTrue(
+            daemon._deadline_queue.put.call_args.args[0].startswith(
+                "daily-note-v2:2026-07-20:"
+            )
+        )
+
+    def test_legacy_daily_deadline_resolves_named_zone_before_chaining(self):
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        completed = mock.MagicMock(success=True, message="legacy completed")
+        with (
+            mock.patch.object(
+                od, "_local_timezone_name", return_value="America/Los_Angeles",
+            ),
+            mock.patch(
+                "orchestrator.tools.daily_note.task_daily_note",
+                return_value=completed,
+            ),
+        ):
             daemon._handle_daily_note_deadline({"completed_date": "2026-07-19"})
         self.assertEqual(
-            daemon._deadline_queue.put.call_args.args[0],
-            "daily-note:2026-07-20",
+            daemon._deadline_queue.put.call_args.args[3]["timezone"],
+            "America/Los_Angeles",
         )
+
+    def test_pending_fixed_offset_deadline_is_atomically_replaced(self):
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        daemon._deadline_queue.get.return_value = {
+            "key": "daily-note:2026-03-08", "status": "pending",
+        }
+        daemon._ensure_daily_note_deadline(
+            "2026-03-08", timezone_name="America/Los_Angeles",
+        )
+        daemon._deadline_queue.cancel.assert_called_once_with(
+            "daily-note:2026-03-08",
+            reason=("migrated from fixed-offset calendar deadline to "
+                    "named timezone America/Los_Angeles"),
+        )
+        args = daemon._deadline_queue.put.call_args.args
+        self.assertEqual(args[1], "2026-03-09T00:00:00-07:00")
+        self.assertEqual(args[3]["timezone"], "America/Los_Angeles")
+
+    def test_calendar_deadline_recomputes_both_dst_transitions(self):
+        cases = {
+            "2026-03-07": "2026-03-08T00:00:00-08:00",
+            "2026-03-08": "2026-03-09T00:00:00-07:00",
+            "2026-10-31": "2026-11-01T00:00:00-07:00",
+            "2026-11-01": "2026-11-02T00:00:00-08:00",
+        }
+        for completed, expected in cases.items():
+            with self.subTest(completed=completed):
+                self.assertEqual(
+                    od._calendar_midnight_after(
+                        completed, "America/Los_Angeles",
+                    ).isoformat(),
+                    expected,
+                )
 
 
 class MaybeRunTests(unittest.TestCase):

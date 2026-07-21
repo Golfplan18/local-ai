@@ -147,6 +147,21 @@ class LedgerTests(RuntimeHygieneBase):
         self.assertEqual(first.storage_root,
                          (self.data / "runtime-hygiene").resolve())
 
+    def test_deadline_ordering_uses_instants_across_mixed_offsets(self):
+        queue = hygiene.DeadlineQueue()
+        queue.put(
+            "later", "2026-07-21T02:00:00-05:00", "test", {"id": "later"},
+        )  # 07:00Z
+        queue.put(
+            "earlier", "2026-07-21T08:00:00+02:00", "test", {"id": "earlier"},
+        )  # 06:00Z
+        self.assertEqual(queue.next_due()["key"], "earlier")
+        stored = queue._load()["deadlines"]
+        self.assertEqual(stored["earlier"]["due_at"],
+                         "2026-07-21T06:00:00+00:00")
+        self.assertEqual(stored["later"]["due_at"],
+                         "2026-07-21T07:00:00+00:00")
+
     def test_claim_is_exactly_once_and_collision_fails(self):
         ledger = hygiene.EventLedger()
         first, created = ledger.claim(
@@ -305,6 +320,66 @@ class SupersessionEventTests(RuntimeHygieneBase):
         self.assertEqual(source.read_text(), "source")
         self.assertEqual(older.read_text(), "older")
 
+    def test_subject_drift_during_judgment_prevents_all_ora_mutation(self):
+        source = self.resources / "source.md"
+        older = self.resources / "older.md"
+        source.write_text("source", encoding="utf-8")
+        older.write_text("older", encoding="utf-8")
+        candidate = {
+            "newer": self._meta(source, "source"),
+            "older": self._meta(older, "older"),
+            "similarity": .9, "entity_overlap": 2, "date_gap_days": 10,
+        }
+
+        def drift_subject(*_args, **_kwargs):
+            source.write_text("concurrent subject edit", encoding="utf-8")
+            return SimpleNamespace(decision="supersede", reason="newer", slot="test")
+
+        with (
+            mock.patch.object(supersession, "_event_news_candidates",
+                              return_value=[candidate]),
+            mock.patch.object(supersession.judge, "judge_pair",
+                              side_effect=drift_subject),
+            mock.patch.object(supersession.news_res, "apply_supersession") as apply,
+            mock.patch.object(supersession.news_res, "refresh_chromadb") as refresh,
+        ):
+            result = supersession.process_artifact_write(str(source))
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["mutation_count"], 0)
+        self.assertIn("drifted before mutation", result["error"])
+        self.assertEqual(source.read_text(), "concurrent subject edit")
+        self.assertEqual(older.read_text(), "older")
+        apply.assert_not_called()
+        refresh.assert_not_called()
+
+    def test_candidate_drift_during_judgment_prevents_all_ora_mutation(self):
+        source = self.resources / "source.md"
+        older = self.resources / "older.md"
+        source.write_text("source", encoding="utf-8")
+        older.write_text("older", encoding="utf-8")
+        candidate = {
+            "newer": self._meta(source, "source"),
+            "older": self._meta(older, "older"),
+            "similarity": .9, "entity_overlap": 2, "date_gap_days": 10,
+        }
+
+        def drift_neighbor(*_args, **_kwargs):
+            older.write_text("concurrent neighbor edit", encoding="utf-8")
+            return SimpleNamespace(decision="supersede", reason="newer", slot="test")
+
+        with (
+            mock.patch.object(supersession, "_event_news_candidates",
+                              return_value=[candidate]),
+            mock.patch.object(supersession.judge, "judge_pair",
+                              side_effect=drift_neighbor),
+            mock.patch.object(supersession.news_res, "apply_supersession") as apply,
+        ):
+            result = supersession.process_artifact_write(str(source))
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(source.read_text(), "source")
+        self.assertEqual(older.read_text(), "concurrent neighbor edit")
+        apply.assert_not_called()
+
     def test_forged_event_identity_is_rejected_before_judgment(self):
         source = self.resources / "source.md"
         source.write_text("source", encoding="utf-8")
@@ -375,7 +450,82 @@ class SupersessionEventTests(RuntimeHygieneBase):
         self.assertEqual(apply.call_count, 1)
         audit = (self.data / "runtime-hygiene" / "events.jsonl").read_text()
         self.assertIn("bounded_neighborhood_judged", audit)
+        self.assertIn("judgment_inputs_bound", audit)
         self.assertIn('"human_triage": false', audit)
+
+    def test_failed_index_refresh_restores_index_from_rolled_back_files(self):
+        source = self.resources / "source.md"
+        older = self.resources / "older.md"
+        source.write_text("source", encoding="utf-8")
+        older.write_text("older", encoding="utf-8")
+        candidate = {
+            "newer": self._meta(source, "source"),
+            "older": self._meta(older, "older"),
+            "similarity": .9, "entity_overlap": 2, "date_gap_days": 10,
+        }
+        index = {"older": "older"}
+        refresh_calls = []
+
+        def apply_mutation(*_args, **_kwargs):
+            older.write_text("superseded", encoding="utf-8")
+            return {"mutated_files": ["older.md"], "errors": []}
+
+        def refresh(_affected):
+            index["older"] = older.read_text(encoding="utf-8")
+            refresh_calls.append(index["older"])
+            return ({"errors": ["simulated index failure"]}
+                    if len(refresh_calls) == 1 else {"errors": []})
+
+        with (
+            mock.patch.object(supersession, "_event_news_candidates",
+                              return_value=[candidate]),
+            mock.patch.object(supersession.judge, "judge_pair",
+                              return_value=SimpleNamespace(
+                                  decision="supersede", reason="newer", slot="test")),
+            mock.patch.object(supersession.news_res, "apply_supersession",
+                              side_effect=apply_mutation),
+            mock.patch.object(supersession.news_res, "refresh_chromadb",
+                              side_effect=refresh),
+        ):
+            result = supersession.process_artifact_write(str(source))
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(refresh_calls, ["superseded", "older"])
+        self.assertEqual(older.read_text(), "older")
+        self.assertEqual(index["older"], "older")
+        self.assertEqual(result["index_restoration_receipt"]["affected_slugs"],
+                         ["older", "source"])
+
+    def test_failed_index_restoration_surfaces_broken_infrastructure(self):
+        source = self.resources / "source.md"
+        older = self.resources / "older.md"
+        source.write_text("source", encoding="utf-8")
+        older.write_text("older", encoding="utf-8")
+        candidate = {
+            "newer": self._meta(source, "source"),
+            "older": self._meta(older, "older"),
+            "similarity": .9, "entity_overlap": 2, "date_gap_days": 10,
+        }
+
+        def apply_mutation(*_args, **_kwargs):
+            older.write_text("superseded", encoding="utf-8")
+            return {"mutated_files": ["older.md"], "errors": []}
+
+        with (
+            mock.patch.object(supersession, "_event_news_candidates",
+                              return_value=[candidate]),
+            mock.patch.object(supersession.judge, "judge_pair",
+                              return_value=SimpleNamespace(
+                                  decision="supersede", reason="newer", slot="test")),
+            mock.patch.object(supersession.news_res, "apply_supersession",
+                              side_effect=apply_mutation),
+            mock.patch.object(supersession.news_res, "refresh_chromadb",
+                              return_value={"errors": ["unavailable"]}),
+        ):
+            result = supersession.process_artifact_write(str(source))
+        self.assertEqual(result["status"], "infrastructure_broken")
+        self.assertEqual(older.read_text(), "older")
+        self.assertIn("restored index refresh failed",
+                      result["index_restoration_error"])
 
 
 if __name__ == "__main__":

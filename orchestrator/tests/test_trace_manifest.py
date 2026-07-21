@@ -371,6 +371,91 @@ class TestTraceRef(TraceManifestBase):
             1,
         )
 
+    def test_finalization_intent_write_failure_cannot_report_lifecycle_success(self):
+        d = self.start("conv-intent-fail")
+        with mock.patch.object(
+            runtime_hygiene.RetentionIntentStore, "put",
+            side_effect=OSError("forced intent persistence failure"),
+        ):
+            pipeline_trace.finalize_manifest(
+                d, kind="chat", status_hint="completed",
+            )
+        manifest = self.manifest(d)
+        self.assertEqual(manifest["terminal_status"], "open")
+        self.assertIsNone(manifest["finalized_at"])
+
+    def test_finalization_queue_failure_recovers_exact_intent_after_restart(self):
+        d = self.start("conv-queue-recover")
+        with mock.patch.object(
+            runtime_hygiene.DeadlineQueue, "put",
+            side_effect=OSError("forced queue failure"),
+        ):
+            pipeline_trace.finalize_manifest(
+                d, kind="chat", status_hint="completed",
+            )
+        pending_manifest = self.manifest(d)
+        self.assertEqual(pending_manifest["terminal_status"], "completed")
+        self.assertEqual(pending_manifest["retention_deadline"]["status"], "pending")
+
+        store = runtime_hygiene.retention_intent_store(
+            pipeline_trace._rp.DATA_DIR_STR,
+        )
+        queue = runtime_hygiene.DeadlineQueue(store.storage_root)
+        report = runtime_hygiene.recover_retention_intents(
+            store=store, queue=queue,
+        )
+        self.assertEqual(report["failed"], [])
+        self.assertEqual(report["registered"], [
+            pending_manifest["retention_deadline"]["key"],
+        ])
+        deadline = queue._load()["deadlines"][report["registered"][0]]
+        self.assertEqual(deadline["payload"]["trace_ref"],
+                         pipeline_trace.trace_ref_for_dir(d))
+
+    def test_unpin_intent_write_failure_leaves_trace_pinned(self):
+        d = self.start("conv-unpin-intent-fail")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed",
+        )
+        pipeline_trace.set_retention_state(ref, "pinned")
+        with (
+            mock.patch.object(
+                runtime_hygiene.RetentionIntentStore, "put",
+                side_effect=OSError("forced unpin intent failure"),
+            ),
+            self.assertRaisesRegex(OSError, "forced unpin intent failure"),
+        ):
+            pipeline_trace.set_retention_state(ref, "default")
+        self.assertEqual(self.manifest(d)["retention_state"], "pinned")
+
+    def test_unpin_queue_failure_recovers_exact_intent_after_restart(self):
+        d = self.start("conv-unpin-queue-recover")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed",
+        )
+        pipeline_trace.set_retention_state(ref, "pinned")
+        with mock.patch.object(
+            runtime_hygiene.DeadlineQueue, "put",
+            side_effect=OSError("forced unpin queue failure"),
+        ):
+            unpinned = pipeline_trace.set_retention_state(ref, "default")
+        self.assertEqual(unpinned["retention_state"], "default")
+        self.assertEqual(unpinned["retention_deadline"]["status"], "pending")
+
+        store = runtime_hygiene.retention_intent_store(
+            pipeline_trace._rp.DATA_DIR_STR,
+        )
+        queue = runtime_hygiene.DeadlineQueue(store.storage_root)
+        report = runtime_hygiene.recover_retention_intents(
+            store=store, queue=queue,
+        )
+        self.assertEqual(report["failed"], [])
+        self.assertEqual(report["registered"], [
+            unpinned["retention_deadline"]["key"],
+        ])
+
 
 class TestFinalizeStatusAndKind(TraceManifestBase):
     """One test per turn-path class (design §Tests: simulate the groups)."""

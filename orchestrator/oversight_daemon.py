@@ -14,11 +14,14 @@ Author: meta-layer implementation per Reference — Meta-Layer Architecture.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 try:
     import runtime_paths as _rp
@@ -60,6 +63,40 @@ def _vault_path() -> str:
 def _prune_scan_dirs(dirs: list[str]) -> None:
     """Prune by path component, independent of slash direction."""
     dirs[:] = [name for name in dirs if name not in _SCAN_SKIP_DIRS]
+
+
+def _local_timezone_name() -> str:
+    """Resolve a named IANA zone; fixed offsets cannot govern calendar work."""
+    configured = os.environ.get("ORA_LOCAL_TIMEZONE", "").strip()
+    if configured:
+        try:
+            ZoneInfo(configured)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"unknown ORA_LOCAL_TIMEZONE: {configured}") from exc
+        return configured
+    try:
+        resolved = str(Path("/etc/localtime").resolve())
+    except OSError as exc:
+        raise RuntimeError("cannot resolve the local named timezone") from exc
+    marker = "/zoneinfo/"
+    if marker not in resolved:
+        raise RuntimeError(
+            "calendar deadlines require ORA_LOCAL_TIMEZONE or a named /etc/localtime zone"
+        )
+    name = resolved.split(marker, 1)[1]
+    try:
+        ZoneInfo(name)
+    except ZoneInfoNotFoundError as exc:
+        raise RuntimeError(f"local timezone is not an IANA zone: {name}") from exc
+    return name
+
+
+def _calendar_midnight_after(completed_date: str, timezone_name: str) -> datetime:
+    from datetime import date, timedelta
+    day = date.fromisoformat(completed_date)
+    return datetime.combine(
+        day + timedelta(days=1), datetime.min.time(), tzinfo=ZoneInfo(timezone_name),
+    )
 
 # Compatibility-only modules driven by ``run_once`` and the retired interval
 # lane methods. Production ``start()`` does not launch these lanes. Runtime
@@ -378,8 +415,15 @@ class OversightDaemon:
 
         self._running = True
         self._stop_event.clear()
-        from orchestrator.runtime_hygiene import deadline_queue
+        from orchestrator.runtime_hygiene import (
+            deadline_queue,
+            recover_retention_intents,
+        )
         self._deadline_queue = deadline_queue()
+        recovery = recover_retention_intents(queue=self._deadline_queue)
+        if recovery["failed"]:
+            print("[oversight_daemon] retention intent recovery failed: "
+                  f"{recovery['failed']}")
         self._ensure_daily_note_deadline()
         self._event_thread = threading.Thread(
             target=self._event_loop, daemon=True, name="oversight-file-events")
@@ -430,22 +474,37 @@ class OversightDaemon:
             if self._running:
                 print(f"[oversight_daemon] deadline lane failed: {exc}")
 
-    def _ensure_daily_note_deadline(self, completed_date: str | None = None):
-        from datetime import date, timedelta
-        now = datetime.now().astimezone()
-        day = date.fromisoformat(completed_date) if completed_date else now.date()
-        due = datetime.combine(day + timedelta(days=1), datetime.min.time(),
-                               tzinfo=now.tzinfo)
-        self._deadline_queue.put(
-            f"daily-note:{day.isoformat()}", due.isoformat(), "daily_note",
-            {"completed_date": day.isoformat()},
+    def _ensure_daily_note_deadline(self, completed_date: str | None = None,
+                                    timezone_name: str | None = None):
+        timezone_name = timezone_name or _local_timezone_name()
+        zone = ZoneInfo(timezone_name)
+        day = (datetime.fromisoformat(completed_date).date()
+               if completed_date else datetime.now(zone).date())
+        due = _calendar_midnight_after(day.isoformat(), timezone_name)
+        legacy_key = f"daily-note:{day.isoformat()}"
+        legacy = self._deadline_queue.get(legacy_key)
+        if legacy and legacy.get("status") == "pending":
+            self._deadline_queue.cancel(
+                legacy_key,
+                reason=("migrated from fixed-offset calendar deadline to "
+                        f"named timezone {timezone_name}"),
+            )
+        timezone_key = hashlib.sha256(timezone_name.encode("utf-8")).hexdigest()[:12]
+        return self._deadline_queue.put(
+            f"daily-note-v2:{day.isoformat()}:{timezone_key}",
+            due.isoformat(), "daily_note",
+            {"completed_date": day.isoformat(), "timezone": timezone_name},
         )
 
     def _handle_daily_note_deadline(self, payload: dict):
         from datetime import date, timedelta
         from orchestrator.tools.daily_note import task_daily_note
         completed_date = str(payload["completed_date"])
+        # Legacy persisted contracts did not include a named zone. Resolve it
+        # once at dispatch and ensure every chained contract carries the name.
+        timezone_name = str(payload.get("timezone") or _local_timezone_name())
         date.fromisoformat(completed_date)
+        ZoneInfo(timezone_name)
         try:
             result = task_daily_note(date_str=completed_date)
             if not getattr(result, "success", False):
@@ -460,7 +519,9 @@ class OversightDaemon:
             # wall-clock "yesterday"—so restart catches up each missed day
             # without silently binding evidence to the wrong calendar date.
             next_day = date.fromisoformat(completed_date) + timedelta(days=1)
-            self._ensure_daily_note_deadline(next_day.isoformat())
+            self._ensure_daily_note_deadline(
+                next_day.isoformat(), timezone_name=timezone_name,
+            )
 
     def _handle_project_revisit_deadline(self, payload: dict):
         from oversight_events import emit
