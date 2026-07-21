@@ -23,10 +23,10 @@ This packet does not claim Gate acceptance, begin G1.11, perform G1.24's externa
 | Surface | Observed identity | Disposition |
 |---|---|---|
 | Accepted runtime checkout | `f3ba698c507cc0b96facb8bcf9dbd820b619a77d`, synchronized with upstream | Source implementation and tracked operational package |
-| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact implementation commit, tracked-clean | Replaces rejected preservation checkout without merging it |
+| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact final G1.10 package head, tracked-clean; executable source differs from `f3ba698c` only by the closeout test/evidence | Replaces rejected preservation checkout without merging it |
 | Mac LaunchAgent | `com.ora.server`, SHA-256 `b58feb7b98da59fdc557b0a081f337e3953b975aa39bac59f03c20050631b03a` | Preserved and restarted successfully |
 | Mac cutover receipt | `$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json`, SHA-256 `620ff2ffd7d345cc8456a288f350042c7d1bcd2905170058d82a64d7805d2e78` | Binds runtime root, commit, baseline/current manifests, retired labels, and recovery directory |
-| Cloud Ora runtime | detached exact implementation commit, tracked-clean | Replaces divergent `main` checkout without reset or merge |
+| Cloud Ora runtime | detached exact final G1.10 package head, tracked-clean; executable source differs from `f3ba698c` only by the closeout test/evidence | Replaces divergent `main` checkout without reset or merge |
 | Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `f73d30113236b49045f5da871f4832b2ab784a7de8d30ee60f18fc24573a28d6` | Binds runtime root, commit, manifests, crontab, and seven installed scripts |
 | Cloud crontab | one row, SHA-256 `b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd` | Only the justified daily read-only external model audit remains |
 | MSI source | harvest head `d62fd0e70b092cc90d47ed6250888c1d448ac97f`, containing both G1.10 commits and synchronized with upstream | Live `unified_production.py` and test bytes match source |
@@ -176,8 +176,11 @@ Observed exit status: `0`. Result: implementation drift verification and all fou
 
 ```sh
 cd /Users/oracle/ora
-test "$(git rev-parse HEAD)" = f3ba698c507cc0b96facb8bcf9dbd820b619a77d
-test "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')"
+git fetch origin codex/g1-1-phase-1-4-runtime
+test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)"
+git diff --quiet f3ba698c..HEAD -- . \
+  ':!outputs/g1-10/closeout-evidence.md' \
+  ':!orchestrator/tests/test_g1_10_operations.py'
 test -z "$(git status --porcelain --untracked-files=no)"
 launchctl print "gui/$(id -u)/com.ora.server" >/dev/null
 for label in \
@@ -196,7 +199,11 @@ Observed exit status: `0`. Result: live branch/upstream exact, tracked state cle
 
 ```sh
 ssh cloud-ora 'set -e
-test "$(git -C /home/oracle/ora rev-parse HEAD)" = f3ba698c507cc0b96facb8bcf9dbd820b619a77d
+git -C /home/oracle/ora fetch origin codex/g1-1-phase-1-4-runtime
+test "$(git -C /home/oracle/ora rev-parse HEAD)" = "$(git -C /home/oracle/ora rev-parse FETCH_HEAD)"
+git -C /home/oracle/ora diff --quiet f3ba698c..HEAD -- . \
+  ':!outputs/g1-10/closeout-evidence.md' \
+  ':!orchestrator/tests/test_g1_10_operations.py'
 test -z "$(git -C /home/oracle/ora status --porcelain --untracked-files=no)"
 test "$(crontab -l | sha256sum | awk "{print \$1}")" = b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd
 test "$(crontab -l | grep -v "^[[:space:]]*#" | grep -v "^[[:space:]]*$" | wc -l)" -eq 1
