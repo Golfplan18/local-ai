@@ -1,0 +1,9 @@
+*/15 * * * * /home/oracle/ora-deploy.sh
+0 9 * * * set -a && . $HOME/.config/ora-server.env && set +a && $HOME/ora-audit-models.py
+*/15 * * * * /home/oracle/msi-deploy.sh > /dev/null 2>&1
+30 3 * * * /home/oracle/msi-deploy.sh --full > /dev/null 2>&1
+0 6 * * * /home/oracle/wsj-reauth-guard.sh
+*/30 * * * * /home/oracle/msi_vault_outbox.sh
+*/15 * * * * /home/oracle/ora-vault-runtime-sync.sh
+# weekly purge of gear-4 stale-session graveyard (>14 days) — installed 2026-07-09; see ~/gear4-stale-purge.log
+30 5 * * 0 n=$(find "$HOME/gear4-stale-sessions" -mindepth 1 -maxdepth 1 -mtime +14 | wc -l); find "$HOME/gear4-stale-sessions" -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} + ; echo "$(date -Is) gear4-stale purge: removed $n entries" >> "$HOME/gear4-stale-purge.log"
