@@ -43,6 +43,49 @@ class RuntimePathTests(unittest.TestCase):
         od._prune_scan_dirs(dirs)
         self.assertEqual(dirs, ["Projects", "Notes"])
 
+    def test_runtime_health_reads_actual_blocking_lanes(self):
+        daemon = od.OversightDaemon()
+        alive = mock.MagicMock()
+        alive.is_alive.return_value = True
+        daemon._running = True
+        daemon._event_thread = alive
+        daemon._deadline_thread = alive
+        with mock.patch.object(od, "_daemon", daemon):
+            self.assertEqual(od.runtime_health(), {
+                "running": True, "event_lane": True, "deadline_lane": True,
+            })
+
+    def test_daily_deadline_uses_persisted_day_and_chains_missed_day(self):
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        completed = mock.MagicMock(success=True, message="wrote exact day")
+        with mock.patch(
+            "orchestrator.tools.daily_note.task_daily_note",
+            return_value=completed,
+        ) as task:
+            receipt = daemon._handle_daily_note_deadline({
+                "completed_date": "2026-07-19",
+            })
+        task.assert_called_once_with(date_str="2026-07-19")
+        self.assertEqual(receipt["completed_date"], "2026-07-19")
+        args = daemon._deadline_queue.put.call_args.args
+        self.assertEqual(args[0], "daily-note:2026-07-20")
+        self.assertEqual(args[2], "daily_note")
+        self.assertEqual(args[3], {"completed_date": "2026-07-20"})
+
+    def test_failed_daily_deadline_still_chains_distinct_next_day(self):
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        failed = mock.MagicMock(success=False, message="bounded failure")
+        with mock.patch(
+            "orchestrator.tools.daily_note.task_daily_note", return_value=failed,
+        ), self.assertRaisesRegex(RuntimeError, "bounded failure"):
+            daemon._handle_daily_note_deadline({"completed_date": "2026-07-19"})
+        self.assertEqual(
+            daemon._deadline_queue.put.call_args.args[0],
+            "daily-note:2026-07-20",
+        )
+
 
 class MaybeRunTests(unittest.TestCase):
     def test_runs_when_due_and_records_last_run(self):

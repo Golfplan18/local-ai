@@ -170,6 +170,15 @@ class TestOversightHealthIntegration(unittest.TestCase):
             self.assertIsNotNone(ts)
             self.assertLess(time.time() - ts, 5.0)
 
+    def test_live_event_runtime_ignores_retired_watcher_heartbeats(self):
+        stale = time.time() - 100_000
+        with mock.patch("oversight_daemon.runtime_health", return_value={
+                "running": True, "event_lane": True, "deadline_lane": True,
+        }), mock.patch.object(oversight_health, "_oversight_active", return_value=True), \
+                mock.patch.object(oversight_health, "read_heartbeat",
+                                  side_effect=lambda name: None if name == "mlx_worker" else stale):
+            self.assertEqual(oversight_health.check_health(), [])
+
 
 if __name__ == "__main__":
     unittest.main()

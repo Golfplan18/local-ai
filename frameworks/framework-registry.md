@@ -1080,19 +1080,35 @@ These six frameworks are loaded into model context windows at specific pipeline 
 
 ---
 
+### Event-Driven Hygiene Patterns
+
+- **Purpose:** Replace periodic discovery of internally caused maintenance with exact events and persisted one-shot deadlines
+- **Problem Class:** Runtime hygiene, maintenance triggering, bounded autonomous mutation, operational scheduling
+- **Input Summary:** Exact event type, subject locator and digest, idempotency identity; or exact timezone-aware deadline and payload
+- **Output Summary:** Append-only event/deadline evidence; bounded recoverable maintenance mutation; explicit campaign handoff for historical debt
+- **Proven Applications:** G1.10 Ora News/Engram write processing, oversight file-event cutover, MSI completion-event follow-ups, Mac/cloud scheduler retirement
+- **Known Limitations:** External sources without callbacks still require justified bounded polling; external DCP/full-state verification remains G1.24; Windows execution proof remains deferred with G1.3
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Event-Driven Hygiene Patterns.md (canonical)
+- **Provenance:** human-approved, agent-formalized
+- **Confidence:** medium
+- **Version:** 1.0
+- **Delivers:** Exact event contract and append-only receipt; persisted one-shot deadline; bounded judgment-before-mutation transaction; drift-safe rollback; explicit historical campaign boundary
+
+---
+
 ### Periodic Maintenance
 
-- **Purpose:** Four scheduled vault-maintenance tasks for work that genuinely requires full-vault scans or has no runtime trigger; per the Runtime Principle, scheduled execution is reserved for tasks where runtime execution is impossible
-- **Problem Class:** Vault maintenance, scheduled tasks
-- **Input Summary:** Vault read access; for each scheduled task: the entire current vault state at the time the task runs
-- **Output Summary:** Updated relationship graph (Task 1, weekly); vault health report with action items (Task 2, monthly); provenance audit fold-in (within Task 2); plus two additional scheduled tasks defined in the framework
-- **Proven Applications:** Currently four named scheduled tasks ship with Ora; runtime-eligible work explicitly excluded per the Runtime Principle gate
-- **Known Limitations:** Schedule cadences are fixed in the framework; tasks that become runtime-eligible should be migrated to the runtime pipeline rather than left here; fragility to bulk vault reorganization (which can flood Task 1's orphan threshold)
+- **Purpose:** Preserve four corpus-scale diagnostics as explicit historical-debt/reporting campaigns after production maintenance moved to exact events and deadlines
+- **Problem Class:** Vault audit campaigns and historical reconciliation
+- **Input Summary:** Explicit campaign identity, fixed vault scope, bounded attempts, and command provenance
+- **Output Summary:** Relationship debt report/reconciliation; vault health report; graph-density report; explicit archive/cleanup result
+- **Proven Applications:** G1.10 retirement of production periodic scheduling while preserving diagnostic commands
+- **Known Limitations:** Full-vault cost; never a runtime fallback; new changes must use Event-Driven Hygiene Patterns
 - **File Location:** frameworks/book/periodic-maintenance.md (executable); ~/Documents/vault/Projects/Ora/Framework — Periodic Maintenance.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
 - **Version:** 1.0
-- **Delivers:** Weekly orphan relationship cleanup; monthly vault health audit including provenance audit; additional scheduled vault hygiene tasks per the framework spec
+- **Delivers:** Explicit orphan-reconciliation campaign; explicit vault-health/graph-density report; explicit recovery cleanup campaign
 
 ---
 

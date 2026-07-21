@@ -19,25 +19,25 @@ frontmatter carries the live config:
       graph_density: monthly
       archive_cleanup: off
       daily_note: daily
-      news_supersession: weekly
-      engram_cleaning: weekly
+      news_supersession: off
+      engram_cleaning: off
 
-Editing the document changes behavior on the scheduler's next check (no
-restart): cadence values are ``daily`` / ``weekly`` / ``monthly`` /
-``off``. A missing document, missing block, or unparseable YAML falls
+This module is now an explicit compatibility/reporting surface; production
+does not launch its clock loop. Cadence values remain parseable as migration
+evidence and for an explicitly invoked one-shot diagnostic. News supersession
+and Engram cleaning are event-only controls:
+their clock form is permanently ``off`` and attempts to assign a cadence
+fail closed. A missing document, missing block, or unparseable YAML falls
 back to the defaults above — the doc can never brick maintenance.
 
-Mechanics
----------
+Compatibility mechanics
+-----------------------
 
-The oversight daemon calls ``sweep()`` on ``ORA_MAINTENANCE_SCHEDULER_SEC``
-(default hourly). ``sweep()`` re-reads the control doc, compares each
-enabled task's last-run stamp (``data/maintenance-state.json``) against
-its cadence window (daily > 1 d, weekly > 7 d, monthly > 28 d), runs what
-is due via periodic_maintenance, appends each TaskResult to
-``data/maintenance-results.jsonl``, and stamps. Heartbeat at
-``data/oversight/maintenance-scheduler-heartbeat.json`` feeds
-oversight_health like every other watcher.
+An operator may call ``sweep()`` explicitly to inspect or execute a deliberately
+enabled historical diagnostic. It re-reads the control document, compares the
+last-run stamp, appends a result, and writes a compatibility heartbeat. The
+production daemon never calls it, the generic scheduler cannot register it,
+and no error arms a retry or other clock-driven fallback.
 
 Standalone:
 
@@ -97,16 +97,19 @@ def __getattr__(name: str) -> str:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 CONTROL_DOC_NAME = "Reference — Ora Periodic Maintenance.md"
+_CAMPAIGN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
 def control_doc_path() -> str:
-    return str(_rp.VAULT_ORA / CONTROL_DOC_NAME)
+    return str(_rp.vault_dir() / "Projects" / "Ora" / CONTROL_DOC_NAME)
 
 
 DEFAULT_CONFIG = {
-    "orphan_cleanup": "weekly",
-    "vault_health": "monthly",
-    "graph_density": "monthly",
+    # G1.10: these corpus-scale scans are explicit campaigns. Runtime writes
+    # perform local validation/index propagation instead of waiting for them.
+    "orphan_cleanup": "off",
+    "vault_health": "off",
+    "graph_density": "off",
     # Log/archive housekeeping is owned by retention_sweeper since
     # 2026-06-11; the periodic_maintenance variant stays available but
     # defaults off. The unique piece it still covers is review-queue
@@ -115,11 +118,16 @@ DEFAULT_CONFIG = {
     # Auto-generated vault daily note (temporal index) — generates
     # yesterday's note once the day is complete.
     "daily_note": "daily",
-    # Automated supersession sweeps (2026-07-12): model-judged, bounded,
-    # fail-open. Set to "off" in the control doc to pause either sweep.
-    "news_supersession": "weekly",
-    "engram_cleaning": "weekly",
+    # G1.10 (2026-07-21): corpus-wide clock sweeps are prohibited. Exact
+    # Resource/Engram writes may invoke bounded event processing; historical
+    # backlog work requires an explicitly identified campaign. Keep the keys
+    # visible so the operational state is not hidden, but never schedule them.
+    "news_supersession": "off",
+    "engram_cleaning": "off",
 }
+
+EVENT_ONLY_TASKS = frozenset({"news_supersession", "engram_cleaning"})
+DEADLINE_ONLY_TASKS = frozenset({"daily_note"})
 
 # Task name → (module, callable). Each callable returns a TaskResult-shaped
 # object (success / message / stats / alerts / duration_seconds).
@@ -128,9 +136,6 @@ TASK_FUNCTIONS = {
     "vault_health": ("orchestrator.tools.periodic_maintenance", "task_2_vault_health"),
     "graph_density": ("orchestrator.tools.periodic_maintenance", "task_3_graph_density"),
     "archive_cleanup": ("orchestrator.tools.periodic_maintenance", "task_4_archive_cleanup"),
-    "daily_note": ("orchestrator.tools.daily_note", "task_daily_note"),
-    "news_supersession": ("orchestrator.tools.supersession_sweep", "task_news_supersession"),
-    "engram_cleaning": ("orchestrator.tools.supersession_sweep", "task_engram_cleaning"),
 }
 
 CADENCE_SECONDS = {
@@ -182,7 +187,12 @@ def load_config() -> dict:
                 continue  # `on` is not a cadence; keep the default
             else:
                 cadence = str(cadence).strip().lower()
-            if cadence == "off" or cadence in CADENCE_SECONDS:
+            if task in EVENT_ONLY_TASKS:
+                # A vault edit cannot covert an event-only mutator back into
+                # a periodic corpus sweep. Explicit campaigns use their own
+                # command surface and never this scheduler.
+                config[task] = "off"
+            elif cadence == "off" or cadence in CADENCE_SECONDS:
                 config[task] = cadence
     except Exception:
         return dict(DEFAULT_CONFIG)
@@ -209,6 +219,8 @@ def due_tasks(config: dict, state: dict, now: float | None = None) -> list[str]:
     now = time.time() if now is None else now
     due = []
     for task, cadence in config.items():
+        if task in EVENT_ONLY_TASKS or task in DEADLINE_ONLY_TASKS:
+            continue
         if cadence == "off":
             continue
         window = CADENCE_SECONDS.get(cadence)
@@ -229,7 +241,7 @@ def due_tasks(config: dict, state: dict, now: float | None = None) -> list[str]:
 
 
 def _run_task(task: str) -> dict:
-    """Run one scheduled task; return a JSON-safe result record."""
+    """Run one explicitly selected compatibility task."""
     import importlib
     mod_name, fn_name = TASK_FUNCTIONS[task]
     fn = getattr(importlib.import_module(mod_name), fn_name)
@@ -245,14 +257,26 @@ def _run_task(task: str) -> dict:
     }
 
 
-def sweep(dry_run: bool = False, now: float | None = None) -> dict:
-    """One scheduler pass: re-read config, run due tasks, stamp, log."""
+def sweep(dry_run: bool = False, now: float | None = None,
+          campaign_id: str | None = None) -> dict:
+    """Run one explicit historical diagnostic campaign.
+
+    The cadence calculation is migration-compatible task selection, not a
+    production clock. A mutating invocation requires a bounded, auditable
+    campaign identity.
+    """
     config = load_config()
     state = _load_state()
     due = due_tasks(config, state, now=now)
-    summary = {"config": config, "due": due, "ran": [], "failed": [], "dry_run": dry_run}
+    summary = {"config": config, "due": due, "ran": [], "failed": [],
+               "dry_run": dry_run, "campaign_id": campaign_id}
     if dry_run:
         return summary
+    if due and (not isinstance(campaign_id, str)
+                or not _CAMPAIGN_ID_RE.fullmatch(campaign_id)):
+        raise ValueError(
+            "explicit maintenance campaign id required (1-128 safe characters)"
+        )
 
     for task in due:
         # Stamp at start, not just at completion — if the task wedges or
@@ -267,6 +291,7 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
             record = {"task": task, "ran_at": _now_iso(), "success": False,
                       "message": f"scheduler-level failure: {e}", "stats": {},
                       "alerts": [], "duration_seconds": 0.0}
+        record["campaign_id"] = campaign_id
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(RESULTS_FILE, "a") as f:
             f.write(json.dumps(record) + "\n")
@@ -286,6 +311,10 @@ def sweep(dry_run: bool = False, now: float | None = None) -> dict:
 
 
 if __name__ == "__main__":
-    import sys
-    out = sweep(dry_run="--dry-run" in sys.argv)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--campaign-id")
+    args = parser.parse_args()
+    out = sweep(dry_run=args.dry_run, campaign_id=args.campaign_id)
     print(json.dumps(out, indent=2))

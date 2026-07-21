@@ -19704,9 +19704,15 @@ if __name__ == "__main__":
     import argparse, signal as _signal
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scheduler", action="store_true", help="Start task scheduler")
+    parser.add_argument("--scheduler", action="store_true",
+                        help="Retired by G1.10; accepted only to produce a fail-closed error")
     parser.add_argument("--oversight", action="store_true", help="Start meta-layer oversight daemon (PED watcher, corpus watcher, workflow spec sweeper, revisit sweeper)")
     args, _ = parser.parse_known_args()
+
+    if args.scheduler:
+        print("ERROR: --scheduler was retired by G1.10; use exact events or "
+              "persisted one-shot deadlines", file=sys.stderr, flush=True)
+        raise SystemExit(2)
 
     # Resolve the port before migrations, daemons, or other startup side effects.
     # PORT is the preview-harness contract; if it is present, invalid or occupied

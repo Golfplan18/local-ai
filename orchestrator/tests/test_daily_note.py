@@ -281,6 +281,11 @@ class GenerateTests(DailyNoteBase):
         for attr in ("success", "message", "stats", "alerts", "duration_seconds"):
             self.assertTrue(hasattr(res, attr))
 
+    def test_task_entry_point_accepts_exact_completed_date(self):
+        res = dn.task_daily_note(date_str="2026-06-10")
+        self.assertTrue(res.success)
+        self.assertTrue((self.vault / "Daily Notes" / "2026-06-10.md").is_file())
+
 
 class ConversationSummaryLifecycleTests(DailyNoteBase):
     def _generated_note(self):

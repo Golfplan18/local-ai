@@ -1,10 +1,10 @@
-"""Oversight health check — detects stale watchers and surfaces warnings.
+"""Oversight health check — detects unavailable runtime lanes.
 
-Reads each watcher's heartbeat file at ``~/ora/data/oversight/<name>-heartbeat.json``
-and computes how long since the last beat. A watcher is "stale" when its
-heartbeat is older than 2× its expected interval — that means the watcher
-has missed at least one full cycle, which is enough signal to surface to
-the user.
+Production oversight blocks on operating-system events and exact persisted
+deadlines, so idleness is healthy and cannot be judged from a clock heartbeat.
+The server checks the actual in-process threads. Legacy heartbeat reading is
+retained for explicit compatibility operation and for the independent MLX
+worker.
 
 Used by the chat handler to inject a system note into responses when the
 oversight apparatus is degraded. Per Reference — Meta-Layer Architecture
@@ -129,6 +129,43 @@ def check_health() -> list[dict]:
 
     now = time.time()
     any_recent_heartbeat = False
+
+    # The production runtime is event/deadline driven. Thread liveness is the
+    # authoritative signal while those blocking lanes are active; retired
+    # watcher timestamps must not make an idle event listener look stale.
+    runtime = None
+    try:
+        import oversight_daemon
+        runtime = oversight_daemon.runtime_health()
+    except Exception:
+        runtime = None
+    if runtime and runtime.get("running"):
+        for lane in ("event_lane", "deadline_lane"):
+            if not runtime.get(lane):
+                warnings.append({
+                    "watcher": lane,
+                    "status": "runtime_lane_down",
+                    "age_seconds": None,
+                    "threshold_seconds": None,
+                    "message": f"Oversight {lane.replace('_', ' ')} is not running.",
+                })
+        # MLX has its own real clock heartbeat; preserve that independent
+        # health check without consulting retired maintenance heartbeats.
+        beat_at = read_heartbeat("mlx_worker")
+        if beat_at is not None:
+            age = now - beat_at
+            threshold = HEARTBEAT_INTERVALS["mlx_worker"] * STALE_MULTIPLIER
+            if age > threshold:
+                warnings.append({
+                    "watcher": "mlx_worker", "status": "stale",
+                    "age_seconds": int(age),
+                    "threshold_seconds": threshold,
+                    "message": (
+                        f"mlx_worker: last heartbeat {_format_age(age)} ago "
+                        f"(expected within {HEARTBEAT_INTERVALS['mlx_worker']}s)"
+                    ),
+                })
+        return warnings
 
     per_watcher: list[dict] = []
     for watcher, interval in HEARTBEAT_INTERVALS.items():

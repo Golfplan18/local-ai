@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "purpose": "G1.10 tracked post-cutover operational source identities",
+  "deployment_commit_binding": "recorded in installed-state and closeout receipts after this package is committed",
+  "dcp_reservation": [
+    "G1.24 owns external DCP routine verification",
+    "G1.24 owns the delivered full-state audit"
+  ],
+  "files": {
+    "operations/g1-10-current/README.md": "6bfc595e085d4793834ff8b926e5b7158d37df94675361e47076c43a44827cc0",
+    "operations/g1-10-current/cloud/README.md": "2d08fd25d47ed5fb75c7f60e8139bbba0c5b4e0d905e26d5afb7defb2c2bac9d",
+    "operations/g1-10-current/cloud/crontab.after": "b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd",
+    "operations/g1-10-current/cloud/install-cloud-cutover.sh": "6ba3fef496118e561a2a61008e6c9c116b091f16fe768145ae814fde03f99455",
+    "operations/g1-10-current/cloud/rollback-cloud-cutover.sh": "48380048914979412fe98c0b9d9f0b53ce7835be5b4b54ba9740ceb0ba5f03cf",
+    "operations/g1-10-current/cloud/scripts/gear4-expiration.py": "6d60464976fa7c28f163aef5375f0638dd62111a213140084e203a31532068be",
+    "operations/g1-10-current/cloud/scripts/msi-deploy.sh": "13820dd88aed0ca8c452bd3fcc3bbfd93b9c0796046ab9d6fb8a11cf485c9347",
+    "operations/g1-10-current/cloud/scripts/msi_vault_outbox.sh": "0dd605f8abb02714b4c30d7e2df304fee462360c246ef3ba6e6e8a7eb0f8e6ec",
+    "operations/g1-10-current/cloud/scripts/ora-audit-models.py": "953d2bc34bd6fe9d89761071992e415b589505f07ecd6fdaceeaf3bce339e0b4",
+    "operations/g1-10-current/cloud/scripts/ora-deploy.sh": "18d2b79375386917ac53f793dcf2868a61e3b5de701c446ac326ae2442ae4e7f",
+    "operations/g1-10-current/cloud/scripts/ora-vault-runtime-sync.sh": "e6c0b8f59f5405c87517deab34a12a96895f1c6c9a48c3c7909b486be64129d1",
+    "operations/g1-10-current/cloud/scripts/wsj-reauth-guard.sh": "17c43f84ee6de7505a1354ca9d6ad7a4101f2ea57d5af2708ab4624563e41ff5",
+    "operations/g1-10-current/macos/README.md": "feb78840564d581248fc4da8c4794bd9d03f178bc30503225237573fcac5cdbb",
+    "operations/g1-10-current/macos/install-macos-cutover.sh": "7ee9d995eb1e2ea0f3e6357f2c31c2a704b91cd7d7bb2d89b6dc6d049b46e74d",
+    "operations/g1-10-current/macos/rollback-macos-cutover.sh": "bbabfdd1519cb8360469899eb4aac06c1276a3bd752b4a84a0d3d9f750ea0e61",
+    "operations/g1-10-current/macos/vault-cloud-sync.py": "af3d2f260f31d9605dad1d5eb0df4957cf1b800f2a47a730287259da32158a89",
+    "operations/g1-10-current/macos/vault-derive-sync.sh": "9a4f641261319fe5243ff37cf23fdaed1f89d339365e509f77578ac6f8bfe6fb",
+    "operations/g1-10-current/macos/vault-event-pipeline.py": "00b3b0a54e42125ab357ffe48e997946369e89d311cf455e4f122e0229a820c8",
+    "operations/g1-10-current/macos/vault-git-sync.py": "946f3b9f2dabe1662a059993702438a0213a62b647a3bff04844386f6ca55a64"
+  }
+}

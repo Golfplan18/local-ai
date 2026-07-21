@@ -184,32 +184,11 @@ def _wrap_spawn_subagent(params):
     )
 
 def _wrap_schedule_task(params):
-    """Create a scheduled task entry."""
-    import uuid
-    from datetime import datetime as _dt
-    registry_path = os.path.join(WORKSPACE, "config/scheduled-tasks.json")
-    try:
-        with open(registry_path) as f:
-            registry = json.load(f)
-    except Exception:
-        registry = {"tasks": [], "settings": {"max_concurrent": 3}}
-
-    task_id = str(uuid.uuid4())[:8]
-    entry = {
-        "id": task_id,
-        "prompt": params.get("prompt", ""),
-        "interval_minutes": params.get("interval_minutes", 30),
-        "model_slot": params.get("model_slot", "small"),
-        "timeout_minutes": 10,
-        "created_at": _dt.now().isoformat(),
-        "last_run": None,
-        "run_count": 0,
-        "active": True,
-    }
-    registry["tasks"].append(entry)
-    with open(registry_path, "w") as f:
-        json.dump(registry, f, indent=2)
-    return f"Scheduled task {task_id}: '{entry['prompt'][:60]}' every {entry['interval_minutes']}m"
+    """Reject legacy recurring prompts; G1.19 owns future trigger creation."""
+    raise RuntimeError(
+        "schedule_task is retired: bind work to an exact event or one-shot "
+        "deadline; user-facing Trigger Manager work remains G1.19"
+    )
 
 
 # ── Scheduled task registry management ─────────────────────────────────────
@@ -271,7 +250,10 @@ def _wrap_pause_scheduled_task(params):
 
 
 def _wrap_resume_scheduled_task(params):
-    return _update_scheduled_task_status(params.get("id", ""), active=True)
+    raise RuntimeError(
+        "resume_scheduled_task is retired: legacy registry rows cannot regain "
+        "execution authority"
+    )
 
 
 def _wrap_remove_scheduled_task(params):
@@ -322,8 +304,6 @@ TOOL_REGISTRY = {
     "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute",
                          "mutability": "read", "sensitivity": "private", "egress": "external",
                          "enforcement": "boundary_only"},
-    "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write",
-                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
     "list_scheduled_tasks":  {"handler": _wrap_list_scheduled_tasks,  "permission": "auto",    "category": "read",
                               "mutability": "read", "sensitivity": "private", "egress": "none"},
     "pause_scheduled_task":  {"handler": _wrap_pause_scheduled_task,  "permission": "approve", "category": "write",

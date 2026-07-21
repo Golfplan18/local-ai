@@ -26,6 +26,7 @@ The full trace contract lives in:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -1013,8 +1014,33 @@ def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
         if manifest.get("terminal_status") == "open":
             raise ValueError("cannot pin an open trace")
         manifest = dict(manifest)
+        previous_state = manifest.get("retention_state", "default")
         manifest["retention_state"] = state
         _atomic_write_json(str(owned / MANIFEST_FILENAME), manifest)
+        if state == "default" and previous_state == "pinned":
+            # A trace whose original expiry fired while pinned needs a new,
+            # exact lifecycle event when it becomes eligible again. Register
+            # from the unpin instant; never resurrect a periodic directory
+            # sweep to rediscover it.
+            try:
+                from orchestrator.runtime_hygiene import deadline_queue
+                from datetime import datetime as _deadline_datetime, timedelta
+                days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
+                if days > 0:
+                    unpinned_at = _deadline_datetime.now(_dt.timezone.utc).isoformat()
+                    due = (_deadline_datetime.now(_dt.timezone.utc)
+                           + timedelta(days=days)).isoformat()
+                    key = "trace-retention-unpin:" + hashlib.sha256(
+                        f"{trace_ref}\0{unpinned_at}".encode("utf-8")
+                    ).hexdigest()
+                    deadline_queue(_rp.DATA_DIR_STR).put(
+                        key, due, "trace_retention",
+                        {"trace_ref": trace_ref,
+                         "finalized_at": manifest.get("finalized_at")},
+                    )
+            except Exception as retention_exc:
+                print(f"[pipeline_trace] unpin retention registration failed: "
+                      f"{retention_exc}", file=sys.stderr)
         return manifest
 
 
@@ -1216,6 +1242,8 @@ def finalize_manifest(trace_dir: str | None,
         else:
             status = "abandoned"
 
+        finalized_at = (manifest.get("finalized_at")
+                        or _dt.datetime.utcnow().isoformat() + "Z")
         manifest.update({
             "schema_version": MANIFEST_SCHEMA_VERSION,
             "trace_kind": kind,
@@ -1233,7 +1261,7 @@ def finalize_manifest(trace_dir: str | None,
             "expected_steps": _expected_steps_for(kind, gear, actual),
             "actual_steps": actual,
             "derived_artifacts": derived,
-            "finalized_at": _dt.datetime.utcnow().isoformat() + "Z",
+            "finalized_at": finalized_at,
         })
         if parent_trace_ref:
             manifest["parent_trace_ref"] = parent_trace_ref
@@ -1248,6 +1276,29 @@ def finalize_manifest(trace_dir: str | None,
                     merged.append(ref)
             manifest["child_trace_refs"] = merged
         _atomic_write_json(manifest_path, manifest)
+        # Finalization is the creation event for retention. Bind one exact
+        # deadline now; no periodic trace-directory discovery is required.
+        try:
+            from orchestrator.runtime_hygiene import deadline_queue
+            from datetime import datetime as _deadline_datetime, timedelta
+            trace_ref = trace_ref_for_dir(trace_dir)
+            if trace_ref:
+                days = int(os.environ.get("ORA_RETENTION_TRACES_DAYS", "30"))
+                if days > 0:
+                    finalized = str(manifest["finalized_at"])
+                    finalized_dt = _deadline_datetime.fromisoformat(
+                        finalized.replace("Z", "+00:00"))
+                    due = (finalized_dt + timedelta(days=days)).isoformat()
+                    key = "trace-retention:" + hashlib.sha256(
+                        f"{trace_ref}\0{finalized}".encode("utf-8")
+                    ).hexdigest()
+                    deadline_queue(_rp.DATA_DIR_STR).put(
+                        key, due, "trace_retention",
+                        {"trace_ref": trace_ref, "finalized_at": finalized},
+                    )
+        except Exception as retention_exc:
+            print(f"[pipeline_trace] retention deadline registration failed: "
+                  f"{retention_exc}", file=sys.stderr)
     except Exception as e:
         # Fail-open (design-gate Q1): the manifest must never break a turn.
         print(f"[pipeline_trace] finalize_manifest failed: {e}",

@@ -48,6 +48,7 @@ import live_guard  # noqa: E402,F401  — arm the oversight write quarantine
 # different object than the one the test patched). Set ORA_HOME instead.
 import pipeline_trace  # noqa: E402
 import conversation_memory  # noqa: E402
+from orchestrator import runtime_hygiene  # noqa: E402
 
 
 class TraceManifestBase(unittest.TestCase):
@@ -66,6 +67,12 @@ class TraceManifestBase(unittest.TestCase):
         )
         data_patcher.start()
         self.addCleanup(data_patcher.stop)
+        hygiene_data_patcher = mock.patch.object(
+            runtime_hygiene._rp, "DATA_DIR_STR",
+            os.path.join(self.tmp.name, "data"),
+        )
+        hygiene_data_patcher.start()
+        self.addCleanup(hygiene_data_patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     # -- helpers -----------------------------------------------------------
@@ -340,6 +347,29 @@ class TestTraceRef(TraceManifestBase):
         self.assertEqual(pinned["child_trace_refs"], ["conv-pin/child-a"])
         unpinned = pipeline_trace.set_retention_state(ref, "default")
         self.assertEqual(unpinned["retention_state"], "default")
+        from orchestrator.runtime_hygiene import DeadlineQueue
+        deadlines = DeadlineQueue()._load()["deadlines"]
+        self.assertEqual(
+            len([key for key in deadlines
+                 if key.startswith("trace-retention-unpin:")]),
+            1,
+        )
+
+    def test_refinalization_preserves_one_exact_retention_contract(self):
+        d = self.start("conv-refinalize")
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed")
+        first = self.manifest(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed")
+        second = self.manifest(d)
+        self.assertEqual(first["finalized_at"], second["finalized_at"])
+        from orchestrator.runtime_hygiene import DeadlineQueue
+        deadlines = DeadlineQueue()._load()["deadlines"]
+        self.assertEqual(
+            len([key for key in deadlines if key.startswith("trace-retention:")]),
+            1,
+        )
 
 
 class TestFinalizeStatusAndKind(TraceManifestBase):

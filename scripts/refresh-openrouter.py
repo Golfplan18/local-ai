@@ -17,8 +17,9 @@ Usage:
     python3 ~/ora/scripts/refresh-openrouter.py            # fetch + write
     python3 ~/ora/scripts/refresh-openrouter.py --dry-run  # print, no write
 
-Designed to run weekly via the scheduled-tasks system. Fails closed:
-on network / parse errors, the existing catalog file is left untouched.
+Invoked explicitly or by the authenticated model-registry refresh API. The
+retired scheduled-tasks system cannot execute it. On network / parse errors,
+the existing catalog file is left untouched.
 """
 
 from __future__ import annotations

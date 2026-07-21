@@ -51,8 +51,9 @@ Deliberately NOT swept:
   data/conversation-manifest.jsonl      same purge constraint
   data/conversation-indexing-failures.jsonl  same purge constraint
 
-Runs from the oversight daemon (ORA_RETENTION_SWEEPER_SEC, default 6 h)
-and standalone:
+G1.10 retired the production interval invocation. Finalized trace directories
+now register exact persisted expiry deadlines. This module remains an explicit
+historical-log/archive campaign and diagnostic:
 
     /opt/homebrew/bin/python3 ~/ora/orchestrator/retention_sweeper.py [--dry-run]
 """

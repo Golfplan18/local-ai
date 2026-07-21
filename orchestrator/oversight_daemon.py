@@ -1,9 +1,9 @@
-"""Oversight daemon — background loop that runs the watcher sweepers.
+"""Oversight daemon — event and deadline runtime for oversight maintenance.
 
-A lightweight singleton background thread that runs the PED watcher,
-corpus watcher, workflow spec sweeper, and revisit sweeper at configured
-intervals. Each sweeper emits its events through the oversight_events bus,
-which the oversight router consumes.
+A lightweight singleton that blocks on operating-system file events and exact
+persisted deadlines. Historical interval-lane methods remain temporarily as
+explicit ``run_once``/compatibility surfaces, but production ``start()`` does
+not launch them.
 
 Designed to be started from boot.py at server start — parallel to the
 existing scheduler — and stopped on shutdown.
@@ -32,9 +32,8 @@ DEFAULT_WORKFLOW_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_WORKFLOW_SWEEPER
 DEFAULT_REVISIT_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_REVISIT_SWEEPER_SEC", "3600"))
 DEFAULT_RETENTION_SWEEPER_INTERVAL_SEC = int(os.environ.get("ORA_RETENTION_SWEEPER_SEC", "21600"))
 DEFAULT_MAINTENANCE_SCHEDULER_INTERVAL_SEC = int(os.environ.get("ORA_MAINTENANCE_SCHEDULER_SEC", "3600"))
-# Finder/Obsidian writes to the external inbound folder do not pass through an
-# Ora API, so polling is the only runtime trigger available.  Provisional until
-# live volume/latency data supports calibration.
+# Compatibility-only interval constant. Production Finder/Obsidian writes are
+# consumed through ``runtime_event_dispatcher`` OS notifications.
 DEFAULT_RESOURCES_WATCHER_INTERVAL_SEC = int(os.environ.get("ORA_RESOURCES_WATCHER_SEC", "300"))
 
 # Watchdog cadence + per-lane stall thresholds. The fast lane runs cheap
@@ -62,10 +61,10 @@ def _prune_scan_dirs(dirs: list[str]) -> None:
     """Prune by path component, independent of slash direction."""
     dirs[:] = [name for name in dirs if name not in _SCAN_SKIP_DIRS]
 
-# Every module whose _write_heartbeat the daemon drives. The fast lane
-# writes each one at startup, and the tests' oversight_sandbox fixture
-# redirects each one's HEARTBEAT_FILE — importing this tuple keeps the
-# two lists mechanically in sync.
+# Compatibility-only modules driven by ``run_once`` and the retired interval
+# lane methods. Production ``start()`` does not launch these lanes. Runtime
+# health is therefore derived from the actual event/deadline threads, not
+# from clock heartbeats that would necessarily become stale while idle.
 WATCHER_HEARTBEAT_MODULES = (
     "ped_watcher",
     "corpus_watcher",
@@ -331,28 +330,12 @@ def _resolve_path(p: str, relative_to: str) -> str:
 
 
 class OversightDaemon:
-    """Background scheduler for oversight watchers.
+    """Event/deadline runtime for oversight work.
 
-    Sweeps run on three lanes so heavy housekeeping can never starve the
-    heartbeats the health check watches:
-
-      - **fast lane**: ped / corpus / workflow-spec / revisit watchers —
-        cheap file-diff sweeps on 60s–3600s cadences.
-      - **slow lane**: retention sweeper + maintenance scheduler (vault-wide
-        walks, can legitimately run for many minutes), plus the one-shot
-        vault auto-registration scan.
-      - **resources lane**: external inbound conversion, HCP indexing, and
-        vault asset conformance.  Office/PDF parsing and embedding can block,
-        so none of it shares the fast heartbeat lane.
-
-    A watchdog thread monitors all three lanes' iteration ticks. When a lane
-    stalls past its threshold (a sweep wedged in a long computation or an
-    unbounded call), the watchdog logs the stuck thread's Python stack and
-    starts a replacement lane thread; the abandoned thread exits at its
-    next generation check if it ever unwedges. This is what turned the
-    2026-06-12 incident (maintenance task spinning for hours, every
-    heartbeat stale, degraded banner on every chat reply) from an outage
-    into a logged restart.
+    Production owns two blocking lanes: operating-system file notifications
+    and a persisted exact-deadline queue. The watchdog restarts either lane
+    if it exits. Historical interval-lane methods remain only for explicit
+    ``run_once`` compatibility and are never launched by :meth:`start`.
     """
 
     def __init__(self):
@@ -373,17 +356,15 @@ class OversightDaemon:
         self._slow_tick = 0.0
         self._resources_tick = 0.0
         self._vault_scan_done = False
+        self._event_thread: threading.Thread | None = None
+        self._deadline_thread: threading.Thread | None = None
+        self._bootstrap_thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
+        self._deadline_queue = None
 
     def start(self):
-        """Start the daemon. Idempotent.
-
-        Only fast actions run synchronously; slow ones (vault auto-scans)
-        run inside the slow-lane thread so server startup is not blocked.
-        The vault scans walk every markdown file under ``VAULT_PATH``,
-        which can take several minutes on a populated vault — keeping
-        them on the startup critical path made ``./start.sh --oversight``
-        time out before binding the HTTP port.
-        """
+        """Start the daemon without putting vault reconciliation on boot's
+        synchronous critical path."""
         if self._running:
             return
         # Wire the router as an event handler before starting the loop.
@@ -396,14 +377,126 @@ class OversightDaemon:
             print(f"[oversight_daemon] router install failed: {e}")
 
         self._running = True
-        self._start_fast_lane()
-        self._start_slow_lane()
-        self._start_resources_lane()
+        self._stop_event.clear()
+        from orchestrator.runtime_hygiene import deadline_queue
+        self._deadline_queue = deadline_queue()
+        self._ensure_daily_note_deadline()
+        self._event_thread = threading.Thread(
+            target=self._event_loop, daemon=True, name="oversight-file-events")
+        self._deadline_thread = threading.Thread(
+            target=self._deadline_loop, daemon=True, name="oversight-deadlines")
+        self._event_thread.start()
+        self._deadline_thread.start()
+        # Server startup is a real event. Its full registration reconciliation
+        # can take minutes on a populated vault, so run it once after both live
+        # blocking lanes are listening; never put it back on the HTTP bind path.
+        self._bootstrap_thread = threading.Thread(
+            target=self._bootstrap_reconciliation, daemon=True,
+            name="oversight-startup-reconciliation")
+        self._bootstrap_thread.start()
         self._watchdog_thread = threading.Thread(
             target=self._watchdog, daemon=True, name="oversight-watchdog")
         self._watchdog_thread.start()
-        print("[oversight_daemon] Started (fast/slow/resources sweep lanes + "
-              "watchdog; vault auto-registration on slow lane)")
+        print("[oversight_daemon] Started (OS file events + exact persisted deadlines; "
+              "no sweep cadence)")
+
+    def _bootstrap_reconciliation(self):
+        self._initial_vault_scan()
+        self._vault_scan_done = True
+        try:
+            import revisit_sweeper
+            revisit_sweeper.register_age_review_deadlines(self._deadline_queue)
+        except Exception as exc:
+            print(f"[oversight_daemon] revisit deadline registration failed: {exc}")
+
+    def _event_loop(self):
+        try:
+            from orchestrator.runtime_event_dispatcher import run
+            run(self._stop_event)
+        except Exception as exc:
+            if self._running:
+                print(f"[oversight_daemon] event lane failed: {exc}")
+
+    def _deadline_loop(self):
+        assert self._deadline_queue is not None
+        handlers = {
+            "daily_note": self._handle_daily_note_deadline,
+            "project_revisit": self._handle_project_revisit_deadline,
+            "trace_retention": self._handle_trace_retention_deadline,
+        }
+        try:
+            self._deadline_queue.run(handlers, self._stop_event)
+        except Exception as exc:
+            if self._running:
+                print(f"[oversight_daemon] deadline lane failed: {exc}")
+
+    def _ensure_daily_note_deadline(self, completed_date: str | None = None):
+        from datetime import date, timedelta
+        now = datetime.now().astimezone()
+        day = date.fromisoformat(completed_date) if completed_date else now.date()
+        due = datetime.combine(day + timedelta(days=1), datetime.min.time(),
+                               tzinfo=now.tzinfo)
+        self._deadline_queue.put(
+            f"daily-note:{day.isoformat()}", due.isoformat(), "daily_note",
+            {"completed_date": day.isoformat()},
+        )
+
+    def _handle_daily_note_deadline(self, payload: dict):
+        from datetime import date, timedelta
+        from orchestrator.tools.daily_note import task_daily_note
+        completed_date = str(payload["completed_date"])
+        date.fromisoformat(completed_date)
+        try:
+            result = task_daily_note(date_str=completed_date)
+            if not getattr(result, "success", False):
+                raise RuntimeError(getattr(result, "message", "daily note failed"))
+            return {
+                "status": "completed", "completed_date": completed_date,
+                "message": getattr(result, "message", ""),
+            }
+        finally:
+            # The next calendar day is a distinct time-caused contract, not a
+            # retry of this deadline. Advance from the persisted contract—not
+            # wall-clock "yesterday"—so restart catches up each missed day
+            # without silently binding evidence to the wrong calendar date.
+            next_day = date.fromisoformat(completed_date) + timedelta(days=1)
+            self._ensure_daily_note_deadline(next_day.isoformat())
+
+    def _handle_project_revisit_deadline(self, payload: dict):
+        from oversight_events import emit
+        import revisit_sweeper
+        event = revisit_sweeper.sweep_project(payload["nexus"], payload["ped_path"])
+        if event:
+            emit(event)
+        return {"status": "completed", "event_emitted": bool(event)}
+
+    def _handle_trace_retention_deadline(self, payload: dict):
+        import shutil
+        from pathlib import Path
+        from orchestrator import pipeline_trace
+
+        trace_ref = payload.get("trace_ref")
+        expected_finalized_at = payload.get("finalized_at")
+        parts = pipeline_trace._trace_ref_parts(trace_ref)
+        if parts is None:
+            raise ValueError("invalid trace-retention reference")
+        conversation_id, _turn = parts
+        with _rp.conversation_lifecycle_lock(conversation_id):
+            trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
+            if trace_dir is None:
+                return {"status": "already_absent", "trace_ref": trace_ref}
+            manifest = pipeline_trace.read_manifest(trace_dir)
+            if not manifest or manifest.get("finalized_at") != expected_finalized_at:
+                raise ValueError("trace identity drifted after deadline registration")
+            if manifest.get("retention_state") == "pinned":
+                return {"status": "preserved_pinned", "trace_ref": trace_ref}
+            exact = Path(trace_dir)
+            shutil.rmtree(exact)
+            try:
+                exact.parent.rmdir()
+            except OSError:
+                pass
+            return {"status": "deleted", "trace_ref": trace_ref}
 
     def _start_fast_lane(self):
         self._fast_gen += 1
@@ -458,7 +551,12 @@ class OversightDaemon:
     def stop(self):
         """Stop the daemon."""
         self._running = False
-        for t in (self._fast_thread, self._slow_thread,
+        self._stop_event.set()
+        if self._deadline_queue is not None:
+            self._deadline_queue.wake()
+        for t in (self._event_thread, self._deadline_thread,
+                  self._bootstrap_thread,
+                  self._fast_thread, self._slow_thread,
                   self._resources_thread, self._watchdog_thread):
             if t:
                 t.join(timeout=5)
@@ -564,14 +662,10 @@ class OversightDaemon:
             time.sleep(1)
 
     def _watchdog(self):
-        """Monitor all three lanes; restart a lane whose loop has stalled.
+        """Monitor the production event/deadline lanes.
 
-        A stalled lane means a sweep is stuck inside a long computation or
-        an unbounded call. Python threads can't be killed, so the watchdog
-        logs the stuck thread's stack (the diagnostic that otherwise needs
-        an external profiler), bumps the lane generation, and starts a
-        replacement thread. ``_last_run`` is preserved, so the sweep that
-        wedged is not immediately re-dispatched by the new thread.
+        The legacy lane checks below are inert because production ``start``
+        never creates those compatibility threads.
         """
         while self._running:
             for _ in range(DEFAULT_WATCHDOG_CHECK_SEC):
@@ -579,6 +673,19 @@ class OversightDaemon:
                     return
                 time.sleep(1)
             try:
+                if self._event_thread is not None and not self._event_thread.is_alive():
+                    print("[oversight_daemon] WATCHDOG: event lane died — restarting")
+                    self._event_thread = threading.Thread(
+                        target=self._event_loop, daemon=True,
+                        name="oversight-file-events-restart")
+                    self._event_thread.start()
+                if (self._deadline_thread is not None
+                        and not self._deadline_thread.is_alive()):
+                    print("[oversight_daemon] WATCHDOG: deadline lane died — restarting")
+                    self._deadline_thread = threading.Thread(
+                        target=self._deadline_loop, daemon=True,
+                        name="oversight-deadlines-restart")
+                    self._deadline_thread.start()
                 self._check_lane("fast", self._fast_thread, self._fast_tick,
                                  DEFAULT_FAST_STALL_SEC, self._start_fast_lane)
                 self._check_lane("slow", self._slow_thread, self._slow_tick,
@@ -715,6 +822,27 @@ def get_daemon() -> OversightDaemon:
     if _daemon is None:
         _daemon = OversightDaemon()
     return _daemon
+
+
+def runtime_health() -> dict:
+    """Return the in-process event/deadline liveness contract.
+
+    Unlike a heartbeat timestamp, this remains accurate while the event
+    listener is correctly blocked awaiting an OS notification.
+    """
+    daemon = _daemon
+    if daemon is None or not daemon._running:
+        return {"running": False, "event_lane": False, "deadline_lane": False}
+    return {
+        "running": True,
+        "event_lane": bool(
+            daemon._event_thread is not None and daemon._event_thread.is_alive()
+        ),
+        "deadline_lane": bool(
+            daemon._deadline_thread is not None
+            and daemon._deadline_thread.is_alive()
+        ),
+    }
 
 
 # ---------- CLI smoke test ----------

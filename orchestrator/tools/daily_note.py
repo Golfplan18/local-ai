@@ -29,8 +29,9 @@ human and for Obsidian graph traversal, not a retrieval source.
 Idempotency: an existing note is never overwritten (the user may have
 edited it). ``force=True`` (CLI ``--force``) regenerates.
 
-Scheduled as the ``daily_note`` task in maintenance_scheduler (cadence
-governed by ``Reference — Ora Periodic Maintenance.md``). Standalone:
+Production registers one persisted deadline for the next completed calendar
+day. The legacy maintenance scheduler can parse the visible ``daily`` control
+for compatibility reports but cannot dispatch this task. Standalone:
 
     python -m orchestrator.tools.daily_note [YYYY-MM-DD] [--force]
 """
@@ -780,9 +781,9 @@ def generate(date_str: str | None = None, force: bool = False) -> NoteResult:
     return result
 
 
-def task_daily_note() -> NoteResult:
-    """Scheduler entry point — generate yesterday's note."""
-    return generate()
+def task_daily_note(*, date_str: str | None = None) -> NoteResult:
+    """Deadline entry point for one exact completed calendar day."""
+    return generate(date_str=date_str)
 
 
 if __name__ == "__main__":

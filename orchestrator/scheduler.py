@@ -1,4 +1,10 @@
-"""Lightweight task scheduler — runs periodic tasks using the orchestrator."""
+"""Retired interval scheduler compatibility surface.
+
+G1.10 removed production interval dispatch. Exact event work uses
+``runtime_event_dispatcher`` and justified temporal work uses persisted
+one-shot ``runtime_hygiene.DeadlineQueue`` records. The old registry remains
+readable for migration evidence, but this module cannot execute it.
+"""
 
 from __future__ import annotations
 
@@ -34,55 +40,11 @@ def _save_registry(registry: dict):
 
 
 def _run_task(task: dict, registry: dict):
-    """Execute a single scheduled task."""
-    try:
-        from boot import load_boot_md, load_routing_config, get_slot_endpoint, call_model
-    except ImportError as e:
-        print(f"[scheduler] Import error: {e}")
-        return
-
-    config = load_routing_config()
-    slot = task.get("model_slot", "small")
-    endpoint = get_slot_endpoint(config, slot)
-    if not endpoint:
-        print(f"[scheduler] No endpoint for slot: {slot}")
-        return
-
-    system_prompt = load_boot_md()
-    messages = [
-        {"role": "system", "content": system_prompt + "\n\n[SCHEDULED TASK — autonomous mode. spawn_subagent and schedule_task are unavailable.]"},
-        {"role": "user", "content": task["prompt"]},
-    ]
-
-    try:
-        response = call_model(messages, endpoint)
-    except Exception as e:
-        response = f"[scheduler] Model error: {e}"
-
-    # Write output
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = os.path.join(OUTPUT_DIR, f"{task['id']}_{ts}.md")
-    with open(output_path, "w") as f:
-        f.write(f"# Scheduled Task Output\n\n")
-        f.write(f"Task: {task['id']}\n")
-        f.write(f"Prompt: {task['prompt']}\n")
-        f.write(f"Run at: {datetime.now().isoformat()}\n\n---\n\n")
-        f.write(response)
-
-    # Update registry
-    task["last_run"] = datetime.now().isoformat()
-    task["run_count"] = task.get("run_count", 0) + 1
-
-    # Auto-deactivate old tasks
-    settings = registry.get("settings", {})
-    max_age_hours = settings.get("max_task_age_hours", 72)
-    interval = task.get("interval_minutes", 30)
-    if task["run_count"] * interval > max_age_hours * 60:
-        task["active"] = False
-        print(f"[scheduler] Task {task['id']} deactivated (exceeded max age)")
-
-    _save_registry(registry)
+    """Fail closed even if a legacy caller reaches the private helper."""
+    raise RuntimeError(
+        "legacy scheduled task execution retired by G1.10; registry records "
+        "are migration evidence only"
+    )
 
 
 class Scheduler:
@@ -94,13 +56,11 @@ class Scheduler:
         self._active_tasks = 0
 
     def start(self):
-        """Start the scheduler as a background thread."""
-        if self._running:
-            return
-        self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self._thread.start()
-        print("[scheduler] Started")
+        """Fail closed; arbitrary recurring prompts have no runtime authority."""
+        raise RuntimeError(
+            "interval scheduler retired by G1.10; use an exact event contract "
+            "or an authenticated one-shot deadline"
+        )
 
     def stop(self):
         """Stop the scheduler."""
@@ -110,49 +70,11 @@ class Scheduler:
         print("[scheduler] Stopped")
 
     def _loop(self):
-        """Main scheduler loop — checks every 60 seconds."""
-        while self._running:
-            try:
-                self._check_tasks()
-            except Exception as e:
-                print(f"[scheduler] Error: {e}")
-            # Sleep in 1-second increments so we can stop quickly
-            for _ in range(60):
-                if not self._running:
-                    break
-                time.sleep(1)
+        raise RuntimeError("retired interval scheduler cannot run")
 
     def _check_tasks(self):
-        """Check all active tasks and run any that are due."""
-        registry = _load_registry()
-        settings = registry.get("settings", {})
-        max_concurrent = settings.get("max_concurrent", 3)
-
-        for task in registry.get("tasks", []):
-            if not task.get("active", True):
-                continue
-            if self._active_tasks >= max_concurrent:
-                break
-
-            # Check if task is due
-            interval = task.get("interval_minutes", 30)
-            last_run = task.get("last_run")
-            if last_run:
-                from datetime import datetime as _dt
-                try:
-                    last = _dt.fromisoformat(last_run)
-                    elapsed = (datetime.now() - last).total_seconds() / 60
-                    if elapsed < interval:
-                        continue
-                except Exception:
-                    pass
-
-            # Run the task
-            self._active_tasks += 1
-            try:
-                _run_task(task, registry)
-            finally:
-                self._active_tasks -= 1
+        """Fail closed even if a legacy caller bypasses :meth:`start`."""
+        raise RuntimeError("retired interval scheduler cannot check or run tasks")
 
 
 # Module-level singleton

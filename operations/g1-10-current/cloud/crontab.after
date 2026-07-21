@@ -1,0 +1,1 @@
+0 9 * * * set -a && . $HOME/.config/ora-server.env && set +a && $HOME/ora-audit-models.py
