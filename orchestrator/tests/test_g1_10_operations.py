@@ -128,9 +128,20 @@ class OperationalIdentityTests(unittest.TestCase):
             "g1-10-macos-cutover.json",
             "g1-10-cloud-cutover.json",
             'test -d "$msi_repo/.git"',
+            "msi_repo=/home/oracle/work/main-street-independent",
             'test -n "$msi_head"',
             "rollback-macos-cutover.sh",
             "rollback-cloud-cutover.sh",
+            "Corrected executable package commit: `1b62ee64828f74f709beda1d647816e1624c72bd`",
+            "Blocking-finding correction proofs",
+            "America/Los_Angeles",
+            "judgment input binding",
+            "index_restoration_receipt",
+            "infrastructure_broken",
+            "pending retention registration intents",
+            "autonomous_hygiene_enabled=true",
+            "Result: `466` tests passed",
+            "Result: `40` tests passed",
             "G1.24",
             "independent Gate G1.10 judgment pending",
         )
@@ -143,6 +154,8 @@ class OperationalIdentityTests(unittest.TestCase):
             text,
         )
         self.assertNotIn("G1.10 is accepted", text)
+        self.assertNotIn("Result: `452` tests passed", text)
+        self.assertNotIn("Result: `34` tests passed", text)
 
     def test_exact_expiry_refuses_replacement_at_same_locator(self):
         source = CURRENT / "cloud" / "scripts" / "gear4-expiration.py"
@@ -267,11 +280,22 @@ class CanonicalParityTests(unittest.TestCase):
                     "Registry — Ora Overview and Document Registry.md").read_text()
         audit = (VAULT / "Projects" / "Ora" /
                  "Working — Runtime Principle Audit 2026-07-21.md").read_text()
+        hygiene = (VAULT / "Projects" / "Ora" /
+                   "Framework — Event-Driven Hygiene Patterns.md").read_text()
         for text in (tracker, registry):
             self.assertIn("independent Gate", text)
             self.assertIn("G1.24", text)
+        for text in (tracker, registry, audit):
+            self.assertIn("1b62ee64828f74f709beda1d647816e1624c72bd", text)
+            self.assertIn("466", text)
         self.assertIn("All six cutover prerequisites are complete", audit)
         self.assertIn("not a self-issued Gate acceptance", audit)
+        for value in (
+            "normalized UTC due instant", "named IANA zone", "path-scoped locks",
+            "infrastructure_broken", "write-ahead intent",
+        ):
+            with self.subTest(value=value):
+                self.assertIn(value, hygiene)
         self.assertNotIn(
             "Live Mac/cloud cutover and consolidated closeout evidence remain incomplete",
             tracker,
@@ -279,6 +303,9 @@ class CanonicalParityTests(unittest.TestCase):
         self.assertNotIn(
             "Gate acceptance remains pending live cutover and consolidated verification",
             registry,
+        )
+        self.assertNotIn(
+            "point to final package commit `8899cb12`", audit,
         )
 
 

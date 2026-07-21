@@ -4,7 +4,11 @@ Date: 2026-07-21
 
 State: execution evidence complete; independent Gate G1.10 judgment pending
 
-Accepted runtime implementation commit: `f3ba698c507cc0b96facb8bcf9dbd820b619a77d`
+Original runtime implementation commit: `f3ba698c507cc0b96facb8bcf9dbd820b619a77d`
+
+Containment commit: `7951cc09dafd2e4890bb33e86f8adeb71bdc9494`
+
+Corrected executable package commit: `1b62ee64828f74f709beda1d647816e1624c72bd`
 
 MSI event implementation commits: `a3927d5de7f7fdcc62372aaea7f9b6e499e71ec3`, `c737bdfcd107c088d092a51ab64b4664fc81f5a9`
 
@@ -14,7 +18,9 @@ Vault source-record commit before installed cutover: `8678b22e12206d64875c3a2566
 
 This is the one consolidated package for Gate G1.10. It binds the pre-change operational inventory, the event/deadline runtime, bounded News/Engram judgment, the explicit-campaign boundary, installed Mac/cloud source identities, rollback sources, the accepted-checkout cutover, MSI event follow-ups, tests, canonical parity, and the G1.24 reservation. Partial stages do not independently close the gate.
 
-The production maintenance keys `news_supersession` and `engram_cleaning` are exposed and default `off`; neither has a clock-triggered execution path. Exact Resource/Engram writes may invoke bounded-neighborhood autonomous judgment. All judgments finish before mutation; append-only trigger, evidence, receipt, and rollback records bind the transaction; errors produce no subject mutation; recursive autonomous self-mutation is suppressed; and historical debt requires an explicit campaign identity. There is no per-pair human triage and no clock-driven fallback.
+The production maintenance keys `news_supersession` and `engram_cleaning` are exposed and default `off`; neither has a clock-triggered execution path. Exact Resource/Engram writes may invoke bounded-neighborhood autonomous judgment. All judgments bind the exact subject and every candidate before review, hold path-scoped mutation locks, and reauthenticate immediately before mutation. Append-only trigger, evidence, receipt, and rollback records bind the transaction. A failed retrieval-index refresh restores the exact files and refreshes the index from that authenticated restored state; restoration failure becomes `infrastructure_broken`. Historical debt requires an explicit campaign identity. There is no per-pair human triage and no clock-driven fallback.
+
+Deadline ordering uses parsed UTC instants rather than timestamp text. Calendar recurrence persists the named IANA zone and recalculates each midnight, including both DST transitions. Trace finalization and unpinning persist an exact write-ahead retention intent before lifecycle success; a queue-write failure remains pending for exact startup replay and never creates a periodic recovery scan.
 
 This packet does not claim Gate acceptance, begin G1.11, perform G1.24's external DCP routine verification, or claim G1.24's delivered full-state audit.
 
@@ -22,12 +28,12 @@ This packet does not claim Gate acceptance, begin G1.11, perform G1.24's externa
 
 | Surface | Observed identity | Disposition |
 |---|---|---|
-| Accepted runtime checkout | `f3ba698c507cc0b96facb8bcf9dbd820b619a77d`, synchronized with upstream | Source implementation and tracked operational package |
-| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact final G1.10 package head, tracked-clean; executable source differs from `f3ba698c` only by the closeout test/evidence | Replaces rejected preservation checkout without merging it |
+| Accepted runtime checkout | `1b62ee64828f74f709beda1d647816e1624c72bd`, synchronized with upstream | Corrected executable source and tracked operational package |
+| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact corrected executable package `1b62ee64828f74f709beda1d647816e1624c72bd`, tracked-clean | Replaces rejected preservation checkout without merging it |
 | Mac LaunchAgent | `com.ora.server`, SHA-256 `b58feb7b98da59fdc557b0a081f337e3953b975aa39bac59f03c20050631b03a` | Preserved and restarted successfully |
-| Mac cutover receipt | `$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json`, SHA-256 `620ff2ffd7d345cc8456a288f350042c7d1bcd2905170058d82a64d7805d2e78` | Binds runtime root, commit, baseline/current manifests, retired labels, and recovery directory |
-| Cloud Ora runtime | detached exact final G1.10 package head, tracked-clean; executable source differs from `f3ba698c` only by the closeout test/evidence | Replaces divergent `main` checkout without reset or merge |
-| Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `f73d30113236b49045f5da871f4832b2ab784a7de8d30ee60f18fc24573a28d6` | Binds runtime root, commit, manifests, crontab, and seven installed scripts |
+| Mac cutover receipt | `$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json`, SHA-256 `cfadd012c57e1f06458d5dc6b90a38707b41f3ce5b12c9460a47ce8cca245841` | Binds corrected commit, runtime root, baseline/current manifests, retired labels, and recovery directory |
+| Cloud Ora runtime | detached exact corrected executable package `1b62ee64828f74f709beda1d647816e1624c72bd`, tracked-clean | Replaces divergent `main` checkout without reset or merge |
+| Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `43f6c58d249c4e492ce30f3422b05e2851e5a3bf35039a6287f207cbcdca77e2` | Binds corrected commit, runtime root, manifests, crontab, and seven installed scripts |
 | Cloud crontab | one row, SHA-256 `b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd` | Only the justified daily read-only external model audit remains |
 | MSI source | harvest head `d62fd0e70b092cc90d47ed6250888c1d448ac97f`, containing both G1.10 commits and synchronized with upstream | Live `unified_production.py` and test bytes match source |
 | MSI service | `msi-unified-production.service`, active after restart | Old tasks were persisted as interrupted; daemon resumed from durable queue |
@@ -35,6 +41,8 @@ This packet does not claim Gate acceptance, begin G1.11, perform G1.24's externa
 The baseline manifest SHA-256 is `c9387e7fd14a0eb70a3b74bd7e135733f02922f8927be52065d95a2d9f00cf43`. The current operational manifest SHA-256 is `b4f1018f868183d80a7c27e3c0155b23f2a722ad221b839ef964d52a25112329` and authenticates all 19 current-package files.
 
 The first Mac start refreshed three tracked model-catalog cache files. Those generated bytes were preserved recoverably in `stash@{0}` with message `G1.10 startup catalog refresh 2026-07-21`; the live checkout was returned to accepted tracked bytes before its final restart. No generated catalog byte was silently accepted as G1.10 source. The server subsequently restarted without rewriting the files, remained tracked-clean, and returned a green health response.
+
+When the stale-identity defect was reported against the live autonomous handlers, the server was stopped and commit `7951cc09` installed a narrow circuit breaker. The live sentinel suppressed only Resource/Engram autonomous judgment; event dispatch and deadline work remained active, and no clock fallback was introduced. After corrected package `1b62ee64` passed its matrices and was deployed to Mac and cloud, the server restarted once under containment, verified the exact package and named-zone deadline, then released the sentinel and restarted cleanly. Direct readback returned `autonomous_hygiene_enabled=true`; no Resource or Engram write was used as a deployment probe.
 
 ## Installed topology and restart evidence
 
@@ -68,7 +76,14 @@ The tracked Mac rollback is `operations/g1-10-current/macos/rollback-macos-cutov
 
 The tracked cloud rollback is `operations/g1-10-current/cloud/rollback-cloud-cutover.sh`. It validates installed/current/recovery identities before restoring the six prior helpers and exact eight-row crontab, and refuses to overwrite unrelated sources or remove a foreign Gear-4 helper. Recovery material is at `/home/oracle/.local/state/ora/g1-10-cloud-cutover/`.
 
-The runtime transaction layer writes pre-state, post-state, evidence, receipts, and rollback material under the runtime-hygiene data root. A failed judgment or mutation rolls back the exact subject and records terminal failure; deadline failures are terminal and are not silently retried by a sweep.
+The runtime transaction layer writes pre-state, post-state, evidence, receipts, and rollback material under the runtime-hygiene data root. Subject or neighbor drift after judgment input binding terminates with zero Ora mutation. A failed judgment or mutation rolls back the exact subject and records terminal failure. If retrieval refresh had begun, rollback authenticates every restored snapshot and refreshes the index from those restored files, persisting the restoration receipt; failure of that restoration is a broken infrastructure state. Deadline failures are terminal and are not silently retried by a sweep. Startup replays pending retention registration intents alone, exactly once per process start.
+
+## Blocking-finding correction proofs
+
+1. Mixed-offset deadlines `2026-07-21T08:00:00+02:00` and `2026-07-21T02:00:00-05:00` are stored as `06:00Z` and `07:00Z`; the earlier instant dispatches first. `America/Los_Angeles` calendar tests cover the offset changes at both 2026 DST transitions. Installed readback shows `daily-note-v2:2026-07-21:2d4bbedff807` due at `2026-07-22T07:00:00+00:00` with the named zone retained in its payload.
+2. Adversarial model callbacks that alter either the claimed subject or a candidate during judgment cause terminal failure before the resolver or index is called. Exact bound identities remain in event evidence, and successful mutation reauthenticates them again at transaction preparation.
+3. A simulated first index refresh retained mutated retrieval state and failed. File rollback restored the old bytes; the mandatory second refresh observed those restored bytes, restored retrieval state, and persisted `index_restoration_receipt`. A second-refresh failure produced `infrastructure_broken`.
+4. Forced retention-intent persistence failures leave finalization open and unpinning pinned. Forced queue-write failures leave an authenticated pending intent; exact startup recovery registers that intent without scanning trace directories. Startup wiring is independently exercised before the event/deadline lanes start.
 
 ## Exact verification commands
 
@@ -76,7 +91,9 @@ The runtime transaction layer writes pre-state, post-state, evidence, receipts, 
 
 ```sh
 cd /Users/oracle/ora-msi-central-routing
-unset ORA_VAULT ORA_VAULT_PATH ORA_HOME
+unset ORA_VAULT ORA_VAULT_PATH
+export ORA_HOME=/Users/oracle/ora-msi-central-routing
+test ! -e "$ORA_HOME/data/runtime-hygiene"
 python3 --version
 node --version
 uname -srm
@@ -92,7 +109,7 @@ python3 -m unittest \
   orchestrator.tests.test_g1_10_runtime_hygiene
 ```
 
-Observed exit status: `0`. Result: `34` tests passed.
+Observed exit status: `0`. Result: `40` tests passed.
 
 ### Runtime and adjacent regression matrix
 
@@ -115,7 +132,17 @@ python3 -m unittest \
   orchestrator.tests.test_oversight_runtime
 ```
 
-Observed exit status: `0`. Result: `452` tests passed. The same matrix passed `450/450` before the two closeout/canonical-record regressions were added and `451/451` after the first was added.
+Observed exit status: `0`. Result: `466` tests passed. This contains the previously accepted 452-test matrix plus fourteen deadline, DST, identity-drift, index-restoration, write-ahead-intent, and startup-recovery regressions.
+
+The matrix intentionally resolves runtime paths against the accepted checkout. It creates only test retention state there; that state was removed from the source checkout after the run with this bounded, recoverable cleanup:
+
+```sh
+test_state_archive=$(mktemp -d /tmp/g1-10-test-state.XXXXXX)
+mv /Users/oracle/ora-msi-central-routing/data/runtime-hygiene \
+  "$test_state_archive/runtime-hygiene"
+```
+
+Observed exit status: `0`. Result: the accepted checkout returned to its pre-test untracked state without touching the live `/Users/oracle/ora` data root.
 
 ### MSI event/deadline regression
 
@@ -143,7 +170,9 @@ python3 -m py_compile \
   orchestrator/tools/daily_note.py \
   orchestrator/tools/supersession_sweep.py \
   orchestrator/tests/test_g1_10_operations.py \
-  orchestrator/tests/test_g1_10_runtime_hygiene.py
+  orchestrator/tests/test_g1_10_runtime_hygiene.py \
+  orchestrator/tests/test_oversight_daemon.py \
+  orchestrator/tests/test_trace_manifest.py
 ```
 
 Observed exit status: `0`. Result: no stdout or stderr; all named modules compiled.
@@ -177,10 +206,7 @@ Observed exit status: `0`. Result: implementation drift verification and all fou
 ```sh
 cd /Users/oracle/ora
 git fetch origin codex/g1-1-phase-1-4-runtime
-test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)"
-git diff --quiet f3ba698c..HEAD -- . \
-  ':!outputs/g1-10/closeout-evidence.md' \
-  ':!orchestrator/tests/test_g1_10_operations.py'
+test "$(git rev-parse HEAD)" = 1b62ee64828f74f709beda1d647816e1624c72bd
 test -z "$(git status --porcelain --untracked-files=no)"
 launchctl print "gui/$(id -u)/com.ora.server" >/dev/null
 for label in \
@@ -191,23 +217,25 @@ done
 curl -fsS http://localhost:5000/health
 python3 -m json.tool \
   "$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json" >/dev/null
+test "$(shasum -a 256 "$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json" | awk '{print $1}')" = \
+  cfadd012c57e1f06458d5dc6b90a38707b41f3ce5b12c9460a47ce8cca245841
+test ! -e data/runtime-hygiene/autonomous-handlers.disabled
+ORA_HOME=/Users/oracle/ora python3 -c \
+  'from orchestrator.runtime_event_dispatcher import autonomous_hygiene_enabled; assert autonomous_hygiene_enabled()'
 ```
 
-Observed exit status: `0`. Result: live branch/upstream exact, tracked state clean, server loaded, five cadence agents absent, health green, and receipt valid JSON. Untracked runtime locks/data remain outside source identity and were preserved.
+Observed exit status: `0`. Result: live branch/upstream and corrected executable commit exact, tracked state clean, server loaded, five cadence agents absent, health green, receipt valid, temporary containment absent, and corrected autonomous handlers enabled. Untracked runtime locks/data remain outside source identity and were preserved.
 
 ### Live cloud installed-state verification
 
 ```sh
 ssh cloud-ora 'set -e
 git -C /home/oracle/ora fetch origin codex/g1-1-phase-1-4-runtime
-test "$(git -C /home/oracle/ora rev-parse HEAD)" = "$(git -C /home/oracle/ora rev-parse FETCH_HEAD)"
-git -C /home/oracle/ora diff --quiet f3ba698c..HEAD -- . \
-  ':!outputs/g1-10/closeout-evidence.md' \
-  ':!orchestrator/tests/test_g1_10_operations.py'
 test -z "$(git -C /home/oracle/ora status --porcelain --untracked-files=no)"
+test "$(git -C /home/oracle/ora rev-parse HEAD)" = 1b62ee64828f74f709beda1d647816e1624c72bd
 test "$(crontab -l | sha256sum | awk "{print \$1}")" = b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd
 test "$(crontab -l | grep -v "^[[:space:]]*#" | grep -v "^[[:space:]]*$" | wc -l)" -eq 1
-msi_repo=/home/oracle/work/main-streetindependent
+msi_repo=/home/oracle/work/main-street-independent
 test -d "$msi_repo/.git"
 msi_head=$(git -C "$msi_repo" rev-parse HEAD)
 msi_upstream=$(git -C "$msi_repo" rev-parse origin/main)
@@ -216,10 +244,12 @@ test "$msi_head" = "$msi_upstream"
 test -z "$(git -C "$msi_repo" status --porcelain --untracked-files=no)"
 systemctl is-active --quiet msi-unified-production.service
 python3 -m json.tool /home/oracle/.local/state/ora/g1-10-cloud-cutover.json >/dev/null
+test "$(sha256sum /home/oracle/.local/state/ora/g1-10-cloud-cutover.json | awk "{print \$1}")" = \
+  43f6c58d249c4e492ce30f3422b05e2851e5a3bf35039a6287f207cbcdca77e2
 '
 ```
 
-Observed exit status: `0`. Result: cloud Ora source exact and tracked-clean, one-row crontab exact, MSI source synchronized and tracked-clean, MSI service active, and receipt valid JSON.
+Observed exit status: `0`. Result: cloud Ora source equals the corrected executable commit and is tracked-clean, one-row crontab exact, MSI source synchronized and tracked-clean, MSI service active, and regenerated receipt valid JSON.
 
 ### Repository and diff integrity
 
