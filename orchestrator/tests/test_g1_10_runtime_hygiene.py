@@ -1,6 +1,7 @@
 """G1.10 adversarial tests for event-only maintenance."""
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import threading
@@ -124,6 +125,8 @@ class SchedulerBoundaryTests(unittest.TestCase):
                 mock.patch.dict("sys.modules", inert_modules),
                 mock.patch.object(event_dispatcher._rp, "VAULT_STR", str(vault)),
                 mock.patch.object(event_dispatcher._rp, "ORA_HOME", Path(temp) / "runtime"),
+                mock.patch.object(event_dispatcher._rp, "DATA_DIR_STR",
+                                  str(Path(temp) / "data")),
                 mock.patch.object(
                     supersession, "process_artifact_write", return_value=failed),
             ):
@@ -379,6 +382,80 @@ class SupersessionEventTests(RuntimeHygieneBase):
         self.assertEqual(source.read_text(), "source")
         self.assertEqual(older.read_text(), "concurrent neighbor edit")
         apply.assert_not_called()
+
+    def test_multi_candidate_aba_uses_only_authenticated_snapshots(self):
+        source = self.resources / "source.md"
+        older = self.resources / "older.md"
+        other = self.resources / "other.md"
+        source.write_text("# Source\nsource-bound", encoding="utf-8")
+        older.write_text("# Older\nolder-bound", encoding="utf-8")
+        original_other_body = "# Other Authenticated\nother-bound"
+        original_other = (
+            "---\n"
+            "date created: 2026/07/19\n"
+            "---\n\n"
+            f"{original_other_body}"
+        )
+        other.write_text(original_other, encoding="utf-8")
+        candidates = [
+            {
+                "newer": self._meta(source, "source"),
+                "older": self._meta(older, "older"),
+                "similarity": .9, "entity_overlap": 2, "date_gap_days": 10,
+            },
+            {
+                "newer": self._meta(source, "source"),
+                "older": {
+                    **self._meta(other, "other"),
+                    "h1": "Unbound index H1",
+                    "date_created": "1900-01-01",
+                },
+                "similarity": .8, "entity_overlap": 1, "date_gap_days": 8,
+            },
+        ]
+        model_calls = []
+
+        def aba_between_model_calls(*args, **_kwargs):
+            model_calls.append(args)
+            if len(model_calls) == 1:
+                other.write_text(
+                    "# Other\nother-transient-unbound", encoding="utf-8")
+                return SimpleNamespace(
+                    decision="skip", reason="first pair", slot="test")
+            other.write_text(original_other, encoding="utf-8")
+            return SimpleNamespace(
+                decision="supersede", reason="second pair", slot="test")
+
+        def apply_mutation(*_args, **_kwargs):
+            other.write_text("# Other\nsuperseded", encoding="utf-8")
+            return {"mutated_files": ["other.md"], "errors": []}
+
+        with (
+            mock.patch.object(supersession, "_event_news_candidates",
+                              return_value=candidates),
+            mock.patch.object(supersession.judge, "judge_pair",
+                              side_effect=aba_between_model_calls),
+            mock.patch.object(supersession.news_res, "apply_supersession",
+                              side_effect=apply_mutation),
+            mock.patch.object(supersession.news_res, "refresh_chromadb",
+                              return_value={"errors": 0}),
+        ):
+            result = supersession.process_artifact_write(str(source))
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(model_calls[1][5], original_other_body)
+        self.assertEqual(model_calls[1][3], "Other Authenticated")
+        self.assertEqual(model_calls[1][4], "2026/07/19")
+        self.assertNotIn("other-transient-unbound", repr(model_calls))
+        expected_digest = hashlib.sha256(
+            original_other.encode("utf-8")
+        ).hexdigest()
+        self.assertIn(
+            expected_digest,
+            {item["sha256"] for item in result["judgment_input_identities"]},
+        )
+        self.assertEqual(other.read_text(encoding="utf-8"),
+                         "# Other\nsuperseded")
 
     def test_forged_event_identity_is_rejected_before_judgment(self):
         source = self.resources / "source.md"

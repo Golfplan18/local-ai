@@ -34,6 +34,7 @@ Campaign and runtime rules (reconciled 2026-07-21):
 from __future__ import annotations
 
 import os
+import hashlib
 import json
 import re
 import time
@@ -134,6 +135,81 @@ def _note_body(path: str, max_chars: int = judge.MAX_NOTE_CHARS) -> str:
         if len(parts) >= 3:
             content = parts[2]
     return content.strip()[:max_chars]
+
+
+@dataclass(frozen=True)
+class JudgmentInputSnapshot:
+    """One immutable, content-authenticated model input.
+
+    ``raw`` is the single byte capture from which the identity and every
+    semantic field supplied to the model are derived.  The live filesystem is
+    reauthenticated separately immediately before mutation; it is never
+    reread to assemble a judgment prompt.
+    """
+
+    path: str
+    raw: bytes
+    sha256: str
+    size: int
+    body: str
+    h1: str
+    date_created: str
+
+    def identity(self) -> dict:
+        return {"path": self.path, "sha256": self.sha256, "size": self.size}
+
+
+def _snapshot_text_fields(raw: bytes, path: str) -> tuple[str, str, str]:
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(f"judgment input is not valid UTF-8: {path}") from exc
+
+    frontmatter = ""
+    body = content
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            frontmatter, body = parts[1], parts[2]
+
+    h1_match = re.search(r"(?m)^#\s+(.+?)\s*$", body)
+    h1 = h1_match.group(1).strip() if h1_match else ""
+    date_match = re.search(
+        r"(?mi)^\s*date(?:[ _]created)?\s*:\s*([^#\r\n]+?)\s*$",
+        frontmatter,
+    )
+    date_created = date_match.group(1).strip().strip("'\"") if date_match else "?"
+    return body.strip()[:judge.MAX_NOTE_CHARS], h1, date_created
+
+
+def _capture_judgment_input(path: str) -> JudgmentInputSnapshot:
+    """Capture one stable file descriptor and authenticate those exact bytes."""
+    exact = str(Path(path).expanduser().resolve())
+    try:
+        with open(exact, "rb") as handle:
+            before = os.fstat(handle.fileno())
+            raw = handle.read()
+            after = os.fstat(handle.fileno())
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"judgment input disappeared before capture: {exact}") from exc
+
+    stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+    if any(getattr(before, field) != getattr(after, field) for field in stable_fields):
+        raise RuntimeError(f"judgment input drifted during capture: {exact}")
+    if len(raw) != after.st_size:
+        raise RuntimeError(f"judgment input size changed during capture: {exact}")
+
+    digest = hashlib.sha256(raw).hexdigest()
+    body, h1, date_created = _snapshot_text_fields(raw, exact)
+    return JudgmentInputSnapshot(
+        path=exact,
+        raw=raw,
+        sha256=digest,
+        size=len(raw),
+        body=body,
+        h1=h1,
+        date_created=date_created,
+    )
 
 
 def _append_judged_log(log_file: str, header: str, *,
@@ -239,19 +315,22 @@ def _event_engram_candidates(path: str) -> list[tuple[dict, dict]]:
     )
 
 
-def _bind_judgment_inputs(subject: dict, exact_subject: str,
-                          pairs: list[tuple[dict, dict, dict]]) -> list[dict]:
+def _bind_judgment_inputs(
+    subject: dict,
+    exact_subject: str,
+    pairs: list[tuple[dict, dict, dict]],
+) -> dict[str, JudgmentInputSnapshot]:
     paths = {os.path.realpath(exact_subject)}
     for newer, older, _hint in pairs:
         paths.update({os.path.realpath(newer["path"]), os.path.realpath(older["path"])})
-    identities = [artifact_identity(path) for path in sorted(paths)]
-    subject_now = next(
-        (value for value in identities if value["path"] == os.path.realpath(exact_subject)),
-        None,
-    )
-    if subject_now != subject:
+    snapshots = {
+        path: _capture_judgment_input(path)
+        for path in sorted(paths)
+    }
+    subject_snapshot = snapshots.get(os.path.realpath(exact_subject))
+    if subject_snapshot is None or subject_snapshot.identity() != subject:
         raise RuntimeError("event subject drifted before judgment")
-    return identities
+    return snapshots
 
 
 def _reauthenticate_judgment_inputs(identities: list[dict]) -> None:
@@ -383,20 +462,26 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
         for newer, older, _hint in pairs:
             transaction_paths.update({newer["path"], older["path"]})
         with mutation_path_locks(transaction_paths):
-            bound_inputs = _bind_judgment_inputs(subject, exact, pairs)
+            bound_snapshots = _bind_judgment_inputs(subject, exact, pairs)
+            bound_inputs = [
+                snapshot.identity()
+                for snapshot in bound_snapshots.values()
+            ]
             ledger.append_evidence(
                 resolved_event_id, "judgment_inputs_bound",
                 identities=bound_inputs,
             )
             judgments = []
             for newer, older, hint in pairs:
+                newer_snapshot = bound_snapshots[os.path.realpath(newer["path"])]
+                older_snapshot = bound_snapshots[os.path.realpath(older["path"])]
                 jr = judge.judge_pair(
-                    newer["h1"],
-                    newer.get("date_created") or eng_det.engram_date(newer) or "?",
-                    _note_body(newer["path"]),
-                    older["h1"],
-                    older.get("date_created") or eng_det.engram_date(older) or "?",
-                    _note_body(older["path"]),
+                    newer_snapshot.h1,
+                    newer_snapshot.date_created,
+                    newer_snapshot.body,
+                    older_snapshot.h1,
+                    older_snapshot.date_created,
+                    older_snapshot.body,
                     kind="news" if kind == "news_supersession" else "engram",
                     hint=json.dumps(hint, sort_keys=True),
                 )
@@ -438,13 +523,19 @@ def process_artifact_write(path: str, *, event_id: str | None = None) -> dict:
                         if jr.decision == "supersede":
                             if kind == "news_supersession":
                                 outcome = news_res.apply_supersession(
-                                    newer["slug"], older["slug"], older["h1"],
+                                    newer["slug"], older["slug"],
+                                    bound_snapshots[
+                                        os.path.realpath(older["path"])
+                                    ].h1,
                                     dry_run=False,
                                 )
                                 header = _news_log_header()
                             else:
                                 outcome = eng_res.apply_changed_mind(
-                                    newer["slug"], older["slug"], older["h1"],
+                                    newer["slug"], older["slug"],
+                                    bound_snapshots[
+                                        os.path.realpath(older["path"])
+                                    ].h1,
                                     dry_run=False,
                                 )
                                 header = _engram_log_header()
