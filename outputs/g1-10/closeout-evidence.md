@@ -8,7 +8,9 @@ Original runtime implementation commit: `f3ba698c507cc0b96facb8bcf9dbd820b619a77
 
 Containment commit: `7951cc09dafd2e4890bb33e86f8adeb71bdc9494`
 
-Corrected executable package commit: `1b62ee64828f74f709beda1d647816e1624c72bd`
+Prior corrected executable package commit: `1b62ee64828f74f709beda1d647816e1624c72bd`
+
+Final ABA-corrected executable package commit: `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`
 
 MSI event implementation commits: `a3927d5de7f7fdcc62372aaea7f9b6e499e71ec3`, `c737bdfcd107c088d092a51ab64b4664fc81f5a9`
 
@@ -18,7 +20,7 @@ Vault source-record commit before installed cutover: `8678b22e12206d64875c3a2566
 
 This is the one consolidated package for Gate G1.10. It binds the pre-change operational inventory, the event/deadline runtime, bounded News/Engram judgment, the explicit-campaign boundary, installed Mac/cloud source identities, rollback sources, the accepted-checkout cutover, MSI event follow-ups, tests, canonical parity, and the G1.24 reservation. Partial stages do not independently close the gate.
 
-The production maintenance keys `news_supersession` and `engram_cleaning` are exposed and default `off`; neither has a clock-triggered execution path. Exact Resource/Engram writes may invoke bounded-neighborhood autonomous judgment. All judgments bind the exact subject and every candidate before review, hold path-scoped mutation locks, and reauthenticate immediately before mutation. Append-only trigger, evidence, receipt, and rollback records bind the transaction. A failed retrieval-index refresh restores the exact files and refreshes the index from that authenticated restored state; restoration failure becomes `infrastructure_broken`. Historical debt requires an explicit campaign identity. There is no per-pair human triage and no clock-driven fallback.
+The production maintenance keys `news_supersession` and `engram_cleaning` are exposed and default `off`; neither has a clock-triggered execution path. Exact Resource/Engram writes may invoke bounded-neighborhood autonomous judgment. Before any model call, the runtime captures each unique subject/candidate path once into an immutable byte snapshot; the exact captured bytes determine the SHA-256 identity and the body, H1, and date supplied to judgment. All judgments hold path-scoped mutation locks and reauthenticate current filesystem identities immediately before mutation. Append-only trigger, evidence, receipt, and rollback records bind the transaction. A failed retrieval-index refresh restores the exact files and refreshes the index from that authenticated restored state; restoration failure becomes `infrastructure_broken`. Historical debt requires an explicit campaign identity. There is no per-pair human triage and no clock-driven fallback.
 
 Deadline ordering uses parsed UTC instants rather than timestamp text. Calendar recurrence persists the named IANA zone and recalculates each midnight, including both DST transitions. Trace finalization and unpinning persist an exact write-ahead retention intent before lifecycle success; a queue-write failure remains pending for exact startup replay and never creates a periodic recovery scan.
 
@@ -28,12 +30,12 @@ This packet does not claim Gate acceptance, begin G1.11, perform G1.24's externa
 
 | Surface | Observed identity | Disposition |
 |---|---|---|
-| Accepted runtime checkout | `1b62ee64828f74f709beda1d647816e1624c72bd`, synchronized with upstream | Corrected executable source and tracked operational package |
-| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact corrected executable package `1b62ee64828f74f709beda1d647816e1624c72bd`, tracked-clean | Replaces rejected preservation checkout without merging it |
+| Accepted runtime executable | `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`, synchronized with upstream | Final ABA-corrected executable source and tracked operational package |
+| Live Mac runtime | branch `codex/g1-10-live-cutover`, exact corrected executable package `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`, tracked-clean | Replaces rejected preservation checkout without merging it |
 | Mac LaunchAgent | `com.ora.server`, SHA-256 `b58feb7b98da59fdc557b0a081f337e3953b975aa39bac59f03c20050631b03a` | Preserved and restarted successfully |
-| Mac cutover receipt | `$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json`, SHA-256 `cfadd012c57e1f06458d5dc6b90a38707b41f3ce5b12c9460a47ce8cca245841` | Binds corrected commit, runtime root, baseline/current manifests, retired labels, and recovery directory |
-| Cloud Ora runtime | detached exact corrected executable package `1b62ee64828f74f709beda1d647816e1624c72bd`, tracked-clean | Replaces divergent `main` checkout without reset or merge |
-| Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `43f6c58d249c4e492ce30f3422b05e2851e5a3bf35039a6287f207cbcdca77e2` | Binds corrected commit, runtime root, manifests, crontab, and seven installed scripts |
+| Mac cutover receipt | `$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json`, SHA-256 `2b9ffa2dde4faf193bd7631aa35a409a64679b05d4ebc0d34ec0f6e223581748` | Binds corrected commit, runtime root, baseline/current manifests, retired labels, and recovery directory |
+| Cloud Ora runtime | detached exact corrected executable package `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`, tracked-clean | Replaces divergent `main` checkout without reset or merge |
+| Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `6569f8aa4eb8ade2658e0c620bd7d656fe4b446900ffd518f806ff28c851b1b9` | Binds corrected commit, runtime root, manifests, crontab, and seven installed scripts |
 | Cloud crontab | one row, SHA-256 `b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd` | Only the justified daily read-only external model audit remains |
 | MSI source | harvest head `d62fd0e70b092cc90d47ed6250888c1d448ac97f`, containing both G1.10 commits and synchronized with upstream | Live `unified_production.py` and test bytes match source |
 | MSI service | `msi-unified-production.service`, active after restart | Old tasks were persisted as interrupted; daemon resumed from durable queue |
@@ -42,7 +44,7 @@ The baseline manifest SHA-256 is `c9387e7fd14a0eb70a3b74bd7e135733f02922f8927be5
 
 The first Mac start refreshed three tracked model-catalog cache files. Those generated bytes were preserved recoverably in `stash@{0}` with message `G1.10 startup catalog refresh 2026-07-21`; the live checkout was returned to accepted tracked bytes before its final restart. No generated catalog byte was silently accepted as G1.10 source. The server subsequently restarted without rewriting the files, remained tracked-clean, and returned a green health response.
 
-When the stale-identity defect was reported against the live autonomous handlers, the server was stopped and commit `7951cc09` installed a narrow circuit breaker. The live sentinel suppressed only Resource/Engram autonomous judgment; event dispatch and deadline work remained active, and no clock fallback was introduced. After corrected package `1b62ee64` passed its matrices and was deployed to Mac and cloud, the server restarted once under containment, verified the exact package and named-zone deadline, then released the sentinel and restarted cleanly. Direct readback returned `autonomous_hygiene_enabled=true`; no Resource or Engram write was used as a deployment probe.
+When the first stale-identity defect was reported against the live autonomous handlers, the server was stopped and commit `7951cc09` installed a narrow circuit breaker. After package `1b62ee64` closed that defect, the sentinel was released. When the later ABA judgment-input defect was reported, the same sentinel was reinstated immediately. In both containment intervals it suppressed only Resource/Engram autonomous judgment; event dispatch and deadline work remained active, and no clock fallback was introduced. Final package `0738d4ac` passed its matrices and was deployed to Mac and cloud; the Mac server restarted under containment, verified the exact snapshot path, package, and health, then moved the sentinel to recoverable archive `/tmp/g1-10-autonomous-handlers-released.YeTtEc` and restarted cleanly. Direct readback returned `autonomous_hygiene_enabled=true`; no Resource or Engram write was used as a deployment probe.
 
 ## Installed topology and restart evidence
 
@@ -76,12 +78,12 @@ The tracked Mac rollback is `operations/g1-10-current/macos/rollback-macos-cutov
 
 The tracked cloud rollback is `operations/g1-10-current/cloud/rollback-cloud-cutover.sh`. It validates installed/current/recovery identities before restoring the six prior helpers and exact eight-row crontab, and refuses to overwrite unrelated sources or remove a foreign Gear-4 helper. Recovery material is at `/home/oracle/.local/state/ora/g1-10-cloud-cutover/`.
 
-The runtime transaction layer writes pre-state, post-state, evidence, receipts, and rollback material under the runtime-hygiene data root. Subject or neighbor drift after judgment input binding terminates with zero Ora mutation. A failed judgment or mutation rolls back the exact subject and records terminal failure. If retrieval refresh had begun, rollback authenticates every restored snapshot and refreshes the index from those restored files, persisting the restoration receipt; failure of that restoration is a broken infrastructure state. Deadline failures are terminal and are not silently retried by a sweep. Startup replays pending retention registration intents alone, exactly once per process start.
+The runtime transaction layer writes pre-state, post-state, evidence, receipts, and rollback material under the runtime-hygiene data root. Subject or neighbor drift after immutable judgment input binding terminates with zero Ora mutation. The model receives only fields derived from the authenticated byte snapshots, never later live-file reads or index metadata. A failed judgment or mutation rolls back the exact subject and records terminal failure. If retrieval refresh had begun, rollback authenticates every restored snapshot and refreshes the index from those restored files, persisting the restoration receipt; failure of that restoration is a broken infrastructure state. Deadline failures are terminal and are not silently retried by a sweep. Startup replays pending retention registration intents alone, exactly once per process start.
 
 ## Blocking-finding correction proofs
 
 1. Mixed-offset deadlines `2026-07-21T08:00:00+02:00` and `2026-07-21T02:00:00-05:00` are stored as `06:00Z` and `07:00Z`; the earlier instant dispatches first. `America/Los_Angeles` calendar tests cover the offset changes at both 2026 DST transitions. Installed readback shows `daily-note-v2:2026-07-21:2d4bbedff807` due at `2026-07-22T07:00:00+00:00` with the named zone retained in its payload.
-2. Adversarial model callbacks that alter either the claimed subject or a candidate during judgment cause terminal failure before the resolver or index is called. Exact bound identities remain in event evidence, and successful mutation reauthenticates them again at transaction preparation.
+2. The multi-candidate ABA regression captures `other-bound`, changes that candidate to `other-transient-unbound` during the preceding model call, and restores it before reauthentication. The next call receives only the original snapshot-derived body, H1, and date; the transient bytes never enter any model input. The event evidence and completed mutation both retain the SHA-256 of the exact original capture. Ordinary subject/candidate drift still terminates before the resolver or index, and every successful mutation reauthenticates current live identities again at transaction preparation.
 3. A simulated first index refresh retained mutated retrieval state and failed. File rollback restored the old bytes; the mandatory second refresh observed those restored bytes, restored retrieval state, and persisted `index_restoration_receipt`. A second-refresh failure produced `infrastructure_broken`.
 4. Forced retention-intent persistence failures leave finalization open and unpinning pinned. Forced queue-write failures leave an authenticated pending intent; exact startup recovery registers that intent without scanning trace directories. Startup wiring is independently exercised before the event/deadline lanes start.
 
@@ -109,7 +111,7 @@ python3 -m unittest \
   orchestrator.tests.test_g1_10_runtime_hygiene
 ```
 
-Observed exit status: `0`. Result: `40` tests passed.
+Observed exit status: `0`. Result: `41` tests passed.
 
 ### Runtime and adjacent regression matrix
 
@@ -132,7 +134,7 @@ python3 -m unittest \
   orchestrator.tests.test_oversight_runtime
 ```
 
-Observed exit status: `0`. Result: `466` tests passed. This contains the previously accepted 452-test matrix plus fourteen deadline, DST, identity-drift, index-restoration, write-ahead-intent, and startup-recovery regressions.
+Observed exit status: `0`. Result: `467` tests passed. This contains the previously accepted 452-test matrix plus fifteen deadline, DST, identity-drift, immutable-snapshot/ABA, index-restoration, write-ahead-intent, and startup-recovery regressions.
 
 The matrix intentionally resolves runtime paths against the accepted checkout. It creates only test retention state there; that state was removed from the source checkout after the run with this bounded, recoverable cleanup:
 
@@ -206,7 +208,7 @@ Observed exit status: `0`. Result: implementation drift verification and all fou
 ```sh
 cd /Users/oracle/ora
 git fetch origin codex/g1-1-phase-1-4-runtime
-test "$(git rev-parse HEAD)" = 1b62ee64828f74f709beda1d647816e1624c72bd
+test "$(git rev-parse HEAD)" = 0738d4ac93ef3df84dd472a5c85dcbc94d0844f8
 test -z "$(git status --porcelain --untracked-files=no)"
 launchctl print "gui/$(id -u)/com.ora.server" >/dev/null
 for label in \
@@ -218,7 +220,7 @@ curl -fsS http://localhost:5000/health
 python3 -m json.tool \
   "$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json" >/dev/null
 test "$(shasum -a 256 "$HOME/Library/Application Support/Ora/g1-10-macos-cutover.json" | awk '{print $1}')" = \
-  cfadd012c57e1f06458d5dc6b90a38707b41f3ce5b12c9460a47ce8cca245841
+  2b9ffa2dde4faf193bd7631aa35a409a64679b05d4ebc0d34ec0f6e223581748
 test ! -e data/runtime-hygiene/autonomous-handlers.disabled
 ORA_HOME=/Users/oracle/ora python3 -c \
   'from orchestrator.runtime_event_dispatcher import autonomous_hygiene_enabled; assert autonomous_hygiene_enabled()'
@@ -232,7 +234,7 @@ Observed exit status: `0`. Result: live branch/upstream and corrected executable
 ssh cloud-ora 'set -e
 git -C /home/oracle/ora fetch origin codex/g1-1-phase-1-4-runtime
 test -z "$(git -C /home/oracle/ora status --porcelain --untracked-files=no)"
-test "$(git -C /home/oracle/ora rev-parse HEAD)" = 1b62ee64828f74f709beda1d647816e1624c72bd
+test "$(git -C /home/oracle/ora rev-parse HEAD)" = 0738d4ac93ef3df84dd472a5c85dcbc94d0844f8
 test "$(crontab -l | sha256sum | awk "{print \$1}")" = b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd
 test "$(crontab -l | grep -v "^[[:space:]]*#" | grep -v "^[[:space:]]*$" | wc -l)" -eq 1
 msi_repo=/home/oracle/work/main-street-independent
@@ -245,7 +247,7 @@ test -z "$(git -C "$msi_repo" status --porcelain --untracked-files=no)"
 systemctl is-active --quiet msi-unified-production.service
 python3 -m json.tool /home/oracle/.local/state/ora/g1-10-cloud-cutover.json >/dev/null
 test "$(sha256sum /home/oracle/.local/state/ora/g1-10-cloud-cutover.json | awk "{print \$1}")" = \
-  43f6c58d249c4e492ce30f3422b05e2851e5a3bf35039a6287f207cbcdca77e2
+  6569f8aa4eb8ade2658e0c620bd7d656fe4b446900ffd518f806ff28c851b1b9
 '
 ```
 

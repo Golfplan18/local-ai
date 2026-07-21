@@ -132,16 +132,18 @@ class OperationalIdentityTests(unittest.TestCase):
             'test -n "$msi_head"',
             "rollback-macos-cutover.sh",
             "rollback-cloud-cutover.sh",
-            "Corrected executable package commit: `1b62ee64828f74f709beda1d647816e1624c72bd`",
+            "Final ABA-corrected executable package commit: `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`",
             "Blocking-finding correction proofs",
             "America/Los_Angeles",
             "judgment input binding",
+            "immutable byte snapshot",
+            "multi-candidate ABA",
             "index_restoration_receipt",
             "infrastructure_broken",
             "pending retention registration intents",
             "autonomous_hygiene_enabled=true",
-            "Result: `466` tests passed",
-            "Result: `40` tests passed",
+            "Result: `467` tests passed",
+            "Result: `41` tests passed",
             "G1.24",
             "independent Gate G1.10 judgment pending",
         )
@@ -286,12 +288,13 @@ class CanonicalParityTests(unittest.TestCase):
             self.assertIn("independent Gate", text)
             self.assertIn("G1.24", text)
         for text in (tracker, registry, audit):
-            self.assertIn("1b62ee64828f74f709beda1d647816e1624c72bd", text)
-            self.assertIn("466", text)
+            self.assertIn("0738d4ac93ef3df84dd472a5c85dcbc94d0844f8", text)
+            self.assertIn("467", text)
         self.assertIn("All six cutover prerequisites are complete", audit)
         self.assertIn("not a self-issued Gate acceptance", audit)
         for value in (
             "normalized UTC due instant", "named IANA zone", "path-scoped locks",
+            "immutable byte snapshot",
             "infrastructure_broken", "write-ahead intent",
         ):
             with self.subTest(value=value):
