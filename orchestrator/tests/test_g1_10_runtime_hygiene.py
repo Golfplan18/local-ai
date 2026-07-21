@@ -89,6 +89,17 @@ class SchedulerBoundaryTests(unittest.TestCase):
                 "inbound_resource",
             )
 
+    def test_operational_circuit_breaker_suppresses_only_autonomous_handlers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp) / "data"
+            sentinel = (data / "runtime-hygiene" /
+                        event_dispatcher._AUTONOMOUS_HANDLER_SENTINEL)
+            sentinel.parent.mkdir(parents=True)
+            with mock.patch.object(event_dispatcher._rp, "DATA_DIR_STR", str(data)):
+                self.assertTrue(event_dispatcher.autonomous_hygiene_enabled())
+                sentinel.touch()
+                self.assertFalse(event_dispatcher.autonomous_hygiene_enabled())
+
     def test_failed_supersession_is_visible_to_event_dispatch(self):
         with tempfile.TemporaryDirectory() as temp:
             vault = Path(temp) / "vault"

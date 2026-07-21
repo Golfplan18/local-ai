@@ -34,6 +34,22 @@ def _under(path: str, root: str | Path) -> bool:
 
 
 _IGNORED_PARTS = {".git", ".obsidian", ".trash", "__pycache__"}
+_AUTONOMOUS_HANDLER_SENTINEL = "autonomous-handlers.disabled"
+
+
+def autonomous_hygiene_enabled() -> bool:
+    """Return whether exact-write News/Engram judgment may run.
+
+    The data-root sentinel is an operational circuit breaker, not a scheduler
+    control and not a fallback queue. It suppresses only the two autonomous
+    mutation handlers while leaving all other OS-event consumers active.
+    """
+    configured = os.environ.get("ORA_AUTONOMOUS_HYGIENE", "on").strip().lower()
+    if configured in {"0", "false", "off", "disabled"}:
+        return False
+    sentinel = (Path(_rp.DATA_DIR_STR) / "runtime-hygiene" /
+                _AUTONOMOUS_HANDLER_SENTINEL)
+    return not sentinel.exists()
 
 
 def _actionable(path: str) -> bool:
@@ -90,6 +106,7 @@ def dispatch_paths(paths: set[str]) -> dict:
     summary = {
         "paths": sorted(paths), "supersession_events": [],
         "self_mutations_suppressed": [],
+        "autonomous_handlers_suppressed": [],
         "ped_events": 0, "corpus_events": 0,
         "workflow_checked": False, "revisit_checked": False,
         "resources_checked": False, "operational_hook": None, "errors": [],
@@ -97,6 +114,11 @@ def dispatch_paths(paths: set[str]) -> dict:
 
     for path in sorted(existing_markdown):
         if _artifact_kind(path) not in {"resource", "engram"}:
+            continue
+        if not autonomous_hygiene_enabled():
+            summary["autonomous_handlers_suppressed"].append({
+                "path": path, "reason": "operational circuit breaker",
+            })
             continue
         try:
             from orchestrator.runtime_hygiene import EventLedger, artifact_identity
