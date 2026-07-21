@@ -92,7 +92,7 @@ python3 -m unittest \
   orchestrator.tests.test_g1_10_runtime_hygiene
 ```
 
-Observed exit status: `0`. Result: `33` tests passed.
+Observed exit status: `0`. Result: `34` tests passed.
 
 ### Runtime and adjacent regression matrix
 
@@ -115,7 +115,7 @@ python3 -m unittest \
   orchestrator.tests.test_oversight_runtime
 ```
 
-Observed exit status: `0`. Result: `451` tests passed. Before the closeout-provenance regression was added, the same behavioral matrix passed `450/450`.
+Observed exit status: `0`. Result: `452` tests passed. The same matrix passed `450/450` before the two closeout/canonical-record regressions were added and `451/451` after the first was added.
 
 ### MSI event/deadline regression
 

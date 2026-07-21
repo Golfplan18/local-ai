@@ -254,6 +254,27 @@ class CanonicalParityTests(unittest.TestCase):
         self.assertIn("G1.24 still owns external DCP routine verification", readme)
         self.assertIn("delivered full-state", readme)
 
+    def test_tracker_registry_and_audit_record_completed_cutover_only(self):
+        tracker = (VAULT / "Projects" / "Ora" /
+                   "Working — Ora Setup and Refinement.md").read_text()
+        registry = (VAULT / "Projects" / "Ora" /
+                    "Registry — Ora Overview and Document Registry.md").read_text()
+        audit = (VAULT / "Projects" / "Ora" /
+                 "Working — Runtime Principle Audit 2026-07-21.md").read_text()
+        for text in (tracker, registry):
+            self.assertIn("independent Gate", text)
+            self.assertIn("G1.24", text)
+        self.assertIn("All six cutover prerequisites are complete", audit)
+        self.assertIn("not a self-issued Gate acceptance", audit)
+        self.assertNotIn(
+            "Live Mac/cloud cutover and consolidated closeout evidence remain incomplete",
+            tracker,
+        )
+        self.assertNotIn(
+            "Gate acceptance remains pending live cutover and consolidated verification",
+            registry,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
