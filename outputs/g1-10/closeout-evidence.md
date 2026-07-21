@@ -37,7 +37,7 @@ This packet does not claim Gate acceptance, begin G1.11, perform G1.24's externa
 | Cloud Ora runtime | detached exact corrected executable package `0738d4ac93ef3df84dd472a5c85dcbc94d0844f8`, tracked-clean | Replaces divergent `main` checkout without reset or merge |
 | Cloud cutover receipt | `/home/oracle/.local/state/ora/g1-10-cloud-cutover.json`, SHA-256 `6569f8aa4eb8ade2658e0c620bd7d656fe4b446900ffd518f806ff28c851b1b9` | Binds corrected commit, runtime root, manifests, crontab, and seven installed scripts |
 | Cloud crontab | one row, SHA-256 `b2a4061ee3b3cd1faf54c0ec543dea651b72ab2183d1d8e5d28ff52b81f703dd` | Only the justified daily read-only external model audit remains |
-| MSI source | harvest head `d62fd0e70b092cc90d47ed6250888c1d448ac97f`, containing both G1.10 commits and synchronized with upstream | Live `unified_production.py` and test bytes match source |
+| MSI source | G1.10 commits `a3927d5d` and `c737bdfc` remain ancestors of the synchronized current harvest head; repository integrity is verified dynamically below | Live `unified_production.py` and test bytes match source without freezing normal publication content |
 | MSI service | `msi-unified-production.service`, active after restart | Old tasks were persisted as interrupted; daemon resumed from durable queue |
 
 The baseline manifest SHA-256 is `c9387e7fd14a0eb70a3b74bd7e135733f02922f8927be52065d95a2d9f00cf43`. The current operational manifest SHA-256 is `b4f1018f868183d80a7c27e3c0155b23f2a722ad221b839ef964d52a25112329` and authenticates all 19 current-package files.
