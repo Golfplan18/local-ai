@@ -2003,6 +2003,20 @@ def route_for_image_input(context_pkg: dict,
             print(f"[visual-routing] routing-config load failed: {e}. Skipping vision gate.")
             return requested_model, context_pkg
 
+    # G1.16 — a project binding freezes the vision-routing mode at the same
+    # time as its text profile.  The caller threads only a validated lock
+    # snapshot; invalid/tampered locks fail closed rather than silently using
+    # the current global vision setting.
+    project_locks = context_pkg.get("model_profile_locks")
+    if project_locks:
+        try:
+            from orchestrator import model_profiles as _mp
+        except ImportError:
+            import model_profiles as _mp  # type: ignore
+        routing_config = _mp.routing_config_with_project_locks(
+            routing_config, project_locks,
+        )
+
     vision_cfg = routing_config.get("vision_extraction", {}) or {}
     if not vision_cfg.get("enabled", True):
         # Explicitly disabled — skip the gate, keep image_path as a bare

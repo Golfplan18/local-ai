@@ -231,6 +231,7 @@
 
 <script src="/static/js/sidebar.js?v=create-flow-20260630" defer></script>
 <script src="/static/js/project-modal.js?v=binding-20260701" defer></script>
+<script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/process-run-inspector.js?v=g11-phase-2-6-idempotency" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
@@ -410,17 +411,19 @@
         .sidebar-project-new:hover {
           background: var(--background-modifier-hover); color: var(--text-normal);
         }
-        /* Active Project (+ pin) stays at the TOP as the context that filters
-           the list; Model configuration is a setting, anchored as a bottom
-           footer (order:1 pushes only it below the flex:1 accordion). */
+        /* Active Project and its Model Profile stay together at the top.
+           Output style remains the sole bottom footer. */
         .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
-        .sidebar-modelconfig-section,
         .sidebar-outputstyle-section {
           order: 1;
           border-top: 1px solid var(--background-modifier-border);
           margin-top: 6px; padding-top: 8px;
         }
-        /* Active Project + Model configuration are top-level section headers —
+        .sidebar-modelconfig-section {
+          border-top: 1px solid var(--background-modifier-border);
+          padding-top: 6px;
+        }
+        /* Active Project + Model Profile are top-level section headers —
            match the supergroup headers (Dialogues / Automated Processes),
            a tier above the muted Pinned/Unread sub-labels. */
         .sidebar-fixed-section .sidebar-group-label {
@@ -575,22 +578,21 @@
           </button>
         </div>
       </div>
-      <!-- Both this and Model configuration are order:1, so they sit below the
-           flex:1 accordion (Automated Processes is its last section). Output
-           style is first in DOM, so it renders directly above Model config. -->
+      <div class="sidebar-fixed-section sidebar-modelconfig-section">
+        <div class="sidebar-group-label">Model Profile</div>
+        <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
+                title="Choose this project's Model Profile"
+                aria-haspopup="menu" aria-expanded="false">
+          <span class="sidebar-modelconfig-name" id="sidebarModelConfigName">—</span>
+          <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
+        </button>
+      </div>
+      <!-- Output style is a bottom footer below the flex:1 accordion. -->
       <div class="sidebar-fixed-section sidebar-outputstyle-section">
         <div class="sidebar-group-label">Output style</div>
         <button class="sidebar-modelconfig-current" id="sidebarOutputStyleBtn" type="button"
                 title="Configure output style">
           <span class="sidebar-modelconfig-name" id="sidebarOutputStyleName">—</span>
-          <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
-        </button>
-      </div>
-      <div class="sidebar-fixed-section sidebar-modelconfig-section">
-        <div class="sidebar-group-label">Model configuration</div>
-        <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
-                title="Configure models">
-          <span class="sidebar-modelconfig-name" id="sidebarModelConfigName">—</span>
           <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
         </button>
       </div>
@@ -808,6 +810,13 @@
             <circle cx="12" cy="7" r="4"/>
           </svg>
         </button>
+        <button class="input-pane-toolbar__btn input-pane-toolbar__btn--text" type="button"
+                id="inputToolbarModelProfile"
+                aria-label="Model Profile inherited"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                title="Choose a Model Profile for the next run"
+                data-input-toolbar="model-profile">—</button>
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarImageGenerate"
                 aria-label="Generate image from prompt"
@@ -1993,6 +2002,14 @@
       const lens = window.OraInputState.getAnalysisLens();
       if (lens && lens.id) body.append('manual_lens_selection', lens.id);
     }
+    // G1.16 — the input-box selection is a one-run override. It travels on
+    // the existing authenticated multipart field and is cleared as soon as
+    // this exact request is on the wire.
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.getOneRunOverride === 'function') {
+      const profile = window.OraModelProfiles.getOneRunOverride();
+      if (profile) body.append('config_name', profile);
+    }
     // G1.36 honne/tatemae — mark this turn internal so it reads in the project's
     // interaction style (default external uses the output style).
     try {
@@ -2062,6 +2079,10 @@
     }
     if (window.OraInputState && typeof window.OraInputState.clearAnalysisMode === 'function') {
       window.OraInputState.clearAnalysisMode();
+    }
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.clearOneRunOverride === 'function') {
+      window.OraModelProfiles.clearOneRunOverride();
     }
     // V3 Input Handling Phase 8 — same per-input stickiness applies to
     // attachments. The document/audio jobs already submitted continue

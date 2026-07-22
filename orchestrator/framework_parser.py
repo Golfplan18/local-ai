@@ -51,6 +51,7 @@ class Milestone:
     conditional_layers: Optional[str]  # raw text including condition; None if absent
     required_prior: list[str]       # M-references; e.g., ["M1"] or ["I-Create.M4"]
     gear: int
+    model_profile: Optional[str]       # G1.16 per-step override; None inherits
     output_format: str
     drift_check_question: str
 
@@ -245,6 +246,7 @@ def _parse_milestones(
                 properties.get("required prior milestones", "None")
             ),
             gear=_parse_gear(properties.get("gear", "4")),
+            model_profile=(properties.get("model profile") or None),
             output_format=properties.get("output format", ""),
             drift_check_question=properties.get("drift check question", ""),
         )

@@ -868,23 +868,19 @@ class Router:
         if config_name is not None:
             return config_name
         if context == "interactive":
-            # G1.35×G1.33 — the active project's default model profile (if set
-            # and resolvable) overrides the account-wide active configuration:
-            # per the plan §1.3 inheritance, a project default is "closer" than
-            # the global default, but a per-run config_name (handled above) still
-            # wins over both. Best-effort; never breaks chat.
+            # G1.16 — the active project's profile is an immutable snapshot,
+            # not a late read of the mutable preset file.  A malformed/stale
+            # binding fails closed instead of silently dropping to the global
+            # profile and executing under different authority than the user
+            # selected.  Explicit config_name above is the one-run override.
             try:
                 from orchestrator import active_project as _ap
-                from orchestrator import project_meta as _pm
+                from orchestrator import model_profiles as _mp
                 nexus = _ap.get_active_project()
-                if nexus and nexus.lower() not in ("commons", "general"):
-                    rec = _pm.read_project_meta(nexus)
-                    prof = (rec or {}).get("default_model_profile")
-                    if (isinstance(prof, str) and prof.strip()
-                            and self._load_configuration(prof.strip()) is not None):
-                        return prof.strip()
-            except Exception:
-                pass
+                resolved = _mp.resolve_effective_profile(project_nexus=nexus)
+                return resolved["selected"]["runtime_name"]
+            except ImportError:
+                pass  # compatibility for partial/source-only installations
             try:
                 from orchestrator import active_configuration as ac
                 return ac.get_active_name()
@@ -902,6 +898,18 @@ class Router:
         The cache is keyed on name; :meth:`reload` clears it so file edits
         take effect on the next call.
         """
+        # G1.16 project bindings use a runtime-only token whose content comes
+        # from the authenticated project snapshot.  It is never treated as a
+        # filesystem path or accepted from the configuration directory.  It is
+        # reauthenticated on every load rather than returned from the ordinary
+        # configuration cache, so a stale token cannot survive a rebind.
+        try:
+            from orchestrator import model_profiles as _mp
+            if name.startswith(_mp.LOCK_TOKEN_PREFIX):
+                return _mp.load_project_locked_profile(name)
+        except ImportError:
+            pass
+
         cached = self._configurations.get(name)
         if cached is not None:
             return cached

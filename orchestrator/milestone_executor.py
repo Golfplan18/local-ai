@@ -153,6 +153,33 @@ def _lookup_framework_default_configuration(framework_name: str) -> Optional[str
     return None
 
 
+def _resolve_milestone_model_profile(
+    *,
+    project_nexus: Optional[str],
+    process_profile: Optional[str],
+    milestone,
+    one_run_profile: Optional[str],
+) -> dict:
+    """Resolve G1.16's five-level profile chain for one exact step.
+
+    ``config_name`` on ``execute_framework`` is the one-run override.  The
+    framework-routing entry is the process default and a milestone's optional
+    ``Model Profile`` property is the step override.  Keeping the three names
+    separate prevents the old implementation from collapsing process and
+    one-run authority into one caller-controlled value.
+    """
+    try:
+        from . import model_profiles
+    except ImportError:
+        import model_profiles  # type: ignore
+    return model_profiles.resolve_effective_profile(
+        project_nexus=project_nexus,
+        process_profile=process_profile,
+        step_profile=getattr(milestone, "model_profile", None),
+        one_run_profile=one_run_profile,
+    )
+
+
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     """Persist a completed self MindSpec interview. Gated to the self mode
     so agent/character specs never clobber the user's values. Best-effort:
@@ -259,10 +286,10 @@ def execute_framework(
     if trace_context is not None:
         trace_context["framework_id"] = fw.name
 
-    # Resolve effective config_name: explicit arg > framework-routing.json
-    # default > None (Router auto-derives from execution_context).
-    if config_name is None:
-        config_name = _lookup_framework_default_configuration(fw.name)
+    # Keep the inheritance levels distinct.  They are resolved for every
+    # milestone below because a step may declare a closer Model Profile.
+    one_run_profile = config_name
+    process_profile = _lookup_framework_default_configuration(fw.name)
 
     if fw.is_multi_mode:
         selected_mode, mode_reasoning, effective_input = select_mode(
@@ -335,9 +362,18 @@ def execute_framework(
 
     try:
         for milestone in milestones:
+            profile_resolution = _resolve_milestone_model_profile(
+                project_nexus=project_nexus,
+                process_profile=process_profile,
+                milestone=milestone,
+                one_run_profile=one_run_profile,
+            )
+            effective_profile = profile_resolution["selected"]["runtime_name"]
+            if trace_context is not None:
+                trace_context["model_profile_resolution"] = profile_resolution
             result = _run_milestone(
                 fw, milestone, scratch, effective_input, config,
-                config_name=config_name, parent_trace_dir=trace_dir,
+                config_name=effective_profile, parent_trace_dir=trace_dir,
                 parent_trace_ref=parent_trace_ref,
                 selected_mode=selected_mode,
                 conversation_tag=conversation_tag,
@@ -356,6 +392,7 @@ def execute_framework(
                 "drift_status": result.drift_status,
                 "drift_reasoning": result.drift_reasoning,
                 "project_nexus": project_nexus,
+                "model_profile": profile_resolution["selected"],
             })
 
             if result.drift_status == "DRIFT_DETECTED":

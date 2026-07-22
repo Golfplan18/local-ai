@@ -315,9 +315,9 @@
       _withTarget(container, function () {
         _appendField('Model', _selectInput('aside.model_id', options, current));
         _appendNote(
-          'This choice is independent of the active model configuration. '
+          'This choice is independent of the active Model Profile. '
           + 'If it is unavailable, Ora logs the problem and falls back to '
-          + 'the configuration\'s SMALL / utility chain for that request.'
+          + 'the Model Profile\'s SMALL / utility chain for that request.'
         );
       });
     }
@@ -702,7 +702,7 @@
     try {
       OraModelsPane.init(host);
     } catch (err) {
-      host.textContent = 'Could not load model configuration: '
+      host.textContent = 'Could not load Model Profiles: '
         + ((err && err.message) || 'unknown error');
     }
   }

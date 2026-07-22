@@ -6434,8 +6434,36 @@ def api_projects_update(nexus):
         return _json_response({"ok": False, "error": str(exc)}, 503)
     data = request.get_json(silent=True) or {}
     try:
-        meta = _pm.update_project_meta(nexus, data)
-    except _pm.ProjectMetaError as exc:
+        if "model_locks" in data:
+            return _json_response({
+                "ok": False,
+                "error": "model_locks are runtime-authenticated and cannot be supplied directly",
+            }, 400)
+        if "default_model_profile" in data:
+            from orchestrator import model_profiles as _mp
+            requested_profile = data.get("default_model_profile")
+            if isinstance(requested_profile, str) and requested_profile.strip():
+                profile_name = requested_profile.strip()
+                locks = _mp.capture_project_binding(profile_name)
+            elif requested_profile in (None, ""):
+                profile_name = None
+                locks = {}
+            else:
+                raise _mp.ModelProfileError(
+                    "default_model_profile must be a profile name or empty"
+                )
+            remaining = {
+                key: value for key, value in data.items()
+                if key != "default_model_profile"
+            }
+            # One pointer replacement binds the exact name+lock pair and all
+            # unrelated Overview edits; a crash cannot expose half a binding.
+            meta = _pm.set_project_model_binding(
+                nexus, profile_name, locks, updates=remaining,
+            )
+        else:
+            meta = _pm.update_project_meta(nexus, data)
+    except (_pm.ProjectMetaError, ValueError) as exc:
         return _json_response({"ok": False, "error": str(exc)}, 400)
     if meta is None:
         return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
@@ -8512,6 +8540,49 @@ def _apply_style_audience(extra_context, style_audience):
     return extra_context
 
 
+def _active_project_model_locks():
+    """Return authenticated locks for the active project, or None for Commons/unbound."""
+    from orchestrator.active_project import get_active_project
+    from orchestrator import model_profiles as _mp
+    from orchestrator import project_meta as _pm
+    nexus = get_active_project()
+    if not nexus or nexus.lower() in ("commons", "general"):
+        return None
+    record = _pm.read_project_meta(nexus)
+    if not record or not record.get("default_model_profile"):
+        return None
+    return _mp.validate_project_binding(record, expected_nexus=nexus)
+
+
+def _apply_project_model_locks(extra_context):
+    """Thread exact project visual locks into the same turn as its text snapshot."""
+    locks = _active_project_model_locks()
+    if locks is None:
+        return extra_context
+    result = dict(extra_context or {})
+    result["model_profile_locks"] = locks
+    return result
+
+
+def _validate_public_model_profile_override(config_name):
+    """Reject internal tokens and unavailable names at HTTP entry surfaces."""
+    if config_name is None:
+        return None
+    from orchestrator import model_profiles as _mp
+    if isinstance(config_name, str) and config_name.startswith(_mp.LOCK_TOKEN_PREFIX):
+        raise _mp.ModelProfileError(
+            "runtime-issued project Model Profile tokens are not public overrides"
+        )
+    name = _mp.validate_profile_name(config_name)
+    summary = _mp.profile_summary(name)
+    if summary["health"]["status"] == "unavailable":
+        raise _mp.ModelProfileError(
+            f"cannot run unavailable Model Profile {name!r}: "
+            f"{summary['health']['reason']}"
+        )
+    return name
+
+
 def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                                manual_mode_selection="", manual_lens_selection="",
                                framework_selected="", submission_id="", output_destination="",
@@ -8570,6 +8641,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # this turn read in the active project's INTERACTION style rather than the
     # default OUTPUT style. An explicit /style one-off above still wins.
     extra_context = _apply_style_audience(extra_context, style_audience)
+    extra_context = _apply_project_model_locks(extra_context)
 
     # Sidebar window integration: use rolling window for sidebar panels
     is_sidebar = panel_id.startswith("sidebar")
@@ -9171,7 +9243,13 @@ def chat():
     # Install Chunk 2c — optional per-request named configuration
     # (e.g. "user-pipeline", "background-default", or a custom-saved name).
     # When omitted, the legacy execution_context path applies.
-    config_name           = (data.get("config_name") or "").strip() or None
+    config_name           = data.get("config_name")
+    if isinstance(config_name, str):
+        config_name = config_name.strip() or None
+    try:
+        config_name = _validate_public_model_profile_override(config_name)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     trace_debug_payload = data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
     if not user_input and not trace_debug_payload:
         return json.dumps({"error":"empty message"}), 400
@@ -9697,6 +9775,10 @@ def chat_multipart():
     # Install Chunk 2c — same config_name field as /chat for per-request
     # named-configuration selection.
     config_name           = (form.get("config_name") or "").strip() or None
+    try:
+        config_name = _validate_public_model_profile_override(config_name)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     exhibits_submission_intent = (
         form.get("exhibits_submission_intent") or ""
     ).strip()
@@ -15943,6 +16025,24 @@ def capability_image_generates():
         or inputs_in.get("provider_override")
         or None
     )
+    try:
+        locks = _active_project_model_locks()
+        locked_image_model = (locks or {}).get("image_model")
+        if isinstance(locked_image_model, str) and locked_image_model:
+            if provider_override not in (None, "", locked_image_model):
+                return Response(json.dumps({"error": {
+                    "code": "model_profile_image_lock_conflict",
+                    "message": (
+                        "The active project's Model Profile locks image generation "
+                        f"to {locked_image_model!r}."
+                    ),
+                }}), status=409, mimetype="application/json")
+            provider_override = locked_image_model
+    except ValueError as exc:
+        return Response(json.dumps({"error": {
+            "code": "model_profile_binding_invalid",
+            "message": str(exc),
+        }}), status=409, mimetype="application/json")
 
     # Load the registry (auto-registers local-diffusers when installed)
     # and additionally register the OpenAI provider so the resolver has
@@ -18267,14 +18367,113 @@ def configurations_list():
     """
     try:
         from orchestrator import active_configuration as ac
+        from orchestrator import model_profiles as _mp
         ac.bake_missing_presets()
-        return _json_response(ac.list_configurations())
+        return _json_response(_mp.decorate_configuration_catalog(
+            ac.list_configurations()))
     except Exception as exc:
         return _json_response({
             "error": f"configurations-list-failed: {exc}",
             "presets": {p: None for p in ["free", "budget", "speed", "premium"]},
             "customs": [],
         }, status=500)
+
+
+@app.route("/api/model-profiles", methods=["GET"])
+def model_profiles_list():
+    """List health and the exact effective inheritance result for the UI."""
+    try:
+        from orchestrator import active_configuration as ac
+        from orchestrator import model_profiles as _mp
+        ac.bake_missing_presets()
+        project_nexus = (request.args.get("project_id") or "").strip() or None
+        resolved = _mp.resolve_effective_profile(project_nexus=project_nexus)
+        return _json_response({
+            "profiles": _mp.list_profile_summaries(),
+            "effective": resolved,
+            "health_states": list(_mp.HEALTH_STATES),
+        })
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=409)
+    except Exception as exc:
+        return _json_response({"error": f"model-profile-list-failed: {exc}"}, status=500)
+
+
+@app.route("/api/model-profiles/global", methods=["POST"])
+def model_profiles_set_global():
+    """Set the account-wide default after health validation."""
+    try:
+        body = request.get_json(silent=True) or {}
+        name = body.get("name")
+        from orchestrator import active_configuration as ac
+        from orchestrator import model_profiles as _mp
+        summary = _mp.profile_summary(_mp.validate_profile_name(name))
+        if summary["health"]["status"] == "unavailable":
+            raise _mp.ModelProfileError(
+                f"cannot select unavailable Model Profile {name!r}"
+            )
+        ac.set_active_name(name)
+        return _json_response({"ok": True, "profile": summary})
+    except ValueError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, status=400)
+
+
+@app.route("/api/model-profiles/project/<nexus>", methods=["POST"])
+def model_profiles_set_project(nexus):
+    """Bind/clear a project's exact profile and visual-routing snapshot."""
+    try:
+        body = request.get_json(silent=True) or {}
+        name = body.get("name")
+        from orchestrator import model_profiles as _mp
+        from orchestrator import project_meta as _pm
+        if isinstance(name, str) and name.strip():
+            name = name.strip()
+            locks = _mp.capture_project_binding(name)
+        elif name in (None, ""):
+            name = None
+            locks = {}
+        else:
+            raise _mp.ModelProfileError("name must be a Model Profile name or empty")
+        meta = _pm.set_project_model_binding(nexus, name, locks)
+        if meta is None:
+            return _json_response({"ok": False, "error": f"no project {nexus!r}"}, 404)
+        return _json_response({
+            "ok": True,
+            "project": meta,
+            "effective": _mp.resolve_effective_profile(project_nexus=nexus),
+        })
+    except ValueError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, status=400)
+
+
+@app.route("/api/model-profiles/migration/preview", methods=["POST"])
+def model_profiles_migration_preview():
+    """Read-only replacement proposal for a deprecated profile."""
+    try:
+        body = request.get_json(silent=True) or {}
+        from orchestrator import model_profiles as _mp
+        proposal = _mp.preview_migration(
+            body.get("name"), (body.get("project_nexus") or "").strip() or None,
+        )
+        return _json_response({"ok": True, "proposal": proposal})
+    except ValueError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, status=409)
+
+
+@app.route("/api/model-profiles/migration/confirm", methods=["POST"])
+def model_profiles_migration_confirm():
+    """Apply one unchanged proposal only after explicit confirmation."""
+    try:
+        body = request.get_json(silent=True) or {}
+        from orchestrator import model_profiles as _mp
+        receipt = _mp.confirm_migration(
+            body.get("name"), body.get("proposal_id"),
+            user_confirmed=body.get("confirmed") is True,
+            project_nexus=(body.get("project_nexus") or "").strip() or None,
+        )
+        return _json_response({"ok": True, "receipt": receipt})
+    except ValueError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, status=409)
 
 
 @app.route("/api/configurations/duplicate", methods=["POST"])

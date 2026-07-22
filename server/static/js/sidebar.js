@@ -54,8 +54,6 @@
   const projectNewBtn   = sidebar.querySelector('#sidebarProjectNew');
   const projectManageBtn  = sidebar.querySelector('#sidebarProjectManage');
   const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
-  const modelConfigBtn  = sidebar.querySelector('#sidebarModelConfigBtn');
-  const modelConfigName = sidebar.querySelector('#sidebarModelConfigName');
   const outputStyleBtn  = sidebar.querySelector('#sidebarOutputStyleBtn');
   const outputStyleName = sidebar.querySelector('#sidebarOutputStyleName');
 
@@ -639,6 +637,7 @@
         : data.nexus;
       if (typeof supplied !== 'string') return false;
       if (activeProjectMutationInFlight || generation !== activeProjectSyncGeneration) return false;
+      const previousProjectId = activeProjectId;
       activeProjectId = canonicalProjectId(supplied);
       persistActiveProjectId(activeProjectId);
       const cur = projectsCache.find(p => canonicalProjectRecordId(p) === activeProjectId);
@@ -646,6 +645,11 @@
         projectNameEl.textContent = cur ? (cur.name || cur.nexus) : projectDisplayName(activeProjectId);
       }
       renderProjects();
+      if (activeProjectId !== previousProjectId) {
+        document.dispatchEvent(new CustomEvent('ora:active-project-changed', {
+          detail: { nexus: activeProjectId },
+        }));
+      }
       return true;
     } catch (e) {
       return false;
@@ -719,6 +723,9 @@
       closeProjectMenu();
       fetchList();      // refetch the sidebar filtered to this project
       renderProjects(); // refresh the active highlight
+      document.dispatchEvent(new CustomEvent('ora:active-project-changed', {
+        detail: { nexus: activeProjectId },
+      }));
     } else if (!succeeded && !superseded) {
       // A superseded write may already have changed the server before the
       // latest write failed. Re-read authority now so UI/localStorage cannot
@@ -2034,26 +2041,7 @@
     e.stopPropagation(); openProjectManager();
   });
 
-  // ── G1.33 model-configuration section ────────────────────────────────
-  // Shows the active configuration name; the per-project / per-run selector
-  // is a later sub-step (G1.35). Clicking opens Settings → Models for now.
-  const fetchModelConfig = async () => {
-    try {
-      const r = await fetch('/api/configurations');
-      if (!r.ok) return;
-      const d = await r.json();
-      if (modelConfigName && d && d.active_name) modelConfigName.textContent = d.active_name;
-    } catch (e) {}
-  };
-  if (modelConfigBtn) modelConfigBtn.addEventListener('click', () => {
-    try {
-      const sp = window.OraSettingsPanel;
-      if (sp && typeof sp.open === 'function') sp.open({ tab: 'models' });
-    } catch (e) {}
-  });
-  fetchModelConfig();
-
-  // ── Output-style section — mirrors model configuration. Shows the active
+  // ── Output-style section. Shows the active
   // Output Style; clicking opens Settings → Output Styles. ────────────────
   const fetchOutputStyle = async () => {
     try {
