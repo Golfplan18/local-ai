@@ -16,6 +16,7 @@ Categories:
     signals        — Signal vocabulary registry (≥3 entries per mode_id; no orphans)
     runtime        — Runtime config completeness (entry per mode_id)
     drift          — Drift parity for registered pairs
+    framework-pairs — Full manifest-backed vault/runtime framework coverage
     debt           — Architectural debt (no stale references)
     routing        — Routing accuracy (post-Phase-6+9 only)
     tests          — Python and JS test suites pass
@@ -30,6 +31,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import hashlib
 import json
 import os
@@ -38,7 +40,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +70,23 @@ CROSS_ADJ_FILE = VAULT_ROOT / "Reference — Cross-Territory Adjacency.md"
 DISAMBIG_GUIDE_FILE = VAULT_ROOT / "Reference — Disambiguation Style Guide.md"
 LENS_SPEC_FILE = VAULT_ROOT / "Reference — Lens Library Specification.md"
 PIPELINE_FILE = VAULT_ROOT / "Reference — Pre-Routing Pipeline Architecture.md"
+FRAMEWORK_PAIR_MANIFEST_FILE = (
+    VAULT_ROOT / "Projects" / "Ora" /
+    "Reference — Vault Ora Framework Pair Manifest.md"
+)
+FRAMEWORK_ESCALATION_QUEUE_FILE = (
+    VAULT_ROOT / "Administration" / "DCP" /
+    "Working — Documentation-Code Parity Escalation Queue.md"
+)
+
+FRAMEWORK_MANIFEST_BEGIN = "<!-- BEGIN DCP FRAMEWORK PAIR MANIFEST JSON -->"
+FRAMEWORK_MANIFEST_END = "<!-- END DCP FRAMEWORK PAIR MANIFEST JSON -->"
+FRAMEWORK_MANIFEST_ID = "ora/vault-runtime-framework-pairs@1"
+FRAMEWORK_PAIR_DISPOSITIONS = {"paired", "missing_runtime", "no_runtime_twin"}
+FRAMEWORK_RUNTIME_EXCLUSIONS = {"frameworks/README.md"}
+FRAMEWORK_RECEIPT_PATTERN = re.compile(
+    r"<!-- dcp-framework-finding-receipt (\{.*?\}) -->"
+)
 
 RETIRED_MODE_IDS = {"adversarial", "standard"}
 NON_MODE_FILES = {"INDEX"}  # vault navigation files that live in /Modes/ but aren't modes
@@ -164,6 +183,45 @@ class CheckResult:
     skip_reason: str = ""
 
 
+class FrameworkManifestError(ValueError):
+    """The canonical framework-pair manifest is malformed or unsafe."""
+
+
+@dataclass(frozen=True)
+class FrameworkPairEntry:
+    pair_id: str
+    canonical_path: str
+    runtime_path: Optional[str]
+    disposition: str
+    finding_severity: str
+    last_known_clean: Optional[str]
+    rationale: str
+
+
+@dataclass(frozen=True)
+class FrameworkPairManifest:
+    manifest_id: str
+    manifest_sha256: str
+    entries: tuple[FrameworkPairEntry, ...]
+    expected_counts: dict[str, int]
+
+
+@dataclass(frozen=True)
+class FrameworkPairFinding:
+    payload: dict[str, Any]
+    finding_digest: str
+
+
+@dataclass(frozen=True)
+class FrameworkPairEvaluation:
+    manifest: FrameworkPairManifest
+    findings: tuple[FrameworkPairFinding, ...]
+    paired_clean: int
+    paired_drifted: int
+    missing_runtime: int
+    no_runtime_twin: int
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -209,6 +267,639 @@ def parse_yaml_frontmatter(content: str) -> tuple[Optional[dict], str]:
             current_list = []
             fm[current_key] = current_list
     return fm, body
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _safe_repo_relative_path(value: Any, *, field_name: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise FrameworkManifestError(f"{field_name} must be a nonempty string")
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts or value != path.as_posix():
+        raise FrameworkManifestError(
+            f"{field_name} must be a normalized repository-relative path: {value!r}"
+        )
+    return value
+
+
+def _normalized_framework_body(path: Path, *, strip_vault_yaml: bool) -> str:
+    """Return the exact G1.13 comparison body.
+
+    Newlines are normalized, vault frontmatter and its one separator blank line
+    are removed, and terminal newline count is ignored. No prose, headings,
+    interior whitespace, ordering, or links are normalized.
+    """
+    content = read_file(path).replace("\r\n", "\n").replace("\r", "\n")
+    if strip_vault_yaml and content.startswith("---\n"):
+        end = content.find("\n---\n", 4)
+        if end == -1:
+            raise FrameworkManifestError(
+                f"unterminated vault YAML frontmatter: {path}"
+            )
+        content = content[end + 5:]
+        if content.startswith("\n"):
+            content = content[1:]
+    return content.rstrip("\n")
+
+
+def _bounded_repo_path(root: Path, relative_path: str) -> Path:
+    """Resolve a manifest path without allowing a symlink escape."""
+    root = root.resolve()
+    candidate = root / relative_path
+    current = root
+    for part in Path(relative_path).parts:
+        current = current / part
+        if current.is_symlink():
+            raise FrameworkManifestError(
+                f"manifest path contains a symlink: {relative_path}"
+            )
+    if candidate.exists():
+        try:
+            candidate.resolve(strict=True).relative_to(root)
+        except ValueError as exc:
+            raise FrameworkManifestError(
+                f"manifest path escapes its repository root: {relative_path}"
+            ) from exc
+    return candidate
+
+
+def load_framework_pair_manifest(
+    manifest_path: Optional[Path] = None,
+) -> FrameworkPairManifest:
+    path = manifest_path or FRAMEWORK_PAIR_MANIFEST_FILE
+    content = read_file(path)
+    if content.count(FRAMEWORK_MANIFEST_BEGIN) != 1 or content.count(
+        FRAMEWORK_MANIFEST_END
+    ) != 1:
+        raise FrameworkManifestError(
+            "manifest must contain exactly one authenticated JSON block"
+        )
+    start = content.index(FRAMEWORK_MANIFEST_BEGIN) + len(FRAMEWORK_MANIFEST_BEGIN)
+    end = content.index(FRAMEWORK_MANIFEST_END, start)
+    block = content[start:end].strip()
+    match = re.fullmatch(r"```json\s*\n(.*?)\n```", block, re.DOTALL)
+    if not match:
+        raise FrameworkManifestError("manifest JSON block has invalid fencing")
+    try:
+        document = json.loads(match.group(1))
+    except json.JSONDecodeError as exc:
+        raise FrameworkManifestError(f"manifest JSON is invalid: {exc}") from exc
+    if not isinstance(document, dict):
+        raise FrameworkManifestError("manifest JSON root must be an object")
+    if document.get("schema_version") != 1:
+        raise FrameworkManifestError("manifest schema_version must equal 1")
+    if document.get("manifest_id") != FRAMEWORK_MANIFEST_ID:
+        raise FrameworkManifestError(
+            f"manifest_id must equal {FRAMEWORK_MANIFEST_ID!r}"
+        )
+    expected_counts = document.get("expected_counts")
+    if not isinstance(expected_counts, dict) or set(expected_counts) != {
+        "active_frameworks",
+        "missing_runtime",
+        "no_runtime_twin",
+        "paired",
+        "total_entries",
+    }:
+        raise FrameworkManifestError("manifest expected_counts contract is incomplete")
+    if any(not isinstance(value, int) or value < 0 for value in expected_counts.values()):
+        raise FrameworkManifestError("manifest expected_counts values must be integers")
+
+    raw_entries = document.get("entries")
+    if not isinstance(raw_entries, list) or not raw_entries:
+        raise FrameworkManifestError("manifest entries must be a nonempty list")
+    entries: list[FrameworkPairEntry] = []
+    pair_ids: set[str] = set()
+    canonical_paths: set[str] = set()
+    runtime_paths: set[str] = set()
+    for index, raw in enumerate(raw_entries):
+        if not isinstance(raw, dict):
+            raise FrameworkManifestError(f"entry {index} must be an object")
+        required = {
+            "pair_id",
+            "canonical_path",
+            "runtime_path",
+            "disposition",
+            "comparison",
+            "finding_severity",
+            "last_known_clean",
+            "rationale",
+        }
+        if set(raw) != required:
+            raise FrameworkManifestError(
+                f"entry {index} fields differ from the locked schema"
+            )
+        pair_id = raw["pair_id"]
+        if not isinstance(pair_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9._:-]*", pair_id):
+            raise FrameworkManifestError(f"entry {index} has invalid pair_id")
+        if pair_id in pair_ids:
+            raise FrameworkManifestError(f"duplicate pair_id: {pair_id}")
+        pair_ids.add(pair_id)
+        canonical_path = _safe_repo_relative_path(
+            raw["canonical_path"], field_name="canonical_path"
+        )
+        if not canonical_path.startswith(("Projects/Ora/", "Projects/MSI/")):
+            raise FrameworkManifestError(
+                f"canonical_path is outside registered framework roots: {canonical_path}"
+            )
+        if canonical_path in canonical_paths:
+            raise FrameworkManifestError(
+                f"duplicate canonical_path: {canonical_path}"
+            )
+        canonical_paths.add(canonical_path)
+        disposition = raw["disposition"]
+        if disposition not in FRAMEWORK_PAIR_DISPOSITIONS:
+            raise FrameworkManifestError(
+                f"entry {pair_id} has invalid disposition: {disposition!r}"
+            )
+        if raw["comparison"] != "normalized_body_exact":
+            raise FrameworkManifestError(
+                f"entry {pair_id} must use normalized_body_exact"
+            )
+        runtime_path = raw["runtime_path"]
+        if disposition == "no_runtime_twin":
+            if runtime_path is not None:
+                raise FrameworkManifestError(
+                    f"entry {pair_id} must not declare a runtime_path"
+                )
+        else:
+            runtime_path = _safe_repo_relative_path(
+                runtime_path, field_name="runtime_path"
+            )
+            if not runtime_path.startswith("frameworks/"):
+                raise FrameworkManifestError(
+                    f"runtime_path is outside frameworks/: {runtime_path}"
+                )
+            if runtime_path in runtime_paths:
+                raise FrameworkManifestError(
+                    f"duplicate runtime_path: {runtime_path}"
+                )
+            runtime_paths.add(runtime_path)
+        severity = raw["finding_severity"]
+        if severity not in {"load-bearing", "stale", "missing-feature"}:
+            raise FrameworkManifestError(
+                f"entry {pair_id} has invalid finding_severity"
+            )
+        last_known_clean = raw["last_known_clean"]
+        if last_known_clean is not None and not re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}", str(last_known_clean)
+        ):
+            raise FrameworkManifestError(
+                f"entry {pair_id} has invalid last_known_clean"
+            )
+        rationale = raw["rationale"]
+        if not isinstance(rationale, str) or not rationale.strip():
+            raise FrameworkManifestError(f"entry {pair_id} lacks rationale")
+        entries.append(
+            FrameworkPairEntry(
+                pair_id=pair_id,
+                canonical_path=canonical_path,
+                runtime_path=runtime_path,
+                disposition=disposition,
+                finding_severity=severity,
+                last_known_clean=last_known_clean,
+                rationale=rationale,
+            )
+        )
+
+    actual_counts = {
+        disposition: sum(entry.disposition == disposition for entry in entries)
+        for disposition in FRAMEWORK_PAIR_DISPOSITIONS
+    }
+    active_frameworks = sum(
+        Path(entry.canonical_path).name.startswith("Framework — ")
+        for entry in entries
+    )
+    derived_counts = {
+        "active_frameworks": active_frameworks,
+        "missing_runtime": actual_counts["missing_runtime"],
+        "no_runtime_twin": actual_counts["no_runtime_twin"],
+        "paired": actual_counts["paired"],
+        "total_entries": len(entries),
+    }
+    if expected_counts != derived_counts:
+        raise FrameworkManifestError(
+            f"manifest expected_counts do not match entries: {derived_counts}"
+        )
+    normalized_document = _canonical_json(document)
+    return FrameworkPairManifest(
+        manifest_id=document["manifest_id"],
+        manifest_sha256=_sha256_text(normalized_document),
+        entries=tuple(entries),
+        expected_counts=dict(expected_counts),
+    )
+
+
+def _framework_finding(
+    manifest: FrameworkPairManifest,
+    *,
+    pair_id: str,
+    finding_type: str,
+    severity: str,
+    canonical_path: Optional[str],
+    runtime_path: Optional[str],
+    disposition: str,
+    canonical_body_sha256: Optional[str],
+    runtime_body_sha256: Optional[str],
+) -> FrameworkPairFinding:
+    payload = {
+        "schema_version": 1,
+        "manifest_id": manifest.manifest_id,
+        "manifest_sha256": manifest.manifest_sha256,
+        "pair_id": pair_id,
+        "finding_type": finding_type,
+        "severity": severity,
+        "canonical_path": canonical_path,
+        "runtime_path": runtime_path,
+        "disposition": disposition,
+        "canonical_body_sha256": canonical_body_sha256,
+        "runtime_body_sha256": runtime_body_sha256,
+    }
+    return FrameworkPairFinding(
+        payload=payload,
+        finding_digest=_sha256_text(_canonical_json(payload)),
+    )
+
+
+def evaluate_framework_pair_manifest(
+    *,
+    manifest_path: Optional[Path] = None,
+    vault_root: Optional[Path] = None,
+    ora_root: Optional[Path] = None,
+) -> FrameworkPairEvaluation:
+    vault = (vault_root or VAULT_ROOT).resolve()
+    ora = (ora_root or ORA_ROOT).resolve()
+    manifest = load_framework_pair_manifest(manifest_path)
+    findings: list[FrameworkPairFinding] = []
+    paired_clean = 0
+    paired_drifted = 0
+    missing_runtime = 0
+    no_runtime_twin = 0
+
+    registered_runtime_paths = {
+        entry.runtime_path
+        for entry in manifest.entries
+        if entry.runtime_path is not None
+    }
+    registered_framework_canonicals = {
+        entry.canonical_path
+        for entry in manifest.entries
+        if Path(entry.canonical_path).name.startswith("Framework — ")
+    }
+
+    for entry in manifest.entries:
+        canonical = _bounded_repo_path(vault, entry.canonical_path)
+        runtime = (
+            _bounded_repo_path(ora, entry.runtime_path)
+            if entry.runtime_path
+            else None
+        )
+        if not canonical.is_file():
+            findings.append(
+                _framework_finding(
+                    manifest,
+                    pair_id=entry.pair_id,
+                    finding_type="canonical_missing",
+                    severity="load-bearing",
+                    canonical_path=entry.canonical_path,
+                    runtime_path=entry.runtime_path,
+                    disposition=entry.disposition,
+                    canonical_body_sha256=None,
+                    runtime_body_sha256=None,
+                )
+            )
+            continue
+        canonical_digest = _sha256_text(
+            _normalized_framework_body(canonical, strip_vault_yaml=True)
+        )
+        if entry.disposition == "no_runtime_twin":
+            no_runtime_twin += 1
+            continue
+        assert runtime is not None
+        if entry.disposition == "missing_runtime":
+            missing_runtime += 1
+            if runtime.is_file():
+                runtime_digest = _sha256_text(
+                    _normalized_framework_body(runtime, strip_vault_yaml=False)
+                )
+                finding_type = "unapproved_runtime_twin_present"
+            else:
+                runtime_digest = None
+                finding_type = "missing_runtime_twin"
+            findings.append(
+                _framework_finding(
+                    manifest,
+                    pair_id=entry.pair_id,
+                    finding_type=finding_type,
+                    severity="missing-feature",
+                    canonical_path=entry.canonical_path,
+                    runtime_path=entry.runtime_path,
+                    disposition=entry.disposition,
+                    canonical_body_sha256=canonical_digest,
+                    runtime_body_sha256=runtime_digest,
+                )
+            )
+            continue
+        if not runtime.is_file():
+            findings.append(
+                _framework_finding(
+                    manifest,
+                    pair_id=entry.pair_id,
+                    finding_type="paired_runtime_missing",
+                    severity="load-bearing",
+                    canonical_path=entry.canonical_path,
+                    runtime_path=entry.runtime_path,
+                    disposition=entry.disposition,
+                    canonical_body_sha256=canonical_digest,
+                    runtime_body_sha256=None,
+                )
+            )
+            continue
+        runtime_body = _normalized_framework_body(runtime, strip_vault_yaml=False)
+        runtime_digest = _sha256_text(runtime_body)
+        canonical_body = _normalized_framework_body(canonical, strip_vault_yaml=True)
+        if canonical_body != runtime_body:
+            paired_drifted += 1
+            findings.append(
+                _framework_finding(
+                    manifest,
+                    pair_id=entry.pair_id,
+                    finding_type="normalized_body_drift",
+                    severity=entry.finding_severity,
+                    canonical_path=entry.canonical_path,
+                    runtime_path=entry.runtime_path,
+                    disposition=entry.disposition,
+                    canonical_body_sha256=canonical_digest,
+                    runtime_body_sha256=runtime_digest,
+                )
+            )
+        else:
+            paired_clean += 1
+
+    actual_runtime_paths = {
+        path.relative_to(ora).as_posix()
+        for path in (ora / "frameworks").rglob("*.md")
+        if path.relative_to(ora).as_posix() not in FRAMEWORK_RUNTIME_EXCLUSIONS
+    }
+    for runtime_path in sorted(actual_runtime_paths - registered_runtime_paths):
+        runtime = _bounded_repo_path(ora, runtime_path)
+        findings.append(
+            _framework_finding(
+                manifest,
+                pair_id=f"unregistered-runtime:{_sha256_text(runtime_path)[:16]}",
+                finding_type="unregistered_runtime_framework",
+                severity="load-bearing",
+                canonical_path=None,
+                runtime_path=runtime_path,
+                disposition="unregistered",
+                canonical_body_sha256=None,
+                runtime_body_sha256=_sha256_text(
+                    _normalized_framework_body(runtime, strip_vault_yaml=False)
+                ),
+            )
+        )
+
+    actual_framework_canonicals = {
+        path.relative_to(vault).as_posix()
+        for root in (vault / "Projects" / "Ora", vault / "Projects" / "MSI")
+        if root.is_dir()
+        for path in root.glob("Framework — *.md")
+    }
+    for canonical_path in sorted(
+        actual_framework_canonicals - registered_framework_canonicals
+    ):
+        canonical = _bounded_repo_path(vault, canonical_path)
+        findings.append(
+            _framework_finding(
+                manifest,
+                pair_id=f"unregistered-canonical:{_sha256_text(canonical_path)[:16]}",
+                finding_type="unregistered_canonical_framework",
+                severity="load-bearing",
+                canonical_path=canonical_path,
+                runtime_path=None,
+                disposition="unregistered",
+                canonical_body_sha256=_sha256_text(
+                    _normalized_framework_body(canonical, strip_vault_yaml=True)
+                ),
+                runtime_body_sha256=None,
+            )
+        )
+
+    findings.sort(
+        key=lambda finding: (
+            0 if finding.payload["finding_type"] == "missing_runtime_twin" else 1,
+            finding.payload["canonical_path"] or "",
+            finding.payload["runtime_path"] or "",
+        )
+    )
+    return FrameworkPairEvaluation(
+        manifest=manifest,
+        findings=tuple(findings),
+        paired_clean=paired_clean,
+        paired_drifted=paired_drifted,
+        missing_runtime=missing_runtime,
+        no_runtime_twin=no_runtime_twin,
+    )
+
+
+def check_framework_pair_manifest(verbose: bool = False) -> CheckResult:
+    """Verify complete manifest coverage and exact normalized-body parity."""
+    result = CheckResult(name="framework-pairs", passed=True)
+    try:
+        evaluation = evaluate_framework_pair_manifest()
+    except (OSError, FrameworkManifestError) as exc:
+        result.passed = False
+        result.details.append(f"Manifest integrity failure: {exc}")
+        return result
+    if evaluation.findings:
+        result.passed = False
+        for finding in evaluation.findings:
+            payload = finding.payload
+            result.details.append(
+                f"{payload['finding_type']}: {payload['pair_id']} "
+                f"[{payload['severity']}; receipt={finding.finding_digest}]"
+            )
+    if verbose:
+        result.details.insert(
+            0,
+            "Manifest "
+            f"{evaluation.manifest.manifest_id} "
+            f"sha256={evaluation.manifest.manifest_sha256}; "
+            f"paired clean={evaluation.paired_clean}, "
+            f"paired drifted={evaluation.paired_drifted}, "
+            f"missing twins={evaluation.missing_runtime}, "
+            f"no-twin={evaluation.no_runtime_twin}, "
+            f"findings={len(evaluation.findings)}",
+        )
+    return result
+
+
+def verify_framework_finding_receipts(content: str) -> list[FrameworkPairFinding]:
+    """Authenticate every machine-readable framework finding in queue text."""
+    findings: list[FrameworkPairFinding] = []
+    for match in FRAMEWORK_RECEIPT_PATTERN.finditer(content):
+        try:
+            receipt = json.loads(match.group(1))
+            payload = receipt["finding"]
+            digest = receipt["finding_digest"]
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise FrameworkManifestError(
+                "malformed framework finding receipt in escalation queue"
+            ) from exc
+        if not isinstance(payload, dict) or not isinstance(digest, str):
+            raise FrameworkManifestError(
+                "malformed framework finding receipt in escalation queue"
+            )
+        computed = _sha256_text(_canonical_json(payload))
+        if not re.fullmatch(r"[0-9a-f]{64}", digest) or digest != computed:
+            raise FrameworkManifestError(
+                "framework finding receipt digest mismatch in escalation queue"
+            )
+        findings.append(FrameworkPairFinding(payload=payload, finding_digest=digest))
+    return findings
+
+
+def _render_framework_queue_entry(
+    finding: FrameworkPairFinding,
+    *,
+    queue_id: str,
+    detected_on: str,
+) -> str:
+    payload = finding.payload
+    receipt = _canonical_json(
+        {"finding": payload, "finding_digest": finding.finding_digest}
+    )
+    runtime_digest = payload["runtime_body_sha256"] or "absent"
+    canonical_digest = payload["canonical_body_sha256"] or "absent"
+    return (
+        f"### {queue_id} — Authenticated framework-pair finding: "
+        f"`{payload['pair_id']}`\n\n"
+        f"<!-- dcp-framework-finding-receipt {receipt} -->\n\n"
+        f"- **Date detected:** {detected_on} (G1.14 deterministic detector)\n"
+        f"- **Drift class:** {payload['severity']}; "
+        f"`{payload['finding_type']}`.\n"
+        f"- **Manifest:** `{payload['manifest_id']}`; "
+        f"SHA-256 `{payload['manifest_sha256']}`.\n"
+        f"- **Canonical:** `{payload['canonical_path'] or 'unregistered'}`; "
+        f"normalized-body SHA-256 `{canonical_digest}`.\n"
+        f"- **Runtime:** `{payload['runtime_path'] or 'none'}`; "
+        f"normalized-body SHA-256 `{runtime_digest}`.\n"
+        f"- **Expected disposition:** `{payload['disposition']}`.\n"
+        f"- **Finding receipt:** SHA-256 `{finding.finding_digest}` over the "
+        "canonical JSON payload embedded above.\n"
+        "- **Required action:** Preserve this as an explicit downstream "
+        "reconciliation decision. G1.14 does not create, synchronize, or "
+        "activate a framework copy.\n"
+        "- **User decision:** *(blank)*\n"
+    )
+
+
+def enqueue_framework_pair_findings(
+    *,
+    manifest_path: Optional[Path] = None,
+    vault_root: Optional[Path] = None,
+    ora_root: Optional[Path] = None,
+    queue_path: Optional[Path] = None,
+) -> tuple[int, int]:
+    """Atomically append authenticated findings; retries are idempotent."""
+    queue = queue_path or FRAMEWORK_ESCALATION_QUEUE_FILE
+    if queue.is_symlink() or not queue.is_file():
+        raise FrameworkManifestError(
+            f"escalation queue must be an existing regular non-symlink file: {queue}"
+        )
+    queue_mode = queue.stat().st_mode & 0o777
+    lock = queue.with_name(queue.name + ".lock")
+    try:
+        lock_fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError as exc:
+        raise FrameworkManifestError(
+            f"escalation queue lock already exists: {lock}"
+        ) from exc
+    os.close(lock_fd)
+    temp: Optional[Path] = None
+    try:
+        evaluation = evaluate_framework_pair_manifest(
+            manifest_path=manifest_path,
+            vault_root=vault_root,
+            ora_root=ora_root,
+        )
+        content = read_file(queue)
+        existing = verify_framework_finding_receipts(content)
+        existing_digests = {finding.finding_digest for finding in existing}
+        new_findings = [
+            finding
+            for finding in evaluation.findings
+            if finding.finding_digest not in existing_digests
+        ]
+        if not new_findings:
+            return 0, len(evaluation.findings)
+        numbers = [int(value) for value in re.findall(r"^### E-(\d+)\b", content, re.MULTILINE)]
+        next_number = max(numbers, default=0) + 1
+        detected_on = dt.date.today().isoformat()
+        missing_blocks: list[str] = []
+        escalation_blocks: list[str] = []
+        for finding in new_findings:
+            block = _render_framework_queue_entry(
+                finding,
+                queue_id=f"E-{next_number:03d}",
+                detected_on=detected_on,
+            )
+            next_number += 1
+            if finding.payload["finding_type"] == "missing_runtime_twin":
+                missing_blocks.append(block)
+            else:
+                escalation_blocks.append(block)
+        missing_anchor = "\n---\n\n## Escalate class\n"
+        escalation_anchor = "\n---\n\n## Deprecation-candidate class\n"
+        if missing_anchor not in content or escalation_anchor not in content:
+            raise FrameworkManifestError(
+                "escalation queue insertion anchors are missing"
+            )
+        if missing_blocks:
+            insertion = "\n" + "\n".join(missing_blocks) + "\n"
+            content = content.replace(missing_anchor, insertion + missing_anchor, 1)
+        if escalation_blocks:
+            insertion = "\n" + "\n".join(escalation_blocks) + "\n"
+            content = content.replace(
+                escalation_anchor, insertion + escalation_anchor, 1
+            )
+        content = re.sub(
+            r"^(date modified:)\s*.*$",
+            rf"\1 {detected_on}",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        temp = queue.with_name(f".{queue.name}.tmp-{os.getpid()}")
+        temp_fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(temp_fd, "w", encoding="utf-8", newline="") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temp, queue_mode)
+        os.replace(temp, queue)
+        temp = None
+        return len(new_findings), len(evaluation.findings)
+    finally:
+        if temp is not None:
+            try:
+                temp.unlink()
+            except FileNotFoundError:
+                pass
+        try:
+            lock.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def extract_top_level_yaml_keys(content: str) -> set[str]:
@@ -858,6 +1549,7 @@ CHECK_FUNCTIONS = {
     "signals": check_signal_vocabulary,
     "runtime": check_runtime_config,
     "drift": check_drift_parity,
+    "framework-pairs": check_framework_pair_manifest,
     "debt": check_architectural_debt,
     "routing": check_routing_accuracy,
     "tests": check_test_suites,
@@ -868,7 +1560,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", choices=list(CHECK_FUNCTIONS.keys()) + ["all"], default="all")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--enqueue-framework-findings",
+        action="store_true",
+        help=(
+            "atomically append authenticated findings to the existing DCP "
+            "queue; valid only with --check framework-pairs"
+        ),
+    )
     args = parser.parse_args()
+
+    if args.enqueue_framework_findings and args.check != "framework-pairs":
+        parser.error(
+            "--enqueue-framework-findings requires --check framework-pairs"
+        )
 
     if args.check == "all":
         checks_to_run = list(CHECK_FUNCTIONS.keys())
@@ -902,6 +1607,18 @@ def main() -> int:
             if len(result.details) > 50:
                 print(f"    ... and {len(result.details) - 50} more")
         print()
+
+    if args.enqueue_framework_findings:
+        try:
+            appended, current = enqueue_framework_pair_findings()
+        except (OSError, FrameworkManifestError) as exc:
+            print(f"Queue write FAILED: {exc}\n")
+            return 2
+        print(
+            "Queue write: "
+            f"{appended} authenticated finding(s) appended; "
+            f"{current} current finding(s); retry-safe.\n"
+        )
 
     # Summary
     print("=" * 60)
