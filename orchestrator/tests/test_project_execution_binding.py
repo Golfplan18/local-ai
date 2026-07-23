@@ -49,7 +49,7 @@ class RouterProjectProfileTests(unittest.TestCase):
 
     def test_project_profile_used_when_resolvable(self):
         from orchestrator import model_profiles
-        locks = model_profiles.capture_project_binding("user-pipeline")
+        locks = model_profiles.capture_project_binding("user-pipeline", "proj")
         self._patch("proj", {
             "default_model_profile": "user-pipeline", "model_locks": locks,
         })
@@ -70,12 +70,12 @@ class RouterProjectProfileTests(unittest.TestCase):
 
     def test_project_token_is_reauthenticated_after_rebinding(self):
         from orchestrator import model_profiles
-        first = model_profiles.capture_project_binding("user-pipeline")
+        first = model_profiles.capture_project_binding("user-pipeline", "proj")
         record = {"default_model_profile": "user-pipeline", "model_locks": first}
         self._patch("proj", record)
         token = self.router._resolve_config_name(None, "interactive")
         self.router._load_configuration(token)
-        second = model_profiles.capture_project_binding("background-speed")
+        second = model_profiles.capture_project_binding("background-speed", "proj")
         record.clear()
         record.update({
             "default_model_profile": "background-speed", "model_locks": second,

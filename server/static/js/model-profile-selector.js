@@ -277,6 +277,15 @@
   window.OraModelProfiles = {
     getOneRunOverride: function () { return oneRunOverride || ''; },
     clearOneRunOverride: function () { oneRunOverride = ''; paintButtons(); },
+    acknowledgeSubmission: function (response) {
+      // A network failure or rejected HTTP request did not consume this
+      // one-run authority.  Clear only after the server acknowledges the
+      // submission contract with a successful response.
+      if (!response || response.ok !== true) return false;
+      oneRunOverride = '';
+      paintButtons();
+      return true;
+    },
     refresh: load,
     _state: function () { return { profiles: profiles, effective: effective }; },
   };

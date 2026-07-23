@@ -541,8 +541,10 @@ def build_task_gate_prompt(risk_tier: str, fingerprint: str,
             from framework_elicitation import elicitation_marker
         except ImportError:  # pragma: no cover
             from orchestrator.framework_elicitation import elicitation_marker
-        out += "\n" + elicitation_marker(resume.get("fw", ""),
-                                         resume.get("mode", ""))
+        out += "\n" + elicitation_marker(
+            resume.get("fw", ""), resume.get("mode", ""),
+            resume.get("project_nexus"), resume.get("one_run_profile"),
+        )
     return out
 
 
@@ -911,7 +913,10 @@ def handle_task_gate_reply(marker_ctx: dict, user_text: str,
                 from framework_elicitation import elicitation_marker
             except ImportError:  # pragma: no cover
                 from orchestrator.framework_elicitation import elicitation_marker
-            marker = elicitation_marker(resume.get("fw", ""), resume.get("mode", ""))
+            marker = elicitation_marker(
+                resume.get("fw", ""), resume.get("mode", ""),
+                resume.get("project_nexus"), resume.get("one_run_profile"),
+            )
             return (reply + "Say **continue** to produce the deliverable.\n\n"
                     + marker)
         return reply + ("Re-send the task (or repeat it) and it will "

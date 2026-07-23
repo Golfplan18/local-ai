@@ -82,7 +82,7 @@ class ModelProfileInheritanceTests(unittest.TestCase):
         mock.patch.stopall()
 
     def _binding_record(self):
-        locks = mp.capture_project_binding("project", routing_config={
+        locks = mp.capture_project_binding("project", "my-project", routing_config={
             "slots": {
                 "image_generates": {"preferred": "image-locked"},
                 "image_extracts": {"preferred": "extract-locked"},
@@ -142,6 +142,59 @@ class ModelProfileInheritanceTests(unittest.TestCase):
                 mp.resolve_effective_profile(
                     global_profile="global", project_nexus="my-project")
 
+    def test_project_identity_prevents_cross_project_lock_replay(self):
+        record = self._binding_record()
+        with mock.patch.object(mp.pm, "read_project_meta", return_value=record):
+            token = mp.project_lock_token("my-project", record["model_locks"])
+            self.assertEqual(
+                mp.profile_digest(mp.load_project_locked_profile(token)),
+                record["model_locks"]["profile_digest"],
+            )
+            with self.assertRaisesRegex(mp.ModelProfileError, "identity"):
+                mp.validate_project_binding(record, expected_nexus="other-project")
+            with self.assertRaisesRegex(mp.ModelProfileError, "identity"):
+                mp.project_lock_token("other-project", record["model_locks"])
+
+    def test_same_profile_rebind_invalidates_old_full_binding_token(self):
+        record = self._binding_record()
+        with mock.patch.object(mp.pm, "read_project_meta", return_value=record):
+            token = mp.project_lock_token("my-project", record["model_locks"])
+            rebound = mp.capture_project_binding(
+                "project", "my-project", routing_config={
+                    "slots": {
+                        "image_generates": {"preferred": "different-image"},
+                        "image_extracts": {"preferred": "extract-locked"},
+                        "vision_input": {"preferred": "vision-locked"},
+                    },
+                    "vision_extraction": {"enabled": True, "mode": "changed"},
+                },
+            )
+            record["model_locks"] = rebound
+            with self.assertRaisesRegex(mp.ModelProfileError, "stale"):
+                mp.load_project_locked_profile(token)
+
+    def test_equal_content_profile_rename_invalidates_old_binding_token(self):
+        record = self._binding_record()
+        with mock.patch.object(mp.pm, "read_project_meta", return_value=record):
+            token = mp.project_lock_token("my-project", record["model_locks"])
+            renamed = mp.capture_project_binding(
+                "process", "my-project", routing_config={
+                    "slots": {
+                        "image_generates": {"preferred": "image-locked"},
+                        "image_extracts": {"preferred": "extract-locked"},
+                        "vision_input": {"preferred": "vision-locked"},
+                    },
+                    "vision_extraction": {"enabled": False, "mode": "locked"},
+                },
+            )
+            self.assertEqual(
+                renamed["profile_digest"], record["model_locks"]["profile_digest"],
+            )
+            record["default_model_profile"] = "process"
+            record["model_locks"] = renamed
+            with self.assertRaisesRegex(mp.ModelProfileError, "stale"):
+                mp.load_project_locked_profile(token)
+
     def test_visual_locks_replace_only_project_owned_visual_routes(self):
         locks = self._binding_record()["model_locks"]
         current = {
@@ -172,6 +225,66 @@ class ModelProfileInheritanceTests(unittest.TestCase):
         self.assertEqual(result["selected"]["source"], "one_run")
         self.assertEqual(
             [row["source"] for row in result["chain"]],
+            ["global", "project", "process", "step", "one_run"],
+        )
+
+    def test_actual_framework_execution_receives_all_levels_and_visual_locks(self):
+        from orchestrator import milestone_executor as executor
+
+        framework = framework_parser.parse_framework_text(dedent("""\
+            # Production profile proof
+
+            ## LAYER 1: Work
+            Produce the result.
+
+            ## MILESTONES DELIVERED
+
+            ### Milestone 1: Result
+            - **Endpoint produced:** A result.
+            - **Verification criterion:** It exists.
+            - **Layers covered:** 1
+            - **Required prior milestones:** None
+            - **Gear:** 4
+            - **Model Profile:** step
+            - **Output format:** Markdown.
+            - **Drift check question:** Is it complete?
+        """), path="production-profile-proof.md")
+        record = self._binding_record()
+        observed = {}
+
+        def run_gear4(context_pkg, _config, config_name=None, **_kwargs):
+            observed["context_pkg"] = copy.deepcopy(context_pkg)
+            observed["config_name"] = config_name
+            return "authenticated deliverable"
+
+        trace_context = {}
+        with (
+            mock.patch.object(mp.pm, "read_project_meta", return_value=record),
+            mock.patch.object(executor, "parse_framework_file", return_value=framework),
+            mock.patch.object(
+                executor, "_lookup_framework_default_configuration",
+                return_value="process",
+            ),
+            mock.patch("boot.run_gear4", side_effect=run_gear4),
+            mock.patch.object(
+                executor, "_run_drift_check",
+                return_value=("IN_SCOPE", "verified"),
+            ),
+        ):
+            result = executor.execute_framework(
+                "production-profile-proof.md", "do the work", config={},
+                project_nexus="my-project", config_name="one-run",
+                trace_context=trace_context,
+            )
+        self.assertTrue(result.success)
+        self.assertEqual(observed["config_name"], "one-run")
+        self.assertEqual(
+            observed["context_pkg"]["model_profile_locks"],
+            record["model_locks"],
+        )
+        resolution = trace_context["model_profile_resolution"]
+        self.assertEqual(
+            [row["source"] for row in resolution["chain"]],
             ["global", "project", "process", "step", "one_run"],
         )
 
@@ -244,9 +357,73 @@ class ModelProfileMigrationTests(unittest.TestCase):
         self.assertEqual(self.current, before)
         self.assertEqual(len(self.saved), 2)  # proposed write, then exact rollback
 
+    def test_forged_receipt_cannot_claim_an_unperformed_migration(self):
+        proposal = mp.preview_migration("legacy")
+        forged = {
+            "schema_version": mp.MIGRATION_SCHEMA_VERSION,
+            "receipt_id": "mpr-" + proposal["proposal_id"][:24],
+            "proposal_id": proposal["proposal_id"],
+            "target": "profile",
+            "profile_name": "legacy",
+            "project_nexus": None,
+            "before_digest": proposal["expected_digest"],
+            "after_digest": proposal["proposed_digest"],
+            "replacements": proposal["replacements"],
+            "user_confirmed": True,
+            "recorded_at": "2026-07-22T00:00:00+00:00",
+            "before_binding_digest": None,
+            "after_binding_digest": None,
+            "receipt_digest": "0" * 64,
+        }
+        self.receipts.write_text(json.dumps(forged) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(mp.ModelProfileError, "receipt digest"):
+            mp.confirm_migration(
+                "legacy", proposal["proposal_id"], user_confirmed=True,
+            )
+        self.assertEqual(self.saved, [])
+        self.assertEqual(mp.profile_digest(self.current), proposal["expected_digest"])
+
+    def test_well_formed_but_unperformed_receipt_fails_post_state(self):
+        proposal = mp.preview_migration("legacy")
+        forged = {
+            "schema_version": mp.MIGRATION_SCHEMA_VERSION,
+            "receipt_id": "mpr-" + proposal["proposal_id"][:24],
+            "proposal_id": proposal["proposal_id"],
+            "target": "profile", "profile_name": "legacy",
+            "project_nexus": None,
+            "before_digest": proposal["expected_digest"],
+            "after_digest": proposal["proposed_digest"],
+            "replacements": proposal["replacements"],
+            "user_confirmed": True,
+            "recorded_at": "2026-07-22T00:00:00+00:00",
+            "before_binding_digest": None,
+            "after_binding_digest": None,
+        }
+        forged["receipt_digest"] = mp._digest(forged)
+        self.receipts.write_text(json.dumps(forged) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(mp.ModelProfileError, "post-state"):
+            mp.confirm_migration(
+                "legacy", proposal["proposal_id"], user_confirmed=True,
+            )
+        self.assertEqual(self.saved, [])
+
+    def test_retry_reauthenticates_the_current_post_state(self):
+        before = copy.deepcopy(self.current)
+        proposal = mp.preview_migration("legacy")
+        receipt = mp.confirm_migration(
+            "legacy", proposal["proposal_id"], user_confirmed=True,
+        )
+        self.assertEqual(mp.profile_digest(self.current), receipt["after_digest"])
+        self.current = before
+        with self.assertRaisesRegex(mp.ModelProfileError, "post-state"):
+            mp.confirm_migration(
+                "legacy", proposal["proposal_id"], user_confirmed=True,
+            )
+
     def test_project_migration_replaces_the_locked_snapshot_not_the_live_source(self):
         locks = {
             "schema_version": mp.LOCK_SCHEMA_VERSION,
+            "project_nexus": "my-project",
             "profile_name": "Legacy",
             "profile_digest": mp.profile_digest(self.current),
             "profile_snapshot": copy.deepcopy(self.current),
@@ -294,6 +471,7 @@ class ModelProfilePersistenceTests(unittest.TestCase):
             snapshot = profile("model-ok")
             locks = {
                 "schema_version": mp.LOCK_SCHEMA_VERSION,
+                "project_nexus": created["nexus"],
                 "profile_name": "Balanced",
                 "profile_digest": mp.profile_digest(snapshot),
                 "profile_snapshot": snapshot,
@@ -351,6 +529,57 @@ class ModelProfileFrameworkTests(unittest.TestCase):
             - **Drift check question:** Is it the requested result?
         """), path="profile-bound.md")
         self.assertEqual(parsed.all_milestones()[0].model_profile, "step-specialist")
+
+    def test_interactive_elicitation_preserves_project_and_one_run_until_execution(self):
+        from orchestrator import framework_elicitation as elicitation
+        from orchestrator import milestone_executor as executor
+
+        framework = framework_parser.parse_framework_text(dedent("""\
+            # Interactive profile proof
+
+            ## LAYER 1: Work
+            Produce the result.
+
+            ## MILESTONES DELIVERED
+
+            ### Milestone 1: Result
+            - **Endpoint produced:** A result.
+            - **Verification criterion:** It exists.
+            - **Layers covered:** 1
+            - **Required prior milestones:** None
+            - **Gear:** 4
+            - **Model Profile:** step
+            - **Output format:** Markdown.
+            - **Drift check question:** Is it complete?
+        """), path="interactive-profile-proof.md")
+        marker = elicitation.elicitation_marker(
+            framework.name, "all", "my-project", "one-run",
+        )
+        ctx = elicitation.is_continuation([
+            {"role": "assistant", "content": "Question\n\n" + marker},
+        ])
+        self.assertEqual(ctx.project_nexus, "my-project")
+        self.assertEqual(ctx.one_run_profile, "one-run")
+        summary = elicitation._SummaryState(
+            elicited_bullets=["The result is defined"], pending_bullets=[],
+            action="PRODUCE_DELIVERABLE", next_question="",
+        )
+        result = executor.FrameworkExecutionResult(
+            framework_name=framework.name, execution_id="exec", user_input="input",
+            milestones=[], final_output="done", success=True,
+        )
+        with (
+            mock.patch.object(elicitation, "parse_framework_file", return_value=framework),
+            mock.patch.object(elicitation, "_ask_summarizer", return_value=summary),
+            mock.patch("milestone_executor.execute_framework", return_value=result) as execute,
+        ):
+            text = elicitation.continue_elicitation(
+                ctx, [], {}, latest_user_text="continue",
+                current_project_nexus="my-project",
+            )
+        self.assertIn("done", text)
+        self.assertEqual(execute.call_args.kwargs["project_nexus"], "my-project")
+        self.assertEqual(execute.call_args.kwargs["config_name"], "one-run")
 
 
 if __name__ == "__main__":

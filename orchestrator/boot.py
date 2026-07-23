@@ -9626,6 +9626,23 @@ def run_pipeline(user_input: str, history: list = None,
         reset_conversation_tag_context(tag_token)
 
 
+def _framework_project_nexus() -> str | None:
+    """Resolve the authenticated active project for framework execution."""
+    try:
+        from active_project import get_active_project
+        import project_meta as _pm
+    except ImportError:
+        from orchestrator.active_project import get_active_project
+        from orchestrator import project_meta as _pm
+    nexus = get_active_project()
+    if not nexus or nexus.lower() in ("commons", "general"):
+        return None
+    nexus = _pm.validate_nexus(nexus)
+    if _pm.read_project_meta(nexus) is None:
+        raise _pm.ProjectMetaError(f"active project {nexus!r} is unavailable")
+    return nexus
+
+
 def _run_pipeline_impl(user_input: str, history: list = None,
                        output_target: str = "screen",
                        execution_context: str = "interactive",
@@ -9821,7 +9838,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             result_text = run_framework_command(
                 _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
                 config, trace_dir=trace_dir, conversation_tag=conversation_tag,
-                trace_context=_trace_ctx)
+                trace_context=_trace_ctx,
+                project_nexus=_framework_project_nexus(),
+                one_run_profile=config_name)
             try:
                 _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
             except Exception:
@@ -9867,6 +9886,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
             conversation_id=conversation_id,
+            current_project_nexus=_framework_project_nexus(),
         )
 
     # --- Framework slash-command short-circuit ---
@@ -9917,7 +9937,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 _fw_out = run_framework_command(
                     user_input, config, trace_dir=trace_dir,
                     conversation_tag=conversation_tag,
-                    trace_context=_trace_ctx)
+                    trace_context=_trace_ctx,
+                    project_nexus=_framework_project_nexus(),
+                    one_run_profile=config_name)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -9938,6 +9960,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         turn_state["kind"] = "framework_elicitation"
         return framework_elicitation.start_elicitation(
             framework_name, history or [], config,
+            project_nexus=_framework_project_nexus(),
+            one_run_profile=config_name,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---

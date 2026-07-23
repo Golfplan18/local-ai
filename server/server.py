@@ -3803,7 +3803,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             result_text = run_framework_command(
                 _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
                 config, trace_dir=trace_dir, conversation_tag=_conv_tag,
-                trace_context=_trace_ctx)
+                trace_context=_trace_ctx,
+                project_nexus=_framework_project_nexus(extra_context),
+                one_run_profile=config_name)
             try:
                 _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
             except Exception:
@@ -3901,6 +3903,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 continuation_ctx, history or [], config,
                 latest_user_text=user_input,
                 conversation_id=panel_id,
+                current_project_nexus=_framework_project_nexus(extra_context),
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4017,7 +4020,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 result_text = run_framework_command(
                     user_input, config, trace_dir=trace_dir,
                     conversation_tag=_conv_tag,
-                    trace_context=_trace_ctx)
+                    trace_context=_trace_ctx,
+                    project_nexus=_framework_project_nexus(extra_context),
+                    one_run_profile=config_name)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -4054,6 +4059,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         try:
             text = framework_elicitation.start_elicitation(
                 framework_name, history or [], config,
+                project_nexus=_framework_project_nexus(extra_context),
+                one_run_profile=config_name,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -6444,7 +6451,7 @@ def api_projects_update(nexus):
             requested_profile = data.get("default_model_profile")
             if isinstance(requested_profile, str) and requested_profile.strip():
                 profile_name = requested_profile.strip()
-                locks = _mp.capture_project_binding(profile_name)
+                locks = _mp.capture_project_binding(profile_name, nexus)
             elif requested_profile in (None, ""):
                 profile_name = None
                 locks = {}
@@ -8540,28 +8547,61 @@ def _apply_style_audience(extra_context, style_audience):
     return extra_context
 
 
-def _active_project_model_locks():
-    """Return authenticated locks for the active project, or None for Commons/unbound."""
+def _active_project_model_context():
+    """Capture one authenticated active-project identity and binding snapshot."""
     from orchestrator.active_project import get_active_project
     from orchestrator import model_profiles as _mp
     from orchestrator import project_meta as _pm
     nexus = get_active_project()
     if not nexus or nexus.lower() in ("commons", "general"):
-        return None
+        return None, None
+    nexus = _pm.validate_nexus(nexus)
     record = _pm.read_project_meta(nexus)
-    if not record or not record.get("default_model_profile"):
-        return None
-    return _mp.validate_project_binding(record, expected_nexus=nexus)
+    if record is None:
+        raise _pm.ProjectMetaError(f"active project {nexus!r} is unavailable")
+    if not record.get("default_model_profile"):
+        return nexus, None
+    return nexus, _mp.validate_project_binding(record, expected_nexus=nexus)
+
+
+def _active_project_model_locks():
+    """Return authenticated locks for the active project, or None for Commons/unbound."""
+    return _active_project_model_context()[1]
+
+
+def _active_project_model_nexus():
+    """Return the exact active non-Commons project only when its record exists."""
+    return _active_project_model_context()[0]
 
 
 def _apply_project_model_locks(extra_context):
     """Thread exact project visual locks into the same turn as its text snapshot."""
-    locks = _active_project_model_locks()
-    if locks is None:
+    nexus, locks = _active_project_model_context()
+    if nexus is None and locks is None:
         return extra_context
     result = dict(extra_context or {})
-    result["model_profile_locks"] = locks
+    if nexus is not None:
+        result["model_profile_project_nexus"] = nexus
+    if locks is not None:
+        result["model_profile_locks"] = locks
     return result
+
+
+def _framework_project_nexus(extra_context):
+    """Read the server-authenticated project identity captured for this turn."""
+    if not isinstance(extra_context, dict):
+        return None
+    nexus = extra_context.get("model_profile_project_nexus")
+    if not nexus:
+        return None
+    from orchestrator import project_meta as _pm
+    nexus = _pm.validate_nexus(nexus)
+    locks = extra_context.get("model_profile_locks")
+    if isinstance(locks, dict) and locks.get("project_nexus") != nexus:
+        raise _pm.ProjectMetaError(
+            "framework project identity does not match its Model Profile locks"
+        )
+    return nexus
 
 
 def _validate_public_model_profile_override(config_name):
@@ -18428,7 +18468,7 @@ def model_profiles_set_project(nexus):
         from orchestrator import project_meta as _pm
         if isinstance(name, str) and name.strip():
             name = name.strip()
-            locks = _mp.capture_project_binding(name)
+            locks = _mp.capture_project_binding(name, nexus)
         elif name in (None, ""):
             name = None
             locks = {}

@@ -25,6 +25,7 @@ not yet wired in (an executor TODO).
 """
 from __future__ import annotations
 
+import copy
 import os
 import sys
 import time
@@ -180,6 +181,24 @@ def _resolve_milestone_model_profile(
     )
 
 
+def _authenticated_project_visual_locks(project_nexus: Optional[str]) -> dict | None:
+    """Load the exact project's visual locks for framework context assembly."""
+    if not isinstance(project_nexus, str) or not project_nexus.strip():
+        return None
+    if project_nexus.strip().lower() in ("commons", "general"):
+        return None
+    try:
+        from . import model_profiles, project_meta
+    except ImportError:
+        import model_profiles  # type: ignore
+        import project_meta  # type: ignore
+    nexus = project_meta.validate_nexus(project_nexus.strip())
+    record = project_meta.read_project_meta(nexus)
+    if not record or not record.get("default_model_profile"):
+        return None
+    return model_profiles.validate_project_binding(record, expected_nexus=nexus)
+
+
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     """Persist a completed self MindSpec interview. Gated to the self mode
     so agent/character specs never clobber the user's values. Best-effort:
@@ -290,6 +309,7 @@ def execute_framework(
     # milestone below because a step may declare a closer Model Profile.
     one_run_profile = config_name
     process_profile = _lookup_framework_default_configuration(fw.name)
+    project_visual_locks = _authenticated_project_visual_locks(project_nexus)
 
     if fw.is_multi_mode:
         selected_mode, mode_reasoning, effective_input = select_mode(
@@ -371,11 +391,15 @@ def execute_framework(
             effective_profile = profile_resolution["selected"]["runtime_name"]
             if trace_context is not None:
                 trace_context["model_profile_resolution"] = profile_resolution
+                trace_context.setdefault("model_profile_resolutions", []).append(
+                    copy.deepcopy(profile_resolution)
+                )
             result = _run_milestone(
                 fw, milestone, scratch, effective_input, config,
                 config_name=effective_profile, parent_trace_dir=trace_dir,
                 parent_trace_ref=parent_trace_ref,
                 selected_mode=selected_mode,
+                project_model_locks=project_visual_locks,
                 conversation_tag=conversation_tag,
                 trace_context=trace_context)
             results.append(result)
@@ -500,6 +524,7 @@ def _run_milestone(
     parent_trace_dir: Optional[str] = None,
     parent_trace_ref: Optional[str] = None,
     selected_mode: Optional[str] = None,
+    project_model_locks: Optional[dict] = None,
     conversation_tag: str = "",
     trace_context: Optional[dict] = None,
 ) -> MilestoneResult:
@@ -521,6 +546,7 @@ def _run_milestone(
                 child_trace_dir, parent_trace_ref, handoff, milestone,
                 config, config_name=config_name, framework_id=framework.name,
                 selected_mode=selected_mode,
+                project_model_locks=project_model_locks,
                 stealth=(conversation_tag == "stealth"))
             scratch.write_milestone(milestone.id, deliverable)
 
@@ -676,6 +702,7 @@ def _run_through_gear_pipeline(
     parent_trace_ref: Optional[str] = None,
     framework_id: Optional[str] = None,
     selected_mode: Optional[str] = None,
+    project_model_locks: Optional[dict] = None,
 ) -> str:
     """Send the handoff packet through the existing gear pipeline.
 
@@ -695,7 +722,8 @@ def _run_through_gear_pipeline(
     context_pkg = _build_context_pkg(
         handoff_packet, milestone, trace_dir=trace_dir,
         parent_trace_ref=parent_trace_ref, framework_id=framework_id,
-        selected_mode=selected_mode)
+        selected_mode=selected_mode,
+        project_model_locks=project_model_locks)
 
     if milestone.gear >= 4:
         return run_gear4(context_pkg, config, config_name=config_name)
@@ -725,7 +753,8 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
                        trace_dir: Optional[str] = None,
                        parent_trace_ref: Optional[str] = None,
                        framework_id: Optional[str] = None,
-                       selected_mode: Optional[str] = None) -> dict:
+                       selected_mode: Optional[str] = None,
+                       project_model_locks: Optional[dict] = None) -> dict:
     """Build the minimal context_pkg that run_gear3/4 expect."""
     try:
         from boot import load_mode
@@ -755,6 +784,8 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
         pkg["framework_id"] = framework_id
     if selected_mode:
         pkg["framework_mode"] = selected_mode
+    if project_model_locks:
+        pkg["model_profile_locks"] = copy.deepcopy(project_model_locks)
     return pkg
 
 
@@ -834,6 +865,7 @@ def _run_child_attempt(child_trace_dir: Optional[str],
                        config_name: Optional[str],
                        framework_id: str,
                        selected_mode: Optional[str],
+                       project_model_locks: Optional[dict] = None,
                        stealth: bool = False) -> str:
     trace_token, tool_token = _bind_trace_context(
         child_trace_dir, stealth=stealth, surface="framework")
@@ -841,7 +873,8 @@ def _run_child_attempt(child_trace_dir: Optional[str],
         return _run_through_gear_pipeline(
             handoff_packet, milestone, config, config_name=config_name,
             trace_dir=child_trace_dir, parent_trace_ref=parent_trace_ref,
-            framework_id=framework_id, selected_mode=selected_mode)
+            framework_id=framework_id, selected_mode=selected_mode,
+            project_model_locks=project_model_locks)
     finally:
         _reset_trace_context(trace_token, tool_token)
 
@@ -1285,7 +1318,9 @@ def run_framework_command(user_input: str, config: dict,
                           *,
                           trace_dir: Optional[str] = None,
                           conversation_tag: str = "",
-                          trace_context: Optional[dict] = None) -> str:
+                          trace_context: Optional[dict] = None,
+                          project_nexus: Optional[str] = None,
+                          one_run_profile: Optional[str] = None) -> str:
     """Top-level: parse a slash command + execute + format. Used by boot.py
     and server.py as the entry point for /framework slash-command invocations.
 
@@ -1294,13 +1329,22 @@ def run_framework_command(user_input: str, config: dict,
     receives a renderable response.
     """
     try:
-        framework_name, framework_query, config_name = parse_framework_command(user_input)
+        framework_name, framework_query, command_profile = parse_framework_command(user_input)
     except ValueError as exc:
         if trace_context is not None:
             trace_context["status"] = "error"
         return f"[Framework command error: {exc}]"
     if trace_context is not None:
         trace_context["framework_id"] = framework_name
+
+    if command_profile and one_run_profile and command_profile != one_run_profile:
+        if trace_context is not None:
+            trace_context["status"] = "error"
+        return (
+            "[Framework command error: the command and input toolbar specify "
+            "different one-run Model Profiles.]"
+        )
+    effective_one_run_profile = command_profile or one_run_profile
 
     if not framework_query.strip():
         if trace_context is not None:
@@ -1320,7 +1364,8 @@ def run_framework_command(user_input: str, config: dict,
         try:
             result = execute_framework(
                 framework_name, framework_query, config,
-                config_name=config_name, trace_dir=trace_dir,
+                project_nexus=project_nexus,
+                config_name=effective_one_run_profile, trace_dir=trace_dir,
                 conversation_tag=conversation_tag,
                 trace_context=trace_context)
         finally:

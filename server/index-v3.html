@@ -2080,10 +2080,6 @@
     if (window.OraInputState && typeof window.OraInputState.clearAnalysisMode === 'function') {
       window.OraInputState.clearAnalysisMode();
     }
-    if (window.OraModelProfiles
-        && typeof window.OraModelProfiles.clearOneRunOverride === 'function') {
-      window.OraModelProfiles.clearOneRunOverride();
-    }
     // V3 Input Handling Phase 8 — same per-input stickiness applies to
     // attachments. The document/audio jobs already submitted continue
     // running in the background; clearing this list just resets the
@@ -2131,6 +2127,10 @@
       console.warn('[v3 submit] HTTP', resp.status);
       refreshSidebarAfterSubmit();
       return;
+    }
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.acknowledgeSubmission === 'function') {
+      window.OraModelProfiles.acknowledgeSubmission(resp);
     }
 
     // V3 Backlog 2A — plain-HTTP reply. {status, conversation_id, chunk_id}

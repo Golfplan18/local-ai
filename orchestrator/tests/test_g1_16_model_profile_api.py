@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import unittest
 import sys
+import json
 from pathlib import Path
 from unittest import mock
 
@@ -44,7 +45,7 @@ class ModelProfileApiTests(unittest.TestCase):
                 'model_locks': {'binding_digest': 'browser-forged'},
             })
         self.assertEqual(response.status_code, 200)
-        capture.assert_called_once_with('Balanced')
+        capture.assert_called_once_with('Balanced', 'example')
         persist.assert_called_once_with('example', 'Balanced', locks)
         self.assertEqual(response.get_json()['effective'], effective)
 
@@ -112,6 +113,138 @@ class ModelProfileApiTests(unittest.TestCase):
         }):
             with self.assertRaisesRegex(mp.ModelProfileError, 'unavailable'):
                 server._validate_public_model_profile_override('Offline')
+
+    def test_public_chat_framework_path_passes_project_and_toolbar_override(self):
+        import milestone_executor as executor
+        import model_profiles as top_mp
+        import framework_parser as top_parser
+        import boot
+        from textwrap import dedent
+
+        profile = {
+            'cells': {
+                'utility': {
+                    'step1_cleanup': {'primary': 'model-ok', 'fallback': []},
+                },
+                'analysis': {
+                    'gear3': {
+                        'depth': {'primary': 'model-ok', 'fallback': []},
+                    },
+                    'gear4': {
+                        'depth': {'primary': 'model-ok', 'fallback': []},
+                    },
+                },
+            },
+            'toggles': {'adversarial_diversity': False},
+        }
+        locks = {
+            'schema_version': top_mp.LOCK_SCHEMA_VERSION,
+            'project_nexus': 'example',
+            'profile_name': 'Project Profile',
+            'profile_digest': top_mp.profile_digest(profile),
+            'profile_snapshot': profile,
+            'toggles': {'adversarial_diversity': False},
+            'image_model': 'locked-image',
+            'vision_mode': {
+                'vision_extraction': {'enabled': False, 'mode': 'locked'},
+            },
+            'captured_at': '2026-07-22T00:00:00+00:00',
+        }
+        locks['binding_digest'] = top_mp._binding_digest(locks)
+        record = {
+            'nexus': 'example', 'default_model_profile': 'Project Profile',
+            'model_locks': locks,
+        }
+        framework = top_parser.parse_framework_text(dedent('''\
+            # Public profile proof
+
+            ## LAYER 1: Work
+            Produce the result.
+
+            ## MILESTONES DELIVERED
+
+            ### Milestone 1: Result
+            - **Endpoint produced:** A result.
+            - **Verification criterion:** It exists.
+            - **Layers covered:** 1
+            - **Required prior milestones:** None
+            - **Gear:** 4
+            - **Model Profile:** Step Profile
+            - **Output format:** Markdown.
+            - **Drift check question:** Is it complete?
+        '''), path='public-profile-proof.md')
+        observed = {}
+        resolutions = []
+        original_resolve = executor._resolve_milestone_model_profile
+
+        def resolve(**kwargs):
+            result = original_resolve(**kwargs)
+            resolutions.append(result)
+            return result
+
+        def run_gear4(context_pkg, _config, config_name=None, **_kwargs):
+            observed['config_name'] = config_name
+            observed['context_pkg'] = context_pkg
+            return 'framework result'
+
+        def save_conversation(_user, assistant, *_args, **_kwargs):
+            observed['assistant'] = assistant
+            return 'chunk-g116'
+
+        with (
+            mock.patch.object(boot, 'PIPELINE_TRACE_AVAILABLE', False),
+            mock.patch.object(server, 'load_config', return_value={}),
+            mock.patch.object(server, 'get_endpoint', return_value={'name': 'test'}),
+            mock.patch.object(
+                server, '_validate_public_model_profile_override',
+                return_value='Toolbar Profile',
+            ),
+            mock.patch.object(
+                server, '_active_project_model_context',
+                return_value=('example', locks),
+            ),
+            mock.patch.object(server, '_log_pending_submission', return_value='sub-g116'),
+            mock.patch.object(server, '_finalize_pending_submission'),
+            mock.patch.object(server, '_save_conversation', side_effect=save_conversation),
+            mock.patch.object(server, 'build_contributor_context', return_value=None),
+            mock.patch.object(server, 'RUNTIME_PIPELINE_AVAILABLE', False),
+            mock.patch.object(executor, 'parse_framework_file', return_value=framework),
+            mock.patch.object(
+                executor, '_lookup_framework_default_configuration',
+                return_value='Process Profile',
+            ),
+            mock.patch.object(
+                executor, '_resolve_milestone_model_profile', side_effect=resolve,
+            ),
+            mock.patch.object(
+                executor, '_run_drift_check', return_value=('IN_SCOPE', 'verified'),
+            ),
+            mock.patch.object(top_mp.pm, 'read_project_meta', return_value=record),
+            mock.patch.object(top_mp, '_read_profile', return_value=profile),
+            mock.patch.object(top_mp.ac, 'get_active_name', return_value='Global Profile'),
+            mock.patch.object(top_mp, 'load_model_inventory', return_value={
+                'models': {'model-ok': {'reachable': True}},
+                'aliases': {}, 'routing': {},
+            }),
+            mock.patch.object(boot, 'run_gear4', side_effect=run_gear4),
+        ):
+            response = self.client.post('/chat', json={
+                'message': '/framework cff summarize this repository',
+                'panel_id': 'g116-public-path',
+                'conversation_id': 'g116-public-path',
+                'config_name': 'Toolbar Profile',
+                'history': [],
+            })
+        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        self.assertEqual(json.loads(response.get_data(as_text=True))['status'], 'ok')
+        self.assertIn('framework result', observed.get('assistant', ''), observed)
+        self.assertEqual(observed['config_name'], 'Toolbar Profile')
+        self.assertEqual(observed['context_pkg']['model_profile_locks'], locks)
+        self.assertEqual(len(resolutions), 1)
+        self.assertEqual(
+            [row['source'] for row in resolutions[0]['chain']],
+            ['global', 'project', 'process', 'step', 'one_run'],
+        )
 
 
 if __name__ == '__main__':

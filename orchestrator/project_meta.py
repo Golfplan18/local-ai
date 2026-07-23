@@ -819,12 +819,17 @@ def set_project_model_binding(
     invented snapshot or change the name without replacing the exact lock in
     the same atomic pointer write.
     """
+    nexus = canonicalize_project_nexus(nexus)
     if profile_name is not None:
         if not isinstance(profile_name, str) or not profile_name.strip():
             raise ProjectMetaError("default_model_profile must be a non-empty string or null")
         profile_name = profile_name.strip()
         if not isinstance(model_locks, dict) or not model_locks:
             raise ProjectMetaError("a Model Profile binding requires non-empty model_locks")
+        if model_locks.get("project_nexus") != nexus:
+            raise ProjectMetaError(
+                "Model Profile locks must be issued for this exact project nexus"
+            )
     elif model_locks:
         raise ProjectMetaError("an unbound project cannot retain model_locks")
     clean = _clean_project_updates(updates)

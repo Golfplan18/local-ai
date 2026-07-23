@@ -38,7 +38,7 @@ except ImportError:  # direct script-style imports in the existing test suite
 
 
 HEALTH_STATES = ("ok", "degraded", "deprecated", "unavailable")
-LOCK_SCHEMA_VERSION = 1
+LOCK_SCHEMA_VERSION = 2
 MIGRATION_SCHEMA_VERSION = 1
 LOCK_TOKEN_PREFIX = "project-lock:"
 
@@ -367,9 +367,14 @@ def _binding_digest(locks: dict) -> str:
     return _digest(body)
 
 
-def capture_project_binding(profile_name: str, routing_config: dict | None = None) -> dict:
+def capture_project_binding(
+    profile_name: str,
+    project_nexus: str,
+    routing_config: dict | None = None,
+) -> dict:
     """Capture a project-owned immutable execution snapshot before binding."""
     profile_name = validate_profile_name(profile_name)
+    project_nexus = pm.validate_nexus(project_nexus)
     profile = _read_profile(profile_name)
     health = evaluate_profile_health(profile)
     if health["status"] == "unavailable":
@@ -384,6 +389,7 @@ def capture_project_binding(profile_name: str, routing_config: dict | None = Non
     routing_values = _locked_routing_values(routing_config)
     locks = {
         "schema_version": LOCK_SCHEMA_VERSION,
+        "project_nexus": project_nexus,
         "profile_name": profile_name,
         "profile_digest": profile_digest(profile),
         "profile_snapshot": copy.deepcopy(profile),
@@ -409,6 +415,17 @@ def validate_project_binding(
         raise ModelProfileError("project Model Profile locks are absent")
     if locks.get("schema_version") != LOCK_SCHEMA_VERSION:
         raise ModelProfileError("project Model Profile lock schema is unsupported")
+    bound_nexus = locks.get("project_nexus")
+    try:
+        bound_nexus = pm.validate_nexus(bound_nexus)
+    except (TypeError, ValueError) as exc:
+        raise ModelProfileError("project Model Profile identity is invalid") from exc
+    if expected_nexus is not None:
+        expected_nexus = pm.validate_nexus(expected_nexus)
+        if bound_nexus != expected_nexus:
+            raise ModelProfileError(
+                "project Model Profile identity does not match the requested project"
+            )
     if locks.get("profile_name") != name:
         raise ModelProfileError("project Model Profile name does not match its lock")
     snapshot = locks.get("profile_snapshot")
@@ -418,16 +435,16 @@ def validate_project_binding(
         raise ModelProfileError("project Model Profile snapshot digest is invalid")
     if locks.get("binding_digest") != _binding_digest(locks):
         raise ModelProfileError("project Model Profile binding digest is invalid")
-    if expected_nexus is not None:
-        pm.validate_nexus(expected_nexus)
     return copy.deepcopy(locks)
 
 
 def project_lock_token(nexus: str, locks: dict) -> str:
-    pm.validate_nexus(nexus)
-    digest = locks.get("profile_digest")
+    nexus = pm.validate_nexus(nexus)
+    if locks.get("project_nexus") != nexus:
+        raise ModelProfileError("project Model Profile identity does not match its token")
+    digest = locks.get("binding_digest")
     if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise ModelProfileError("project Model Profile digest is invalid")
+        raise ModelProfileError("project Model Profile binding digest is invalid")
     return f"{LOCK_TOKEN_PREFIX}{nexus}:{digest}"
 
 
@@ -441,7 +458,7 @@ def load_project_locked_profile(token: str) -> dict:
     nexus, expected_digest = parts
     record = pm.read_project_meta(nexus)
     locks = validate_project_binding(record, expected_nexus=nexus)
-    if locks["profile_digest"] != expected_digest:
+    if locks["binding_digest"] != expected_digest:
         raise ModelProfileError("project Model Profile token is stale")
     return copy.deepcopy(locks["profile_snapshot"])
 
@@ -617,6 +634,13 @@ def preview_migration(profile_name: str, project_nexus: str | None = None) -> di
         "replacements": replacements,
         "health_before": health["status"],
     }
+    if target == "project":
+        proposed_locks = copy.deepcopy(locks)
+        proposed_locks["profile_snapshot"] = copy.deepcopy(proposed)
+        proposed_locks["profile_digest"] = profile_digest(proposed)
+        proposed_locks["binding_digest"] = _binding_digest(proposed_locks)
+        proposal["expected_binding_digest"] = locks["binding_digest"]
+        proposal["proposed_binding_digest"] = proposed_locks["binding_digest"]
     proposal["proposal_id"] = _digest(proposal)
     return proposal
 
@@ -624,17 +648,152 @@ def preview_migration(profile_name: str, project_nexus: str | None = None) -> di
 def _read_receipts() -> list[dict]:
     try:
         lines = MIGRATION_RECEIPTS_PATH.read_text(encoding="utf-8").splitlines()
-    except OSError:
+    except FileNotFoundError:
         return []
+    except OSError as exc:
+        raise ModelProfileError(
+            f"Model Profile migration receipt history is unreadable: {exc}"
+        ) from exc
     out: list[dict] = []
-    for line in lines:
+    for line_number, line in enumerate(lines, 1):
+        if not line.strip():
+            raise ModelProfileError(
+                f"Model Profile migration receipt history has a blank row at {line_number}"
+            )
         try:
             row = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(row, dict):
-            out.append(row)
+        except json.JSONDecodeError as exc:
+            raise ModelProfileError(
+                f"Model Profile migration receipt history is malformed at row {line_number}"
+            ) from exc
+        if not isinstance(row, dict):
+            raise ModelProfileError(
+                f"Model Profile migration receipt history is malformed at row {line_number}"
+            )
+        out.append(row)
     return out
+
+
+def _receipt_body(receipt: dict) -> dict:
+    return {key: value for key, value in receipt.items() if key != "receipt_digest"}
+
+
+def _validate_receipt(
+    receipt: dict,
+    *,
+    proposal_id: str,
+    profile_name: str,
+    project_nexus: str | None,
+) -> dict:
+    """Authenticate one issued receipt and its proposal identity.
+
+    The digest protects the exact receipt schema.  Reconstructing the proposal
+    proves that the receipt describes the reviewed mutation, and the caller
+    separately reauthenticates the current post-state before treating a retry
+    as successful.
+    """
+    expected_keys = {
+        "schema_version", "receipt_id", "proposal_id", "target",
+        "profile_name", "project_nexus", "before_digest", "after_digest",
+        "replacements", "user_confirmed", "recorded_at", "receipt_digest",
+        "before_binding_digest", "after_binding_digest",
+    }
+    if not isinstance(proposal_id, str) or not re.fullmatch(r"[0-9a-f]{64}", proposal_id):
+        raise ModelProfileError("Model Profile migration receipt proposal is invalid")
+    try:
+        profile_name = validate_profile_name(profile_name)
+        if project_nexus is not None:
+            project_nexus = pm.validate_nexus(project_nexus)
+    except (TypeError, ValueError) as exc:
+        raise ModelProfileError("Model Profile migration receipt target is invalid") from exc
+    if set(receipt) != expected_keys:
+        raise ModelProfileError("Model Profile migration receipt schema is invalid")
+    if receipt.get("schema_version") != MIGRATION_SCHEMA_VERSION:
+        raise ModelProfileError("Model Profile migration receipt schema is unsupported")
+    if receipt.get("receipt_digest") != _digest(_receipt_body(receipt)):
+        raise ModelProfileError("Model Profile migration receipt digest is invalid")
+    if receipt.get("proposal_id") != proposal_id:
+        raise ModelProfileError("Model Profile migration receipt proposal is invalid")
+    if receipt.get("receipt_id") != "mpr-" + proposal_id[:24]:
+        raise ModelProfileError("Model Profile migration receipt identity is invalid")
+    target = "project" if project_nexus else "profile"
+    if (
+        receipt.get("target") != target
+        or receipt.get("profile_name") != profile_name
+        or receipt.get("project_nexus") != (project_nexus or None)
+        or receipt.get("user_confirmed") is not True
+    ):
+        raise ModelProfileError("Model Profile migration receipt target is invalid")
+    for key in ("before_digest", "after_digest"):
+        if not isinstance(receipt.get(key), str) or not re.fullmatch(
+            r"[0-9a-f]{64}", receipt[key]
+        ):
+            raise ModelProfileError("Model Profile migration receipt content digest is invalid")
+    if (
+        not isinstance(receipt.get("replacements"), dict)
+        or not receipt["replacements"]
+        or any(
+            not isinstance(old, str) or not old
+            or not isinstance(new, str) or not new
+            for old, new in receipt["replacements"].items()
+        )
+    ):
+        raise ModelProfileError("Model Profile migration receipt replacements are invalid")
+    if not isinstance(receipt.get("recorded_at"), str) or not receipt["recorded_at"]:
+        raise ModelProfileError("Model Profile migration receipt time is invalid")
+    try:
+        recorded_at = datetime.fromisoformat(receipt["recorded_at"])
+    except ValueError as exc:
+        raise ModelProfileError("Model Profile migration receipt time is invalid") from exc
+    if recorded_at.tzinfo is None:
+        raise ModelProfileError("Model Profile migration receipt time must include a timezone")
+    if target == "project":
+        for key in ("before_binding_digest", "after_binding_digest"):
+            if not isinstance(receipt.get(key), str) or not re.fullmatch(
+                r"[0-9a-f]{64}", receipt[key]
+            ):
+                raise ModelProfileError(
+                    "Model Profile migration receipt binding digest is invalid"
+                )
+    elif receipt.get("before_binding_digest") is not None or receipt.get(
+        "after_binding_digest"
+    ) is not None:
+        raise ModelProfileError("profile migration receipt has unexpected project binding")
+    proposal = {
+        "schema_version": MIGRATION_SCHEMA_VERSION,
+        "target": target,
+        "profile_name": profile_name,
+        "project_nexus": project_nexus or None,
+        "expected_digest": receipt["before_digest"],
+        "proposed_digest": receipt["after_digest"],
+        "replacements": receipt["replacements"],
+        "health_before": "deprecated",
+    }
+    if target == "project":
+        proposal["expected_binding_digest"] = receipt["before_binding_digest"]
+        proposal["proposed_binding_digest"] = receipt["after_binding_digest"]
+    if _digest(proposal) != proposal_id:
+        raise ModelProfileError("Model Profile migration receipt does not match its proposal")
+    return copy.deepcopy(receipt)
+
+
+def _validate_receipt_post_state(receipt: dict) -> None:
+    if receipt["target"] == "project":
+        record = pm.read_project_meta(receipt["project_nexus"])
+        locks = validate_project_binding(
+            record, expected_nexus=receipt["project_nexus"],
+        )
+        if locks.get("profile_name") != receipt["profile_name"]:
+            raise ModelProfileError("migrated project Model Profile name no longer matches")
+        if (
+            locks.get("profile_digest") != receipt["after_digest"]
+            or locks.get("binding_digest") != receipt["after_binding_digest"]
+        ):
+            raise ModelProfileError("migrated project Model Profile post-state no longer matches")
+        return
+    current = _read_profile(receipt["profile_name"])
+    if profile_digest(current) != receipt["after_digest"]:
+        raise ModelProfileError("migrated Model Profile post-state no longer matches")
 
 
 def _append_receipt(receipt: dict) -> None:
@@ -652,15 +811,36 @@ def confirm_migration(
     project_nexus: str | None = None,
 ) -> dict:
     """Apply exactly one still-current proposal and return its receipt."""
+    profile_name = validate_profile_name(profile_name)
+    if project_nexus is not None:
+        project_nexus = pm.validate_nexus(project_nexus)
     if user_confirmed is not True:
         raise ModelProfileError("explicit migration confirmation is required")
     if not isinstance(proposal_id, str) or not re.fullmatch(r"[0-9a-f]{64}", proposal_id):
         raise ModelProfileError("migration proposal identity is invalid")
 
     with _lock, rp.locked_file(MIGRATION_RECEIPTS_PATH):
-        for receipt in _read_receipts():
-            if receipt.get("proposal_id") == proposal_id:
-                return receipt
+        receipts = _read_receipts()
+        for persisted in receipts:
+            _validate_receipt(
+                persisted,
+                proposal_id=persisted.get("proposal_id"),
+                profile_name=persisted.get("profile_name"),
+                project_nexus=persisted.get("project_nexus"),
+            )
+        matching_receipts = [
+            receipt for receipt in receipts
+            if receipt.get("proposal_id") == proposal_id
+        ]
+        if len(matching_receipts) > 1:
+            raise ModelProfileError("duplicate Model Profile migration receipts detected")
+        if matching_receipts:
+            receipt = _validate_receipt(
+                matching_receipts[0], proposal_id=proposal_id,
+                profile_name=profile_name, project_nexus=project_nexus,
+            )
+            _validate_receipt_post_state(receipt)
+            return receipt
         proposal = preview_migration(profile_name, project_nexus)
         if proposal["proposal_id"] != proposal_id:
             raise ModelProfileError(
@@ -676,8 +856,11 @@ def confirm_migration(
             )
             locks["profile_snapshot"] = proposed
             locks["profile_digest"] = profile_digest(proposed)
-            locks["captured_at"] = _utc_now()
             locks["binding_digest"] = _binding_digest(locks)
+            if locks["binding_digest"] != proposal["proposed_binding_digest"]:
+                raise ModelProfileError(
+                    "project Model Profile migration no longer matches the reviewed proposal"
+                )
             updated = pm.set_project_model_binding(
                 project_nexus, profile_name, locks,
             )
@@ -708,6 +891,8 @@ def confirm_migration(
             "replacements": proposal["replacements"],
             "user_confirmed": True,
             "recorded_at": _utc_now(),
+            "before_binding_digest": proposal.get("expected_binding_digest"),
+            "after_binding_digest": proposal.get("proposed_binding_digest"),
         }
         receipt["receipt_digest"] = _digest(receipt)
         try:
