@@ -731,15 +731,14 @@ def _run_through_gear_pipeline(
         return run_gear3(context_pkg, config, config_name=config_name)
     else:
         # Gear 1-2: single-pass via existing helper
-        from boot import _run_model_with_tools, get_active_endpoint, get_slot_endpoint
-        endpoint = (
-            get_slot_endpoint(config, "classification", config_name=config_name)
-            if milestone.gear == 1
-            else get_active_endpoint(config)
+        from boot import _run_model_with_tools, resolve_single_pass_endpoint
+        endpoint, endpoint_cell = resolve_single_pass_endpoint(
+            config, milestone.gear, config_name=config_name
         )
         if endpoint is None:
             raise MilestoneExecutionError(
-                f"No endpoint available for gear {milestone.gear}"
+                f"No endpoint available for gear {milestone.gear} "
+                f"cell {endpoint_cell!r} in configuration {config_name!r}"
             )
         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
         messages = [

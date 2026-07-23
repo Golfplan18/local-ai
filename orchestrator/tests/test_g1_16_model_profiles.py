@@ -288,6 +288,90 @@ class ModelProfileInheritanceTests(unittest.TestCase):
             ["global", "project", "process", "step", "one_run"],
         )
 
+    def test_gear2_executor_uses_the_endpoint_from_each_effective_level(self):
+        from orchestrator import milestone_executor as executor
+        import boot
+
+        framework = framework_parser.parse_framework_text(dedent("""\
+            # Gear 2 profile proof
+
+            ## LAYER 1: Work
+            Produce the result.
+
+            ## MILESTONES DELIVERED
+
+            ### Milestone 1: Result
+            - **Endpoint produced:** A result.
+            - **Verification criterion:** It exists.
+            - **Layers covered:** 1
+            - **Required prior milestones:** None
+            - **Gear:** 2
+            - **Output format:** Markdown.
+            - **Drift check question:** Is it complete?
+        """), path="gear2-profile-proof.md")
+        record = self._binding_record()
+        project_token = mp.project_lock_token("my-project", record["model_locks"])
+        cases = (
+            ("project", None, None, None, project_token),
+            ("process", "process", None, None, "process"),
+            ("step", "process", "step", None, "step"),
+            ("one-run", "process", "step", "one-run", "one-run"),
+        )
+
+        for label, process_profile, step_profile, one_run_profile, expected in cases:
+            with self.subTest(level=label):
+                framework.all_milestones()[0].model_profile = step_profile
+                invoked = {}
+
+                def slot_endpoint(_config, slot, *, config_name=None, **_kwargs):
+                    invoked["slot"] = slot
+                    invoked["resolved_config"] = config_name
+                    return {"id": f"endpoint::{config_name}"}
+
+                def run_model(_messages, endpoint, **_kwargs):
+                    invoked["endpoint"] = endpoint["id"]
+                    return "authenticated deliverable"
+
+                trace_context = {}
+                with (
+                    mock.patch.object(mp.pm, "read_project_meta", return_value=record),
+                    mock.patch.object(
+                        executor, "parse_framework_file", return_value=framework),
+                    mock.patch.object(
+                        executor, "_lookup_framework_default_configuration",
+                        return_value=process_profile,
+                    ),
+                    mock.patch.object(
+                        executor, "_run_drift_check",
+                        return_value=("IN_SCOPE", "verified"),
+                    ),
+                    mock.patch.object(
+                        boot, "get_slot_endpoint", side_effect=slot_endpoint),
+                    mock.patch.object(
+                        boot, "get_active_endpoint",
+                        side_effect=AssertionError(
+                            "named Gear-2 execution used the global endpoint"),
+                    ),
+                    mock.patch.object(
+                        boot, "_run_model_with_tools", side_effect=run_model),
+                ):
+                    result = executor.execute_framework(
+                        "gear2-profile-proof.md", "do the work", config={},
+                        project_nexus="my-project", config_name=one_run_profile,
+                        trace_context=trace_context,
+                    )
+
+                self.assertTrue(result.success, result.final_output)
+                self.assertEqual(invoked["slot"], "fast")
+                self.assertEqual(invoked["resolved_config"], expected)
+                self.assertEqual(invoked["endpoint"], f"endpoint::{expected}")
+                self.assertEqual(
+                    trace_context["model_profile_resolution"]["selected"][
+                        "runtime_name"
+                    ],
+                    expected,
+                )
+
 
 class ModelProfileMigrationTests(unittest.TestCase):
     def setUp(self):
