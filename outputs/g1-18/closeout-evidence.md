@@ -166,11 +166,19 @@ Diff and repository integrity after the submitted commits:
 ```bash
 cd /Users/oracle/ora-msi-central-routing
 git diff b0c9edaff62b490287ec03818857edf99a7364c4..HEAD --check
-test -z "$(git status --porcelain --untracked-files=all | grep -v '^?? data/conversation-manifest.jsonl.lock$')"
+git rev-list --left-right --count '@{upstream}...HEAD'
 cd /Users/oracle/Documents/vault
 git diff 5c20bfa1a2bf2ce957dc96cdfbeea3532aa51431..HEAD --check
-test -z "$(git status --porcelain --untracked-files=all)"
-# all exit 0
+git rev-list --left-right --count '@{upstream}...HEAD'
+# both diff checks exit 0; both synchronization checks print 0 0 and exit 0
 ```
+
+The runtime worktree contains only the accepted pre-existing
+`data/conversation-manifest.jsonl.lock`. The shared vault worktree also contains
+unrelated, unstaged Engram, We Too, cleaning-log, and Daily Note changes. They are
+outside G1.18, were preserved without modification or staging, and are absent from
+the submitted commit ranges. This packet therefore certifies the exact committed
+range, diff integrity, parity, and upstream synchronization; it does not claim
+ownership or cleanliness of those user-held vault changes.
 
 The default all-category `verify-implementation.py` command is not a G1.18 acceptance command: by design it still reports G1.14's seven missing twins and fourteen unreconciled framework-pair drifts, plus separately owned historical corpus checks. The bounded `--check drift` parity check passes, and this gate changes no framework pair or G1.14 queue receipt.
