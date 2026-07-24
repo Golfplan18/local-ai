@@ -58,7 +58,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
             "  - documentation",
             "  - guide",
             "date created: 2026-07-04",
-            "date modified: 2026-07-20",
+            "date modified: 2026-07-23",
         ):
             self.assertIn(token, self.guide_raw)
         self.assertFalse(self.mirror_raw.startswith("---\n"))
@@ -159,7 +159,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
         plan_review = (
             ROOT / "server" / "static" / "js" / "process-plan-review.js"
         ).read_text(encoding="utf-8")
-        self.assertIn("/static/js/process-plan-review.js?v=g11-phase-3-3", index)
+        self.assertIn("/static/js/process-plan-review.js?v=g1-18", index)
         self.assertIn("processEntryContract.intent === 'capability_construction'", index)
         inspector = (ROOT / "server" / "static" / "js" / "process-run-inspector.js").read_text(
             encoding="utf-8"
@@ -195,7 +195,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("16/16 passed", result.stdout)
+        self.assertIn("19/19 passed", result.stdout)
 
     def test_construction_invocation_activation_and_effects_stay_separate(self):
         for token in (
@@ -250,8 +250,8 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for token in (
             "Parts 1 and 2 plus Phases 3.1–3.5 accepted",
             "G1.1 is complete after independent Gate 3.5 acceptance",
-            "G1.4 is the current item",
-            "G1.3 is authorized but user-deferred",
+            "G1.18 is implemented and awaits independent judgment",
+            "G1.3, and G1.7 are user-deferred",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)

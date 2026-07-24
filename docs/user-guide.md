@@ -348,6 +348,29 @@ You may edit an authorized target externally. Ora detects that the target identi
 
 If the working tree contains unrelated changes, preserve them. Do not approve a plan that assumes they can be overwritten. Ask for a narrower artifact scope or a revised plan.
 
+### Author a reusable Process
+
+Use this path only after the management interview is complete:
+
+1. In the plan-preparation surface, choose **Author reusable Process**.
+2. Review the proposed name, purpose, exact version/digest, ordered steps, and every human checkpoint. Ora does not add a Trigger, Persona, schedule, activation, outbound action, or external effect here.
+3. Choose **Request definition changes** and give a concrete reason, or choose **Approve and register exact definition**. Approval applies only to the exact proposal identity shown.
+4. When Ora reports that the Process is available, close the review and open **Process Library** when you are ready to run it.
+
+Registration makes the exact definition durable; promotion makes it discoverable in the current Project. Neither action runs it, schedules it, activates standing work, or grants sending/publication authority. A changed proposal needs a new review and identity.
+
+### Run a reusable Process manually
+
+1. Open **Process Library** and select an available reusable Process.
+2. Read its exact identity and enter the required inputs. The form is generated from the registered input schema; missing, extra, or malformed values are rejected.
+3. Check **I confirm this Run belongs to Project: …**. The Project controls scope. Any existing Project, Process, Step, or one-run Model Profile selections and the existing output Style are resolved and bound by the server; Persona is unavailable and is not selected.
+4. Choose **Start governed Run**. Ora starts one restart-safe Run of that exact version in a separate no-tools worker.
+5. At each human checkpoint, inspect what has already been produced. Choose **Approve checkpoint** only to advance that Run, or **Deny and stop**. Checkpoint approval does not activate, schedule, send, or widen authority.
+6. If execution pauses after a failure, choose **Retry from checkpoint** only after reading the error. Completed steps are preserved; Ora does not replay them merely because the service restarted.
+7. Treat the displayed result as authenticated only when the Run is completed after independent verification.
+
+The worked email Process classifies and summarizes one supplied email, pauses before drafting, and produces an **UNSENT DRAFT**. It cannot send the draft. Sending, recurring execution, and channels belong to later separately governed work.
+
 ### Find and invoke a reusable Process Definition
 
 Open the **Process Library** and select a row only after checking:
@@ -500,6 +523,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.
 - **2026-07-20** — G1.4: documented the shipped description-rich Dialogue creation review, combined prior-Dialogue/atomic-note discovery, server-issued exactly-once creation contract, contributor versus parent lineage, Continue/Fork alternatives, unsent-draft behavior, privacy boundaries, and the same actions in Library. The vault remains canonical and the runtime guide body is synchronized from it.
 - **2026-07-19** — G1.1 Phase 3.3 Gate correction: documented the shipped browser management surface, exact target/scope preparation, Principal/Technical tabs, five authenticated plan decisions, explicit later **Start approved plan** delegation, restart reconstruction, stale-plan handling, and visible failures. The correction adds only the browser-to-existing-governed-contract integration required by Gate 3.3; it does not enter Phase 3.4.
 - **2026-07-19** — G1.1 Phase 3.3: added task-indexed governed-process guidance for entry, project/artifact scope, management interview, canonical plan approval, leave-and-return, attention and decisions, evidence, technical inspection/external edits, Process Library invocation, activation/standing-automation limits, pause/stop/discussion/recovery, terminal artifact lifecycle, and user troubleshooting. Recorded the one-time `86a888bc` runtime-to-vault reconciliation provenance and restored vault-canonical body parity. No runtime behavior changed during that one-time documentation reconciliation; the later Gate 3.3 browser correction is recorded separately above.

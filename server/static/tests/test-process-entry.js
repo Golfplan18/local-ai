@@ -36,6 +36,34 @@ var PROGRAMMING = {
   },
   activated: false,
 };
+var AUTOMATION_REF = {
+  definition_id: 'user/email-processing',
+  version: '1.0.0',
+  digest: 'sha256:' + 'a'.repeat(64),
+};
+var AUTOMATION = {
+  id: 'email-processing',
+  kind: 'process_definition',
+  display_name: 'Email Processing',
+  display_description: 'Prepare an unsent email draft.',
+  definition_ref: AUTOMATION_REF,
+  scope: { kind: 'project', selector: 'ora' },
+  lifecycle_status: 'available',
+  automated_execution_available: true,
+  manual_invocation_available: false,
+  input_schema: {
+    type: 'object', additionalProperties: false,
+    properties: {
+      message_id: { type: 'string' }, sender: { type: 'string' },
+      subject: { type: 'string' }, body: { type: 'string' },
+    },
+    required: ['message_id', 'sender', 'subject', 'body'],
+  },
+  package: {
+    package_id: 'user/email-processing', package_version: '1.0.0',
+    entry_member_id: 'definition', members: [{ member_id: 'definition' }],
+  },
+};
 
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
@@ -54,6 +82,8 @@ global.CustomEvent = w.CustomEvent;
 w.OraSidebar = { getActiveProject: function () { return 'ora'; } };
 
 var routeRequests = [];
+var automationRequests = [];
+var libraryDefinitions = [PROGRAMMING];
 global.fetch = function (url, options) {
   if (url === '/api/process-entry/construction-label') {
     return Promise.resolve({
@@ -87,7 +117,40 @@ global.fetch = function (url, options) {
   if (url.indexOf('/api/process-library/entries?project_ref=') === 0) {
     return Promise.resolve({
       ok: true,
-      json: function () { return Promise.resolve({ ok: true, definitions: [PROGRAMMING] }); },
+      json: function () { return Promise.resolve({ ok: true, definitions: libraryDefinitions }); },
+    });
+  }
+  if (url === '/api/process-automation/runs') {
+    automationRequests.push(JSON.parse(options.body));
+    return Promise.resolve({
+      ok: true, status: 201,
+      json: function () { return Promise.resolve({ ok: true, run: {
+        run_id: 'automated-run-email', definition_ref: AUTOMATION_REF,
+        status: 'awaiting_human_checkpoint', run_state: 'pending',
+        current_node: {
+          node_id: 'draft-approval', kind: 'human_checkpoint',
+          label: 'Approve preparation of an unsent draft',
+        },
+      } }); },
+    });
+  }
+  if (url === '/api/process-automation/runs/automated-run-email') {
+    var action = JSON.parse(options.body);
+    automationRequests.push(action);
+    return Promise.resolve({
+      ok: true,
+      json: function () { return Promise.resolve({ ok: true, run: {
+        run_id: 'automated-run-email', definition_ref: AUTOMATION_REF,
+        status: 'completed', run_state: 'completed',
+        current_node: { node_id: 'accepted', kind: 'terminal_state', label: 'Accepted' },
+        result: {
+          artifact_id: 'result-email', identity_digest: 'sha256:' + 'b'.repeat(64),
+          content: {
+            classification: 'urgent:finance', summary: 'Invoice is overdue.',
+            draft: 'UNSENT DRAFT',
+          },
+        },
+      } }); },
     });
   }
   if (url === '/api/process-entry/route') {
@@ -277,6 +340,59 @@ async function run() {
       && framework.contract.intent === 'capability_invocation');
   record('every routing decision was server-previewed', routeRequests.length >= 7,
     'requests=' + routeRequests.length);
+
+  libraryDefinitions = [AUTOMATION];
+  w.document.getElementById('sidebarProcessLibraryOpen').click();
+  await flush();
+  await flush();
+  w.document.querySelector('.process-entry__library-row').click();
+  await flush();
+  record('available automated Process opens exact input form instead of ordinary chat',
+    !!w.document.querySelector('.process-entry__automation-form')
+      && w.document.querySelectorAll('[data-automation-input]').length === 4
+      && /separate no-tools worker/.test(w.document.querySelector('.process-entry__notice').textContent));
+  ['message_id', 'sender', 'subject', 'body'].forEach(function (name) {
+    w.document.querySelector('[data-automation-input="' + name + '"]').value = {
+      message_id: 'message-1', sender: 'Alex', subject: 'Urgent invoice',
+      body: 'Please review the overdue invoice today.',
+    }[name];
+  });
+  w.document.querySelector('.process-entry__automation-form').dispatchEvent(
+    new w.Event('submit', { bubbles: true, cancelable: true })
+  );
+  await flush();
+  record('automated Run cannot start before exact project confirmation',
+    automationRequests.length === 0
+      && /Confirm the exact Project/.test(
+        w.document.querySelector('.process-entry__error').textContent
+      ));
+  w.document.querySelector('[data-automation-project-confirmed]').checked = true;
+  w.document.querySelector('.process-entry__automation-form').dispatchEvent(
+    new w.Event('submit', { bubbles: true, cancelable: true })
+  );
+  await flush();
+  await flush();
+  record('browser starts exact promoted definition with bounded deterministic identity',
+    JSON.stringify(automationRequests[0].definition_ref) === JSON.stringify(AUTOMATION_REF)
+      && automationRequests[0].project_ref === 'ora'
+      && /^process-ui:[0-9a-f]{8}$/.test(automationRequests[0].idempotency_key)
+      && !('trigger' in automationRequests[0])
+      && !('persona' in automationRequests[0]));
+  record('Run stops visibly at exact human checkpoint',
+    /awaiting_human_checkpoint/.test(w.document.querySelector('.process-entry__notice').textContent)
+      && !!Array.from(w.document.querySelectorAll('.process-entry__button')).find(function (node) {
+        return node.textContent === 'Approve checkpoint';
+      }));
+  Array.from(w.document.querySelectorAll('.process-entry__button')).find(function (node) {
+    return node.textContent === 'Approve checkpoint';
+  }).click();
+  await flush();
+  await flush();
+  record('checkpoint approval is exact and completed result stays authenticated',
+    automationRequests[1].action === 'resolve_checkpoint'
+      && automationRequests[1].outcome === 'approved'
+      && !Object.prototype.hasOwnProperty.call(automationRequests[1], 'decision_by')
+      && /UNSENT DRAFT/.test(w.document.querySelector('.process-entry__body pre').textContent));
 
   var passed = results.filter(function (result) { return result.ok; }).length;
   console.log('');

@@ -31,19 +31,19 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from . import process_contracts as _contracts
+except ImportError:  # pragma: no cover - direct module execution
     import process_contracts as _contracts
-except ImportError:  # pragma: no cover
-    from orchestrator import process_contracts as _contracts
 
 try:
+    from . import runtime_paths as _runtime_paths
+except ImportError:  # pragma: no cover - direct module execution
     import runtime_paths as _runtime_paths
-except ImportError:  # pragma: no cover
-    from orchestrator import runtime_paths as _runtime_paths
 
 try:
+    from .process_definition_registry import ProcessDefinitionRegistry
+except ImportError:  # pragma: no cover - direct module execution
     from process_definition_registry import ProcessDefinitionRegistry
-except ImportError:  # pragma: no cover
-    from orchestrator.process_definition_registry import ProcessDefinitionRegistry
 
 
 PROCESS_RUNS_DIR = os.path.join(
@@ -120,6 +120,10 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "manual_process_result_recorded",
     "process_invoked",
     "process_definition_registered",
+    "automation_authoring_proposed",
+    "automation_authoring_revision_requested",
+    "isolated_process_step_completed",
+    "isolated_process_verification_completed",
     "child_return_received",
     "process_returned",
     "lifecycle_disposition_recorded",
@@ -129,12 +133,14 @@ _RESERVED_RUNTIME_EVENT_PREFIXES = (
     "action_",
     "artifact_",
     "attempt_",
+    "automation_",
     "checkpoint_",
     "child_",
     "controlled_probe_",
     "dialogue_",
     "infrastructure_",
     "invocation_",
+    "isolated_process_",
     "lifecycle_",
     "node_",
     "process_",
@@ -1007,6 +1013,74 @@ class GovernedProcessRuntime:
                 node_id=target,
                 evidence_refs=evidence_refs,
                 artifact_ids=artifact_ids,
+            )
+
+    def record_automation_authoring_event(
+        self,
+        run_id: str,
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Persist one exact, retry-safe Process-authoring decision record.
+
+        G1.18 authoring lives on the existing management Run.  This dedicated
+        boundary prevents the public observation API from minting proposals or
+        revisions and makes concurrent delivery of one identity exactly-once.
+        """
+
+        if event_type not in {
+            "automation_authoring_proposed",
+            "automation_authoring_revision_requested",
+        }:
+            raise GovernedRuntimeError("unsupported automation authoring event type")
+        supplied = copy.deepcopy(dict(details))
+        _require_json(supplied, "automation authoring event details")
+        identity_fields = (
+            ("idempotency_key",)
+            if event_type == "automation_authoring_proposed"
+            else ("proposal_id", "proposal_digest", "reason_digest")
+        )
+        if any(not supplied.get(field) for field in identity_fields):
+            raise GovernedRuntimeError(
+                "automation authoring event lacks its exact retry identity"
+            )
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            target = node_id or run["current_node_id"]
+            if target not in {node["node_id"] for node in definition["graph"]["nodes"]}:
+                raise GovernedRuntimeError(
+                    f"event node is not in the Process Definition: {target}"
+                )
+            matches = []
+            for record in self.load_records(run_id):
+                event = record.get("event") or {}
+                persisted = event.get("details") or {}
+                if event.get("event_type") != event_type:
+                    continue
+                if all(
+                    persisted.get(field) == supplied.get(field)
+                    for field in identity_fields
+                ):
+                    matches.append(record)
+            if len(matches) > 1:
+                raise GovernedRuntimeError(
+                    "automation authoring retry identity has multiple persisted records"
+                )
+            if matches:
+                if (matches[0].get("event") or {}).get("details") != supplied:
+                    raise RunConflictError(
+                        "automation authoring retry identity was reused with different content"
+                    )
+                return matches[0]
+            return self._append_event_locked(
+                run,
+                event_type,
+                supplied,
+                node_id=target,
+                runtime_authoritative=True,
             )
 
     def bind_manual_process_invocation(
@@ -2227,6 +2301,86 @@ class GovernedProcessRuntime:
                     if ref.get("identity_digest") != artifact["identity"]["digest"]:
                         exact_artifact_proof = False
                         break
+            automation_contract = (
+                (definition.get("output_schema") or {}).get("x-ora-process")
+            )
+            if (
+                isinstance(automation_contract, Mapping)
+                and automation_contract.get("schema_version")
+                == "ora.process-automation/1.0"
+            ):
+                execution_records = []
+                for record in records:
+                    if (
+                        int(record["sequence"]) <= entered_sequence
+                        or record["node_id"] != run["current_node_id"]
+                    ):
+                        continue
+                    event = record.get("event") or {}
+                    event_details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "isolated_process_step_completed"
+                        and event_details.get("operation") == operation
+                    ):
+                        execution_records.append((record, event_details))
+                if len(execution_records) != 1:
+                    raise GovernedRuntimeError(
+                        "automated Process action completion requires exactly one "
+                        "runtime-issued isolated execution record"
+                    )
+                execution_record, execution_details = execution_records[0]
+                if len(artifact_ids) != 1:
+                    raise GovernedRuntimeError(
+                        "automated Process action completion requires one exact output Artifact"
+                    )
+                output_artifact = self.load_artifact(run_id, artifact_ids[0])
+                expected_execution = {
+                    "run_id": run_id,
+                    "definition_ref": run["definition_ref"],
+                    "node_id": run["current_node_id"],
+                    "operation": operation,
+                    "artifact_id": output_artifact["artifact_id"],
+                    "artifact_identity_digest": output_artifact["identity"]["digest"],
+                    "execution_context_binding_digest": (
+                        (run.get("input_bindings") or {})
+                        .get("execution_context", {})
+                        .get("binding_digest")
+                    ),
+                    "attempt": run["contracts"]["correction_loop"]["attempt"],
+                }
+                mismatches = [
+                    field for field, expected in expected_execution.items()
+                    if execution_details.get(field) != expected
+                ]
+                for field in ("worker_request_digest", "worker_response_digest"):
+                    try:
+                        _exact_digest(execution_details.get(field), field)
+                    except GovernedRuntimeError:
+                        mismatches.append(field)
+                if execution_details.get("worker_boundary") not in {
+                    "separate_no_tools_process", "injected_test_worker",
+                }:
+                    mismatches.append("worker_boundary")
+                artifact_record = current_artifact_records.get(output_artifact["artifact_id"])
+                if (
+                    artifact_record is None
+                    or int(artifact_record["sequence"]) >= int(execution_record["sequence"])
+                    or output_artifact["artifact_id"] not in execution_record["artifact_ids"]
+                ):
+                    mismatches.append("artifact_record_order")
+                if any(
+                    details.get(field) != execution_details.get(field)
+                    for field in (
+                        "worker_boundary", "worker_request_digest",
+                        "worker_response_digest", "execution_context_binding_digest",
+                    )
+                ):
+                    mismatches.append("completion_details")
+                if mismatches:
+                    raise GovernedRuntimeError(
+                        "isolated execution binding does not match the current action: "
+                        + ", ".join(sorted(set(mismatches)))
+                    )
             if node["external_effect"]:
                 if action_record is None:
                     raise GovernedRuntimeError(
@@ -5864,6 +6018,7 @@ class GovernedProcessRuntime:
         if outcome not in _contracts.OBSERVATION_OUTCOMES:
             raise GovernedRuntimeError(f"unknown review outcome: {outcome}")
         run = self.load_run(run_id)
+        definition = self.load_definition(run_id)
         subject = self.load_artifact(run_id, artifact_id)
         evidence_artifact = self.load_artifact(run_id, evidence_artifact_id)
         if evidence_artifact["role"] != "evidence":
@@ -5912,6 +6067,68 @@ class GovernedProcessRuntime:
         review_time = _parse_time(self._now())
         if _parse_time(evidence_artifact["identity"]["fresh_until"]) < review_time:
             raise FinalReviewRequired("final review evidence Artifact is stale")
+        automation_contract = (
+            (definition.get("output_schema") or {}).get("x-ora-process")
+        )
+        if (
+            isinstance(automation_contract, Mapping)
+            and automation_contract.get("schema_version")
+            == "ora.process-automation/1.0"
+        ):
+            verification_records = []
+            for record in self.load_records(run_id):
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    event.get("event_type")
+                    == "isolated_process_verification_completed"
+                    and details.get("result_artifact_id") == artifact_id
+                    and details.get("evidence_artifact_id") == evidence_artifact_id
+                ):
+                    verification_records.append((record, details))
+            if len(verification_records) != 1:
+                raise FinalReviewRequired(
+                    "automated Process review requires exactly one runtime-issued "
+                    "isolated verification record"
+                )
+            verification_record, verification_details = verification_records[0]
+            expected_verification = {
+                "run_id": run_id,
+                "definition_ref": run["definition_ref"],
+                "node_id": run["current_node_id"],
+                "result_artifact_id": artifact_id,
+                "result_identity_digest": subject["identity"]["digest"],
+                "evidence_artifact_id": evidence_artifact_id,
+                "evidence_identity_digest": evidence_artifact["identity"]["digest"],
+                "outcome": outcome,
+                "execution_context_binding_digest": (
+                    (run.get("input_bindings") or {})
+                    .get("execution_context", {})
+                    .get("binding_digest")
+                ),
+            }
+            mismatches = [
+                field for field, expected in expected_verification.items()
+                if verification_details.get(field) != expected
+            ]
+            for field in ("worker_request_digest", "worker_response_digest"):
+                try:
+                    _exact_digest(verification_details.get(field), field)
+                except GovernedRuntimeError:
+                    mismatches.append(field)
+            if verification_details.get("worker_boundary") not in {
+                "separate_no_tools_process", "injected_test_worker",
+            }:
+                mismatches.append("worker_boundary")
+            if set(verification_record["artifact_ids"]) != {
+                artifact_id, evidence_artifact_id,
+            }:
+                mismatches.append("artifact_ids")
+            if mismatches:
+                raise FinalReviewRequired(
+                    "isolated verification binding does not match the current result: "
+                    + ", ".join(sorted(set(mismatches)))
+                )
         evidence_ref = {
             "evidence_id": evidence_id,
             "artifact_id": artifact_id,

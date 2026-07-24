@@ -1352,6 +1352,16 @@ class ProcessLibraryLifecycleService:
                     definition["definition_id"].rsplit("/", 1)[-1].replace("-", " "),
                     *[str(label).replace("-", " ") for label in definition.get("labels", [])],
                 })
+                automation_contract = (
+                    (definition.get("output_schema") or {}).get("x-ora-process")
+                )
+                automated_execution = bool(
+                    isinstance(automation_contract, Mapping)
+                    and automation_contract.get("schema_version")
+                    == "ora.process-automation/1.0"
+                    and automation_contract.get("external_effects") is False
+                    and automation_contract.get("triggers") is False
+                )
                 entries.append({
                     "kind": "process_definition",
                     "id": definition["definition_id"].rsplit("/", 1)[-1],
@@ -1366,7 +1376,12 @@ class ProcessLibraryLifecycleService:
                     ),
                     "promoted": available,
                     "activated": False,
-                    "manual_invocation_available": available,
+                    "manual_invocation_available": available and not automated_execution,
+                    "automated_execution_available": available and automated_execution,
+                    "input_schema": (
+                        copy.deepcopy(definition["input_schema"])
+                        if automated_execution else None
+                    ),
                     "standing_automation": False,
                     "entrypoints": copy.deepcopy(
                         definition["input_schema"].get("properties", {})

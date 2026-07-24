@@ -18,6 +18,7 @@
     interview: null,
     plan: null,
     delegation: null,
+    authoring: null,
     planningContext: null,
     busy: false,
     error: '',
@@ -63,6 +64,7 @@
       interview: null,
       plan: null,
       delegation: null,
+      authoring: null,
       planningContext: null,
       busy: false,
       error: '',
@@ -191,6 +193,7 @@
       }
       if (state.interview && state.interview.status === 'ready_for_plan') {
         await loadPlanningContext();
+        await loadAuthoring();
       }
       return payload;
     } catch (error) {
@@ -250,6 +253,97 @@
     } catch (error) {
       state.planningContext = null;
       setError(error.message || error);
+    }
+  }
+
+  async function loadAuthoring() {
+    if (!state.dialogueId) return;
+    try {
+      const payload = await fetchJson(
+        `/api/process-authoring/${encodeURIComponent(state.dialogueId)}`
+      );
+      state.authoring = payload.authoring || null;
+    } catch (error) {
+      state.authoring = null;
+      setError(error.message || error);
+    }
+  }
+
+  async function authorReusableProcess() {
+    const identity = {
+      dialogue_ref: state.dialogueId,
+      answers_digest: state.interview && state.interview.answers_digest,
+      prior_proposal_digest: state.authoring && state.authoring.proposal
+        ? state.authoring.proposal.proposal_digest : null,
+      authoring_status: state.authoring && state.authoring.status,
+    };
+    state.busy = true;
+    state.error = '';
+    render();
+    try {
+      const payload = await fetchJson(
+        `/api/process-authoring/${encodeURIComponent(state.dialogueId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'propose',
+            idempotency_key: `authoring-ui:${hashText(JSON.stringify(identity))}`,
+          }),
+        }
+      );
+      state.authoring = payload.authoring;
+    } catch (error) {
+      setError(error.message || error);
+    } finally {
+      state.busy = false;
+      render();
+    }
+  }
+
+  async function decideAuthoring(action, reason) {
+    const proposal = state.authoring && state.authoring.proposal;
+    if (!proposal) {
+      setError('The exact Process Definition proposal is unavailable.');
+      return;
+    }
+    let request;
+    if (action === 'approve_and_register') {
+      request = {
+        action,
+        proposal_id: proposal.proposal_id,
+        proposal_digest: proposal.proposal_digest,
+      };
+    } else {
+      const exactReason = String(reason || '').trim();
+      if (!exactReason) {
+        setError('Describe the required Process Definition revision.');
+        return;
+      }
+      request = {
+        action: 'request_revision',
+        proposal_id: proposal.proposal_id,
+        reason: exactReason,
+      };
+    }
+    state.busy = true;
+    state.error = '';
+    render();
+    try {
+      const payload = await fetchJson(
+        `/api/process-authoring/${encodeURIComponent(state.dialogueId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+        }
+      );
+      state.authoring = payload.authoring;
+    } catch (error) {
+      setError(error.message || error);
+    } finally {
+      state.busy = false;
+      render();
     }
   }
 
@@ -393,6 +487,10 @@
     const interview = state.interview;
     overlay.querySelector('#processPlanReviewTitle').textContent = 'Management interview';
     if (interview.status === 'ready_for_plan') {
+      if (state.authoring && state.authoring.status !== 'ready_to_author') {
+        renderAuthoring(body);
+        return;
+      }
       renderPreparation(body);
       return;
     }
@@ -443,6 +541,27 @@
       + 'current target, and then shows both review projections before any approval.'
     );
     body.appendChild(intro);
+    const processOption = document.createElement('section');
+    processOption.className = 'process-plan-review__field';
+    const processHeading = document.createElement('h3');
+    processHeading.textContent = 'Reusable Process Definition';
+    processOption.appendChild(processHeading);
+    const processCopy = document.createElement('p');
+    processCopy.textContent = (
+      'Use the completed management interview to author a deterministic Process. '
+      + 'Ora will show the exact definition for approval before registration. '
+      + 'No Trigger, Persona, scheduling, activation, sending, or external effect is added.'
+    );
+    processOption.appendChild(processCopy);
+    const author = button(
+      'Author reusable Process', 'author-process',
+      'process-plan-review__button--primary'
+    );
+    author.addEventListener('click', authorReusableProcess);
+    processOption.appendChild(author);
+    body.appendChild(processOption);
+    const divider = document.createElement('hr');
+    body.appendChild(divider);
     const targetLabel = document.createElement('label');
     targetLabel.textContent = 'Exact target folder';
     const target = document.createElement('input');
@@ -476,6 +595,87 @@
     });
     actions.appendChild(prepare);
     body.appendChild(actions);
+  }
+
+  function renderAuthoring(body) {
+    const authoring = state.authoring;
+    const proposal = authoring && authoring.proposal;
+    overlay.querySelector('#processPlanReviewTitle').textContent = 'Process Definition review';
+    if (!proposal) {
+      const missing = document.createElement('p');
+      missing.textContent = 'The exact Process Definition proposal is unavailable.';
+      body.appendChild(missing);
+      return;
+    }
+    const identity = document.createElement('p');
+    identity.className = 'process-plan-review__identity';
+    identity.textContent = (
+      `${proposal.definition_ref.definition_id}@${proposal.definition_ref.version} · `
+      + proposal.definition_ref.digest
+    );
+    body.appendChild(identity);
+    const definition = proposal.definition;
+    const summary = document.createElement('section');
+    summary.className = 'process-plan-review__field';
+    const heading = document.createElement('h3');
+    heading.textContent = definition.title;
+    summary.appendChild(heading);
+    const purpose = document.createElement('p');
+    purpose.textContent = definition.purpose;
+    summary.appendChild(purpose);
+    const stages = document.createElement('ol');
+    definition.graph.nodes
+      .filter((node) => !['terminal_state', 'verification_boundary'].includes(node.kind))
+      .forEach((node) => {
+        const row = document.createElement('li');
+        row.textContent = `${node.label} (${node.kind.replace('_', ' ')})`;
+        stages.appendChild(row);
+      });
+    summary.appendChild(stages);
+    body.appendChild(summary);
+    const boundary = document.createElement('div');
+    boundary.className = 'process-plan-review__notice';
+    boundary.textContent = (
+      'This definition is non-effectful and unscheduled. Approval constructs and registers '
+      + 'this exact version, then promotes it to the Process Library without activation.'
+    );
+    body.appendChild(boundary);
+    if (authoring.status === 'awaiting_definition_approval') {
+      const actions = document.createElement('div');
+      actions.className = 'process-plan-review__actions process-plan-review__actions--decision';
+      const approve = button(
+        'Approve and register exact definition', 'approve-process',
+        'process-plan-review__button--primary'
+      );
+      approve.addEventListener('click', () => decideAuthoring('approve_and_register'));
+      const revision = document.createElement('textarea');
+      revision.rows = 3;
+      revision.placeholder = 'Required definition change…';
+      revision.disabled = state.busy;
+      const revise = button('Request definition changes', 'revise-process', '');
+      revise.addEventListener('click', () => decideAuthoring('request_revision', revision.value));
+      actions.append(approve, revision, revise);
+      body.appendChild(actions);
+    } else if (authoring.status === 'available') {
+      const ready = document.createElement('div');
+      ready.className = 'process-plan-review__notice';
+      ready.textContent = (
+        'This exact version is registered and available in the Process Library. '
+        + 'It is not scheduled or activated.'
+      );
+      body.appendChild(ready);
+    } else if (authoring.status === 'revision_requested') {
+      const revised = document.createElement('div');
+      revised.className = 'process-plan-review__notice';
+      revised.textContent = 'The requested definition change is recorded. Author a new exact proposal.';
+      body.appendChild(revised);
+      const author = button(
+        'Author revised Process', 'reauthor-process',
+        'process-plan-review__button--primary'
+      );
+      author.addEventListener('click', authorReusableProcess);
+      body.appendChild(author);
+    }
   }
 
   function renderReasonPanel(body) {
@@ -628,6 +828,7 @@
   }
 
   function activeState() {
+    if (state.authoring && state.authoring.status === 'available') return false;
     if (state.interview) return true;
     if (!state.plan) return false;
     return !['retained'].includes(state.plan.status)
@@ -666,7 +867,10 @@
         );
         state.interview = interviewPayload.interview;
         state.plan = null;
-        if (state.interview.status === 'ready_for_plan') await loadPlanningContext();
+        if (state.interview.status === 'ready_for_plan') {
+          await loadPlanningContext();
+          await loadAuthoring();
+        }
       } catch (interviewError) {
         if (interviewError.status !== 404) state.error = interviewError.message;
         else reset(id);

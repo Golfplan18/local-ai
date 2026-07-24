@@ -2161,6 +2161,45 @@ Seven 1280×720 JPEG captures in the same directory were rendered from the shipp
 
 This evidence does not change any runtime behavior, issued Process Definition/package, or MSI state. It does not claim Windows/Linux visual support, a complete assistive-technology audit, general active-Run pause/reopen controls, broad standing-trigger management, or the full Gear 1/2/3 specification owned by G1.2.
 
+## 19. G1.18 Reusable Process Authoring and Isolated Execution
+
+### Reconciliation with the governed kernel
+
+G1.18 extends Chapter 18; it does not introduce an automation engine beside it. A reusable Process authored in the browser is a strict `ora.process-contracts/1.0` Process Definition, stored by `ProcessDefinitionRegistry`, promoted through `ProcessLibraryLifecycleService`, and executed as a `GovernedProcessRuntime` Run with the same authority, Artifact, evidence, attempt, checkpoint, recovery, and final-review rules as every other governed Run.
+
+Four statements in the older Project Integration Program are superseded for this gate:
+
+| Older G1.18 statement | Accepted G1.1-preserving disposition |
+|---|---|
+| Compile a Process into an executable PFF/Operations Manifest and run it through `milestone_executor.py` | Compile the reviewed blueprint into one registered normalized-JSON Process Definition and execute its graph through `GovernedProcessRuntime`; the no-tools worker is only an action actuator |
+| Put a Trigger inside each Process Definition | G1.18 definitions carry `triggers: false`; Trigger binding and scheduling belong to G1.19 |
+| Put Model Profile and Style selections on the definition | Resolve Project → Process → Step → one-Run Model Profile precedence and the existing output Style into the exact Run execution-context binding; the strict definition root remains unchanged |
+| Build the full Process telemetry surface with execution | Reuse existing Run Inspector projections; G1.20 owns the additional tracking and telemetry UI |
+
+Persona is not a dependency or a placeholder field. G1.18 does not select MindSpec, inject relationship text, create Persona precedence, or alter the existing interaction/output Style and honne/tatemae behavior.
+
+### Authoring, approval, registration, and Library availability
+
+After the persistent management interview reaches `ready_for_plan`, the plan-review surface offers **Author reusable Process**. `ProcessAutomationService` consumes that exact Dialogue/Run/answers binding and either validates a Principal-supplied blueprint or invokes the separate no-tools authoring worker. The blueprint schema permits only deterministic non-effectful action stages plus explicit human checkpoints. Extra roots such as `trigger`, `runtime`, `persona`, or `mindspec`, and operations that imply sending, publication, scheduling, activation, repository/file mutation, or another external effect, fail closed.
+
+The proposal is an exactly-once reserved authoring record bound to the management Run, answer digest, blueprint digest, complete definition, exact definition reference, worker receipt, and idempotency identity. Concurrent delivery of one identity produces one record. The Principal may request a reason-bound revision or approve the exact proposal ID and digest. Approval creates a child construction Run, resolves its declared human checkpoint, constructs the complete definition Artifact, uses the runtime's authenticated registration bridge, independently reviews the registration receipt, applies final `ACCEPT`, and explicitly promotes that exact capability to the Process Library. Registration and promotion do not activate or schedule it.
+
+### Manual execution and isolation
+
+Promoted G1.18 definitions appear in the Process Library with their exact input schema and `automated_execution_available: true`. The browser renders that schema, requires explicit confirmation of the current Project, and submits the exact definition triple, Project, inputs, and deterministic idempotency identity. The server fixes public authority to `principal:user`; a request cannot nominate a different Principal. Registry tampering, a stale/forged reference, missing promotion, incompatible Project scope, extra input, or an unavailable Model/Style binding stops before a Run begins.
+
+Every action creates a current-node checkpoint and bounded attempt before execution. `process_automation_worker.py` receives one immutable JSON request on standard input in a separate process. It exposes no Ora dispatcher, tool, shell, browser, file-write, messaging, or Process Runtime API. Model-backed steps use only the resolved named Model Profile and the existing output Style prompt. The controller persists file-backed output Artifacts, completes the attempt, and emits a reserved `isolated_process_step_completed` record binding the exact Run/definition/node/operation, attempt, worker request and response digests, execution-context digest, and Artifact ID/digest. An Artifact alone, generic observation, wrong node, changed execution context, or substituted worker record cannot complete the action.
+
+At a human checkpoint the Run becomes `pending`; only its exact Principal can resume and choose an allowed route. A rejected authority attempt changes no state. Worker failure completes the attempt with a typed defect and pauses at a durable recovery checkpoint. Restart revalidates definition, Project, Model Profile, Style, prior Artifact bytes, and persisted records before continuing; completed steps are not replayed.
+
+Final verification is another isolated worker invocation. Its evidence Artifact and reserved `isolated_process_verification_completed` record bind the current result ID/digest, evidence ID/digest, exact request/response, outcome, node, definition, and execution context. Only that record can support the ordinary G1.1 independent final review and `ACCEPT`. Generic `record_event` rejects authoring, isolated-step, and isolated-verification event families.
+
+### Worked email proof and deliberate limits
+
+The shipped proof definition is `user/email-processing@1.0.0`. It validates one exact email input, classifies it, summarizes it, pauses for Principal approval, and prepares an explicitly **UNSENT DRAFT** before independent verification. The worker has no sending capability, the graph has no send operation or external-effect node, and no outbound receipt or authority is present. The complete proof runs through real subprocesses, survives service restart at its human checkpoint, preserves completed steps across retry, and returns an authenticated result containing classification, summary, and unsent draft.
+
+The implementation surfaces are `orchestrator/process_automation.py`, `orchestrator/process_automation_worker.py`, the existing governed runtime/registry/Library/interview services, `/api/process-authoring/<dialogue>`, `/api/process-automation/runs`, `/api/process-automation/runs/<run>`, and the existing plan-review and Process Library clients. G1.18 adds no Trigger Manager, scheduler, outbound channel, external-effect executor, Persona, alternate runtime, or full telemetry dashboard.
+
 ---
 
 # Appendices
@@ -2927,6 +2966,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-07-23** — Added Chapter 19 for the G1.18 gate submission: exact G1.1 reconciliation, strict reusable-definition authoring and approval, authenticated registration/promotion, schema-driven Project-confirmed Library execution, existing Model/Style Run binding, no Persona/Trigger/external effects, isolated worker lineage, human checkpoint and recovery behavior, and the end-to-end unsent-email proof.
 - **2026-07-19** — Added the Phase 3.5 closeout evidence binding and rendered-interface provenance against accepted Gate 3.4 commit `6824bb03`. Recorded the seven screenshot surfaces, final packet path, explicit residual limitations, and Gate 3.4 acceptance without changing runtime behavior or issued definition/package identity.
 - **2026-07-19** — Expanded Chapter 18 for G1.1 Phase 3.4 against accepted Gate 3.3 commit `5bcba502`: added the maintainer reference for runtime objects/storage, contracts and bounded judgment, graph grammar, transitions, correction, parent-child continuation, recovery, evidence/identity, packages/catalogs/versioning, lifecycle, regression/change protocol, migration/disablement/rollback, troubleshooting, and known limits. Updated the browser plan surface/API map and retained exact vault-canonical/body-mirror parity. No runtime behavior or issued definition/package changed.
 - **2026-07-19** — Added Chapter 18 as the G1.1 as-built governed-process reconciliation pinned to Ora commit `6740f2fc`. Replaced the opening closed-suite and Agent-object claims, documented the generic kernel, exact package/registry identity, Gear 3/F-Quality boundary, management interface, code/API map, authority/defaults, evidence, deviations, and limitations, and preserved G1.2's ownership of the full Gear 1/2/3 specification.

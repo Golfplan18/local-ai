@@ -1,17 +1,16 @@
 /* G1.1 Phase 2.1/2.6/2.7 — governed entry, Library, and bridge label.
  *
- * This module deliberately stops at an authority-neutral routing contract.
- * It can classify an Inquiry, require an explicit project choice for
- * construction, and select an exact authenticated Process Definition.  It
- * does not create a Process Run or conduct the management interview. Phase
- * 2.6 library rows expose authenticated scope, package, lifecycle, and exact
- * promotion state; routing remains the authority boundary for invocation.
+ * This module classifies entry, requires explicit project choice for
+ * construction, and selects exact authenticated Process Definitions. G1.18
+ * adds a schema-driven manual start surface for promoted automated Processes;
+ * the server, not this client, creates and governs their durable Runs.
  */
 (() => {
   const ROUTE_URL = '/api/process-entry/route';
   const LIBRARY_URL = '/api/process-library/entries';
   const PROJECTS_URL = '/api/projects/meta?status=active';
   const CONSTRUCTION_LABEL_URL = '/api/process-entry/construction-label';
+  const AUTOMATION_RUN_URL = '/api/process-automation/runs';
 
   let overlay = null;
   let pendingResolve = null;
@@ -38,6 +37,16 @@
       digest: ref.digest,
     } : null;
   };
+
+  function hashText(value) {
+    let hash = 2166136261;
+    const text = String(value || '');
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+  }
 
   function ensureOverlay() {
     if (overlay) return overlay;
@@ -363,6 +372,200 @@
     return new Promise((resolve) => { pendingResolve = resolve; });
   }
 
+  function readAutomationValue(input, schema) {
+    const type = schema.type;
+    if (type === 'boolean') return !!input.checked;
+    if (type === 'integer') return Number.parseInt(input.value, 10);
+    if (type === 'number') return Number.parseFloat(input.value);
+    if (type === 'object' || type === 'array') return JSON.parse(input.value);
+    return input.value;
+  }
+
+  function renderAutomationRun(entry, state) {
+    const body = overlay.querySelector('.process-entry__body');
+    overlay.querySelector('.process-entry__title').textContent = entry.display_name || entry.id;
+    body.innerHTML = '';
+    const identity = document.createElement('p');
+    identity.className = 'process-entry__library-identity';
+    identity.textContent = `${state.definition_ref.definition_id}@${state.definition_ref.version} · ${state.definition_ref.digest}`;
+    body.appendChild(identity);
+    const status = document.createElement('div');
+    status.className = 'process-entry__notice';
+    status.textContent = `${state.status}: ${state.current_node.label}`;
+    body.appendChild(status);
+    if (state.status === 'awaiting_human_checkpoint') {
+      const boundary = document.createElement('p');
+      boundary.textContent = (
+        'This is an exact persisted human checkpoint. Approval advances only this '
+        + 'Process Run; it does not activate, schedule, send, or widen authority.'
+      );
+      body.appendChild(boundary);
+      const actions = document.createElement('div');
+      actions.className = 'process-entry__actions';
+      [['Approve checkpoint', 'approved'], ['Deny and stop', 'denied']].forEach(([label, outcome]) => {
+        const node = document.createElement('button');
+        node.type = 'button';
+        node.className = `process-entry__button ${outcome === 'approved' ? 'process-entry__button--primary' : 'process-entry__button--secondary'}`;
+        node.textContent = label;
+        node.addEventListener('click', async () => {
+          actions.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+          try {
+            const payload = await fetchJson(`${AUTOMATION_RUN_URL}/${encodeURIComponent(state.run_id)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'resolve_checkpoint', outcome,
+              }),
+            });
+            renderAutomationRun(entry, payload.run);
+          } catch (error) {
+            body.prepend(errorNode(error.message));
+            actions.querySelectorAll('button').forEach((button) => { button.disabled = false; });
+          }
+        });
+        actions.appendChild(node);
+      });
+      body.appendChild(actions);
+    } else if (state.status === 'paused_after_failure') {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'process-entry__button process-entry__button--primary';
+      retry.textContent = 'Retry from checkpoint';
+      retry.addEventListener('click', async () => {
+        retry.disabled = true;
+        try {
+          const payload = await fetchJson(`${AUTOMATION_RUN_URL}/${encodeURIComponent(state.run_id)}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'retry' }),
+          });
+          renderAutomationRun(entry, payload.run);
+        } catch (error) {
+          body.prepend(errorNode(error.message));
+          retry.disabled = false;
+        }
+      });
+      body.appendChild(retry);
+    } else if (state.run_state === 'completed' && state.result) {
+      const heading = document.createElement('h3');
+      heading.textContent = 'Authenticated result';
+      body.appendChild(heading);
+      const result = document.createElement('pre');
+      result.textContent = JSON.stringify(state.result.content, null, 2);
+      body.appendChild(result);
+    }
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'process-entry__button process-entry__button--secondary';
+    closeButton.textContent = 'Close';
+    closeButton.addEventListener('click', () => close(null));
+    body.appendChild(closeButton);
+    show();
+  }
+
+  async function showAutomatedRunForm(entry) {
+    ensureOverlay();
+    const body = overlay.querySelector('.process-entry__body');
+    overlay.querySelector('.process-entry__title').textContent = entry.display_name || entry.id;
+    body.innerHTML = '';
+    const intro = document.createElement('p');
+    intro.className = 'process-entry__notice';
+    intro.textContent = (
+      'Enter this Run\'s exact inputs. Ora executes the registered version in a '
+      + 'separate no-tools worker and stops at every human checkpoint.'
+    );
+    body.appendChild(intro);
+    const projectConfirmation = document.createElement('label');
+    projectConfirmation.className = 'process-entry__label process-entry__project-confirmation';
+    const projectCheckbox = document.createElement('input');
+    projectCheckbox.type = 'checkbox';
+    projectCheckbox.dataset.automationProjectConfirmed = 'true';
+    projectConfirmation.appendChild(projectCheckbox);
+    projectConfirmation.appendChild(document.createTextNode(
+      ` I confirm this Run belongs to Project: ${activeProject()}`
+    ));
+    body.appendChild(projectConfirmation);
+    const form = document.createElement('form');
+    form.className = 'process-entry__form process-entry__automation-form';
+    const schema = entry.input_schema || {};
+    const properties = schema.properties || {};
+    const required = new Set(schema.required || []);
+    Object.keys(properties).forEach((name) => {
+      const fieldSchema = properties[name] || {};
+      const label = document.createElement('label');
+      label.className = 'process-entry__label';
+      label.textContent = `${name.replace(/_/g, ' ')}${required.has(name) ? ' *' : ''}`;
+      let input;
+      if (fieldSchema.type === 'boolean') {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+      } else if (name === 'body' || fieldSchema.type === 'object' || fieldSchema.type === 'array') {
+        input = document.createElement('textarea');
+        input.rows = name === 'body' ? 6 : 4;
+        if (fieldSchema.type === 'object') input.placeholder = '{}';
+        if (fieldSchema.type === 'array') input.placeholder = '[]';
+      } else {
+        input = document.createElement('input');
+        input.type = ['integer', 'number'].includes(fieldSchema.type) ? 'number' : 'text';
+      }
+      input.dataset.automationInput = name;
+      input.required = required.has(name) && fieldSchema.type !== 'boolean';
+      label.appendChild(input);
+      form.appendChild(label);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'process-entry__actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'process-entry__button process-entry__button--secondary';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => close(null));
+    const run = document.createElement('button');
+    run.type = 'submit';
+    run.className = 'process-entry__button process-entry__button--primary';
+    run.textContent = 'Start governed Run';
+    actions.append(cancel, run);
+    form.appendChild(actions);
+    body.appendChild(form);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      form.querySelectorAll('.process-entry__error').forEach((node) => node.remove());
+      if (!projectCheckbox.checked) {
+        form.prepend(errorNode('Confirm the exact Project before starting this Run.'));
+        return;
+      }
+      const inputs = {};
+      try {
+        form.querySelectorAll('[data-automation-input]').forEach((input) => {
+          const name = input.dataset.automationInput;
+          if (!required.has(name) && !input.value && input.type !== 'checkbox') return;
+          inputs[name] = readAutomationValue(input, properties[name]);
+        });
+      } catch (error) {
+        form.prepend(errorNode(`Input JSON is invalid: ${error.message}`));
+        return;
+      }
+      run.disabled = true;
+      try {
+        const ref = exactRef(entry);
+        const payload = await fetchJson(AUTOMATION_RUN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            definition_ref: ref,
+            project_ref: activeProject(),
+            inputs,
+            idempotency_key: `process-ui:${hashText(JSON.stringify({ ref, project: activeProject(), inputs }))}`,
+          }),
+        });
+        renderAutomationRun(entry, payload.run);
+      } catch (error) {
+        form.prepend(errorNode(error.message));
+        run.disabled = false;
+      }
+    });
+    show();
+  }
+
   async function prepareInquiry(objective, selectedFramework) {
     const selectedRef = selectedFramework && selectedFramework.kind === 'process_definition'
       ? exactRef(selectedFramework) : null;
@@ -390,6 +593,10 @@
     if (contract.status === 'awaiting_definition_selection') {
       const selected = await chooseFromLibrary();
       if (!selected) return null;
+      if (selected.automated_execution_available) {
+        await showAutomatedRunForm(selected);
+        return null;
+      }
       const selectedRequest = {
         source: 'process_library',
         objective: request.objective,
@@ -451,6 +658,10 @@
   async function openLibrary() {
     const selected = await chooseFromLibrary();
     if (!selected) return null;
+    if (selected.automated_execution_available) {
+      await showAutomatedRunForm(selected);
+      return selected;
+    }
     const result = await showEntryForm({
       source: 'process_library',
       objective: '',

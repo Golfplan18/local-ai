@@ -5291,6 +5291,44 @@ def _process_library_error_status(exc: Exception) -> int:
     return 503
 
 
+def _process_automation_service(management_service=None):
+    """Construct the G1.18 adapter over the existing generic Process kernel."""
+
+    from process_automation import ProcessAutomationService
+
+    if management_service is not None:
+        return ProcessAutomationService(
+            runtime=management_service.runtime,
+            management_interview=management_service,
+        )
+    return ProcessAutomationService()
+
+
+def _process_automation_error_status(exc: Exception) -> int:
+    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
+    from process_automation import (
+        ProcessAutomationConflict,
+        ProcessAutomationError,
+        ProcessAutomationInputRequired,
+        ProcessAutomationIntegrityError,
+        ProcessAutomationWorkerError,
+    )
+
+    if isinstance(exc, RunNotFoundError):
+        return 404
+    if isinstance(exc, AuthorityDeniedError):
+        return 403
+    if isinstance(exc, ProcessAutomationInputRequired):
+        return 422
+    if isinstance(exc, ProcessAutomationConflict):
+        return 409
+    if isinstance(exc, (ProcessAutomationIntegrityError, ProcessAutomationWorkerError)):
+        return 503
+    if isinstance(exc, ProcessAutomationError):
+        return 400
+    return 503
+
+
 @app.route("/api/process-entry/construction-label", methods=["GET", "POST"])
 def process_entry_construction_label():
     """Evidence-gated Programming/Build bridge-trial decision.
@@ -5987,6 +6025,159 @@ def process_management_interview_state(conversation_id):
     if state is None:
         return _json_response({"ok": False, "error": "management_interview_not_found"}, 404)
     return _json_response({"ok": True, "interview": state})
+
+
+@app.route("/api/process-authoring/<conversation_id>", methods=["GET", "POST"])
+def process_automation_authoring(conversation_id):
+    """Author and principal-approve one exact reusable Process Definition."""
+
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+    service = _process_automation_service()
+    try:
+        if request.method == "GET":
+            state = service.get_authoring(conversation_id)
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                from process_automation import ProcessAutomationInputRequired
+
+                raise ProcessAutomationInputRequired(
+                    "Process authoring request must be an object"
+                )
+            action = str(payload.get("action") or "")
+            if action == "propose":
+                if set(payload) - {"action", "idempotency_key", "blueprint"}:
+                    from process_automation import ProcessAutomationInputRequired
+
+                    raise ProcessAutomationInputRequired(
+                        "propose accepts only action, idempotency_key, and optional blueprint"
+                    )
+                state = service.propose(
+                    conversation_id,
+                    idempotency_key=str(payload.get("idempotency_key") or ""),
+                    blueprint=payload.get("blueprint"),
+                )
+            elif action == "request_revision":
+                if set(payload) != {"action", "proposal_id", "reason"}:
+                    from process_automation import ProcessAutomationInputRequired
+
+                    raise ProcessAutomationInputRequired(
+                        "request_revision requires exact proposal_id and reason"
+                    )
+                state = service.request_revision(
+                    conversation_id,
+                    proposal_id=str(payload.get("proposal_id") or ""),
+                    reason=str(payload.get("reason") or ""),
+                )
+            elif action == "approve_and_register":
+                if set(payload) != {
+                    "action", "proposal_id", "proposal_digest",
+                }:
+                    from process_automation import ProcessAutomationInputRequired
+
+                    raise ProcessAutomationInputRequired(
+                        "approve_and_register requires the exact proposal identity"
+                    )
+                state = service.approve_and_register(
+                    conversation_id,
+                    proposal_id=str(payload.get("proposal_id") or ""),
+                    proposal_digest=str(payload.get("proposal_digest") or ""),
+                    decision_by="principal:user",
+                )
+            else:
+                from process_automation import ProcessAutomationInputRequired
+
+                raise ProcessAutomationInputRequired("unknown Process authoring action")
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_automation_error_status(exc),
+        )
+    return _json_response({"ok": True, "authoring": state})
+
+
+@app.route("/api/process-automation/runs", methods=["POST"])
+def process_automation_begin_run():
+    """Begin and advance one exact promoted definition to its next stop."""
+
+    payload = request.get_json(silent=True)
+    try:
+        if not isinstance(payload, dict):
+            from process_automation import ProcessAutomationInputRequired
+
+            raise ProcessAutomationInputRequired("automated Process request must be an object")
+        required = {
+            "definition_ref", "project_ref", "inputs", "idempotency_key",
+        }
+        optional = {
+            "process_profile", "step_profiles",
+            "one_run_profile", "style_profile",
+        }
+        missing = sorted(required - set(payload))
+        extra = sorted(set(payload) - required - optional)
+        if missing or extra:
+            from process_automation import ProcessAutomationInputRequired
+
+            raise ProcessAutomationInputRequired(
+                f"automated Process request fields are invalid; missing={missing}, unsupported={extra}"
+            )
+        service = _process_automation_service()
+        state = service.begin_run(
+            definition_ref=payload["definition_ref"],
+            project_ref=str(payload["project_ref"]),
+            inputs=payload["inputs"],
+            idempotency_key=str(payload["idempotency_key"]),
+            principal_id="principal:user",
+            process_profile=payload.get("process_profile"),
+            step_profiles=payload.get("step_profiles"),
+            one_run_profile=payload.get("one_run_profile"),
+            style_profile=payload.get("style_profile"),
+        )
+        state = service.execute(state["run_id"])
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_automation_error_status(exc),
+        )
+    return _json_response({"ok": True, "run": state}, 201)
+
+
+@app.route("/api/process-automation/runs/<path:run_id>", methods=["GET", "POST"])
+def process_automation_run_state(run_id):
+    """Read, resume, or resolve one persisted automated Process Run."""
+
+    service = _process_automation_service()
+    try:
+        if request.method == "GET":
+            state = service.run_state(str(run_id))
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                from process_automation import ProcessAutomationInputRequired
+
+                raise ProcessAutomationInputRequired("Run action must be an object")
+            action = str(payload.get("action") or "")
+            if action in {"execute", "retry"} and set(payload) == {"action"}:
+                state = service.execute(str(run_id))
+            elif action == "resolve_checkpoint" and set(payload) == {
+                "action", "outcome",
+            }:
+                state = service.resolve_checkpoint(
+                    str(run_id),
+                    outcome=str(payload.get("outcome") or ""),
+                    decision_by="principal:user",
+                )
+            else:
+                from process_automation import ProcessAutomationInputRequired
+
+                raise ProcessAutomationInputRequired("Run action fields are invalid")
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_automation_error_status(exc),
+        )
+    return _json_response({"ok": True, "run": state})
 
 
 @app.route("/api/process-plan-context/<conversation_id>", methods=["GET"])
@@ -9348,6 +9539,20 @@ def chat():
             if active_plan is None:
                 interview_service = _management_interview_service()
                 active_interview = interview_service.get_state(panel_id)
+                if (
+                    active_interview is not None
+                    and active_interview.get("status") == "ready_for_plan"
+                ):
+                    # G1.18 is a second, explicitly chosen completion path from
+                    # the same accepted management interview. Once its exact
+                    # construction Run is promoted, the old Programming-plan
+                    # branch must no longer intercept every ordinary Dialogue
+                    # turn. The binding remains intact for audit/restart.
+                    authored = _process_automation_service(
+                        interview_service
+                    ).get_authoring(panel_id)
+                    if authored and authored.get("status") == "available":
+                        active_interview = None
     except Exception as exc:
         _delete_pending_submission(submission_id)
         return _json_response(

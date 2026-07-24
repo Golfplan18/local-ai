@@ -107,6 +107,7 @@ function interviewState(status) {
     status: status,
     run_id: 'run-plan',
     binding_digest: 'sha256:' + 'd'.repeat(64),
+    answers_digest: 'sha256:' + 'e'.repeat(64),
     project_ref: 'ora',
     dimensions: ['intended_result', 'affected_parties'],
     resolved_dimensions: status === 'ready_for_plan' ? ['intended_result', 'affected_parties'] : [],
@@ -123,7 +124,35 @@ var requests = [];
 var remotePlan = null;
 var remoteInterview = null;
 var remoteDelegation = null;
+var remoteAuthoring = null;
 var failNext = false;
+
+function authoringState(status) {
+  var definitionRef = {
+    definition_id: 'user/email-processing',
+    version: '1.0.0',
+    digest: 'sha256:' + 'f'.repeat(64),
+  };
+  return {
+    status: status,
+    proposal: status === 'ready_to_author' ? null : {
+      proposal_id: 'proposal-email',
+      proposal_digest: 'sha256:' + '9'.repeat(64),
+      definition_ref: definitionRef,
+      definition: {
+        title: 'Email Processing',
+        purpose: 'Classify, summarize, and prepare an unsent draft.',
+        graph: { nodes: [
+          { node_id: 'classify', kind: 'action', label: 'Classify email' },
+          { node_id: 'draft-approval', kind: 'human_checkpoint', label: 'Approve draft' },
+          { node_id: 'draft', kind: 'action', label: 'Prepare unsent draft' },
+          { node_id: 'review', kind: 'verification_boundary', label: 'Verify' },
+          { node_id: 'accepted', kind: 'terminal_state', label: 'Accepted' },
+        ] },
+      },
+    },
+  };
+}
 
 function jsonResponse(payload, status) {
   return Promise.resolve({
@@ -194,6 +223,25 @@ global.fetch = function (url, options) {
     return remoteDelegation
       ? jsonResponse({ ok: true, delegation: remoteDelegation })
       : jsonResponse({ error: 'delegation_not_found' }, 404);
+  }
+  if (url === '/api/process-authoring/dialogue-plan') {
+    if (options && options.method === 'POST') {
+      var authoringRequest = JSON.parse(options.body);
+      requests.push({ process_authoring: authoringRequest });
+      if (authoringRequest.action === 'propose') {
+        remoteAuthoring = authoringState('awaiting_definition_approval');
+      } else if (authoringRequest.action === 'approve_and_register') {
+        remoteAuthoring = authoringState('available');
+      } else if (authoringRequest.action === 'request_revision') {
+        remoteAuthoring = authoringState('revision_requested');
+      } else {
+        return jsonResponse({ error: 'unexpected authoring action' }, 400);
+      }
+    }
+    return jsonResponse({
+      ok: true,
+      authoring: remoteAuthoring || authoringState('ready_to_author'),
+    });
   }
   return Promise.reject(new Error('unexpected fetch: ' + url));
 };
@@ -331,6 +379,37 @@ async function run() {
   record('server failure stays visible without inventing success',
     /stale plan identity/.test(w.document.querySelector('.process-plan-review__error').textContent)
       && w.OraProcessPlanReview._state().plan.status === 'stale');
+
+  remotePlan = null;
+  remoteInterview = interviewState('ready_for_plan');
+  remoteAuthoring = authoringState('ready_to_author');
+  await w.OraProcessPlanReview.hydrate('dialogue-plan', { open: true });
+  await settle();
+  record('completed management interview offers G1.1-native Process authoring',
+    !!button('Author reusable Process')
+      && /No Trigger, Persona, scheduling, activation, sending, or external effect/.test(
+        w.document.querySelector('.process-plan-review__body').textContent
+      ));
+  button('Author reusable Process').click();
+  await settle();
+  var authorRequest = requests.slice().reverse().find(function (item) {
+    return item.process_authoring && item.process_authoring.action === 'propose';
+  }).process_authoring;
+  record('authoring request binds completed interview through deterministic identity',
+    /^authoring-ui:[0-9a-f]{8}$/.test(authorRequest.idempotency_key)
+      && /Email Processing/.test(w.document.body.textContent)
+      && !!button('Approve and register exact definition'));
+  button('Approve and register exact definition').click();
+  await settle();
+  var approvalRequest = requests.slice().reverse().find(function (item) {
+    return item.process_authoring
+      && item.process_authoring.action === 'approve_and_register';
+  }).process_authoring;
+  record('browser approval binds exact proposal and does not activate or schedule',
+    approvalRequest.proposal_id === 'proposal-email'
+      && approvalRequest.proposal_digest === 'sha256:' + '9'.repeat(64)
+      && !Object.prototype.hasOwnProperty.call(approvalRequest, 'decision_by')
+      && /not scheduled or activated/.test(w.document.body.textContent));
 
   var failed = results.filter(function (item) { return !item.ok; });
   console.log('\n' + (results.length - failed.length) + '/' + results.length + ' passed');
