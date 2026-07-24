@@ -1,15 +1,24 @@
 # G1.18 Gate Submission — Reusable Process Authoring and Execution
 
-Status: implementation complete; independent Gate G1.18 judgment pending. G1.20 and G1.19 have not started.
+Status: correction implementation complete; independent Gate G1.18 re-judgment pending. G1.19 and G1.20 remain unauthorized.
 
 ## Scope and baseline
 
 - Runtime baseline: `b0c9edaff62b490287ec03818857edf99a7364c4` (accepted G1.16).
 - Vault baseline: `5c20bfa1a2bf2ce957dc96cdfbeea3532aa51431` (G1.17 bounded deferral).
+- First rejected G1.18 submission: runtime `4551e171011990c9581a0466e36d31c6d7f6d2aa`; vault `87ebca7671e7d81f07777292e7b71cbaed4a7d14`.
 - G1.17 remains user-deferred. No Persona architecture, Persona registry/binding, MindSpec selection, relationship-blurb injection, or Persona precedence was added.
 - The existing `interaction_style`/`output_style` split and honne/tatemae behavior are unchanged.
 - G1.18 adds no Trigger, scheduler, outbound channel, sending, publication, activation, external-effect executor, or expanded G1.20 telemetry UI.
 - The pre-existing untracked `data/conversation-manifest.jsonl.lock` remains untouched.
+
+## 2026-07-24 gate correction
+
+The three independent findings reproduced against `4551e171` before correction:
+
+1. A nonempty `{"result":"WRONG"}` received worker `PASS` against “must exactly equal EXPECTED.” The corrected blueprint contract rejects free-text criteria as unassessable. Each admitted structured criterion now produces an ID/kind/result/reason/observation-digest assessment; the controller independently recomputes the supported predicate, and runtime final review authenticates the complete assessment/start/attempt/result/evidence lineage. Wrong, partial, contradictory, or fabricated success cannot authorize `ACCEPT`.
+2. An exception from the verification worker left the Run `running` at `final-review`. Verification now creates a pre-attempt checkpoint, consumes a bounded attempt, persists `isolated_process_verification_started`, records typed failure and a recovery checkpoint, and leaves the Run `pending`. Restart resumes only verification. Every retry is persisted; exhaustion records the final failure and routes to `BLOCKED`.
+3. `enum` and other property constraints survived authoring but were not evaluated. The admitted recursive subset is now explicit and complete: object/array structure, required/no-additional fields, `enum`, `const`, string length, numeric bounds and `multipleOf`, array length/uniqueness, and object-size constraints. The same validator enforces inputs before Run creation and complete outputs before verification. Unsupported keywords fail during authoring.
 
 ## G1.1 reconciliation
 
@@ -25,26 +34,27 @@ No other conflict was found. Definition registry, Library promotion, management 
 ## Implemented path
 
 1. A completed real management interview offers reusable Process authoring in the existing plan-review browser surface.
-2. A strict blueprint is validated against non-effectful action and human-checkpoint grammar. Trigger, runtime-engine, Persona, MindSpec, and effectful fields are rejected.
+2. A strict blueprint is validated against non-effectful action and human-checkpoint grammar, the complete admitted JSON Schema subset, and a closed machine-assessable criterion grammar. Trigger, runtime-engine, Persona, MindSpec, effectful fields, unsupported schema keywords, and unassessable criteria are rejected.
 3. Proposal and revision records are runtime-reserved and retry-safe. Concurrent delivery of one authoring identity persists one authoritative record; an unchanged proposal cannot satisfy a requested revision.
 4. Principal approval binds the exact proposal ID/digest, creates a G1.1 child construction Run, constructs the definition Artifact, invokes the runtime registration bridge, independently reviews the registration receipt, applies `ACCEPT`, and explicitly promotes the exact capability.
 5. Process Library exposes only the exact promoted G1.18 definition plus its input schema. The browser requires explicit current-Project confirmation before starting.
 6. The public API fixes the Principal to `principal:user`, validates exact definition/project/input/profile/style bindings, and returns one deterministic restart-safe Run identity.
 7. Each action persists a current-node checkpoint and bounded attempt, invokes a separate no-tools worker, stores a file-backed Artifact, and binds completion to a reserved execution record containing exact Run/definition/node/operation/attempt/context/request/response/Artifact identities.
 8. A human checkpoint can be resolved only by the exact Run Principal. Denial blocks without producing the draft; failed authority changes no state.
-9. Worker failure pauses at a persisted recovery point. Retry preserves completed steps, obeys the total initial-plus-correction attempt ceiling, and reauthenticates Project/Model/Style and Artifact content.
-10. Independent isolated verification produces exact evidence and a reserved verification record. Artifact-only, evidence-only, generic-event, stale-context, and direct-completion paths cannot authorize `ACCEPT`.
+9. Action or verification-worker failure completes its attempt, persists a typed failure record and recovery checkpoint, and pauses. Retry preserves completed steps, obeys the total attempt ceiling, and reauthenticates Project/Model/Style, Artifact content, and verification lineage. Exhaustion blocks.
+10. Independent isolated verification assesses every structured criterion, while the controller mechanically recomputes each result. Exact evidence and reserved start/completion records bind the criterion set, assessment set, attempt, Run, definition, result, evidence, request/response, and execution context. Artifact-only, evidence-only, generic-event, false/partial assessment, stale-context, and direct-completion paths cannot authorize `ACCEPT`.
 
 ## Email-processing proof
 
-`user/email-processing@1.0.0` accepts exact message ID, sender, subject, and body fields. It classifies and summarizes the email, stops at the Principal checkpoint, prepares an `UNSENT DRAFT` only after approval, and independently verifies the complete result. The full positive proof uses four real separate-process worker invocations (three actions plus verification). The worker contains no sending, dispatcher, tool, shell, browser, file-write, messaging, or Process Runtime API. A denied checkpoint produces no draft and no acceptance.
+`user/email-processing@1.0.0` accepts exact message ID, sender, subject, and body fields. It classifies and summarizes the email, stops at the Principal checkpoint, prepares an `UNSENT DRAFT` only after approval, and independently verifies three structured criteria: deterministic input grounding, the exact unsent prefix, and authenticated absence of external effects. The full positive proof uses four real separate-process worker invocations (three actions plus verification). The worker contains no sending, dispatcher, tool, shell, browser, file-write, messaging, or Process Runtime API. A denied checkpoint produces no draft and no acceptance.
 
 ## Adversarial coverage
 
 The focused suite proves:
 
 - strict G1.1 definition validation and normalized content identity;
-- rejection of parallel-engine, Trigger, Persona, MindSpec, external-operation, duplicate-operation/output, and unproduced-required-output blueprints;
+- rejection of parallel-engine, Trigger, Persona, MindSpec, external-operation, duplicate-operation/output, unproduced-required-output, unsupported-schema, and unassessable-criterion blueprints;
+- input and output enforcement for the admitted recursive schema subset, including public-API `enum` and length refusal;
 - completed real management interview binding;
 - exact, concurrent-idempotent proposal records, changed revision identity, Principal approval, construction, registration receipt, independent review, and Library promotion;
 - unpromoted, wrong-project, stale-definition, bad-input, and caller-selected-Principal refusal;
@@ -53,13 +63,14 @@ The focused suite proves:
 - real separate-process action and full email execution;
 - reserved-event, Artifact-only completion, evidence-only acceptance, and non-Principal checkpoint attacks;
 - human approval and denial paths;
-- checkpoint restart, output drift refusal, injected worker failure, retry without replay, completed-Run retry idempotency, and authenticated result identity;
+- wrong nonempty output, partially satisfied criteria, fabricated worker `PASS`, and exact criterion/result evidence binding;
+- action and verification failure records, recovery checkpoints, successful restart retry without action replay, bounded verifier exhaustion, output drift refusal, completed-Run retry idempotency, and authenticated result identity;
 - exact public authoring/run/checkpoint endpoints and unknown-field refusal;
 - canonical/mirror body parity and tracker/Registry scope boundaries.
 
 ## Reproducible verification
 
-All commands run from the accepted checkout on 2026-07-23 with:
+All commands run from the corrected checkout on 2026-07-24 with:
 
 ```bash
 cd /Users/oracle/ora-msi-central-routing
@@ -71,7 +82,15 @@ Focused G1.18:
 
 ```bash
 python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py
-# 25 passed, 8 subtests passed; exit 0
+# 32 passed, 12 subtests passed; exit 0
+```
+
+Original finding and adjacent bypass closure:
+
+```bash
+python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py \
+  -k 'schema_constraints or verifier_fails or wrong_or_partially or verification_failure_restart or verification_failure_can_resume or output_schema_constraint or public_run_enforces'
+# 7 passed, 25 deselected, 2 subtests passed; exit 0
 ```
 
 Accepted G1.1 kernel and Phase 1/2 adjacency plus G1.18:
@@ -92,7 +111,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_7_surface_boundaries.py \
   orchestrator/tests/test_phase_2_8_experience_validation.py \
   orchestrator/tests/test_g1_18_process_automation.py
-# 367 passed, 195 subtests passed; exit 0
+# 374 passed, 201 subtests passed; exit 0
 ```
 
 Model Profile/dispatcher adjacency:

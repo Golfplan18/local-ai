@@ -5318,13 +5318,20 @@ def _process_automation_error_status(exc: Exception) -> int:
         return 404
     if isinstance(exc, AuthorityDeniedError):
         return 403
-    if isinstance(exc, ProcessAutomationInputRequired):
+    # The installed server loads orchestrator modules as top-level modules,
+    # while package-based tests and embedders may hold the same exception
+    # class through ``orchestrator.process_automation``.  Preserve the public
+    # typed status across that import boundary without widening what is caught.
+    exact_type_name = type(exc).__name__
+    if isinstance(exc, ProcessAutomationInputRequired) or exact_type_name == "ProcessAutomationInputRequired":
         return 422
-    if isinstance(exc, ProcessAutomationConflict):
+    if isinstance(exc, ProcessAutomationConflict) or exact_type_name == "ProcessAutomationConflict":
         return 409
-    if isinstance(exc, (ProcessAutomationIntegrityError, ProcessAutomationWorkerError)):
+    if isinstance(exc, (ProcessAutomationIntegrityError, ProcessAutomationWorkerError)) or exact_type_name in {
+        "ProcessAutomationIntegrityError", "ProcessAutomationWorkerError",
+    }:
         return 503
-    if isinstance(exc, ProcessAutomationError):
+    if isinstance(exc, ProcessAutomationError) or exact_type_name == "ProcessAutomationError":
         return 400
     return 503
 

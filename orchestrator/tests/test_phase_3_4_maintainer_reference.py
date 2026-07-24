@@ -65,7 +65,7 @@ class TestPhase34MaintainerReference(unittest.TestCase):
             "nexus:\n  - ora",
             "type: reference",
             "date created: 2026-07-04",
-            "date modified: 2026/07/23",
+            "date modified: 2026/07/24",
         ):
             self.assertIn(token, self.canonical_raw)
         self.assertFalse(self.mirror_raw.startswith("---\n"))

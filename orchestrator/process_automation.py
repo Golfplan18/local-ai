@@ -19,11 +19,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
 import sys
 import uuid
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -38,6 +40,7 @@ try:
         RunNotFoundError,
     )
     from .model_profiles import ModelProfileError, resolve_effective_profile
+    from .process_automation_worker import assess_criteria as mechanically_assess_criteria
     from .process_definition_registry import (
         ProcessDefinitionRegistry,
         ProcessDefinitionRegistryError,
@@ -62,6 +65,7 @@ except ImportError:  # pragma: no cover - direct module execution/tests
         RunNotFoundError,
     )
     from model_profiles import ModelProfileError, resolve_effective_profile  # type: ignore
+    from process_automation_worker import assess_criteria as mechanically_assess_criteria  # type: ignore
     from process_definition_registry import (  # type: ignore
         ProcessDefinitionRegistry,
         ProcessDefinitionRegistryError,
@@ -181,39 +185,251 @@ def _seal_definition(definition: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _normalize_json_schema(value: Any, label: str) -> dict[str, Any]:
+_SCHEMA_TYPES = {"string", "number", "integer", "boolean", "object", "array"}
+_COMMON_SCHEMA_KEYS = {"type", "enum", "const"}
+_TYPE_SCHEMA_KEYS = {
+    "string": {"minLength", "maxLength"},
+    "number": {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"},
+    "integer": {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"},
+    "boolean": set(),
+    "object": {"properties", "required", "additionalProperties", "minProperties", "maxProperties"},
+    "array": {"items", "minItems", "maxItems", "uniqueItems"},
+}
+
+
+def _json_type_ok(value: Any, declared: str) -> bool:
+    if declared == "string":
+        return isinstance(value, str)
+    if declared == "number":
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return False
+        try:
+            return math.isfinite(float(value))
+        except (OverflowError, ValueError):
+            return False
+    if declared == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if declared == "boolean":
+        return isinstance(value, bool)
+    if declared == "object":
+        return isinstance(value, Mapping)
+    if declared == "array":
+        return isinstance(value, list)
+    return False
+
+
+def _canonical_value_identity(value: Any, label: str) -> str:
+    try:
+        return _canonical_json(value)
+    except (TypeError, ValueError) as exc:
+        raise ProcessAutomationInputRequired(f"{label} must be JSON-serializable") from exc
+
+
+def _bounded_nonnegative_integer(value: Any, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ProcessAutomationInputRequired(f"{label} must be a nonnegative integer")
+    return value
+
+
+def _finite_number(value: Any, label: str) -> int | float:
+    if not _json_type_ok(value, "number"):
+        raise ProcessAutomationInputRequired(f"{label} must be a finite number")
+    return value
+
+
+def _normalize_schema_node(
+    value: Any,
+    label: str,
+    *,
+    require_properties: bool = False,
+) -> dict[str, Any]:
     if not isinstance(value, Mapping):
-        raise ProcessAutomationInputRequired(f"{label} must be an object schema")
-    schema = copy.deepcopy(dict(value))
-    if schema.get("type") != "object":
+        raise ProcessAutomationInputRequired(f"{label} must be a schema object")
+    raw = copy.deepcopy(dict(value))
+    declared = raw.get("type")
+    if declared not in _SCHEMA_TYPES:
+        raise ProcessAutomationInputRequired(f"{label}.type is unsupported")
+    allowed = _COMMON_SCHEMA_KEYS | _TYPE_SCHEMA_KEYS[declared]
+    unsupported = sorted(set(raw) - allowed)
+    if unsupported:
+        raise ProcessAutomationInputRequired(
+            f"{label} has unsupported schema keyword(s): {', '.join(unsupported)}"
+        )
+    clean: dict[str, Any] = {"type": declared}
+    if "enum" in raw:
+        enum = raw["enum"]
+        if not isinstance(enum, list) or not enum:
+            raise ProcessAutomationInputRequired(f"{label}.enum must be a nonempty array")
+        identities = [_canonical_value_identity(item, f"{label}.enum") for item in enum]
+        if len(identities) != len(set(identities)):
+            raise ProcessAutomationInputRequired(f"{label}.enum contains duplicates")
+        if any(not _json_type_ok(item, declared) for item in enum):
+            raise ProcessAutomationInputRequired(f"{label}.enum contains a value of the wrong type")
+        clean["enum"] = enum
+    if "const" in raw:
+        if not _json_type_ok(raw["const"], declared):
+            raise ProcessAutomationInputRequired(f"{label}.const has the wrong type")
+        _canonical_value_identity(raw["const"], f"{label}.const")
+        clean["const"] = raw["const"]
+    if declared == "string":
+        for field in ("minLength", "maxLength"):
+            if field in raw:
+                clean[field] = _bounded_nonnegative_integer(raw[field], f"{label}.{field}")
+        if clean.get("maxLength") is not None and clean.get("minLength", 0) > clean["maxLength"]:
+            raise ProcessAutomationInputRequired(f"{label}.minLength exceeds maxLength")
+    elif declared in {"number", "integer"}:
+        for field in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
+            if field in raw:
+                clean[field] = _finite_number(raw[field], f"{label}.{field}")
+        if "multipleOf" in raw:
+            multiple = _finite_number(raw["multipleOf"], f"{label}.multipleOf")
+            if multiple <= 0:
+                raise ProcessAutomationInputRequired(f"{label}.multipleOf must be greater than zero")
+            clean["multipleOf"] = multiple
+        lower = clean.get("minimum")
+        upper = clean.get("maximum")
+        if lower is not None and upper is not None and lower > upper:
+            raise ProcessAutomationInputRequired(f"{label}.minimum exceeds maximum")
+    elif declared == "object":
+        properties = raw.get("properties")
+        if not isinstance(properties, Mapping) or (require_properties and not properties):
+            raise ProcessAutomationInputRequired(f"{label}.properties must be a nonempty object")
+        clean_properties: dict[str, Any] = {}
+        for raw_name, raw_property in (properties or {}).items():
+            name = str(raw_name)
+            if not _FIELD_RE.fullmatch(name):
+                raise ProcessAutomationInputRequired(
+                    f"{label} contains an invalid field declaration: {name!r}"
+                )
+            clean_properties[name] = _normalize_schema_node(
+                raw_property, f"{label}.{name}",
+            )
+        required = raw.get("required", [])
+        if (
+            not isinstance(required, list)
+            or any(not isinstance(item, str) or item not in clean_properties for item in required)
+        ):
+            raise ProcessAutomationInputRequired(f"{label}.required references an unknown field")
+        if len(required) != len(set(required)):
+            raise ProcessAutomationInputRequired(f"{label}.required contains duplicates")
+        additional = raw.get("additionalProperties", False)
+        if additional is not False:
+            raise ProcessAutomationInputRequired(
+                f"{label}.additionalProperties supports only false"
+            )
+        clean.update({
+            "properties": clean_properties,
+            "required": list(required),
+            "additionalProperties": False,
+        })
+        for field in ("minProperties", "maxProperties"):
+            if field in raw:
+                clean[field] = _bounded_nonnegative_integer(raw[field], f"{label}.{field}")
+        if clean.get("maxProperties") is not None and clean.get("minProperties", 0) > clean["maxProperties"]:
+            raise ProcessAutomationInputRequired(f"{label}.minProperties exceeds maxProperties")
+    elif declared == "array":
+        if "items" not in raw:
+            raise ProcessAutomationInputRequired(f"{label}.items is required")
+        clean["items"] = _normalize_schema_node(raw["items"], f"{label}.items")
+        for field in ("minItems", "maxItems"):
+            if field in raw:
+                clean[field] = _bounded_nonnegative_integer(raw[field], f"{label}.{field}")
+        if clean.get("maxItems") is not None and clean.get("minItems", 0) > clean["maxItems"]:
+            raise ProcessAutomationInputRequired(f"{label}.minItems exceeds maxItems")
+        if "uniqueItems" in raw:
+            if not isinstance(raw["uniqueItems"], bool):
+                raise ProcessAutomationInputRequired(f"{label}.uniqueItems must be boolean")
+            clean["uniqueItems"] = raw["uniqueItems"]
+    return clean
+
+
+def _normalize_json_schema(value: Any, label: str) -> dict[str, Any]:
+    schema = _normalize_schema_node(value, label, require_properties=True)
+    if schema["type"] != "object":
         raise ProcessAutomationInputRequired(f"{label}.type must be object")
-    properties = schema.get("properties")
-    if not isinstance(properties, Mapping) or not properties:
-        raise ProcessAutomationInputRequired(f"{label}.properties must be non-empty")
-    clean_properties: dict[str, Any] = {}
-    for raw_name, raw_property in properties.items():
-        name = str(raw_name)
-        if not _FIELD_RE.fullmatch(name) or not isinstance(raw_property, Mapping):
+    return schema
+
+
+def _normalize_acceptance_criteria(
+    value: Any,
+    *,
+    input_schema: Mapping[str, Any],
+    output_schema: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not value:
+        raise ProcessAutomationInputRequired("acceptance_criteria must be a nonempty array")
+    input_properties = input_schema["properties"]
+    output_properties = output_schema["properties"]
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(value):
+        label = f"acceptance_criteria[{index}]"
+        if not isinstance(raw, Mapping):
             raise ProcessAutomationInputRequired(
-                f"{label} contains an invalid field declaration: {name!r}"
+                f"{label} is unassessable; criteria must use a supported structured kind"
             )
-        prop = copy.deepcopy(dict(raw_property))
-        if prop.get("type") not in {"string", "number", "integer", "boolean", "object", "array"}:
+        kind = str(raw.get("kind") or "")
+        common = {"criterion_id", "description", "kind"}
+        kind_fields = {
+            "field_equals": {"field", "expected"},
+            "field_prefix": {"field", "expected"},
+            "field_contains": {"field", "expected"},
+            "email_grounding": {"classification_field", "summary_field"},
+            "no_external_effects": set(),
+        }
+        if kind not in kind_fields:
+            raise ProcessAutomationInputRequired(f"{label}.kind is unsupported or unassessable")
+        expected_keys = common | kind_fields[kind]
+        if set(raw) != expected_keys:
             raise ProcessAutomationInputRequired(
-                f"{label}.{name}.type is unsupported"
+                f"{label} fields are invalid; missing={sorted(expected_keys - set(raw))}, "
+                f"unsupported={sorted(set(raw) - expected_keys)}"
             )
-        clean_properties[name] = prop
-    required = schema.get("required", [])
-    if not isinstance(required, list) or any(item not in clean_properties for item in required):
-        raise ProcessAutomationInputRequired(f"{label}.required references an unknown field")
-    if len(required) != len(set(required)):
-        raise ProcessAutomationInputRequired(f"{label}.required contains duplicates")
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": clean_properties,
-        "required": list(required),
-    }
+        criterion_id = _safe_id(str(raw["criterion_id"]), f"{label}.criterion_id")
+        if criterion_id in seen:
+            raise ProcessAutomationInputRequired("acceptance_criteria contains duplicate IDs")
+        seen.add(criterion_id)
+        criterion = {
+            "criterion_id": criterion_id,
+            "description": _safe_text(raw["description"], f"{label}.description", limit=1_000),
+            "kind": kind,
+        }
+        if kind in {"field_equals", "field_prefix", "field_contains"}:
+            field = str(raw["field"])
+            if field not in output_properties:
+                raise ProcessAutomationInputRequired(f"{label}.field is not a declared output")
+            criterion["field"] = field
+            if kind == "field_equals":
+                _validate_schema_value(
+                    raw["expected"], output_properties[field], f"{label}.expected",
+                )
+                criterion["expected"] = copy.deepcopy(raw["expected"])
+            else:
+                if output_properties[field]["type"] != "string":
+                    raise ProcessAutomationInputRequired(f"{label}.field must be a string output")
+                criterion["expected"] = _safe_text(
+                    raw["expected"], f"{label}.expected", limit=2_000,
+                )
+        elif kind == "email_grounding":
+            classification_field = str(raw["classification_field"])
+            summary_field = str(raw["summary_field"])
+            if not {"subject", "body"}.issubset(input_properties):
+                raise ProcessAutomationInputRequired(
+                    f"{label} requires declared subject and body inputs"
+                )
+            if any(input_properties[name]["type"] != "string" for name in ("subject", "body")):
+                raise ProcessAutomationInputRequired(f"{label} requires string subject and body inputs")
+            for field in (classification_field, summary_field):
+                if field not in output_properties or output_properties[field]["type"] != "string":
+                    raise ProcessAutomationInputRequired(
+                        f"{label} requires declared string classification and summary outputs"
+                    )
+            criterion.update({
+                "classification_field": classification_field,
+                "summary_field": summary_field,
+            })
+        normalized.append(criterion)
+    return normalized
 
 
 def validate_blueprint(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -326,12 +542,11 @@ def validate_blueprint(value: Mapping[str, Any]) -> dict[str, Any]:
         raise ProcessAutomationInputRequired(
             "required outputs have no producing action: " + ", ".join(missing_outputs)
         )
-    criteria = value["acceptance_criteria"]
-    if not isinstance(criteria, list) or not criteria:
-        raise ProcessAutomationInputRequired("acceptance_criteria must be non-empty")
-    clean_criteria = [_safe_text(item, "acceptance criterion", limit=1_000) for item in criteria]
-    if len(clean_criteria) != len(set(clean_criteria)):
-        raise ProcessAutomationInputRequired("acceptance_criteria contains duplicates")
+    clean_criteria = _normalize_acceptance_criteria(
+        value["acceptance_criteria"],
+        input_schema=input_schema,
+        output_schema=output_schema,
+    )
     max_attempts = value["max_attempts"]
     if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or not (1 <= max_attempts <= 8):
         raise ProcessAutomationInputRequired("max_attempts must be an integer from 1 through 8")
@@ -520,9 +735,25 @@ def email_processing_blueprint(project_ref: str = "ora") -> dict[str, Any]:
             },
         ],
         "acceptance_criteria": [
-            "The classification and summary are grounded in the exact inbound message.",
-            "The reply is explicitly an unsent draft.",
-            "No outbound communication or external mutation occurred.",
+            {
+                "criterion_id": "email-grounding",
+                "description": "The classification and summary are derived from the exact inbound message.",
+                "kind": "email_grounding",
+                "classification_field": "classification",
+                "summary_field": "summary",
+            },
+            {
+                "criterion_id": "unsent-draft",
+                "description": "The reply is explicitly an unsent draft.",
+                "kind": "field_prefix",
+                "field": "draft",
+                "expected": "UNSENT DRAFT",
+            },
+            {
+                "criterion_id": "no-external-effects",
+                "description": "The definition and Run contain no external effect.",
+                "kind": "no_external_effects",
+            },
         ],
         "max_attempts": 3,
         "labels": ["email", "proof"],
@@ -812,36 +1043,72 @@ def _latest_result_artifact(runtime: GovernedProcessRuntime, run_id: str) -> dic
     return None
 
 
-def _json_type_ok(value: Any, declared: str) -> bool:
+def _validate_schema_value(value: Any, schema: Mapping[str, Any], label: str) -> None:
+    declared = str(schema.get("type") or "")
+    if not _json_type_ok(value, declared):
+        raise ProcessAutomationInputRequired(f"{label} has the wrong type")
+    identity = _canonical_value_identity(value, label)
+    if "enum" in schema and identity not in {
+        _canonical_value_identity(item, f"{label}.enum") for item in schema["enum"]
+    }:
+        raise ProcessAutomationInputRequired(f"{label} violates enum")
+    if "const" in schema and identity != _canonical_value_identity(schema["const"], f"{label}.const"):
+        raise ProcessAutomationInputRequired(f"{label} violates const")
     if declared == "string":
-        return isinstance(value, str)
-    if declared == "number":
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
-    if declared == "integer":
-        return isinstance(value, int) and not isinstance(value, bool)
-    if declared == "boolean":
-        return isinstance(value, bool)
-    if declared == "object":
-        return isinstance(value, Mapping)
-    if declared == "array":
-        return isinstance(value, list)
-    return False
+        if len(value) < int(schema.get("minLength", 0)):
+            raise ProcessAutomationInputRequired(f"{label} violates minLength")
+        if "maxLength" in schema and len(value) > int(schema["maxLength"]):
+            raise ProcessAutomationInputRequired(f"{label} violates maxLength")
+    elif declared in {"number", "integer"}:
+        if "minimum" in schema and value < schema["minimum"]:
+            raise ProcessAutomationInputRequired(f"{label} violates minimum")
+        if "maximum" in schema and value > schema["maximum"]:
+            raise ProcessAutomationInputRequired(f"{label} violates maximum")
+        if "exclusiveMinimum" in schema and value <= schema["exclusiveMinimum"]:
+            raise ProcessAutomationInputRequired(f"{label} violates exclusiveMinimum")
+        if "exclusiveMaximum" in schema and value >= schema["exclusiveMaximum"]:
+            raise ProcessAutomationInputRequired(f"{label} violates exclusiveMaximum")
+        if "multipleOf" in schema:
+            try:
+                remainder = Decimal(str(value)) % Decimal(str(schema["multipleOf"]))
+            except (InvalidOperation, ValueError) as exc:
+                raise ProcessAutomationInputRequired(f"{label} violates multipleOf") from exc
+            if remainder != 0:
+                raise ProcessAutomationInputRequired(f"{label} violates multipleOf")
+    elif declared == "object":
+        properties = schema.get("properties") or {}
+        required = schema.get("required") or []
+        missing = sorted(set(required) - set(value))
+        extra = (
+            sorted(set(value) - set(properties))
+            if schema.get("additionalProperties") is False else []
+        )
+        if missing or extra:
+            raise ProcessAutomationInputRequired(
+                f"{label} fields are invalid; missing={missing}, unsupported={extra}"
+            )
+        if len(value) < int(schema.get("minProperties", 0)):
+            raise ProcessAutomationInputRequired(f"{label} violates minProperties")
+        if "maxProperties" in schema and len(value) > int(schema["maxProperties"]):
+            raise ProcessAutomationInputRequired(f"{label} violates maxProperties")
+        for name, item in value.items():
+            if name in properties:
+                _validate_schema_value(item, properties[name], f"{label}.{name}")
+    elif declared == "array":
+        if len(value) < int(schema.get("minItems", 0)):
+            raise ProcessAutomationInputRequired(f"{label} violates minItems")
+        if "maxItems" in schema and len(value) > int(schema["maxItems"]):
+            raise ProcessAutomationInputRequired(f"{label} violates maxItems")
+        if schema.get("uniqueItems"):
+            identities = [_canonical_value_identity(item, f"{label}[]") for item in value]
+            if len(identities) != len(set(identities)):
+                raise ProcessAutomationInputRequired(f"{label} violates uniqueItems")
+        for index, item in enumerate(value):
+            _validate_schema_value(item, schema["items"], f"{label}[{index}]")
 
 
 def _validate_instance(value: Mapping[str, Any], schema: Mapping[str, Any], label: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise ProcessAutomationInputRequired(f"{label} must be an object")
-    properties = schema.get("properties") or {}
-    required = schema.get("required") or []
-    missing = sorted(set(required) - set(value))
-    extra = sorted(set(value) - set(properties)) if schema.get("additionalProperties") is False else []
-    if missing or extra:
-        raise ProcessAutomationInputRequired(
-            f"{label} fields are invalid; missing={missing}, unsupported={extra}"
-        )
-    for name, item in value.items():
-        if name in properties and not _json_type_ok(item, str(properties[name].get("type") or "")):
-            raise ProcessAutomationInputRequired(f"{label}.{name} has the wrong type")
+    _validate_schema_value(value, schema, label)
     return copy.deepcopy(dict(value))
 
 
@@ -1732,6 +1999,131 @@ class ProcessAutomationService:
                 f"Process action {node['node_id']} failed and is restart-safe: {exc}"
             ) from exc
 
+    @staticmethod
+    def _validated_criterion_assessments(
+        receipt: Mapping[str, Any],
+        declared: Sequence[Mapping[str, Any]],
+        request: Mapping[str, Any],
+    ) -> list[dict[str, Any]]:
+        output = receipt.get("output")
+        if not isinstance(output, Mapping) or set(output) != {"verification", "criteria"}:
+            raise ProcessAutomationIntegrityError(
+                "verification worker did not return the exact assessment envelope"
+            )
+        assessments = output.get("criteria")
+        if not isinstance(assessments, list) or len(assessments) != len(declared):
+            raise ProcessAutomationIntegrityError(
+                "verification worker did not assess every declared criterion"
+            )
+        clean: list[dict[str, Any]] = []
+        for expected, raw in zip(declared, assessments):
+            if not isinstance(raw, Mapping) or set(raw) != {
+                "criterion_id", "kind", "satisfied", "reason", "observation_digest",
+            }:
+                raise ProcessAutomationIntegrityError(
+                    "verification worker returned a malformed criterion assessment"
+                )
+            assessment = copy.deepcopy(dict(raw))
+            if (
+                assessment["criterion_id"] != expected["criterion_id"]
+                or assessment["kind"] != expected["kind"]
+                or not isinstance(assessment["satisfied"], bool)
+                or not isinstance(assessment["reason"], str)
+                or not assessment["reason"].strip()
+                or not re.fullmatch(
+                    r"sha256:[0-9a-f]{64}", str(assessment["observation_digest"])
+                )
+            ):
+                raise ProcessAutomationIntegrityError(
+                    "verification assessment does not bind its declared criterion"
+                )
+            clean.append(assessment)
+        expected_assessments = mechanically_assess_criteria(request)
+        if clean != expected_assessments:
+            raise ProcessAutomationIntegrityError(
+                "verification worker assessments do not match mechanical reevaluation"
+            )
+        passed = bool(clean) and all(item["satisfied"] is True for item in clean)
+        if (
+            output.get("verification") is not passed
+            or (receipt.get("status") == "PASS") is not passed
+        ):
+            raise ProcessAutomationIntegrityError(
+                "verification status contradicts the criterion assessments"
+            )
+        return clean
+
+    def _persist_verification_failure(
+        self,
+        run_id: str,
+        definition: Mapping[str, Any],
+        node: Mapping[str, Any],
+        result: Mapping[str, Any],
+        request: Mapping[str, Any],
+        start_record: Mapping[str, Any],
+        attempt: int,
+        exc: Exception,
+    ) -> None:
+        try:
+            self.runtime.complete_attempt(
+                run_id, node["node_id"],
+                defect_codes=["verification_worker_failure"],
+                evidence_refs=[], artifact_digests=[],
+            )
+        except RunConflictError:
+            pass
+        current = self.runtime.load_run(run_id)
+        maximum = int(current["contracts"]["correction_loop"]["max_attempts"])
+        exhausted = attempt >= maximum
+        error_body = {
+            "error_type": type(exc).__name__,
+            "error": str(exc)[:1_000],
+        }
+        self.runtime._record_runtime_event(
+            run_id,
+            "isolated_process_verification_failed",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(current["definition_ref"]),
+                "node_id": node["node_id"],
+                "attempt": attempt,
+                "max_attempts": maximum,
+                "verification_start_record_id": start_record["record_id"],
+                "worker_request_digest": _digest_json(request),
+                "execution_context_binding_digest": (
+                    current["input_bindings"]["execution_context"]["binding_digest"]
+                ),
+                "result_artifact_id": result["artifact_id"],
+                "result_identity_digest": result["identity"]["digest"],
+                "error_type": error_body["error_type"],
+                "error_digest": _digest_json(error_body),
+                "retryable": not exhausted,
+                "exhausted": exhausted,
+            },
+            node_id=node["node_id"],
+            artifact_ids=[result["artifact_id"]],
+        )
+        if exhausted:
+            self.runtime.apply_transition(
+                run_id, "BLOCKED", target_node_id=node["routes"]["BLOCKED"],
+                reason="Isolated verification retry ceiling was exhausted",
+                evaluation_boundary=f"review-{node['node_id']}",
+                evidence_refs=[{
+                    "evidence_id": "result_verified",
+                    "artifact_id": result["artifact_id"],
+                    "identity_digest": result["identity"]["digest"],
+                    "outcome": "FAIL",
+                }],
+            )
+        else:
+            current = self.runtime.load_run(run_id)
+            checkpoint_id = f"failure-{node['node_id']}-{current['last_sequence']}"
+            self.runtime.pause_run(
+                run_id, checkpoint_id,
+                segment_id=node["node_id"], resume_node_id=node["node_id"],
+                reason=f"verification_worker_failure: {type(exc).__name__}",
+            )
+
     def _verify_result(
         self, run_id: str, definition: Mapping[str, Any], node: Mapping[str, Any],
     ) -> None:
@@ -1740,20 +2132,90 @@ class ProcessAutomationService:
             raise ProcessAutomationIntegrityError("verification boundary has no result Artifact")
         content = self._read_content(result)
         metadata = definition["output_schema"]["x-ora-process"]
+        declared_criteria = copy.deepcopy(metadata["acceptance_criteria"])
+        declared_criteria_digest = _digest_json(declared_criteria)
+        records = self.runtime.load_records(run_id)
+        external_effect_event_count = sum(
+            (record.get("event") or {}).get("event_type") == "action_completed"
+            and bool(((record.get("event") or {}).get("details") or {}).get("external_effect"))
+            for record in records
+        )
+        run = self.runtime.load_run(run_id)
+        execution_context_digest = (
+            run["input_bindings"]["execution_context"]["binding_digest"]
+        )
         request = {
             "schema_version": WORKER_SCHEMA_VERSION,
             "kind": "verify",
             "operation": "verify.process_result",
-            "instruction": "Independently verify the exact result against every declared criterion.",
-            "inputs": copy.deepcopy(self.runtime.load_run(run_id)["input_bindings"]["inputs"]),
+            "instruction": "Independently assess every declared criterion against the exact result.",
+            "inputs": copy.deepcopy(run["input_bindings"]["inputs"]),
             "prior_outputs": content,
             "expected_output_key": "verification",
-            "acceptance_criteria": metadata["acceptance_criteria"],
-            "execution_context": {"config_name": None, "style_prompt": ""},
+            "acceptance_criteria": declared_criteria,
+            "execution_context": {
+                "config_name": None,
+                "style_prompt": "",
+                "result_artifact_id": result["artifact_id"],
+                "result_identity_digest": result["identity"]["digest"],
+                "execution_context_binding_digest": execution_context_digest,
+                "verification_attestations": {
+                    "definition_external_effects": any(
+                        graph_node.get("kind") == "action"
+                        and graph_node.get("external_effect") is True
+                        for graph_node in definition["graph"]["nodes"]
+                    ),
+                    "definition_triggers": metadata["triggers"],
+                    "external_effect_event_count": external_effect_event_count,
+                },
+            },
         }
-        receipt = self.worker.invoke(request)
+        next_attempt = int(run["contracts"]["correction_loop"]["attempt"]) + 1
+        self.runtime.create_checkpoint(
+            run_id, f"pre-{node['node_id']}-{next_attempt}",
+            segment_id=node["node_id"], resume_node_id=node["node_id"],
+        )
+        attempt_record = self.runtime.begin_attempt(run_id, node["node_id"])
+        attempt = int(attempt_record["event"]["details"]["attempt"])
+        start_record = self.runtime._record_runtime_event(
+            run_id,
+            "isolated_process_verification_started",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "node_id": node["node_id"],
+                "attempt": attempt,
+                "worker_request_digest": _digest_json(request),
+                "execution_context_binding_digest": execution_context_digest,
+                "result_artifact_id": result["artifact_id"],
+                "result_identity_digest": result["identity"]["digest"],
+                "declared_criteria_digest": declared_criteria_digest,
+                "declared_criterion_ids": [
+                    criterion["criterion_id"] for criterion in declared_criteria
+                ],
+            },
+            node_id=node["node_id"],
+            artifact_ids=[result["artifact_id"]],
+        )
+        try:
+            receipt = self.worker.invoke(request)
+            assessments = self._validated_criterion_assessments(
+                receipt, declared_criteria, request,
+            )
+        except Exception as exc:
+            self._persist_verification_failure(
+                run_id, definition, node, result, request,
+                start_record, attempt, exc,
+            )
+            raise ProcessAutomationWorkerError(
+                f"Process verification failed and is restart-safe: {exc}"
+            ) from exc
         outcome = "PASS" if receipt["status"] == "PASS" else "FAIL"
-        evidence_id = "evidence-" + receipt["response_digest"].split(":", 1)[1][:24]
+        assessments_digest = _digest_json(assessments)
+        evidence_id = (
+            f"evidence-{attempt}-"
+            f"{receipt['response_digest'].split(':', 1)[1][:20]}"
+        )
         evidence = self.runtime.record_inline_artifact(
             run_id, evidence_id,
             _canonical_json({
@@ -1762,6 +2224,9 @@ class ProcessAutomationService:
                 "response_digest": receipt["response_digest"],
                 "outcome": outcome,
                 "report": receipt["report"],
+                "declared_criteria_digest": declared_criteria_digest,
+                "criteria_assessments": assessments,
+                "criteria_assessments_digest": assessments_digest,
                 "result_artifact_id": result["artifact_id"],
                 "result_identity_digest": result["identity"]["digest"],
             }),
@@ -1770,19 +2235,15 @@ class ProcessAutomationService:
             source_artifact_ids=[result["artifact_id"]],
             satisfied_conditions=CONDITIONS, media_type="application/json",
         )["artifact"]
-        execution_context_digest = (
-            self.runtime.load_run(run_id)["input_bindings"]
-            ["execution_context"]["binding_digest"]
-        )
         self.runtime._record_runtime_event(
             run_id,
             "isolated_process_verification_completed",
             {
                 "run_id": run_id,
-                "definition_ref": copy.deepcopy(
-                    self.runtime.load_run(run_id)["definition_ref"]
-                ),
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
                 "node_id": node["node_id"],
+                "attempt": attempt,
+                "verification_start_record_id": start_record["record_id"],
                 "worker_boundary": receipt["boundary"],
                 "worker_request_digest": receipt["request_digest"],
                 "worker_response_digest": receipt["response_digest"],
@@ -1791,10 +2252,24 @@ class ProcessAutomationService:
                 "result_identity_digest": result["identity"]["digest"],
                 "evidence_artifact_id": evidence["artifact_id"],
                 "evidence_identity_digest": evidence["identity"]["digest"],
+                "declared_criteria_digest": declared_criteria_digest,
+                "declared_criterion_ids": [
+                    criterion["criterion_id"] for criterion in declared_criteria
+                ],
+                "criteria_assessments": assessments,
+                "criteria_assessments_digest": assessments_digest,
                 "outcome": outcome,
             },
             node_id=node["node_id"],
             artifact_ids=[result["artifact_id"], evidence["artifact_id"]],
+        )
+        self.runtime.complete_attempt(
+            run_id, node["node_id"],
+            defect_codes=[] if outcome == "PASS" else ["acceptance_criteria_failed"],
+            evidence_refs=[],
+            artifact_digests=[
+                result["identity"]["digest"], evidence["identity"]["digest"],
+            ],
         )
         review = self.runtime.record_final_review(
             run_id,
@@ -1806,11 +2281,20 @@ class ProcessAutomationService:
             independent=True,
             satisfied_conditions=CONDITIONS,
         )
-        directive = "ACCEPT" if outcome == "PASS" else "REVISE"
+        current = self.runtime.load_run(run_id)
+        exhausted = (
+            int(current["contracts"]["correction_loop"]["attempt"])
+            >= int(current["contracts"]["correction_loop"]["max_attempts"])
+        )
+        directive = "ACCEPT" if outcome == "PASS" else ("BLOCKED" if exhausted else "REVISE")
         target = node["routes"][directive]
         self.runtime.apply_transition(
             run_id, directive, target_node_id=target,
-            reason="Isolated verification completed for the exact result identity",
+            reason=(
+                "Every declared criterion passed for the exact result identity"
+                if outcome == "PASS" else
+                "One or more declared criteria failed for the exact result identity"
+            ),
             evaluation_boundary=f"review-{node['node_id']}",
             evidence_refs=review["evidence_refs"],
         )

@@ -203,6 +203,102 @@ class ProcessAutomationContractTests(unittest.TestCase):
         ):
             automation.validate_blueprint(missing)
 
+    def test_schema_constraints_are_enforced_and_unknown_keywords_fail_closed(self):
+        blueprint = automation.email_processing_blueprint("ora")
+        blueprint["input_schema"]["properties"]["sender"].update({
+            "enum": ["Alex", "Morgan"],
+        })
+        blueprint["input_schema"]["properties"]["body"].update({
+            "minLength": 10,
+        })
+        normalized = automation.validate_blueprint(blueprint)
+        with self.assertRaisesRegex(
+            automation.ProcessAutomationInputRequired, "inputs.sender.*enum"
+        ):
+            automation._validate_instance(
+                {
+                    "message_id": "m", "sender": "Wrong", "subject": "Invoice",
+                    "body": "Payment is overdue.",
+                },
+                normalized["input_schema"],
+                "inputs",
+            )
+        with self.assertRaisesRegex(
+            automation.ProcessAutomationInputRequired, "inputs.body.*minLength"
+        ):
+            automation._validate_instance(
+                {
+                    "message_id": "m", "sender": "Alex", "subject": "Invoice",
+                    "body": "short",
+                },
+                normalized["input_schema"],
+                "inputs",
+            )
+        invalid = automation.email_processing_blueprint("ora")
+        invalid["input_schema"]["properties"]["sender"]["format"] = "email"
+        with self.assertRaisesRegex(
+            automation.ProcessAutomationInputRequired, "unsupported.*format"
+        ):
+            automation.validate_blueprint(invalid)
+        unassessable = automation.email_processing_blueprint("ora")
+        unassessable["acceptance_criteria"] = ["must exactly equal EXPECTED"]
+        with self.assertRaisesRegex(
+            automation.ProcessAutomationInputRequired, "unassessable"
+        ):
+            automation.validate_blueprint(unassessable)
+
+    def test_verifier_fails_wrong_partial_and_unassessable_criteria(self):
+        base = {
+            "schema_version": automation.WORKER_SCHEMA_VERSION,
+            "kind": "verify",
+            "operation": "verify.process_result",
+            "instruction": "Verify every exact criterion.",
+            "inputs": {},
+            "prior_outputs": {"result": "WRONG", "prefix": "EXPECTED prefix"},
+            "expected_output_key": "verification",
+            "acceptance_criteria": [
+                {
+                    "criterion_id": "prefix-present",
+                    "description": "The prefix field starts with EXPECTED.",
+                    "kind": "field_prefix",
+                    "field": "prefix",
+                    "expected": "EXPECTED",
+                },
+                {
+                    "criterion_id": "exact-result",
+                    "description": "The result field must exactly equal EXPECTED.",
+                    "kind": "field_equals",
+                    "field": "result",
+                    "expected": "EXPECTED",
+                },
+            ],
+            "execution_context": {},
+        }
+        partial = worker_module.execute(base)
+        self.assertEqual(partial["status"], "FAIL")
+        self.assertFalse(partial["output"]["verification"])
+        self.assertEqual(
+            [item["satisfied"] for item in partial["output"]["criteria"]],
+            [True, False],
+        )
+        forged = copy.deepcopy(partial)
+        forged["status"] = "PASS"
+        forged["output"]["verification"] = True
+        for assessment in forged["output"]["criteria"]:
+            assessment["satisfied"] = True
+        with self.assertRaisesRegex(
+            automation.ProcessAutomationIntegrityError,
+            "mechanical reevaluation",
+        ):
+            automation.ProcessAutomationService._validated_criterion_assessments(
+                forged, base["acceptance_criteria"], base,
+            )
+        unsupported = copy.deepcopy(base)
+        unsupported["acceptance_criteria"] = ["must exactly equal EXPECTED"]
+        refused = worker_module.execute(unsupported)
+        self.assertEqual(refused["status"], "FAIL")
+        self.assertFalse(refused["output"]["verification"])
+
     def test_email_proof_contains_exact_human_checkpoint_before_unsent_draft(self):
         definition = automation.compile_blueprint(
             automation.email_processing_blueprint("ora")
@@ -243,6 +339,9 @@ class ProcessAutomationContractTests(unittest.TestCase):
     def test_canonical_guides_match_runtime_and_record_exact_g1_1_reconciliation(self):
         technical = _body(VAULT_ORA / "Reference — Ora Technical Documentation.md")
         guide = _body(VAULT_ORA / "Guide — Using Ora.md")
+        evidence = (ROOT / "outputs" / "g1-18" / "closeout-evidence.md").read_text(
+            encoding="utf-8"
+        )
         self.assertEqual(technical, _body(ROOT / "docs" / "technical-documentation.md"))
         self.assertEqual(guide, _body(ROOT / "docs" / "user-guide.md"))
         for token in (
@@ -262,6 +361,15 @@ class ProcessAutomationContractTests(unittest.TestCase):
             "It cannot send the draft",
         ):
             self.assertIn(token, guide)
+        for token in (
+            "## 2026-07-24 gate correction",
+            "Wrong, partial, contradictory, or fabricated success cannot authorize `ACCEPT`",
+            "Restart resumes only verification",
+            "Unsupported keywords fail during authoring",
+            "# 32 passed, 12 subtests passed; exit 0",
+            "# 374 passed, 201 subtests passed; exit 0",
+        ):
+            self.assertIn(token, evidence)
 
     def test_tracker_program_and_registry_preserve_gate_boundaries(self):
         tracker = (VAULT_ORA / "Working — Ora Setup and Refinement.md").read_text(
@@ -277,8 +385,8 @@ class ProcessAutomationContractTests(unittest.TestCase):
         for token in (
             "G1.17 is user-deferred",
             "without an architecture choice",
-            "G1.18 is implemented and awaits independent judgment",
-            "G1.20 has not begun",
+            "G1.18’s bounded correction is implemented and awaits independent re-judgment",
+            "G1.19 and G1.20 remain unauthorized",
             "no Trigger, Persona, outbound effect, alternate engine, or G1.20 telemetry",
         ):
             self.assertIn(token, combined)
@@ -294,6 +402,8 @@ class ProcessAutomationAuthoringTests(ProcessAutomationFixture):
             automation.AUTHORING_PROPOSED_EVENT,
             automation.AUTHORING_REVISION_EVENT,
             "isolated_process_step_completed",
+            "isolated_process_verification_started",
+            "isolated_process_verification_failed",
             "isolated_process_verification_completed",
         ):
             with self.subTest(event_type=event_type), self.assertRaises(
@@ -632,6 +742,211 @@ class ProcessAutomationExecutionTests(ProcessAutomationFixture):
         self.assertEqual(completed["run_state"], "completed")
         self.assertEqual(calls.count("email.draft"), 1)
 
+    def test_wrong_or_partially_satisfied_criteria_cannot_authorize_accept(self):
+        blueprint = automation.email_processing_blueprint("ora")
+        blueprint["acceptance_criteria"] = [
+            {
+                "criterion_id": "draft-boundary",
+                "description": "The draft is explicitly unsent.",
+                "kind": "field_prefix",
+                "field": "draft",
+                "expected": "UNSENT DRAFT",
+            },
+            {
+                "criterion_id": "exact-classification",
+                "description": "The classification exactly matches the reviewed value.",
+                "kind": "field_equals",
+                "field": "classification",
+                "expected": "EXPECTED",
+            },
+        ]
+        proposed = self.service.propose(
+            "dialogue-g1-18", idempotency_key="proposal:wrong-result:1",
+            blueprint=blueprint,
+        )
+        authored = self.service.approve_and_register(
+            "dialogue-g1-18",
+            proposal_id=proposed["proposal"]["proposal_id"],
+            proposal_digest=proposed["proposal"]["proposal_digest"],
+            decision_by="principal:user",
+        )
+        paused = self.service.execute(
+            self.begin(authored["proposal"]["definition_ref"])["run_id"]
+        )
+        stopped = self.service.resolve_checkpoint(
+            paused["run_id"], outcome="approved", decision_by="principal:user",
+        )
+        self.assertEqual(stopped["run_state"], "blocked")
+        records = self.runtime.load_records(stopped["run_id"])
+        self.assertFalse(any(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in records
+        ))
+        reviews = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type") == "final_review_completed"
+        ]
+        self.assertTrue(reviews)
+        self.assertTrue(all(
+            review["event"]["details"]["outcome"] == "FAIL"
+            for review in reviews
+        ))
+
+    def test_output_schema_constraint_failure_stops_before_verification(self):
+        blueprint = automation.email_processing_blueprint("ora")
+        blueprint["output_schema"]["properties"]["classification"]["enum"] = [
+            "EXPECTED",
+        ]
+        proposed = self.service.propose(
+            "dialogue-g1-18", idempotency_key="proposal:output-schema:1",
+            blueprint=blueprint,
+        )
+        authored = self.service.approve_and_register(
+            "dialogue-g1-18",
+            proposal_id=proposed["proposal"]["proposal_id"],
+            proposal_digest=proposed["proposal"]["proposal_digest"],
+            decision_by="principal:user",
+        )
+        paused = self.service.execute(
+            self.begin(authored["proposal"]["definition_ref"])["run_id"]
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            self.service.resolve_checkpoint(
+                paused["run_id"], outcome="approved", decision_by="principal:user",
+            )
+        failed = self.service.run_state(paused["run_id"])
+        self.assertEqual(failed["status"], "paused_after_failure")
+        self.assertEqual(failed["current_node"]["node_id"], "draft")
+        records = self.runtime.load_records(paused["run_id"])
+        self.assertFalse(any(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_started"
+            for record in records
+        ))
+        self.assertFalse(any(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in records
+        ))
+
+    def test_verification_failure_restart_retry_and_exhaustion_are_persisted(self):
+        authored = self.author()
+
+        def unavailable_verifier(request):
+            if request["kind"] == "verify":
+                raise RuntimeError("verifier unavailable")
+            return worker_module.execute(request)
+
+        self.service.worker = automation.IsolatedProcessWorker(
+            runner=unavailable_verifier,
+        )
+        paused = self.service.execute(
+            self.begin(authored["proposal"]["definition_ref"])["run_id"]
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            self.service.resolve_checkpoint(
+                paused["run_id"], outcome="approved", decision_by="principal:user",
+            )
+        failed = self.service.run_state(paused["run_id"])
+        self.assertEqual(failed["status"], "paused_after_failure")
+        self.assertEqual(failed["current_node"]["node_id"], "final-review")
+        records = self.runtime.load_records(paused["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_started"
+            for record in records
+        ), 1)
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_failed"
+            for record in records
+        ), 1)
+
+        restarted = automation.ProcessAutomationService(
+            runtime=GovernedProcessRuntime(self.root / "runs"),
+            registry=ProcessDefinitionRegistry(self.root / "registry"),
+            management_interview=ManagementInterviewService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                sessions_root=self.root / "sessions", repository_root=ROOT,
+            ),
+            library=ProcessLibraryLifecycleService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                registry_root=self.root / "registry", seed_definitions=[],
+            ),
+            worker=automation.IsolatedProcessWorker(runner=unavailable_verifier),
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            restarted.execute(paused["run_id"])
+        self.assertEqual(
+            restarted.run_state(paused["run_id"])["status"],
+            "paused_after_failure",
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            restarted.execute(paused["run_id"])
+        exhausted = restarted.run_state(paused["run_id"])
+        self.assertEqual(exhausted["run_state"], "blocked")
+        final_records = restarted.runtime.load_records(paused["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_failed"
+            for record in final_records
+        ), 3)
+        self.assertFalse(any(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in final_records
+        ))
+
+    def test_verification_failure_can_resume_after_restart_without_replaying_actions(self):
+        authored = self.author()
+        operations = []
+
+        def fail_verifier_once(request):
+            operations.append((request["kind"], request["operation"]))
+            if request["kind"] == "verify":
+                raise RuntimeError("temporary verifier outage")
+            return worker_module.execute(request)
+
+        self.service.worker = automation.IsolatedProcessWorker(runner=fail_verifier_once)
+        paused = self.service.execute(
+            self.begin(authored["proposal"]["definition_ref"])["run_id"]
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            self.service.resolve_checkpoint(
+                paused["run_id"], outcome="approved", decision_by="principal:user",
+            )
+        restarted_operations = []
+
+        def recovered_worker(request):
+            restarted_operations.append((request["kind"], request["operation"]))
+            return worker_module.execute(request)
+
+        restarted = automation.ProcessAutomationService(
+            runtime=GovernedProcessRuntime(self.root / "runs"),
+            registry=ProcessDefinitionRegistry(self.root / "registry"),
+            management_interview=ManagementInterviewService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                sessions_root=self.root / "sessions", repository_root=ROOT,
+            ),
+            library=ProcessLibraryLifecycleService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                registry_root=self.root / "registry", seed_definitions=[],
+            ),
+            worker=automation.IsolatedProcessWorker(runner=recovered_worker),
+        )
+        completed = restarted.execute(paused["run_id"])
+        self.assertEqual(completed["run_state"], "completed")
+        self.assertEqual(restarted_operations, [("verify", "verify.process_result")])
+        self.assertEqual(sum(kind == "execute" for kind, _ in operations), 3)
+        records = restarted.runtime.load_records(paused["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_failed"
+            for record in records
+        ), 1)
+        self.assertEqual(sum(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in records
+        ), 1)
+
     def test_duplicate_begin_returns_same_run_and_cross_identity_changes_run(self):
         authored = self.author()
         ref = authored["proposal"]["definition_ref"]
@@ -746,6 +1061,52 @@ class ProcessAutomationServerTests(ProcessAutomationFixture):
             json={"action": "approve_and_register"},
         )
         self.assertEqual(response.status_code, 422)
+
+    def test_public_run_enforces_enum_and_string_constraints(self):
+        blueprint = automation.email_processing_blueprint("ora")
+        blueprint["input_schema"]["properties"]["sender"]["enum"] = ["Alex"]
+        blueprint["input_schema"]["properties"]["body"]["minLength"] = 20
+        proposed = self.client.post(
+            "/api/process-authoring/dialogue-g1-18",
+            json={
+                "action": "propose", "idempotency_key": "api:schema:proposal",
+                "blueprint": blueprint,
+            },
+        )
+        self.assertEqual(proposed.status_code, 200, proposed.get_json())
+        proposal = proposed.get_json()["authoring"]["proposal"]
+        approved = self.client.post(
+            "/api/process-authoring/dialogue-g1-18",
+            json={
+                "action": "approve_and_register",
+                "proposal_id": proposal["proposal_id"],
+                "proposal_digest": proposal["proposal_digest"],
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.get_json())
+        ref = approved.get_json()["authoring"]["proposal"]["definition_ref"]
+        for bad_inputs in (
+            {**self.inputs(), "sender": "Mallory"},
+            {**self.inputs(), "body": "too short"},
+        ):
+            with self.subTest(bad_inputs=bad_inputs):
+                response = self.client.post(
+                    "/api/process-automation/runs",
+                    json={
+                        "definition_ref": ref, "project_ref": "ora",
+                        "inputs": bad_inputs,
+                        "idempotency_key": "api:schema:" + automation._digest_json(bad_inputs)[-12:],
+                    },
+                )
+                self.assertEqual(response.status_code, 422, response.get_json())
+        accepted = self.client.post(
+            "/api/process-automation/runs",
+            json={
+                "definition_ref": ref, "project_ref": "ora",
+                "inputs": self.inputs(), "idempotency_key": "api:schema:valid",
+            },
+        )
+        self.assertEqual(accepted.status_code, 201, accepted.get_json())
         response = self.client.post(
             "/api/process-authoring/dialogue-g1-18",
             json={

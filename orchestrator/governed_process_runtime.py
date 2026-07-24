@@ -123,6 +123,8 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "automation_authoring_proposed",
     "automation_authoring_revision_requested",
     "isolated_process_step_completed",
+    "isolated_process_verification_started",
+    "isolated_process_verification_failed",
     "isolated_process_verification_completed",
     "child_return_received",
     "process_returned",
@@ -6096,6 +6098,7 @@ class GovernedProcessRuntime:
                 "run_id": run_id,
                 "definition_ref": run["definition_ref"],
                 "node_id": run["current_node_id"],
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
                 "result_artifact_id": artifact_id,
                 "result_identity_digest": subject["identity"]["digest"],
                 "evidence_artifact_id": evidence_artifact_id,
@@ -6124,6 +6127,83 @@ class GovernedProcessRuntime:
                 artifact_id, evidence_artifact_id,
             }:
                 mismatches.append("artifact_ids")
+            declared_criteria = automation_contract.get("acceptance_criteria")
+            declared_ids = (
+                [criterion.get("criterion_id") for criterion in declared_criteria]
+                if isinstance(declared_criteria, list)
+                and all(isinstance(criterion, Mapping) for criterion in declared_criteria)
+                else []
+            )
+            assessments = verification_details.get("criteria_assessments")
+            if (
+                not declared_ids
+                or len(declared_ids) != len(set(declared_ids))
+                or verification_details.get("declared_criteria_digest")
+                != _digest_json(declared_criteria)
+                or verification_details.get("declared_criterion_ids") != declared_ids
+                or not isinstance(assessments, list)
+                or len(assessments) != len(declared_ids)
+                or verification_details.get("criteria_assessments_digest")
+                != _digest_json(assessments)
+            ):
+                mismatches.append("criterion_assessment_set")
+            else:
+                for criterion, assessment in zip(declared_criteria, assessments):
+                    criterion_id = criterion.get("criterion_id")
+                    if (
+                        not isinstance(assessment, Mapping)
+                        or set(assessment) != {
+                            "criterion_id", "kind", "satisfied", "reason",
+                            "observation_digest",
+                        }
+                        or assessment.get("criterion_id") != criterion_id
+                        or assessment.get("kind") != criterion.get("kind")
+                        or not isinstance(assessment.get("satisfied"), bool)
+                        or not isinstance(assessment.get("reason"), str)
+                    ):
+                        mismatches.append("criterion_assessment")
+                        continue
+                    try:
+                        _exact_digest(
+                            assessment.get("observation_digest"),
+                            "criterion observation digest",
+                        )
+                    except GovernedRuntimeError:
+                        mismatches.append("criterion_assessment")
+                all_satisfied = all(
+                    assessment.get("satisfied") is True
+                    for assessment in assessments
+                    if isinstance(assessment, Mapping)
+                ) and len(assessments) == len(declared_ids)
+                if (outcome == "PASS") != all_satisfied:
+                    mismatches.append("criterion_outcome")
+            start_id = verification_details.get("verification_start_record_id")
+            start_records = [
+                candidate for candidate in self.load_records(run_id)
+                if candidate.get("record_id") == start_id
+                and (candidate.get("event") or {}).get("event_type")
+                == "isolated_process_verification_started"
+            ]
+            if len(start_records) != 1:
+                mismatches.append("verification_start_record")
+            else:
+                start_record = start_records[0]
+                start_details = (start_record.get("event") or {}).get("details") or {}
+                for field in (
+                    "run_id", "definition_ref", "node_id", "attempt",
+                    "worker_request_digest", "execution_context_binding_digest",
+                    "result_artifact_id", "result_identity_digest",
+                    "declared_criteria_digest", "declared_criterion_ids",
+                ):
+                    if start_details.get(field) != verification_details.get(field):
+                        mismatches.append("verification_start_binding")
+                        break
+                if (
+                    int(start_record.get("sequence") or 0)
+                    >= int(verification_record.get("sequence") or 0)
+                    or start_record.get("artifact_ids") != [artifact_id]
+                ):
+                    mismatches.append("verification_start_order")
             if mismatches:
                 raise FinalReviewRequired(
                     "isolated verification binding does not match the current result: "

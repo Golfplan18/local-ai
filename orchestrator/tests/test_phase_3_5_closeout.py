@@ -312,7 +312,10 @@ class TestPhase35Closeout(unittest.TestCase):
         self.assertIn("Gate 3.4 documentation/test acceptance at `6824bb03`", technical)
         self.assertIn("Gate 3.5 passed at runtime closeout commit `71f0ecf7`; G1.1 is complete", technical)
         self.assertIn("G1.1 is complete after independent Gate 3.5 acceptance", tracker)
-        self.assertIn("G1.18 is implemented and awaits independent judgment", tracker)
+        self.assertIn(
+            "G1.18’s bounded correction is implemented and awaits independent re-judgment",
+            tracker,
+        )
         self.assertIn("G1.3, and G1.7 are user-deferred", tracker)
         self.assertIn("Parts 1 and 2 plus Phases 3.1–3.5 are accepted", design)
         self.assertIn("G1.1 is complete", design)

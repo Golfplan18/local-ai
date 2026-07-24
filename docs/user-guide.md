@@ -362,11 +362,11 @@ Registration makes the exact definition durable; promotion makes it discoverable
 ### Run a reusable Process manually
 
 1. Open **Process Library** and select an available reusable Process.
-2. Read its exact identity and enter the required inputs. The form is generated from the registered input schema; missing, extra, or malformed values are rejected.
+2. Read its exact identity and enter the required inputs. The form is generated from the registered input schema; missing, extra, wrong-type, out-of-range, too-short/long, non-enumerated, duplicate-array, or otherwise unsupported values are rejected before a Run begins.
 3. Check **I confirm this Run belongs to Project: …**. The Project controls scope. Any existing Project, Process, Step, or one-run Model Profile selections and the existing output Style are resolved and bound by the server; Persona is unavailable and is not selected.
 4. Choose **Start governed Run**. Ora starts one restart-safe Run of that exact version in a separate no-tools worker.
 5. At each human checkpoint, inspect what has already been produced. Choose **Approve checkpoint** only to advance that Run, or **Deny and stop**. Checkpoint approval does not activate, schedule, send, or widen authority.
-6. If execution pauses after a failure, choose **Retry from checkpoint** only after reading the error. Completed steps are preserved; Ora does not replay them merely because the service restarted.
+6. If action or final verification work pauses after a failure, choose **Retry from checkpoint** only after reading the error. Completed steps are preserved; Ora does not replay them merely because the service restarted. Every retry consumes the visible bounded attempt allowance; exhaustion stops the Run as blocked.
 7. Treat the displayed result as authenticated only when the Run is completed after independent verification.
 
 The worked email Process classifies and summarizes one supplied email, pauses before drafting, and produces an **UNSENT DRAFT**. It cannot send the draft. Sending, recurring execution, and channels belong to later separately governed work.
@@ -523,6 +523,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, and retry exhaustion blocks rather than leaving work running.
 - **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.
 - **2026-07-20** — G1.4: documented the shipped description-rich Dialogue creation review, combined prior-Dialogue/atomic-note discovery, server-issued exactly-once creation contract, contributor versus parent lineage, Continue/Fork alternatives, unsent-draft behavior, privacy boundaries, and the same actions in Library. The vault remains canonical and the runtime guide body is synchronized from it.
 - **2026-07-19** — G1.1 Phase 3.3 Gate correction: documented the shipped browser management surface, exact target/scope preparation, Principal/Technical tabs, five authenticated plan decisions, explicit later **Start approved plan** delegation, restart reconstruction, stale-plan handling, and visible failures. The correction adds only the browser-to-existing-governed-contract integration required by Gate 3.3; it does not enter Phase 3.4.
