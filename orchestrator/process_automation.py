@@ -1960,7 +1960,7 @@ class ProcessAutomationService:
                 run_id, artifact_id, artifact_value,
                 role=role, node_id=node["node_id"], source_artifact_ids=source_ids,
             )
-            self.runtime.complete_attempt(
+            self.runtime.complete_automation_attempt(
                 run_id, node["node_id"], defect_codes=[], evidence_refs=[],
                 artifact_digests=[artifact["identity"]["digest"]],
             )
@@ -2002,7 +2002,7 @@ class ProcessAutomationService:
             else:
                 defect = "isolated_worker_failure"
             try:
-                self.runtime.complete_attempt(
+                self.runtime.complete_automation_attempt(
                     run_id, node["node_id"], defect_codes=[defect],
                     evidence_refs=[], artifact_digests=[],
                 )
@@ -2086,7 +2086,7 @@ class ProcessAutomationService:
         exc: Exception,
     ) -> None:
         try:
-            self.runtime.complete_attempt(
+            self.runtime.complete_automation_attempt(
                 run_id, node["node_id"],
                 defect_codes=["verification_worker_failure"],
                 evidence_refs=[], artifact_digests=[],
@@ -2326,7 +2326,7 @@ class ProcessAutomationService:
             node_id=node["node_id"],
             artifact_ids=[result["artifact_id"], evidence["artifact_id"]],
         )
-        self.runtime.complete_attempt(
+        self.runtime.complete_automation_attempt(
             run_id, node["node_id"],
             defect_codes=[] if outcome == "PASS" else ["acceptance_criteria_failed"],
             evidence_refs=[],

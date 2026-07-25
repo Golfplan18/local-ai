@@ -8,6 +8,7 @@ Status: correction implementation complete; independent Gate G1.18 re-judgment p
 - Vault baseline: `5c20bfa1a2bf2ce957dc96cdfbeea3532aa51431` (G1.17 bounded deferral).
 - First rejected G1.18 submission: runtime `4551e171011990c9581a0466e36d31c6d7f6d2aa`; vault `87ebca7671e7d81f07777292e7b71cbaed4a7d14`.
 - Second rejected correction: runtime `5e8e09c11318416e94085546283302d8ebc99752`; vault `c11e743223397ea4f9ed051a049e5b3cc9311464`.
+- Third rejected correction: runtime `f19472fb600fee60ab6100e25e17209596923890`; vault `fea7104d02c5af3af17a3f1f4d296c251415941f`.
 - G1.17 remains user-deferred. No Persona architecture, Persona registry/binding, MindSpec selection, relationship-blurb injection, or Persona precedence was added.
 - The existing `interaction_style`/`output_style` split and honne/tatemae behavior are unchanged.
 - G1.18 adds no Trigger, scheduler, outbound channel, sending, publication, activation, external-effect executor, or expanded G1.20 telemetry UI.
@@ -21,6 +22,7 @@ The three independent findings reproduced against `4551e171` before correction:
 2. An exception from the verification worker left the Run `running` at `final-review`. Verification now creates a pre-attempt checkpoint, consumes a bounded attempt, persists `isolated_process_verification_started`, records typed failure and a recovery checkpoint, and leaves the Run `pending`. Restart resumes only verification. Every retry is persisted; exhaustion records the final failure and routes to `BLOCKED`.
 3. `enum` and other property constraints survived authoring but were not evaluated. The admitted recursive subset is now explicit and complete: object/array structure, required/no-additional fields, `enum`, `const`, string length, numeric bounds and `multipleOf`, array length/uniqueness, and object-size constraints. The same validator enforces inputs before Run creation and complete outputs before verification. Unsupported keywords fail during authoring.
 4. The first correction budgeted declared action baselines plus the correction allowance but omitted the baseline final-verification attempt. The compiled total now includes every declared action baseline, one final-verification baseline, and the correction allowance. Runtime counts first attempts per segment separately from later corrections, so action retries cannot consume an unstarted action or verification baseline. Admission at either the correction allowance or total ceiling routes mechanically to `BLOCKED`; verification admission also persists a typed failure record. The exact three-action-failure sequence reaches final review with the baseline verifier still available, survives a crash/restart at that boundary, and completes on the reserved seventh attempt.
+5. Generic `begin_attempt()` and `complete_attempt()` remained capable of appending G1.18 attempt records outside the segment-aware path. Both now authenticate the stored definition and reject G1.18 before mutation. G1.18 uses only paired specialized start/completion methods, each bound to the exact current action or verification node. Four generic wrong/future-node starts and generic completion of an active specialized attempt preserve the attempt counter, state digest, and record log exactly; the same attacked Run then reaches authenticated `ACCEPT`.
 
 ## G1.1 reconciliation
 
@@ -43,7 +45,7 @@ No other conflict was found. Definition registry, Library promotion, management 
 6. The public API fixes the Principal to `principal:user`, validates exact definition/project/input/profile/style bindings, and returns one deterministic restart-safe Run identity.
 7. Each action persists a current-node checkpoint and bounded attempt, invokes a separate no-tools worker, stores a file-backed Artifact, and binds completion to a reserved execution record containing exact Run/definition/node/operation/attempt/context/request/response/Artifact identities.
 8. A human checkpoint can be resolved only by the exact Run Principal. Denial blocks without producing the draft; failed authority changes no state.
-9. Action or verification-worker failure completes its attempt, persists a typed failure record and recovery checkpoint, and pauses. The total attempt budget consists of all action baselines, one final-verification baseline, and the shared correction allowance; per-segment admission prevents retries from stealing later baselines. Retry preserves completed steps and reauthenticates Project/Model/Style, Artifact content, and verification lineage. Correction or total admission exhaustion blocks mechanically.
+9. Action or verification-worker failure completes its attempt, persists a typed failure record and recovery checkpoint, and pauses. The total attempt budget consists of all action baselines, one final-verification baseline, and the shared correction allowance; per-segment admission prevents retries from stealing later baselines. Generic attempt APIs reject G1.18 before mutation, and only the current-node-bound specialized pair may create or complete these attempt records. Retry preserves completed steps and reauthenticates Project/Model/Style, Artifact content, and verification lineage. Correction or total admission exhaustion blocks mechanically.
 10. Independent isolated verification assesses every structured criterion, while the controller mechanically recomputes each result. Exact evidence and reserved start/completion records bind the criterion set, assessment set, attempt, Run, definition, result, evidence, request/response, and execution context. Artifact-only, evidence-only, generic-event, false/partial assessment, stale-context, and direct-completion paths cannot authorize `ACCEPT`.
 
 ## Email-processing proof
@@ -68,6 +70,7 @@ The focused suite proves:
 - wrong nonempty output, partially satisfied criteria, fabricated worker `PASS`, and exact criterion/result evidence binding;
 - action and verification failure records, recovery checkpoints, successful restart retry without action replay, bounded verifier exhaustion, output drift refusal, completed-Run retry idempotency, and authenticated result identity;
 - three failed action attempts followed by successful recovery through all baseline actions, crash/restart immediately before final verification, use of the reserved verifier baseline, and deterministic correction-admission blocking with idempotent terminal replay;
+- generic wrong-node and future-node attempt starts plus generic completion of an active specialized attempt, with exact no-mutation assertions and subsequent legitimate `ACCEPT` on the same Run;
 - exact public authoring/run/checkpoint endpoints and unknown-field refusal;
 - canonical/mirror body parity and tracker/Registry scope boundaries.
 
@@ -85,7 +88,7 @@ Focused G1.18:
 
 ```bash
 python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py
-# 34 passed, 12 subtests passed; exit 0
+# 36 passed, 12 subtests passed; exit 0
 ```
 
 Original finding and adjacent bypass closure:
@@ -93,7 +96,7 @@ Original finding and adjacent bypass closure:
 ```bash
 python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py \
   -k 'schema_constraints or verifier_fails or wrong_or_partially or verification_failure_restart or verification_failure_can_resume or output_schema_constraint or public_run_enforces'
-# 7 passed, 27 deselected, 2 subtests passed; exit 0
+# 7 passed, 29 deselected, 2 subtests passed; exit 0
 ```
 
 Attempt-reservation and exact-boundary recovery closure:
@@ -101,7 +104,15 @@ Attempt-reservation and exact-boundary recovery closure:
 ```bash
 python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py \
   -k 'action_retry_allowance_reserves_verification or correction_attempt_ceiling_blocks'
-# 2 passed, 32 deselected; exit 0
+# 2 passed, 34 deselected; exit 0
+```
+
+Generic attempt-API isolation and legitimate-control closure:
+
+```bash
+python3 -m pytest -q orchestrator/tests/test_g1_18_process_automation.py \
+  -k 'generic_attempt_start or generic_attempt_completion'
+# 2 passed, 34 deselected; exit 0
 ```
 
 Accepted G1.1 kernel and Phase 1/2 adjacency plus G1.18:
@@ -122,7 +133,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_7_surface_boundaries.py \
   orchestrator/tests/test_phase_2_8_experience_validation.py \
   orchestrator/tests/test_g1_18_process_automation.py
-# 376 passed, 201 subtests passed; exit 0
+# 378 passed, 201 subtests passed; exit 0
 ```
 
 Model Profile/dispatcher adjacency:

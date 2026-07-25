@@ -4885,9 +4885,21 @@ class GovernedProcessRuntime:
             node_id=node_id,
         )
 
+    @staticmethod
+    def _is_automation_definition(definition: Mapping[str, Any]) -> bool:
+        return isinstance(
+            (definition.get("output_schema") or {}).get("x-ora-process"),
+            Mapping,
+        )
+
     def begin_attempt(self, run_id: str, segment_id: str) -> dict[str, Any]:
         with _locked():
             run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if self._is_automation_definition(definition):
+                raise AuthorityDeniedError(
+                    "G1.18 Runs require the dedicated automation attempt API"
+                )
             latest_attempt_event = None
             for record in reversed(self.load_records(run_id)):
                 event = record.get("event") or {}
@@ -5005,6 +5017,7 @@ class GovernedProcessRuntime:
                     "segment_id": segment_id,
                     "attempt": correction["attempt"],
                     "max_attempts": maximum,
+                    "attempt_api": "automation",
                 },
                 node_id=run["current_node_id"],
                 runtime_authoritative=True,
@@ -5078,67 +5091,147 @@ class GovernedProcessRuntime:
     ) -> dict[str, Any]:
         with _locked():
             run = self.load_run(run_id)
-            records = self.load_records(run_id)
-            latest_attempt_event = None
-            for record in reversed(records):
-                event = record.get("event") or {}
-                if event.get("event_type") in ("attempt_started", "attempt_completed"):
-                    latest_attempt_event = event
-                    break
-            if not latest_attempt_event or latest_attempt_event.get("event_type") != "attempt_started":
-                raise RunConflictError("attempt completion requires one active attempt")
-            started = latest_attempt_event.get("details") or {}
-            if started.get("segment_id") != segment_id:
-                raise RunConflictError("attempt must complete in the segment where it started")
-            if int(started.get("attempt") or -1) != int(
-                run["contracts"]["correction_loop"]["attempt"]
-            ):
-                raise RunConflictError("attempt number does not match persisted Run state")
-            prior = None
-            for record in reversed(records):
-                event = record.get("event") or {}
-                details = event.get("details") or {}
-                if (
-                    event.get("event_type") == "attempt_completed"
-                    and details.get("segment_id") == segment_id
-                ):
-                    prior = event.get("details") or {}
-                    break
-            evidence_ids = sorted(
-                ref["evidence_id"]
-                for ref in evidence_refs
-                if ref.get("outcome") == "PASS"
-            )
-            artifact_digests = sorted(set(artifact_digests))
-            prior_evidence = set((prior or {}).get("passing_evidence_ids") or [])
-            prior_artifacts = set((prior or {}).get("artifact_digests") or [])
-            progress = bool(
-                (set(evidence_ids) - prior_evidence)
-                or (set(artifact_digests) - prior_artifacts)
-            )
-            defect_fingerprint = _digest_json(sorted(set(defect_codes)))
-            repeated = 1
-            if prior and prior.get("defect_fingerprint") == defect_fingerprint:
-                repeated = int(prior.get("repeated_defect_count") or 1) + 1
-            details = {
-                "segment_id": segment_id,
-                "attempt": run["contracts"]["correction_loop"]["attempt"],
-                "defect_codes": sorted(set(defect_codes)),
-                "defect_fingerprint": defect_fingerprint,
-                "repeated_defect_count": repeated,
-                "passing_evidence_ids": evidence_ids,
-                "artifact_digests": artifact_digests,
-                "progress_evidence": progress,
-            }
-            record = self._append_event_locked(
+            definition = self.load_definition(run_id)
+            if self._is_automation_definition(definition):
+                raise AuthorityDeniedError(
+                    "G1.18 Runs require the dedicated automation attempt API"
+                )
+            return self._complete_attempt_locked(
+                run_id,
                 run,
-                "attempt_completed",
-                details,
-                node_id=run["current_node_id"],
+                segment_id,
+                defect_codes=defect_codes,
                 evidence_refs=evidence_refs,
-                runtime_authoritative=True,
+                artifact_digests=artifact_digests,
             )
-            return {"record": record, **details}
+
+    def complete_automation_attempt(
+        self,
+        run_id: str,
+        segment_id: str,
+        *,
+        defect_codes: Sequence[str],
+        evidence_refs: Sequence[Mapping[str, Any]],
+        artifact_digests: Sequence[str],
+    ) -> dict[str, Any]:
+        """Complete only the active current-node G1.18 attempt."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if not self._is_automation_definition(definition):
+                raise AuthorityDeniedError(
+                    "the dedicated automation attempt API requires a G1.18 Run"
+                )
+            if segment_id != run["current_node_id"]:
+                raise RunConflictError(
+                    "automation attempt segment must match the current graph node"
+                )
+            current_node = self._graph_nodes(definition).get(segment_id)
+            if not current_node or current_node["kind"] not in {
+                "action", "verification_boundary",
+            }:
+                raise GovernedRuntimeError(
+                    "automation attempts require an action or verification boundary"
+                )
+            latest_attempt = next(
+                (
+                    record.get("event") or {}
+                    for record in reversed(self.load_records(run_id))
+                    if (record.get("event") or {}).get("event_type")
+                    in {"attempt_started", "attempt_completed"}
+                ),
+                None,
+            )
+            if (
+                not latest_attempt
+                or latest_attempt.get("event_type") != "attempt_started"
+                or (latest_attempt.get("details") or {}).get("attempt_api")
+                != "automation"
+            ):
+                raise AuthorityDeniedError(
+                    "automation completion requires a specialized automation start"
+                )
+            return self._complete_attempt_locked(
+                run_id,
+                run,
+                segment_id,
+                defect_codes=defect_codes,
+                evidence_refs=evidence_refs,
+                artifact_digests=artifact_digests,
+            )
+
+    def _complete_attempt_locked(
+        self,
+        run_id: str,
+        run: dict[str, Any],
+        segment_id: str,
+        *,
+        defect_codes: Sequence[str],
+        evidence_refs: Sequence[Mapping[str, Any]],
+        artifact_digests: Sequence[str],
+    ) -> dict[str, Any]:
+        records = self.load_records(run_id)
+        latest_attempt_event = None
+        for record in reversed(records):
+            event = record.get("event") or {}
+            if event.get("event_type") in ("attempt_started", "attempt_completed"):
+                latest_attempt_event = event
+                break
+        if not latest_attempt_event or latest_attempt_event.get("event_type") != "attempt_started":
+            raise RunConflictError("attempt completion requires one active attempt")
+        started = latest_attempt_event.get("details") or {}
+        if started.get("segment_id") != segment_id:
+            raise RunConflictError("attempt must complete in the segment where it started")
+        if int(started.get("attempt") or -1) != int(
+            run["contracts"]["correction_loop"]["attempt"]
+        ):
+            raise RunConflictError("attempt number does not match persisted Run state")
+        prior = None
+        for record in reversed(records):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "attempt_completed"
+                and details.get("segment_id") == segment_id
+            ):
+                prior = event.get("details") or {}
+                break
+        evidence_ids = sorted(
+            ref["evidence_id"]
+            for ref in evidence_refs
+            if ref.get("outcome") == "PASS"
+        )
+        artifact_digests = sorted(set(artifact_digests))
+        prior_evidence = set((prior or {}).get("passing_evidence_ids") or [])
+        prior_artifacts = set((prior or {}).get("artifact_digests") or [])
+        progress = bool(
+            (set(evidence_ids) - prior_evidence)
+            or (set(artifact_digests) - prior_artifacts)
+        )
+        defect_fingerprint = _digest_json(sorted(set(defect_codes)))
+        repeated = 1
+        if prior and prior.get("defect_fingerprint") == defect_fingerprint:
+            repeated = int(prior.get("repeated_defect_count") or 1) + 1
+        details = {
+            "segment_id": segment_id,
+            "attempt": run["contracts"]["correction_loop"]["attempt"],
+            "defect_codes": sorted(set(defect_codes)),
+            "defect_fingerprint": defect_fingerprint,
+            "repeated_defect_count": repeated,
+            "passing_evidence_ids": evidence_ids,
+            "artifact_digests": artifact_digests,
+            "progress_evidence": progress,
+        }
+        record = self._append_event_locked(
+            run,
+            "attempt_completed",
+            details,
+            node_id=run["current_node_id"],
+            evidence_refs=evidence_refs,
+            runtime_authoritative=True,
+        )
+        return {"record": record, **details}
 
     def validate_correction_directive(self, run_id: str, directive: str) -> None:
         run = self.load_run(run_id)

@@ -367,8 +367,9 @@ class ProcessAutomationContractTests(unittest.TestCase):
             "Restart resumes only verification",
             "Unsupported keywords fail during authoring",
             "one final-verification baseline",
-            "# 34 passed, 12 subtests passed; exit 0",
-            "# 376 passed, 201 subtests passed; exit 0",
+            "Generic `begin_attempt()` and `complete_attempt()` remained capable",
+            "# 36 passed, 12 subtests passed; exit 0",
+            "# 378 passed, 201 subtests passed; exit 0",
         ):
             self.assertIn(token, evidence)
 
@@ -386,7 +387,7 @@ class ProcessAutomationContractTests(unittest.TestCase):
         for token in (
             "G1.17 is user-deferred",
             "without an architecture choice",
-            "G1.18’s bounded criterion, recovery, schema, and attempt-reservation corrections are implemented and await independent re-judgment",
+            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, and generic-API-isolation corrections are implemented and await independent re-judgment",
             "G1.19 and G1.20 remain unauthorized",
             "no Trigger, Persona, outbound effect, alternate engine, or G1.20 telemetry",
         ):
@@ -1091,6 +1092,101 @@ class ProcessAutomationExecutionTests(ProcessAutomationFixture):
         self.assertEqual(
             restarted.runtime.load_records(state["run_id"]), records,
         )
+
+    def test_generic_attempt_start_cannot_steal_future_automation_baselines(self):
+        authored = self.author()
+        state = self.begin(authored["proposal"]["definition_ref"])
+        before = self.service.run_state(state["run_id"])
+        before_records = self.runtime.load_records(state["run_id"])
+
+        for segment_id in (
+            "final-review", "summarize", "final-review", "draft",
+        ):
+            with self.assertRaisesRegex(
+                AuthorityDeniedError, "dedicated automation attempt API",
+            ):
+                self.runtime.begin_attempt(state["run_id"], segment_id)
+            self.assertEqual(
+                self.service.run_state(state["run_id"])["state_digest"],
+                before["state_digest"],
+            )
+            self.assertEqual(
+                self.runtime.load_records(state["run_id"]), before_records,
+            )
+
+        paused = self.service.execute(state["run_id"])
+        completed = self.service.resolve_checkpoint(
+            paused["run_id"], outcome="approved", decision_by="principal:user",
+        )
+        self.assertEqual(completed["run_state"], "completed")
+        records = self.runtime.load_records(state["run_id"])
+        self.assertEqual(sum(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in records
+        ), 1)
+
+    def test_generic_attempt_completion_cannot_complete_automation_attempt(self):
+        authored = self.author()
+        state = self.begin(authored["proposal"]["definition_ref"])
+
+        def crash_after_attempt_started(_request):
+            raise SystemExit("crash with active attempt")
+
+        self.service.worker = automation.IsolatedProcessWorker(
+            runner=crash_after_attempt_started,
+        )
+        with self.assertRaisesRegex(SystemExit, "active attempt"):
+            self.service.execute(state["run_id"])
+        active = self.service.run_state(state["run_id"])
+        active_records = self.runtime.load_records(state["run_id"])
+        self.assertEqual(active["attempt"], 1)
+        active_start = next(
+            record for record in reversed(active_records)
+            if (record.get("event") or {}).get("event_type") == "attempt_started"
+        )
+        self.assertEqual(
+            active_start["event"]["details"]["attempt_api"], "automation",
+        )
+
+        for segment_id in ("classify", "final-review"):
+            with self.assertRaisesRegex(
+                AuthorityDeniedError, "dedicated automation attempt API",
+            ):
+                self.runtime.complete_attempt(
+                    state["run_id"], segment_id,
+                    defect_codes=[], evidence_refs=[], artifact_digests=[],
+                )
+            self.assertEqual(
+                self.service.run_state(state["run_id"])["state_digest"],
+                active["state_digest"],
+            )
+            self.assertEqual(
+                self.runtime.load_records(state["run_id"]), active_records,
+            )
+
+        self.runtime.complete_automation_attempt(
+            state["run_id"], "classify",
+            defect_codes=["interrupted_worker"],
+            evidence_refs=[], artifact_digests=[],
+        )
+        current = self.runtime.load_run(state["run_id"])
+        self.runtime.pause_run(
+            state["run_id"], f"failure-classify-{current['last_sequence']}",
+            segment_id="classify", resume_node_id="classify",
+            reason="restart after the simulated worker interruption",
+        )
+        self.service.worker = automation.IsolatedProcessWorker(
+            runner=_injected_worker,
+        )
+        paused = self.service.execute(state["run_id"])
+        completed = self.service.resolve_checkpoint(
+            paused["run_id"], outcome="approved", decision_by="principal:user",
+        )
+        self.assertEqual(completed["run_state"], "completed")
+        self.assertEqual(sum(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in self.runtime.load_records(state["run_id"])
+        ), 1)
 
     def test_duplicate_begin_returns_same_run_and_cross_identity_changes_run(self):
         authored = self.author()

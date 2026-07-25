@@ -250,7 +250,7 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for token in (
             "Parts 1 and 2 plus Phases 3.1–3.5 accepted",
             "G1.1 is complete after independent Gate 3.5 acceptance",
-            "G1.18’s bounded criterion, recovery, schema, and attempt-reservation corrections are implemented and await independent re-judgment",
+            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, and generic-API-isolation corrections are implemented and await independent re-judgment",
             "G1.3, and G1.7 are user-deferred",
         ):
             with self.subTest(registry_token=token):
