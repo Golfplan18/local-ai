@@ -39,6 +39,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import sys
 import threading
 import time
@@ -822,24 +823,37 @@ def normalize_args_hash(action: str, params: dict | None) -> str:
         canonical = json.dumps(params or {}, sort_keys=True, default=str)
     except Exception:
         canonical = str(params)
-    return hashlib.sha1(f"{action}|{canonical}".encode()).hexdigest()[:16]
+    return "sha256:" + hashlib.sha256(
+        f"{action}|{canonical}".encode(),
+    ).hexdigest()
 
 
 def _load_approvals() -> dict:
+    path = _approvals_path()
+    if not os.path.exists(path):
+        return {"tokens": [], "standing": [], "pending": []}
+    if os.path.islink(path):
+        raise RuntimeError("approval store is a symlink")
     try:
-        with open(_approvals_path()) as f:
-            return json.load(f)
-    except Exception:
-        return {"tokens": [], "standing": []}
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:
+        raise RuntimeError(f"approval store is unreadable: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError("approval store must be an object")
+    for key in ("tokens", "standing", "pending"):
+        data.setdefault(key, [])
+        if not isinstance(data[key], list):
+            raise RuntimeError(f"approval store field {key!r} must be a list")
+    return data
 
 
 def _save_approvals(data: dict) -> None:
     approvals = _approvals_path()
     os.makedirs(os.path.dirname(approvals), exist_ok=True)
-    tmp = approvals + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=2)
-    os.replace(tmp, approvals)
+    _rp.atomic_write_text(
+        approvals, json.dumps(data, indent=2) + "\n", mode=0o600,
+    )
 
 
 def _with_approvals_lock(fn):
@@ -851,13 +865,97 @@ def _with_approvals_lock(fn):
         return fn()
 
 
-def grant_approval(action: str, args_hash: str,
-                   conversation_id: str | None = None,
-                   ttl_s: int = DEFAULT_TOKEN_TTL_S,
-                   granted_via: str = "queue") -> str:
+def _register_pending_approval(action: str, args_hash: str,
+                               conversation_id: str | None) -> str:
+    """Persist an unguessable runtime-issued request before queueing it.
+
+    A queue-shaped caller dictionary is not approval authority.  Resolution
+    must consume this separately persisted nonce, bound to the exact action,
+    fingerprint, conversation, and eventual queue identity.
+    """
+    nonce = secrets.token_hex(24)
+
+    def _do():
+        data = _load_approvals()
+        data.setdefault("pending", []).append({
+            "nonce": nonce,
+            "action": action,
+            "args_hash": args_hash,
+            "conversation_id": conversation_id,
+            "created_at": _now_iso(),
+            "queue_id": None,
+            "consumed": False,
+        })
+        _save_approvals(data)
+    _with_approvals_lock(_do)
+    return nonce
+
+
+def _bind_pending_queue(nonce: str, queue_id: str) -> bool:
+    bound = [False]
+
+    def _do():
+        data = _load_approvals()
+        for item in data.get("pending", []):
+            if item.get("nonce") == nonce and not item.get("consumed"):
+                item["queue_id"] = queue_id
+                bound[0] = True
+                break
+        if bound[0]:
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+    return bound[0]
+
+
+def _discard_pending_approval(nonce: str) -> None:
+    def _do():
+        data = _load_approvals()
+        before = len(data.get("pending", []))
+        data["pending"] = [
+            item for item in data.get("pending", [])
+            if item.get("nonce") != nonce
+        ]
+        if len(data["pending"]) != before:
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+
+
+def _consume_pending_approval(record_dict: dict) -> dict | None:
+    event = record_dict.get("event") or {}
+    nonce = event.get("approval_nonce")
+    queue_id = record_dict.get("id") or record_dict.get("queue_id")
+    action = event.get("action")
+    args_hash = event.get("args_hash")
+    conversation_id = event.get("conversation_id")
+    consumed = [None]
+
+    def _do():
+        data = _load_approvals()
+        for item in data.get("pending", []):
+            if item.get("consumed"):
+                continue
+            if (
+                item.get("nonce") == nonce
+                and item.get("queue_id") == queue_id
+                and item.get("action") == action
+                and item.get("args_hash") == args_hash
+                and item.get("conversation_id") == conversation_id
+            ):
+                item["consumed"] = True
+                item["consumed_at"] = _now_iso()
+                consumed[0] = dict(item)
+                _save_approvals(data)
+                break
+    _with_approvals_lock(_do)
+    return consumed[0]
+
+
+def _grant_approval_authorized(action: str, args_hash: str,
+                               conversation_id: str | None = None,
+                               ttl_s: int = DEFAULT_TOKEN_TTL_S,
+                               granted_via: str = "queue") -> str:
     """Mint a one-shot approval token for a previously gated action."""
-    token_id = hashlib.sha1(
-        f"{action}|{args_hash}|{time.time()}".encode()).hexdigest()[:12]
+    token_id = secrets.token_hex(24)
 
     def _do():
         data = _load_approvals()
@@ -878,11 +976,26 @@ def grant_approval(action: str, args_hash: str,
     return token_id
 
 
+def grant_approval(*args, **kwargs) -> str:
+    """Refuse direct token minting.
+
+    Approval tokens are authority records, not a convenience API. They are
+    minted only by the live-human branch of :func:`gate`, by authenticated
+    Paused-entry resolution, or by the existing task-gate authority module.
+    Keeping this compatibility name fail-closed also prevents older callers
+    from silently recreating the pre-G1.22 bypass.
+    """
+
+    raise PermissionError(
+        "direct approval-token minting is unavailable; resolve the exact "
+        "runtime-issued approval request"
+    )
+
+
 def grant_standing_allow(scope: str, granted_via: str = "queue") -> str:
     """Standing allow for the sanctioned secret channel (credential_store),
     scoped per service. Revocable via revoke_standing_allow."""
-    allow_id = hashlib.sha1(f"standing|{scope}|{time.time()}".encode()
-                            ).hexdigest()[:12]
+    allow_id = secrets.token_hex(24)
 
     def _do():
         data = _load_approvals()
@@ -1015,6 +1128,39 @@ def check_and_consume_approval(action: str, args_hash: str,
     return consumed[0]
 
 
+def bind_consumed_approval(approval_id: str, action: str, args_hash: str,
+                           request_digest: str) -> dict:
+    """Bind one consumed token exactly once to a protected execution start."""
+
+    bound = [None]
+
+    def _do():
+        data = _load_approvals()
+        for entry in data.get("tokens", []):
+            if entry.get("id") != approval_id:
+                continue
+            if (
+                not entry.get("used")
+                or entry.get("action") != action
+                or entry.get("args_hash") != args_hash
+            ):
+                break
+            existing = entry.get("protection_request_digest")
+            if existing is not None:
+                break
+            entry["protection_request_digest"] = request_digest
+            entry["protection_bound_at"] = _now_iso()
+            bound[0] = dict(entry)
+            _save_approvals(data)
+            break
+    _with_approvals_lock(_do)
+    if bound[0] is None:
+        raise PermissionError(
+            "approval is absent, unconsumed, cross-scope, or already bound"
+        )
+    return bound[0]
+
+
 # ── Execution gate ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -1045,8 +1191,12 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
         if key in _queued_hashes:
             return "deduped"
         _queued_hashes.add(key)
+    approval_nonce = None
     try:
         from oversight_queue import add_entry
+        approval_nonce = _register_pending_approval(
+            action, args_hash, ctx.get("conversation_id"),
+        )
         desc, _ = scrub_content((description or "")[:200])
         trace_ref = None
         trace_dir = ctx.get("trace_dir")
@@ -1073,6 +1223,7 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
             # the originating conversation when resolved via the Paused UI.
             "event": {"event_type": "ExecutionGateBlocked", "action": action,
                       "args_hash": args_hash,
+                      "approval_nonce": approval_nonce,
                       "conversation_id": ctx.get("conversation_id"),
                       "surface": ctx.get("surface", "unknown"),
                       "description": desc,
@@ -1085,8 +1236,16 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
             "context_summary": {"action": action, "why": why},
         }
         written = add_entry(entry)
+        if not _bind_pending_queue(approval_nonce, written.id):
+            _discard_pending_approval(approval_nonce)
+            return None
         return written.id
     except Exception as e:
+        if approval_nonce:
+            try:
+                _discard_pending_approval(approval_nonce)
+            except Exception:
+                pass
         _note_failure(e, "queue_gate_entry")
         return None
 
@@ -1139,8 +1298,18 @@ def gate(action: str, axes: dict, params: dict | None = None,
         return GateDecision(True, "allowed", "within policy")
 
     # 1. A previously granted one-shot token unlocks exactly one matching call.
-    token = check_and_consume_approval(action, args_hash,
-                                       ctx.get("conversation_id"))
+    try:
+        token = check_and_consume_approval(
+            action, args_hash, ctx.get("conversation_id"),
+        )
+    except Exception as exc:
+        _record_decision(
+            "blocked", f"approval infrastructure unavailable: {exc}",
+        )
+        return GateDecision(
+            False, "blocked", "approval infrastructure unavailable",
+            message="[GATED — approval infrastructure unavailable]",
+        )
     if token:
         _record_decision("approved", f"one-shot token consumed ({block_why})",
                          approval_id=token)
@@ -1156,15 +1325,24 @@ def gate(action: str, axes: dict, params: dict | None = None,
         except Exception:
             approved = False
         if approved:
-            token = grant_approval(action, args_hash,
-                                   ctx.get("conversation_id"),
-                                   granted_via="live-prompt")
+            _grant_approval_authorized(
+                action, args_hash, ctx.get("conversation_id"),
+                granted_via="live-prompt",
+            )
             consumed = check_and_consume_approval(action, args_hash,
                                                   ctx.get("conversation_id"))
+            if consumed is None:
+                _record_decision(
+                    "blocked", f"approval-token consumption failed ({block_why})",
+                )
+                return GateDecision(
+                    False, "blocked", block_why,
+                    message=f"[GATED — approval persistence failed: {action}]",
+                )
             _record_decision("approved", f"live human approval ({block_why})",
-                             approval_id=consumed or token)
+                             approval_id=consumed)
             return GateDecision(True, "approved", block_why,
-                                approval_id=consumed or token)
+                                approval_id=consumed)
         _record_decision("blocked", f"live human denial ({block_why})")
         return GateDecision(False, "blocked", block_why,
                             message=f"[GATED — denied by user: {action}]")
@@ -1207,8 +1385,12 @@ def resolve_gate_entry(record_dict: dict, approve: bool,
     event = record_dict.get("event") or {}
     action = event.get("action", "")
     args_hash = event.get("args_hash", "")
-    if not action or not args_hash:
-        return "[Malformed execution-gate entry — no action/args recorded.]"
+    pending = _consume_pending_approval(record_dict)
+    if not action or not args_hash or pending is None:
+        return (
+            "[Unauthenticated execution-gate entry — no matching runtime-issued "
+            "approval request was consumed.]"
+        )
     clear_queued_hash(record_dict.get("conversation_id"), args_hash)
     if approve:
         standing_scope = event.get("standing_scope")
@@ -1219,9 +1401,10 @@ def resolve_gate_entry(record_dict: dict, approve: bool,
                     f"`{standing_scope}` — future calls to this service pass "
                     f"without re-approval and are logged existence-only. "
                     f"Revoke any time with `/deny {standing_scope}`.")
-        token = grant_approval(action, args_hash,
-                               record_dict.get("conversation_id"),
-                               granted_via="paused-queue")
+        token = _grant_approval_authorized(
+            action, args_hash, record_dict.get("conversation_id"),
+            granted_via="paused-queue",
+        )
         return (f"**Approved.** One-shot token `{token}` granted for "
                 f"`{action}` (valid {DEFAULT_TOKEN_TTL_S // 60} min). "
                 f"Re-issue the action to run it once.")

@@ -79,6 +79,11 @@ except Exception:  # pragma: no cover - defensive
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.normpath(VAULT_DIR)
 
+try:
+    import system_protection as _sp
+except ImportError:  # pragma: no cover
+    from orchestrator import system_protection as _sp
+
 
 KNOWN_COMMANDS = runtime_command_names()
 
@@ -330,6 +335,37 @@ def _project_registry():
 # ---------- Project plugin command handlers (project-agnostic) ----------
 
 
+def _protected_slash_effect(action: str, selector: str, params: dict, callback):
+    """Run one opaque slash effect through G1.22 one-shot review + receipt."""
+    logical = {"selector": selector, "kind": "logical",
+               "params_digest": _sp.params_digest(params)}
+    logical["digest"] = _sp.params_digest(logical)
+    protection = _sp.authorize_server_action(
+        action, selectors=[selector], params=params, pre_state=[logical],
+        surface="slash_command",
+    )
+    try:
+        with _sp.protected_effect(protection):
+            result = callback()
+    except Exception as exc:
+        try:
+            _sp.complete_execution(
+                protection, ok=False, result={"error": type(exc).__name__},
+                post_state=[logical],
+            )
+        except Exception as receipt_error:
+            raise _sp.ProtectionAuditError(
+                f"slash effect failed and its failure receipt could not persist: {receipt_error}"
+            ) from exc
+        raise
+    _sp.complete_execution(
+        protection, ok=True,
+        result={"result_digest": _sp.params_digest({"result": result})},
+        post_state=[logical],
+    )
+    return result
+
+
 def _cmd_project_tool(args: list[str]) -> str:
     """`/project-tool <nexus> <tool-name> [<json-stdin>]` — invoke a project tool.
 
@@ -357,9 +393,25 @@ def _cmd_project_tool(args: list[str]) -> str:
     try:
         if tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT:
             stdin_obj = _json.loads(rest[0]) if rest else {}
-            result = _pr.invoke_project_tool(nexus, tool_name, stdin_json=stdin_obj)
+            result = _protected_slash_effect(
+                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
+                {"nexus": nexus, "tool": tool_name,
+                 "input_digest": _sp.params_digest({"stdin": stdin_obj})},
+                lambda: _pr.invoke_project_tool(
+                    nexus, tool_name, stdin_json=stdin_obj,
+                ),
+            )
         else:
-            result = _pr.invoke_project_tool(nexus, tool_name, args=rest)
+            result = _protected_slash_effect(
+                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
+                {"nexus": nexus, "tool": tool_name,
+                 "args_digest": _sp.params_digest({"args": rest})},
+                lambda: _pr.invoke_project_tool(nexus, tool_name, args=rest),
+            )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
     except _pr.ToolInvocationError as exc:
         body = (f"```\n{exc.stderr}\n```" if getattr(exc, "stderr", "") else "")
         return f"[/project-tool: {exc}]\n{body}"
@@ -393,11 +445,43 @@ def _cmd_project_register(args: list[str]) -> str:
     _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-register <path-to-project-root>"
+    protection = None
     try:
-        project = _pr.register_project(args[0])
+        project = _pr.load_project_at(args[0])
+        pointer = _pr._pointer_path(project.nexus)
+        manifest = Path(project.root) / _pr.MANIFEST_FILENAME
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_register", selectors=[_sp.path_selector(pointer)],
+            params={
+                "nexus": project.nexus,
+                "root": str(project.root),
+                "manifest_identity": _sp.capture_path_identity(manifest),
+            },
+            pre_state=[pre_state], surface="slash_command",
+        )
+        with _sp.protected_effect(protection):
+            project = _pr.register_project(args[0])
+        _sp.complete_execution(
+            protection, ok=True,
+            result={"registered": project.nexus, "root": str(project.root)},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
     except _pr.ManifestError as exc:
         return f"[/project-register: invalid project — {exc}]"
     except Exception as exc:
+        if protection is not None:
+            try:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+            except Exception as receipt_error:
+                return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
         return f"[/project-register: {exc}]"
     return (f"Registered project **{project.nexus}** ({project.name}) "
             f"at `{project.root}`. {len(project.tools)} tool(s), "
@@ -409,7 +493,37 @@ def _cmd_project_unregister(args: list[str]) -> str:
     _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-unregister <nexus>"
-    if _pr.unregister_project(args[0]):
+    nexus = args[0]
+    protection = None
+    try:
+        pointer = _pr._pointer_path(nexus)
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_unregister", selectors=[_sp.path_selector(pointer)],
+            params={"nexus": nexus}, pre_state=[pre_state],
+            surface="slash_command",
+        )
+        with _sp.protected_effect(protection):
+            removed = _pr.unregister_project(nexus)
+        _sp.complete_execution(
+            protection, ok=removed, result={"removed": removed, "nexus": nexus},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return exc.args[0]
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
+    except Exception as exc:
+        if protection is not None:
+            try:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+            except Exception as receipt_error:
+                return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
+        return f"[/project-unregister: {exc}]"
+    if removed:
         return f"Unregistered project **{args[0]}**. (Project files on disk untouched.)"
     return f"[/project-unregister: no project named {args[0]!r} was registered]"
 
@@ -431,7 +545,20 @@ def _try_project_slash_command(cmd: str, args: list[str]) -> Optional[str]:
         return f"[/{name}: project-registry error: {exc}]"
     if project is None:
         return None
-    return _pr.invoke_project_slash_command(project.nexus, name, args=args)
+    try:
+        return _protected_slash_effect(
+            "project_slash_execute",
+            f"project:{project.nexus}/slash:{name}",
+            {"nexus": project.nexus, "command": name,
+             "args_digest": _sp.params_digest({"args": args})},
+            lambda: _pr.invoke_project_slash_command(
+                project.nexus, name, args=args,
+            ),
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
 
 
 # ---------- Path helpers ----------
@@ -884,6 +1011,12 @@ def _cmd_cleaning(args: list[str]) -> str:
 
     if sub == "resolve":
         apply = "--apply" in args
+        if apply:
+            return (
+                "[SYSTEM PROTECTION — legacy `/cleaning resolve --apply` does "
+                "not declare exact mutation selectors. Use a reviewed bounded "
+                "campaign or the authenticated event-triggered maintenance path.]"
+            )
         dry_run = not apply
 
         try:
@@ -1061,6 +1194,12 @@ def _cmd_news(args: list[str]) -> str:
 
     if sub == "resolve":
         apply = "--apply" in args
+        if apply:
+            return (
+                "[SYSTEM PROTECTION — legacy `/news resolve --apply` does not "
+                "declare exact mutation selectors. Use a reviewed bounded "
+                "campaign or the authenticated event-triggered maintenance path.]"
+            )
         dry_run = not apply
 
         try:

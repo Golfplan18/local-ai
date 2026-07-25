@@ -431,7 +431,7 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
     entry = find_paused_by_id(queue_id)
     if entry is None or entry.kind not in ("execution_gate", "task_gate"):
         return None
-    record = {"kind": entry.kind, "event": entry.event,
+    record = {"id": entry.id, "kind": entry.kind, "event": entry.event,
               "conversation_id": (entry.event or {}).get("conversation_id")}
     if entry.kind == "task_gate":
         # Execution Review Phase 2: an irreversible-tier task hold.

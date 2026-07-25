@@ -1,0 +1,645 @@
+"""Adversarial proofs for the bounded G1.22 pre-channel tranche."""
+
+from __future__ import annotations
+
+import copy
+import json
+import os
+import sys
+import tempfile
+import threading
+import unittest
+from dataclasses import replace
+from pathlib import Path
+from unittest import mock
+
+_ORCH = Path(__file__).resolve().parent.parent
+if str(_ORCH) not in sys.path:
+    sys.path.insert(0, str(_ORCH))
+_TESTS = str(Path(__file__).resolve().parent)
+if _TESTS not in sys.path:
+    sys.path.insert(0, _TESTS)
+import live_guard  # noqa: E402,F401
+
+import oversight_queue  # noqa: E402
+import system_protection as protection  # noqa: E402
+import tool_events  # noqa: E402
+from tools import credential_store as credential_tool  # noqa: E402
+
+
+class SystemProtectionBase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=str(Path.home()))
+        self.root = Path(self.tmp.name)
+        self.actions = str(self.root / "actions.jsonl")
+        self.approvals = str(self.root / "approvals.json")
+        self.queue = str(self.root / "queue.jsonl")
+        self.events = str(self.root / "tool-events.jsonl")
+        self._patches = [
+            mock.patch.object(protection, "_actions_path", return_value=self.actions),
+            mock.patch.object(tool_events, "APPROVALS_PATH", self.approvals),
+            mock.patch.object(tool_events, "GLOBAL_SINK_DEFAULT", self.events),
+            mock.patch.object(oversight_queue, "HUMAN_QUEUE_PATH", self.queue),
+        ]
+        for patcher in self._patches:
+            patcher.start()
+        self.turn_token = tool_events.set_turn_context(
+            conversation_id="g1-22a-test", surface="test",
+        )
+        tool_events._queued_hashes.clear()
+
+    def tearDown(self):
+        tool_events._queued_hashes.clear()
+        tool_events.reset_turn_context(self.turn_token)
+        for patcher in reversed(self._patches):
+            patcher.stop()
+        self.tmp.cleanup()
+
+    def _queue_records(self):
+        if not os.path.isfile(self.queue):
+            return []
+        with open(self.queue, encoding="utf-8") as stream:
+            return [json.loads(line) for line in stream if line.strip()]
+
+    def _request(self, target: Path, action: str = "theme_delete"):
+        selector = protection.path_selector(target)
+        state = protection.capture_path_identity(target)
+        return action, selector, state
+
+    def _approve_latest(self):
+        record = self._queue_records()[-1]
+        result = tool_events.resolve_gate_entry(record, approve=True)
+        self.assertIn("One-shot token", result)
+        return record
+
+
+class TestPolicyFloor(SystemProtectionBase):
+    def test_dedicated_path_builders_reject_traversal_before_review(self):
+        from orchestrator import active_configuration, project_registry
+
+        with self.assertRaises(ValueError):
+            active_configuration._config_path("../../authority")
+        with self.assertRaises(project_registry.ProjectError):
+            project_registry._pointer_path("../../authority")
+
+    def test_governed_action_cannot_hide_reserved_authority_in_selector(self):
+        for selector in (
+            "credential:ora/openai-api-key",
+            "dialogue:run-sensitive",
+            "email:recipient@example.com",
+            "telegram:chat/123",
+            "vector-store:conversations",
+        ):
+            decision = protection.classify_governed_action(
+                "ordinary_update", [selector],
+                effect_type="external_effect", scope_kind="exact",
+            )
+            self.assertEqual(decision.outcome, "deny", selector)
+
+    def test_whole_roots_raw_drives_and_channels_are_absolute_denials(self):
+        roots = protection._critical_roots()
+        for name, root in roots.items():
+            decision = protection.classify_action(
+                "delete_state", selectors=["path:" + root],
+                mutability="irreversible",
+            )
+            self.assertEqual(decision.outcome, "deny", name)
+        for selector in ("path:/dev/disk0", "path:/dev/rdisk4",
+                         "path://./physicaldrive0"):
+            self.assertEqual(protection.classify_action(
+                "format_drive", selectors=[selector],
+                mutability="irreversible",
+            ).outcome, "deny")
+        for action in ("telegram_send", "email_receive", "channel_send"):
+            decision = protection.classify_action(
+                action, selectors=["channel:test"],
+                mutability="external_write", egress="external",
+            )
+            self.assertEqual(decision.policy_code, "channel-deferred")
+
+    def test_missing_broad_and_noncanonical_scopes_fail_closed(self):
+        self.assertEqual(protection.classify_action(
+            "delete_everything", mutability="irreversible",
+        ).policy_code, "missing-exact-scope")
+        self.assertEqual(protection.classify_action(
+            "delete_file", selectors=["path:/tmp/${TARGET}"],
+            mutability="irreversible",
+        ).policy_code, "unresolved-protected-scope")
+        self.assertEqual(protection.classify_action(
+            "credential_store", selectors=["credential:other/arbitrary"],
+            mutability="irreversible", sensitivity="secret",
+        ).policy_code, "noncanonical-credential-scope")
+        self.assertEqual(protection.classify_action(
+            "self_modification", selectors=["path:/tmp/runtime.py"],
+            mutability="irreversible",
+        ).outcome, "review")
+        runtime_source = Path(protection._rp.ORA_HOME) / "orchestrator" / "dispatcher.py"
+        self.assertEqual(protection.classify_action(
+            "file_write", selectors=[protection.path_selector(runtime_source)],
+            mutability="reversible_write",
+        ).outcome, "deny")
+
+    def test_governed_process_floor_reserves_system_and_channel_actions(self):
+        for action in (
+            "delete_everything", "credential_store", "send_message",
+            "telegram_send", "self_modification",
+        ):
+            decision = protection.classify_governed_action(
+                action, ["artifact:approved"], effect_type="external_effect",
+                scope_kind="external",
+            )
+            self.assertEqual(decision.outcome, "deny", action)
+        allowed = protection.classify_governed_action(
+            "execute_approved_programming_step", ["artifact:repo"],
+            effect_type="external_effect", scope_kind="external",
+        )
+        self.assertEqual(allowed.outcome, "allow")
+
+    def test_real_governed_runtime_denial_is_pre_mutation(self):
+        import governed_process_runtime as gpr
+        from tests.test_governed_process_runtime import make_definition, make_run
+
+        runtime_root = self.root / "governed"
+        runtime = gpr.GovernedProcessRuntime(str(runtime_root))
+        definition = make_definition()
+        run = make_run("run-protection-floor", definition)
+        runtime.create_run(definition, run)
+        runtime.start_run(
+            "run-protection-floor", reason="approved test plan is ready",
+        )
+        before_run = runtime.load_run("run-protection-floor")
+        before_records = runtime.load_records("run-protection-floor")
+        with self.assertRaisesRegex(gpr.AuthorityDeniedError, "system protection"):
+            runtime.authorize_action(
+                "run-protection-floor", "telegram_send", ["artifact:message"],
+                effect_type="external_irreversible", scope_kind="external",
+            )
+        self.assertEqual(runtime.load_run("run-protection-floor"), before_run)
+        self.assertEqual(
+            runtime.load_records("run-protection-floor"), before_records,
+        )
+
+    def test_opaque_server_and_slash_actions_have_no_adapter(self):
+        logical = {"selector": "project:ora/tool:opaque", "kind": "logical"}
+        logical["digest"] = protection.params_digest(logical)
+        with self.assertRaises(protection.ProtectionDenied):
+            protection.authorize_server_action(
+                "project_tool_execute", selectors=[logical["selector"]],
+                params={"tool": "opaque"}, pre_state=[logical],
+                surface="slash_command",
+            )
+        self.assertEqual(self._queue_records(), [])
+
+    def test_legacy_bulk_mutation_slash_paths_fail_before_resolver(self):
+        import slash_commands
+
+        with mock.patch.dict(sys.modules, {
+            "historical.run_engram_cleaning_resolver": mock.Mock(),
+            "historical.run_news_supersession_resolver": mock.Mock(),
+        }):
+            cleaning = slash_commands._cmd_cleaning(["resolve", "--apply"])
+            news = slash_commands._cmd_news(["resolve", "--apply"])
+        self.assertIn("SYSTEM PROTECTION", cleaning)
+        self.assertIn("SYSTEM PROTECTION", news)
+
+
+class TestApprovalAndReceipts(SystemProtectionBase):
+    def test_exact_approval_succeeds_once_and_is_receipt_bound(self):
+        target = self.root / "custom-theme"
+        target.mkdir()
+        (target / "theme.css").write_text("old", encoding="utf-8")
+        action, selector, state = self._request(target)
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"theme_id": "custom"},
+                pre_state=[state],
+            )
+        self._approve_latest()
+        execution = protection.authorize_server_action(
+            action, selectors=[selector], params={"theme_id": "custom"},
+            pre_state=[state],
+        )
+        (target / "theme.css").write_text("new", encoding="utf-8")
+        terminal = protection.complete_execution(
+            execution, ok=True, result={"ok": True},
+            post_state=[protection.capture_path_identity(target)],
+        )
+        self.assertEqual(terminal["event_type"], "protected_action_completed")
+        records = protection.verify_audit()
+        self.assertEqual([r["event_type"] for r in records], [
+            "protected_action_started", "protected_action_completed",
+        ])
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"theme_id": "custom"},
+                pre_state=[protection.capture_path_identity(target)],
+            )
+
+    def test_cross_scope_and_forged_queue_records_cannot_authorize(self):
+        one = self.root / "one"
+        two = self.root / "two"
+        one.write_text("1", encoding="utf-8")
+        two.write_text("2", encoding="utf-8")
+        action, selector_one, state_one = self._request(one)
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector_one], params={"theme_id": "one"},
+                pre_state=[state_one],
+            )
+        original = self._queue_records()[-1]
+        forged = copy.deepcopy(original)
+        forged["id"] = "forged-queue-id"
+        self.assertIn("Unauthenticated", tool_events.resolve_gate_entry(
+            forged, approve=True,
+        ))
+        self._approve_latest()
+
+        _, selector_two, state_two = self._request(two)
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector_two], params={"theme_id": "two"},
+                pre_state=[state_two],
+            )
+        execution = protection.authorize_server_action(
+            action, selectors=[selector_one], params={"theme_id": "one"},
+            pre_state=[state_one],
+        )
+        protection.complete_execution(
+            execution, ok=True, result={"ok": True},
+            post_state=[state_one],
+        )
+
+    def test_pre_state_drift_makes_approval_stale_without_start_receipt(self):
+        target = self.root / "profile.json"
+        target.write_text("before", encoding="utf-8")
+        action, selector, state = self._request(target, "model_profile_delete")
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"name": "profile"},
+                pre_state=[state],
+            )
+        self._approve_latest()
+        target.write_text("drifted", encoding="utf-8")
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"name": "profile"},
+                pre_state=[protection.capture_path_identity(target)],
+            )
+        self.assertEqual(protection.verify_audit(), [])
+
+    def test_drift_after_write_ahead_is_rejected_before_effect_scope(self):
+        target = self.root / "profile.json"
+        target.write_text("before", encoding="utf-8")
+        action, selector, state = self._request(target, "model_profile_delete")
+        params = {"name": "profile"}
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params=params,
+                pre_state=[state],
+            )
+        self._approve_latest()
+        execution = protection.authorize_server_action(
+            action, selectors=[selector], params=params,
+            pre_state=[state],
+        )
+        target.write_text("raced", encoding="utf-8")
+        effect_ran = False
+        with self.assertRaises(protection.ProtectionDenied):
+            with protection.protected_effect(execution):
+                effect_ran = True
+        self.assertFalse(effect_ran)
+        records = protection.verify_audit()
+        self.assertEqual(
+            [record["event_type"] for record in records],
+            ["protected_action_started"],
+        )
+
+    def test_direct_mint_and_fabricated_receipt_start_are_rejected(self):
+        with self.assertRaises(PermissionError):
+            tool_events.grant_approval("system_protection:theme_delete", "x")
+        decision = protection.classify_action(
+            "theme_delete", selectors=[protection.path_selector(self.root / "x")],
+            mutability="irreversible", dedicated_action=True,
+        )
+        with self.assertRaises(protection.ProtectionAuditError):
+            protection.begin_execution(
+                decision, approval_id="fabricated",
+                approval_action="system_protection:theme_delete",
+                approval_args_hash="fabricated", params_digest="sha256:false",
+                pre_state=[], surface="test",
+            )
+        self.assertFalse(os.path.exists(self.actions))
+
+    def test_pre_state_fabrication_and_audit_tampering_fail_closed(self):
+        target = self.root / "profile.json"
+        target.write_text("before", encoding="utf-8")
+        action, selector, state = self._request(target, "model_profile_delete")
+        forged = dict(state)
+        forged["content_digest"] = "sha256:" + "0" * 64
+        body = dict(forged)
+        body.pop("digest")
+        forged["digest"] = protection.params_digest(body)
+        with self.assertRaises(protection.ProtectionDenied):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"name": "x"},
+                pre_state=[forged],
+            )
+        self.assertEqual(self._queue_records(), [])
+
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"name": "x"},
+                pre_state=[state],
+            )
+        self._approve_latest()
+        execution = protection.authorize_server_action(
+            action, selectors=[selector], params={"name": "x"},
+            pre_state=[state],
+        )
+        protection.complete_execution(
+            execution, ok=True, result={"ok": True}, post_state=[state],
+        )
+        lines = Path(self.actions).read_text(encoding="utf-8").splitlines()
+        altered = json.loads(lines[0])
+        altered["request"]["action"] = "substituted"
+        altered.pop("record_digest")
+        # Recomputing a self-declared adjacent digest is still not authority;
+        # the verifier expects the protected-key HMAC.
+        altered["record_digest"] = protection.params_digest(altered)
+        lines[0] = json.dumps(altered, sort_keys=True, separators=(",", ":"))
+        Path(self.actions).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        with self.assertRaises(protection.ProtectionAuditError):
+            protection.verify_audit()
+
+    def test_receipt_write_failure_blocks_before_effect(self):
+        target = self.root / "theme"
+        target.mkdir()
+        action, selector, state = self._request(target)
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"theme_id": "x"},
+                pre_state=[state],
+            )
+        self._approve_latest()
+        with mock.patch.object(
+            protection._rp, "append_bytes_no_follow",
+            side_effect=OSError("forced audit failure"),
+        ):
+            with self.assertRaises(protection.ProtectionAuditError):
+                protection.authorize_server_action(
+                    action, selectors=[selector], params={"theme_id": "x"},
+                    pre_state=[state],
+                )
+        self.assertTrue(target.exists())
+
+    def test_corrupt_approval_store_is_broken_infrastructure_not_reset(self):
+        target = self.root / "theme"
+        target.mkdir()
+        Path(self.approvals).write_text("{not-json", encoding="utf-8")
+        action, selector, state = self._request(target)
+        with self.assertRaises(protection.ProtectionAuditError):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"theme_id": "x"},
+                pre_state=[state],
+            )
+        self.assertEqual(
+            Path(self.approvals).read_text(encoding="utf-8"), "{not-json",
+        )
+        self.assertTrue(target.exists())
+        self.assertEqual(self._queue_records(), [])
+
+    def test_terminal_receipt_is_single_winner_and_identity_bound(self):
+        target = self.root / "theme"
+        target.mkdir()
+        action, selector, state = self._request(target)
+        with self.assertRaises(protection.ProtectionReviewRequired):
+            protection.authorize_server_action(
+                action, selectors=[selector], params={"theme_id": "x"},
+                pre_state=[state],
+            )
+        self._approve_latest()
+        execution = protection.authorize_server_action(
+            action, selectors=[selector], params={"theme_id": "x"},
+            pre_state=[state],
+        )
+        fabricated_post = dict(state)
+        fabricated_post["kind"] = "absent"
+        fabricated_post.pop("content_digest", None)
+        fabricated_post.pop("bytes", None)
+        body = dict(fabricated_post)
+        body.pop("digest")
+        fabricated_post["digest"] = protection.params_digest(body)
+        with self.assertRaises(protection.ProtectionDenied):
+            protection.complete_execution(
+                execution, ok=True, result={"ok": True},
+                post_state=[fabricated_post],
+            )
+        outcomes = []
+
+        def finish():
+            try:
+                protection.complete_execution(
+                    execution, ok=True, result={"ok": True}, post_state=[state],
+                )
+                outcomes.append("ok")
+            except protection.ProtectionAuditError:
+                outcomes.append("rejected")
+
+        threads = [threading.Thread(target=finish) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertCountEqual(outcomes, ["ok", "rejected"])
+        with self.assertRaises(protection.ProtectionAuditError):
+            protection.complete_execution(
+                replace(execution, request_digest="sha256:substituted"),
+                ok=True, result={}, post_state=[state],
+            )
+
+
+class TestCredentialBoundary(SystemProtectionBase):
+    @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
+    @mock.patch.object(credential_tool.keyring, "get_password")
+    def test_tool_exposes_only_registry_bounded_existence(
+        self, get_password, username_map,
+    ):
+        username_map.return_value = {"openai": "openai-api-key"}
+        get_password.return_value = "never-return-this-value"
+        self.assertIn("Credential present", credential_tool.credential_store(
+            "status", "ora", "openai-api-key",
+        ))
+        self.assertNotIn("never-return", credential_tool.credential_store(
+            "status", "ora", "openai-api-key",
+        ))
+        self.assertIn("unavailable", credential_tool.credential_store(
+            "retrieve", "ora", "openai-api-key",
+        ))
+        self.assertIn("service must be", credential_tool.credential_store(
+            "status", "other", "openai-api-key",
+        ))
+        self.assertIn("not declared", credential_tool.credential_store(
+            "status", "ora", "arbitrary-account",
+        ))
+
+    @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
+    @mock.patch.object(credential_tool.keyring, "set_password")
+    def test_direct_tool_credential_mutation_has_no_effect(
+        self, set_password, username_map,
+    ):
+        username_map.return_value = {"openai": "openai-api-key"}
+        result = credential_tool.credential_store(
+            "store", "ora", "openai-api-key", "secret",
+        )
+        self.assertIn("exact active system-protection receipt", result)
+        set_password.assert_not_called()
+
+    @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
+    @mock.patch.object(credential_tool.keyring, "get_password")
+    @mock.patch.object(credential_tool.keyring, "set_password")
+    def test_exact_receipted_tool_credential_mutation_succeeds_once(
+        self, set_password, get_password, username_map,
+    ):
+        username_map.return_value = {"openai": "openai-api-key"}
+        get_password.side_effect = lambda *_: (
+            "secret" if set_password.called else None
+        )
+        params = {
+            "action": "store", "service": "ora",
+            "username": "openai-api-key", "value": "secret",
+        }
+        approval = tool_events.gate(
+            "credential_store",
+            {"category": "write", "mutability": "irreversible",
+             "sensitivity": "secret", "egress": "none",
+             "enforcement": "in_harness"},
+            params=params, model_facing=True,
+        )
+        self.assertFalse(approval.allowed)
+        self._approve_latest()
+        approval = tool_events.gate(
+            "credential_store",
+            {"category": "write", "mutability": "irreversible",
+             "sensitivity": "secret", "egress": "none",
+             "enforcement": "in_harness"},
+            params=params, model_facing=True,
+        )
+        self.assertTrue(approval.allowed)
+        selector = "credential:ora/openai-api-key"
+        pre = protection.capture_selector_identity(selector)
+        decision = protection.classify_action(
+            "credential_store:store", selectors=[selector],
+            mutability="irreversible", sensitivity="secret",
+        )
+        execution = protection.begin_execution(
+            decision, approval_id=approval.approval_id,
+            approval_action="credential_store",
+            approval_args_hash=tool_events.normalize_args_hash(
+                "credential_store", params,
+            ),
+            params_digest=protection.params_digest(params), pre_state=[pre],
+            surface="tool_dispatcher",
+        )
+        with protection.protected_effect(execution):
+            result = credential_tool.credential_store(**params)
+        self.assertIn("Credential stored", result)
+        set_password.assert_called_once_with(
+            "ora", "openai-api-key", "secret",
+        )
+        post = protection.capture_selector_identity(selector)
+        protection.complete_execution(
+            execution, ok=True, result={"stored": True}, post_state=[post],
+        )
+
+    def test_provider_execution_resolves_only_registry_declared_identity(self):
+        import boot
+
+        registry = mock.Mock()
+        registry.by_id.return_value = {
+            "id": "openai", "env_var": "OPENAI_API_KEY",
+            "keyring_username": "openai-api-key",
+        }
+        with mock.patch.object(boot, "_provider_registry", registry), \
+                mock.patch.object(boot, "_provider_key", return_value="canonical") as resolver:
+            self.assertEqual(boot._canonical_provider_key("openai"), "canonical")
+        registry.by_id.assert_called_once_with("openai")
+        resolver.assert_called_once_with(registry.by_id.return_value)
+        with mock.patch.object(boot, "_provider_registry", None):
+            self.assertEqual(boot._canonical_provider_key("openai"), "")
+
+
+class TestSystemProtectionDocumentation(unittest.TestCase):
+    def test_compound_server_deletions_declare_every_mutated_state_file(self):
+        root = Path(__file__).resolve().parents[2]
+        source = (root / "server" / "server.py").read_text(encoding="utf-8")
+        for token in (
+            "settings_path = _user_settings._SETTINGS_PATH",
+            "_sp.path_selector(settings_path)",
+            "_sp.capture_path_identity(settings_path)",
+            "_sp.path_selector(V3_THEMES_INDEX)",
+            "_sp.capture_path_identity(V3_THEMES_INDEX)",
+            "_sp.path_selector(ac.ACTIVE_POINTER_PATH)",
+            "_sp.capture_path_identity(ac.ACTIVE_POINTER_PATH)",
+        ):
+            self.assertIn(token, source)
+
+    def test_canonical_tracker_program_and_registry_preserve_tranche_boundary(self):
+        root = Path(__file__).resolve().parents[2]
+        vault = Path.home() / "Documents" / "vault" / "Projects" / "Ora"
+        canonical = (
+            vault / "Framework — System Protection and Outbound Security.md"
+        ).read_text(encoding="utf-8")
+        for token in (
+            "single mechanical authority",
+            "A protected effect occurs only after Ora classifies",
+            "Approval cannot authorize",
+            "HMAC-SHA-256 chain",
+            "Public or caller-created approval records are rejected",
+            "provider registry's declared environment or OS-keyring coordinates",
+            "Governed Process Run",
+            "installs no clock, scheduled cleanup, recovery sweep, cron job, or LaunchAgent",
+            "Full G1.22 remains open",
+            "Telegram and email credentials",
+            "G1.24 retains ownership",
+        ):
+            self.assertIn(token, canonical)
+        self.assertNotIn(
+            "Full G1.22 is accepted",
+            canonical,
+        )
+
+        records = "\n".join(
+            (vault / name).read_text(encoding="utf-8")
+            for name in (
+                "Working — Ora Setup and Refinement.md",
+                "Working — Framework — Ora Project Integration Program.md",
+                "Registry — Ora Overview and Document Registry.md",
+            )
+        )
+        for token in (
+            "G1.19 is independently accepted",
+            "G1.22A IMPLEMENTED / JUDGMENT PENDING",
+            "pre-channel self-protection and non-channel enforcement tranche is implemented and submitted",
+            "full G1.22 is not claimed",
+            "G1.21 remains blocked on G1.17",
+            "Windows raw-drive refusal is statically bounded",
+        ):
+            self.assertIn(token, records)
+
+        evidence = (
+            root / "outputs" / "g1-22a" / "closeout-evidence.md"
+        ).read_text(encoding="utf-8")
+        for token in (
+            "python3 -m pytest -q \\",
+            "orchestrator/tests/test_g1_22a_system_protection.py",
+            "python3 -m py_compile \\",
+            "python3 scripts/verify-implementation.py --check drift",
+            "git diff f7eb86a43f2c9c8970ea780908dc85abf83d29f2..HEAD --check",
+            "git diff ac6a5236f1879bfce6591e7af7661c5dfbf7bea2..HEAD --check",
+            "G1.21 and G1.22B remain held",
+        ):
+            self.assertIn(token, evidence)
+
+
+if __name__ == "__main__":
+    unittest.main()

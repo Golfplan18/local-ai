@@ -164,7 +164,7 @@ class UserSettingsModuleTests(unittest.TestCase):
         )
 
     def test_set_and_get_api_key_via_keyring_stub(self):
-        self._mod.set_api_key("anthropic", "secret123")
+        self._mod._set_api_key_storage("anthropic", "secret123")
         self.assertTrue(self._mod.api_key_present("anthropic"))
         self.assertFalse(self._mod.api_key_present("openai"))
         self.assertEqual(
@@ -172,9 +172,18 @@ class UserSettingsModuleTests(unittest.TestCase):
             "secret123",
         )
 
+    def test_public_credential_mutation_requires_active_protection_receipt(self):
+        from orchestrator.system_protection import ProtectionDenied
+
+        with self.assertRaises(ProtectionDenied):
+            self._mod.set_api_key("anthropic", "secret123")
+        self.assertFalse(self._mod.api_key_present("anthropic"))
+        with self.assertRaises(ProtectionDenied):
+            self._mod.delete_api_key("anthropic")
+
     def test_artificial_analysis_provider_registered(self):
         # Key writes to ora/aa-api-key under the keyring service.
-        self._mod.set_api_key("artificial_analysis", "aa_secret_value")
+        self._mod._set_api_key_storage("artificial_analysis", "aa_secret_value")
         self.assertTrue(self._mod.api_key_present("artificial_analysis"))
         self.assertEqual(
             self._fake_keyring.store[("ora", "aa-api-key")],
@@ -182,13 +191,13 @@ class UserSettingsModuleTests(unittest.TestCase):
         )
 
     def test_delete_api_key_removes_from_keyring(self):
-        self._mod.set_api_key("anthropic", "secret123")
-        self._mod.delete_api_key("anthropic")
+        self._mod._set_api_key_storage("anthropic", "secret123")
+        self._mod._delete_api_key_storage("anthropic")
         self.assertFalse(self._mod.api_key_present("anthropic"))
 
     def test_delete_missing_key_is_noop(self):
         # Should not raise even though the key was never set.
-        self._mod.delete_api_key("anthropic")
+        self._mod._delete_api_key_storage("anthropic")
         self.assertFalse(self._mod.api_key_present("anthropic"))
 
     def test_unknown_provider_rejected(self):
@@ -200,7 +209,7 @@ class UserSettingsModuleTests(unittest.TestCase):
             self._mod.set_api_key("anthropic", "")
 
     def test_list_api_key_status_returns_all_providers(self):
-        self._mod.set_api_key("anthropic", "x")
+        self._mod._set_api_key_storage("anthropic", "x")
         rows = self._mod.list_api_key_status()
         provider_ids = {r["provider"] for r in rows}
         self.assertIn("anthropic", provider_ids)
@@ -257,6 +266,23 @@ class SettingsEndpointTests(unittest.TestCase):
 
         self.client = self.S.app.test_client()
 
+    def _approve_protected_retry(self, first_response, callback):
+        self.assertEqual(first_response.status_code, 409)
+        payload = first_response.get_json()
+        self.assertEqual(payload["status"], "awaiting_system_protection_approval")
+        import oversight_queue
+        import tool_events
+        entry = oversight_queue.find_paused_by_id(payload["queue_id"])
+        self.assertIsNotNone(entry)
+        message = tool_events.resolve_gate_entry({
+            "id": entry.id,
+            "kind": entry.kind,
+            "conversation_id": entry.conversation_id,
+            "event": entry.event,
+        }, approve=True)
+        self.assertIn("One-shot token", message)
+        return callback()
+
     def tearDown(self):
         if self.import_ok:
             self._US._SETTINGS_PATH = self._saved_path
@@ -298,9 +324,17 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
 
     def test_api_key_post_stores_in_keyring_stub(self):
-        resp = self.client.post(
+        first = self.client.post(
             "/api/settings/api-key",
             json={"provider": "elevenlabs", "value": "xyz123"},
+        )
+        self.assertNotIn(("ora", "elevenlabs-api-key"), self._fake_keyring.store)
+        resp = self._approve_protected_retry(
+            first,
+            lambda: self.client.post(
+                "/api/settings/api-key",
+                json={"provider": "elevenlabs", "value": "xyz123"},
+            ),
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -324,7 +358,12 @@ class SettingsEndpointTests(unittest.TestCase):
     def test_api_key_delete_removes_from_keyring(self):
         # Pre-populate.
         self._fake_keyring.set_password("ora", "openai-api-key", "abc")
-        resp = self.client.delete("/api/settings/api-key/openai")
+        first = self.client.delete("/api/settings/api-key/openai")
+        self.assertIn(("ora", "openai-api-key"), self._fake_keyring.store)
+        resp = self._approve_protected_retry(
+            first,
+            lambda: self.client.delete("/api/settings/api-key/openai"),
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(("ora", "openai-api-key"), self._fake_keyring.store)
 

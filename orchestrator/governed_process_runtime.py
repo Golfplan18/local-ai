@@ -45,6 +45,11 @@ try:
 except ImportError:  # pragma: no cover - direct module execution
     from process_definition_registry import ProcessDefinitionRegistry
 
+try:
+    from . import system_protection as _system_protection
+except ImportError:  # pragma: no cover - direct module execution
+    import system_protection as _system_protection
+
 
 PROCESS_RUNS_DIR = os.path.join(
     os.environ.get("ORA_HOME", str(Path.home() / "ora")),
@@ -3638,6 +3643,13 @@ class GovernedProcessRuntime:
             raise AuthorityDeniedError("an authorized action requires at least one selector")
         if effect_type is None:
             raise AuthorityDeniedError("an authorized action requires an explicit effect_type")
+        protection = _system_protection.classify_governed_action(
+            action, selectors, effect_type=effect_type, scope_kind=scope_kind,
+        )
+        if protection.outcome != "allow":
+            raise AuthorityDeniedError(
+                f"system protection reserves action {action!r}: {protection.reason}"
+            )
         run = self.load_run(run_id)
         self._require_mutable_run(run, f"authorize action {action}")
         definition = self.load_definition(run_id)

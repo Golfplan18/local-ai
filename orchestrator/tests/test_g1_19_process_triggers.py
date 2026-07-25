@@ -688,18 +688,16 @@ class TestProcessTriggerDocumentation:
             )
         )
         for token in (
-            "G1.19 is revised and resubmitted",
-            "G1.19 IMPLEMENTED FOR JUDGMENT",
-            "G1.19 AUTHORITY CORRECTION SUBMITTED",
+            "G1.19 is independently accepted",
+            "G1.19 ACCEPTED / G1.22A AUTHORIZED",
+            "G1.22A IMPLEMENTED / JUDGMENT PENDING",
             "7fd98388f7f90475cae1a5de0a34f321ad3d3ee9",
-            "fixed 30-second scan is removed",
-            "independent judgment is pending",
+            "one-shot calendar wakes",
             "G1.17 is user-deferred",
-            "G1.12, G1.3, and G1.7 remain user-deferred",
-            "no Persona, channel credential/transport, outbound effect, second engine",
+            "Telegram, email, agent masks, channel allowlists/audit",
+            "full G1.22 acceptance is claimed",
         ):
             assert token in combined
-        assert "G1.19 is independently accepted" not in combined
 
 
 if __name__ == "__main__":

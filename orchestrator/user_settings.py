@@ -296,12 +296,40 @@ def set_api_key(provider: str, value: str) -> None:
     """Store an API key for ``provider`` in the system keyring."""
     if not value:
         raise SettingsError("api key value cannot be empty")
+    try:
+        from orchestrator import system_protection as _sp
+    except ImportError:  # pragma: no cover
+        import system_protection as _sp
+    username = _provider_username(provider)
+    _sp.require_active_execution(
+        "credential_store", f"credential:ora/{username}",
+    )
+    _set_api_key_storage(provider, value)
+
+
+def _set_api_key_storage(provider: str, value: str) -> None:
+    """Keyring adapter; authority must be enforced by the public caller."""
+    if not value:
+        raise SettingsError("api key value cannot be empty")
     import keyring  # pulled lazily so tests can stub via sys.modules
     keyring.set_password(_KEYRING_SERVICE, _provider_username(provider), value)
 
 
 def delete_api_key(provider: str) -> None:
     """Remove an API key for ``provider`` from the keyring (if present)."""
+    try:
+        from orchestrator import system_protection as _sp
+    except ImportError:  # pragma: no cover
+        import system_protection as _sp
+    username = _provider_username(provider)
+    _sp.require_active_execution(
+        "credential_delete", f"credential:ora/{username}",
+    )
+    _delete_api_key_storage(provider)
+
+
+def _delete_api_key_storage(provider: str) -> None:
+    """Keyring deletion adapter; authority is enforced by the public caller."""
     import keyring
     try:
         keyring.delete_password(_KEYRING_SERVICE, _provider_username(provider))

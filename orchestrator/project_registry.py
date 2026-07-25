@@ -772,7 +772,15 @@ def load_project_at(root_path) -> Project:
 
 
 def _pointer_path(nexus: str, pointer_dir: str = POINTER_DIR) -> Path:
-    return Path(os.path.expanduser(pointer_dir)) / f"{nexus}.json"
+    try:
+        try:
+            from project_meta import validate_nexus
+        except ImportError:  # pragma: no cover
+            from orchestrator.project_meta import validate_nexus
+        safe_nexus = validate_nexus(nexus)
+    except (ValueError, TypeError) as exc:
+        raise ProjectError(f"invalid project nexus {nexus!r}: {exc}") from exc
+    return Path(os.path.expanduser(pointer_dir)) / f"{safe_nexus}.json"
 
 
 def _atomic_write_pointer(path: Path, data: dict[str, Any]) -> None:

@@ -332,10 +332,12 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
                 writes.append(a.split("=", 1)[1])
         writes.extend(non_flags)
 
-    if base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir"):
+    if base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir", "rm"):
         # Every operand is a created/written target — surface all (bare names
         # resolve against the effective cwd) so a target in a protected path
-        # gates like file_write.
+        # gates like file_write.  ``rm`` is included even though its effect is
+        # deletion: G1.22 needs the exact target in order to distinguish an
+        # approvable scoped deletion from prohibited root/state destruction.
         writes.extend(non_flags)
     elif base in ("cp", "mv", "ln") and len(non_flags) >= 2:
         writes.append(non_flags[-1])

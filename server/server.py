@@ -1086,6 +1086,9 @@ def media_library_remove(conversation_id, entry_id):
         return _json_response({"error": "media library unavailable"}, status=503)
     if not _valid_live_conversation_id(conversation_id):
         return _json_response({"error": "invalid conversation_id"}, status=400)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
     with _conversation_lifecycle_lock(conversation_id):
         if _is_conversation_deleted(conversation_id):
             return _json_response({"status": "deleted"}, status=410)
@@ -1093,8 +1096,49 @@ def media_library_remove(conversation_id, entry_id):
             lib = _get_media_library(conversation_id)
         except Exception as e:
             return _json_response({"error": str(e)}, status=500)
-        if not lib.remove(entry_id):
+        entry = lib.get_entry(entry_id)
+        if entry is None:
             return _json_response({"error": "unknown entry_id"}, status=404)
+        protection = None
+        try:
+            from orchestrator import system_protection as _sp
+            state_path = lib.state_path
+            pre_state = _sp.capture_path_identity(state_path)
+            protection = _sp.authorize_server_action(
+                "media_reference_delete",
+                selectors=[_sp.path_selector(state_path)],
+                params={
+                    "conversation_id_digest": _sp.params_digest({
+                        "conversation_id": conversation_id,
+                    }),
+                    "entry_id": entry_id,
+                    "entry_digest": _sp.params_digest(entry),
+                },
+                pre_state=[pre_state],
+            )
+            with _sp.protected_effect(protection):
+                removed = lib.remove(entry_id)
+            _sp.complete_execution(
+                protection, ok=removed,
+                result={"removed": removed, "entry_id": entry_id},
+                post_state=[_sp.capture_path_identity(state_path)],
+            )
+        except Exception as exc:
+            try:
+                from orchestrator import system_protection as _sp
+                if isinstance(exc, _sp.SystemProtectionError):
+                    return _system_protection_error_response(exc)
+                if protection is not None:
+                    _sp.complete_execution(
+                        protection, ok=False,
+                        result={"error": type(exc).__name__},
+                        post_state=[_sp.capture_path_identity(state_path)],
+                    )
+            except Exception as receipt_error:
+                return _system_protection_error_response(receipt_error)
+            return _json_response({"error": str(exc)}, status=500)
+        if not removed:
+            return _json_response({"error": "entry changed before deletion"}, status=409)
         return _json_response({"removed": entry_id})
 
 
@@ -1891,18 +1935,61 @@ def styles_custom_update(sid):
 def styles_custom_delete(sid):
     """Delete a custom profile. If it was the account default, clear the default
     so nothing points at a missing id."""
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
-        existed = _style_store_mod().delete_custom_profile(sid)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    if existed:
-        try:
-            if _HAS_USER_SETTINGS and _user_settings is not None:
+        from orchestrator import system_protection as _sp
+        store = _style_store_mod()
+        store_path = store.STORE_PATH
+        settings_path = _user_settings._SETTINGS_PATH
+        current = store.get_custom_profile(sid)
+        if current is None:
+            return _json_response({"ok": False})
+        selectors = [
+            _sp.path_selector(store_path),
+            _sp.path_selector(settings_path),
+        ]
+        pre_state = [
+            _sp.capture_path_identity(store_path),
+            _sp.capture_path_identity(settings_path),
+        ]
+        protection = _sp.authorize_server_action(
+            "style_profile_delete", selectors=selectors,
+            params={"style_id": sid, "profile_digest": _sp.params_digest(current)},
+            pre_state=pre_state,
+        )
+        with _sp.protected_effect(protection):
+            existed = store.delete_custom_profile(sid)
+            if existed and _HAS_USER_SETTINGS and _user_settings is not None:
                 st = (_user_settings.load_settings() or {}).get("styles") or {}
                 if st.get("default_id") == sid:
                     _user_settings.save_settings({"styles": {"default_id": ""}})
-        except Exception:
-            pass
+        _sp.complete_execution(
+            protection, ok=existed,
+            result={"deleted": existed, "style_id": sid},
+            post_state=[
+                _sp.capture_path_identity(store_path),
+                _sp.capture_path_identity(settings_path),
+            ],
+        )
+    except Exception as e:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(e, _sp.SystemProtectionError):
+                return _system_protection_error_response(e)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(e).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(store_path),
+                        _sp.capture_path_identity(settings_path),
+                    ],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
+        return _json_response({"error": str(e)}, status=500)
     return _json_response({"ok": bool(existed)})
 
 
@@ -2009,7 +2096,7 @@ def _resolve_reembed_profile(profile_id: str):
         _retrieval_config.list_embedding_options(), profile_id)
 
 
-def _spawn_reembed(profile_id: str) -> tuple:
+def _spawn_reembed(profile_id: str, *, protection_execution) -> tuple:
     """Start the background re-embed for ``profile_id``.
 
     Returns ``(payload, http_status)``. Refuses when a job is already
@@ -2018,6 +2105,9 @@ def _spawn_reembed(profile_id: str) -> tuple:
     must fill it in first).
     """
     import subprocess
+
+    if protection_execution is None:
+        return {"error": "system-protection authorization required"}, 403
 
     opt = _resolve_reembed_profile(profile_id)
     if opt is None:
@@ -2058,26 +2148,28 @@ def _spawn_reembed(profile_id: str) -> tuple:
     ]
 
     def _run_in_background():
+        from orchestrator import system_protection as _sp
         try:
-            proc = subprocess.Popen(
-                cmd, cwd=WORKSPACE,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                bufsize=1,
-            )
-            for line in proc.stdout:
-                line = line.strip()
-                if not line:
-                    continue
-                # Keep whichever line arrived last; progress lines get a
-                # normalized "N/M (P%)" prefix so the pane can render a
-                # stable counter.
-                m = _REEMBED_PROGRESS_RE.search(line)
-                with _reembed_lock:
-                    _reembed_state["progress"] = (
-                        f"{m.group(1)}/{m.group(2)} ({m.group(3)}%)"
-                        if m else line[:200]
-                    )
-            proc.wait()
+            with _sp.protected_effect(protection_execution):
+                proc = subprocess.Popen(
+                    cmd, cwd=WORKSPACE,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    bufsize=1,
+                )
+                for line in proc.stdout:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Keep whichever line arrived last; progress lines get a
+                    # normalized "N/M (P%)" prefix so the pane can render a
+                    # stable counter.
+                    m = _REEMBED_PROGRESS_RE.search(line)
+                    with _reembed_lock:
+                        _reembed_state["progress"] = (
+                            f"{m.group(1)}/{m.group(2)} ({m.group(3)}%)"
+                            if m else line[:200]
+                        )
+                proc.wait()
             ok = proc.returncode == 0
             with _reembed_lock:
                 _reembed_state["in_progress"] = False
@@ -2089,11 +2181,42 @@ def _spawn_reembed(profile_id: str) -> tuple:
                     # index only takes effect after a server restart.
                     "requires_restart": ok,
                 }
+            _sp.complete_execution(
+                protection_execution, ok=ok,
+                result={"profile_id": profile_id, "returncode": proc.returncode},
+                post_state=[
+                    _sp.capture_path_identity(rp.CHROMADB_DIR),
+                    _sp.capture_path_identity(
+                        _retrieval_config.CHROMADB_CONFIG_PATH,
+                    ),
+                ],
+            )
         except Exception as exc:
             with _reembed_lock:
                 _reembed_state["in_progress"] = False
                 _reembed_state["completed_at"] = time.time()
                 _reembed_state["last_summary"] = {"ok": False, "error": str(exc)}
+            try:
+                _sp.complete_execution(
+                    protection_execution, ok=False,
+                    result={"profile_id": profile_id,
+                            "error": type(exc).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(rp.CHROMADB_DIR),
+                        _sp.capture_path_identity(
+                            _retrieval_config.CHROMADB_CONFIG_PATH,
+                        ),
+                    ],
+                )
+            except Exception as receipt_error:
+                with _reembed_lock:
+                    _reembed_state["last_summary"] = {
+                        "ok": False,
+                        "error": (
+                            "broken system-protection infrastructure: "
+                            f"{receipt_error}"
+                        ),
+                    }
 
     threading.Thread(target=_run_in_background, daemon=True).start()
     return {"status": "started", "profile_id": profile_id}, 200
@@ -2106,7 +2229,68 @@ def retrieval_rebuild_start():
     profile_id = (payload.get("embedding_profile_id") or "").strip()
     if not profile_id:
         return _json_response({"error": "embedding_profile_id required"}, status=400)
-    body, status = _spawn_reembed(profile_id)
+    option = _resolve_reembed_profile(profile_id)
+    if option is None:
+        return _json_response({"error": "unknown embedding profile"}, status=400)
+    if not option.get("dimensions"):
+        return _json_response({
+            "error": (
+                "embedding dimension unknown for this profile — probe it "
+                "before rebuilding"
+            ),
+        }, status=400)
+    try:
+        active = (_retrieval_config.snapshot() or {}).get("active_embedding") or {}
+        if str(active.get("id")) == str(profile_id):
+            return _json_response({
+                "error": "this profile is already active",
+            }, status=400)
+    except Exception:
+        pass
+    with _reembed_lock:
+        if _reembed_state["in_progress"]:
+            return _json_response({
+                "status": "in_progress",
+                "profile_id": _reembed_state["profile_id"],
+                "progress": _reembed_state["progress"],
+            }, status=409)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection_execution = None
+    try:
+        from orchestrator import system_protection as _sp
+        selectors = [
+            _sp.path_selector(rp.CHROMADB_DIR),
+            _sp.path_selector(_retrieval_config.CHROMADB_CONFIG_PATH),
+        ]
+        pre_state = [
+            _sp.capture_path_identity(rp.CHROMADB_DIR),
+            _sp.capture_path_identity(_retrieval_config.CHROMADB_CONFIG_PATH),
+        ]
+        protection_execution = _sp.authorize_server_action(
+            "vector_store_rebuild", selectors=selectors,
+            params={"embedding_profile_id": profile_id}, pre_state=pre_state,
+        )
+    except Exception as exc:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+        except Exception:
+            pass
+        return _json_response({"error": str(exc)}, status=500)
+    body, status = _spawn_reembed(
+        profile_id, protection_execution=protection_execution,
+    )
+    if status != 200:
+        try:
+            from orchestrator import system_protection as _sp
+            _sp.complete_execution(
+                protection_execution, ok=False, result=body, post_state=pre_state,
+            )
+        except Exception as exc:
+            return _system_protection_error_response(exc)
     return _json_response(body, status=status)
 
 
@@ -2115,6 +2299,37 @@ def retrieval_rebuild_status():
     """Current rebuild progress / last result."""
     with _reembed_lock:
         return _json_response(dict(_reembed_state))
+
+
+def _system_protection_error_response(exc):
+    """Typed fail-closed response shared by protected HTTP mutations."""
+    try:
+        from orchestrator import system_protection as _sp
+    except Exception:  # pragma: no cover - import failure is infrastructure
+        return _json_response({
+            "status": "system_protection_unavailable", "error": str(exc),
+        }, status=503)
+    if isinstance(exc, _sp.ProtectionReviewRequired):
+        return _json_response({
+            "status": "awaiting_system_protection_approval",
+            "error": str(exc),
+            "queue_id": exc.queue_id,
+            "retry_required": True,
+        }, status=409)
+    if isinstance(exc, _sp.ProtectionDenied):
+        return _json_response({
+            "status": "system_protection_denied", "error": str(exc),
+        }, status=403)
+    return _json_response({
+        "status": "system_protection_broken_infrastructure", "error": str(exc),
+    }, status=503)
+
+
+def _credential_protection_state(provider: str) -> tuple[str, dict]:
+    from orchestrator import system_protection as _sp
+    username = _user_settings._provider_username(provider)
+    selector = f"credential:ora/{username}"
+    return selector, _sp.capture_selector_identity(selector)
 
 
 @app.route("/api/settings/api-key", methods=["POST"])
@@ -2128,11 +2343,43 @@ def settings_set_api_key():
         return _json_response({"error": "provider required"}, status=400)
     if value is None or value == "":
         return _json_response({"error": "value required"}, status=400)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
-        _user_settings.set_api_key(provider, value)
-    except _user_settings.SettingsError as e:
-        return _json_response({"error": str(e)}, status=400)
+        from orchestrator import system_protection as _sp
+        selector, pre_state = _credential_protection_state(provider)
+        protection = _sp.authorize_server_action(
+            "credential_store",
+            selectors=[selector],
+            params={
+                "provider": provider,
+                "value_digest": _sp.params_digest({"value": str(value)}),
+            },
+            pre_state=[pre_state],
+        )
+        with _sp.protected_effect(protection):
+            _user_settings.set_api_key(provider, value)
+        _, post_state = _credential_protection_state(provider)
+        _sp.complete_execution(
+            protection, ok=True, result={"provider": provider, "stored": True},
+            post_state=[post_state],
+        )
     except Exception as e:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(e, _sp.SystemProtectionError):
+                return _system_protection_error_response(e)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(e).__name__},
+                    post_state=[_credential_protection_state(provider)[1]],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
+        if isinstance(e, _user_settings.SettingsError):
+            return _json_response({"error": str(e)}, status=400)
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"provider": provider, "stored": True})
 
@@ -2143,13 +2390,40 @@ def settings_delete_api_key(provider):
         return _json_response({"error": "settings module unavailable"}, status=503)
     if not provider:
         return _json_response({"error": "provider required"}, status=400)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
+        from orchestrator import system_protection as _sp
         # Validate the provider id before reaching keyring.
-        _user_settings._provider_username(provider)
-        _user_settings.delete_api_key(provider)
-    except _user_settings.SettingsError as e:
-        return _json_response({"error": str(e)}, status=400)
+        selector, pre_state = _credential_protection_state(provider)
+        protection = _sp.authorize_server_action(
+            "credential_delete",
+            selectors=[selector], params={"provider": provider},
+            pre_state=[pre_state],
+        )
+        with _sp.protected_effect(protection):
+            _user_settings.delete_api_key(provider)
+        _, post_state = _credential_protection_state(provider)
+        _sp.complete_execution(
+            protection, ok=True, result={"provider": provider, "deleted": True},
+            post_state=[post_state],
+        )
     except Exception as e:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(e, _sp.SystemProtectionError):
+                return _system_protection_error_response(e)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(e).__name__},
+                    post_state=[_credential_protection_state(provider)[1]],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
+        if isinstance(e, _user_settings.SettingsError):
+            return _json_response({"error": str(e)}, status=400)
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"provider": provider, "deleted": True})
 
@@ -7461,9 +7735,43 @@ def api_projects_register():
     root = (data.get("root") or data.get("path") or "").strip()
     if not root:
         return _json_response({"ok": False, "error": "root is required"}, 400)
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
-        project = _pr.register_project(root)
+        from orchestrator import system_protection as _sp
+        project = _pr.load_project_at(root)
+        pointer = _pr._pointer_path(project.nexus)
+        manifest = Path(project.root) / _pr.MANIFEST_FILENAME
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_register", selectors=[_sp.path_selector(pointer)],
+            params={
+                "nexus": project.nexus, "root": str(project.root),
+                "manifest_identity": _sp.capture_path_identity(manifest),
+            },
+            pre_state=[pre_state],
+        )
+        with _sp.protected_effect(protection):
+            project = _pr.register_project(root)
+        _sp.complete_execution(
+            protection, ok=True,
+            result={"registered": project.nexus, "root": str(project.root)},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
     except Exception as exc:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
         return _json_response({"ok": False, "error": str(exc)}, 400)
     return _json_response({"ok": True, "project": _project_summary(project)})
 
@@ -7475,7 +7783,38 @@ def api_projects_unregister(nexus):
         from orchestrator import project_registry as _pr
     except Exception as exc:
         return _json_response({"ok": False, "error": str(exc)}, 503)
-    if _pr.unregister_project(nexus):
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
+    try:
+        from orchestrator import system_protection as _sp
+        pointer = _pr._pointer_path(nexus)
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_unregister", selectors=[_sp.path_selector(pointer)],
+            params={"nexus": nexus}, pre_state=[pre_state],
+        )
+        with _sp.protected_effect(protection):
+            removed = _pr.unregister_project(nexus)
+        _sp.complete_execution(
+            protection, ok=removed, result={"removed": removed, "nexus": nexus},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
+    except Exception as exc:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
+        return _json_response({"ok": False, "error": str(exc)}, 500)
+    if removed:
         return _json_response({"ok": True})
     return _json_response({"ok": False, "error": "project not registered"}, 404)
 
@@ -14208,6 +14547,53 @@ def _delete_conversation_runtime(conversation_id: str) -> dict:
         }
         return result
 
+
+def _conversation_protection_state(conversation_id: str) -> dict:
+    from orchestrator import system_protection as _sp
+    selector = "dialogue:" + _conversation_storage_identity(conversation_id)
+    body = {
+        "selector": selector,
+        "kind": "dialogue",
+        "conversation_id_digest": _sp.params_digest({
+            "conversation_id": _conversation_storage_identity(conversation_id),
+        }),
+        "deleted": bool(_is_conversation_deleted(conversation_id)),
+        "tag": _effective_conversation_tag(conversation_id, ""),
+    }
+    body["digest"] = _sp.params_digest(body)
+    return body
+
+
+def _protected_delete_conversation_runtime(conversation_id: str) -> dict:
+    """Delete one exact Dialogue only after Paused one-shot approval."""
+    from orchestrator import system_protection as _sp
+    pre_state = _conversation_protection_state(conversation_id)
+    protection = _sp.authorize_server_action(
+        "dialogue_delete",
+        selectors=[pre_state["selector"]],
+        params={"conversation_id_digest": pre_state["conversation_id_digest"]},
+        pre_state=[pre_state],
+    )
+    try:
+        with _sp.protected_effect(protection):
+            result = _delete_conversation_runtime(conversation_id)
+    except Exception as exc:
+        try:
+            _sp.complete_execution(
+                protection, ok=False, result={"error": type(exc).__name__},
+                post_state=[_conversation_protection_state(conversation_id)],
+            )
+        except Exception as receipt_error:
+            raise _sp.ProtectionAuditError(
+                f"Dialogue deletion failed and its failure receipt could not persist: {receipt_error}"
+            ) from exc
+        raise
+    _sp.complete_execution(
+        protection, ok=not bool(result.get("errors")), result=result,
+        post_state=[_conversation_protection_state(conversation_id)],
+    )
+    return result
+
 @app.route("/api/conversation/<conversation_id>/close", methods=["POST"])
 def conversation_close(conversation_id):
     """Dispatch close-out for a conversation based on its tag.
@@ -14289,7 +14675,16 @@ def conversation_close(conversation_id):
             "conversation_id": conversation_id,
         }), 409
     if effective_tag == "stealth":
-        result = _delete_conversation_runtime(conversation_id)
+        try:
+            result = _protected_delete_conversation_runtime(conversation_id)
+        except Exception as exc:
+            try:
+                from orchestrator import system_protection as _sp
+                if isinstance(exc, _sp.SystemProtectionError):
+                    return _system_protection_error_response(exc)
+            except Exception:
+                pass
+            raise
         result["action"] = "purge"  # legacy close contract
         result["tag"] = "stealth"
         return json.dumps(result), 200
@@ -14335,7 +14730,16 @@ def conversation_delete_forever(conversation_id):
     cross_site = _cross_site_mutation_response()
     if cross_site is not None:
         return cross_site
-    result = _delete_conversation_runtime(conversation_id)
+    try:
+        result = _protected_delete_conversation_runtime(conversation_id)
+    except Exception as exc:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+        except Exception:
+            pass
+        return _json_response({"error": str(exc)}, status=500)
     return json.dumps(result), 200
 
 
@@ -15984,15 +16388,56 @@ def v3_themes_save_customizations_api(theme_id):
 def v3_themes_delete_api(theme_id):
     if theme_id == "default":
         return json.dumps({"error": "Cannot delete default theme"}), 400
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
+        from orchestrator import system_protection as _sp
         theme_dir = _v3_theme_dir(theme_id)
-        if os.path.isdir(theme_dir):
-            shutil.rmtree(theme_dir)
-        index = _v3_read_index()
-        index["themes"] = [t for t in index.get("themes", []) if t.get("id") != theme_id]
-        _v3_write_index(index)
+        selectors = [
+            _sp.path_selector(theme_dir),
+            _sp.path_selector(V3_THEMES_INDEX),
+        ]
+        pre_state = [
+            _sp.capture_path_identity(theme_dir),
+            _sp.capture_path_identity(V3_THEMES_INDEX),
+        ]
+        protection = _sp.authorize_server_action(
+            "theme_delete", selectors=selectors,
+            params={"theme_id": theme_id}, pre_state=pre_state,
+        )
+        with _sp.protected_effect(protection):
+            if os.path.isdir(theme_dir):
+                shutil.rmtree(theme_dir)
+            index = _v3_read_index()
+            index["themes"] = [
+                t for t in index.get("themes", []) if t.get("id") != theme_id
+            ]
+            _v3_write_index(index)
+        _sp.complete_execution(
+            protection, ok=True, result={"ok": True, "theme_id": theme_id},
+            post_state=[
+                _sp.capture_path_identity(theme_dir),
+                _sp.capture_path_identity(V3_THEMES_INDEX),
+            ],
+        )
         return json.dumps({"ok": True})
     except Exception as e:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(e, _sp.SystemProtectionError):
+                return _system_protection_error_response(e)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(e).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(theme_dir),
+                        _sp.capture_path_identity(V3_THEMES_INDEX),
+                    ],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
         return json.dumps({"error": str(e)}), 500
 
 
@@ -17383,7 +17828,12 @@ def _try_keychain_replicate_token():
     """Return the Replicate API token from the keychain, or '' on failure."""
     try:
         import keyring
-        return keyring.get_password("ora", "replicate-api-token") or ""
+        from orchestrator import provider_registry as _providers
+        entry = _providers.by_id("replicate") or {}
+        username = entry.get("keyring_username")
+        if not username:
+            return ""
+        return keyring.get_password("ora", username) or ""
     except Exception:
         return ""
 
@@ -19071,13 +19521,53 @@ def configurations_delete(name):
     delete system configurations (background-default, user-pipeline)
     or the four named presets (free / budget / speed / premium).
     """
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    protection = None
     try:
+        from orchestrator import system_protection as _sp
         from orchestrator import active_configuration as ac
-        ac.delete_configuration(name)
+        config_path = ac._config_path(name)
+        selectors = [
+            _sp.path_selector(config_path),
+            _sp.path_selector(ac.ACTIVE_POINTER_PATH),
+        ]
+        pre_state = [
+            _sp.capture_path_identity(config_path),
+            _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
+        ]
+        protection = _sp.authorize_server_action(
+            "model_profile_delete", selectors=selectors,
+            params={"name": name}, pre_state=pre_state,
+        )
+        with _sp.protected_effect(protection):
+            ac.delete_configuration(name)
+        _sp.complete_execution(
+            protection, ok=True, result={"deleted": name},
+            post_state=[
+                _sp.capture_path_identity(config_path),
+                _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
+            ],
+        )
         return _json_response({"deleted": name})
     except (ValueError, FileNotFoundError) as exc:
         return _json_response({"error": str(exc)}, status=400)
     except Exception as exc:
+        try:
+            from orchestrator import system_protection as _sp
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+            if protection is not None:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[
+                        _sp.capture_path_identity(config_path),
+                        _sp.capture_path_identity(ac.ACTIVE_POINTER_PATH),
+                    ],
+                )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
         return _json_response({"error": f"delete-failed: {exc}"}, status=500)
 
 

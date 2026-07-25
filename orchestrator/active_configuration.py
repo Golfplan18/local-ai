@@ -101,6 +101,16 @@ def _runtime_overlay_active() -> bool:
 
 
 def _config_path(name: str, *, for_write: bool = False) -> Path:
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or name != name.strip()
+        or name in {".", ".."}
+        or "/" in name
+        or "\\" in name
+        or "\x00" in name
+    ):
+        raise ValueError("Model Profile name must be one exact path-safe leaf")
     if _runtime_overlay_active() and name in _RUNTIME_OVERLAY_CONFIG_NAMES:
         runtime = RUNTIME_CONFIGURATIONS_DIR / f"{name}.json"
         if for_write or runtime.exists():

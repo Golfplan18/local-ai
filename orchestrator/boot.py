@@ -219,13 +219,10 @@ def _export_provider_keys_to_env() -> None:
         import provider_registry as _reg
         pairs = _reg.env_bridge_pairs()
     except Exception:
-        # Registry unavailable — fall back to the original search trio so
-        # the web-search cascade still works.
-        pairs = [
-            ("TAVILY_API_KEY", "tavily-api-key"),
-            ("BRAVE_API_KEY",  "brave-api-key"),
-            ("EXA_API_KEY",    "exa-api-key"),
-        ]
+        # Credential identity is registry-authoritative. Guessing even a
+        # historically valid account when the registry is unavailable would
+        # turn an infrastructure failure into noncanonical secret access.
+        return
     for env_name, kr_key in pairs:
         if not env_name or os.environ.get(env_name, "").strip():
             continue
@@ -15155,6 +15152,24 @@ def _provider_key(entry: dict) -> str:
     return _keyring_lookup("ora", entry.get("keyring_username", ""))
 
 
+def _canonical_provider_key(provider_id: str) -> str:
+    """Resolve only registry-declared credential identities.
+
+    Runtime endpoint/config dictionaries are routing data, not credential
+    stores. G1.22 therefore refuses inline ``api_key`` and arbitrary
+    ``credential_key`` fields; desktop keyring and deployment environment
+    variables remain available only through the canonical provider registry.
+    """
+
+    if _provider_registry is None:
+        return ""
+    try:
+        entry = _provider_registry.by_id(provider_id)
+    except Exception:
+        return ""
+    return _provider_key(entry or {})
+
+
 def _resolve_direct_endpoint(model_id: str, base_endpoint: dict) -> dict | None:
     """Map an OpenRouter ``vendor/model`` id to a direct-vendor endpoint.
 
@@ -15217,10 +15232,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     if service == "claude":
         try:
             import anthropic
-            key = endpoint.get("api_key") or os.environ.get("ANTHROPIC_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "anthropic-api-key") or ""
+            key = _canonical_provider_key("anthropic")
             client = anthropic.Anthropic(api_key=key)
             system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
             conv = [m for m in messages if m["role"] != "system"]
@@ -15272,10 +15284,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     elif service == "openai":
         try:
             from openai import OpenAI
-            key = endpoint.get("api_key") or os.environ.get("OPENAI_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "openai-api-key") or ""
+            key = _canonical_provider_key("openai")
             client = OpenAI(api_key=key)
             api_messages = messages
             if images:
@@ -15320,10 +15329,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     elif service == "gemini":
         try:
             from google import genai
-            key = endpoint.get("api_key") or os.environ.get("GEMINI_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "gemini-api-key") or ""
+            key = _canonical_provider_key("gemini")
             if not key:
                 return "[Error calling Gemini API: No API key found. Store via: keyring set ora gemini-api-key]"
             client = genai.Client(api_key=key)
@@ -15456,13 +15462,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 )
         try:
             from openai import OpenAI
-            key = (
-                endpoint.get("api_key")
-                or os.environ.get("OPENROUTER_API_KEY", "")
-            )
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "openrouter-api-key") or ""
+            key = _canonical_provider_key("openrouter")
             if not key:
                 return (
                     "[Error calling OpenRouter API: No API key found. "
@@ -15548,18 +15548,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 base_url = _e.get("base_url") if _e else None
             if not base_url:
                 return f"[Error calling {service} API: no base_url configured]"
-            key = endpoint.get("api_key") or ""
-            if not key:
-                env_var = endpoint.get("_env_var")
-                if not env_var and _provider_registry is not None:
-                    _e = _provider_registry.by_id(service)
-                    env_var = _e.get("env_var") if _e else None
-                if env_var:
-                    key = os.environ.get(env_var, "") or ""
-            if not key:
-                cred = endpoint.get("credential_key") or f"ora/{service}-api-key"
-                if cred.startswith("ora/"):
-                    key = _keyring_lookup("ora", cred.split("/", 1)[1])
+            key = _canonical_provider_key(service)
             if not key:
                 return (
                     f"[Error calling {service} API: No API key found. "

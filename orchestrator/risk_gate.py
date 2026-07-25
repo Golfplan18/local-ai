@@ -462,8 +462,10 @@ def grant_task_token(fingerprint: str, conversation_id: str | None = None,
         _te.remove_unused_tokens(TASK_ACTION, fingerprint)
     except Exception:
         pass
-    return _te.grant_approval(TASK_ACTION, fingerprint, conversation_id,
-                              ttl_s=TASK_TOKEN_TTL_S, granted_via=granted_via)
+    return _te._grant_approval_authorized(
+        TASK_ACTION, fingerprint, conversation_id,
+        ttl_s=TASK_TOKEN_TTL_S, granted_via=granted_via,
+    )
 
 
 def consume_task_token(fingerprint: str,
