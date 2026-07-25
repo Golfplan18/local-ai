@@ -355,6 +355,56 @@ def _append_jsonl(path: Path, payload: Mapping[str, Any]) -> None:
         os.close(fd)
 
 
+def _append_jsonl_batch_atomic(
+    path: Path,
+    payloads: Sequence[Mapping[str, Any]],
+) -> None:
+    """Append an inseparable record batch using one atomic file replacement.
+
+    The ordinary event path appends one durable record before materializing the
+    Run.  A user Pause has two state-bearing facts--its recovery checkpoint and
+    the pause itself--that must never become visible independently.  Replacing
+    the complete event file makes the batch all-or-nothing, while the existing
+    event-to-Run materializer still recovers a crash after the replacement.
+    """
+
+    if not payloads:
+        raise GovernedRuntimeError("event batch must not be empty")
+    for payload in payloads:
+        _require_json(payload, str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise GovernedRuntimeError(f"refusing to replace symlink: {path}")
+    existing = b""
+    if path.exists():
+        if not path.is_file():
+            raise GovernedRuntimeError(f"invalid event store: {path}")
+        existing = path.read_bytes()
+        if existing and not existing.endswith(b"\n"):
+            raise GovernedRuntimeError(f"event store lacks its final newline: {path}")
+    encoded = b"".join(
+        (json.dumps(payload, sort_keys=True, ensure_ascii=False) + "\n").encode(
+            "utf-8"
+        )
+        for payload in payloads
+    )
+    fd, temp_path = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent,
+    )
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(existing)
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            os.unlink(temp_path)
+        except FileNotFoundError:
+            pass
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -989,6 +1039,129 @@ class GovernedProcessRuntime:
                 runtime_authoritative=True,
             )
 
+    def _derive_process_quality_start_locked(
+        self,
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        *,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Derive the exact quality subject and model binding from live Run state."""
+
+        try:
+            from .process_run_inspector import (
+                ProcessRunInspectorService,
+                ProcessRunTelemetryService,
+            )
+        except ImportError:  # pragma: no cover - historical top-level imports
+            from process_run_inspector import (  # type: ignore
+                ProcessRunInspectorService,
+                ProcessRunTelemetryService,
+            )
+        eligibility = ProcessRunInspectorService._quality_eligibility(
+            run, definition, records,
+        )
+        if not eligibility.get("eligible"):
+            raise AuthorityDeniedError(
+                "quality evaluation is available only at an authenticated "
+                "current human handoff or output failure"
+            )
+        source = next(
+            (
+                record for record in records
+                if record["record_id"] == eligibility.get("source_record_id")
+            ),
+            None,
+        )
+        if source is None:
+            raise GovernedRuntimeError(
+                "quality eligibility lost its exact authoritative source"
+            )
+        telemetry = ProcessRunTelemetryService(runtime=self)
+        subject = telemetry._quality_subject(
+            run, definition, records, eligibility,
+        )
+        subject_digest = _digest_json(subject)
+        evaluator_binding = telemetry._evaluator_binding(run, definition)
+        evaluation_id = "quality-" + hashlib.sha256(
+            (
+                f"{run['run_id']}\0{idempotency_key}\0{subject_digest}"
+            ).encode("utf-8")
+        ).hexdigest()[:32]
+        common = {
+            "run_id": run["run_id"],
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "evaluation_id": evaluation_id,
+            "idempotency_key": idempotency_key,
+            "subject_digest": subject_digest,
+            "eligible_reason": eligibility["reason"],
+            "source_record_id": source["record_id"],
+            "source_sequence": int(source["sequence"]),
+            "evaluator_binding": copy.deepcopy(evaluator_binding),
+        }
+        return {
+            "common": common,
+            "subject": subject,
+            "evaluator_binding": evaluator_binding,
+            "node_id": run["current_node_id"],
+        }
+
+    def begin_process_quality_evaluation(
+        self,
+        run_id: str,
+        *,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Create a quality start only from runtime-derived authenticated state."""
+
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{1,256}", str(idempotency_key or "")):
+            raise GovernedRuntimeError("quality idempotency key is invalid")
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            records = self.load_records(run_id)
+            prior = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "process_quality_evaluation_started"
+                and (record.get("event") or {}).get("details", {}).get(
+                    "idempotency_key"
+                ) == idempotency_key
+            ]
+            if prior:
+                if len(prior) != 1:
+                    raise GovernedRuntimeError(
+                        "quality evaluation retry identity is ambiguous"
+                    )
+                return {"status": "idempotent_retry", "record": prior[0]}
+            derived = self._derive_process_quality_start_locked(
+                run,
+                definition,
+                records,
+                idempotency_key=idempotency_key,
+            )
+            common = derived["common"]
+            if any(
+                (record.get("event") or {}).get("event_type")
+                == "process_quality_evaluation_started"
+                and (record.get("event") or {}).get("details", {}).get(
+                    "evaluation_id"
+                ) == common["evaluation_id"]
+                for record in records
+            ):
+                raise RunConflictError(
+                    "process quality evaluation identity already exists"
+                )
+            start = self._append_event_locked(
+                run,
+                "process_quality_evaluation_started",
+                common,
+                node_id=derived["node_id"],
+                runtime_authoritative=True,
+            )
+            return {**derived, "status": "started", "record": start}
+
     def record_process_quality_evaluation(
         self,
         run_id: str,
@@ -997,14 +1170,33 @@ class GovernedProcessRuntime:
         *,
         node_id: str,
     ) -> dict[str, Any]:
-        """Persist one authority-inert, exact-subject G1.20 evaluation record."""
+        """Reject caller-authored authoritative quality records.
+
+        Starts must use :meth:`begin_process_quality_evaluation`, which derives
+        the source, subject, and evaluator binding.  Outcomes are persisted only
+        by the telemetry service's internal completion boundary.
+        """
+
+        del run_id, event_type, details, node_id
+        raise AuthorityDeniedError(
+            "process quality records require the runtime-derived evaluation path"
+        )
+
+    def _record_process_quality_evaluation_outcome(
+        self,
+        run_id: str,
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str,
+    ) -> dict[str, Any]:
+        """Persist one exact-start outcome for the telemetry service."""
 
         if event_type not in {
-            "process_quality_evaluation_started",
             "process_quality_evaluation_completed",
             "process_quality_evaluation_failed",
         }:
-            raise GovernedRuntimeError("process quality event type is invalid")
+            raise GovernedRuntimeError("process quality outcome type is invalid")
         body = copy.deepcopy(dict(details))
         common = {
             "run_id", "definition_ref", "evaluation_id", "idempotency_key",
@@ -1014,22 +1206,10 @@ class GovernedProcessRuntime:
         expected = set(common)
         if event_type == "process_quality_evaluation_completed":
             expected |= {"evaluation_start_record_id", "response_digest", "verdict"}
-        elif event_type == "process_quality_evaluation_failed":
+        else:
             expected |= {"evaluation_start_record_id", "error_type", "error_digest"}
         if set(body) != expected:
-            raise GovernedRuntimeError("process quality event fields are invalid")
-        run = self.load_run(run_id)
-        if (
-            body.get("run_id") != run_id
-            or body.get("definition_ref") != run["definition_ref"]
-            or body.get("eligible_reason") not in {"human_handoff", "output_failure"}
-            or not isinstance(body.get("source_sequence"), int)
-            or body["source_sequence"] < 1
-            or not isinstance(body.get("source_record_id"), str)
-            or not body["source_record_id"]
-            or not isinstance(body.get("evaluator_binding"), Mapping)
-        ):
-            raise GovernedRuntimeError("process quality event binding is invalid")
+            raise GovernedRuntimeError("process quality outcome fields are invalid")
         _exact_digest(str(body.get("subject_digest") or ""), "quality subject")
         if event_type == "process_quality_evaluation_completed":
             _exact_digest(str(body.get("response_digest") or ""), "quality response")
@@ -1058,149 +1238,62 @@ class GovernedProcessRuntime:
                 raise GovernedRuntimeError(
                     "process quality response digest does not match the verdict"
                 )
+        else:
+            _exact_digest(str(body.get("error_digest") or ""), "quality error")
+            if not isinstance(body.get("error_type"), str) or not body["error_type"]:
+                raise GovernedRuntimeError("process quality error type is invalid")
         with _locked():
             current = self.load_run(run_id)
             definition = self.load_definition(run_id)
-            if node_id not in {
-                node["node_id"] for node in definition["graph"]["nodes"]
-            }:
-                raise GovernedRuntimeError("quality event node is outside the definition")
             records = self.load_records(run_id)
-            if event_type == "process_quality_evaluation_started":
-                source = next(
-                    (
-                        record for record in records
-                        if record["record_id"] == body["source_record_id"]
-                        and record["sequence"] == body["source_sequence"]
-                    ),
-                    None,
+            starts = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "process_quality_evaluation_started"
+                and record["record_id"] == body.get("evaluation_start_record_id")
+            ]
+            outcomes = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type") in {
+                    "process_quality_evaluation_completed",
+                    "process_quality_evaluation_failed",
+                }
+                and (record.get("event") or {}).get("details", {}).get(
+                    "evaluation_start_record_id"
+                ) == body.get("evaluation_start_record_id")
+            ]
+            if len(starts) != 1 or outcomes:
+                raise RunConflictError(
+                    "quality outcome lacks one unfinished exact start"
                 )
-                if source is None:
-                    raise GovernedRuntimeError(
-                        "process quality start does not bind its exact source record"
-                    )
-                if any(
-                    (record.get("event") or {}).get("event_type")
-                    == "process_quality_evaluation_started"
-                    and (
-                        (record.get("event") or {}).get("details", {}).get(
-                            "evaluation_id"
-                        ) == body["evaluation_id"]
-                        or (record.get("event") or {}).get("details", {}).get(
-                            "idempotency_key"
-                        ) == body["idempotency_key"]
-                    )
-                    for record in records
-                ):
-                    raise RunConflictError(
-                        "process quality evaluation identity already exists"
-                    )
-                nodes = self._graph_nodes(definition)
-                if body["eligible_reason"] == "human_handoff":
-                    if not (
-                        current["state"] == "pending"
-                        and nodes[current["current_node_id"]]["kind"]
-                        == "human_checkpoint"
-                        and node_id == current["current_node_id"]
-                    ):
-                        raise AuthorityDeniedError(
-                            "quality evaluation is not at a current human handoff"
-                        )
-                else:
-                    source_event = source.get("event") or {}
-                    source_details = source_event.get("details") or {}
-                    output_failure = bool(
-                        (
-                            source_event.get("event_type") == "attempt_completed"
-                            and source_details.get("defect_codes")
-                        )
-                        or source_event.get("event_type")
-                        == "isolated_process_action_failed"
-                        or source_event.get("event_type")
-                        == "isolated_process_verification_failed"
-                        or (
-                            source_event.get("event_type")
-                            in {
-                                "isolated_process_verification_completed",
-                                "final_review_completed",
-                            }
-                            and source_details.get("outcome") != "PASS"
-                        )
-                    )
-                    if output_failure and source_event.get("event_type") in {
-                        "attempt_completed", "isolated_process_action_failed",
-                    }:
-                        output_failure = not any(
-                            int(record["sequence"]) > int(source["sequence"])
-                            and record.get("node_id") == source.get("node_id")
-                            and (record.get("event") or {}).get("event_type")
-                            == "attempt_completed"
-                            and not (record.get("event") or {}).get(
-                                "details", {}
-                            ).get("defect_codes")
-                            for record in records
-                        )
-                    if output_failure and source_event.get("event_type") in {
-                        "isolated_process_verification_failed",
-                        "isolated_process_verification_completed",
-                        "final_review_completed",
-                    }:
-                        output_failure = not any(
-                            int(record["sequence"]) > int(source["sequence"])
-                            and (record.get("event") or {}).get("event_type")
-                            in {
-                                "isolated_process_verification_completed",
-                                "final_review_completed",
-                            }
-                            and (record.get("event") or {}).get(
-                                "details", {}
-                            ).get("outcome") == "PASS"
-                            for record in records
-                        )
-                    if not output_failure:
-                        raise AuthorityDeniedError(
-                            "quality evaluation source is not an output failure"
-                        )
-            else:
-                starts = [
-                    record for record in records
-                    if (record.get("event") or {}).get("event_type")
-                    == "process_quality_evaluation_started"
-                    and record["record_id"]
-                    == body.get("evaluation_start_record_id")
-                ]
-                outcomes = [
-                    record for record in records
-                    if (record.get("event") or {}).get("event_type") in {
-                        "process_quality_evaluation_completed",
-                        "process_quality_evaluation_failed",
-                    }
-                    and (record.get("event") or {}).get("details", {}).get(
-                        "evaluation_start_record_id"
-                    ) == body.get("evaluation_start_record_id")
-                ]
-                if len(starts) != 1 or outcomes:
-                    raise RunConflictError(
-                        "quality outcome lacks one unfinished exact start"
-                    )
-                start_details = starts[0]["event"]["details"]
-                if any(
-                    body.get(field) != start_details.get(field)
-                    for field in common
-                ):
-                    raise GovernedRuntimeError(
-                        "quality outcome does not authenticate its exact start"
-                    )
-                if node_id != starts[0]["node_id"]:
-                    raise GovernedRuntimeError(
-                        "quality outcome node differs from its exact start"
-                    )
+            start = starts[0]
+            start_details = start["event"]["details"]
+            if any(body.get(field) != start_details.get(field) for field in common):
+                raise GovernedRuntimeError(
+                    "quality outcome does not authenticate its exact start"
+                )
+            if node_id != start["node_id"] or node_id != current["current_node_id"]:
+                raise GovernedRuntimeError(
+                    "quality outcome is stale against the exact current node"
+                )
+            derived = self._derive_process_quality_start_locked(
+                current,
+                definition,
+                records,
+                idempotency_key=str(start_details["idempotency_key"]),
+            )
+            if any(
+                derived["common"].get(field) != start_details.get(field)
+                for field in common
+            ):
+                raise GovernedRuntimeError(
+                    "quality outcome source, subject, or evaluator binding is stale"
+                )
             return self._append_event_locked(
                 current,
                 event_type,
                 body,
                 node_id=node_id,
-                allow_terminal_metadata=current["state"] in TERMINAL_RUN_STATES,
                 runtime_authoritative=True,
             )
 
@@ -7220,75 +7313,106 @@ class GovernedProcessRuntime:
     ) -> dict[str, Any]:
         with _locked():
             run = self.load_run(run_id)
-            for record in self.load_records(run_id):
-                event = record.get("event") or {}
-                if (
-                    event.get("event_type") == "checkpoint_created"
-                    and (event.get("details") or {}).get("checkpoint_id") == checkpoint_id
-                ):
-                    raise RunConflictError(f"checkpoint already exists: {checkpoint_id}")
-            definition = self.load_definition(run_id)
-            node_ids = {node["node_id"] for node in definition["graph"]["nodes"]}
-            if resume_node_id not in node_ids:
-                raise GovernedRuntimeError(f"checkpoint resume node is not in graph: {resume_node_id}")
             records = self.load_records(run_id)
-            latest = self._latest_checkpoint(run_id)
-            after_sequence = latest["sequence"] if latest else 0
-            if run["contracts"]["recovery"]["external_effect_receipts_required"]:
-                for record in records:
-                    if record["sequence"] <= after_sequence:
-                        continue
-                    event = record.get("event") or {}
-                    details = event.get("details") or {}
-                    if (
-                        event.get("event_type") == "action_completed"
-                        and details.get("external_effect")
-                        and not details.get("receipt_artifact_id")
-                    ):
-                        raise RecoveryBlockedError(
-                            "cannot checkpoint an external effect without its receipt"
-                        )
-                    if (
-                        event.get("event_type") == "action_completed"
-                        and details.get("external_effect")
-                        and details.get("receipt_artifact_id")
-                    ):
-                        receipt = self.load_artifact(
-                            run_id, details["receipt_artifact_id"]
-                        )
-                        if (
-                            receipt["identity"]["digest"]
-                            != details.get("receipt_identity_digest")
-                        ):
-                            raise RecoveryBlockedError(
-                                "cannot checkpoint an external effect with a changed receipt"
-                            )
-            artifact_identities = {}
-            receipt_ids = []
-            for artifact_id in run["artifact_ids"]:
-                artifact = self.load_artifact(run_id, artifact_id)
-                artifact_identities[artifact_id] = artifact["identity"]["digest"]
-                if artifact["role"] == "external_effect_receipt":
-                    receipt_ids.append(artifact_id)
+            details = self._checkpoint_details_locked(
+                run,
+                records,
+                checkpoint_id=checkpoint_id,
+                segment_id=segment_id,
+                resume_node_id=resume_node_id,
+            )
             run["contracts"]["continuation"]["checkpoint_id"] = checkpoint_id
             run["contracts"]["continuation"]["resume_node_id"] = resume_node_id
             return self._append_event_locked(
                 run,
                 "checkpoint_created",
-                {
-                    "checkpoint_id": checkpoint_id,
-                    "segment_id": segment_id,
-                    "resume_node_id": resume_node_id,
-                    "state": run["state"],
-                    "attempt": run["contracts"]["correction_loop"]["attempt"],
-                    "artifact_identities": artifact_identities,
-                    "external_effect_receipt_ids": sorted(receipt_ids),
-                    "replay_mutations": False,
-                },
+                details,
                 node_id=run["current_node_id"],
                 artifact_ids=run["artifact_ids"],
                 runtime_authoritative=True,
             )
+
+    def _checkpoint_details_locked(
+        self,
+        run: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        *,
+        checkpoint_id: str,
+        segment_id: str,
+        resume_node_id: str,
+    ) -> dict[str, Any]:
+        """Validate and capture one checkpoint without persisting anything."""
+
+        for record in records:
+            event = record.get("event") or {}
+            if (
+                event.get("event_type") == "checkpoint_created"
+                and (event.get("details") or {}).get("checkpoint_id")
+                == checkpoint_id
+            ):
+                raise RunConflictError(f"checkpoint already exists: {checkpoint_id}")
+        definition = self.load_definition(str(run["run_id"]))
+        node_ids = {node["node_id"] for node in definition["graph"]["nodes"]}
+        if resume_node_id not in node_ids:
+            raise GovernedRuntimeError(
+                f"checkpoint resume node is not in graph: {resume_node_id}"
+            )
+        latest = next(
+            (
+                record
+                for record in reversed(records)
+                if (record.get("event") or {}).get("event_type")
+                == "checkpoint_created"
+            ),
+            None,
+        )
+        after_sequence = int(latest["sequence"]) if latest else 0
+        if run["contracts"]["recovery"]["external_effect_receipts_required"]:
+            for record in records:
+                if int(record["sequence"]) <= after_sequence:
+                    continue
+                event = record.get("event") or {}
+                details = event.get("details") or {}
+                if (
+                    event.get("event_type") == "action_completed"
+                    and details.get("external_effect")
+                    and not details.get("receipt_artifact_id")
+                ):
+                    raise RecoveryBlockedError(
+                        "cannot checkpoint an external effect without its receipt"
+                    )
+                if (
+                    event.get("event_type") == "action_completed"
+                    and details.get("external_effect")
+                    and details.get("receipt_artifact_id")
+                ):
+                    receipt = self.load_artifact(
+                        str(run["run_id"]), details["receipt_artifact_id"]
+                    )
+                    if (
+                        receipt["identity"]["digest"]
+                        != details.get("receipt_identity_digest")
+                    ):
+                        raise RecoveryBlockedError(
+                            "cannot checkpoint an external effect with a changed receipt"
+                        )
+        artifact_identities: dict[str, str] = {}
+        receipt_ids: list[str] = []
+        for artifact_id in run["artifact_ids"]:
+            artifact = self.load_artifact(str(run["run_id"]), artifact_id)
+            artifact_identities[artifact_id] = artifact["identity"]["digest"]
+            if artifact["role"] == "external_effect_receipt":
+                receipt_ids.append(artifact_id)
+        return {
+            "checkpoint_id": checkpoint_id,
+            "segment_id": segment_id,
+            "resume_node_id": resume_node_id,
+            "state": run["state"],
+            "attempt": run["contracts"]["correction_loop"]["attempt"],
+            "artifact_identities": artifact_identities,
+            "external_effect_receipt_ids": sorted(receipt_ids),
+            "replay_mutations": False,
+        }
 
     def pause_run(
         self,
@@ -7309,20 +7433,15 @@ class GovernedProcessRuntime:
             raise GovernedRuntimeError(
                 "only a user-control pause may bind a control request"
             )
-        if self.load_run(run_id)["state"] not in ("ready", "running"):
-            raise RunConflictError("only a ready or running Process Run can pause")
-        checkpoint = self.create_checkpoint(
-            run_id,
-            checkpoint_id,
-            segment_id=segment_id,
-            resume_node_id=resume_node_id,
-        )
         with _locked():
             run = self.load_run(run_id)
+            if run["state"] not in ("ready", "running"):
+                raise RunConflictError("only a ready or running Process Run can pause")
+            records = self.load_records(run_id)
             if pause_kind == "user_control":
                 request_matches = []
                 applied_matches = []
-                for record in self.load_records(run_id):
+                for record in records:
                     event = record.get("event") or {}
                     details = event.get("details") or {}
                     if (
@@ -7365,9 +7484,33 @@ class GovernedProcessRuntime:
                     raise AuthorityDeniedError(
                         "user pause control pair does not bind the current Run"
                     )
-            run["state"] = "pending"
-            paused = self._append_event_locked(
+            checkpoint_details = self._checkpoint_details_locked(
                 run,
+                records,
+                checkpoint_id=checkpoint_id,
+                segment_id=segment_id,
+                resume_node_id=resume_node_id,
+            )
+            materialized = copy.deepcopy(run)
+            checkpoint = self._event_record(
+                materialized,
+                "checkpoint_created",
+                checkpoint_details,
+                node_id=run["current_node_id"],
+                artifact_ids=run["artifact_ids"],
+            )
+            _contracts.validate_event_transition_record(checkpoint)
+            materialized["contracts"]["continuation"]["checkpoint_id"] = (
+                checkpoint_id
+            )
+            materialized["contracts"]["continuation"]["resume_node_id"] = (
+                resume_node_id
+            )
+            materialized["last_sequence"] = checkpoint["sequence"]
+            materialized["updated_at"] = checkpoint["recorded_at"]
+            materialized["state"] = "pending"
+            paused = self._event_record(
+                materialized,
                 "run_paused",
                 {
                     "checkpoint_id": checkpoint_id,
@@ -7377,8 +7520,15 @@ class GovernedProcessRuntime:
                     "control_request_record_id": control_request_record_id,
                 },
                 node_id=run["current_node_id"],
-                runtime_authoritative=True,
             )
+            _contracts.validate_event_transition_record(paused)
+            materialized["last_sequence"] = paused["sequence"]
+            materialized["updated_at"] = paused["recorded_at"]
+            _contracts.validate_process_run(materialized)
+            _append_jsonl_batch_atomic(
+                self._events_path(run_id), [checkpoint, paused],
+            )
+            _atomic_json(self._run_path(run_id), materialized)
         return {"checkpoint": checkpoint, "pause": paused}
 
     def recovery_decision(self, run_id: str) -> dict[str, Any]:

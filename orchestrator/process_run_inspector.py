@@ -747,10 +747,52 @@ class ProcessRunInspectorService:
             if (record.get("event") or {}).get("event_type") not in excluded
         ]
         if run["state"] == "pending" and current["kind"] == "human_checkpoint":
+            state_events = {
+                "run_ready", "run_started", "run_paused", "run_resumed",
+                "node_advanced", "authority_request_resolved", "process_invoked",
+            }
+            state_records = [
+                record for record in relevant
+                if record.get("record_type") == "transition"
+                or (record.get("event") or {}).get("event_type") in state_events
+            ]
+            source = state_records[-1] if state_records else None
+            source_event = (source or {}).get("event") or {}
+            source_details = source_event.get("details") or {}
+            checkpoint = next(
+                (
+                    record for record in relevant
+                    if source is not None
+                    and int(record["sequence"]) < int(source["sequence"])
+                    and record["record_id"]
+                    == source_details.get("checkpoint_record_id")
+                    and (record.get("event") or {}).get("event_type")
+                    == "checkpoint_created"
+                    and (record.get("event") or {}).get("details", {}).get(
+                        "checkpoint_id"
+                    ) == source_details.get("checkpoint_id")
+                    and (record.get("event") or {}).get("details", {}).get(
+                        "resume_node_id"
+                    ) == run["current_node_id"]
+                ),
+                None,
+            )
+            if (
+                source is not None
+                and source_event.get("event_type") == "run_paused"
+                and source_details.get("pause_kind") == "human_handoff"
+                and source.get("node_id") == run["current_node_id"]
+                and checkpoint is not None
+            ):
+                return {
+                    "eligible": True,
+                    "reason": "human_handoff",
+                    "source_record_id": source["record_id"],
+                }
             return {
-                "eligible": True,
-                "reason": "human_handoff",
-                "source_record_id": relevant[-1]["record_id"] if relevant else None,
+                "eligible": False,
+                "reason": "human_handoff_source_not_authenticated",
+                "source_record_id": None,
             }
         latest_attempt = next(
             (
@@ -2260,48 +2302,32 @@ class ProcessRunTelemetryService:
             )
             return {"status": "idempotent_retry", "evaluation": row}
 
-        eligibility = ProcessRunInspectorService._quality_eligibility(
-            run, definition, records,
-        )
-        if not eligibility["eligible"]:
-            raise ProcessRunTelemetryConflict(
-                "quality evaluation is available only at a human handoff or output failure"
+        try:
+            begun = self.runtime.begin_process_quality_evaluation(
+                run_id, idempotency_key=idempotency_key,
             )
-        source_record = next(
-            (
-                record for record in records
-                if record["record_id"] == eligibility["source_record_id"]
-            ),
-            None,
-        )
-        if source_record is None:
-            raise ProcessRunInspectorIntegrityError(
-                "quality eligibility lost its exact source record"
+        except GovernedRuntimeError as exc:
+            if type(exc).__name__ == "AuthorityDeniedError":
+                raise ProcessRunTelemetryConflict(str(exc)) from exc
+            raise ProcessRunInspectorIntegrityError(str(exc)) from exc
+        if begun["status"] == "idempotent_retry":
+            current = self.runtime.load_run(run_id)
+            current_records = self.runtime.load_records(run_id)
+            history = ProcessRunInspectorService._quality_evaluations(
+                current, current_records,
             )
-        source_sequence = int(source_record["sequence"])
-        package = self._quality_subject(run, definition, records, eligibility)
-        subject_digest = _digest_json(package)
-        binding = self._evaluator_binding(run, definition)
-        evaluation_id = "quality-" + hashlib.sha256(
-            f"{run_id}\0{idempotency_key}\0{subject_digest}".encode("utf-8")
-        ).hexdigest()[:32]
-        common = {
-            "run_id": run_id,
-            "definition_ref": copy.deepcopy(run["definition_ref"]),
-            "evaluation_id": evaluation_id,
-            "idempotency_key": idempotency_key,
-            "subject_digest": subject_digest,
-            "eligible_reason": eligibility["reason"],
-            "source_record_id": eligibility["source_record_id"],
-            "source_sequence": source_sequence,
-            "evaluator_binding": binding,
-        }
-        start = self.runtime.record_process_quality_evaluation(
-            run_id,
-            "process_quality_evaluation_started",
-            common,
-            node_id=run["current_node_id"],
-        )
+            row = next(
+                item for item in history
+                if item["evaluation_id"]
+                == begun["record"]["event"]["details"]["evaluation_id"]
+            )
+            return {"status": "idempotent_retry", "evaluation": row}
+        package = begun["subject"]
+        binding = begun["evaluator_binding"]
+        common = begun["common"]
+        start = begun["record"]
+        evaluation_id = common["evaluation_id"]
+        node_id = begun["node_id"]
         if not package["material_status"]["evaluable"]:
             reasons = package["material_status"]["reasons"]
             verdict = {
@@ -2314,7 +2340,7 @@ class ProcessRunTelemetryService:
                     "reviewable material; no model judgment was requested."
                 ),
             }
-            completed = self.runtime.record_process_quality_evaluation(
+            completed = self.runtime._record_process_quality_evaluation_outcome(
                 run_id,
                 "process_quality_evaluation_completed",
                 {
@@ -2323,7 +2349,7 @@ class ProcessRunTelemetryService:
                     "response_digest": _digest_json(verdict),
                     "verdict": verdict,
                 },
-                node_id=run["current_node_id"],
+                node_id=node_id,
             )
             return {
                 "status": "completed",
@@ -2344,7 +2370,7 @@ class ProcessRunTelemetryService:
                 "error_type": type(exc).__name__,
                 "error": str(exc)[:1000],
             }
-            failed = self.runtime.record_process_quality_evaluation(
+            failed = self.runtime._record_process_quality_evaluation_outcome(
                 run_id,
                 "process_quality_evaluation_failed",
                 {
@@ -2353,7 +2379,7 @@ class ProcessRunTelemetryService:
                     "error_type": error_body["error_type"],
                     "error_digest": _digest_json(error_body),
                 },
-                node_id=run["current_node_id"],
+                node_id=node_id,
             )
             return {
                 "status": "failed",
@@ -2364,7 +2390,7 @@ class ProcessRunTelemetryService:
                     "authority_effect": "none",
                 },
             }
-        completed = self.runtime.record_process_quality_evaluation(
+        completed = self.runtime._record_process_quality_evaluation_outcome(
             run_id,
             "process_quality_evaluation_completed",
             {
@@ -2373,7 +2399,7 @@ class ProcessRunTelemetryService:
                 "response_digest": _digest_json(verdict),
                 "verdict": verdict,
             },
-            node_id=run["current_node_id"],
+            node_id=node_id,
         )
         return {
             "status": "completed",

@@ -416,7 +416,7 @@ At plan review you can **Stop and retain the plan** before execution. During exe
 
 For a G1.18 automated Run, Overview also offers controls that bind the exact current state:
 
-- **Pause run** stops the exact live isolated worker, preserves the attempt history, and creates a user-pause checkpoint distinct from a failure or human handoff.
+- **Pause run** stops the exact live isolated worker, preserves the attempt history, and atomically creates a user-pause checkpoint distinct from a failure or human handoff. A stale or rejected Pause leaves the existing checkpoint and Run untouched.
 - **Resume run** is the only action that can release a user pause. Ordinary Execute/Retry cannot bypass it. Resume continues the same Run from its authenticated checkpoint; it does not create a replacement Run or replay completed steps.
 - **Stop run** stops the worker and ends the Run as blocked while preserving its history and Artifacts.
 
@@ -551,6 +551,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Corrected the remaining G1.20 boundaries: rejected/stale Pause requests leave the Run untouched, accepted checkpoint-plus-pause state commits atomically, and quality starts derive their exact current source, subject, and Model Profile binding inside the runtime rather than trusting caller fields.
 - **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.
 - **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.
 - **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, action and final-verification baselines are reserved separately from correction retries, and either ceiling blocks rather than leaving work running.

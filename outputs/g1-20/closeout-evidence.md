@@ -19,9 +19,9 @@ The shipped boundary is:
 - deterministic Inspector telemetry derived from the exact Run, issued definition, records, Artifacts, and live worker owner;
 - token/cost values withheld unless a runtime-authenticated usage receipt exists; no-tools isolation never manufactures zero usage;
 - reserved exact worker start/finish records and fail-closed orphan recovery;
-- stale-safe, idempotent pause/resume/stop for G1.18 automated Runs only, with persistent `user_control`, `human_handoff`, and `failure_recovery` pause kinds and the existing managed `stop_process` boundary;
+- stale-safe, idempotent pause/resume/stop for G1.18 automated Runs only, with pre-mutation request/application authentication, one atomic checkpoint-plus-pause record batch, persistent `user_control`, `human_handoff`, and `failure_recovery` pause kinds, and the existing managed `stop_process` boundary;
 - a Principal-authenticated mechanical blocked route for Stop;
-- opt-in, Model Profile-bound drift/quality/trace evaluation only at an authenticated human handoff or output failure, using digest-verified bounded content, exact inputs/contracts, and exact failure trace or a deterministic `INDETERMINATE`; and
+- opt-in, Model Profile-bound drift/quality/trace evaluation only at an authenticated human handoff or output failure, with source, content subject, and evaluator identity independently derived at the runtime boundary, using digest-verified bounded content, exact inputs/contracts, and exact failure trace or a deterministic `INDETERMINATE`; and
 - an authority-inert model verdict that cannot advance, retry, authorize, complete, review, or accept a Run.
 
 The existing Inspector modal and sidebar Process zone are the only new presentation surfaces. The accepted G1.18 definition, Process Library, interview, authority, evidence, checkpoint, recovery, and final-review contracts remain the governing architecture.
@@ -33,8 +33,8 @@ The focused suite proves:
 1. Layer 1 is always present and binds state/node, time/estimate, attempt/retry ceiling, authenticated usage or explicit absence, Artifact counts/currentness, error state, health, and liveness.
 2. Quality evaluation is unavailable at ordinary steps, idempotent at an eligible seam, and receives digest-verified Artifact bytes, exact inputs, criteria, instructions, source, and failure trace—not opaque IDs alone.
 3. Missing, drifted, unreadable, or over-limit evaluation material returns `INDETERMINATE` without a model call and without changing Run authority.
-4. Wrong, partial, outcome-without-start, public generic, duplicate, stale-source, and digest-substituted telemetry records fail closed.
-5. User Pause terminates the exact worker when present, persists its distinct authority state, and rejects direct execute, public retry, direct runtime resume, and restarted-service retry until exact Resume.
+4. Wrong, partial, outcome-without-start, public generic, duplicate, stale-source, and digest-substituted telemetry records fail closed. A complete fabricated old-source start plus matching `PASS` outcome cannot append either record because the direct authoritative API is unavailable.
+5. User Pause terminates the exact worker when present, persists its distinct authority state, and rejects direct execute, public retry, direct runtime resume, and restarted-service retry until exact Resume. Forged and stale Pause calls leave the Run and record chain byte-for-byte unchanged; two racing authenticated calls add exactly one adjacent `checkpoint_created`/`run_paused` pair.
 6. Concurrent worker/control completion cannot advance through a recorded user Pause, while the authenticated Resume continues the same Run from its checkpoint.
 7. Stop terminates the exact worker, reaches one approved blocked terminal, and retry returns the same terminal identity.
 8. Persisted control requests/applications interrupted before their state effect reconcile once after restart.
@@ -60,7 +60,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_5_run_inspector.py \
   orchestrator/tests/test_phase_2_6_process_library_lifecycle.py \
   --tb=short
-# 139 passed, 85 subtests passed; exit 0
+# 141 passed, 85 subtests passed; exit 0
 ```
 
 ### Browser DOM matrix

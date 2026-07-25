@@ -82,7 +82,9 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             "Layer 1 is always assembled",
             "A retry returns the same control identity",
             "legacy execute/retry path and direct runtime resume fail closed",
+            "forged, stale, or losing racing Pause",
             "runtime-authenticated usage receipt exists",
+            "Caller-supplied source, subject, node, or model substitutions",
             "produces an authority-inert `INDETERMINATE` result without invoking the evaluator",
             "Model-based drift/quality/trace evaluation is never automatic on every step",
             "Every projection labels the result `authority_effect: none`",
@@ -92,6 +94,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         for token in (
             "### Watch Run telemetry",
             "**Pause run** stops the exact live isolated worker",
+            "A stale or rejected Pause leaves the existing checkpoint and Run untouched",
             "Ordinary Execute/Retry cannot bypass it",
             "tool isolation is never shown as zero usage",
             "returns `INDETERMINATE` without calling the model",
@@ -118,7 +121,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         evidence = (ROOT / "outputs" / "g1-20" / "closeout-evidence.md").read_text()
         for token in (
             "python3 -m pytest -q \\",
-            "# 139 passed, 85 subtests passed; exit 0",
+            "# 141 passed, 85 subtests passed; exit 0",
             "# 28/28 + 15/15 + 26/26 + 19/19 + 8/8 = 96/96; exit 0",
             "python3 scripts/verify-implementation.py --check drift",
             "# 2/2 body-identical; exit 0",
@@ -421,6 +424,144 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         ]
         assert len(resumed) == 1
         assert resumed[0]["event"]["details"]["control_request_record_id"]
+
+    def _persist_pause_control_pair(self, run_id, idempotency_key):
+        run = self.runtime.load_run(run_id)
+        request = self.runtime._record_runtime_event(
+            run_id,
+            "process_run_control_requested",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "idempotency_key": idempotency_key,
+                "control_state_digest": "sha256:" + "a" * 64,
+                "action": "pause",
+                "execution_id": None,
+                "run_state": run["state"],
+                "node_id": run["current_node_id"],
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+                "decision_by": run["contracts"]["authority"]["principal_id"],
+            },
+            node_id=run["current_node_id"],
+        )
+        self.service._record_control_applied(
+            run_id,
+            request_record=request,
+            action="pause",
+            execution_id=None,
+        )
+        return request
+
+    def test_rejected_stale_and_racing_pause_requests_never_mutate_a_checkpoint(self):
+        begun = self.begin(self._accepted_ref())
+        run_id = begun["run_id"]
+        before_run = self.runtime.load_run(run_id)
+        before_records = self.runtime.load_records(run_id)
+        with pytest.raises(Exception, match="authenticated request/application pair"):
+            self.runtime.pause_run(
+                run_id,
+                "forged-pause-checkpoint",
+                segment_id="classify",
+                resume_node_id="draft-approval",
+                reason="forged",
+                pause_kind="user_control",
+                control_request_record_id="event-does-not-exist",
+            )
+        assert self.runtime.load_run(run_id) == before_run
+        assert self.runtime.load_records(run_id) == before_records
+        with pytest.raises(Exception, match="no checkpoint exists|only a pending Process Run"):
+            self.runtime.resume_run(run_id)
+        assert self.runtime.load_run(run_id)["current_node_id"] == "classify"
+
+        run = self.runtime.load_run(run_id)
+        stale_request = self.runtime._record_runtime_event(
+            run_id,
+            "process_run_control_requested",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "idempotency_key": "control:pause:stale-direct",
+                "control_state_digest": "sha256:" + "b" * 64,
+                "action": "pause",
+                "execution_id": None,
+                "run_state": "running",
+                "node_id": "summarize",
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+                "decision_by": run["contracts"]["authority"]["principal_id"],
+            },
+            node_id=run["current_node_id"],
+        )
+        self.runtime._record_runtime_event(
+            run_id,
+            "process_run_control_applied",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "control_request_record_id": stale_request["record_id"],
+                "idempotency_key": "control:pause:stale-direct",
+                "action": "pause",
+                "execution_id": None,
+                "source_run_state": "running",
+                "node_id": "summarize",
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+            },
+            node_id=run["current_node_id"],
+        )
+        stale_run = self.runtime.load_run(run_id)
+        stale_records = self.runtime.load_records(run_id)
+        with pytest.raises(Exception, match="does not bind the current Run"):
+            self.runtime.pause_run(
+                run_id,
+                "stale-pause-checkpoint",
+                segment_id="classify",
+                resume_node_id="draft-approval",
+                reason="stale",
+                pause_kind="user_control",
+                control_request_record_id=stale_request["record_id"],
+            )
+        assert self.runtime.load_run(run_id) == stale_run
+        assert self.runtime.load_records(run_id) == stale_records
+
+        requests = [
+            self._persist_pause_control_pair(
+                run_id, f"control:pause:race:{number}",
+            )
+            for number in (1, 2)
+        ]
+        race_records = self.runtime.load_records(run_id)
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def race(number):
+            barrier.wait()
+            try:
+                result = self.runtime.pause_run(
+                    run_id,
+                    f"race-pause-checkpoint-{number}",
+                    segment_id="classify",
+                    resume_node_id="classify",
+                    reason="racing authenticated pause",
+                    pause_kind="user_control",
+                    control_request_record_id=requests[number - 1]["record_id"],
+                )
+                outcomes.append(("applied", result))
+            except Exception as exc:
+                outcomes.append(("rejected", exc))
+
+        threads = [threading.Thread(target=race, args=(number,)) for number in (1, 2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert all(not thread.is_alive() for thread in threads)
+        assert sorted(kind for kind, _value in outcomes) == ["applied", "rejected"]
+        after_records = self.runtime.load_records(run_id)
+        assert len(after_records) == len(race_records) + 2
+        assert [
+            (record.get("event") or {}).get("event_type")
+            for record in after_records[-2:]
+        ] == ["checkpoint_created", "run_paused"]
+        assert self.runtime.load_run(run_id)["state"] == "pending"
 
     def test_quality_failure_packet_binds_content_contract_and_exact_error_trace(self):
         ref = self._accepted_ref()
@@ -735,7 +876,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             "findings": [],
             "rationale": "forged",
         }
-        with pytest.raises(Exception, match="unfinished exact start"):
+        with pytest.raises(Exception, match="runtime-derived evaluation path"):
             self.runtime.record_process_quality_evaluation(
                 state["run_id"],
                 "process_quality_evaluation_completed",
@@ -771,3 +912,55 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             )
         assert self.runtime.load_records(state["run_id"]) == before
         assert self.runtime.load_records(fresh["run_id"]) == fresh_before
+
+    def test_forged_quality_start_and_matching_pass_leave_no_records(self):
+        state = self._handoff()
+        run_id = state["run_id"]
+        run = self.runtime.load_run(run_id)
+        records = self.runtime.load_records(run_id)
+        old_source = next(
+            record for record in records
+            if (record.get("event") or {}).get("event_type") == "run_created"
+        )
+        common = {
+            "run_id": run_id,
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "evaluation_id": "quality-fabricated-complete-pass",
+            "idempotency_key": "quality:fabricated:complete-pass",
+            "subject_digest": "sha256:" + "1" * 64,
+            "eligible_reason": "human_handoff",
+            "source_record_id": old_source["record_id"],
+            "source_sequence": old_source["sequence"],
+            "evaluator_binding": {
+                "kind": "exact_run_model_profile",
+                "runtime_name": "substituted-model",
+            },
+        }
+        with pytest.raises(Exception, match="runtime-derived evaluation path"):
+            self.runtime.record_process_quality_evaluation(
+                run_id,
+                "process_quality_evaluation_started",
+                common,
+                node_id=run["current_node_id"],
+            )
+        verdict = {
+            "verdict": "PASS",
+            "drift_verdict": "NONE",
+            "quality_verdict": "PASS",
+            "findings": [],
+            "rationale": "fabricated",
+        }
+        with pytest.raises(Exception, match="runtime-derived evaluation path"):
+            self.runtime.record_process_quality_evaluation(
+                run_id,
+                "process_quality_evaluation_completed",
+                {
+                    **common,
+                    "evaluation_start_record_id": "event-fabricated-start",
+                    "response_digest": automation._digest_json(verdict),
+                    "verdict": verdict,
+                },
+                node_id=run["current_node_id"],
+            )
+        assert self.runtime.load_run(run_id) == run
+        assert self.runtime.load_records(run_id) == records
