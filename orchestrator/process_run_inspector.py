@@ -97,6 +97,15 @@ def _digest_json(value: Any) -> str:
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
+def _digest_bytes(value: bytes) -> str:
+    return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+_QUALITY_SECTION_BYTES = 32_768
+_QUALITY_ARTIFACT_BYTES = 32_768
+_QUALITY_TOTAL_ARTIFACT_BYTES = 65_536
+
+
 def _parse_time(value: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -299,6 +308,9 @@ def _default_quality_evaluator(
         )
         prompt = (
             "Evaluate only the supplied authenticated Process Run packet. "
+            "Judge only reviewable content and exact governing/failure material "
+            "present in the packet; never infer quality from IDs or hashes. If "
+            "the material is insufficient, return INDETERMINATE. "
             "Do not authorize, advance, retry, or modify the Run. Return exactly "
             "one JSON object with keys verdict, drift_verdict, quality_verdict, "
             "findings, rationale. verdict and quality_verdict are PASS, WARN, "
@@ -603,6 +615,16 @@ class ProcessRunInspectorService:
                     "retryable": bool(details.get("retryable")),
                     "active": True,
                 }
+            elif event.get("event_type") == "isolated_process_action_failed":
+                last_error = {
+                    "record_id": record["record_id"],
+                    "recorded_at": record["recorded_at"],
+                    "node_id": record["node_id"],
+                    "codes": [str(details.get("defect_code") or "action_failed")],
+                    "error_type": details.get("error_type"),
+                    "retryable": bool(details.get("retryable")),
+                    "active": True,
+                }
             elif (
                 event.get("event_type") == "isolated_process_verification_completed"
                 and last_error is not None
@@ -637,26 +659,17 @@ class ProcessRunInspectorService:
             estimate = None
             estimate_reason = "No completed attempt duration is available for an estimate."
 
-        worker_events = [
-            record for record in records
-            if (record.get("event") or {}).get("event_type")
-            in {"process_worker_started", "process_worker_finished"}
-        ]
-        no_tools_only = bool(worker_events) and all(
-            (record["event"]["details"].get("worker_boundary") in {
-                "separate_no_tools_process", "injected_test_worker",
-            })
-            for record in worker_events
-        )
         usage = {
-            "input_tokens": 0 if no_tools_only else None,
-            "output_tokens": 0 if no_tools_only else None,
-            "total_tokens": 0 if no_tools_only else None,
-            "cost_usd": 0.0 if no_tools_only else None,
-            "measured": no_tools_only,
-            "source": (
-                "isolated_no_tools_worker" if no_tools_only
-                else "no_authenticated_usage_record"
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+            "cost_usd": None,
+            "measured": False,
+            "status": "unavailable",
+            "source": "no_authenticated_usage_receipt",
+            "reason": (
+                "No runtime-authenticated token/cost receipt is bound to this Run; "
+                "worker tool isolation does not establish model usage."
             ),
         }
         artifact_counts: dict[str, int] = {}
@@ -770,6 +783,31 @@ class ProcessRunInspectorService:
             latest_attempt["event"]["details"].get("defect_codes")
         ):
             failure = latest_attempt
+        latest_action_failure = next(
+            (
+                record for record in reversed(relevant)
+                if (record.get("event") or {}).get("event_type")
+                == "isolated_process_action_failed"
+            ),
+            None,
+        )
+        action_failure_resolved = bool(
+            latest_action_failure
+            and any(
+                int(record["sequence"]) > int(latest_action_failure["sequence"])
+                and record.get("node_id") == latest_action_failure.get("node_id")
+                and (record.get("event") or {}).get("event_type")
+                == "attempt_completed"
+                and not (record.get("event") or {}).get("details", {}).get(
+                    "defect_codes"
+                )
+                for record in relevant
+            )
+        )
+        if latest_action_failure and not action_failure_resolved and (
+            failure is None or latest_action_failure["sequence"] > failure["sequence"]
+        ):
+            failure = latest_action_failure
         if latest_verification and (
             latest_verification["event"]["event_type"]
             == "isolated_process_verification_failed"
@@ -827,7 +865,7 @@ class ProcessRunInspectorService:
                         for field in (
                             "run_id", "definition_ref", "evaluation_id",
                             "idempotency_key", "subject_digest", "eligible_reason",
-                            "source_sequence", "evaluator_binding",
+                            "source_record_id", "source_sequence", "evaluator_binding",
                         )
                     )
                     or int(record["sequence"]) <= int(start["sequence"])
@@ -1952,6 +1990,242 @@ class ProcessRunTelemetryService:
             ),
         }
 
+    @staticmethod
+    def _bounded_json_value(
+        value: Any,
+        *,
+        label: str,
+        reasons: list[str],
+    ) -> Any | None:
+        try:
+            encoded = json.dumps(
+                value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            ).encode("utf-8")
+        except (TypeError, ValueError):
+            reasons.append(f"{label} is not a JSON-authenticatable value")
+            return None
+        if len(encoded) > _QUALITY_SECTION_BYTES:
+            reasons.append(f"{label} exceeds the bounded evaluation packet")
+            return None
+        return copy.deepcopy(value)
+
+    def _quality_subject(
+        self,
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        eligibility: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Capture reviewable bytes and contracts once, failing closed if incomplete."""
+
+        reasons: list[str] = []
+        source_record = next(
+            (
+                record for record in records
+                if record["record_id"] == eligibility["source_record_id"]
+            ),
+            None,
+        )
+        if source_record is None:
+            reasons.append("the exact evaluation source record is unavailable")
+            source_context = None
+        else:
+            source_context = self._bounded_json_value(
+                {
+                    "record_id": source_record["record_id"],
+                    "sequence": source_record["sequence"],
+                    "recorded_at": source_record["recorded_at"],
+                    "node_id": source_record["node_id"],
+                    "event_type": (source_record.get("event") or {}).get("event_type"),
+                    "details": copy.deepcopy(
+                        (source_record.get("event") or {}).get("details") or {}
+                    ),
+                },
+                label="exact evaluation source",
+                reasons=reasons,
+            )
+        inputs = self._bounded_json_value(
+            run.get("input_bindings", {}).get("inputs"),
+            label="Run inputs",
+            reasons=reasons,
+        )
+        metadata = (definition.get("output_schema") or {}).get("x-ora-process")
+        if not isinstance(metadata, Mapping):
+            reasons.append("the issued definition has no automated Process contract")
+            criteria = None
+            instructions = None
+        else:
+            criteria = metadata.get("acceptance_criteria")
+            operation_contracts = metadata.get("operation_contracts")
+            instructions = None
+            if not isinstance(criteria, Sequence) or isinstance(criteria, (str, bytes)):
+                reasons.append("the issued definition has no reviewable acceptance criteria")
+                criteria = None
+            if not isinstance(operation_contracts, Mapping) or not operation_contracts:
+                reasons.append("the issued definition has no reviewable operation instructions")
+            else:
+                instructions = [
+                    {
+                        "operation": str(operation),
+                        "node_id": contract.get("node_id"),
+                        "instruction": contract.get("instruction"),
+                        "output_key": contract.get("output_key"),
+                    }
+                    for operation, contract in sorted(operation_contracts.items())
+                    if isinstance(contract, Mapping)
+                ]
+                if len(instructions) != len(operation_contracts) or any(
+                    not item["instruction"] for item in instructions
+                ):
+                    reasons.append("the issued operation instructions are incomplete")
+        governing_contract = self._bounded_json_value(
+            {
+                "purpose": definition.get("purpose"),
+                "acceptance_criteria": criteria,
+                "operation_instructions": instructions,
+            },
+            label="governing criteria and instructions",
+            reasons=reasons,
+        )
+
+        artifacts: list[dict[str, Any]] = []
+        total_artifact_bytes = 0
+        relevant_artifacts = []
+        for artifact_id in run["artifact_ids"]:
+            artifact = self.runtime.load_artifact(run["run_id"], artifact_id)
+            if artifact.get("role") in {"working", "result"}:
+                relevant_artifacts.append(artifact)
+        if not relevant_artifacts:
+            reasons.append("no reviewable working or result Artifact is available")
+        for artifact in relevant_artifacts:
+            locator = artifact.get("locator") or {}
+            base = {
+                "artifact_id": artifact["artifact_id"],
+                "role": artifact["role"],
+                "media_type": artifact["media_type"],
+                "identity_digest": artifact["identity"]["digest"],
+                "producing_node_id": artifact["lineage"]["producing_node_id"],
+            }
+            if locator.get("kind") != "file":
+                reasons.append(
+                    f"Artifact {artifact['artifact_id']} has no authenticated readable content"
+                )
+                artifacts.append({**base, "content": None, "content_available": False})
+                continue
+            path = Path(str(locator.get("ref") or ""))
+            try:
+                if path.is_symlink() or not path.is_file():
+                    raise OSError("not a regular file")
+                raw = path.read_bytes()
+            except OSError:
+                reasons.append(
+                    f"Artifact {artifact['artifact_id']} content is unavailable"
+                )
+                artifacts.append({**base, "content": None, "content_available": False})
+                continue
+            if _digest_bytes(raw) != artifact["identity"]["digest"]:
+                reasons.append(
+                    f"Artifact {artifact['artifact_id']} content does not match its identity"
+                )
+                artifacts.append({**base, "content": None, "content_available": False})
+                continue
+            if (
+                len(raw) > _QUALITY_ARTIFACT_BYTES
+                or total_artifact_bytes + len(raw) > _QUALITY_TOTAL_ARTIFACT_BYTES
+            ):
+                reasons.append(
+                    f"Artifact {artifact['artifact_id']} exceeds the bounded evaluation packet"
+                )
+                artifacts.append({**base, "content": None, "content_available": False})
+                continue
+            try:
+                content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                reasons.append(
+                    f"Artifact {artifact['artifact_id']} is not reviewable UTF-8 content"
+                )
+                artifacts.append({**base, "content": None, "content_available": False})
+                continue
+            total_artifact_bytes += len(raw)
+            artifacts.append({
+                **base,
+                "content": content,
+                "content_available": True,
+                "content_bytes": len(raw),
+                "content_digest_verified": True,
+            })
+
+        failure_trace: list[dict[str, Any]] = []
+        if eligibility["reason"] == "output_failure":
+            source = source_record
+            if source is None:
+                reasons.append("the exact failure source record is unavailable")
+            else:
+                checkpoint_sequence = max(
+                    (
+                        int(record["sequence"]) for record in records
+                        if int(record["sequence"]) <= int(source["sequence"])
+                        and (record.get("event") or {}).get("event_type")
+                        == "checkpoint_created"
+                    ),
+                    default=0,
+                )
+                trace_types = {
+                    "checkpoint_created", "attempt_started", "attempt_completed",
+                    "process_worker_started", "process_worker_finished",
+                    "isolated_process_action_failed",
+                    "isolated_process_verification_started",
+                    "isolated_process_verification_failed",
+                    "isolated_process_verification_completed",
+                    "final_review_completed",
+                }
+                raw_trace = [
+                    {
+                        "record_id": record["record_id"],
+                        "sequence": record["sequence"],
+                        "recorded_at": record["recorded_at"],
+                        "node_id": record["node_id"],
+                        "event_type": (record.get("event") or {}).get("event_type"),
+                        "details": copy.deepcopy(
+                            (record.get("event") or {}).get("details") or {}
+                        ),
+                    }
+                    for record in records
+                    if checkpoint_sequence <= int(record["sequence"]) <= int(source["sequence"])
+                    and (record.get("event") or {}).get("event_type") in trace_types
+                ]
+                bounded_trace = self._bounded_json_value(
+                    raw_trace,
+                    label="exact failure trace",
+                    reasons=reasons,
+                )
+                failure_trace = bounded_trace or []
+                if not any(
+                    row["record_id"] == source["record_id"] for row in failure_trace
+                ):
+                    reasons.append("the bounded trace omits the exact failure source")
+
+        material_status = {
+            "evaluable": not reasons,
+            "reasons": sorted(set(reasons)),
+            "artifact_content_bytes": total_artifact_bytes,
+        }
+        return {
+            "schema_version": "ora.process-quality-evaluation-subject/2.0",
+            "run_id": run["run_id"],
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "run_state": run["state"],
+            "current_node_id": run["current_node_id"],
+            "eligible_reason": eligibility["reason"],
+            "source_record_id": eligibility["source_record_id"],
+            "source_context": source_context,
+            "inputs": inputs,
+            "governing_contract": governing_contract,
+            "artifacts": artifacts,
+            "failure_trace": failure_trace,
+            "material_status": material_status,
+        }
+
     def evaluate(
         self,
         run_id: str,
@@ -1993,39 +2267,19 @@ class ProcessRunTelemetryService:
             raise ProcessRunTelemetryConflict(
                 "quality evaluation is available only at a human handoff or output failure"
             )
-        source_records = [
-            record for record in records
-            if (record.get("event") or {}).get("event_type") not in {
-                "process_quality_evaluation_started",
-                "process_quality_evaluation_completed",
-                "process_quality_evaluation_failed",
-            }
-        ]
-        source_sequence = int(source_records[-1]["sequence"])
-        artifacts = []
-        for artifact_id in run["artifact_ids"]:
-            artifact = self.runtime.load_artifact(run_id, artifact_id)
-            artifacts.append({
-                "artifact_id": artifact_id,
-                "role": artifact["role"],
-                "identity_digest": artifact["identity"]["digest"],
-                "producing_node_id": artifact["lineage"]["producing_node_id"],
-            })
-        package = {
-            "schema_version": "ora.process-quality-evaluation-subject/1.0",
-            "run_id": run_id,
-            "definition_ref": copy.deepcopy(run["definition_ref"]),
-            "run_state": run["state"],
-            "current_node_id": run["current_node_id"],
-            "eligible_reason": eligibility["reason"],
-            "source_record_id": eligibility["source_record_id"],
-            "source_sequence": source_sequence,
-            "artifacts": artifacts,
-            "timeline": [
-                ProcessRunInspectorService._record_summary(record)
-                for record in source_records[-50:]
-            ],
-        }
+        source_record = next(
+            (
+                record for record in records
+                if record["record_id"] == eligibility["source_record_id"]
+            ),
+            None,
+        )
+        if source_record is None:
+            raise ProcessRunInspectorIntegrityError(
+                "quality eligibility lost its exact source record"
+            )
+        source_sequence = int(source_record["sequence"])
+        package = self._quality_subject(run, definition, records, eligibility)
         subject_digest = _digest_json(package)
         binding = self._evaluator_binding(run, definition)
         evaluation_id = "quality-" + hashlib.sha256(
@@ -2048,6 +2302,39 @@ class ProcessRunTelemetryService:
             common,
             node_id=run["current_node_id"],
         )
+        if not package["material_status"]["evaluable"]:
+            reasons = package["material_status"]["reasons"]
+            verdict = {
+                "verdict": "INDETERMINATE",
+                "drift_verdict": "INDETERMINATE",
+                "quality_verdict": "INDETERMINATE",
+                "findings": reasons[:20],
+                "rationale": (
+                    "The authenticated evaluation subject lacks complete bounded "
+                    "reviewable material; no model judgment was requested."
+                ),
+            }
+            completed = self.runtime.record_process_quality_evaluation(
+                run_id,
+                "process_quality_evaluation_completed",
+                {
+                    **common,
+                    "evaluation_start_record_id": start["record_id"],
+                    "response_digest": _digest_json(verdict),
+                    "verdict": verdict,
+                },
+                node_id=run["current_node_id"],
+            )
+            return {
+                "status": "completed",
+                "evaluation": {
+                    "evaluation_id": evaluation_id,
+                    "verdict": verdict,
+                    "record_ids": [start["record_id"], completed["record_id"]],
+                    "authority_effect": "none",
+                    "model_invoked": False,
+                },
+            }
         try:
             verdict = _parse_quality_verdict(
                 self.evaluator(copy.deepcopy(package), copy.deepcopy(binding))

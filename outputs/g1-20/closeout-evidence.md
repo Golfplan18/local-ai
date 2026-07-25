@@ -17,10 +17,11 @@ G1.20 extends the accepted G1.1 nine-view Run Inspector and G1.18 automation ser
 The shipped boundary is:
 
 - deterministic Inspector telemetry derived from the exact Run, issued definition, records, Artifacts, and live worker owner;
+- token/cost values withheld unless a runtime-authenticated usage receipt exists; no-tools isolation never manufactures zero usage;
 - reserved exact worker start/finish records and fail-closed orphan recovery;
-- stale-safe, idempotent pause/resume/stop for G1.18 automated Runs only, using the existing managed `stop_process` boundary;
+- stale-safe, idempotent pause/resume/stop for G1.18 automated Runs only, with persistent `user_control`, `human_handoff`, and `failure_recovery` pause kinds and the existing managed `stop_process` boundary;
 - a Principal-authenticated mechanical blocked route for Stop;
-- opt-in, Model Profile-bound drift/quality/trace evaluation only at an authenticated human handoff or output failure; and
+- opt-in, Model Profile-bound drift/quality/trace evaluation only at an authenticated human handoff or output failure, using digest-verified bounded content, exact inputs/contracts, and exact failure trace or a deterministic `INDETERMINATE`; and
 - an authority-inert model verdict that cannot advance, retry, authorize, complete, review, or accept a Run.
 
 The existing Inspector modal and sidebar Process zone are the only new presentation surfaces. The accepted G1.18 definition, Process Library, interview, authority, evidence, checkpoint, recovery, and final-review contracts remain the governing architecture.
@@ -30,15 +31,18 @@ The existing Inspector modal and sidebar Process zone are the only new presentat
 The focused suite proves:
 
 1. Layer 1 is always present and binds state/node, time/estimate, attempt/retry ceiling, authenticated usage or explicit absence, Artifact counts/currentness, error state, health, and liveness.
-2. Quality evaluation is unavailable at ordinary steps, idempotent at an eligible seam, exact-source/subject/evaluator/result bound, and leaves Run state, node, Artifacts, correction budget, and acceptance authority unchanged.
-3. Wrong, partial, outcome-without-start, public generic, duplicate, stale-source, and digest-substituted telemetry records fail closed.
-4. Pause terminates the exact worker, persists its attempt and control lineage, and resumes the same Run from its checkpoint.
-5. Stop terminates the exact worker, reaches one approved blocked terminal, and retry returns the same terminal identity.
-6. A persisted control request interrupted before application reconciles once after restart.
-7. A stale control digest is rejected before effect.
-8. A lost worker is visible as orphaned, completes its exact attempt as defective, and pauses without replay.
-9. Browser controls post only the exact state digest and deterministic bounded idempotency identity; the sidebar keeps healthy work quiet while showing health, attempts/retries, and live-worker state.
-10. Vault canonicals and runtime mirrors remain body-identical, record the G1.17 deferral, and keep G1.19 unauthorized pending independent G1.20 acceptance.
+2. Quality evaluation is unavailable at ordinary steps, idempotent at an eligible seam, and receives digest-verified Artifact bytes, exact inputs, criteria, instructions, source, and failure trace—not opaque IDs alone.
+3. Missing, drifted, unreadable, or over-limit evaluation material returns `INDETERMINATE` without a model call and without changing Run authority.
+4. Wrong, partial, outcome-without-start, public generic, duplicate, stale-source, and digest-substituted telemetry records fail closed.
+5. User Pause terminates the exact worker when present, persists its distinct authority state, and rejects direct execute, public retry, direct runtime resume, and restarted-service retry until exact Resume.
+6. Concurrent worker/control completion cannot advance through a recorded user Pause, while the authenticated Resume continues the same Run from its checkpoint.
+7. Stop terminates the exact worker, reaches one approved blocked terminal, and retry returns the same terminal identity.
+8. Persisted control requests/applications interrupted before their state effect reconcile once after restart.
+9. A stale control digest is rejected before effect.
+10. A lost worker is visible as orphaned, completes its exact attempt as defective, and pauses without replay.
+11. No-tools/model-backed execution reports explicit unknown token/cost values because no authenticated usage receipt exists.
+12. Browser controls post only the exact state digest and deterministic bounded idempotency identity; the sidebar keeps healthy work quiet while showing health, attempts/retries, and live-worker state.
+13. Vault canonicals and runtime mirrors remain body-identical, record the G1.17 deferral, and keep G1.19 unauthorized pending independent G1.20 acceptance.
 
 ## Exact command provenance
 
@@ -56,7 +60,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_5_run_inspector.py \
   orchestrator/tests/test_phase_2_6_process_library_lifecycle.py \
   --tb=short
-# 136 passed, 84 subtests passed; exit 0
+# 139 passed, 85 subtests passed; exit 0
 ```
 
 ### Browser DOM matrix

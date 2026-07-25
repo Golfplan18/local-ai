@@ -196,12 +196,40 @@ def automation_run_controls(
     nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
     node = nodes[run["current_node_id"]]
     worker = active_automation_worker(run_id)
+    records = runtime.load_records(run_id)
+    latest_pause = next(
+        (
+            record for record in reversed(records)
+            if (record.get("event") or {}).get("event_type") == "run_paused"
+        ),
+        None,
+    )
+    latest_resume = next(
+        (
+            record for record in reversed(records)
+            if (record.get("event") or {}).get("event_type") == "run_resumed"
+        ),
+        None,
+    )
+    if (
+        latest_pause is not None
+        and latest_resume is not None
+        and int(latest_resume["sequence"]) > int(latest_pause["sequence"])
+    ):
+        latest_pause = None
+    pause_kind = str(
+        ((((latest_pause or {}).get("event") or {}).get("details") or {}).get(
+            "pause_kind"
+        ) or "")
+    ) or None
     available: list[str] = []
     if run["state"] == "running":
         available = ["pause", "stop"]
     elif run["state"] == "pending":
         available = ["stop"]
-        if node["kind"] != "human_checkpoint":
+        if pause_kind in {"user_control", "failure_recovery"} or (
+            pause_kind is None and node["kind"] != "human_checkpoint"
+        ):
             available.insert(0, "resume")
     body = {
         "schema_version": "ora.process-run-controls/1.0",
@@ -212,6 +240,7 @@ def automation_run_controls(
         "last_sequence": run["last_sequence"],
         "available_actions": available,
         "active_worker": worker,
+        "pause_kind": pause_kind,
     }
     return {**body, "control_state_digest": _digest_json(body)}
 
@@ -1541,6 +1570,7 @@ class ProcessAutomationService:
                 segment_id=current["current_node_id"],
                 resume_node_id=current["current_node_id"],
                 reason="Isolated worker ownership was lost across restart; replay is withheld",
+                pause_kind="failure_recovery",
             )
         return True
 
@@ -1577,12 +1607,28 @@ class ProcessAutomationService:
                 len(existing) != 1
                 or expected.get("action") != action
                 or expected.get("execution_id") != execution_id
+                or expected.get("control_request_record_id")
+                != request_record.get("record_id")
             ):
                 raise ProcessAutomationIntegrityError(
                     "Run control application history conflicts"
                 )
             return existing[0]
         run = self.runtime.load_run(run_id)
+        request_details = (request_record.get("event") or {}).get("details") or {}
+        if (
+            request_details.get("run_id") != run_id
+            or request_details.get("definition_ref") != run["definition_ref"]
+            or request_details.get("action") != action
+            or request_details.get("execution_id") != execution_id
+            or request_details.get("run_state") != run["state"]
+            or request_details.get("node_id") != run["current_node_id"]
+            or request_details.get("decision_by")
+            != run["contracts"]["authority"]["principal_id"]
+        ):
+            raise ProcessAutomationConflict(
+                "Run control request is stale against the exact current boundary"
+            )
         return self.runtime._record_runtime_event(
             run_id,
             "process_run_control_applied",
@@ -1593,6 +1639,7 @@ class ProcessAutomationService:
                 "idempotency_key": request_record["event"]["details"]["idempotency_key"],
                 "action": action,
                 "execution_id": execution_id,
+                "source_run_state": run["state"],
                 "node_id": run["current_node_id"],
                 "attempt": run["contracts"]["correction_loop"]["attempt"],
             },
@@ -1647,6 +1694,8 @@ class ProcessAutomationService:
                 segment_id=current["current_node_id"],
                 resume_node_id=current["current_node_id"],
                 reason="Principal paused the exact active isolated worker",
+                pause_kind="user_control",
+                control_request_record_id=request_record["record_id"],
             )
         else:
             definition = self.runtime.load_definition(run_id)
@@ -1748,6 +1797,8 @@ class ProcessAutomationService:
                         segment_id=current["current_node_id"],
                         resume_node_id=current["current_node_id"],
                         reason="Recovered the Principal's persisted pause decision",
+                        pause_kind="user_control",
+                        control_request_record_id=request["record_id"],
                     )
                 elif action == "stop" and current["state"] in {"running", "pending"}:
                     definition = self.runtime.load_definition(run_id)
@@ -1758,8 +1809,75 @@ class ProcessAutomationService:
                         reason="Recovered the Principal's persisted stop decision",
                     )
                 elif action == "resume" and current["state"] == "pending":
-                    self.runtime.resume_run(run_id)
+                    self.runtime.resume_run(
+                        run_id,
+                        control_request_record_id=request["record_id"],
+                    )
                     self.execute(run_id)
+            else:
+                request = prior[0]
+                details = request["event"]["details"]
+                applied_details = applied[0]["event"]["details"]
+                if (
+                    applied_details.get("action") != action
+                    or applied_details.get("run_id") != run_id
+                    or applied_details.get("definition_ref")
+                    != details.get("definition_ref")
+                    or applied_details.get("idempotency_key")
+                    != details.get("idempotency_key")
+                    or applied_details.get("source_run_state")
+                    != details.get("run_state")
+                    or applied_details.get("node_id") != details.get("node_id")
+                ):
+                    raise ProcessAutomationIntegrityError(
+                        "Run control application does not authenticate its request"
+                    )
+                records = self.runtime.load_records(run_id)
+                effect_type = "run_paused" if action == "pause" else "run_resumed"
+                effect = next(
+                    (
+                        record for record in records
+                        if (record.get("event") or {}).get("event_type") == effect_type
+                        and (record.get("event") or {}).get("details", {}).get(
+                            "control_request_record_id"
+                        ) == request["record_id"]
+                    ),
+                    None,
+                ) if action in {"pause", "resume"} else None
+                current = self.runtime.load_run(run_id)
+                if effect is None and current["state"] == details.get("run_state"):
+                    if current["current_node_id"] != details.get("node_id"):
+                        raise ProcessAutomationConflict(
+                            "applied Run control is stale at a different node"
+                        )
+                    if action == "pause":
+                        self.runtime.pause_run(
+                            run_id,
+                            f"recovered-user-pause-{current['last_sequence']}",
+                            segment_id=current["current_node_id"],
+                            resume_node_id=current["current_node_id"],
+                            reason="Recovered the Principal's applied pause decision",
+                            pause_kind="user_control",
+                            control_request_record_id=request["record_id"],
+                        )
+                    elif action == "resume":
+                        self.runtime.resume_run(
+                            run_id,
+                            control_request_record_id=request["record_id"],
+                        )
+                        self.execute(run_id)
+                    elif action == "stop":
+                        definition = self.runtime.load_definition(run_id)
+                        self.runtime.block_by_process_run_control(
+                            run_id,
+                            control_request_record_id=request["record_id"],
+                            target_node_id=self._blocked_node_id(definition),
+                            reason="Recovered the Principal's applied stop decision",
+                        )
+                elif effect is None and action in {"pause", "resume"}:
+                    raise ProcessAutomationConflict(
+                        "applied Run control lacks its exact persisted effect"
+                    )
             return {
                 "status": "idempotent_retry",
                 "request_record_id": prior[0]["record_id"],
@@ -1819,6 +1937,8 @@ class ProcessAutomationService:
                 segment_id=run["current_node_id"],
                 resume_node_id=run["current_node_id"],
                 reason="Principal paused the Process Run",
+                pause_kind="user_control",
+                control_request_record_id=request_record["record_id"],
             )
         elif action == "stop":
             self._record_control_applied(
@@ -1841,7 +1961,10 @@ class ProcessAutomationService:
                 action=action,
                 execution_id=None,
             )
-            self.runtime.resume_run(run_id)
+            self.runtime.resume_run(
+                run_id,
+                control_request_record_id=request_record["record_id"],
+            )
             try:
                 return {
                     "status": "applied",
@@ -2509,6 +2632,11 @@ class ProcessAutomationService:
                 # callers must use resolve_checkpoint rather than replay execution.
                 if self.run_state(run_id)["status"] == "awaiting_human_checkpoint":
                     return self.run_state(run_id)
+                controls = self.run_controls(run_id)
+                if controls.get("pause_kind") == "user_control":
+                    raise ProcessAutomationConflict(
+                        "user-paused Run requires the authenticated Resume control"
+                    )
                 self.runtime.resume_run(run_id)
                 run = self.runtime.load_run(run_id)
             if run["state"] != "running":
@@ -2525,6 +2653,7 @@ class ProcessAutomationService:
                     run_id, checkpoint_id,
                     segment_id=node["node_id"], resume_node_id=node["node_id"],
                     reason="Explicit human checkpoint requires the Principal",
+                    pause_kind="human_handoff",
                 )
                 return self.run_state(run_id)
             if node["kind"] == "action":
@@ -2666,6 +2795,10 @@ class ProcessAutomationService:
                 defect = "runtime_integrity_failure"
             else:
                 defect = "isolated_worker_failure"
+            error_body = {
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:1_000],
+            }
             try:
                 self.runtime.complete_automation_attempt(
                     run_id, node["node_id"], defect_codes=[defect],
@@ -2674,12 +2807,41 @@ class ProcessAutomationService:
             except RunConflictError:
                 pass
             current = self.runtime.load_run(run_id)
+            attempt = int(current["contracts"]["correction_loop"]["attempt"])
+            trace_record_ids = [
+                record["record_id"]
+                for record in self.runtime.load_records(run_id)
+                if (record.get("event") or {}).get("event_type")
+                in {"process_worker_started", "process_worker_finished"}
+                and record.get("node_id") == node["node_id"]
+                and (record.get("event") or {}).get("details", {}).get("attempt")
+                == attempt
+            ]
+            self.runtime._record_runtime_event(
+                run_id,
+                "isolated_process_action_failed",
+                {
+                    "run_id": run_id,
+                    "definition_ref": copy.deepcopy(current["definition_ref"]),
+                    "node_id": node["node_id"],
+                    "operation": node["operation"],
+                    "attempt": attempt,
+                    "defect_code": defect,
+                    "error_type": error_body["error_type"],
+                    "error": error_body["error"],
+                    "error_digest": _digest_json(error_body),
+                    "worker_trace_record_ids": trace_record_ids,
+                    "retryable": True,
+                },
+                node_id=node["node_id"],
+            )
             if current["state"] == "running" and current["current_node_id"] == node["node_id"]:
                 failure_checkpoint = f"failure-{node['node_id']}-{current['last_sequence']}"
                 self.runtime.pause_run(
                     run_id, failure_checkpoint,
                     segment_id=node["node_id"], resume_node_id=node["node_id"],
                     reason=f"{defect}: {type(exc).__name__}",
+                    pause_kind="failure_recovery",
                 )
             raise ProcessAutomationWorkerError(
                 f"Process action {node['node_id']} failed and is restart-safe: {exc}"
@@ -2782,6 +2944,7 @@ class ProcessAutomationService:
                 "result_artifact_id": result["artifact_id"],
                 "result_identity_digest": result["identity"]["digest"],
                 "error_type": error_body["error_type"],
+                "error": error_body["error"],
                 "error_digest": _digest_json(error_body),
                 "retryable": not exhausted,
                 "exhausted": exhausted,
@@ -2808,6 +2971,7 @@ class ProcessAutomationService:
                 run_id, checkpoint_id,
                 segment_id=node["node_id"], resume_node_id=node["node_id"],
                 reason=f"verification_worker_failure: {type(exc).__name__}",
+                pause_kind="failure_recovery",
             )
 
     def _verify_result(
@@ -2886,6 +3050,7 @@ class ProcessAutomationService:
                     "result_artifact_id": result["artifact_id"],
                     "result_identity_digest": result["identity"]["digest"],
                     "error_type": error_body["error_type"],
+                    "error": error_body["error"],
                     "error_digest": _digest_json(error_body),
                     "failure_stage": "attempt_admission",
                     "retryable": False,
@@ -3067,7 +3232,10 @@ class ProcessAutomationService:
         node = nodes[run["current_node_id"]]
         result = _latest_result_artifact(self.runtime, run_id)
         status = run["state"]
-        if run["state"] == "pending" and node["kind"] == "human_checkpoint":
+        controls = self.run_controls(run_id)
+        if run["state"] == "pending" and controls.get("pause_kind") == "user_control":
+            status = "paused_by_user"
+        elif run["state"] == "pending" and node["kind"] == "human_checkpoint":
             status = "awaiting_human_checkpoint"
         elif run["state"] == "pending":
             status = "paused_after_failure"
@@ -3086,6 +3254,7 @@ class ProcessAutomationService:
             "attempt": run["contracts"]["correction_loop"]["attempt"],
             "max_attempts": run["contracts"]["correction_loop"]["max_attempts"],
             "checkpoint_id": run["contracts"]["continuation"]["checkpoint_id"],
+            "pause_kind": controls.get("pause_kind"),
             "result": None,
             "standing_automation": False,
         }

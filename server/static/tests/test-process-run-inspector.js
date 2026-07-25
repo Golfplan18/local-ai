@@ -65,7 +65,10 @@ var snapshot = {
         layer: 'deterministic', run_state: 'pending', current_node_id: 'authority',
         elapsed_seconds: 65, estimated_remaining_seconds: 14,
         attempts: { total: 3, retries: 1 },
-        usage: { total_tokens: 0, cost_usd: 0, measured: true },
+        usage: {
+          total_tokens: null, cost_usd: null, measured: false,
+          status: 'unavailable', source: 'no_authenticated_usage_receipt',
+        },
         artifacts: { total: 2, by_role: { result: 1, evidence: 1 } },
         last_error: null,
         health: { status: 'healthy', reason: 'No deterministic fault is active.' },
@@ -281,6 +284,7 @@ async function run() {
     modal.textContent.indexOf('Run telemetry') >= 0
       && modal.textContent.indexOf('1m 5s') >= 0
       && modal.textContent.indexOf('3 · 1 retries') >= 0
+      && modal.textContent.indexOf('No authenticated usage record') >= 0
       && modal.textContent.indexOf('healthy') >= 0
       && modal.textContent.indexOf('idle') >= 0);
   record('eligible handoff exposes opt-in authority-inert quality review',

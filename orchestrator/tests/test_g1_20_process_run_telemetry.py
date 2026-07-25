@@ -12,6 +12,7 @@ from unittest import mock
 import pytest
 
 from orchestrator import process_automation as automation
+from orchestrator import process_automation_worker as worker_module
 from orchestrator import process_run_inspector as inspector
 from orchestrator.tests.test_g1_18_process_automation import (
     ROOT,
@@ -52,12 +53,17 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         assert telemetry["attempts"]["total"] == 2
         assert telemetry["attempts"]["retries"] == 0
         assert telemetry["usage"] == {
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "total_tokens": 0,
-            "cost_usd": 0.0,
-            "measured": True,
-            "source": "isolated_no_tools_worker",
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+            "cost_usd": None,
+            "measured": False,
+            "status": "unavailable",
+            "source": "no_authenticated_usage_receipt",
+            "reason": (
+                "No runtime-authenticated token/cost receipt is bound to this Run; "
+                "worker tool isolation does not establish model usage."
+            ),
         }
         assert telemetry["artifacts"]["by_role"]["working"] == 2
         assert telemetry["liveness"]["status"] == "idle"
@@ -75,6 +81,9 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             "## 20. G1.20 Process Run Telemetry, Liveness, and Controls",
             "Layer 1 is always assembled",
             "A retry returns the same control identity",
+            "legacy execute/retry path and direct runtime resume fail closed",
+            "runtime-authenticated usage receipt exists",
+            "produces an authority-inert `INDETERMINATE` result without invoking the evaluator",
             "Model-based drift/quality/trace evaluation is never automatic on every step",
             "Every projection labels the result `authority_effect: none`",
             "G1.20 adds no Trigger record, schedule, standing activation, Persona/MindSpec binding",
@@ -83,6 +92,9 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         for token in (
             "### Watch Run telemetry",
             "**Pause run** stops the exact live isolated worker",
+            "Ordinary Execute/Retry cannot bypass it",
+            "tool isolation is never shown as zero usage",
+            "returns `INDETERMINATE` without calling the model",
             "**Stop run** stops the worker and ends the Run as blocked",
             "even `PASS` cannot approve, retry, authorize, complete, or accept the Run",
         ):
@@ -106,7 +118,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         evidence = (ROOT / "outputs" / "g1-20" / "closeout-evidence.md").read_text()
         for token in (
             "python3 -m pytest -q \\",
-            "# 136 passed, 84 subtests passed; exit 0",
+            "# 139 passed, 85 subtests passed; exit 0",
             "# 28/28 + 15/15 + 26/26 + 19/19 + 8/8 = 96/96; exit 0",
             "python3 scripts/verify-implementation.py --check drift",
             "# 2/2 body-identical; exit 0",
@@ -147,6 +159,24 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         assert retry["status"] == "idempotent_retry"
         assert len(calls) == 1
         assert calls[0][0]["eligible_reason"] == "human_handoff"
+        assert calls[0][0]["schema_version"] == (
+            "ora.process-quality-evaluation-subject/2.0"
+        )
+        assert calls[0][0]["material_status"]["evaluable"] is True
+        assert calls[0][0]["inputs"] == self.inputs()
+        assert all(
+            artifact["content_available"]
+            and artifact["content_digest_verified"]
+            and artifact["content"]
+            for artifact in calls[0][0]["artifacts"]
+        )
+        contract = calls[0][0]["governing_contract"]
+        assert contract["acceptance_criteria"]
+        assert any(
+            item["instruction"] == "Produce a faithful concise summary of the exact inbound email."
+            for item in contract["operation_instructions"]
+        )
+        assert calls[0][0]["source_context"]["event_type"] == "run_paused"
         assert before["state"] == after["state"] == "pending"
         assert before["current_node_id"] == after["current_node_id"] == "draft-approval"
         assert before["artifact_ids"] == after["artifact_ids"]
@@ -297,7 +327,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         thread.join(timeout=5)
         assert not thread.is_alive()
         assert "error" not in result
-        assert applied["run"]["status"] == "paused_after_failure"
+        assert applied["run"]["status"] == "paused_by_user"
         assert automation.active_automation_worker(begun["run_id"]) is None
         event_types = [
             (record.get("event") or {}).get("event_type")
@@ -310,6 +340,12 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         ):
             assert event_type in event_types
 
+        with pytest.raises(
+            automation.ProcessAutomationConflict,
+            match="authenticated Resume control",
+        ):
+            service.execute(begun["run_id"])
+
         service.worker = self.worker
         paused_controls = service.run_controls(begun["run_id"])
         resumed = service.control_run(
@@ -320,6 +356,153 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         )
         assert resumed["run"]["status"] == "awaiting_human_checkpoint"
         assert resumed["run"]["current_node"]["node_id"] == "draft-approval"
+
+    def test_user_pause_survives_direct_api_and_restart_retry_until_exact_resume(self):
+        begun = self.begin(self._accepted_ref())
+        controls = self.service.run_controls(begun["run_id"])
+        paused = self.service.control_run(
+            begun["run_id"],
+            action="pause",
+            control_state_digest=controls["control_state_digest"],
+            idempotency_key="control:pause:no-worker",
+        )
+        assert paused["run"]["status"] == "paused_by_user"
+        assert paused["run"]["pause_kind"] == "user_control"
+        before_run = self.runtime.load_run(begun["run_id"])
+        before_records = self.runtime.load_records(begun["run_id"])
+
+        with pytest.raises(
+            automation.ProcessAutomationConflict,
+            match="authenticated Resume control",
+        ):
+            self.service.execute(begun["run_id"])
+        with pytest.raises(Exception, match="authenticated Resume control"):
+            self.runtime.resume_run(begun["run_id"])
+
+        client = server.app.test_client()
+        with mock.patch.object(
+            server, "_process_automation_service", return_value=self.service,
+        ):
+            response = client.post(
+                f"/api/process-automation/runs/{begun['run_id']}",
+                json={"action": "retry"},
+            )
+        assert response.status_code == 409
+
+        restarted = automation.ProcessAutomationService(
+            runtime=self.runtime,
+            registry=self.registry,
+            management_interview=self.interview,
+            library=self.library,
+            worker=self.worker,
+        )
+        with pytest.raises(
+            automation.ProcessAutomationConflict,
+            match="authenticated Resume control",
+        ):
+            restarted.execute(begun["run_id"])
+        assert self.runtime.load_run(begun["run_id"]) == before_run
+        assert self.runtime.load_records(begun["run_id"]) == before_records
+
+        resume = restarted.run_controls(begun["run_id"])
+        continued = restarted.control_run(
+            begun["run_id"],
+            action="resume",
+            control_state_digest=resume["control_state_digest"],
+            idempotency_key="control:resume:no-worker",
+        )
+        assert continued["run"]["status"] == "awaiting_human_checkpoint"
+        resumed = [
+            record for record in self.runtime.load_records(begun["run_id"])
+            if (record.get("event") or {}).get("event_type") == "run_resumed"
+            and (record.get("event") or {}).get("details", {}).get(
+                "resume_authority"
+            ) == "authenticated_process_run_control"
+        ]
+        assert len(resumed) == 1
+        assert resumed[0]["event"]["details"]["control_request_record_id"]
+
+    def test_quality_failure_packet_binds_content_contract_and_exact_error_trace(self):
+        ref = self._accepted_ref()
+
+        def fail_draft(request):
+            if request["operation"] == "email.draft":
+                raise RuntimeError("draft evaluator offline at exact boundary")
+            return worker_module.execute(request)
+
+        failing = automation.ProcessAutomationService(
+            runtime=self.runtime,
+            registry=self.registry,
+            management_interview=self.interview,
+            library=self.library,
+            worker=automation.IsolatedProcessWorker(runner=fail_draft),
+        )
+        begun = failing.begin_run(
+            definition_ref=ref,
+            project_ref="ora",
+            inputs=self.inputs(),
+            idempotency_key="run:quality:failure-material",
+        )
+        handoff = failing.execute(begun["run_id"])
+        assert handoff["status"] == "awaiting_human_checkpoint"
+        with pytest.raises(automation.ProcessAutomationWorkerError):
+            failing.resolve_checkpoint(
+                begun["run_id"], outcome="approved", decision_by="principal:user",
+            )
+
+        captured = []
+
+        def evaluate(package, _binding):
+            captured.append(copy.deepcopy(package))
+            return {
+                "verdict": "FAIL",
+                "drift_verdict": "NONE",
+                "quality_verdict": "FAIL",
+                "findings": ["The declared draft output was not produced."],
+                "rationale": "The exact failure trace records worker unavailability.",
+            }
+
+        result = inspector.ProcessRunTelemetryService(
+            runtime=self.runtime, evaluator=evaluate,
+        ).evaluate(
+            begun["run_id"], idempotency_key="quality:failure:material",
+        )
+        assert result["evaluation"]["verdict"]["quality_verdict"] == "FAIL"
+        assert len(captured) == 1
+        packet = captured[0]
+        assert packet["material_status"]["evaluable"] is True
+        assert packet["governing_contract"]["acceptance_criteria"]
+        assert all(item["content_available"] for item in packet["artifacts"])
+        failure = next(
+            row for row in packet["failure_trace"]
+            if row["event_type"] == "isolated_process_action_failed"
+        )
+        assert failure["details"]["error"] == (
+            "draft evaluator offline at exact boundary"
+        )
+        assert failure["record_id"] == packet["source_record_id"]
+
+    def test_quality_review_is_indeterminate_without_authenticated_content(self):
+        state = self._handoff()
+        run = self.runtime.load_run(state["run_id"])
+        artifact = self.runtime.load_artifact(state["run_id"], run["artifact_ids"][0])
+        path = artifact["locator"]["ref"]
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write("unbound drift")
+        calls = []
+        result = inspector.ProcessRunTelemetryService(
+            runtime=self.runtime,
+            evaluator=lambda package, binding: calls.append((package, binding)),
+        ).evaluate(
+            state["run_id"], idempotency_key="quality:unavailable:content",
+        )
+        assert calls == []
+        assert result["status"] == "completed"
+        assert result["evaluation"]["model_invoked"] is False
+        verdict = result["evaluation"]["verdict"]
+        assert verdict["verdict"] == "INDETERMINATE"
+        assert verdict["quality_verdict"] == "INDETERMINATE"
+        assert any("does not match its identity" in item for item in verdict["findings"])
 
     def test_stop_terminates_live_worker_and_retry_is_one_terminal_identity(self):
         ref = self._accepted_ref()
@@ -527,6 +710,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         before = self.runtime.load_records(state["run_id"])
         for event_type in (
             "process_worker_started",
+            "isolated_process_action_failed",
             "process_run_control_requested",
             "process_quality_evaluation_completed",
         ):

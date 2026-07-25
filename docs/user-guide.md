@@ -346,7 +346,7 @@ Every Inspector read includes deterministic Run telemetry. Overview shows:
 
 - elapsed time and an estimated remaining time when completed attempts provide enough history;
 - total attempts and retries;
-- authenticated token/cost usage, or a clear statement that no authenticated usage record exists;
+- authenticated token/cost usage, or explicit unknown/unavailable values when no runtime-authenticated usage receipt exists. A no-tools worker may still call a model, so tool isolation is never shown as zero usage;
 - health and isolated-worker liveness; and
 - the latest persisted error when one exists.
 
@@ -354,7 +354,7 @@ Open **Current State** for the complete packet, including attempts by segment, t
 
 The sidebar Process zone shows a smaller health/attempt/worker summary. Healthy work remains visually quiet. A health label never means the result is accepted; Evidence remains the acceptance source.
 
-At an explicit human handoff or persisted output failure, the Inspector may offer **Evaluate this handoff or failure**. This is optional model-based drift/quality/trace review. Its verdict is an observation only: even `PASS` cannot approve, retry, authorize, complete, or accept the Run. The control is absent at ordinary execution steps, and Ora does not evaluate every step automatically.
+At an explicit human handoff or persisted output failure, the Inspector may offer **Evaluate this handoff or failure**. Ora supplies the evaluator with digest-verified bounded Artifact content, the exact inputs and governing criteria/instructions, and exact failure details when applicable—not only opaque IDs. If that material is missing, drifted, unreadable, or too large for the bounded packet, Ora returns `INDETERMINATE` without calling the model. Any verdict remains an observation only: even `PASS` cannot approve, retry, authorize, complete, or accept the Run. The control is absent at ordinary execution steps, and Ora does not evaluate every step automatically.
 
 ### Inspect or edit technical work
 
@@ -416,8 +416,8 @@ At plan review you can **Stop and retain the plan** before execution. During exe
 
 For a G1.18 automated Run, Overview also offers controls that bind the exact current state:
 
-- **Pause run** stops the exact live isolated worker, preserves the attempt history, and creates a resumable checkpoint.
-- **Resume run** continues the same Run from its authenticated checkpoint. It does not create a replacement Run or replay completed steps.
+- **Pause run** stops the exact live isolated worker, preserves the attempt history, and creates a user-pause checkpoint distinct from a failure or human handoff.
+- **Resume run** is the only action that can release a user pause. Ordinary Execute/Retry cannot bypass it. Resume continues the same Run from its authenticated checkpoint; it does not create a replacement Run or replay completed steps.
 - **Stop run** stops the worker and ends the Run as blocked while preserving its history and Artifacts.
 
 The browser refreshes after each decision. If the Run changed before the request arrived, the stale control is rejected; reload and inspect the new state rather than repeating the old decision. Retrying a successfully recorded control returns the same state. If Ora restarted after recording your decision but before applying it, retry reconciles that exact decision rather than creating a second effect.
@@ -551,6 +551,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.
 - **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.
 - **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, action and final-verification baselines are reserved separately from correction retries, and either ceiling blocks rather than leaving work running.
 - **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.

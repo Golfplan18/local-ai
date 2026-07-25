@@ -122,6 +122,7 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "process_definition_registered",
     "process_worker_started",
     "process_worker_finished",
+    "isolated_process_action_failed",
     "process_run_control_requested",
     "process_run_control_applied",
     "process_quality_evaluation_started",
@@ -1114,6 +1115,8 @@ class GovernedProcessRuntime:
                             and source_details.get("defect_codes")
                         )
                         or source_event.get("event_type")
+                        == "isolated_process_action_failed"
+                        or source_event.get("event_type")
                         == "isolated_process_verification_failed"
                         or (
                             source_event.get("event_type")
@@ -1124,6 +1127,36 @@ class GovernedProcessRuntime:
                             and source_details.get("outcome") != "PASS"
                         )
                     )
+                    if output_failure and source_event.get("event_type") in {
+                        "attempt_completed", "isolated_process_action_failed",
+                    }:
+                        output_failure = not any(
+                            int(record["sequence"]) > int(source["sequence"])
+                            and record.get("node_id") == source.get("node_id")
+                            and (record.get("event") or {}).get("event_type")
+                            == "attempt_completed"
+                            and not (record.get("event") or {}).get(
+                                "details", {}
+                            ).get("defect_codes")
+                            for record in records
+                        )
+                    if output_failure and source_event.get("event_type") in {
+                        "isolated_process_verification_failed",
+                        "isolated_process_verification_completed",
+                        "final_review_completed",
+                    }:
+                        output_failure = not any(
+                            int(record["sequence"]) > int(source["sequence"])
+                            and (record.get("event") or {}).get("event_type")
+                            in {
+                                "isolated_process_verification_completed",
+                                "final_review_completed",
+                            }
+                            and (record.get("event") or {}).get(
+                                "details", {}
+                            ).get("outcome") == "PASS"
+                            for record in records
+                        )
                     if not output_failure:
                         raise AuthorityDeniedError(
                             "quality evaluation source is not an output failure"
@@ -7265,7 +7298,17 @@ class GovernedProcessRuntime:
         segment_id: str,
         resume_node_id: str,
         reason: str,
+        pause_kind: str = "failure_recovery",
+        control_request_record_id: str | None = None,
     ) -> dict[str, Any]:
+        if pause_kind not in {
+            "failure_recovery", "human_handoff", "user_control",
+        }:
+            raise GovernedRuntimeError("Process Run pause kind is invalid")
+        if pause_kind != "user_control" and control_request_record_id is not None:
+            raise GovernedRuntimeError(
+                "only a user-control pause may bind a control request"
+            )
         if self.load_run(run_id)["state"] not in ("ready", "running"):
             raise RunConflictError("only a ready or running Process Run can pause")
         checkpoint = self.create_checkpoint(
@@ -7276,11 +7319,63 @@ class GovernedProcessRuntime:
         )
         with _locked():
             run = self.load_run(run_id)
+            if pause_kind == "user_control":
+                request_matches = []
+                applied_matches = []
+                for record in self.load_records(run_id):
+                    event = record.get("event") or {}
+                    details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "process_run_control_requested"
+                        and record.get("record_id") == control_request_record_id
+                    ):
+                        request_matches.append((record, details))
+                    if (
+                        event.get("event_type") == "process_run_control_applied"
+                        and details.get("control_request_record_id")
+                        == control_request_record_id
+                    ):
+                        applied_matches.append((record, details))
+                if len(request_matches) != 1 or len(applied_matches) != 1:
+                    raise AuthorityDeniedError(
+                        "user pause requires one authenticated request/application pair"
+                    )
+                request_record, request_details = request_matches[0]
+                applied_record, applied_details = applied_matches[0]
+                if (
+                    request_details.get("action") != "pause"
+                    or applied_details.get("action") != "pause"
+                    or request_details.get("run_id") != run_id
+                    or applied_details.get("run_id") != run_id
+                    or request_details.get("definition_ref")
+                    != run["definition_ref"]
+                    or applied_details.get("definition_ref")
+                    != run["definition_ref"]
+                    or request_details.get("run_state") != "running"
+                    or applied_details.get("source_run_state") != "running"
+                    or request_details.get("node_id") != run["current_node_id"]
+                    or applied_details.get("node_id") != run["current_node_id"]
+                    or request_details.get("idempotency_key")
+                    != applied_details.get("idempotency_key")
+                    or request_details.get("decision_by")
+                    != run["contracts"]["authority"]["principal_id"]
+                    or int(applied_record["sequence"])
+                    <= int(request_record["sequence"])
+                ):
+                    raise AuthorityDeniedError(
+                        "user pause control pair does not bind the current Run"
+                    )
             run["state"] = "pending"
             paused = self._append_event_locked(
                 run,
                 "run_paused",
-                {"checkpoint_id": checkpoint_id, "reason": reason},
+                {
+                    "checkpoint_id": checkpoint_id,
+                    "checkpoint_record_id": checkpoint["record_id"],
+                    "reason": reason,
+                    "pause_kind": pause_kind,
+                    "control_request_record_id": control_request_record_id,
+                },
                 node_id=run["current_node_id"],
                 runtime_authoritative=True,
             )
@@ -7375,7 +7470,12 @@ class GovernedProcessRuntime:
             ),
         }
 
-    def resume_run(self, run_id: str) -> dict[str, Any]:
+    def resume_run(
+        self,
+        run_id: str,
+        *,
+        control_request_record_id: str | None = None,
+    ) -> dict[str, Any]:
         if self.load_run(run_id)["state"] not in ("pending", "running"):
             raise RunConflictError("only a pending or interrupted running Process Run can resume")
         decision = self.recovery_decision(run_id)
@@ -7383,6 +7483,79 @@ class GovernedProcessRuntime:
             raise RecoveryBlockedError(decision["reason"])
         with _locked():
             run = self.load_run(run_id)
+            records = self.load_records(run_id)
+            pause_record = next(
+                (
+                    record for record in reversed(records)
+                    if (record.get("event") or {}).get("event_type") == "run_paused"
+                ),
+                None,
+            )
+            resume_record = next(
+                (
+                    record for record in reversed(records)
+                    if (record.get("event") or {}).get("event_type") == "run_resumed"
+                ),
+                None,
+            )
+            if (
+                pause_record is not None
+                and resume_record is not None
+                and int(resume_record["sequence"]) > int(pause_record["sequence"])
+            ):
+                pause_record = None
+            pause_details = ((pause_record or {}).get("event") or {}).get("details") or {}
+            pause_kind = str(pause_details.get("pause_kind") or "failure_recovery")
+            if pause_kind == "user_control":
+                request_matches = []
+                applied_matches = []
+                for record in records:
+                    event = record.get("event") or {}
+                    details = event.get("details") or {}
+                    if (
+                        event.get("event_type") == "process_run_control_requested"
+                        and record.get("record_id") == control_request_record_id
+                    ):
+                        request_matches.append((record, details))
+                    if (
+                        event.get("event_type") == "process_run_control_applied"
+                        and details.get("control_request_record_id")
+                        == control_request_record_id
+                    ):
+                        applied_matches.append((record, details))
+                if len(request_matches) != 1 or len(applied_matches) != 1:
+                    raise AuthorityDeniedError(
+                        "a user-paused Run requires an authenticated Resume control"
+                    )
+                request_record, request_details = request_matches[0]
+                applied_record, applied_details = applied_matches[0]
+                if (
+                    request_details.get("action") != "resume"
+                    or applied_details.get("action") != "resume"
+                    or request_details.get("run_id") != run_id
+                    or applied_details.get("run_id") != run_id
+                    or request_details.get("definition_ref")
+                    != run["definition_ref"]
+                    or applied_details.get("definition_ref")
+                    != run["definition_ref"]
+                    or request_details.get("run_state") != "pending"
+                    or applied_details.get("source_run_state") != "pending"
+                    or request_details.get("node_id") != run["current_node_id"]
+                    or applied_details.get("node_id") != run["current_node_id"]
+                    or request_details.get("idempotency_key")
+                    != applied_details.get("idempotency_key")
+                    or request_details.get("decision_by")
+                    != run["contracts"]["authority"]["principal_id"]
+                    or int(applied_record["sequence"])
+                    <= int(request_record["sequence"])
+                ):
+                    raise AuthorityDeniedError(
+                        "Resume control does not bind the exact user-paused Run"
+                    )
+            elif control_request_record_id is not None:
+                raise AuthorityDeniedError(
+                    "Resume control cannot release a non-user checkpoint"
+                )
             run["state"] = "running"
             run["current_node_id"] = decision["resume_node_id"]
             record = self._append_event_locked(
@@ -7392,6 +7565,16 @@ class GovernedProcessRuntime:
                     "resume_node_id": decision["resume_node_id"],
                     "replay_mutations": False,
                     "revalidate_evidence_ids": decision["revalidate_evidence_ids"],
+                    "pause_record_id": (
+                        pause_record.get("record_id") if pause_record else None
+                    ),
+                    "pause_kind": pause_kind,
+                    "resume_authority": (
+                        "authenticated_process_run_control"
+                        if pause_kind == "user_control"
+                        else "runtime_recovery"
+                    ),
+                    "control_request_record_id": control_request_record_id,
                 },
                 node_id=decision["resume_node_id"],
                 runtime_authoritative=True,
