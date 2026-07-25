@@ -2149,7 +2149,7 @@ Rollback means restoring the prior code together with the untouched pre-upgrade 
 - Public Process Library invocation is intentionally limited to the supported non-external entry shape; effectful and complex graphs use dedicated governed paths.
 - The exact Process Definition Registry and legacy framework-invocability catalog remain distinct by design.
 - No cognition-bearing scheduler, broad trigger-management UI, automatic optimization, marketplace, or unrestricted public external-effect executor ships in G1.1.
-- There is no general active-Run pause/stop/resume/reopen control and no user override for missing or stale acceptance evidence.
+- Exact pause/resume/stop controls exist only for G1.18 automated Runs and bind the current persisted state plus live isolated worker where present. Other governed Run families still have no general force-control or reopen API, and no Run has a user override for missing or stale acceptance evidence.
 - There is no kernel feature toggle. Operational disablement stops new governed entry and preserves exact active state.
 - DOM and server behavior plus the Phase 3.5 rendered interface packet are covered. The packet is a macOS/browser visual verification of the shipped surfaces, not a comprehensive cross-platform accessibility certification.
 
@@ -2198,7 +2198,48 @@ Final verification is another isolated worker invocation. Free-text criteria are
 
 The shipped proof definition is `user/email-processing@1.0.0`. It validates one exact email input, classifies it, summarizes it, pauses for Principal approval, and prepares an explicitly **UNSENT DRAFT** before independent verification. Three machine-checkable criteria independently rederive classification/summary from the exact input, check the draft prefix, and authenticate the no-external-effect definition/Run state. The worker has no sending capability, the graph has no send operation or external-effect node, and no outbound receipt or authority is present. The complete proof runs through real subprocesses, survives service restart at both human and verification-failure checkpoints, preserves completed steps across retry, and returns an authenticated result containing classification, summary, and unsent draft.
 
-The implementation surfaces are `orchestrator/process_automation.py`, `orchestrator/process_automation_worker.py`, the existing governed runtime/registry/Library/interview services, `/api/process-authoring/<dialogue>`, `/api/process-automation/runs`, `/api/process-automation/runs/<run>`, and the existing plan-review and Process Library clients. G1.18 adds no Trigger Manager, scheduler, outbound channel, external-effect executor, Persona, alternate runtime, or full telemetry dashboard.
+The implementation surfaces are `orchestrator/process_automation.py`, `orchestrator/process_automation_worker.py`, the existing governed runtime/registry/Library/interview services, `/api/process-authoring/<dialogue>`, `/api/process-automation/runs`, `/api/process-automation/runs/<run>`, and the existing plan-review and Process Library clients. G1.18 itself added no Trigger Manager, scheduler, outbound channel, external-effect executor, Persona, alternate runtime, or telemetry dashboard. G1.20 now projects telemetry and liveness from those same persisted Runs without changing the G1.18 definition or execution contracts.
+
+## 20. G1.20 Process Run Telemetry, Liveness, and Controls
+
+### One Inspector and one Run record
+
+G1.20 extends the nine-view G1.1 Run Inspector; it does not create a telemetry database, alternate Process engine, or scheduling substrate. `ProcessRunInspectorService` derives each snapshot from the exact persisted Process Run, issued definition, event/transition chain, Artifacts, and live isolated-worker owner. The resulting telemetry appears in both **Overview** and **Current State**, and `/api/process-attention` projects a bounded subset into the existing sidebar Process zone. The snapshot digest covers the telemetry along with the rest of the Inspector projection.
+
+This topology keeps telemetry observational. No metric, health label, liveness state, optional model verdict, or browser control can stand in for evidence, approve a checkpoint, grant authority, complete a node, apply `ACCEPT`, or create a Trigger.
+
+### Deterministic layer 1
+
+Layer 1 is always assembled when the Run Inspector is read. It reports:
+
+- persisted Run state, exact current node, start/update instants, elapsed time, and a deterministic remaining-time estimate when completed attempt durations exist;
+- total attempts, retries by segment, and the immutable attempt ceiling;
+- authenticated token/cost usage when available; the G1.18 no-tools worker reports measured zero usage, while a Run with no authenticated usage record says so instead of inventing a number;
+- Artifact totals and role counts, including how many identities remain current;
+- the latest persisted error, whether later success resolved it, and whether it remains actionable; and
+- liveness and health derived from authenticated worker start/finish records plus the runtime's exact live-process owner.
+
+The estimate is explicitly a mean of completed attempt durations multiplied by remaining executable nodes, not a provider promise. With no completed duration it remains unavailable. A terminal Run reports zero remaining. Historical errors remain visible as history but do not keep health in `action_required` after a later authenticated success resolves the same segment.
+
+### Worker liveness, pause, resume, and stop
+
+The G1.18 isolated worker now persists reserved `process_worker_started` and `process_worker_finished` records binding the exact Run, definition, node, attempt, execution identity, request digest, process boundary, and PID where a subprocess exists. In-process ownership is held atomically with start/finish persistence so the Inspector cannot observe a transient owner without its record or a record without its owner. A start with no finish and no matching live owner is `orphaned_after_restart`; the automation service completes that exact attempt as defective, creates a restart-safe pause checkpoint, and withholds replay. The recovered Inspector state is `recovered_after_restart`.
+
+Only a G1.18 automated Run exposes these force controls. `automation_run_controls()` derives an exact state digest from Run identity, state, node, sequence, update instant, available actions, and live-worker identity. The browser posts that digest plus a bounded deterministic idempotency key to `/api/process-runs/<run>/control`. A stale digest, wrong action, wrong Run state, forged control record, or non-automation Run fails closed before an effect.
+
+**Pause** terminates the exact live worker through the existing managed `stop_process` boundary, records a failed bounded attempt and authenticated control application, and persists a resumable checkpoint. **Resume** continues the same Run from that checkpoint and revalidates its G1.18 execution context. **Stop** terminates the worker and reaches only the definition's approved blocked terminal through a dedicated Principal-authenticated mechanical route. It preserves records and Artifacts. It is not Archive or Discard. A retry returns the same control identity; if interruption occurs after the request record but before application, the persisted Principal decision is reconciled exactly once after restart.
+
+### Opt-in layer 2
+
+Model-based drift/quality/trace evaluation is never automatic on every step. It is offered only at an authenticated human handoff or a persisted output/verification failure. `/api/process-runs/<run>/quality-evaluation` binds one idempotency identity to the exact source record/sequence, Run/definition/node state, Artifact identities, timeline packet, and the Model Profile already bound to that Run. Unsupported output and model unavailability persist a failed observation; they do not change Run state.
+
+The evaluator must return the closed verdict schema `verdict`, `drift_verdict`, `quality_verdict`, `findings`, and `rationale`. Start and outcome records bind the exact subject and response digests, evaluator binding, and one unfinished start. Public generic events, outcome-without-start records, duplicate outcomes, stale sources, and response-digest substitutions are rejected. Every projection labels the result `authority_effect: none`: `PASS` is advisory telemetry, not final-review evidence and never authorizes `ACCEPT`.
+
+### Browser and server surfaces
+
+The existing Run Inspector modal renders elapsed/remaining time, attempts/retries, token/cost status, health, worker liveness, last error, optional evaluation history, and eligible controls. The existing sidebar Process cards add health, attempts/retries, and **Worker alive** without turning healthy work into an attention alert. The server surfaces are the existing Inspector endpoint plus `/api/process-runs/<run>/control`, `/api/process-runs/<run>/quality-evaluation`, and the telemetry extension on `/api/process-attention`.
+
+G1.20 adds no Trigger record, schedule, standing activation, Persona/MindSpec binding, outbound channel, new external-effect authority, or generic runtime force-control. Those boundaries preserve G1.19, G1.17, G1.21, and G1.22 ownership respectively.
 
 ---
 
@@ -2966,6 +3007,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-07-24** — Added Chapter 20 for G1.20: deterministic Run telemetry, authenticated worker liveness, restart-safe pause/resume/stop for G1.18 automated Runs, authority-inert opt-in quality evaluation only at handoff/output-failure seams, browser/sidebar surfaces, and explicit scheduling/Persona/channel/security boundaries.
 - **2026-07-24** — Corrected the G1.18 gate submission after independent review: replaced presence-only verification with structured criterion-by-criterion assessment plus controller recomputation; bound verification starts, failures, checkpoints, attempts, restart retries, and exhaustion; enforced the complete admitted JSON Schema subset while rejecting unsupported keywords; reserved every action and final-verification baseline separately from the shared correction allowance; and isolated G1.18 attempt creation/completion from the generic runtime APIs. Added adversarial proofs for wrong/partial results, fabricated `PASS`, verifier outage/restart/recovery/exhaustion, input and output constraints, public API refusal, full action-retry consumption before final review, restart at that exact boundary, deterministic admission-ceiling blocking, and mutation-free generic wrong/future-node refusal followed by legitimate `ACCEPT`.
 - **2026-07-23** — Added Chapter 19 for the G1.18 gate submission: exact G1.1 reconciliation, strict reusable-definition authoring and approval, authenticated registration/promotion, schema-driven Project-confirmed Library execution, existing Model/Style Run binding, no Persona/Trigger/external effects, isolated worker lineage, human checkpoint and recovery behavior, and the end-to-end unsent-email proof.
 - **2026-07-19** — Added the Phase 3.5 closeout evidence binding and rendered-interface provenance against accepted Gate 3.4 commit `6824bb03`. Recorded the seven screenshot surfaces, final packet path, explicit residual limitations, and Gate 3.4 acceptance without changing runtime behavior or issued definition/package identity.

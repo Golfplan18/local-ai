@@ -24,6 +24,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 import uuid
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
@@ -56,6 +58,7 @@ try:
         ManagementInterviewService,
     )
     from .runtime_paths import atomic_write_text
+    from .tools import bash_execute as _bash_execute
 except ImportError:  # pragma: no cover - direct module execution/tests
     import process_contracts as contracts  # type: ignore
     import project_meta  # type: ignore
@@ -82,6 +85,7 @@ except ImportError:  # pragma: no cover - direct module execution/tests
         ManagementInterviewService,
     )
     from runtime_paths import atomic_write_text  # type: ignore
+    from tools import bash_execute as _bash_execute  # type: ignore
 
 
 AUTOMATION_SCHEMA_VERSION = "ora.process-automation/1.0"
@@ -95,6 +99,7 @@ OUTPUT_SELECTOR = "scope:declared_outputs"
 DEFINITION_SELECTOR = "scope:process_definition"
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:/-]*$")
 _FIELD_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_CONTROL_KEY_RE = re.compile(r"^[A-Za-z0-9._:-]{1,256}$")
 _EXTERNAL_OPERATION_RE = re.compile(
     r"(?:send|publish|upload|delete|remove|write[_-]?(?:file|repo)|mutate|"
     r"commit|push|message|email[_-]?send|activate|schedule|trigger)",
@@ -120,6 +125,95 @@ class ProcessAutomationIntegrityError(ProcessAutomationError):
 
 class ProcessAutomationWorkerError(ProcessAutomationError):
     pass
+
+
+class ProcessAutomationWorkerControlled(ProcessAutomationWorkerError):
+    """The Principal stopped one exact live isolated worker."""
+
+    def __init__(self, action: str, execution_id: str):
+        super().__init__(f"isolated worker received authenticated {action} control")
+        self.action = action
+        self.execution_id = execution_id
+
+
+class _ProcessAutomationControlApplied(ProcessAutomationError):
+    """Internal loop signal: a requested pause/stop was durably applied."""
+
+
+_ACTIVE_WORKER_LOCK = threading.RLock()
+_ACTIVE_AUTOMATION_WORKERS: dict[str, dict[str, Any]] = {}
+
+
+def active_automation_worker(run_id: str) -> dict[str, Any] | None:
+    """Return a bounded live-process observation, never the Popen handle."""
+
+    with _ACTIVE_WORKER_LOCK:
+        entry = _ACTIVE_AUTOMATION_WORKERS.get(str(run_id))
+        if entry is None:
+            return None
+        process = entry["process"]
+        return {
+            key: copy.deepcopy(value)
+            for key, value in entry.items()
+            if key != "process"
+        } | {
+            "alive": process.poll() is None,
+            "returncode": process.poll(),
+        }
+
+
+def _request_active_worker_control(run_id: str, action: str) -> dict[str, Any]:
+    if action not in {"pause", "stop"}:
+        raise ProcessAutomationInputRequired("worker control must be pause or stop")
+    with _ACTIVE_WORKER_LOCK:
+        entry = _ACTIVE_AUTOMATION_WORKERS.get(str(run_id))
+        if entry is None or entry["process"].poll() is not None:
+            raise ProcessAutomationConflict("the Run has no live isolated worker")
+        if entry.get("control_action") not in {None, action}:
+            raise ProcessAutomationConflict("a different worker control is already pending")
+        entry["control_action"] = action
+        pid = int(entry["pid"])
+        execution_id = str(entry["execution_id"])
+    message = _bash_execute.stop_process(pid)
+    if message.startswith("PID ") or message.startswith("Error stopping"):
+        raise ProcessAutomationConflict(message)
+    return {
+        "execution_id": execution_id,
+        "pid": pid,
+        "action": action,
+        "stop_result": message,
+    }
+
+
+def automation_run_controls(
+    runtime: GovernedProcessRuntime,
+    run_id: str,
+) -> dict[str, Any]:
+    """Derive the exact stale-safe control contract from persisted Run state."""
+
+    run = runtime.load_run(run_id)
+    definition = runtime.load_definition(run_id)
+    nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+    node = nodes[run["current_node_id"]]
+    worker = active_automation_worker(run_id)
+    available: list[str] = []
+    if run["state"] == "running":
+        available = ["pause", "stop"]
+    elif run["state"] == "pending":
+        available = ["stop"]
+        if node["kind"] != "human_checkpoint":
+            available.insert(0, "resume")
+    body = {
+        "schema_version": "ora.process-run-controls/1.0",
+        "run_id": run_id,
+        "run_state": run["state"],
+        "current_node_id": run["current_node_id"],
+        "updated_at": run["updated_at"],
+        "last_sequence": run["last_sequence"],
+        "available_actions": available,
+        "active_worker": worker,
+    }
+    return {**body, "control_state_digest": _digest_json(body)}
 
 
 def _utc_now() -> str:
@@ -1131,14 +1225,52 @@ class IsolatedProcessWorker:
         self.timeout_seconds = timeout_seconds
         self._runner = runner
 
-    def invoke(self, request: Mapping[str, Any]) -> dict[str, Any]:
+    def invoke(
+        self,
+        request: Mapping[str, Any],
+        *,
+        run_id: str | None = None,
+        node_id: str | None = None,
+        attempt: int | None = None,
+        on_started: Callable[[Mapping[str, Any]], None] | None = None,
+        on_finished: Callable[[Mapping[str, Any]], None] | None = None,
+    ) -> dict[str, Any]:
         payload = copy.deepcopy(dict(request))
         if payload.get("schema_version") != WORKER_SCHEMA_VERSION:
             raise ProcessAutomationWorkerError("worker request schema is invalid")
         request_digest = _digest_json(payload)
         if self._runner is not None:
-            raw = self._runner(copy.deepcopy(payload))
             boundary = "injected_test_worker"
+            execution_id = "worker-" + uuid.uuid4().hex
+            started = {
+                "execution_id": execution_id,
+                "run_id": run_id,
+                "node_id": node_id,
+                "attempt": attempt,
+                "pid": None,
+                "boundary": boundary,
+                "request_digest": request_digest,
+            }
+            if on_started is not None:
+                on_started(started)
+            try:
+                raw = self._runner(copy.deepcopy(payload))
+            except Exception:
+                if on_finished is not None:
+                    on_finished({
+                        **started,
+                        "outcome": "failed",
+                        "returncode": None,
+                        "control_action": None,
+                    })
+                raise
+            if on_finished is not None:
+                on_finished({
+                    **started,
+                    "outcome": "exited",
+                    "returncode": 0,
+                    "control_action": None,
+                })
         else:
             env = {
                 key: value for key, value in os.environ.items()
@@ -1148,30 +1280,107 @@ class IsolatedProcessWorker:
                 }
             }
             env["ORA_PROCESS_WORKER"] = "1"
+            execution_id = "worker-" + uuid.uuid4().hex
+            process: subprocess.Popen[str] | None = None
+            started: dict[str, Any] | None = None
+            start_notified = False
+            outcome = "spawn_failed"
+            control_action = None
             try:
-                completed = subprocess.run(
+                if run_id:
+                    with _ACTIVE_WORKER_LOCK:
+                        if str(run_id) in _ACTIVE_AUTOMATION_WORKERS:
+                            raise ProcessAutomationConflict(
+                                "the Run already has a live isolated worker"
+                            )
+                process = subprocess.Popen(
                     self.command,
-                    input=_canonical_json(payload),
                     text=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE,
                     env=env,
                     cwd=str(Path(__file__).resolve().parents[1]),
-                    timeout=self.timeout_seconds,
-                    check=False,
                 )
-            except (OSError, subprocess.TimeoutExpired) as exc:
+                boundary = "separate_no_tools_process"
+                started = {
+                    "execution_id": execution_id,
+                    "run_id": run_id,
+                    "node_id": node_id,
+                    "attempt": attempt,
+                    "pid": process.pid,
+                    "boundary": boundary,
+                    "request_digest": request_digest,
+                }
+                _bash_execute.MANAGED_PROCESSES.append(process)
+                with _ACTIVE_WORKER_LOCK:
+                    if run_id:
+                        _ACTIVE_AUTOMATION_WORKERS[str(run_id)] = {
+                            **copy.deepcopy(started),
+                            "control_action": None,
+                            "process": process,
+                        }
+                    # Keep the in-memory owner and persisted start atomic from
+                    # Inspector readers in this process.
+                    if on_started is not None:
+                        on_started(started)
+                    start_notified = True
+                stdout, stderr = process.communicate(
+                    _canonical_json(payload), timeout=self.timeout_seconds,
+                )
+                with _ACTIVE_WORKER_LOCK:
+                    entry = _ACTIVE_AUTOMATION_WORKERS.get(str(run_id))
+                    control_action = (
+                        entry.get("control_action") if entry is not None else None
+                    )
+                outcome = "controlled" if control_action else "exited"
+            except subprocess.TimeoutExpired as exc:
+                outcome = "timeout"
+                if process is not None and process.poll() is None:
+                    _bash_execute.stop_process(process.pid)
                 raise ProcessAutomationWorkerError(
                     f"isolated worker unavailable: {type(exc).__name__}: {exc}"
                 ) from exc
-            if completed.returncode != 0:
-                reason = completed.stderr.strip() or f"exit status {completed.returncode}"
+            except OSError as exc:
+                raise ProcessAutomationWorkerError(
+                    f"isolated worker unavailable: {type(exc).__name__}: {exc}"
+                ) from exc
+            except Exception:
+                if process is not None and process.poll() is None:
+                    _bash_execute.stop_process(process.pid)
+                raise
+            finally:
+                if process is not None:
+                    try:
+                        with _ACTIVE_WORKER_LOCK:
+                            entry = _ACTIVE_AUTOMATION_WORKERS.get(str(run_id))
+                            if entry is not None:
+                                control_action = entry.get("control_action")
+                            if start_notified and started is not None and on_finished is not None:
+                                on_finished({
+                                    **started,
+                                    "outcome": outcome,
+                                    "returncode": process.poll(),
+                                    "control_action": control_action,
+                                })
+                    finally:
+                        with _ACTIVE_WORKER_LOCK:
+                            _ACTIVE_AUTOMATION_WORKERS.pop(str(run_id), None)
+                        if process in _bash_execute.MANAGED_PROCESSES:
+                            _bash_execute.MANAGED_PROCESSES.remove(process)
+            if control_action:
+                raise ProcessAutomationWorkerControlled(
+                    str(control_action), execution_id,
+                )
+            if process is None:
+                raise ProcessAutomationWorkerError("isolated worker failed to start")
+            if process.returncode != 0:
+                reason = stderr.strip() or f"exit status {process.returncode}"
                 raise ProcessAutomationWorkerError(f"isolated worker failed: {reason[:1000]}")
             try:
-                raw = json.loads(completed.stdout)
+                raw = json.loads(stdout)
             except json.JSONDecodeError as exc:
                 raise ProcessAutomationWorkerError("isolated worker returned invalid JSON") from exc
-            boundary = "separate_no_tools_process"
         if not isinstance(raw, Mapping):
             raise ProcessAutomationWorkerError("isolated worker result must be an object")
         required = {"status", "request_digest", "output", "report"}
@@ -1205,6 +1414,444 @@ class ProcessAutomationService:
             runtime=self.runtime, registry_root=self.registry.root,
         )
         self.worker = worker or IsolatedProcessWorker()
+
+    # ---------------------------------------------------- Run observability
+    def _invoke_run_worker(
+        self,
+        run_id: str,
+        node_id: str,
+        request: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Persist the exact lifetime of one isolated worker invocation."""
+
+        run = self.runtime.load_run(run_id)
+        attempt = int(run["contracts"]["correction_loop"]["attempt"])
+        starts: dict[str, dict[str, Any]] = {}
+
+        def on_started(meta: Mapping[str, Any]) -> None:
+            details = {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "execution_id": str(meta["execution_id"]),
+                "node_id": node_id,
+                "attempt": attempt,
+                "pid": meta.get("pid"),
+                "worker_boundary": str(meta["boundary"]),
+                "worker_request_digest": str(meta["request_digest"]),
+            }
+            record = self.runtime._record_runtime_event(
+                run_id,
+                "process_worker_started",
+                details,
+                node_id=node_id,
+            )
+            starts[str(meta["execution_id"])] = record
+
+        def on_finished(meta: Mapping[str, Any]) -> None:
+            start = starts.get(str(meta["execution_id"]))
+            if start is None:
+                raise ProcessAutomationIntegrityError(
+                    "worker finished without its authenticated start record"
+                )
+            self.runtime._record_runtime_event(
+                run_id,
+                "process_worker_finished",
+                {
+                    "run_id": run_id,
+                    "definition_ref": copy.deepcopy(run["definition_ref"]),
+                    "execution_id": str(meta["execution_id"]),
+                    "worker_start_record_id": start["record_id"],
+                    "node_id": node_id,
+                    "attempt": attempt,
+                    "pid": meta.get("pid"),
+                    "worker_boundary": str(meta["boundary"]),
+                    "worker_request_digest": str(meta["request_digest"]),
+                    "outcome": str(meta["outcome"]),
+                    "returncode": meta.get("returncode"),
+                    "control_action": meta.get("control_action"),
+                },
+                node_id=node_id,
+            )
+
+        return self.worker.invoke(
+            request,
+            run_id=run_id,
+            node_id=node_id,
+            attempt=attempt,
+            on_started=on_started,
+            on_finished=on_finished,
+        )
+
+    @staticmethod
+    def _unmatched_worker_start(
+        records: Sequence[Mapping[str, Any]],
+    ) -> Mapping[str, Any] | None:
+        finished = {
+            str((record.get("event") or {}).get("details", {}).get("execution_id") or "")
+            for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "process_worker_finished"
+        }
+        for record in reversed(records):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if (
+                event.get("event_type") == "process_worker_started"
+                and str(details.get("execution_id") or "") not in finished
+            ):
+                attempt_completed = any(
+                    later["sequence"] > record["sequence"]
+                    and (later.get("event") or {}).get("event_type")
+                    == "attempt_completed"
+                    and (later.get("event") or {}).get("details", {}).get("segment_id")
+                    == details.get("node_id")
+                    for later in records
+                )
+                if not attempt_completed:
+                    return record
+        return None
+
+    def _recover_orphaned_worker(self, run_id: str) -> bool:
+        run = self.runtime.load_run(run_id)
+        if run["state"] != "running" or active_automation_worker(run_id) is not None:
+            return False
+        orphan = self._unmatched_worker_start(self.runtime.load_records(run_id))
+        if orphan is None:
+            return False
+        details = orphan["event"]["details"]
+        if details.get("node_id") != run["current_node_id"]:
+            raise ProcessAutomationIntegrityError(
+                "orphaned worker start does not match the current Run node"
+            )
+        try:
+            self.runtime.complete_automation_attempt(
+                run_id,
+                run["current_node_id"],
+                defect_codes=["worker_orphaned_after_restart"],
+                evidence_refs=[],
+                artifact_digests=[],
+            )
+        except RunConflictError:
+            pass
+        current = self.runtime.load_run(run_id)
+        if current["state"] == "running":
+            self.runtime.pause_run(
+                run_id,
+                f"orphan-recovery-{str(details['execution_id'])[-20:]}",
+                segment_id=current["current_node_id"],
+                resume_node_id=current["current_node_id"],
+                reason="Isolated worker ownership was lost across restart; replay is withheld",
+            )
+        return True
+
+    @staticmethod
+    def _blocked_node_id(definition: Mapping[str, Any]) -> str:
+        return next(
+            node["node_id"]
+            for node in definition["graph"]["nodes"]
+            if node["kind"] == "terminal_state" and node["outcome"] == "blocked"
+        )
+
+    def run_controls(self, run_id: str) -> dict[str, Any]:
+        return automation_run_controls(self.runtime, run_id)
+
+    def _record_control_applied(
+        self,
+        run_id: str,
+        *,
+        request_record: Mapping[str, Any],
+        action: str,
+        execution_id: str | None,
+    ) -> dict[str, Any]:
+        existing = [
+            record for record in self.runtime.load_records(run_id)
+            if (record.get("event") or {}).get("event_type")
+            == "process_run_control_applied"
+            and (record.get("event") or {}).get("details", {}).get(
+                "control_request_record_id"
+            ) == request_record["record_id"]
+        ]
+        if existing:
+            expected = existing[0]["event"]["details"]
+            if (
+                len(existing) != 1
+                or expected.get("action") != action
+                or expected.get("execution_id") != execution_id
+            ):
+                raise ProcessAutomationIntegrityError(
+                    "Run control application history conflicts"
+                )
+            return existing[0]
+        run = self.runtime.load_run(run_id)
+        return self.runtime._record_runtime_event(
+            run_id,
+            "process_run_control_applied",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "control_request_record_id": request_record["record_id"],
+                "idempotency_key": request_record["event"]["details"]["idempotency_key"],
+                "action": action,
+                "execution_id": execution_id,
+                "node_id": run["current_node_id"],
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+            },
+            node_id=run["current_node_id"],
+        )
+
+    def _apply_active_worker_control(
+        self,
+        run_id: str,
+        action: str,
+        execution_id: str,
+    ) -> None:
+        records = self.runtime.load_records(run_id)
+        request_record = next(
+            (
+                record for record in reversed(records)
+                if (record.get("event") or {}).get("event_type")
+                == "process_run_control_requested"
+                and (record.get("event") or {}).get("details", {}).get("execution_id")
+                == execution_id
+                and (record.get("event") or {}).get("details", {}).get("action")
+                == action
+            ),
+            None,
+        )
+        if request_record is None:
+            raise ProcessAutomationIntegrityError(
+                "worker control lacks its authenticated request record"
+            )
+        run = self.runtime.load_run(run_id)
+        try:
+            self.runtime.complete_automation_attempt(
+                run_id,
+                run["current_node_id"],
+                defect_codes=[f"user_{action}"],
+                evidence_refs=[],
+                artifact_digests=[],
+            )
+        except RunConflictError:
+            pass
+        self._record_control_applied(
+            run_id,
+            request_record=request_record,
+            action=action,
+            execution_id=execution_id,
+        )
+        current = self.runtime.load_run(run_id)
+        if action == "pause":
+            self.runtime.pause_run(
+                run_id,
+                f"user-pause-{execution_id[-20:]}",
+                segment_id=current["current_node_id"],
+                resume_node_id=current["current_node_id"],
+                reason="Principal paused the exact active isolated worker",
+            )
+        else:
+            definition = self.runtime.load_definition(run_id)
+            self.runtime.block_by_process_run_control(
+                run_id,
+                control_request_record_id=request_record["record_id"],
+                target_node_id=self._blocked_node_id(definition),
+                reason="Principal stopped the exact active Process Run",
+            )
+
+    def control_run(
+        self,
+        run_id: str,
+        *,
+        action: str,
+        control_state_digest: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if action not in {"pause", "resume", "stop"}:
+            raise ProcessAutomationInputRequired("Run control action is invalid")
+        if not _CONTROL_KEY_RE.fullmatch(str(idempotency_key or "")):
+            raise ProcessAutomationInputRequired("Run control idempotency key is invalid")
+        records = self.runtime.load_records(run_id)
+        prior = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "process_run_control_requested"
+            and (record.get("event") or {}).get("details", {}).get("idempotency_key")
+            == idempotency_key
+        ]
+        if prior:
+            if len(prior) != 1 or prior[0]["event"]["details"].get("action") != action:
+                raise ProcessAutomationConflict("Run control retry identity conflicts")
+            applied = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "process_run_control_applied"
+                and (record.get("event") or {}).get("details", {}).get(
+                    "control_request_record_id"
+                ) == prior[0]["record_id"]
+            ]
+            if len(applied) > 1:
+                raise ProcessAutomationIntegrityError(
+                    "Run control retry has multiple application records"
+                )
+            if not applied:
+                request = prior[0]
+                details = request["event"]["details"]
+                current = self.runtime.load_run(run_id)
+                if (
+                    details.get("run_id") != run_id
+                    or details.get("definition_ref") != current["definition_ref"]
+                    or details.get("decision_by")
+                    != current["contracts"]["authority"]["principal_id"]
+                ):
+                    raise ProcessAutomationIntegrityError(
+                        "Run control retry does not bind current authority"
+                    )
+                execution_id = details.get("execution_id")
+                expected_state = "pending" if action == "resume" else "running"
+                if (
+                    current["state"] != expected_state
+                    or current["current_node_id"] != details.get("node_id")
+                ):
+                    raise ProcessAutomationConflict(
+                        "unapplied Run control is stale against the current state"
+                    )
+                if execution_id:
+                    finishes = [
+                        record for record in records
+                        if (record.get("event") or {}).get("event_type")
+                        == "process_worker_finished"
+                        and (record.get("event") or {}).get("details", {}).get(
+                            "execution_id"
+                        ) == execution_id
+                    ]
+                    if finishes and (
+                        len(finishes) != 1
+                        or finishes[0]["event"]["details"].get("control_action")
+                        != action
+                    ):
+                        raise ProcessAutomationConflict(
+                            "unapplied control did not stop its exact worker"
+                        )
+                self._record_control_applied(
+                    run_id,
+                    request_record=request,
+                    action=action,
+                    execution_id=execution_id,
+                )
+                if action == "pause" and current["state"] == "running":
+                    self.runtime.pause_run(
+                        run_id,
+                        f"recovered-user-pause-{current['last_sequence']}",
+                        segment_id=current["current_node_id"],
+                        resume_node_id=current["current_node_id"],
+                        reason="Recovered the Principal's persisted pause decision",
+                    )
+                elif action == "stop" and current["state"] == "running":
+                    definition = self.runtime.load_definition(run_id)
+                    self.runtime.block_by_process_run_control(
+                        run_id,
+                        control_request_record_id=request["record_id"],
+                        target_node_id=self._blocked_node_id(definition),
+                        reason="Recovered the Principal's persisted stop decision",
+                    )
+                elif action == "resume" and current["state"] == "pending":
+                    self.runtime.resume_run(run_id)
+                    self.execute(run_id)
+            return {
+                "status": "idempotent_retry",
+                "request_record_id": prior[0]["record_id"],
+                "run": self.run_state(run_id),
+                "controls": self.run_controls(run_id),
+            }
+
+        controls = self.run_controls(run_id)
+        if controls["control_state_digest"] != control_state_digest:
+            raise ProcessAutomationConflict("Run control state is stale")
+        if action not in controls["available_actions"]:
+            raise ProcessAutomationConflict("Run control is unavailable in the current state")
+        worker = controls.get("active_worker")
+        execution_id = str((worker or {}).get("execution_id") or "") or None
+        run = self.runtime.load_run(run_id)
+        request_record = self.runtime._record_runtime_event(
+            run_id,
+            "process_run_control_requested",
+            {
+                "run_id": run_id,
+                "definition_ref": copy.deepcopy(run["definition_ref"]),
+                "idempotency_key": idempotency_key,
+                "control_state_digest": control_state_digest,
+                "action": action,
+                "execution_id": execution_id,
+                "node_id": run["current_node_id"],
+                "attempt": run["contracts"]["correction_loop"]["attempt"],
+                "decision_by": run["contracts"]["authority"]["principal_id"],
+            },
+            node_id=run["current_node_id"],
+        )
+        if action in {"pause", "stop"} and worker is not None:
+            _request_active_worker_control(run_id, action)
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                current = self.runtime.load_run(run_id)
+                if current["state"] != "running":
+                    break
+                time.sleep(0.01)
+            current = self.runtime.load_run(run_id)
+            if current["state"] == "running":
+                raise ProcessAutomationConflict(
+                    "worker stopped but the durable Run control is still reconciling"
+                )
+        elif action == "pause":
+            self._record_control_applied(
+                run_id,
+                request_record=request_record,
+                action=action,
+                execution_id=None,
+            )
+            run = self.runtime.load_run(run_id)
+            self.runtime.pause_run(
+                run_id,
+                f"user-pause-{run['last_sequence']}",
+                segment_id=run["current_node_id"],
+                resume_node_id=run["current_node_id"],
+                reason="Principal paused the Process Run",
+            )
+        elif action == "stop":
+            self._record_control_applied(
+                run_id,
+                request_record=request_record,
+                action=action,
+                execution_id=None,
+            )
+            definition = self.runtime.load_definition(run_id)
+            self.runtime.block_by_process_run_control(
+                run_id,
+                control_request_record_id=request_record["record_id"],
+                target_node_id=self._blocked_node_id(definition),
+                reason="Principal stopped the Process Run",
+            )
+        else:
+            self._record_control_applied(
+                run_id,
+                request_record=request_record,
+                action=action,
+                execution_id=None,
+            )
+            self.runtime.resume_run(run_id)
+            try:
+                return {
+                    "status": "applied",
+                    "request_record_id": request_record["record_id"],
+                    "run": self.execute(run_id),
+                    "controls": self.run_controls(run_id),
+                }
+            except ProcessAutomationWorkerError:
+                raise
+        return {
+            "status": "applied",
+            "request_record_id": request_record["record_id"],
+            "run": self.run_state(run_id),
+            "controls": self.run_controls(run_id),
+        }
 
     # ----------------------------------------------------------- authoring
     def _authoring_records(self, dialogue_ref: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -1861,6 +2508,8 @@ class ProcessAutomationService:
                 run = self.runtime.load_run(run_id)
             if run["state"] != "running":
                 raise ProcessAutomationConflict(f"Run is not executable from state {run['state']!r}")
+            if self._recover_orphaned_worker(run_id):
+                return self.run_state(run_id)
             self._reauthenticate_execution_context(run)
             definition = self.runtime.load_definition(run_id)
             nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
@@ -1874,10 +2523,16 @@ class ProcessAutomationService:
                 )
                 return self.run_state(run_id)
             if node["kind"] == "action":
-                self._execute_action(run_id, definition, node)
+                try:
+                    self._execute_action(run_id, definition, node)
+                except _ProcessAutomationControlApplied:
+                    return self.run_state(run_id)
                 continue
             if node["kind"] == "verification_boundary":
-                self._verify_result(run_id, definition, node)
+                try:
+                    self._verify_result(run_id, definition, node)
+                except _ProcessAutomationControlApplied:
+                    return self.run_state(run_id)
                 continue
             raise ProcessAutomationIntegrityError(
                 f"G1.18 executor does not support node kind {node['kind']!r}"
@@ -1933,7 +2588,7 @@ class ProcessAutomationService:
             },
         }
         try:
-            receipt = self.worker.invoke(request)
+            receipt = self._invoke_run_worker(run_id, node["node_id"], request)
             if receipt["status"] != "PASS":
                 raise ProcessAutomationWorkerError(receipt["report"])
             output = receipt["output"]
@@ -1996,6 +2651,11 @@ class ProcessAutomationService:
                 },
                 artifact_ids=[artifact_id],
             )
+        except ProcessAutomationWorkerControlled as exc:
+            self._apply_active_worker_control(
+                run_id, exc.action, exc.execution_id,
+            )
+            raise _ProcessAutomationControlApplied() from exc
         except Exception as exc:
             if isinstance(exc, (ProcessAutomationIntegrityError, GovernedRuntimeError)):
                 defect = "runtime_integrity_failure"
@@ -2261,10 +2921,15 @@ class ProcessAutomationService:
             artifact_ids=[result["artifact_id"]],
         )
         try:
-            receipt = self.worker.invoke(request)
+            receipt = self._invoke_run_worker(run_id, node["node_id"], request)
             assessments = self._validated_criterion_assessments(
                 receipt, declared_criteria, request,
             )
+        except ProcessAutomationWorkerControlled as exc:
+            self._apply_active_worker_control(
+                run_id, exc.action, exc.execution_id,
+            )
+            raise _ProcessAutomationControlApplied() from exc
         except Exception as exc:
             self._persist_verification_failure(
                 run_id, definition, node, result, request,
@@ -2437,7 +3102,10 @@ __all__ = [
     "ProcessAutomationInputRequired",
     "ProcessAutomationIntegrityError",
     "ProcessAutomationService",
+    "ProcessAutomationWorkerControlled",
     "ProcessAutomationWorkerError",
+    "active_automation_worker",
+    "automation_run_controls",
     "compile_blueprint",
     "email_processing_blueprint",
     "validate_blueprint",

@@ -234,13 +234,52 @@
   color: var(--text-error, #d55) !important;
 }
 
+.process-run-inspector__telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.process-run-inspector__telemetry-card {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-primary);
+  overflow-wrap: anywhere;
+}
+
+.process-run-inspector__telemetry-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.process-run-inspector__quality-evaluate {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.process-run-inspector__control-stop {
+  color: var(--text-error, #d55) !important;
+}
+
 @media (max-width: 760px) {
   .process-run-inspector { padding: 0; }
   .process-run-inspector__shell { width: 100vw; height: 100vh; border-radius: 0; }
   .process-run-inspector__questions { grid-template-columns: 1fr 1fr; }
+  .process-run-inspector__telemetry-grid { grid-template-columns: 1fr 1fr; }
   .process-run-inspector__footer [data-inspector-digest] { display: none; }
 }
 
 @media (max-width: 460px) {
   .process-run-inspector__questions { grid-template-columns: 1fr; }
+  .process-run-inspector__telemetry-grid { grid-template-columns: 1fr; }
 }

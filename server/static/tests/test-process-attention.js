@@ -85,6 +85,24 @@ var attentionPayload = {
       authority_binding: 'finance', quiet: true,
     },
   ],
+  telemetry_by_run: {
+    'run-quiet': {
+      telemetry: {
+        health: { status: 'healthy' },
+        attempts: { total: 2, retries: 0 },
+        liveness: { status: 'alive' },
+      },
+      controls: { available_actions: ['pause', 'stop'] },
+    },
+    'run-decision': {
+      telemetry: {
+        health: { status: 'action_required' },
+        attempts: { total: 4, retries: 1 },
+        liveness: { status: 'idle' },
+      },
+      controls: { available_actions: ['stop'] },
+    },
+  },
   phase_2_5_authorized: false,
 };
 var markedRead = [];
@@ -146,6 +164,12 @@ async function run() {
   record('healthy running work remains visually quiet',
     pending[0].dataset.needsAttention === 'false'
       && !pending[0].querySelector('.process-attention-detail'));
+  record('sidebar Process zone surfaces deterministic health, attempts, retries, and live worker',
+    pending[0].textContent.indexOf('healthy') >= 0
+      && pending[0].textContent.indexOf('2 attempts · 0 retries') >= 0
+      && pending[0].textContent.indexOf('Worker alive') >= 0
+      && pending[1].textContent.indexOf('action_required') >= 0
+      && pending[1].textContent.indexOf('4 attempts · 1 retries') >= 0);
   record('authority requests are conspicuous without relying on color alone',
     pending[1].dataset.needsAttention === 'true'
       && pending[1].textContent.indexOf('Waiting for You') >= 0

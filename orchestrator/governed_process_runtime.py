@@ -120,6 +120,13 @@ RESERVED_RUNTIME_EVENT_TYPES = frozenset({
     "manual_process_result_recorded",
     "process_invoked",
     "process_definition_registered",
+    "process_worker_started",
+    "process_worker_finished",
+    "process_run_control_requested",
+    "process_run_control_applied",
+    "process_quality_evaluation_started",
+    "process_quality_evaluation_completed",
+    "process_quality_evaluation_failed",
     "automation_authoring_proposed",
     "automation_authoring_revision_requested",
     "isolated_process_step_completed",
@@ -921,11 +928,14 @@ class GovernedProcessRuntime:
                 not runtime_authoritative
                 or event_type not in {
                     "process_returned", "lifecycle_disposition_recorded",
+                    "process_quality_evaluation_started",
+                    "process_quality_evaluation_completed",
+                    "process_quality_evaluation_failed",
                 }
             ):
                 raise GovernedRuntimeError(
-                    "only deterministic return or lifecycle disposition records are "
-                    "safe terminal metadata"
+                    "only deterministic return, lifecycle, or read-only quality "
+                    "observation records are safe terminal metadata"
                 )
         else:
             self._require_mutable_run(run, f"record {event_type}")
@@ -975,6 +985,189 @@ class GovernedProcessRuntime:
                 node_id=target,
                 evidence_refs=evidence_refs,
                 artifact_ids=artifact_ids,
+                runtime_authoritative=True,
+            )
+
+    def record_process_quality_evaluation(
+        self,
+        run_id: str,
+        event_type: str,
+        details: Mapping[str, Any],
+        *,
+        node_id: str,
+    ) -> dict[str, Any]:
+        """Persist one authority-inert, exact-subject G1.20 evaluation record."""
+
+        if event_type not in {
+            "process_quality_evaluation_started",
+            "process_quality_evaluation_completed",
+            "process_quality_evaluation_failed",
+        }:
+            raise GovernedRuntimeError("process quality event type is invalid")
+        body = copy.deepcopy(dict(details))
+        common = {
+            "run_id", "definition_ref", "evaluation_id", "idempotency_key",
+            "subject_digest", "eligible_reason", "source_record_id", "source_sequence",
+            "evaluator_binding",
+        }
+        expected = set(common)
+        if event_type == "process_quality_evaluation_completed":
+            expected |= {"evaluation_start_record_id", "response_digest", "verdict"}
+        elif event_type == "process_quality_evaluation_failed":
+            expected |= {"evaluation_start_record_id", "error_type", "error_digest"}
+        if set(body) != expected:
+            raise GovernedRuntimeError("process quality event fields are invalid")
+        run = self.load_run(run_id)
+        if (
+            body.get("run_id") != run_id
+            or body.get("definition_ref") != run["definition_ref"]
+            or body.get("eligible_reason") not in {"human_handoff", "output_failure"}
+            or not isinstance(body.get("source_sequence"), int)
+            or body["source_sequence"] < 1
+            or not isinstance(body.get("source_record_id"), str)
+            or not body["source_record_id"]
+            or not isinstance(body.get("evaluator_binding"), Mapping)
+        ):
+            raise GovernedRuntimeError("process quality event binding is invalid")
+        _exact_digest(str(body.get("subject_digest") or ""), "quality subject")
+        if event_type == "process_quality_evaluation_completed":
+            _exact_digest(str(body.get("response_digest") or ""), "quality response")
+            verdict = body.get("verdict")
+            if (
+                not isinstance(verdict, Mapping)
+                or set(verdict) != {
+                    "verdict", "drift_verdict", "quality_verdict",
+                    "findings", "rationale",
+                }
+                or verdict.get("verdict") not in {
+                    "PASS", "WARN", "FAIL", "INDETERMINATE",
+                }
+                or verdict.get("drift_verdict") not in {
+                    "NONE", "POSSIBLE", "PRESENT", "INDETERMINATE",
+                }
+                or verdict.get("quality_verdict") not in {
+                    "PASS", "WARN", "FAIL", "INDETERMINATE",
+                }
+                or not isinstance(verdict.get("findings"), list)
+                or not all(isinstance(item, str) for item in verdict["findings"])
+                or not isinstance(verdict.get("rationale"), str)
+            ):
+                raise GovernedRuntimeError("process quality verdict is invalid")
+            if body["response_digest"] != _digest_json(verdict):
+                raise GovernedRuntimeError(
+                    "process quality response digest does not match the verdict"
+                )
+        with _locked():
+            current = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if node_id not in {
+                node["node_id"] for node in definition["graph"]["nodes"]
+            }:
+                raise GovernedRuntimeError("quality event node is outside the definition")
+            records = self.load_records(run_id)
+            if event_type == "process_quality_evaluation_started":
+                source = next(
+                    (
+                        record for record in records
+                        if record["record_id"] == body["source_record_id"]
+                        and record["sequence"] == body["source_sequence"]
+                    ),
+                    None,
+                )
+                if source is None:
+                    raise GovernedRuntimeError(
+                        "process quality start does not bind its exact source record"
+                    )
+                if any(
+                    (record.get("event") or {}).get("event_type")
+                    == "process_quality_evaluation_started"
+                    and (
+                        (record.get("event") or {}).get("details", {}).get(
+                            "evaluation_id"
+                        ) == body["evaluation_id"]
+                        or (record.get("event") or {}).get("details", {}).get(
+                            "idempotency_key"
+                        ) == body["idempotency_key"]
+                    )
+                    for record in records
+                ):
+                    raise RunConflictError(
+                        "process quality evaluation identity already exists"
+                    )
+                nodes = self._graph_nodes(definition)
+                if body["eligible_reason"] == "human_handoff":
+                    if not (
+                        current["state"] == "pending"
+                        and nodes[current["current_node_id"]]["kind"]
+                        == "human_checkpoint"
+                        and node_id == current["current_node_id"]
+                    ):
+                        raise AuthorityDeniedError(
+                            "quality evaluation is not at a current human handoff"
+                        )
+                else:
+                    source_event = source.get("event") or {}
+                    source_details = source_event.get("details") or {}
+                    output_failure = bool(
+                        (
+                            source_event.get("event_type") == "attempt_completed"
+                            and source_details.get("defect_codes")
+                        )
+                        or source_event.get("event_type")
+                        == "isolated_process_verification_failed"
+                        or (
+                            source_event.get("event_type")
+                            in {
+                                "isolated_process_verification_completed",
+                                "final_review_completed",
+                            }
+                            and source_details.get("outcome") != "PASS"
+                        )
+                    )
+                    if not output_failure:
+                        raise AuthorityDeniedError(
+                            "quality evaluation source is not an output failure"
+                        )
+            else:
+                starts = [
+                    record for record in records
+                    if (record.get("event") or {}).get("event_type")
+                    == "process_quality_evaluation_started"
+                    and record["record_id"]
+                    == body.get("evaluation_start_record_id")
+                ]
+                outcomes = [
+                    record for record in records
+                    if (record.get("event") or {}).get("event_type") in {
+                        "process_quality_evaluation_completed",
+                        "process_quality_evaluation_failed",
+                    }
+                    and (record.get("event") or {}).get("details", {}).get(
+                        "evaluation_start_record_id"
+                    ) == body.get("evaluation_start_record_id")
+                ]
+                if len(starts) != 1 or outcomes:
+                    raise RunConflictError(
+                        "quality outcome lacks one unfinished exact start"
+                    )
+                start_details = starts[0]["event"]["details"]
+                if any(
+                    body.get(field) != start_details.get(field)
+                    for field in common
+                ):
+                    raise GovernedRuntimeError(
+                        "quality outcome does not authenticate its exact start"
+                    )
+                if node_id != starts[0]["node_id"]:
+                    raise GovernedRuntimeError(
+                        "quality outcome node differs from its exact start"
+                    )
+            return self._append_event_locked(
+                current,
+                event_type,
+                body,
+                node_id=node_id,
+                allow_terminal_metadata=current["state"] in TERMINAL_RUN_STATES,
                 runtime_authoritative=True,
             )
 
@@ -5072,6 +5265,93 @@ class GovernedProcessRuntime:
             ):
                 raise AuthorityDeniedError(
                     "attempt-ceiling target is outside the approved plan"
+                )
+            return self._mechanical_block_locked(
+                run,
+                source_node_id=run["current_node_id"],
+                target_node_id=target_node_id,
+                reason=reason,
+            )
+
+    def block_by_process_run_control(
+        self,
+        run_id: str,
+        *,
+        control_request_record_id: str,
+        target_node_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Apply a Principal-authenticated stop as a mechanical blocked route.
+
+        A user stop is not a model judgment.  It may therefore reach the
+        graph-declared blocked terminal only after the dedicated control path
+        has persisted one exact request and its matching applied record.
+        """
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if run["state"] != "running":
+                raise RunConflictError(
+                    "Process Run control blocking requires a running Run"
+                )
+            if not self._is_automation_definition(definition):
+                raise AuthorityDeniedError(
+                    "Process Run control blocking is reserved for automated Processes"
+                )
+            nodes = self._graph_nodes(definition)
+            target = nodes.get(target_node_id)
+            if not target or not (
+                target["kind"] == "terminal_state"
+                and target["outcome"] == "blocked"
+            ):
+                raise GovernedRuntimeError(
+                    "Process Run control must use a declared blocked terminal state"
+                )
+            if target_node_id not in set(
+                run["contracts"]["approved_plan"]["approved_node_ids"]
+            ):
+                raise AuthorityDeniedError(
+                    "Process Run control target is outside the approved plan"
+                )
+            records = self.load_records(run_id)
+            requests = [
+                record for record in records
+                if record["record_id"] == control_request_record_id
+                and (record.get("event") or {}).get("event_type")
+                == "process_run_control_requested"
+            ]
+            applied = [
+                record for record in records
+                if (record.get("event") or {}).get("event_type")
+                == "process_run_control_applied"
+                and (record.get("event") or {}).get("details", {}).get(
+                    "control_request_record_id"
+                ) == control_request_record_id
+            ]
+            if len(requests) != 1 or len(applied) != 1:
+                raise AuthorityDeniedError(
+                    "Process Run stop lacks one exact authenticated request/application pair"
+                )
+            request = requests[0]
+            request_details = request["event"]["details"]
+            applied_details = applied[0]["event"]["details"]
+            if (
+                request_details.get("action") != "stop"
+                or applied_details.get("action") != "stop"
+                or request_details.get("run_id") != run_id
+                or applied_details.get("run_id") != run_id
+                or request_details.get("definition_ref") != run["definition_ref"]
+                or applied_details.get("definition_ref") != run["definition_ref"]
+                or request_details.get("node_id") != run["current_node_id"]
+                or applied_details.get("node_id") != run["current_node_id"]
+                or request_details.get("idempotency_key")
+                != applied_details.get("idempotency_key")
+                or request_details.get("decision_by")
+                != run["contracts"]["authority"]["principal_id"]
+            ):
+                raise AuthorityDeniedError(
+                    "Process Run stop records do not bind the current Run authority"
                 )
             return self._mechanical_block_locked(
                 run,

@@ -323,7 +323,7 @@ The Inspector opens on Overview and provides nine progressively disclosed views:
 |---|---|
 | **Overview** | What is the outcome, current state, credible next action, and required user action? |
 | **Plan** | Which exact canonical plan and approval govern this Run? |
-| **Current State** | Which node is active, how many attempts have occurred, and what routes remain? |
+| **Current State** | Which node is active, how many attempts/retries have occurred, what telemetry is current, and what routes remain? |
 | **Decisions** | Which human checkpoints and graph decisions occurred, who decided, under what authority, and where did they route? |
 | **Changes** | What happened to the approved repository or external target, and which receipts bind the effects? |
 | **Evidence** | Which checks apply to which exact result identities, and are they current? |
@@ -339,6 +339,22 @@ The evidence banner has literal meaning:
 Read the Evidence view before treating a result as complete. A produced artifact is not the same as an accepted result. Final `ACCEPT` is a governed transition supported by current independent review; there is no user button that can convert stale or missing evidence into acceptance.
 
 If Changes reports an unexpected repository, ambiguous targets, or external drift, stop and resolve that condition. Do not infer that the newest artifact is the approved target.
+
+### Watch Run telemetry
+
+Every Inspector read includes deterministic Run telemetry. Overview shows:
+
+- elapsed time and an estimated remaining time when completed attempts provide enough history;
+- total attempts and retries;
+- authenticated token/cost usage, or a clear statement that no authenticated usage record exists;
+- health and isolated-worker liveness; and
+- the latest persisted error when one exists.
+
+Open **Current State** for the complete packet, including attempts by segment, the attempt ceiling, Artifact counts, the estimate basis, and whether an older error was later resolved. An estimate is a deterministic projection from completed attempt durations, not a promise. **Worker alive** means Ora owns the exact process recorded for this Run. **Orphaned after restart** means ownership was lost; Ora withholds replay and moves the Run to a recovery checkpoint.
+
+The sidebar Process zone shows a smaller health/attempt/worker summary. Healthy work remains visually quiet. A health label never means the result is accepted; Evidence remains the acceptance source.
+
+At an explicit human handoff or persisted output failure, the Inspector may offer **Evaluate this handoff or failure**. This is optional model-based drift/quality/trace review. Its verdict is an observation only: even `PASS` cannot approve, retry, authorize, complete, or accept the Run. The control is absent at ordinary execution steps, and Ora does not evaluate every step automatically.
 
 ### Inspect or edit technical work
 
@@ -398,7 +414,15 @@ G1.1 exposes activated definitions under **Automated Processes**, but it does no
 
 At plan review you can **Stop and retain the plan** before execution. During execution, a Run may pause at a declared human checkpoint, wait for authority, or become `BLOCKED`. Open the governing Dialogue to discuss the condition; use the Inspector’s explicit decision control to change state.
 
-The current G1.1 interface does **not** provide a general button to force an arbitrary active Run to pause, stop, resume, or reopen after closure. Do not use Archive or Discard as a substitute for stopping active work; lifecycle choices appear only after the Run is terminal.
+For a G1.18 automated Run, Overview also offers controls that bind the exact current state:
+
+- **Pause run** stops the exact live isolated worker, preserves the attempt history, and creates a resumable checkpoint.
+- **Resume run** continues the same Run from its authenticated checkpoint. It does not create a replacement Run or replay completed steps.
+- **Stop run** stops the worker and ends the Run as blocked while preserving its history and Artifacts.
+
+The browser refreshes after each decision. If the Run changed before the request arrived, the stale control is rejected; reload and inspect the new state rather than repeating the old decision. Retrying a successfully recorded control returns the same state. If Ora restarted after recording your decision but before applying it, retry reconciles that exact decision rather than creating a second effect.
+
+These force controls are not general controls for every governed Run family. Other Runs continue to use their declared checkpoint, authority, correction, or blocked routes. No terminal Run can be reopened. Do not use Archive or Discard as a substitute for stopping active work; lifecycle choices appear only after the Run is terminal.
 
 Recovery is identity-preserving:
 
@@ -434,6 +458,10 @@ There is no general **Reopen** action after lifecycle closure. If more work is r
 | The plan says stale | The target identity changed after planning | Request a revised plan against the current baseline; do not approve the old version |
 | Approval succeeded but execution did not start | You chose Approve without starting, or delegation was withheld | Reopen the same Dialogue and choose **Start approved plan** after resolving any stale target |
 | A Run appears stuck in Pending | It may be healthy, waiting at a declared boundary, blocked, or missing evidence | Open Inspect; read Overview, Current State, Evidence, and You. Do not start a duplicate Run |
+| Remaining time says “Not enough history” | No completed attempt duration supports an estimate yet | Use the exact current node and health state; do not infer a deadline |
+| Worker says orphaned after restart | Persisted worker start has no matching finish or live owner | Let Ora create the recovery checkpoint, then inspect the last error and resume only through the offered control |
+| Pause/stop says the control is stale | The Run changed after the displayed control contract was rendered | Reload the Inspector and decide against the new exact state |
+| Optional quality review says PASS | A model found no issue in the handoff/failure packet | Treat it as advisory only; acceptance still requires the Evidence view and governed final review |
 | A decision card appears | Reserved authority is required | Inspect the exact request and evidence, then Approve, Deny, mark Authority unavailable, or discuss in the governing Dialogue |
 | Evidence is stale | The result, target, or evidence artifact changed | Recapture and re-run the required inspection; stale proof cannot support `ACCEPT` |
 | Changes shows the wrong or ambiguous target | The approved target cannot be authenticated | Withhold action and request corrected scope; do not select the newest artifact by assumption |
@@ -523,6 +551,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.
 - **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, action and final-verification baselines are reserved separately from correction retries, and either ceiling blocks rather than leaving work running.
 - **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.
 - **2026-07-20** — G1.4: documented the shipped description-rich Dialogue creation review, combined prior-Dialogue/atomic-note discovery, server-issued exactly-once creation contract, contributor versus parent lineage, Continue/Fork alternatives, unsent-draft behavior, privacy boundaries, and the same actions in Library. The vault remains canonical and the runtime guide body is synchronized from it.

@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +30,10 @@ try:
         ProcessPlanApprovalService,
         capture_target_identity,
     )
+    from process_automation import (
+        active_automation_worker,
+        automation_run_controls,
+    )
     import runtime_paths as _runtime_paths
 except ImportError:  # pragma: no cover
     from orchestrator.governed_process_runtime import (
@@ -43,6 +48,10 @@ except ImportError:  # pragma: no cover
     from orchestrator.process_plan_approval import (
         ProcessPlanApprovalService,
         capture_target_identity,
+    )
+    from orchestrator.process_automation import (
+        active_automation_worker,
+        automation_run_controls,
     )
     from orchestrator import runtime_paths as _runtime_paths
 
@@ -67,6 +76,14 @@ class ProcessRunInspectorError(RuntimeError):
 
 class ProcessRunInspectorIntegrityError(ProcessRunInspectorError):
     """Authenticated Run, plan, Artifact, record, or live identity drifted."""
+
+
+class ProcessRunTelemetryInputRequired(ProcessRunInspectorError):
+    pass
+
+
+class ProcessRunTelemetryConflict(ProcessRunInspectorError):
+    pass
 
 
 def _utc_now() -> str:
@@ -207,6 +224,103 @@ def _file_changes(
     }
 
 
+def _parse_quality_verdict(value: Any) -> dict[str, Any]:
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ProcessRunInspectorError(
+                "quality evaluator returned invalid JSON"
+            ) from exc
+    if not isinstance(value, Mapping):
+        raise ProcessRunInspectorError("quality evaluator returned no verdict object")
+    verdict = copy.deepcopy(dict(value))
+    if (
+        set(verdict) != {
+            "verdict", "drift_verdict", "quality_verdict",
+            "findings", "rationale",
+        }
+        or verdict.get("verdict") not in {
+            "PASS", "WARN", "FAIL", "INDETERMINATE",
+        }
+        or verdict.get("drift_verdict") not in {
+            "NONE", "POSSIBLE", "PRESENT", "INDETERMINATE",
+        }
+        or verdict.get("quality_verdict") not in {
+            "PASS", "WARN", "FAIL", "INDETERMINATE",
+        }
+        or not isinstance(verdict.get("findings"), list)
+        or not all(isinstance(item, str) and item.strip() for item in verdict["findings"])
+        or len(verdict["findings"]) > 20
+        or not isinstance(verdict.get("rationale"), str)
+        or not verdict["rationale"].strip()
+    ):
+        raise ProcessRunInspectorError("quality evaluator verdict schema is invalid")
+    verdict["findings"] = [item.strip()[:1000] for item in verdict["findings"]]
+    verdict["rationale"] = verdict["rationale"].strip()[:4000]
+    return verdict
+
+
+def _default_quality_evaluator(
+    package: Mapping[str, Any],
+    binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Run one opt-in, profile-bound evaluation; never advance the Run."""
+
+    runtime_name = str(binding.get("runtime_name") or "")
+    if not runtime_name:
+        raise ProcessRunInspectorError(
+            "the exact Run has no Model Profile binding for quality evaluation"
+        )
+    try:
+        try:
+            from .boot import (
+                call_model,
+                load_routing_config,
+                resolve_single_pass_endpoint,
+            )
+        except ImportError:  # pragma: no cover
+            from boot import (  # type: ignore
+                call_model,
+                load_routing_config,
+                resolve_single_pass_endpoint,
+            )
+        config = load_routing_config()
+        endpoint, _cell = resolve_single_pass_endpoint(
+            config, gear=1, config_name=runtime_name,
+        )
+        prompt = (
+            "Evaluate only the supplied authenticated Process Run packet. "
+            "Do not authorize, advance, retry, or modify the Run. Return exactly "
+            "one JSON object with keys verdict, drift_verdict, quality_verdict, "
+            "findings, rationale. verdict and quality_verdict are PASS, WARN, "
+            "FAIL, or INDETERMINATE. drift_verdict is NONE, POSSIBLE, PRESENT, "
+            "or INDETERMINATE. findings is a JSON array of short strings.\n\n"
+            + json.dumps(package, sort_keys=True, ensure_ascii=False)
+        )
+        raw = call_model([
+            {"role": "system", "content": "You are an authority-inert Process telemetry evaluator."},
+            {"role": "user", "content": prompt},
+        ], endpoint)
+    except ProcessRunInspectorError:
+        raise
+    except Exception as exc:
+        raise ProcessRunInspectorError(
+            f"quality evaluator unavailable: {type(exc).__name__}: {exc}"
+        ) from exc
+    if not isinstance(raw, str) or raw.startswith("[Error"):
+        raise ProcessRunInspectorError("quality evaluator model call failed")
+    return _parse_quality_verdict(raw)
+
+
 class ProcessRunInspectorService:
     """Build one exact, restart-derived Run Inspector snapshot."""
 
@@ -254,6 +368,500 @@ class ProcessRunInspectorService:
                 "Phase 2.3 Run lacks its exact canonical plan state"
             )
         return state
+
+    def _worker_liveness(
+        self,
+        run: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Authenticate persisted worker lifetime against the live owner."""
+
+        starts: dict[str, Mapping[str, Any]] = {}
+        finishes: dict[str, Mapping[str, Any]] = {}
+        for record in records:
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            event_type = event.get("event_type")
+            if event_type == "process_worker_started":
+                expected = {
+                    "run_id", "definition_ref", "execution_id", "node_id",
+                    "attempt", "pid", "worker_boundary", "worker_request_digest",
+                }
+                execution_id = str(details.get("execution_id") or "")
+                if (
+                    set(details) != expected
+                    or not execution_id
+                    or details.get("run_id") != run["run_id"]
+                    or details.get("definition_ref") != run["definition_ref"]
+                    or record.get("node_id") != details.get("node_id")
+                    or execution_id in starts
+                ):
+                    raise ProcessRunInspectorIntegrityError(
+                        "worker start record does not bind one exact Run invocation"
+                    )
+                starts[execution_id] = record
+            elif event_type == "process_worker_finished":
+                expected = {
+                    "run_id", "definition_ref", "execution_id",
+                    "worker_start_record_id", "node_id", "attempt", "pid",
+                    "worker_boundary", "worker_request_digest", "outcome",
+                    "returncode", "control_action",
+                }
+                execution_id = str(details.get("execution_id") or "")
+                start = starts.get(execution_id)
+                start_details = ((start or {}).get("event") or {}).get("details") or {}
+                if (
+                    set(details) != expected
+                    or start is None
+                    or details.get("worker_start_record_id") != start.get("record_id")
+                    or record.get("node_id") != start.get("node_id")
+                    or int(record.get("sequence", 0)) <= int(start.get("sequence", 0))
+                    or any(
+                        details.get(field) != start_details.get(field)
+                        for field in (
+                            "run_id", "definition_ref", "execution_id", "node_id",
+                            "attempt", "pid", "worker_boundary",
+                            "worker_request_digest",
+                        )
+                    )
+                    or details.get("outcome") not in {
+                        "exited", "failed", "controlled", "timeout", "spawn_failed",
+                    }
+                    or details.get("control_action") not in {None, "pause", "stop"}
+                    or execution_id in finishes
+                ):
+                    raise ProcessRunInspectorIntegrityError(
+                        "worker finish record does not authenticate its exact start"
+                    )
+                finishes[execution_id] = record
+
+        unmatched = [
+            (execution_id, record)
+            for execution_id, record in starts.items()
+            if execution_id not in finishes
+        ]
+        if len(unmatched) > 1:
+            raise ProcessRunInspectorIntegrityError(
+                "Run has multiple unfinished isolated worker records"
+            )
+        live = active_automation_worker(run["run_id"])
+        if not unmatched:
+            if live is not None and live.get("alive"):
+                raise ProcessRunInspectorIntegrityError(
+                    "live worker lacks its persisted start record"
+                )
+            last_finish = max(
+                finishes.values(), key=lambda item: int(item["sequence"]),
+                default=None,
+            )
+            return {
+                "status": "idle",
+                "healthy": True,
+                "action_required": False,
+                "active": False,
+                "execution_id": None,
+                "pid": None,
+                "node_id": None,
+                "attempt": None,
+                "worker_boundary": None,
+                "started_at": None,
+                "last_finished_at": (
+                    last_finish.get("recorded_at") if last_finish else None
+                ),
+                "reason": "No isolated worker is currently active.",
+            }
+
+        execution_id, start = unmatched[0]
+        details = start["event"]["details"]
+        completed_after_start = any(
+            int(record["sequence"]) > int(start["sequence"])
+            and (record.get("event") or {}).get("event_type")
+            == "attempt_completed"
+            and (record.get("event") or {}).get("details", {}).get("segment_id")
+            == details.get("node_id")
+            for record in records
+        )
+        if completed_after_start:
+            return {
+                "status": "recovered_after_restart",
+                "healthy": True,
+                "action_required": False,
+                "active": False,
+                "execution_id": execution_id,
+                "pid": details.get("pid"),
+                "node_id": details.get("node_id"),
+                "attempt": details.get("attempt"),
+                "worker_boundary": details.get("worker_boundary"),
+                "started_at": start["recorded_at"],
+                "last_finished_at": None,
+                "reason": "Lost worker ownership was fail-closed into a persisted recovery checkpoint.",
+            }
+        live_matches = bool(
+            live
+            and live.get("alive") is True
+            and live.get("execution_id") == execution_id
+            and live.get("run_id") == run["run_id"]
+            and live.get("node_id") == details.get("node_id")
+            and live.get("attempt") == details.get("attempt")
+            and live.get("pid") == details.get("pid")
+            and live.get("request_digest")
+            == details.get("worker_request_digest")
+        )
+        return {
+            "status": "alive" if live_matches else "orphaned_after_restart",
+            "healthy": live_matches,
+            "action_required": not live_matches,
+            "active": live_matches,
+            "execution_id": execution_id,
+            "pid": details.get("pid"),
+            "node_id": details.get("node_id"),
+            "attempt": details.get("attempt"),
+            "worker_boundary": details.get("worker_boundary"),
+            "started_at": start["recorded_at"],
+            "last_finished_at": None,
+            "reason": (
+                "The runtime owns this exact live worker."
+                if live_matches
+                else "Persisted worker ownership was lost; execution must fail closed into recovery."
+            ),
+        }
+
+    def _deterministic_telemetry(
+        self,
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        artifact_rows: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        now = _parse_time(self._now())
+        start_record = next(
+            (
+                record for record in records
+                if (record.get("event") or {}).get("event_type") == "run_started"
+            ),
+            records[0] if records else None,
+        )
+        start_time = _parse_time(
+            str((start_record or {}).get("recorded_at") or run["created_at"])
+        )
+        terminal = run["state"] in {"completed", "blocked", "cancelled"}
+        terminal_record = next(
+            (
+                record for record in reversed(records)
+                if (record.get("transition") or {}).get("to_state")
+                in {"completed", "blocked", "cancelled"}
+            ),
+            None,
+        )
+        end_time = (
+            _parse_time(str((terminal_record or {}).get("recorded_at") or run["updated_at"]))
+            if terminal else now
+        )
+        elapsed_seconds = max(0.0, (end_time - start_time).total_seconds())
+
+        attempt_starts: dict[tuple[str, int], Mapping[str, Any]] = {}
+        durations: list[float] = []
+        attempts_by_segment: dict[str, int] = {}
+        last_error = None
+        for record in records:
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if event.get("event_type") == "attempt_started":
+                key = (str(details.get("segment_id") or ""), int(details.get("attempt") or 0))
+                attempt_starts[key] = record
+                attempts_by_segment[key[0]] = attempts_by_segment.get(key[0], 0) + 1
+            elif event.get("event_type") == "attempt_completed":
+                key = (str(details.get("segment_id") or ""), int(details.get("attempt") or 0))
+                started = attempt_starts.get(key)
+                if started is not None:
+                    durations.append(max(
+                        0.0,
+                        (_parse_time(record["recorded_at"]) - _parse_time(started["recorded_at"])).total_seconds(),
+                    ))
+                defects = list(details.get("defect_codes") or [])
+                if defects:
+                    last_error = {
+                        "record_id": record["record_id"],
+                        "recorded_at": record["recorded_at"],
+                        "node_id": record["node_id"],
+                        "codes": defects,
+                        "retryable": run["state"] not in {"completed", "blocked", "cancelled"},
+                        "active": True,
+                    }
+                elif (
+                    last_error is not None
+                    and last_error.get("node_id") == record.get("node_id")
+                ):
+                    last_error["active"] = False
+                    last_error["resolved_at"] = record["recorded_at"]
+            elif event.get("event_type") == "isolated_process_verification_failed":
+                last_error = {
+                    "record_id": record["record_id"],
+                    "recorded_at": record["recorded_at"],
+                    "node_id": record["node_id"],
+                    "codes": [str(details.get("error_type") or "verification_failed")],
+                    "retryable": bool(details.get("retryable")),
+                    "active": True,
+                }
+            elif (
+                event.get("event_type") == "isolated_process_verification_completed"
+                and last_error is not None
+                and last_error.get("node_id") == record.get("node_id")
+            ):
+                last_error["active"] = False
+                last_error["resolved_at"] = record["recorded_at"]
+
+        nodes = definition["graph"]["nodes"]
+        completed_nodes = {
+            str(record["node_id"])
+            for record in records
+            if (record.get("event") or {}).get("event_type") in {
+                "action_completed", "isolated_process_verification_completed",
+            }
+        }
+        remaining = [
+            node for node in nodes
+            if node["node_id"] not in completed_nodes
+            and node["kind"] in {"action", "verification_boundary"}
+        ]
+        if terminal:
+            estimate = 0.0
+            estimate_reason = "Run is terminal."
+        elif durations and remaining:
+            estimate = (sum(durations) / len(durations)) * len(remaining)
+            estimate_reason = "Deterministic mean of completed attempt durations times remaining executable nodes."
+        elif not remaining:
+            estimate = 0.0
+            estimate_reason = "No unvisited executable nodes remain."
+        else:
+            estimate = None
+            estimate_reason = "No completed attempt duration is available for an estimate."
+
+        worker_events = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            in {"process_worker_started", "process_worker_finished"}
+        ]
+        no_tools_only = bool(worker_events) and all(
+            (record["event"]["details"].get("worker_boundary") in {
+                "separate_no_tools_process", "injected_test_worker",
+            })
+            for record in worker_events
+        )
+        usage = {
+            "input_tokens": 0 if no_tools_only else None,
+            "output_tokens": 0 if no_tools_only else None,
+            "total_tokens": 0 if no_tools_only else None,
+            "cost_usd": 0.0 if no_tools_only else None,
+            "measured": no_tools_only,
+            "source": (
+                "isolated_no_tools_worker" if no_tools_only
+                else "no_authenticated_usage_record"
+            ),
+        }
+        artifact_counts: dict[str, int] = {}
+        for artifact in artifact_rows:
+            role = str(artifact["role"])
+            artifact_counts[role] = artifact_counts.get(role, 0) + 1
+        retries = sum(max(0, count - 1) for count in attempts_by_segment.values())
+        liveness = self._worker_liveness(run, records)
+        active_error = bool(last_error and last_error.get("active"))
+        automation = isinstance(
+            (definition.get("output_schema") or {}).get("x-ora-process"), Mapping,
+        )
+        controls = (
+            automation_run_controls(self.runtime, run["run_id"])
+            if automation else {
+                "schema_version": "ora.process-run-controls/1.0",
+                "run_id": run["run_id"],
+                "available_actions": [],
+                "control_state_digest": None,
+                "active_worker": None,
+            }
+        )
+        return {
+            "schema_version": "ora.process-run-telemetry/1.0",
+            "layer": "deterministic",
+            "run_state": run["state"],
+            "current_node_id": run["current_node_id"],
+            "started_at": start_time.isoformat().replace("+00:00", "Z"),
+            "updated_at": run["updated_at"],
+            "elapsed_seconds": elapsed_seconds,
+            "estimated_remaining_seconds": estimate,
+            "estimate_reason": estimate_reason,
+            "attempts": {
+                "total": sum(attempts_by_segment.values()),
+                "retries": retries,
+                "by_segment": attempts_by_segment,
+                "ceiling": run["contracts"]["correction_loop"]["max_attempts"],
+            },
+            "usage": usage,
+            "artifacts": {
+                "total": len(artifact_rows),
+                "by_role": artifact_counts,
+                "current": sum(bool(item["current"]) for item in artifact_rows),
+            },
+            "last_error": last_error,
+            "liveness": liveness,
+            "health": {
+                "status": (
+                    "action_required" if liveness["action_required"] or active_error
+                    else "healthy"
+                ),
+                "reason": (
+                    liveness["reason"] if liveness["action_required"]
+                    else ("A persisted failure requires review." if active_error else "No deterministic fault is active.")
+                ),
+            },
+            "controls": controls,
+        }
+
+    @staticmethod
+    def _quality_eligibility(
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        current = nodes[run["current_node_id"]]
+        excluded = {
+            "process_quality_evaluation_started",
+            "process_quality_evaluation_completed",
+            "process_quality_evaluation_failed",
+        }
+        relevant = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type") not in excluded
+        ]
+        if run["state"] == "pending" and current["kind"] == "human_checkpoint":
+            return {
+                "eligible": True,
+                "reason": "human_handoff",
+                "source_record_id": relevant[-1]["record_id"] if relevant else None,
+            }
+        latest_attempt = next(
+            (
+                record for record in reversed(relevant)
+                if (record.get("event") or {}).get("event_type")
+                == "attempt_completed"
+            ),
+            None,
+        )
+        latest_verification = next(
+            (
+                record for record in reversed(relevant)
+                if (record.get("event") or {}).get("event_type") in {
+                    "isolated_process_verification_failed",
+                    "isolated_process_verification_completed",
+                }
+            ),
+            None,
+        )
+        latest_review = next(
+            (
+                record for record in reversed(relevant)
+                if (record.get("event") or {}).get("event_type")
+                == "final_review_completed"
+            ),
+            None,
+        )
+        failure = None
+        if latest_attempt and (
+            latest_attempt["event"]["details"].get("defect_codes")
+        ):
+            failure = latest_attempt
+        if latest_verification and (
+            latest_verification["event"]["event_type"]
+            == "isolated_process_verification_failed"
+            or latest_verification["event"]["details"].get("outcome") == "FAIL"
+        ):
+            if failure is None or latest_verification["sequence"] > failure["sequence"]:
+                failure = latest_verification
+        if latest_review and latest_review["event"]["details"].get("outcome") != "PASS":
+            if failure is None or latest_review["sequence"] > failure["sequence"]:
+                failure = latest_review
+        if failure is not None:
+            return {
+                "eligible": True,
+                "reason": "output_failure",
+                "source_record_id": failure["record_id"],
+            }
+        return {
+            "eligible": False,
+            "reason": "not_at_handoff_or_output_failure",
+            "source_record_id": None,
+        }
+
+    @staticmethod
+    def _quality_evaluations(
+        run: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        starts: dict[str, Mapping[str, Any]] = {}
+        outcomes: dict[str, Mapping[str, Any]] = {}
+        for record in records:
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            event_type = event.get("event_type")
+            if event_type == "process_quality_evaluation_started":
+                evaluation_id = str(details.get("evaluation_id") or "")
+                if not evaluation_id or evaluation_id in starts:
+                    raise ProcessRunInspectorIntegrityError(
+                        "quality evaluation start identity is invalid"
+                    )
+                starts[evaluation_id] = record
+            elif event_type in {
+                "process_quality_evaluation_completed",
+                "process_quality_evaluation_failed",
+            }:
+                evaluation_id = str(details.get("evaluation_id") or "")
+                start = starts.get(evaluation_id)
+                start_details = ((start or {}).get("event") or {}).get("details") or {}
+                if (
+                    start is None
+                    or evaluation_id in outcomes
+                    or details.get("evaluation_start_record_id")
+                    != start.get("record_id")
+                    or any(
+                        details.get(field) != start_details.get(field)
+                        for field in (
+                            "run_id", "definition_ref", "evaluation_id",
+                            "idempotency_key", "subject_digest", "eligible_reason",
+                            "source_sequence", "evaluator_binding",
+                        )
+                    )
+                    or int(record["sequence"]) <= int(start["sequence"])
+                ):
+                    raise ProcessRunInspectorIntegrityError(
+                        "quality evaluation result does not authenticate its start"
+                    )
+                outcomes[evaluation_id] = record
+        rows = []
+        for evaluation_id, start in starts.items():
+            result = outcomes.get(evaluation_id)
+            start_details = start["event"]["details"]
+            result_event = (result or {}).get("event") or {}
+            result_details = result_event.get("details") or {}
+            rows.append({
+                "evaluation_id": evaluation_id,
+                "status": (
+                    "completed" if result_event.get("event_type")
+                    == "process_quality_evaluation_completed"
+                    else "failed" if result is not None else "interrupted"
+                ),
+                "eligible_reason": start_details["eligible_reason"],
+                "subject_digest": start_details["subject_digest"],
+                "evaluator_binding": copy.deepcopy(start_details["evaluator_binding"]),
+                "started_at": start["recorded_at"],
+                "finished_at": result.get("recorded_at") if result else None,
+                "verdict": copy.deepcopy(result_details.get("verdict")),
+                "error_type": result_details.get("error_type"),
+                "record_ids": [
+                    start["record_id"],
+                    *([result["record_id"]] if result else []),
+                ],
+            })
+        return rows
 
     def _artifacts(
         self, run: Mapping[str, Any]
@@ -1016,6 +1624,15 @@ class ProcessRunInspectorService:
         evidence = self._evidence_view(
             run, records, artifacts, artifact_rows, tracking
         )
+        telemetry = self._deterministic_telemetry(
+            run, definition, records, artifact_rows,
+        )
+        telemetry["quality_evaluation"] = {
+            "mode": "opt_in_failure_or_handoff_only",
+            "eligibility": self._quality_eligibility(run, definition, records),
+            "history": self._quality_evaluations(run, records),
+            "authority_effect": "none",
+        }
 
         transitions = [
             copy.deepcopy(record) for record in records
@@ -1149,6 +1766,23 @@ class ProcessRunInspectorService:
                 "bindings": trigger_fields,
             },
             "evidence_current": evidence["acceptance_supported_now"],
+            "telemetry": {
+                "elapsed_seconds": telemetry["elapsed_seconds"],
+                "estimated_remaining_seconds": telemetry[
+                    "estimated_remaining_seconds"
+                ],
+                "estimate_reason": telemetry["estimate_reason"],
+                "attempts": copy.deepcopy(telemetry["attempts"]),
+                "usage": copy.deepcopy(telemetry["usage"]),
+                "artifacts": copy.deepcopy(telemetry["artifacts"]),
+                "last_error": copy.deepcopy(telemetry["last_error"]),
+                "health": copy.deepcopy(telemetry["health"]),
+                "liveness": copy.deepcopy(telemetry["liveness"]),
+                "quality_evaluation": copy.deepcopy(
+                    telemetry["quality_evaluation"]
+                ),
+            },
+            "controls": copy.deepcopy(telemetry["controls"]),
         }
 
         views = {
@@ -1164,6 +1798,7 @@ class ProcessRunInspectorService:
                 "node_count": len(nodes),
                 "timeline": timeline,
                 "updated_at": run["updated_at"],
+                "telemetry": telemetry,
             },
             "decisions": {
                 "transitions": transitions,
@@ -1259,10 +1894,218 @@ class ProcessRunInspectorService:
         return {**body, "snapshot_digest": _digest_json(body)}
 
 
+class ProcessRunTelemetryService:
+    """Opt-in, authority-inert quality evaluation for eligible Run seams."""
+
+    _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._:-]{1,256}$")
+
+    def __init__(
+        self,
+        *,
+        runtime: GovernedProcessRuntime | None = None,
+        evaluator: Callable[
+            [Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]
+        ] | None = None,
+    ) -> None:
+        self.runtime = runtime or GovernedProcessRuntime()
+        self.evaluator = evaluator or _default_quality_evaluator
+
+    @staticmethod
+    def _evaluator_binding(
+        run: Mapping[str, Any],
+        definition: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        context = run.get("input_bindings", {}).get("execution_context")
+        resolutions = (
+            context.get("model_resolutions")
+            if isinstance(context, Mapping) else None
+        )
+        nodes = {node["node_id"]: node for node in definition["graph"]["nodes"]}
+        current = nodes[run["current_node_id"]]
+        selected = None
+        resolution_key = None
+        if isinstance(resolutions, Mapping) and resolutions:
+            operation = current.get("operation")
+            if operation in resolutions:
+                resolution_key = str(operation)
+                selected = resolutions[operation]
+            else:
+                resolution_key = sorted(str(key) for key in resolutions)[0]
+                selected = resolutions[resolution_key]
+        selected_value = (
+            selected.get("selected") if isinstance(selected, Mapping) else None
+        )
+        return {
+            "kind": "exact_run_model_profile",
+            "resolution_key": resolution_key,
+            "runtime_name": (
+                selected_value.get("runtime_name")
+                if isinstance(selected_value, Mapping) else None
+            ),
+            "model_profile_digest": (
+                selected_value.get("digest")
+                if isinstance(selected_value, Mapping) else None
+            ),
+            "execution_context_binding_digest": (
+                context.get("binding_digest")
+                if isinstance(context, Mapping) else None
+            ),
+        }
+
+    def evaluate(
+        self,
+        run_id: str,
+        *,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if not self._IDEMPOTENCY_RE.fullmatch(str(idempotency_key or "")):
+            raise ProcessRunTelemetryInputRequired(
+                "quality evaluation idempotency key is invalid"
+            )
+        run = self.runtime.load_run(run_id)
+        definition = self.runtime.load_definition(run_id)
+        records = self.runtime.load_records(run_id)
+        prior = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type")
+            == "process_quality_evaluation_started"
+            and (record.get("event") or {}).get("details", {}).get(
+                "idempotency_key"
+            ) == idempotency_key
+        ]
+        if prior:
+            if len(prior) != 1:
+                raise ProcessRunInspectorIntegrityError(
+                    "quality evaluation retry identity is ambiguous"
+                )
+            history = ProcessRunInspectorService._quality_evaluations(run, records)
+            row = next(
+                item for item in history
+                if item["evaluation_id"]
+                == prior[0]["event"]["details"]["evaluation_id"]
+            )
+            return {"status": "idempotent_retry", "evaluation": row}
+
+        eligibility = ProcessRunInspectorService._quality_eligibility(
+            run, definition, records,
+        )
+        if not eligibility["eligible"]:
+            raise ProcessRunTelemetryConflict(
+                "quality evaluation is available only at a human handoff or output failure"
+            )
+        source_records = [
+            record for record in records
+            if (record.get("event") or {}).get("event_type") not in {
+                "process_quality_evaluation_started",
+                "process_quality_evaluation_completed",
+                "process_quality_evaluation_failed",
+            }
+        ]
+        source_sequence = int(source_records[-1]["sequence"])
+        artifacts = []
+        for artifact_id in run["artifact_ids"]:
+            artifact = self.runtime.load_artifact(run_id, artifact_id)
+            artifacts.append({
+                "artifact_id": artifact_id,
+                "role": artifact["role"],
+                "identity_digest": artifact["identity"]["digest"],
+                "producing_node_id": artifact["lineage"]["producing_node_id"],
+            })
+        package = {
+            "schema_version": "ora.process-quality-evaluation-subject/1.0",
+            "run_id": run_id,
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "run_state": run["state"],
+            "current_node_id": run["current_node_id"],
+            "eligible_reason": eligibility["reason"],
+            "source_record_id": eligibility["source_record_id"],
+            "source_sequence": source_sequence,
+            "artifacts": artifacts,
+            "timeline": [
+                ProcessRunInspectorService._record_summary(record)
+                for record in source_records[-50:]
+            ],
+        }
+        subject_digest = _digest_json(package)
+        binding = self._evaluator_binding(run, definition)
+        evaluation_id = "quality-" + hashlib.sha256(
+            f"{run_id}\0{idempotency_key}\0{subject_digest}".encode("utf-8")
+        ).hexdigest()[:32]
+        common = {
+            "run_id": run_id,
+            "definition_ref": copy.deepcopy(run["definition_ref"]),
+            "evaluation_id": evaluation_id,
+            "idempotency_key": idempotency_key,
+            "subject_digest": subject_digest,
+            "eligible_reason": eligibility["reason"],
+            "source_record_id": eligibility["source_record_id"],
+            "source_sequence": source_sequence,
+            "evaluator_binding": binding,
+        }
+        start = self.runtime.record_process_quality_evaluation(
+            run_id,
+            "process_quality_evaluation_started",
+            common,
+            node_id=run["current_node_id"],
+        )
+        try:
+            verdict = _parse_quality_verdict(
+                self.evaluator(copy.deepcopy(package), copy.deepcopy(binding))
+            )
+        except Exception as exc:
+            error_body = {
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:1000],
+            }
+            failed = self.runtime.record_process_quality_evaluation(
+                run_id,
+                "process_quality_evaluation_failed",
+                {
+                    **common,
+                    "evaluation_start_record_id": start["record_id"],
+                    "error_type": error_body["error_type"],
+                    "error_digest": _digest_json(error_body),
+                },
+                node_id=run["current_node_id"],
+            )
+            return {
+                "status": "failed",
+                "evaluation": {
+                    "evaluation_id": evaluation_id,
+                    "error_type": error_body["error_type"],
+                    "record_ids": [start["record_id"], failed["record_id"]],
+                    "authority_effect": "none",
+                },
+            }
+        completed = self.runtime.record_process_quality_evaluation(
+            run_id,
+            "process_quality_evaluation_completed",
+            {
+                **common,
+                "evaluation_start_record_id": start["record_id"],
+                "response_digest": _digest_json(verdict),
+                "verdict": verdict,
+            },
+            node_id=run["current_node_id"],
+        )
+        return {
+            "status": "completed",
+            "evaluation": {
+                "evaluation_id": evaluation_id,
+                "verdict": verdict,
+                "record_ids": [start["record_id"], completed["record_id"]],
+                "authority_effect": "none",
+            },
+        }
+
+
 __all__ = [
     "INSPECTOR_SCHEMA_VERSION",
     "INSPECTOR_VIEWS",
     "ProcessRunInspectorError",
     "ProcessRunInspectorIntegrityError",
     "ProcessRunInspectorService",
+    "ProcessRunTelemetryConflict",
+    "ProcessRunTelemetryInputRequired",
+    "ProcessRunTelemetryService",
 ]

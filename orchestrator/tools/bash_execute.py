@@ -867,7 +867,11 @@ def stop_process(pid: int) -> str:
         except subprocess.TimeoutExpired:
             target.kill()
             target.wait(timeout=2)
-        MANAGED_PROCESSES.remove(target)
+        # The owner of a foreground-managed worker may reap and unregister it
+        # while stop_process() is waiting for termination.  That is a
+        # successful stop, not an error or a second lifecycle effect.
+        if target in MANAGED_PROCESSES:
+            MANAGED_PROCESSES.remove(target)
         return f"Process {pid} stopped."
     except Exception as e:
         return f"Error stopping PID {pid}: {e}"

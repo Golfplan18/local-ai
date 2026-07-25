@@ -61,9 +61,32 @@ var snapshot = {
       external_effects: [{ action: 'execute_approved_programming_step', receipt_artifact_id: 'receipt-1' }],
       trigger: { entrypoint: 'prg_run', bindings: { trigger_binding: 'manual' } },
       evidence_current: false,
+      telemetry: {
+        layer: 'deterministic', run_state: 'pending', current_node_id: 'authority',
+        elapsed_seconds: 65, estimated_remaining_seconds: 14,
+        attempts: { total: 3, retries: 1 },
+        usage: { total_tokens: 0, cost_usd: 0, measured: true },
+        artifacts: { total: 2, by_role: { result: 1, evidence: 1 } },
+        last_error: null,
+        health: { status: 'healthy', reason: 'No deterministic fault is active.' },
+        liveness: { status: 'idle', active: false },
+        quality_evaluation: {
+          eligibility: {
+            eligible: true, reason: 'human_handoff', source_record_id: 'event-handoff-1',
+          },
+          history: [],
+        },
+      },
+      controls: {
+        available_actions: ['pause', 'stop'],
+        control_state_digest: 'sha256:control-state-1', active_worker: null,
+      },
     },
     plan: { status: 'approved', approved_contract: { plan_id: 'plan-1' } },
-    current_state: { state: 'waiting_for_authority', timeline: [{ sequence: 1, kind: 'run_created' }] },
+    current_state: {
+      state: 'waiting_for_authority', timeline: [{ sequence: 1, kind: 'run_created' }],
+      telemetry: null,
+    },
     decisions: {
       required_human_decision: 'Approve the exact target mutation.',
       transitions: [],
@@ -107,9 +130,39 @@ var lifecycleState = {
 };
 var lifecycleRequests = [];
 var authorityRequests = [];
+var controlRequests = [];
+var qualityRequests = [];
 w.confirm = function () { return true; };
 global.fetch = function (url, options) {
   fetched.push(url);
+  if (url === '/api/process-runs/run%2Fgrouped-result/control') {
+    var controlRequest = JSON.parse(options.body);
+    controlRequests.push(controlRequest);
+    snapshot.views.overview.controls = {
+      available_actions: ['resume', 'stop'],
+      control_state_digest: 'sha256:control-state-2', active_worker: null,
+    };
+    snapshot.views.overview.telemetry.run_state = 'pending';
+    return Promise.resolve({
+      ok: true,
+      json: function () { return Promise.resolve({ ok: true, control: { status: 'applied' } }); },
+    });
+  }
+  if (url === '/api/process-runs/run%2Fgrouped-result/quality-evaluation') {
+    var qualityRequest = JSON.parse(options.body);
+    qualityRequests.push(qualityRequest);
+    snapshot.views.overview.telemetry.quality_evaluation = {
+      eligibility: { eligible: false, reason: 'not_at_handoff_or_output_failure' },
+      history: [{
+        evaluation_id: 'quality-1', authority_effect: 'none',
+        verdict: { verdict: 'WARN', drift_verdict: 'POSSIBLE', quality_verdict: 'WARN' },
+      }],
+    };
+    return Promise.resolve({
+      ok: true,
+      json: function () { return Promise.resolve({ ok: true, quality_evaluation: { status: 'completed' } }); },
+    });
+  }
   if (url === '/api/process-runs/run%2Fgrouped-result/authority') {
     var authorityRequest = JSON.parse(options.body);
     authorityRequests.push(authorityRequest);
@@ -224,6 +277,26 @@ async function run() {
   record('stale evidence is stated in text rather than color alone',
     modal.textContent.indexOf('does not yet support acceptance') >= 0
       && modal.dataset.evidenceCurrent === 'false');
+  record('deterministic telemetry is visible without opening Technical',
+    modal.textContent.indexOf('Run telemetry') >= 0
+      && modal.textContent.indexOf('1m 5s') >= 0
+      && modal.textContent.indexOf('3 · 1 retries') >= 0
+      && modal.textContent.indexOf('healthy') >= 0
+      && modal.textContent.indexOf('idle') >= 0);
+  record('eligible handoff exposes opt-in authority-inert quality review',
+    !!modal.querySelector('.process-run-inspector__quality-evaluate')
+      && modal.textContent.indexOf('cannot advance, retry, accept, or authorize') >= 0);
+
+  modal.querySelector('.process-run-inspector__quality-evaluate').click();
+  await flush();
+  await flush();
+  await flush();
+  record('quality review posts one source-bound idempotency identity and refreshes',
+    qualityRequests.length === 1
+      && qualityRequests[0].idempotency_key === 'run-quality:event-handoff-1'
+      && Object.keys(qualityRequests[0]).join('|') === 'idempotency_key'
+      && modal.textContent.indexOf('quality-1') >= 0
+      && !modal.querySelector('.process-run-inspector__quality-evaluate'));
 
   modal.querySelector('.process-run-inspector__authority-approved').click();
   await flush();
@@ -239,9 +312,22 @@ async function run() {
   record('successful authority return refreshes the authenticated Run view',
     fetched.filter(function (url) {
       return url === '/api/process-runs/run%2Fgrouped-result/inspector';
-    }).length === 2
+    }).length === 3
       && modal.textContent.indexOf('Operating · Execute approved step') >= 0
       && !modal.querySelector('.process-run-inspector__authority-approved'));
+
+  modal.querySelector('.process-run-inspector__control-pause').click();
+  await flush();
+  await flush();
+  await flush();
+  record('pause posts the exact stale-safe control contract and refreshes',
+    controlRequests.length === 1
+      && controlRequests[0].action === 'pause'
+      && controlRequests[0].control_state_digest === 'sha256:control-state-1'
+      && controlRequests[0].idempotency_key === 'run-control:pause:control-state-1'
+      && Object.keys(controlRequests[0]).sort().join('|')
+        === 'action|control_state_digest|idempotency_key'
+      && !!modal.querySelector('.process-run-inspector__control-resume'));
 
   modal.querySelector('[data-view="decisions"]').click();
   record('Decisions exposes authenticated checkpoint outcome, maker, authority, and route',

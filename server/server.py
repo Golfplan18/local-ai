@@ -5256,6 +5256,14 @@ def _process_run_inspector_service():
     return ProcessRunInspectorService(repository_root=WORKSPACE)
 
 
+def _process_run_telemetry_service():
+    """Construct the G1.20 authority-inert evaluation service."""
+
+    from process_run_inspector import ProcessRunTelemetryService
+
+    return ProcessRunTelemetryService()
+
+
 def _process_library_service():
     """Construct the Phase 2.6–2.8 Library and governed-invocation service."""
 
@@ -5426,11 +5434,32 @@ def _process_delegation_error_status(exc: Exception) -> int:
 
 def _process_run_inspector_error_status(exc: Exception) -> int:
     from governed_process_runtime import RunNotFoundError
-    from process_run_inspector import ProcessRunInspectorError
+    from process_run_inspector import (
+        ProcessRunInspectorError,
+        ProcessRunTelemetryConflict,
+        ProcessRunTelemetryInputRequired,
+    )
 
-    if isinstance(exc, RunNotFoundError):
+    # Tests and embedders may load the same implementation through the
+    # ``orchestrator.*`` package while the server uses its historical
+    # top-level imports.  Preserve the typed public contract across that
+    # module alias boundary.
+    exc_name = type(exc).__name__
+    if isinstance(exc, RunNotFoundError) or exc_name == "RunNotFoundError":
         return 404
-    if isinstance(exc, ProcessRunInspectorError):
+    if (
+        isinstance(exc, ProcessRunTelemetryInputRequired)
+        or exc_name == "ProcessRunTelemetryInputRequired"
+    ):
+        return 422
+    if (
+        isinstance(exc, ProcessRunTelemetryConflict)
+        or exc_name == "ProcessRunTelemetryConflict"
+    ):
+        return 409
+    if isinstance(exc, ProcessRunInspectorError) or exc_name.startswith(
+        "ProcessRunInspector"
+    ):
         return 503
     return 503
 
@@ -6303,12 +6332,48 @@ def process_attention_projection():
 
     try:
         projection = _process_delegation_service().projection()
+        inspector = _process_run_inspector_service()
+        run_ids = sorted({
+            str(row.get("run_id") or "")
+            for surface in ("pending", "unread")
+            for row in projection.get(surface, [])
+            if row.get("run_id")
+        })
+        telemetry_by_run = {}
+        for exact_run_id in run_ids:
+            try:
+                snapshot = inspector.inspect(exact_run_id)
+            except Exception as exc:
+                # Projection tests and legacy imported attention rows can
+                # legitimately reference a Run no longer present in this
+                # runtime. Preserve the attention contract while making the
+                # missing telemetry explicit; every other integrity error
+                # remains fail closed for the whole response.
+                if type(exc).__name__ != "RunNotFoundError":
+                    raise
+                telemetry_by_run[exact_run_id] = {
+                    "snapshot_digest": None,
+                    "telemetry": None,
+                    "controls": None,
+                    "status": "run_not_found",
+                }
+                continue
+            telemetry_by_run[exact_run_id] = {
+                "snapshot_digest": snapshot["snapshot_digest"],
+                "telemetry": snapshot["views"]["overview"].get("telemetry"),
+                "controls": snapshot["views"]["overview"].get("controls"),
+            }
     except Exception as exc:
         return _json_response(
             {"ok": False, "error": str(exc)},
             _process_delegation_error_status(exc),
         )
-    return _json_response({"ok": True, **projection})
+    return _json_response({
+        "ok": True,
+        **projection,
+        "g1_20_telemetry_available": True,
+        "telemetry_by_run": telemetry_by_run,
+    })
 
 
 @app.route("/api/process-runs/<path:run_id>/authority", methods=["POST"])
@@ -6355,6 +6420,61 @@ def process_run_inspector(run_id):
             _process_run_inspector_error_status(exc),
         )
     return _json_response({"ok": True, "inspector": snapshot})
+
+
+@app.route("/api/process-runs/<path:run_id>/control", methods=["POST"])
+def process_run_control(run_id):
+    """Apply one stale-safe Principal pause, resume, or stop decision."""
+
+    try:
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or set(payload) != {
+            "action", "control_state_digest", "idempotency_key",
+        }:
+            from process_automation import ProcessAutomationInputRequired
+
+            raise ProcessAutomationInputRequired(
+                "Run control requires exact action, control_state_digest, and idempotency_key"
+            )
+        result = _process_automation_service().control_run(
+            str(run_id),
+            action=str(payload.get("action") or ""),
+            control_state_digest=str(payload.get("control_state_digest") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_automation_error_status(exc),
+        )
+    return _json_response({"ok": True, "control": result})
+
+
+@app.route(
+    "/api/process-runs/<path:run_id>/quality-evaluation",
+    methods=["POST"],
+)
+def process_run_quality_evaluation(run_id):
+    """Run one opt-in model evaluation at an authenticated eligible seam."""
+
+    try:
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or set(payload) != {"idempotency_key"}:
+            from process_run_inspector import ProcessRunTelemetryInputRequired
+
+            raise ProcessRunTelemetryInputRequired(
+                "quality evaluation requires an exact idempotency_key"
+            )
+        result = _process_run_telemetry_service().evaluate(
+            str(run_id),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)},
+            _process_run_inspector_error_status(exc),
+        )
+    return _json_response({"ok": True, "quality_evaluation": result})
 
 
 @app.route("/api/slash-commands", methods=["GET"])

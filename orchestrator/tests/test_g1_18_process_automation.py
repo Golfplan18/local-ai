@@ -387,13 +387,14 @@ class ProcessAutomationContractTests(unittest.TestCase):
         for token in (
             "G1.17 is user-deferred",
             "without an architecture choice",
-            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, and generic-API-isolation corrections are implemented and await independent re-judgment",
-            "G1.19 and G1.20 remain unauthorized",
-            "no Trigger, Persona, outbound effect, alternate engine, or G1.20 telemetry",
+            "G1.18 is independently accepted",
+            "G1.20 is implemented and submitted for independent judgment",
+            "G1.19 remains unauthorized until G1.20 is accepted",
+            "No Trigger, scheduler, Persona, channel, outbound effect, alternate engine, or generic Run force-control entered G1.20",
         ):
             self.assertIn(token, combined)
         self.assertNotIn("G1.17 is complete", combined)
-        self.assertNotIn("G1.18 is complete", combined)
+        self.assertNotIn("G1.19 is authorized", combined)
 
 
 class ProcessAutomationAuthoringTests(ProcessAutomationFixture):

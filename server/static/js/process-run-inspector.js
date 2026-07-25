@@ -282,6 +282,140 @@
     container.appendChild(section);
   };
 
+  const formatDuration = value => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+      return 'Not enough history';
+    }
+    const seconds = Math.max(0, Math.round(Number(value)));
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${minutes}m ${remainder}s`;
+  };
+
+  const controlRequest = async (action) => {
+    if (!snapshot || !snapshot.views.overview.controls) return;
+    const controls = snapshot.views.overview.controls;
+    if (action === 'stop' && typeof window.confirm === 'function'
+      && !window.confirm('Stop this Process Run? Its persisted history and artifacts will remain available.')) {
+      return;
+    }
+    const digest = String(controls.control_state_digest || '');
+    const suffix = digest.indexOf(':') >= 0 ? digest.split(':', 2)[1] : digest;
+    const status = root.querySelector('[data-inspector-status]');
+    const progress = { pause: 'Pausing', resume: 'Resuming', stop: 'Stopping' }[action]
+      || 'Updating';
+    status.textContent = `${progress} Process Run…`;
+    try {
+      await fetchJson(
+        `/api/process-runs/${encodeURIComponent(snapshot.run_id)}/control`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            control_state_digest: digest,
+            idempotency_key: `run-control:${action}:${suffix}`,
+          }),
+        }
+      );
+      await open(snapshot.run_id, returnFocus);
+    } catch (error) {
+      status.textContent = `Run control failed: ${error.message}`;
+    }
+  };
+
+  const renderRunControls = (container, controls) => {
+    if (!controls || !(controls.available_actions || []).length) return;
+    const section = el('section', 'process-run-inspector__section process-run-inspector__controls');
+    section.appendChild(el('h3', '', 'Run controls'));
+    section.appendChild(el(
+      'p', 'process-run-inspector__lifecycle-help',
+      'Controls bind the exact current Run state. Pause is recoverable; Stop preserves history and ends execution.'
+    ));
+    const actions = el('div', 'process-run-inspector__lifecycle-actions');
+    (controls.available_actions || []).forEach(action => {
+      const button = el(
+        'button', `process-run-inspector__control-${action}`,
+        action === 'stop' ? 'Stop run' : `${action.charAt(0).toUpperCase() + action.slice(1)} run`
+      );
+      button.type = 'button';
+      button.addEventListener('click', () => controlRequest(action));
+      actions.appendChild(button);
+    });
+    section.appendChild(actions);
+    container.appendChild(section);
+  };
+
+  const qualityEvaluationRequest = async (eligibility) => {
+    if (!snapshot || !eligibility || !eligibility.eligible) return;
+    const source = String(eligibility.source_record_id || 'eligible-seam')
+      .replace(/[^A-Za-z0-9._:-]/g, '-').slice(0, 180);
+    const status = root.querySelector('[data-inspector-status]');
+    status.textContent = 'Running opt-in quality evaluation…';
+    try {
+      await fetchJson(
+        `/api/process-runs/${encodeURIComponent(snapshot.run_id)}/quality-evaluation`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idempotency_key: `run-quality:${source}` }),
+        }
+      );
+      await open(snapshot.run_id, returnFocus);
+    } catch (error) {
+      status.textContent = `Quality evaluation failed: ${error.message}`;
+    }
+  };
+
+  const renderTelemetry = (container, telemetry) => {
+    if (!telemetry) return;
+    const section = el('section', 'process-run-inspector__section process-run-inspector__telemetry');
+    section.appendChild(el('h3', '', 'Run telemetry'));
+    const grid = el('div', 'process-run-inspector__telemetry-grid');
+    const attempts = telemetry.attempts || {};
+    const usage = telemetry.usage || {};
+    const liveness = telemetry.liveness || {};
+    [
+      ['Elapsed', formatDuration(telemetry.elapsed_seconds)],
+      ['Remaining', formatDuration(telemetry.estimated_remaining_seconds)],
+      ['Attempts', `${attempts.total || 0} · ${attempts.retries || 0} retries`],
+      ['Tokens / cost', usage.measured
+        ? `${usage.total_tokens || 0} · $${Number(usage.cost_usd || 0).toFixed(4)}`
+        : 'No authenticated usage record'],
+      ['Health', (telemetry.health && telemetry.health.status) || 'unknown'],
+      ['Worker', liveness.status || 'idle'],
+    ].forEach(([label, value]) => {
+      const card = el('div', 'process-run-inspector__telemetry-card');
+      card.appendChild(el('span', 'process-run-inspector__telemetry-label', label));
+      card.appendChild(el('strong', '', value));
+      grid.appendChild(card);
+    });
+    section.appendChild(grid);
+    if (telemetry.last_error) {
+      section.appendChild(el(
+        'p', 'process-run-inspector__warning',
+        `Last error: ${(telemetry.last_error.codes || []).join(', ')}`
+      ));
+    }
+    const quality = telemetry.quality_evaluation || {};
+    const history = quality.history || [];
+    if (history.length) {
+      appendValue(section, 'Opt-in quality evaluations', history, false);
+    }
+    if (quality.eligibility && quality.eligibility.eligible) {
+      const evaluate = el('button', 'process-run-inspector__quality-evaluate', 'Evaluate this handoff or failure');
+      evaluate.type = 'button';
+      evaluate.addEventListener('click', () => qualityEvaluationRequest(quality.eligibility));
+      section.appendChild(evaluate);
+      section.appendChild(el(
+        'p', 'process-run-inspector__lifecycle-help',
+        'This optional model judgment is an observation only. It cannot advance, retry, accept, or authorize the Run.'
+      ));
+    }
+    container.appendChild(section);
+  };
+
   const renderOverview = (container, view) => {
     const questions = el('div', 'process-run-inspector__questions');
     [
@@ -305,6 +439,8 @@
       view.evidence_current ? 'Current evidence supports the result.' : 'Current evidence does not yet support acceptance.');
     evidence.setAttribute('role', 'status');
     container.appendChild(evidence);
+    renderTelemetry(container, view.telemetry);
+    renderRunControls(container, view.controls);
     renderAuthorityRequest(container, view);
     appendValue(container, 'Invoked capability', view.definition_ref, false);
     appendValue(container, 'Capabilities invoked by this Run', view.invoked_capabilities, false);

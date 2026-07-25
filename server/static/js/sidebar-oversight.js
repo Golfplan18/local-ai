@@ -54,7 +54,7 @@
   const state = {
     paused:    [],
     operating: [],
-    attention: { unread: [], pending: [], automated_processes: [] },
+    attention: { unread: [], pending: [], automated_processes: [], telemetry_by_run: {} },
     expanded:  null, // detail-expanded entry id within Paused
   };
 
@@ -120,6 +120,7 @@
         unread: data.unread || [],
         pending: data.pending || [],
         automated_processes: data.automated_processes || [],
+        telemetry_by_run: data.telemetry_by_run || {},
       };
       renderProcessAttention();
       updateAttentionCounts();
@@ -224,6 +225,21 @@
       const step = document.createElement('span');
       step.textContent = row.current_step;
       meta.appendChild(step);
+    }
+    const telemetryPacket = state.attention.telemetry_by_run[row.run_id] || {};
+    const telemetry = telemetryPacket.telemetry || {};
+    if (telemetry.health && telemetry.health.status) {
+      appendBadge(meta, telemetry.health.status,
+        telemetry.health.status === 'healthy' ? '' : 'attention');
+    }
+    if (telemetry.attempts) {
+      const attempts = document.createElement('span');
+      attempts.className = 'process-attention-metric';
+      attempts.textContent = `${telemetry.attempts.total || 0} attempts · ${telemetry.attempts.retries || 0} retries`;
+      meta.appendChild(attempts);
+    }
+    if (telemetry.liveness && telemetry.liveness.status === 'alive') {
+      appendBadge(meta, 'Worker alive');
     }
     card.appendChild(meta);
 
