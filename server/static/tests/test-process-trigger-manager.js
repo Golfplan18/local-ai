@@ -128,7 +128,7 @@ function assert(value, message) {
   var selects = Array.from(dialog.querySelectorAll('.process-trigger-create select'));
   var kind = selects.find(select => Array.from(select.options).some(option => option.value === 'inbound'));
   kind.value = 'time'; kind.dispatchEvent(new w.Event('change'));
-  assert(dialog.textContent.includes('No cron, launchd, deferred sweep, or 24/7 promise'), 'time boundary must be disclosed');
+  assert(dialog.textContent.includes('no polling loop, cron, launchd, deferred sweep, or 24/7 promise'), 'time boundary must be disclosed');
   assert(dialog.querySelector('textarea[placeholder*="Why no file"]'), 'time Trigger needs written Runtime-Principle reason');
   kind.value = 'inbound'; kind.dispatchEvent(new w.Event('change'));
   assert(dialog.textContent.includes('activation is unavailable until G1.21'), 'inbound channel boundary must be disclosed');

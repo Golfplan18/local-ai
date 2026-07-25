@@ -20558,8 +20558,9 @@ if __name__ == "__main__":
         sched = get_scheduler()
         sched.start()
 
-    # G1.19 justified calendar Triggers are app-managed and intermittent.
-    # This driver installs no cron/launchd task and exists only while Ora runs.
+    # G1.19 justified calendar Triggers use one recalculated app-owned wake.
+    # This driver has no interval scan, installs no cron/launchd task, and
+    # exists only while Ora runs.
     from process_triggers import ProcessTriggerClock
     process_trigger_clock = ProcessTriggerClock()
     process_trigger_clock.start()
@@ -20599,7 +20600,7 @@ if __name__ == "__main__":
         print(f"MCP tools: {mcp_count}")
     if args.scheduler:
         print("Scheduler: running")
-    print("Trigger Manager: running (app-only; no 24/7 availability promise)")
+    print("Trigger Manager: running (app-only one-shot wakes; no 24/7 availability promise)")
     print("Press Ctrl+C to stop.")
 
     def _shutdown_handler(sig, frame):

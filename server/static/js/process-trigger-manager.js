@@ -190,7 +190,7 @@
         conditional.appendChild(labelledInput('Runtime-Principle justification', fields.runtime_reason));
         conditional.appendChild(element(
           'p', 'process-trigger-disclosure',
-          'Runs only while Ora is open. No cron, launchd, deferred sweep, or 24/7 promise.'
+          'Runs only while Ora is open. One recalculated in-app wake; no polling loop, cron, launchd, deferred sweep, or 24/7 promise.'
         ));
       } else if (kind === 'inbound') {
         fields.channel = document.createElement('select');

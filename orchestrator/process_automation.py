@@ -91,6 +91,7 @@ except ImportError:  # pragma: no cover - direct module execution/tests
 AUTOMATION_SCHEMA_VERSION = "ora.process-automation/1.0"
 BLUEPRINT_SCHEMA_VERSION = "ora.process-blueprint/1.0"
 WORKER_SCHEMA_VERSION = "ora.process-worker-request/1.0"
+TRIGGER_INVOCATION_SCHEMA_VERSION = "ora.process-trigger-invocation/1.0"
 AUTHORING_PROPOSED_EVENT = "automation_authoring_proposed"
 AUTHORING_REVISION_EVENT = "automation_authoring_revision_requested"
 CONDITIONS = ["approved_plan_digest_matches"]
@@ -2477,6 +2478,41 @@ class ProcessAutomationService:
     def begin_triggered_run(
         self,
         *,
+        trigger_binding: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Begin the one invocation persisted by an authenticated firing claim.
+
+        The public begin_run path cannot supply this binding.  ProcessTriggerService
+        installs the authenticator on its shared service instance; constructing a
+        generic automation service and calling this method directly fails closed.
+        No caller-supplied invocation field is accepted at this boundary.
+        """
+
+        authenticator = getattr(self, "trigger_authenticator", None)
+        if not callable(authenticator):
+            raise ProcessAutomationIntegrityError(
+                "standing Trigger execution requires the authenticated Trigger Manager"
+            )
+        try:
+            authenticated = authenticator(trigger_binding)
+        except Exception as exc:
+            raise ProcessAutomationIntegrityError(
+                "standing Trigger firing identity did not authenticate"
+            ) from exc
+        if not isinstance(authenticated, Mapping) or set(authenticated) != {
+            "invocation_contract", "bound_run_id",
+        }:
+            raise ProcessAutomationIntegrityError(
+                "Trigger authenticator did not return one complete invocation contract"
+            )
+        return self._begin_prepared_run(
+            authenticated["invocation_contract"],
+            expected_bound_run_id=authenticated["bound_run_id"],
+        )
+
+    def prepare_triggered_invocation(
+        self,
+        *,
         definition_ref: Mapping[str, Any],
         project_ref: str,
         inputs: Mapping[str, Any],
@@ -2487,25 +2523,13 @@ class ProcessAutomationService:
         step_profiles: Mapping[str, Any] | None = None,
         style_profile: str | None = None,
     ) -> dict[str, Any]:
-        """Begin a standing invocation only after its firing ledger authenticates.
+        """Resolve the immutable invocation that a firing claim will persist.
 
-        The public begin_run path cannot supply this binding.  ProcessTriggerService
-        installs the authenticator on its shared service instance; constructing a
-        generic automation service and calling this method directly fails closed.
+        This method is read-only.  Execution still requires the ledger-backed
+        authenticator installed by ProcessTriggerService.
         """
 
-        authenticator = getattr(self, "trigger_authenticator", None)
-        if not callable(authenticator):
-            raise ProcessAutomationIntegrityError(
-                "standing Trigger execution requires the authenticated Trigger Manager"
-            )
-        try:
-            exact_binding = authenticator(trigger_binding)
-        except Exception as exc:
-            raise ProcessAutomationIntegrityError(
-                "standing Trigger firing identity did not authenticate"
-            ) from exc
-        return self._begin_run(
+        definition, contract = self._prepare_run_contract(
             definition_ref=definition_ref,
             project_ref=project_ref,
             inputs=inputs,
@@ -2515,8 +2539,9 @@ class ProcessAutomationService:
             step_profiles=step_profiles,
             one_run_profile=None,
             style_profile=style_profile,
-            trigger_binding=exact_binding,
+            trigger_binding=trigger_binding,
         )
+        return contract
 
     def _begin_run(
         self,
@@ -2532,15 +2557,46 @@ class ProcessAutomationService:
         style_profile: str | None,
         trigger_binding: Mapping[str, Any] | None,
     ) -> dict[str, Any]:
+        definition, contract = self._prepare_run_contract(
+            definition_ref=definition_ref,
+            project_ref=project_ref,
+            inputs=inputs,
+            idempotency_key=idempotency_key,
+            principal_id=principal_id,
+            process_profile=process_profile,
+            step_profiles=step_profiles,
+            one_run_profile=one_run_profile,
+            style_profile=style_profile,
+            trigger_binding=trigger_binding,
+        )
+        return self._create_prepared_run(
+            definition, contract, expected_bound_run_id=None,
+        )
+
+    def _prepare_run_contract(
+        self,
+        *,
+        definition_ref: Mapping[str, Any],
+        project_ref: str,
+        inputs: Mapping[str, Any],
+        idempotency_key: str,
+        principal_id: str,
+        process_profile: str | None,
+        step_profiles: Mapping[str, Any] | None,
+        one_run_profile: str | None,
+        style_profile: str | None,
+        trigger_binding: Mapping[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         project = _safe_id(project_ref, "project_ref")
         key = _safe_id(idempotency_key, "idempotency_key")
         principal = _safe_id(principal_id, "principal_id")
         definition = self._available_definition(definition_ref, project)
         exact_inputs = _validate_instance(inputs, definition["input_schema"], "inputs")
+        exact_step_profiles = copy.deepcopy(dict(step_profiles or {}))
         execution_context = self._execution_context(
             project_ref=project,
             process_profile=process_profile,
-            step_profiles=step_profiles,
+            step_profiles=exact_step_profiles,
             one_run_profile=one_run_profile,
             style_profile=style_profile,
             definition=definition,
@@ -2550,22 +2606,100 @@ class ProcessAutomationService:
             "project_ref": project,
             "inputs": exact_inputs,
             "idempotency_key": key,
+            "principal_id": principal,
             "execution_context": execution_context,
         }
         if trigger_binding is not None:
             identity["trigger_binding"] = copy.deepcopy(dict(trigger_binding))
         invocation_digest = _digest_json(identity)
         run_id = "automated-run-" + invocation_digest.split(":", 1)[1][:32]
+        contract = {
+            "schema_version": TRIGGER_INVOCATION_SCHEMA_VERSION,
+            **copy.deepcopy(identity),
+            "process_profile": process_profile,
+            "step_profiles": exact_step_profiles,
+            "one_run_profile": one_run_profile,
+            "style_profile": style_profile,
+            "invocation_digest": invocation_digest,
+            "run_id": run_id,
+        }
+        return definition, contract
+
+    def _begin_prepared_run(
+        self,
+        contract: Mapping[str, Any],
+        *,
+        expected_bound_run_id: str | None,
+    ) -> dict[str, Any]:
+        required = {
+            "schema_version", "definition_ref", "project_ref", "inputs",
+            "idempotency_key", "principal_id", "execution_context",
+            "process_profile", "step_profiles", "one_run_profile",
+            "style_profile", "invocation_digest", "run_id",
+        }
+        optional = {"trigger_binding"}
+        if (
+            not isinstance(contract, Mapping)
+            or set(contract) - required - optional
+            or required - set(contract)
+            or contract.get("schema_version") != TRIGGER_INVOCATION_SCHEMA_VERSION
+        ):
+            raise ProcessAutomationIntegrityError(
+                "persisted Trigger invocation contract is malformed"
+            )
+        if contract.get("trigger_binding") is None and "trigger_binding" in contract:
+            raise ProcessAutomationIntegrityError("Trigger binding cannot be null")
+        definition, recomputed = self._prepare_run_contract(
+            definition_ref=contract["definition_ref"],
+            project_ref=str(contract["project_ref"]),
+            inputs=contract["inputs"],
+            idempotency_key=str(contract["idempotency_key"]),
+            principal_id=str(contract["principal_id"]),
+            process_profile=contract["process_profile"],
+            step_profiles=contract["step_profiles"],
+            one_run_profile=contract["one_run_profile"],
+            style_profile=contract["style_profile"],
+            trigger_binding=contract.get("trigger_binding"),
+        )
+        if dict(contract) != recomputed:
+            raise ProcessAutomationIntegrityError(
+                "persisted Trigger invocation no longer authenticates"
+            )
+        return self._create_prepared_run(
+            definition, recomputed,
+            expected_bound_run_id=expected_bound_run_id,
+        )
+
+    def _create_prepared_run(
+        self,
+        definition: Mapping[str, Any],
+        recomputed: Mapping[str, Any],
+        *,
+        expected_bound_run_id: str | None,
+    ) -> dict[str, Any]:
+        run_id = recomputed["run_id"]
+        if expected_bound_run_id is not None and expected_bound_run_id != run_id:
+            raise ProcessAutomationIntegrityError(
+                "firing claim is already bound to another Run identity"
+            )
         metadata = definition["output_schema"]["x-ora-process"]
+        input_bindings = {
+            key: copy.deepcopy(recomputed[key])
+            for key in (
+                "definition_ref", "project_ref", "inputs", "idempotency_key",
+                "principal_id", "execution_context", "invocation_digest",
+            )
+        }
+        if "trigger_binding" in recomputed:
+            input_bindings["trigger_binding"] = copy.deepcopy(
+                recomputed["trigger_binding"]
+            )
         run = _process_run(
             definition,
             run_id=run_id,
             entrypoint="automated_process",
-            principal_id=principal,
-            input_bindings={
-                **identity,
-                "invocation_digest": invocation_digest,
-            },
+            principal_id=str(recomputed["principal_id"]),
+            input_bindings=input_bindings,
             max_attempts=int(metadata["max_attempts"]),
         )
         try:

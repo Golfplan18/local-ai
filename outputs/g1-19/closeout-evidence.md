@@ -8,21 +8,21 @@ Vault baseline after recording G1.20 acceptance: `2fb6a18ca6`
 
 Environment: macOS 26.5.2, Python 3.14.3, Node v22.22.3
 
-Gate state: implemented for independent judgment. G1.21 remains unauthorized, G1.17 remains user-deferred, and the hardware/Windows tranche remains deferred.
+Gate state: revised after independent G1.19 findings and resubmitted for judgment. G1.21 remains unauthorized, G1.17 remains user-deferred, and the hardware/Windows tranche remains deferred.
 
 ## Scope and architecture disposition
 
 G1.19 extends the accepted G1.18 Process authoring/execution service and G1.20 Run/Inspector telemetry. A Trigger is a separate, immutable activation object over one exact registered Process Definition. It is not a second Process engine and it does not embed scheduling into the Process Definition.
 
-Every admitted firing enters `ProcessAutomationService.begin_triggered_run()` and the ordinary governed Process Run. The Trigger ledger binds the exact trigger definition, cause identity, input projection, project, principal, definition version/digest, firing, and Run. The resulting Run, checkpoint, evidence, failure/recovery, final review, and Inspector contracts remain the accepted G1.1/G1.18/G1.20 contracts.
+Every admitted firing enters `ProcessAutomationService.begin_triggered_run()` and the ordinary governed Process Run. The Trigger ledger persists the entire prepared invocation contract: exact trigger definition, cause identity, resolved inputs, Project, Principal, definition version/digest, Model/Style selections and resolved context, deterministic idempotency key, firing, invocation digest, and Run ID. The execution boundary accepts only the firing binding, rederives the complete contract from that claim, and returns the same Run on replay. It accepts no caller-authored invocation fields. The resulting Run, checkpoint, evidence, failure/recovery, final review, and Inspector contracts remain the accepted G1.1/G1.18/G1.20 contracts.
 
 The shipped boundary includes:
 
 - immutable Trigger definitions plus a digest-chained state/firing ledger, independent definition anchors, lock-scoped atomic writes, tamper detection, and restart repair only for an exact interrupted creation;
 - draft-first construction and exact Principal review before activation; registration alone grants no firing authority;
-- stale-safe pause, resume, and retirement using exact state digests;
+- draft-only activation plus stale-safe pause, resume, and retirement using exact state digests; exact lifecycle retries resolve their original application before stale-state rejection, while cross-action/key collisions fail closed;
 - deterministic source-bound firing identities and exactly-once claims for manual requests, file identities, completed framework Runs, Project milestone snapshots, and local-calendar time windows;
-- file-change events dispatched by the existing runtime event path, exact completed-Run framework events, manual firing, and app-resident time evaluation;
+- file-change events dispatched by the existing runtime event path, exact completed-Run framework events, manual firing, and one-shot app-resident time wakes;
 - Project milestone snapshots bound to the Project Matrix and bounded standard-privacy Project Dialogue material, excluding private and stealth Dialogues, with the resulting Run stopping at its declared human checkpoint;
 - direct and transitive framework-trigger causal-cycle rejection;
 - restart-safe recovery of claimed, Run-bound, and scheduled incomplete firings without changing their deterministic Run identity;
@@ -37,7 +37,7 @@ Time-based triggers are allowed only when passage of time is itself the declared
 2. why the calendar boundary is semantically necessary; and
 3. what bounded work the firing admits.
 
-The implementation performs no polling sweep and installs no cron, LaunchAgent, or operating-system scheduled task. The in-app clock exists only while Ora is running, recalculates named-IANA-zone local calendar windows across DST, and applies the declared `run_once` or `skip` missed-window policy. It expressly makes no 24/7 delivery promise.
+The implementation performs no polling sweep and installs no cron, LaunchAgent, or operating-system scheduled task. Startup performs one declared missed-window reconciliation. The in-app clock then calculates one authenticated future named-zone occurrence and blocks until that instant or an activation/lifecycle change signals recalculation. After a due firing it calculates the next one-shot wake; with no active time Trigger it waits indefinitely and performs no periodic work. Local calendar boundaries are recalculated across DST, and the declared `run_once` or `skip` missed-window policy remains explicit. It expressly makes no 24/7 delivery promise.
 
 ## Held boundaries
 
@@ -52,19 +52,23 @@ The focused suite proves:
 
 1. A Trigger cannot activate implicitly or without an exact Principal review bound to the immutable spec and activation request.
 2. Concurrent creation/claim delivery yields one identity; interrupted exact creation repairs safely; a conflicting retry fails closed.
-3. Generic automation entry cannot forge a triggered Run. Only the Trigger Manager's authenticated, current firing path can call the dedicated service entry.
-4. Manual retry produces the same firing and Run, while a distinct manual request produces a distinct firing.
-5. File dispatch binds the actual path, digest, size, modification identity, and bounded excerpt. Replayed bytes do not refire; changed bytes do.
-6. Framework completion derives one exact completed, accepted source Run and exact accepted result. Out-of-band labels cannot produce a completion firing.
-7. Direct and multi-Trigger causal loops are rejected before activation or firing.
-8. Project milestone material is content-bound and excludes private/stealth Dialogue content.
-9. Spring-forward and fall-back windows resolve in the named local zone; missed-window `run_once` and `skip` policies remain distinct.
-10. A time Trigger without the full written Runtime-Principle justification is rejected.
-11. Inbound channel activation is rejected pending G1.21.
-12. Definition, anchor, ledger, stale lifecycle, failed admission, and restart recovery boundaries fail closed without duplicate effects.
-13. Public endpoints expose only exact draft/lifecycle/manual actions; filesystem, framework, time, and inbound sources cannot be caller-forged through a generic dispatch endpoint.
-14. Browser reload, exact review, stale rejection, manual Run creation, time intermittency, and G1.21 disclosure are mechanically covered.
-15. Vault canonicals and runtime mirrors remain body-identical, while tracker, program, and Registry record submission rather than premature acceptance.
+3. Generic automation entry cannot forge a triggered Run. The dedicated entry accepts only a firing binding and derives inputs, definition, Project, Principal, profiles, deterministic key, invocation digest, and Run ID from the authenticated persisted claim.
+4. Reusing a valid claim with attacker-supplied content, Principal, or idempotency key is rejected before mutation; exact replay returns the one original Run without appending Run records.
+5. Activation cannot release a paused Trigger. Pause/Resume/retire must use the exact lifecycle route, and an exact retry returns the original lifecycle state even after a later transition.
+6. A file event selected before Pause but reaching the claim lock afterward creates no claim and no Run. The immutable spec and current active lifecycle are reauthenticated atomically before every new claim.
+7. Manual retry produces the same firing and Run, while a distinct manual request produces a distinct firing.
+8. File dispatch binds the actual path, digest, size, modification identity, and bounded excerpt. Replayed bytes do not refire; changed bytes do.
+9. Framework completion derives one exact completed, accepted source Run and exact accepted result. Out-of-band labels cannot produce a completion firing.
+10. Direct and multi-Trigger causal loops are rejected before activation or firing.
+11. Project milestone material is content-bound and excludes private/stealth Dialogue content.
+12. Spring-forward and fall-back windows resolve in the named local zone; missed-window `run_once` and `skip` policies remain distinct.
+13. The clock performs one startup reconciliation, one recalculated future wake, and no interval scan; actual time activation and lifecycle changes signal recalculation.
+14. A time Trigger without the full written Runtime-Principle justification is rejected.
+15. Inbound channel activation is rejected pending G1.21.
+16. Definition, anchor, ledger, stale lifecycle, failed admission, and restart recovery boundaries fail closed without duplicate effects.
+17. Public endpoints expose only exact draft/lifecycle/manual actions; filesystem, framework, time, and inbound sources cannot be caller-forged through a generic dispatch endpoint.
+18. Browser reload, exact review, stale rejection, manual Run creation, one-shot time intermittency, and G1.21 disclosure are mechanically covered.
+19. Vault canonicals and runtime mirrors remain body-identical, while tracker, program, and Registry record submission rather than premature acceptance.
 
 ## Exact command provenance
 
@@ -77,7 +81,7 @@ cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
   orchestrator/tests/test_g1_19_process_triggers.py \
   --tb=short
-# 19 passed in 3.77s; exit 0
+# 23 passed; exit 0
 ```
 
 ### Focused and adjacent Python matrix
@@ -93,7 +97,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_6_process_library_lifecycle.py \
   orchestrator/tests/test_g1_19_process_triggers.py \
   --tb=short
-# 160 passed, 85 subtests passed in 31.58s; exit 0
+# 164 passed, 85 subtests passed in 33.22s; exit 0
 ```
 
 ### Browser DOM matrix

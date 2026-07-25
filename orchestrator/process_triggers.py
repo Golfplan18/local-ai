@@ -39,6 +39,8 @@ _ID_RE = re.compile(r"[a-z0-9][a-z0-9._:-]{0,255}")
 _DIGEST_RE = re.compile(r"sha256:[0-9a-f]{64}")
 _process_lock = threading.RLock()
 _lock_state = threading.local()
+_clock_events_lock = threading.Lock()
+_clock_wake_events: set[threading.Event] = set()
 
 
 class ProcessTriggerError(RuntimeError):
@@ -326,6 +328,32 @@ def _occurrences(schedule: Mapping[str, Any], after: datetime, through: datetime
     return sorted(found)
 
 
+def _next_occurrence(schedule: Mapping[str, Any], after: datetime) -> datetime:
+    """Return one exact future calendar occurrence without interval scanning."""
+
+    zone = ZoneInfo(str(schedule["timezone"]))
+    start = date.fromisoformat(str(schedule["start_date"]))
+    day = max(start, after.astimezone(zone).date())
+    # Daily resolves on the current or following day; weekly within seven.
+    for _ in range(8):
+        selected = schedule["cadence"] == "daily" or day.weekday() in schedule["weekdays"]
+        if selected:
+            instant = _local_occurrence(day, str(schedule["local_time"]), zone)
+            if instant > after:
+                return instant
+        day += timedelta(days=1)
+    raise ProcessTriggerIntegrityError("schedule has no resolvable future occurrence")
+
+
+def _notify_clock_change() -> None:
+    """Wake app-owned one-shot clocks after a durable lifecycle change."""
+
+    with _clock_events_lock:
+        events = tuple(_clock_wake_events)
+    for event in events:
+        event.set()
+
+
 class ProcessTriggerService:
     """Authenticated Trigger definitions, lifecycle, dispatch, and recovery."""
 
@@ -556,9 +584,39 @@ class ProcessTriggerService:
                 if row["event_type"] == "firing_claimed"
                 and row["details"].get("firing_id") == binding["firing_id"]
             ]
-            if len(matches) != 1 or matches[0]["details"].get("source_digest") != binding["source_digest"]:
+            if len(matches) != 1:
                 raise ProcessTriggerIntegrityError("trigger Run lacks one authenticated firing claim")
-        return copy.deepcopy(dict(binding))
+            claim = matches[0]["details"]
+            if (
+                claim.get("spec_digest") != digest
+                or claim.get("source_digest") != binding["source_digest"]
+            ):
+                raise ProcessTriggerIntegrityError("trigger Run firing identity does not authenticate")
+            contract = claim.get("invocation_contract")
+            if (
+                not isinstance(contract, Mapping)
+                or contract.get("trigger_binding") != dict(binding)
+                or claim.get("invocation_contract_digest") != _digest_json(contract)
+                or claim.get("invocation_idempotency_key") != contract.get("idempotency_key")
+                or claim.get("inputs") != contract.get("inputs")
+                or claim.get("inputs_digest") != _digest_json(contract.get("inputs"))
+            ):
+                raise ProcessTriggerIntegrityError(
+                    "firing claim does not authenticate one complete invocation"
+                )
+            bound_records = [
+                row for row in self._load_records(spec["trigger_id"])
+                if row["event_type"] == "firing_run_bound"
+                and row["details"].get("firing_id") == binding["firing_id"]
+            ]
+            bound_ids = {str(row["details"].get("run_id") or "") for row in bound_records}
+            if len(bound_ids) > 1 or (bound_ids and bound_ids != {contract.get("run_id")}):
+                raise ProcessTriggerIntegrityError("firing claim is bound to conflicting Runs")
+            bound_run_id = next(iter(bound_ids), None)
+        return {
+            "invocation_contract": copy.deepcopy(dict(contract)),
+            "bound_run_id": bound_run_id,
+        }
 
     def create(self, raw: Mapping[str, Any]) -> dict[str, Any]:
         spec = normalize_trigger_spec(raw)
@@ -631,16 +689,23 @@ class ProcessTriggerService:
         with self._locked():
             spec, digest = self._load_spec(trigger_id)
             records = self._load_records(trigger_id)
-            firings = self._firing_views(records)
-            body = {
-                "spec": spec,
-                "spec_digest": digest,
-                "status": self._lifecycle(records),
-                "activation_request": self._activation_request(spec, digest),
-                "firings": firings,
-                "last_record_digest": records[-1]["record_digest"] if records else None,
-            }
-            return {**body, "state_digest": _digest_json(body)}
+            return self._state_view(spec, digest, records)
+
+    def _state_view(
+        self,
+        spec: Mapping[str, Any],
+        digest: str,
+        records: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        body = {
+            "spec": copy.deepcopy(dict(spec)),
+            "spec_digest": digest,
+            "status": self._lifecycle(records),
+            "activation_request": self._activation_request(spec, digest),
+            "firings": self._firing_views(records),
+            "last_record_digest": records[-1]["record_digest"] if records else None,
+        }
+        return {**body, "state_digest": _digest_json(body)}
 
     def list(self) -> dict[str, Any]:
         items = []
@@ -662,6 +727,7 @@ class ProcessTriggerService:
         approval: Mapping[str, Any], idempotency_key: str,
     ) -> dict[str, Any]:
         key = _safe_id(idempotency_key, "idempotency_key")
+        notify_time = False
         with self._locked():
             spec, digest = self._load_spec(trigger_id)
             if expected_spec_digest != digest:
@@ -683,7 +749,7 @@ class ProcessTriggerService:
                 if matches[-1]["details"].get("spec_digest") != digest:
                     raise ProcessTriggerIntegrityError("activation idempotency identity collided")
                 return self.get(trigger_id)
-            if self._lifecycle(records) not in {"draft", "paused"}:
+            if self._lifecycle(records) != "draft":
                 raise ProcessTriggerConflict("Trigger is not activatable")
             self._append(trigger_id, "trigger_activated", {
                 "spec_digest": digest,
@@ -691,21 +757,43 @@ class ProcessTriggerService:
                 "approved_by": spec["principal_id"],
                 "idempotency_key": key,
             })
-            return self.get(trigger_id)
+            result = self.get(trigger_id)
+            notify_time = spec["kind"] == "time"
+        if notify_time:
+            _notify_clock_change()
+        return result
 
     def lifecycle(self, trigger_id: str, *, action: str, expected_state_digest: str, idempotency_key: str) -> dict[str, Any]:
         key = _safe_id(idempotency_key, "idempotency_key")
         if action not in {"pause", "resume", "retire"}:
             raise ProcessTriggerInputRequired("Trigger lifecycle action is invalid")
+        notify_time = False
         with self._locked():
-            state = self.get(trigger_id)
-            if state["state_digest"] != expected_state_digest:
-                raise ProcessTriggerConflict("Trigger state changed before lifecycle action")
+            spec, digest = self._load_spec(trigger_id)
             records = self._load_records(trigger_id)
             event_type = f"trigger_{action}d" if action != "pause" else "trigger_paused"
-            matches = [row for row in records if row["event_type"] == event_type and row["details"].get("idempotency_key") == key]
+            control_types = {
+                "trigger_activated", "trigger_paused", "trigger_resumed", "trigger_retired",
+            }
+            matches = [
+                row for row in records
+                if row["event_type"] in control_types
+                and row["details"].get("idempotency_key") == key
+            ]
             if matches:
-                return self.get(trigger_id)
+                match = matches[-1]
+                if (
+                    len(matches) != 1
+                    or match["event_type"] != event_type
+                    or match["details"].get("request_state_digest") != expected_state_digest
+                ):
+                    raise ProcessTriggerIntegrityError("lifecycle idempotency identity collided")
+                # Return the exact first application, even if later lifecycle
+                # records make the caller's original state digest stale.
+                return self._state_view(spec, digest, records[: match["sequence"]])
+            state = self._state_view(spec, digest, records)
+            if state["state_digest"] != expected_state_digest:
+                raise ProcessTriggerConflict("Trigger state changed before lifecycle action")
             allowed = {"pause": {"active"}, "resume": {"paused"}, "retire": {"draft", "active", "paused"}}
             if state["status"] not in allowed[action]:
                 raise ProcessTriggerConflict(f"Trigger cannot {action} from {state['status']}")
@@ -713,8 +801,13 @@ class ProcessTriggerService:
                 "spec_digest": state["spec_digest"],
                 "principal_id": state["spec"]["principal_id"],
                 "idempotency_key": key,
+                "request_state_digest": expected_state_digest,
             })
-            return self.get(trigger_id)
+            result = self.get(trigger_id)
+            notify_time = spec["kind"] == "time"
+        if notify_time:
+            _notify_clock_change()
+        return result
 
     @staticmethod
     def _firing_views(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -824,55 +917,89 @@ class ProcessTriggerService:
         return inputs
 
     def _claim(self, spec: Mapping[str, Any], digest: str, source: Mapping[str, Any]) -> tuple[dict[str, Any], bool]:
-        source_body = copy.deepcopy(dict(source))
-        if source_body.get("kind") in {"time", "milestone_check_in"}:
-            source_identity = {
-                "kind": source_body["kind"],
-                "scheduled_for": source_body.get("scheduled_for"),
+        with self._locked():
+            current_spec, current_digest = self._load_spec(str(spec["trigger_id"]))
+            if current_digest != digest or current_spec != dict(spec):
+                raise ProcessTriggerConflict("Trigger changed before firing claim")
+            source_body = copy.deepcopy(dict(source))
+            if source_body.get("kind") in {"time", "milestone_check_in"}:
+                source_identity = {
+                    "kind": source_body["kind"],
+                    "scheduled_for": source_body.get("scheduled_for"),
+                }
+            elif source_body.get("kind") == "file_change":
+                source_identity = {
+                    "kind": "file_change",
+                    "changed_artifacts": source_body.get("changed_artifacts"),
+                }
+            elif source_body.get("kind") == "manual":
+                source_identity = {
+                    key: source_body.get(key) for key in ("kind", "request_id", "requested_by")
+                }
+            elif source_body.get("kind") == "framework_completion":
+                source_identity = {
+                    key: source_body.get(key) for key in (
+                        "kind", "source_run_id", "source_definition_ref",
+                        "source_accept_record_digest", "source_result",
+                    )
+                }
+            else:
+                source_identity = source_body
+            source_digest = _digest_json(source_identity)
+            firing_id = "firing-" + _digest_json({
+                "trigger_id": current_spec["trigger_id"],
+                "spec_digest": current_digest,
+                "source_digest": source_digest,
+            }).split(":", 1)[1][:40]
+            records = self._load_records(current_spec["trigger_id"])
+            existing = [
+                row for row in self._firing_views(records)
+                if row["firing_id"] == firing_id
+            ]
+            if existing:
+                if existing[0].get("source_digest") != source_digest:
+                    raise ProcessTriggerIntegrityError("firing identity collided")
+                return existing[0], False
+            # Dispatchers may have observed active before waiting for this lock.
+            # The claim boundary is the authoritative last pre-admission check.
+            if self._lifecycle(records) != "active":
+                raise ProcessTriggerConflict("new firing requires a currently active Trigger")
+            inputs = self._resolve_inputs(current_spec, source_body)
+            invocation_key = "trigger-" + hashlib.sha256(firing_id.encode("utf-8")).hexdigest()
+            trigger_binding = {
+                "schema_version": TRIGGER_SCHEMA_VERSION,
+                "trigger_id": current_spec["trigger_id"],
+                "spec_digest": current_digest,
+                "firing_id": firing_id,
+                "source_digest": source_digest,
             }
-        elif source_body.get("kind") == "file_change":
-            source_identity = {
-                "kind": "file_change",
-                "changed_artifacts": source_body.get("changed_artifacts"),
+            invocation_contract = self.automation.prepare_triggered_invocation(
+                definition_ref=current_spec["definition_ref"],
+                project_ref=current_spec["project_ref"],
+                inputs=inputs,
+                idempotency_key=invocation_key,
+                principal_id=current_spec["principal_id"],
+                process_profile=current_spec.get("process_profile"),
+                step_profiles=current_spec.get("step_profiles"),
+                style_profile=current_spec.get("style_profile"),
+                trigger_binding=trigger_binding,
+            )
+            details = {
+                "firing_id": firing_id,
+                "spec_digest": current_digest,
+                "source": source_body,
+                "source_digest": source_digest,
+                "observed_source_digest": _digest_json(source_body),
+                "inputs": inputs,
+                "inputs_digest": _digest_json(inputs),
+                "invocation_idempotency_key": invocation_key,
+                "invocation_contract": invocation_contract,
+                "invocation_contract_digest": _digest_json(invocation_contract),
             }
-        elif source_body.get("kind") == "manual":
-            source_identity = {
-                key: source_body.get(key) for key in ("kind", "request_id", "requested_by")
-            }
-        elif source_body.get("kind") == "framework_completion":
-            source_identity = {
-                key: source_body.get(key) for key in (
-                    "kind", "source_run_id", "source_definition_ref",
-                    "source_accept_record_digest", "source_result",
-                )
-            }
-        else:
-            source_identity = source_body
-        source_digest = _digest_json(source_identity)
-        firing_id = "firing-" + _digest_json({
-            "trigger_id": spec["trigger_id"], "spec_digest": digest, "source_digest": source_digest,
-        }).split(":", 1)[1][:40]
-        existing = [row for row in self._firing_views(self._load_records(spec["trigger_id"])) if row["firing_id"] == firing_id]
-        if existing:
-            if existing[0].get("source_digest") != source_digest:
-                raise ProcessTriggerIntegrityError("firing identity collided")
-            return existing[0], False
-        inputs = self._resolve_inputs(spec, source_body)
-        invocation_key = "trigger-" + hashlib.sha256(firing_id.encode("utf-8")).hexdigest()
-        details = {
-            "firing_id": firing_id,
-            "spec_digest": digest,
-            "source": source_body,
-            "source_digest": source_digest,
-            "observed_source_digest": _digest_json(source_body),
-            "inputs": inputs,
-            "inputs_digest": _digest_json(inputs),
-            "invocation_idempotency_key": invocation_key,
-        }
-        if source_body.get("scheduled_for"):
-            details["scheduled_for"] = source_body["scheduled_for"]
-        self._append(spec["trigger_id"], "firing_claimed", details)
-        return {**details, "status": "claimed"}, True
+            if source_body.get("scheduled_for"):
+                details["scheduled_for"] = source_body["scheduled_for"]
+            self._append(current_spec["trigger_id"], "firing_claimed", details)
+            return {**details, "status": "claimed"}, True
 
     def _continue_firing(self, spec: Mapping[str, Any], digest: str, firing: Mapping[str, Any]) -> dict[str, Any]:
         trigger_binding = {
@@ -884,16 +1011,12 @@ class ProcessTriggerService:
         }
         try:
             state = self.automation.begin_triggered_run(
-                definition_ref=spec["definition_ref"],
-                project_ref=spec["project_ref"],
-                inputs=firing["inputs"],
-                idempotency_key=firing["invocation_idempotency_key"],
-                principal_id=spec["principal_id"],
-                process_profile=spec.get("process_profile"),
-                step_profiles=spec.get("step_profiles"),
-                style_profile=spec.get("style_profile"),
                 trigger_binding=trigger_binding,
             )
+            if state["run_id"] != firing["invocation_contract"]["run_id"]:
+                raise ProcessTriggerIntegrityError(
+                    "authenticated firing returned another Run identity"
+                )
             with self._locked():
                 views = {row["firing_id"]: row for row in self._firing_views(self._load_records(spec["trigger_id"]))}
                 current = views[firing["firing_id"]]
@@ -902,6 +1025,7 @@ class ProcessTriggerService:
                         **{key: copy.deepcopy(firing[key]) for key in (
                             "firing_id", "spec_digest", "source_digest", "invocation_idempotency_key",
                         )},
+                        "invocation_contract_digest": firing["invocation_contract_digest"],
                         "run_id": state["run_id"],
                         "run_state_digest": state["state_digest"],
                     })
@@ -1050,6 +1174,16 @@ class ProcessTriggerService:
             overdue = (current - selected).total_seconds() > int(schedule["grace_seconds"])
             if overdue and schedule["missed_policy"] == "skip":
                 with self._locked():
+                    current_spec, current_digest = self._load_spec(spec["trigger_id"])
+                    current_records = self._load_records(spec["trigger_id"])
+                    if (
+                        current_spec != spec
+                        or current_digest != state["spec_digest"]
+                        or self._lifecycle(current_records) != "active"
+                    ):
+                        raise ProcessTriggerConflict(
+                            "time Trigger changed before missed-window disposition"
+                        )
                     self._append(spec["trigger_id"], "firing_skipped", {
                         "firing_id": "skip-" + hashlib.sha256(f"{spec['trigger_id']}:{selected.isoformat()}".encode()).hexdigest()[:40],
                         "spec_digest": state["spec_digest"],
@@ -1084,6 +1218,17 @@ class ProcessTriggerService:
             except Exception as exc:
                 failures.append({"trigger_id": spec["trigger_id"], "error": str(exc)})
         return {"observed_at": current.isoformat().replace("+00:00", "Z"), "fired": fired, "skipped": skipped, "failures": failures}
+
+    def next_wake_at(self, *, now: str | None = None) -> datetime | None:
+        """Resolve the next authenticated active calendar occurrence once."""
+
+        current = _parse_instant(now or self._now(), "now")
+        candidates = [
+            _next_occurrence(state["spec"]["condition"]["schedule"], current)
+            for state in self.list()["triggers"]
+            if state["status"] == "active" and state["spec"]["kind"] == "time"
+        ]
+        return min(candidates) if candidates else None
 
     def recover_incomplete(self) -> dict[str, Any]:
         recovered, failures = [], []
@@ -1170,34 +1315,70 @@ class ProcessTriggerService:
 
 
 class ProcessTriggerClock:
-    """Intermittent app-owned clock; it never installs an OS fallback."""
+    """Intermittent app-owned one-shot clock with no interval scan."""
 
-    def __init__(self, service: ProcessTriggerService | None = None, *, interval_seconds: float = 30.0):
+    def __init__(self, service: ProcessTriggerService | None = None):
         self.service = service or ProcessTriggerService()
-        self.interval_seconds = max(1.0, float(interval_seconds))
         self._stop = threading.Event()
+        self._wake = threading.Event()
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
-        self.service.recover_incomplete()
         self._stop.clear()
+        self._wake.clear()
+        with _clock_events_lock:
+            _clock_wake_events.add(self._wake)
+        try:
+            self.service.recover_incomplete()
+            # One declared startup reconciliation handles missed windows. It
+            # is not repeated until an authenticated future occurrence is due.
+            self.service.run_due()
+        except Exception:
+            with _clock_events_lock:
+                _clock_wake_events.discard(self._wake)
+            raise
         self._thread = threading.Thread(target=self._run, name="ora-process-trigger-clock", daemon=True)
         self._thread.start()
 
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
-                self.service.run_due()
-            except Exception as exc:  # health is visible; the loop cannot forge success
+                target = self.service.next_wake_at()
+            except Exception as exc:
                 print(f"[process-trigger-clock] {type(exc).__name__}: {exc}")
-            self._stop.wait(self.interval_seconds)
+                # A storage/integrity failure cannot arm a guessed retry. Wait
+                # for an authenticated lifecycle change or shutdown.
+                self._wake.wait()
+                self._wake.clear()
+                continue
+            if target is None:
+                self._wake.wait()
+                self._wake.clear()
+                continue
+            delay = max(
+                0.0,
+                (target - datetime.now(timezone.utc)).total_seconds(),
+            )
+            recalculated = self._wake.wait(delay)
+            self._wake.clear()
+            if self._stop.is_set():
+                break
+            if recalculated:
+                continue
+            try:
+                self.service.run_due()
+            except Exception as exc:  # health is visible; the wake cannot forge success
+                print(f"[process-trigger-clock] {type(exc).__name__}: {exc}")
 
     def stop(self) -> None:
         self._stop.set()
+        self._wake.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=min(5.0, self.interval_seconds + 1.0))
+            self._thread.join(timeout=5.0)
+        with _clock_events_lock:
+            _clock_wake_events.discard(self._wake)
 
 
 __all__ = [

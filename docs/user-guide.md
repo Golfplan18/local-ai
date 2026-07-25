@@ -404,7 +404,7 @@ Open **Processes → Trigger Manager** only after the reusable Process is availa
 
 Every accepted firing first persists one source-bound claim, then creates one deterministic governed Process Run through the same automation service described above. Concurrent delivery, browser retry, and restart recovery return that same firing/Run identity. A firing that reaches a human checkpoint remains visible as waiting rather than being called complete. Select its history row to open the Run Inspector.
 
-Time Triggers are deliberately intermittent: they act **only while Ora is running** and install no cron, launchd, scheduled sweep, or 24/7 fallback. Choose **Run once after Ora returns** to coalesce missed calendar windows into one current Run, or **Skip missed window** to record the omission without a Run. Cleanup, backlog processing, and work that already has an exact runtime event are not valid reasons to use time.
+Time Triggers are deliberately intermittent: they act **only while Ora is running** and install no cron, launchd, scheduled sweep, polling loop, or 24/7 fallback. At startup Ora reconciles missed windows once, then schedules one in-app wake for the next authenticated calendar occurrence. Activation, Pause, Resume, and retirement recalculate that wake; with no active time Trigger, no periodic work runs. Choose **Run once after Ora returns** to coalesce missed calendar windows into one current Run, or **Skip missed window** to record the omission without a Run. Cleanup, backlog processing, and work that already has an exact runtime event are not valid reasons to use time.
 
 ### Find and invoke a reusable Process Definition
 
@@ -570,6 +570,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Corrected G1.19 guidance after gate review: one firing claim now supplies the complete invocation and one Run; Pause is reauthenticated at the claim boundary with retry-idempotent lifecycle controls; time uses startup reconciliation plus recalculated one-shot wakes rather than interval polling.
 - **2026-07-24** — Added G1.19 Trigger Manager guidance: immutable drafts and exact activation review, manual/file/framework/time causes, Project milestone snapshots, source-bound exactly-once Run creation, pause/resume/retire semantics, restart recovery, explicit app intermittency, and the G1.21 inbound-channel boundary.
 - **2026-07-24** — Corrected the remaining G1.20 boundaries: rejected/stale Pause requests leave the Run untouched, accepted checkpoint-plus-pause state commits atomically, and quality starts derive their exact current source, subject, and Model Profile binding inside the runtime rather than trusting caller fields.
 - **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.

@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -182,6 +183,40 @@ class ProcessTriggerTests(ProcessAutomationFixture):
             "awaiting_human_checkpoint",
         )
 
+    def test_one_claim_derives_every_invocation_field_and_binds_one_run(self):
+        active = self.create_and_activate(self.spec())
+        source = {
+            "kind": "manual", "request_id": "request:bound-contract",
+            "requested_by": "principal:user",
+        }
+        firing, created = self.trigger_service._claim(
+            active["spec"], active["spec_digest"], source
+        )
+        self.assertTrue(created)
+        contract = firing["invocation_contract"]
+        binding = contract["trigger_binding"]
+        first = self.service.begin_triggered_run(trigger_binding=binding)
+        records_before = self.runtime.load_records(first["run_id"])
+
+        with self.assertRaises(TypeError):
+            self.service.begin_triggered_run(
+                trigger_binding=binding,
+                inputs={**self.inputs(), "email_body": "attacker substitution"},
+                principal_id="principal:attacker",
+                idempotency_key="attacker:key",
+            )
+        replay = self.service.begin_triggered_run(trigger_binding=binding)
+        self.assertEqual(replay["run_id"], contract["run_id"])
+        self.assertEqual(replay["run_id"], first["run_id"])
+        self.assertEqual(self.runtime.load_records(first["run_id"]), records_before)
+        run = self.runtime.load_run(first["run_id"])
+        self.assertEqual(run["input_bindings"]["principal_id"], "principal:user")
+        self.assertEqual(run["input_bindings"]["inputs"], self.inputs())
+        self.assertEqual(
+            run["input_bindings"]["idempotency_key"],
+            contract["idempotency_key"],
+        )
+
     def test_generic_service_cannot_forge_trigger_bound_run(self):
         forged = automation.ProcessAutomationService(
             runtime=self.runtime,
@@ -194,11 +229,6 @@ class ProcessTriggerTests(ProcessAutomationFixture):
             automation.ProcessAutomationIntegrityError, "authenticated Trigger Manager"
         ):
             forged.begin_triggered_run(
-                definition_ref=self.definition_ref,
-                project_ref="ora",
-                inputs=self.inputs(),
-                idempotency_key="forged:trigger",
-                principal_id="principal:user",
                 trigger_binding={
                     "schema_version": triggers.TRIGGER_SCHEMA_VERSION,
                     "trigger_id": "email-manual",
@@ -247,10 +277,36 @@ class ProcessTriggerTests(ProcessAutomationFixture):
             idempotency_key="pause:1",
         )
         self.assertEqual(paused["status"], "paused")
+        replay = self.trigger_service.lifecycle(
+            "email-manual", action="pause", expected_state_digest=active["state_digest"],
+            idempotency_key="pause:1",
+        )
+        self.assertEqual(replay["state_digest"], paused["state_digest"])
+        with self.assertRaisesRegex(triggers.ProcessTriggerConflict, "not activatable"):
+            self.trigger_service.activate(
+                "email-manual", expected_spec_digest=paused["spec_digest"],
+                approval={
+                    "decision": "approve_activation",
+                    "principal_id": "principal:user",
+                    "request_digest": paused["activation_request"]["request_digest"],
+                },
+                idempotency_key="activate:paused-bypass",
+            )
         with self.assertRaises(triggers.ProcessTriggerConflict):
             self.trigger_service.fire_manual(
                 "email-manual", request_id="request:paused", requested_by="principal:user"
             )
+        resumed = self.trigger_service.lifecycle(
+            "email-manual", action="resume", expected_state_digest=paused["state_digest"],
+            idempotency_key="resume:1",
+        )
+        self.assertEqual(resumed["status"], "active")
+        historical = self.trigger_service.lifecycle(
+            "email-manual", action="pause", expected_state_digest=active["state_digest"],
+            idempotency_key="pause:1",
+        )
+        self.assertEqual(historical["state_digest"], paused["state_digest"])
+        self.assertEqual(self.trigger_service.get("email-manual")["status"], "active")
 
     def test_inbound_contract_exists_but_cannot_activate_before_g1_21(self):
         spec = self.spec(
@@ -293,6 +349,43 @@ class ProcessTriggerTests(ProcessAutomationFixture):
         self.assertEqual(len(changed["fired"]), 1)
         claims = [row for row in self.trigger_service._load_records("file-email") if row["event_type"] == "firing_claimed"]
         self.assertEqual(len(claims), 2)
+
+    def test_pause_wins_after_event_selection_but_before_claim(self):
+        watched = self.root / "pause-race"
+        watched.mkdir()
+        target = watched / "message.md"
+        target.write_text("selected before pause", encoding="utf-8")
+        spec = self.spec(
+            "file-pause-race", kind="event",
+            condition={"event_type": "file_change", "path_selectors": [str(watched)]},
+        )
+        active = self.create_and_activate(spec)
+        capture = self.trigger_service._file_identity
+        paused_once = False
+
+        def pause_after_selection(path):
+            nonlocal paused_once
+            if not paused_once:
+                paused_once = True
+                self.trigger_service.lifecycle(
+                    "file-pause-race", action="pause",
+                    expected_state_digest=active["state_digest"],
+                    idempotency_key="pause:event-race",
+                )
+            return capture(path)
+
+        with mock.patch.object(
+            self.trigger_service, "_file_identity", side_effect=pause_after_selection,
+        ):
+            result = self.trigger_service.dispatch_paths([str(target)])
+        self.assertEqual(result["fired"], [])
+        self.assertEqual(len(result["failures"]), 1)
+        self.assertEqual(self.trigger_service.get("file-pause-race")["status"], "paused")
+        claims = [
+            row for row in self.trigger_service._load_records("file-pause-race")
+            if row["event_type"] == "firing_claimed"
+        ]
+        self.assertEqual(claims, [])
 
     def test_time_requires_written_justification_and_preserves_named_timezone(self):
         condition = {
@@ -341,6 +434,71 @@ class ProcessTriggerTests(ProcessAutomationFixture):
         run_once = self.trigger_service.get("time-run-once")
         self.assertEqual(run_once["firings"][-1]["status"], "waiting")
         self.assertEqual(self.trigger_service.get("time-skip")["firings"][-1]["status"], "skipped")
+
+    def test_clock_uses_recalculated_one_shot_wakes_without_interval_polling(self):
+        class FakeService:
+            def __init__(self):
+                self.recover_calls = 0
+                self.due_calls = 0
+                self.target = None
+                self.second_due = threading.Event()
+
+            def recover_incomplete(self):
+                self.recover_calls += 1
+                return {"recovered": [], "failures": []}
+
+            def run_due(self):
+                self.due_calls += 1
+                if self.due_calls == 2:
+                    self.second_due.set()
+                return {"fired": [], "skipped": [], "failures": []}
+
+            def next_wake_at(self):
+                return self.target if self.due_calls == 1 else None
+
+        source = inspect.getsource(triggers.ProcessTriggerClock._run)
+        self.assertNotIn("interval_seconds", source)
+        self.assertIn("next_wake_at", source)
+        fake = FakeService()
+        clock = triggers.ProcessTriggerClock(fake)
+        clock.start()
+        self.assertEqual(fake.recover_calls, 1)
+        self.assertEqual(fake.due_calls, 1)
+        fake.target = datetime.now(timezone.utc) + timedelta(milliseconds=40)
+        triggers._notify_clock_change()
+        self.assertTrue(fake.second_due.wait(timeout=1.0))
+        clock.stop()
+        self.assertEqual(fake.due_calls, 2)
+
+    def test_time_activation_and_lifecycle_recalculate_one_shot_wake(self):
+        schedule = {
+            "timezone": "UTC", "local_time": "10:00", "cadence": "daily",
+            "weekdays": [], "start_date": "2026-07-20",
+            "missed_policy": "skip", "grace_seconds": 30,
+        }
+        spec = self.spec(
+            "time-wake", kind="time",
+            condition={"event_type": "time", "schedule": schedule},
+        )
+        spec["runtime_principle"] = copy.deepcopy(RUNTIME_PRINCIPLE)
+        draft = self.trigger_service.create(spec)
+        with mock.patch.object(triggers, "_notify_clock_change") as notify:
+            active = self.trigger_service.activate(
+                "time-wake", expected_spec_digest=draft["spec_digest"],
+                approval={
+                    "decision": "approve_activation",
+                    "principal_id": "principal:user",
+                    "request_digest": draft["activation_request"]["request_digest"],
+                },
+                idempotency_key="activate:time-wake",
+            )
+            paused = self.trigger_service.lifecycle(
+                "time-wake", action="pause",
+                expected_state_digest=active["state_digest"],
+                idempotency_key="pause:time-wake",
+            )
+        self.assertEqual(paused["status"], "paused")
+        self.assertEqual(notify.call_count, 2)
 
     def test_definition_and_ledger_tampering_fail_listing_closed(self):
         self.trigger_service.create(self.spec())
@@ -501,7 +659,8 @@ class TestProcessTriggerDocumentation:
             "### Deploy and manage a Trigger",
             "Processes → Trigger Manager",
             "only while Ora is running",
-            "no cron, launchd, scheduled sweep, or 24/7 fallback",
+            "no cron, launchd, scheduled sweep, polling loop, or 24/7 fallback",
+            "with no active time Trigger, no periodic work runs",
             "cannot be activated until G1.21",
             "A firing that reaches a human checkpoint remains visible as waiting",
         ):
@@ -513,6 +672,8 @@ class TestProcessTriggerDocumentation:
             "Exactly-once firing and governed Run join",
             "Runtime-Principle disposition for time",
             "installs no OS task",
+            "one startup missed-window reconciliation",
+            "performs no periodic scan",
             "adds no second Process engine, telemetry database, Persona/MindSpec precedence",
         ):
             assert token in technical
