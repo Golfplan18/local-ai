@@ -420,6 +420,18 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertEqual(
             self._fake_keyring.get_password("ora", "openai-api-key"), "abc",
         )
+        from orchestrator import system_protection
+        terminal_pair = system_protection.verify_audit()[-2:]
+        self.assertEqual(
+            [record["event_type"] for record in terminal_pair],
+            ["protected_action_started", "protected_action_failed"],
+        )
+        self.assertEqual(
+            terminal_pair[0]["request"]["action"], "credential_delete",
+        )
+        self.assertEqual(
+            terminal_pair[1]["execution_id"], terminal_pair[0]["execution_id"],
+        )
 
     def test_api_key_delete_unknown_provider_returns_400(self):
         resp = self.client.delete("/api/settings/api-key/notreal")

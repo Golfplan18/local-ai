@@ -1,14 +1,20 @@
 # G1.22A Closeout Evidence — Pre-Channel System Protection
 
-Date: 2026-07-24
+Date: 2026-07-25
 
 Runtime baseline: `f7eb86a43f2c9c8970ea780908dc85abf83d29f2`
 
 Vault baseline after recording G1.19 acceptance: `ac6a5236f1879bfce6591e7af7661c5dfbf7bea2`
 
+Security correction implementation: `8f1cd4289680cf092716e87521414449e4e33483`
+
+Reconciled vault record: `7e1f04fd4e049c9ddd0b930840cf192b3f5bcfc2`
+
 Environment: macOS 26.5.2, Python 3.14.3
 
 Gate state: pre-channel tranche implemented for independent judgment. G1.21 and G1.22B remain held; full G1.22 is not claimed.
+
+Correction state: five confirmed security findings and the credential-deletion correctness defect are corrected and submitted for independent re-judgment. This packet does not claim Gate acceptance.
 
 ## Scope and architecture disposition
 
@@ -40,6 +46,18 @@ The accepted Programming repository operations remain governed by their exact G1
 | Credentials | Provider keyring registry usually used, with residual inline/arbitrary aliases | Registry-declared environment/keyring coordinates only; direct mutation receipted; retrieval unavailable; legacy noncanonical Replicate alias removed |
 | Audit | Existing `actions.jsonl` sink without this binding | HMAC-authenticated action/approval/pre-state/start/post-state/terminal chain in the existing sink |
 
+## Security correction disposition
+
+The 2026-07-25 correction closes the scan's five reproduced paths at their shared authority boundaries:
+
+1. `execution-approvals.json` and its authentication key are inaccessible through generic file operations. The versioned store is authenticated as one HMAC-SHA-256 object, so pending requests, tokens, standing allows, and their mutable use/binding state cannot be substituted independently.
+2. The exact normalized selectors and authenticated pre-state are captured before review and included in the pending request and token identity. Execution-time mismatch invalidates the token before any start receipt or effect.
+3. Execution/task-gate resolution authenticates the exact linked Dialogue and Principal before calling a resolver, consuming authority, removing the queue entry, or marking the discussion resolved. Direct slash resolution applies the same rule.
+4. Project registration hashes and parses one immutable manifest snapshot, carries its identity through protected review, persists it in the pointer, and revalidates it on registration, list, resolution, tool/slash discovery, and invocation. Changed and legacy-unbound manifests fail closed until explicit re-registration.
+5. Governed external-effect classification uses authoritative `effect_type`/`scope_kind` metadata rather than operation spelling. The accepted governed Run contract remains the review adapter—exact approved grant, selector scope, checkpoint, and receipt—so no parallel Process or approval engine is created.
+
+Credential deletion now propagates backend and verification failures. A successful terminal receipt is available only after exact keyring state proves `present=false`; a failed deletion records failure rather than manufacturing absence.
+
 ## Adversarial proofs
 
 The focused suite proves:
@@ -48,10 +66,12 @@ The focused suite proves:
 2. direct Process authority cannot grant protected effects while the issued Programming mutation contract remains available;
 3. unknown tools, unknown shell effects, opaque slash/server actions, and legacy bulk apply paths fail closed;
 4. one exact reviewed effect succeeds once with authenticated pre-state, write-ahead record, active execution scope, post-state, and one terminal record;
-5. forged queue records, direct token minting, changed arguments, stale approval, cross-scope use, replay, fabricated execution starts, and fabricated state identities fail without mutation;
-6. record substitution, adjacent-digest rewriting, corrupt approval storage, audit-write failure, and concurrent terminal completion fail closed;
-7. direct credential store/delete cannot bypass the active receipt; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
-8. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
+5. forged/unsigned/MAC-altered queue and approval state, direct token minting, changed arguments, changed selectors or pre-state, cross-Dialogue/Principal/scope use, replay, fabricated execution starts, and fabricated state identities fail without mutation;
+6. registered-manifest mutation, registration-time drift, and legacy unbound pointers remain unavailable until reviewed re-registration;
+7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational;
+8. record substitution, adjacent-digest rewriting, corrupt approval storage, audit-write failure, and concurrent terminal completion fail closed;
+9. direct credential store/delete cannot bypass the active receipt; failed deletion propagates and cannot report success; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
+10. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
 
 ## Exact command provenance
 
@@ -64,7 +84,26 @@ cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
   orchestrator/tests/test_g1_22a_system_protection.py \
   --tb=short
-# 23 passed; exit 0
+# 30 passed; exit 0
+```
+
+### Security correction reproducer matrix
+
+```bash
+cd /Users/oracle/ora-msi-central-routing
+python3 -m pytest -q \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestPolicyFloor::test_semantic_external_effects_require_review_independent_of_name \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestApprovalAndReceipts::test_approval_store_and_authentication_key_are_not_generic_files \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestApprovalAndReceipts::test_signed_approval_store_tampering_fails_closed \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestApprovalAndReceipts::test_reviewed_selector_and_pre_state_cannot_be_rebound \
+  orchestrator/tests/test_resolution_chain.py::TestContinueResolution::test_execution_gate_rejects_foreign_dialogue_without_mutation \
+  orchestrator/tests/test_resolution_chain.py::TestContinueResolution::test_execution_gate_rejects_foreign_principal_without_mutation \
+  orchestrator/tests/test_slash_commands.py::TestApproveDenyCommand::test_gate_approval_rejects_foreign_dialogue_and_principal \
+  orchestrator/tests/test_project_registry.py::TestPointerFileLifecycle::test_manifest_mutation_invalidates_get_list_and_invocation \
+  orchestrator/tests/test_project_registry.py::TestPointerFileLifecycle::test_registration_rejects_review_to_write_manifest_drift \
+  orchestrator/tests/test_user_settings.py::SettingsEndpointTests::test_api_key_delete_backend_failure_is_not_reported_as_success \
+  --tb=short
+# 10 passed; exit 0
 ```
 
 ### Protection and direct-boundary matrix
@@ -78,8 +117,11 @@ python3 -m pytest -q \
   orchestrator/tests/test_user_settings.py \
   orchestrator/tests/test_retrieval_rebuild.py \
   orchestrator/tests/test_risk_gate.py \
+  orchestrator/tests/test_resolution_chain.py \
+  orchestrator/tests/test_slash_commands.py \
+  orchestrator/tests/test_project_registry.py \
   --tb=short
-# 252 passed; exit 0
+# 446 passed, 5 subtests passed; exit 0
 ```
 
 ### Adjacent runtime matrix
@@ -96,7 +138,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_project_registry.py \
   orchestrator/tests/test_governed_process_runtime.py \
   --tb=short
-# 347 passed, 69 subtests passed; exit 0
+# 359 passed, 69 subtests passed; exit 0
 ```
 
 ### Provider and credential regression matrix
@@ -109,7 +151,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_sync_endpoints_vendor_auth.py \
   orchestrator/tests/test_user_settings.py \
   --tb=short
-# 103 passed; exit 0
+# 104 passed; exit 0
 ```
 
 ### Compound server-state regression matrix
@@ -124,7 +166,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_conversation_lifecycle.py \
   orchestrator/tests/test_project_registry.py \
   --tb=short
-# 249 passed, 9 subtests passed; exit 0
+# 253 passed, 9 subtests passed; exit 0
 ```
 
 ### Compilation
@@ -139,13 +181,19 @@ python3 -m py_compile \
   orchestrator/dispatcher.py \
   orchestrator/risk_gate.py \
   orchestrator/governed_process_runtime.py \
+  orchestrator/resolution_chain.py \
   orchestrator/slash_commands.py \
   orchestrator/user_settings.py \
   orchestrator/tools/bash_execute.py \
   orchestrator/tools/credential_store.py \
+  orchestrator/tools/file_ops.py \
   orchestrator/boot.py \
   server/server.py \
-  orchestrator/tests/test_g1_22a_system_protection.py
+  orchestrator/tests/test_g1_22a_system_protection.py \
+  orchestrator/tests/test_project_registry.py \
+  orchestrator/tests/test_resolution_chain.py \
+  orchestrator/tests/test_slash_commands.py \
+  orchestrator/tests/test_user_settings.py
 # exit 0
 ```
 
@@ -167,9 +215,19 @@ git diff f7eb86a43f2c9c8970ea780908dc85abf83d29f2..HEAD --check
 # exit 0
 
 cd /Users/oracle/Documents/vault
-git diff ac6a5236f1879bfce6591e7af7661c5dfbf7bea2..HEAD --check
+git diff ac6a5236f1879bfce6591e7af7661c5dfbf7bea2..8a29cb4b51 --check
+# exit 0
+
+cd /Users/oracle/Documents/vault
+git diff 63ad64b3d5..7e1f04fd4e --check
 # exit 0
 ```
+
+The vault uses two exact G1.22A ranges because unrelated MSI commit
+`63ad64b3d5` was independently added between the initial G1.22A record and
+the security-correction record. That commit and the unrelated vault working
+tree are outside this Gate's scope and were not modified, staged, or claimed
+by these checks.
 
 ## Held boundaries and limitations
 
