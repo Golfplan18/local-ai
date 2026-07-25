@@ -117,7 +117,12 @@ def is_runtime_command(user_input: str) -> bool:
         return False
 
 
-def run_runtime_command(user_input: str) -> str:
+def run_runtime_command(
+    user_input: str,
+    *,
+    conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     """Parse and execute a runtime slash command.
 
     Returns a user-facing markdown string. Errors are caught and surfaced
@@ -166,6 +171,18 @@ def run_runtime_command(user_input: str) -> str:
             return proj_match_text
         return f"[Unknown slash command: {cmd}]"
     try:
+        if cmd == "/approve":
+            return _cmd_approve(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
+        if cmd == "/deny":
+            return _cmd_deny(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
+        if cmd in {"/maintenance", "/maint"}:
+            return _cmd_maintenance(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
         return handler(args)
     except Exception as exc:
         return f"[Unexpected error in {cmd}: {exc}]"
@@ -274,7 +291,10 @@ def _registry_categories() -> list[str]:
     })
 
 
-def _cmd_maintenance(args: list[str]) -> str:
+def _cmd_maintenance(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     """Grouped maintenance command aliases."""
     if not args or args[0].lower() in ("help", "-h", "--help"):
         return _cmd_help(["maintenance"])
@@ -288,9 +308,13 @@ def _cmd_maintenance(args: list[str]) -> str:
     if sub in ("queue", "status"):
         return _cmd_queue(rest)
     if sub == "approve":
-        return _cmd_approve(rest)
+        return _cmd_approve(
+            rest, conversation_id=conversation_id, principal_id=principal_id,
+        )
     if sub == "deny":
-        return _cmd_deny(rest)
+        return _cmd_deny(
+            rest, conversation_id=conversation_id, principal_id=principal_id,
+        )
     if sub == "cleaning":
         return _cmd_cleaning(rest)
     if sub == "news":
@@ -746,8 +770,10 @@ def _cmd_queue(args: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
-                                 reason: str = "") -> str | None:
+def _maybe_resolve_gate_entry_at(
+    idx: int, approve: bool, reason: str = "", *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str | None:
     """Kind-dispatch for /approve and /deny: Execution Review gate entries
     (kind=execution_gate) resolve through tool_events, never through
     redefinition_handler. Returns None for non-gate entries."""
@@ -769,6 +795,23 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
         _kind = rec.get("kind")
         if _kind not in ("execution_gate", "task_gate"):
             return None
+        event = rec.get("event") or {}
+        expected_dialogue = str(
+            rec.get("discussion_conversation_id")
+            or event.get("conversation_id")
+            or ""
+        )
+        expected_principal = str(event.get("principal_id") or "principal:user")
+        if (
+            not conversation_id
+            or conversation_id != expected_dialogue
+            or not principal_id
+            or principal_id != expected_principal
+        ):
+            return (
+                "[This Dialogue and Principal do not own the selected queue "
+                "entry; the entry was not changed.]"
+            )
         if _kind == "task_gate":
             # Execution Review Phase 2: irreversible-tier task hold.
             try:
@@ -776,14 +819,21 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
             except ImportError:
                 from orchestrator import risk_gate
             message = risk_gate.resolve_task_gate_entry(rec, approve=approve,
-                                                        reason=reason)
+                                                        reason=reason,
+                                                        principal_id=principal_id)
         else:
             try:
                 import tool_events
             except ImportError:
                 from orchestrator import tool_events
             message = tool_events.resolve_gate_entry(rec, approve=approve,
-                                                     reason=reason)
+                                                     reason=reason,
+                                                     principal_id=principal_id)
+        if message.startswith((
+            "[Unauthenticated execution-gate entry",
+            "[Task-gate Principal mismatch",
+        )):
+            return message
         with file_lock(queue_path):
             with open(queue_path) as f:
                 current = [l for l in f if l.strip()]
@@ -822,7 +872,10 @@ def _authority_request_type_at(idx: int) -> str | None:
         return None
 
 
-def _cmd_approve(args: list[str]) -> str:
+def _cmd_approve(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     if not args:
         return (
             "**Usage:** `/approve <index> [<proposed-definition>]`\n\n"
@@ -836,7 +889,10 @@ def _cmd_approve(args: list[str]) -> str:
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     proposed = " ".join(args[1:]) if len(args) > 1 else None
 
-    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=True)
+    gate_msg = _maybe_resolve_gate_entry_at(
+        idx, approve=True, conversation_id=conversation_id,
+        principal_id=principal_id,
+    )
     if gate_msg is not None:
         return gate_msg
 
@@ -860,7 +916,10 @@ def _cmd_approve(args: list[str]) -> str:
     )
 
 
-def _cmd_deny(args: list[str]) -> str:
+def _cmd_deny(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     if not args:
         return (
             "**Usage:** `/deny <index> [<reason>]`\n\n"
@@ -882,7 +941,10 @@ def _cmd_deny(args: list[str]) -> str:
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     reason = " ".join(args[1:]) if len(args) > 1 else ""
 
-    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=False, reason=reason)
+    gate_msg = _maybe_resolve_gate_entry_at(
+        idx, approve=False, reason=reason,
+        conversation_id=conversation_id, principal_id=principal_id,
+    )
     if gate_msg is not None:
         return gate_msg
 

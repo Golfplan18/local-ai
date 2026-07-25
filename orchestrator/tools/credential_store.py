@@ -51,12 +51,33 @@ def credential_store(action: str, service: str, username: str, value: str = None
             )
             try:
                 keyring.delete_password(service, username)
-            except Exception:
-                pass
+            except Exception as exc:
+                try:
+                    remaining = keyring.get_password(service, username)
+                except Exception as verify_exc:
+                    raise RuntimeError(
+                        f"credential deletion could not be verified: {verify_exc}"
+                    ) from exc
+                if remaining is not None:
+                    raise RuntimeError(
+                        "credential deletion failed; credential remains present"
+                    ) from exc
+            try:
+                remaining = keyring.get_password(service, username)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"credential deletion could not be verified: {exc}"
+                ) from exc
+            if remaining is not None:
+                raise RuntimeError(
+                    "credential deletion failed; credential remains present"
+                )
             return f"Credential absent: {service}/{username}"
         elif action == "retrieve":
             return "Error: credential values are unavailable on model/tool surfaces"
         else:
             return f"Unknown action: {action}. Use 'store', 'status', or 'delete'."
     except Exception as e:
+        if str(action or "").strip().lower() == "delete":
+            raise
         return f"Credential error: {str(e)}"

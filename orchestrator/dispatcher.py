@@ -751,6 +751,29 @@ def dispatch(tool_name: str, parameters: dict,
         axes["mutability"] = "irreversible"
         axes["protection_policy"] = protection_policy.policy_code
 
+    protection_pre_state = []
+    protection_approval_binding = None
+    if protection_policy.outcome == "review":
+        try:
+            for selector in protection_policy.selectors:
+                protection_pre_state.append(
+                    system_protection.capture_selector_identity(selector)
+                )
+            review_request, review_digest = (
+                system_protection.prepare_protection_request(
+                    protection_policy,
+                    params_digest=system_protection.params_digest(parameters),
+                    pre_state=protection_pre_state,
+                    surface="tool_dispatcher",
+                )
+            )
+            protection_approval_binding = {
+                "request_digest": review_digest,
+                "selectors": review_request["selectors"],
+            }
+        except system_protection.SystemProtectionError as exc:
+            return f"[SYSTEM PROTECTION — {exc}]"
+
     # BLOCKED bash patterns short-circuit exactly as before.
     if classification and classification["level"] == "blocked":
         duration = int((time.time() - start) * 1000)
@@ -803,6 +826,7 @@ def dispatch(tool_name: str, parameters: dict,
         description=str(description or "")[:200],
         model_facing=True, interactive_approver=interactive,
         queue_extra=queue_extra,
+        approval_binding=protection_approval_binding,
     )
     if not decision.allowed:
         duration = int((time.time() - start) * 1000)
@@ -814,12 +838,7 @@ def dispatch(tool_name: str, parameters: dict,
     if protection_policy.outcome == "review":
         if not decision.approval_id:
             return "[SYSTEM PROTECTION — protected action lacks consumed approval identity]"
-        pre_state = []
         try:
-            for selector in protection_policy.selectors:
-                pre_state.append(
-                    system_protection.capture_selector_identity(selector)
-                )
             protection_execution = system_protection.begin_execution(
                 protection_policy,
                 approval_id=decision.approval_id,
@@ -828,7 +847,7 @@ def dispatch(tool_name: str, parameters: dict,
                     tool_name, parameters,
                 ),
                 params_digest=system_protection.params_digest(parameters),
-                pre_state=pre_state,
+                pre_state=protection_pre_state,
                 surface="tool_dispatcher",
             )
         except system_protection.SystemProtectionError as exc:

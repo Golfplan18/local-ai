@@ -3646,10 +3646,16 @@ class GovernedProcessRuntime:
         protection = _system_protection.classify_governed_action(
             action, selectors, effect_type=effect_type, scope_kind=scope_kind,
         )
-        if protection.outcome != "allow":
+        if protection.outcome == "deny":
             raise AuthorityDeniedError(
                 f"system protection reserves action {action!r}: {protection.reason}"
             )
+        # A semantic external effect is classified as review-required without
+        # relying on operation spelling.  For a governed Process Run, the
+        # already-approved authority contract is that review boundary; the
+        # checks below still require its exact grant, selector scope, current
+        # graph node where applicable, checkpoint, and receipt.  This composes
+        # the accepted Process kernel instead of minting a parallel approval.
         run = self.load_run(run_id)
         self._require_mutable_run(run, f"authorize action {action}")
         definition = self.load_definition(run_id)

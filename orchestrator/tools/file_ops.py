@@ -31,6 +31,14 @@ def _validate_path(path: str) -> tuple[bool, str]:
     # Block deny-listed patterns — separator-normalized + case-folded so Windows
     # backslash paths still match the '/'-shaped patterns (W1 class, §7).
     path_match = path.replace("\\", "/").lower()
+    approval_authority = {
+        _rp.norm_key(_rp.DATA_DIR / "execution-approvals.json").replace("\\", "/"),
+        _rp.norm_key(
+            _rp.DATA_DIR / "execution-approvals.json.auth.key"
+        ).replace("\\", "/"),
+    }
+    if _rp.norm_key(path).replace("\\", "/") in approval_authority:
+        return False, "Access denied to approval authority state"
     for pattern in DENY_LIST:
         if pattern in path_match:
             return False, f"Access denied to sensitive path: {pattern}"

@@ -420,6 +420,51 @@ class TestApproveDenyCommand(unittest.TestCase):
         with open(self.queue_path) as f:
             self.assertNotEqual(f.read().strip(), "")
 
+    def _write_execution_gate(self):
+        record = {
+            "id": "gate-owned",
+            "kind": "execution_gate",
+            "discussion_conversation_id": "dialogue:owner",
+            "event": {
+                "action": "delete_file", "args_hash": "sha256:test",
+                "conversation_id": "dialogue:origin",
+                "principal_id": "principal:owner",
+            },
+        }
+        with open(self.queue_path, "w") as stream:
+            stream.write(json.dumps(record) + "\n")
+
+    def test_gate_approval_rejects_foreign_dialogue_and_principal(self):
+        self._write_execution_gate()
+        with mock.patch("tool_events.resolve_gate_entry") as resolver:
+            foreign_dialogue = run_runtime_command(
+                "/approve 0", conversation_id="dialogue:foreign",
+                principal_id="principal:owner",
+            )
+            foreign_principal = run_runtime_command(
+                "/approve 0", conversation_id="dialogue:owner",
+                principal_id="principal:attacker",
+            )
+        resolver.assert_not_called()
+        self.assertIn("do not own", foreign_dialogue)
+        self.assertIn("do not own", foreign_principal)
+        with open(self.queue_path) as stream:
+            self.assertNotEqual(stream.read().strip(), "")
+
+    def test_gate_approval_exact_owner_resolves_and_removes(self):
+        self._write_execution_gate()
+        with mock.patch(
+            "tool_events.resolve_gate_entry", return_value="approved",
+        ) as resolver:
+            result = run_runtime_command(
+                "/approve 0", conversation_id="dialogue:owner",
+                principal_id="principal:owner",
+            )
+        resolver.assert_called_once()
+        self.assertEqual(result, "approved")
+        with open(self.queue_path) as stream:
+            self.assertEqual(stream.read().strip(), "")
+
 
 # ---------- Generic dispatcher behavior ----------
 

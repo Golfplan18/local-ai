@@ -289,7 +289,8 @@ class TestTierAliases(unittest.TestCase):
 
 class TestTaskGateCopy(unittest.TestCase):
     def test_approval_uses_dialogue_terminology(self):
-        record = {"event": {"fingerprint": "fp", "conversation_id": "d1"}}
+        record = {"event": {"fingerprint": "fp", "conversation_id": "d1",
+                            "principal_id": "principal:user"}}
         with mock.patch.object(rg, "grant_task_token"):
             reply = rg.resolve_task_gate_entry(record, approve=True)
         self.assertIn("origin Dialogue", reply)
@@ -1017,7 +1018,8 @@ class TestAssignAndResolve(unittest.TestCase):
     def test_resolve_approve_mints_token(self):
         fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
         rec = {"kind": "task_gate",
-               "event": {"fingerprint": fp, "conversation_id": "c1"}}
+               "event": {"fingerprint": fp, "conversation_id": "c1",
+                         "principal_id": "principal:user"}}
         msg = rg.resolve_task_gate_entry(rec, approve=True)
         self.assertIn("approved", msg.lower())
         self.assertTrue(rg.has_valid_task_token(fp, "c1"))
@@ -1025,7 +1027,8 @@ class TestAssignAndResolve(unittest.TestCase):
     def test_resolve_deny_records_no_token(self):
         fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
         rec = {"kind": "task_gate",
-               "event": {"fingerprint": fp, "conversation_id": "c1"}}
+               "event": {"fingerprint": fp, "conversation_id": "c1",
+                         "principal_id": "principal:user"}}
         with mock.patch.object(rg._te, "record"):
             msg = rg.resolve_task_gate_entry(rec, approve=False, reason="nope")
         self.assertIn("denied", msg.lower())

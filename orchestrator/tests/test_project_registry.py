@@ -504,6 +504,80 @@ class TestPointerFileLifecycle(unittest.TestCase):
         data = json.loads(pf.read_text())
         self.assertEqual(data["nexus"], "myproject")
         self.assertEqual(Path(data["root"]).resolve(), self.proj_root.resolve())
+        self.assertEqual(
+            data["manifest_sha256"],
+            pr.load_project_snapshot(self.proj_root).manifest_sha256,
+        )
+
+    def test_manifest_mutation_invalidates_get_list_and_invocation(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        manifest = self.proj_root / pr.MANIFEST_FILENAME
+        manifest.write_text(
+            json.dumps({
+                "nexus": "myproject", "name": "Substituted",
+                "tools": [{"name": "forged", "command": ["true"]}],
+            }),
+            encoding="utf-8",
+        )
+
+        self.assertIsNone(
+            pr.get_project("myproject", pointer_dir=self.pointer_dir)
+        )
+        self.assertEqual(pr.list_projects(pointer_dir=self.pointer_dir), [])
+        with self.assertRaises(pr.ProjectNotFoundError):
+            pr.invoke_project_tool(
+                "myproject", "forged", pointer_dir=self.pointer_dir,
+            )
+
+    def test_explicit_reregistration_rebinds_changed_manifest(self):
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
+        pointer = Path(self.pointer_dir) / "myproject.json"
+        before = json.loads(pointer.read_text(encoding="utf-8"))[
+            "manifest_sha256"
+        ]
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps({"nexus": "myproject", "name": "Reviewed revision"}),
+            encoding="utf-8",
+        )
+
+        rebound = pr.register_project(
+            self.proj_root, pointer_dir=self.pointer_dir,
+        )
+        after = json.loads(pointer.read_text(encoding="utf-8"))[
+            "manifest_sha256"
+        ]
+        self.assertNotEqual(before, after)
+        self.assertEqual(rebound.name, "Reviewed revision")
+        self.assertEqual(
+            pr.get_project("myproject", pointer_dir=self.pointer_dir).name,
+            "Reviewed revision",
+        )
+
+    def test_registration_rejects_review_to_write_manifest_drift(self):
+        snapshot = pr.load_project_snapshot(self.proj_root)
+        (self.proj_root / pr.MANIFEST_FILENAME).write_text(
+            json.dumps({"nexus": "myproject", "name": "Changed after review"}),
+            encoding="utf-8",
+        )
+        with self.assertRaises(pr.ManifestError) as ctx:
+            pr.register_project(
+                self.proj_root, pointer_dir=self.pointer_dir,
+                expected_manifest_sha256=snapshot.manifest_sha256,
+            )
+        self.assertIn("changed after authorization", str(ctx.exception))
+        self.assertFalse((Path(self.pointer_dir) / "myproject.json").exists())
+
+    def test_legacy_unbound_pointer_fails_closed(self):
+        os.makedirs(self.pointer_dir, exist_ok=True)
+        pointer = Path(self.pointer_dir) / "myproject.json"
+        pointer.write_text(json.dumps({
+            "nexus": "myproject", "root": str(self.proj_root),
+        }), encoding="utf-8")
+
+        self.assertIsNone(
+            pr.get_project("myproject", pointer_dir=self.pointer_dir)
+        )
+        self.assertEqual(pr.list_projects(pointer_dir=self.pointer_dir), [])
 
     def test_register_rejects_invalid_manifest(self):
         bad = Path(self.tmpdir) / "bad"
@@ -748,6 +822,7 @@ class TestToolInvocation(unittest.TestCase):
             "name": "echo-env", "command": ["python3", "tools/echo_env.py"],
         })
         (self.proj_root / pr.MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
+        pr.register_project(self.proj_root, pointer_dir=self.pointer_dir)
         result = pr.invoke_project_tool(
             "myproject", "echo-env", extra_env={"TEST_VAR": "hello"},
             pointer_dir=self.pointer_dir,

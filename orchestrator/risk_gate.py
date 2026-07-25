@@ -783,6 +783,7 @@ def write_task_gate_card(risk_tier: str, fingerprint: str,
                 "risk_tier": risk_tier,
                 "fingerprint": fingerprint,
                 "conversation_id": conversation_id,
+                "principal_id": "principal:user",
                 "surface": surface,
                 "description": description,
                 # Persist the framework resume payload on the card so the
@@ -805,7 +806,8 @@ def write_task_gate_card(risk_tier: str, fingerprint: str,
 
 
 def resolve_task_gate_entry(record_dict: dict, approve: bool,
-                            reason: str = "") -> str:
+                            reason: str = "", *,
+                            principal_id: str = "principal:user") -> str:
     """Commit handler for kind='task_gate' cards (parallels
     tool_events.resolve_gate_entry). Approve → mint the task token; deny →
     record the blocked decision. Called by resolution_chain / slash_commands
@@ -813,6 +815,8 @@ def resolve_task_gate_entry(record_dict: dict, approve: bool,
     event = record_dict.get("event", {})
     fp = event.get("fingerprint", "")
     conv = event.get("conversation_id")
+    if event.get("principal_id") != principal_id:
+        return "[Task-gate Principal mismatch; the held task was not changed.]"
     if approve:
         grant_task_token(fp, conv, granted_via="paused-queue")
         return ("✅ Task approved. Re-send the task (or say 'continue') in the "

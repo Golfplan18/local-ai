@@ -4120,7 +4120,14 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         yield _sse("pipeline_stage", stage="runtime_command",
                    label="Running runtime command…")
         try:
-            yield _sse("response", text=run_runtime_command(user_input))
+            yield _sse(
+                "response",
+                text=run_runtime_command(
+                    user_input,
+                    conversation_id=panel_id if panel_id != "main" else "",
+                    principal_id="principal:user",
+                ),
+            )
         except Exception as exc:
             turn_state["status"] = "error"
             yield _sse("error", text=f"Runtime command error: {exc}")
@@ -4151,6 +4158,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 resolution_ctx, history or [], user_input,
                 conversation_id=panel_id if panel_id != "main" else "",
                 config=config,
+                principal_id="principal:user",
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -7741,24 +7749,40 @@ def api_projects_register():
     protection = None
     try:
         from orchestrator import system_protection as _sp
-        project = _pr.load_project_at(root)
+        manifest_snapshot = _pr.load_project_snapshot(root)
+        project = manifest_snapshot.project
         pointer = _pr._pointer_path(project.nexus)
         manifest = Path(project.root) / _pr.MANIFEST_FILENAME
-        pre_state = _sp.capture_path_identity(pointer)
+        pointer_state = _sp.capture_path_identity(pointer)
+        manifest_state = _sp.capture_path_identity(manifest)
+        if manifest_state.get("content_digest") != manifest_snapshot.manifest_sha256:
+            raise _pr.ManifestError(
+                "project manifest changed while its registration identity was captured"
+            )
+        selectors = [
+            _sp.path_selector(pointer), _sp.path_selector(manifest),
+        ]
+        pre_state = [pointer_state, manifest_state]
         protection = _sp.authorize_server_action(
-            "project_register", selectors=[_sp.path_selector(pointer)],
+            "project_register", selectors=selectors,
             params={
                 "nexus": project.nexus, "root": str(project.root),
-                "manifest_identity": _sp.capture_path_identity(manifest),
+                "manifest_sha256": manifest_snapshot.manifest_sha256,
             },
-            pre_state=[pre_state],
+            pre_state=pre_state,
         )
         with _sp.protected_effect(protection):
-            project = _pr.register_project(root)
+            project = _pr.register_project(
+                root,
+                expected_manifest_sha256=manifest_snapshot.manifest_sha256,
+            )
         _sp.complete_execution(
             protection, ok=True,
             result={"registered": project.nexus, "root": str(project.root)},
-            post_state=[_sp.capture_path_identity(pointer)],
+            post_state=[
+                _sp.capture_path_identity(pointer),
+                _sp.capture_path_identity(manifest),
+            ],
         )
     except Exception as exc:
         try:
@@ -7768,7 +7792,10 @@ def api_projects_register():
             if protection is not None:
                 _sp.complete_execution(
                     protection, ok=False, result={"error": type(exc).__name__},
-                    post_state=[_sp.capture_path_identity(pointer)],
+                    post_state=[
+                        _sp.capture_path_identity(pointer),
+                        _sp.capture_path_identity(manifest),
+                    ],
                 )
         except Exception as receipt_error:
             return _system_protection_error_response(receipt_error)

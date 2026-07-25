@@ -45,7 +45,7 @@ SCHEMA_VERSION = 2
 AUDIT_KIND = "system_protection"
 DEFERRED_CHANNEL_ACTIONS = frozenset({
     "telegram_send", "telegram_receive", "email_send", "email_receive",
-    "channel_send", "channel_receive", "agent_mask_apply",
+    "channel_send", "channel_receive", "send_message", "agent_mask_apply",
 })
 SERVER_ACTION_SELECTOR_PREFIXES = {
     "credential_store": ("credential:ora/",),
@@ -231,6 +231,8 @@ def _critical_exact_files() -> set[str]:
     files = {
         root / "orchestrator" / "boot.py",
         root / "orchestrator" / "system_protection.py",
+        Path(_rp.DATA_DIR) / "execution-approvals.json",
+        Path(_rp.DATA_DIR) / "execution-approvals.json.auth.key",
         root / "config" / "routing-config.json",
         root / "config" / "capabilities.json",
         root / "config" / "mcp-servers.json",
@@ -414,6 +416,15 @@ def _selector_policy(selectors: Sequence[str], *, dedicated_action: bool,
                 if name == "vector_store_root" and action == "vector_store_rebuild":
                     continue
                 return "deny", f"whole {name.replace('_', ' ')} destruction is prohibited"
+        # Approval authority and its authentication key are unavailable to
+        # every generic file surface, including reads.  Other exact critical
+        # files retain the existing mutation-only rule.
+        approval_authority = {
+            _path_key(Path(_rp.DATA_DIR) / "execution-approvals.json"),
+            _path_key(Path(_rp.DATA_DIR) / "execution-approvals.json.auth.key"),
+        }
+        if candidate in approval_authority and not dedicated_action:
+            return "deny", "approval authority state requires its dedicated runtime path"
         if mutating and candidate in exact_files and not dedicated_action:
             return "deny", "critical boot/authority state requires a dedicated governed update path"
         if mutating and not dedicated_action:
@@ -627,20 +638,36 @@ def classify_governed_action(
         ))
         for selector in exact_selectors
     )
-    reserved = (
+    hard_reserved = (
         reserved_selector
         or normalized in DEFERRED_CHANNEL_ACTIONS
         or normalized.startswith(("telegram_", "email_", "channel_"))
         or bool(_CREDENTIAL_WORDS.search(normalized))
         or bool(_DESTRUCTIVE_WORDS.search(normalized))
         or bool(_SELF_MODIFY_WORDS.search(normalized))
-        or bool(_OUTBOUND_WORDS.search(normalized))
     )
-    if selector_outcome == "deny" or reserved:
+    if selector_outcome == "deny" or hard_reserved:
         return PolicyDecision(
             "deny",
             selector_reason or "generic Process authority cannot grant system-protected effects",
             normalized, exact_selectors, "process-system-reserved",
+        )
+    semantic_external = (
+        str(scope_kind or "").strip().lower() == "external"
+        or str(effect_type or "").strip().lower().startswith("external")
+    )
+    if semantic_external:
+        return PolicyDecision(
+            "review",
+            "governed external effect requires exact approved authority, scope, "
+            "checkpoint, and receipt",
+            normalized, exact_selectors, "review-required",
+        )
+    if _OUTBOUND_WORDS.search(normalized):
+        return PolicyDecision(
+            "deny",
+            "outbound operation lacks authoritative external-effect metadata",
+            normalized, exact_selectors, "inconsistent-effect-metadata",
         )
     # Controlled probes and other accepted Run machinery already bind exact
     # grants, selectors, checkpoints, receipts, and node classification. An
@@ -753,9 +780,13 @@ def begin_execution(
         raise ProtectionAuditError(
             "consumed approval action does not match the protected execution adapter"
         )
-    authenticated_pre_state = _authenticate_state_identities(
-        decision.selectors, pre_state, phase="pre",
+    request, request_digest = prepare_protection_request(
+        decision,
+        params_digest=params_digest,
+        pre_state=pre_state,
+        surface=surface,
     )
+    authenticated_pre_state = request["pre_state"]
     request = {
         "action": decision.action,
         "selectors": list(decision.selectors),
@@ -764,7 +795,6 @@ def begin_execution(
         "pre_state": authenticated_pre_state,
         "surface": str(surface),
     }
-    request_digest = _digest(request)
     try:
         import tool_events as _te
     except ImportError:  # pragma: no cover
@@ -803,6 +833,35 @@ def begin_execution(
     )
 
 
+def prepare_protection_request(
+    decision: PolicyDecision,
+    *,
+    params_digest: str,
+    pre_state: Sequence[Mapping[str, Any]],
+    surface: str,
+) -> tuple[dict[str, Any], str]:
+    """Build the immutable selector/state identity shown for review.
+
+    The exact same request digest is checked while the one-shot token is
+    consumed and again when the write-ahead receipt is bound.  It must exist
+    before review; first attaching it after token consumption would permit a
+    mutable path to retarget otherwise identical raw arguments.
+    """
+
+    authenticated_pre_state = _authenticate_state_identities(
+        decision.selectors, pre_state, phase="review",
+    )
+    request = {
+        "action": decision.action,
+        "selectors": list(decision.selectors),
+        "policy_code": decision.policy_code,
+        "params_digest": str(params_digest),
+        "pre_state": authenticated_pre_state,
+        "surface": str(surface),
+    }
+    return request, _digest(request)
+
+
 def complete_execution(
     execution: ProtectionExecution,
     *,
@@ -815,6 +874,16 @@ def complete_execution(
     authenticated_post_state = _authenticate_state_identities(
         execution.selectors, post_state, phase="post",
     )
+    if ok and execution.action in {
+        "credential_delete", "credential_store:delete",
+    }:
+        if any(
+            state.get("kind") != "credential" or state.get("present") is not False
+            for state in authenticated_post_state
+        ):
+            raise ProtectionAuditError(
+                "credential deletion cannot complete until exact post-state is absent"
+            )
     path = _actions_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with _rp.locked_file(path):
@@ -993,6 +1062,12 @@ def authorize_server_action(
         "params_digest": _digest(params),
         "pre_state": authenticated_pre_state,
     }
+    review_request, review_request_digest = prepare_protection_request(
+        decision,
+        params_digest=safe_params["params_digest"],
+        pre_state=authenticated_pre_state,
+        surface=surface,
+    )
     approval_action = f"system_protection:{decision.action}"
     try:
         gate_decision = _te.gate(
@@ -1005,6 +1080,10 @@ def authorize_server_action(
             params=safe_params,
             description=f"{decision.action}: {', '.join(decision.selectors)}",
             model_facing=False,
+            approval_binding={
+                "request_digest": review_request_digest,
+                "selectors": review_request["selectors"],
+            },
         )
     except Exception as exc:
         raise ProtectionAuditError(

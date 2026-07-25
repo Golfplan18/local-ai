@@ -264,6 +264,37 @@ class SettingsEndpointTests(unittest.TestCase):
         )
         self._keyring_patch.start()
 
+        import oversight_actions
+        import oversight_queue
+        import tool_events
+        protection_data = self._tmp_path / "protection-data"
+        protection_data.mkdir()
+        self._protection_patches = [
+            mock.patch.object(
+                tool_events, "APPROVALS_PATH",
+                str(protection_data / "execution-approvals.json"),
+            ),
+            mock.patch.object(
+                tool_events, "GLOBAL_SINK_DEFAULT",
+                str(protection_data / "tool-events.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_queue, "HUMAN_QUEUE_PATH",
+                str(protection_data / "human-queue.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_actions, "HUMAN_QUEUE_PATH",
+                str(protection_data / "human-queue.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_actions, "OVERSIGHT_DATA_DIR",
+                str(protection_data),
+            ),
+        ]
+        for patcher in self._protection_patches:
+            patcher.start()
+        tool_events._queued_hashes.clear()
+
         self.client = self.S.app.test_client()
 
     def _approve_protected_retry(self, first_response, callback):
@@ -285,6 +316,10 @@ class SettingsEndpointTests(unittest.TestCase):
 
     def tearDown(self):
         if self.import_ok:
+            import tool_events
+            tool_events._queued_hashes.clear()
+            for patcher in reversed(self._protection_patches):
+                patcher.stop()
             self._US._SETTINGS_PATH = self._saved_path
             self._US._CONFIG_DIR = self._saved_dir
             self._keyring_patch.stop()
@@ -366,6 +401,25 @@ class SettingsEndpointTests(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(("ora", "openai-api-key"), self._fake_keyring.store)
+
+    def test_api_key_delete_backend_failure_is_not_reported_as_success(self):
+        self._fake_keyring.set_password("ora", "openai-api-key", "abc")
+        first = self.client.delete("/api/settings/api-key/openai")
+        with mock.patch.object(
+            self._fake_keyring, "delete_password",
+            side_effect=RuntimeError("backend locked"),
+        ):
+            response = self._approve_protected_retry(
+                first,
+                lambda: self.client.delete(
+                    "/api/settings/api-key/openai"
+                ),
+            )
+        self.assertNotEqual(response.status_code, 200)
+        self.assertIn("remains present", response.get_json()["error"])
+        self.assertEqual(
+            self._fake_keyring.get_password("ora", "openai-api-key"), "abc",
+        )
 
     def test_api_key_delete_unknown_provider_returns_400(self):
         resp = self.client.delete("/api/settings/api-key/notreal")

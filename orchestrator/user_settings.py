@@ -331,12 +331,30 @@ def delete_api_key(provider: str) -> None:
 def _delete_api_key_storage(provider: str) -> None:
     """Keyring deletion adapter; authority is enforced by the public caller."""
     import keyring
+    username = _provider_username(provider)
     try:
-        keyring.delete_password(_KEYRING_SERVICE, _provider_username(provider))
-    except Exception:
-        # Keyring backends raise different exceptions for "not found".
-        # Treat all of them as "already absent."
-        pass
+        keyring.delete_password(_KEYRING_SERVICE, username)
+    except Exception as exc:
+        # Backends disagree on the not-found exception type. Treat it as
+        # already absent only when a strict post-read proves absence; every
+        # other backend failure propagates.
+        try:
+            remaining = keyring.get_password(_KEYRING_SERVICE, username)
+        except Exception as verify_exc:
+            raise SettingsError(
+                f"credential deletion could not be verified: {verify_exc}"
+            ) from exc
+        if remaining is None:
+            return
+        raise SettingsError("credential deletion failed; credential remains present") from exc
+    try:
+        remaining = keyring.get_password(_KEYRING_SERVICE, username)
+    except Exception as exc:
+        raise SettingsError(
+            f"credential deletion could not be verified: {exc}"
+        ) from exc
+    if remaining is not None:
+        raise SettingsError("credential deletion failed; credential remains present")
 
 
 def api_key_present(provider: str) -> bool:

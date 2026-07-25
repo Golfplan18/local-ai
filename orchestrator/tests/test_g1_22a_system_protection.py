@@ -74,6 +74,25 @@ class SystemProtectionBase(unittest.TestCase):
 
 
 class TestPolicyFloor(SystemProtectionBase):
+    def test_semantic_external_effects_require_review_independent_of_name(self):
+        for operation in (
+            "sync_record", "create_issue", "reconcile_remote_record",
+        ):
+            decision = protection.classify_governed_action(
+                operation, ["artifact:approved"],
+                effect_type="external_irreversible", scope_kind="external",
+            )
+            self.assertEqual(decision.outcome, "review", operation)
+            self.assertEqual(decision.policy_code, "review-required", operation)
+        self.assertEqual(protection.classify_governed_action(
+            "sync_record", ["artifact:approved"],
+            effect_type="local_reversible", scope_kind="write",
+        ).outcome, "allow")
+        self.assertEqual(protection.classify_governed_action(
+            "publish_record", ["artifact:approved"],
+            effect_type="local_reversible", scope_kind="write",
+        ).policy_code, "inconsistent-effect-metadata")
+
     def test_dedicated_path_builders_reject_traversal_before_review(self):
         from orchestrator import active_configuration, project_registry
 
@@ -179,6 +198,38 @@ class TestPolicyFloor(SystemProtectionBase):
             runtime.load_records("run-protection-floor"), before_records,
         )
 
+    def test_neutral_named_external_effect_cannot_bypass_runtime_floor(self):
+        import governed_process_runtime as gpr
+        from tests.test_governed_process_runtime import make_definition, make_run
+
+        runtime_root = self.root / "governed-neutral"
+        runtime = gpr.GovernedProcessRuntime(str(runtime_root))
+        definition = make_definition()
+        run = make_run("run-semantic-effect-floor", definition)
+        runtime.create_run(definition, run)
+        runtime.start_run(
+            "run-semantic-effect-floor", reason="approved test plan is ready",
+        )
+        for operation in (
+            "sync_record", "create_issue", "reconcile_remote_record",
+        ):
+            before_run = runtime.load_run("run-semantic-effect-floor")
+            before_records = runtime.load_records("run-semantic-effect-floor")
+            with self.assertRaises(gpr.AuthorityDeniedError):
+                runtime.authorize_action(
+                    "run-semantic-effect-floor", operation,
+                    ["artifact:approved"],
+                    effect_type="external_irreversible",
+                    scope_kind="external",
+                )
+            self.assertEqual(
+                runtime.load_run("run-semantic-effect-floor"), before_run,
+            )
+            self.assertEqual(
+                runtime.load_records("run-semantic-effect-floor"),
+                before_records,
+            )
+
     def test_opaque_server_and_slash_actions_have_no_adapter(self):
         logical = {"selector": "project:ora/tool:opaque", "kind": "logical"}
         logical["digest"] = protection.params_digest(logical)
@@ -204,6 +255,98 @@ class TestPolicyFloor(SystemProtectionBase):
 
 
 class TestApprovalAndReceipts(SystemProtectionBase):
+    def test_approval_store_and_authentication_key_are_not_generic_files(self):
+        for target in (
+            Path(protection._rp.DATA_DIR) / "execution-approvals.json",
+            Path(protection._rp.DATA_DIR) / "execution-approvals.json.auth.key",
+        ):
+            decision = protection.classify_tool_call(
+                "file_read", {"path": str(target)},
+                {"category": "read", "mutability": "read",
+                 "sensitivity": "private", "egress": "none"},
+            )
+            self.assertEqual(decision.outcome, "deny", target)
+
+    def test_signed_approval_store_tampering_fails_closed(self):
+        args_hash = tool_events.normalize_args_hash("diagnostic", {"x": 1})
+        tool_events._grant_approval_authorized(
+            "diagnostic", args_hash, "g1-22a-test",
+        )
+        data = json.loads(Path(self.approvals).read_text(encoding="utf-8"))
+        data["tokens"][0]["action"] = "substituted"
+        Path(self.approvals).write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "authentication failed"):
+            tool_events.check_and_consume_approval(
+                "substituted", args_hash, "g1-22a-test",
+            )
+
+    def test_reviewed_selector_and_pre_state_cannot_be_rebound(self):
+        target_a = self.root / "a.txt"
+        target_b = self.root / "b.txt"
+        alias = self.root / "current.txt"
+        target_a.write_text("A", encoding="utf-8")
+        target_b.write_text("B", encoding="utf-8")
+        alias.symlink_to(target_a)
+        params = {"path": str(alias)}
+        raw_hash = tool_events.normalize_args_hash("delete_file", params)
+        decision = protection.classify_action(
+            "delete_file", selectors=[protection.path_selector(alias)],
+            mutability="irreversible",
+        )
+        reviewed_state = protection.capture_selector_identity(
+            decision.selectors[0]
+        )
+        request_a, digest_a = protection.prepare_protection_request(
+            decision, params_digest=protection.params_digest(params),
+            pre_state=[reviewed_state], surface="tool_dispatcher",
+        )
+        first = tool_events.gate(
+            "delete_file",
+            {"category": "write", "mutability": "irreversible",
+             "sensitivity": "private", "egress": "none"},
+            params=params,
+            approval_binding={"request_digest": digest_a,
+                              "selectors": request_a["selectors"]},
+        )
+        self.assertFalse(first.allowed)
+        self._approve_latest()
+
+        alias.unlink()
+        alias.symlink_to(target_b)
+        self.assertEqual(
+            raw_hash, tool_events.normalize_args_hash("delete_file", params),
+        )
+        rebound_decision = protection.classify_action(
+            "delete_file", selectors=[protection.path_selector(alias)],
+            mutability="irreversible",
+        )
+        rebound_state = protection.capture_selector_identity(
+            rebound_decision.selectors[0]
+        )
+        request_b, digest_b = protection.prepare_protection_request(
+            rebound_decision, params_digest=protection.params_digest(params),
+            pre_state=[rebound_state], surface="tool_dispatcher",
+        )
+        self.assertNotEqual(digest_a, digest_b)
+        retry = tool_events.gate(
+            "delete_file",
+            {"category": "write", "mutability": "irreversible",
+             "sensitivity": "private", "egress": "none"},
+            params=params,
+            approval_binding={"request_digest": digest_b,
+                              "selectors": request_b["selectors"]},
+        )
+        self.assertFalse(retry.allowed)
+        self.assertNotEqual(retry.decision, "approved")
+        tokens = tool_events._load_approvals()["tokens"]
+        self.assertEqual(len(tokens), 1)
+        self.assertTrue(tokens[0]["used"])
+        self.assertEqual(
+            tokens[0]["invalidation_reason"],
+            "review-request-digest-mismatch",
+        )
+        self.assertEqual(protection.verify_audit(), [])
+
     def test_exact_approval_succeeds_once_and_is_receipt_bound(self):
         target = self.root / "custom-theme"
         target.mkdir()
@@ -461,6 +604,34 @@ class TestApprovalAndReceipts(SystemProtectionBase):
 class TestCredentialBoundary(SystemProtectionBase):
     @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
     @mock.patch.object(credential_tool.keyring, "get_password")
+    @mock.patch.object(credential_tool.keyring, "delete_password")
+    @mock.patch.object(protection, "require_active_execution")
+    def test_tool_credential_delete_failure_propagates(
+        self, require_active, delete_password, get_password, username_map,
+    ):
+        username_map.return_value = {"openai": "openai-api-key"}
+        delete_password.side_effect = RuntimeError("backend locked")
+        get_password.return_value = "still-present"
+        with self.assertRaisesRegex(RuntimeError, "remains present"):
+            credential_tool.credential_store(
+                "delete", "ora", "openai-api-key",
+            )
+        require_active.assert_called_once()
+
+    def test_server_credential_delete_failure_propagates(self):
+        from orchestrator import user_settings
+
+        fake_keyring = mock.Mock()
+        fake_keyring.delete_password.side_effect = RuntimeError("backend locked")
+        fake_keyring.get_password.return_value = "still-present"
+        with mock.patch.dict(sys.modules, {"keyring": fake_keyring}):
+            with self.assertRaisesRegex(
+                user_settings.SettingsError, "remains present",
+            ):
+                user_settings._delete_api_key_storage("openai")
+
+    @mock.patch.object(credential_tool.provider_registry, "keyring_username_map")
+    @mock.patch.object(credential_tool.keyring, "get_password")
     def test_tool_exposes_only_registry_bounded_existence(
         self, get_password, username_map,
     ):
@@ -508,12 +679,27 @@ class TestCredentialBoundary(SystemProtectionBase):
             "action": "store", "service": "ora",
             "username": "openai-api-key", "value": "secret",
         }
+        selector = "credential:ora/openai-api-key"
+        pre = protection.capture_selector_identity(selector)
+        decision = protection.classify_action(
+            "credential_store:store", selectors=[selector],
+            mutability="irreversible", sensitivity="secret",
+        )
+        review, review_digest = protection.prepare_protection_request(
+            decision, params_digest=protection.params_digest(params),
+            pre_state=[pre], surface="tool_dispatcher",
+        )
+        approval_binding = {
+            "request_digest": review_digest,
+            "selectors": review["selectors"],
+        }
         approval = tool_events.gate(
             "credential_store",
             {"category": "write", "mutability": "irreversible",
              "sensitivity": "secret", "egress": "none",
              "enforcement": "in_harness"},
             params=params, model_facing=True,
+            approval_binding=approval_binding,
         )
         self.assertFalse(approval.allowed)
         self._approve_latest()
@@ -523,14 +709,9 @@ class TestCredentialBoundary(SystemProtectionBase):
              "sensitivity": "secret", "egress": "none",
              "enforcement": "in_harness"},
             params=params, model_facing=True,
+            approval_binding=approval_binding,
         )
         self.assertTrue(approval.allowed)
-        selector = "credential:ora/openai-api-key"
-        pre = protection.capture_selector_identity(selector)
-        decision = protection.classify_action(
-            "credential_store:store", selectors=[selector],
-            mutability="irreversible", sensitivity="secret",
-        )
         execution = protection.begin_execution(
             decision, approval_id=approval.approval_id,
             approval_action="credential_store",
