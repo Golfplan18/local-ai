@@ -34,6 +34,7 @@ try:
     from . import process_contracts as contracts
     from . import project_meta
     from .governed_process_runtime import (
+        CorrectionDecisionRequired,
         GovernedProcessRuntime,
         GovernedRuntimeError,
         RunConflictError,
@@ -59,6 +60,7 @@ except ImportError:  # pragma: no cover - direct module execution/tests
     import process_contracts as contracts  # type: ignore
     import project_meta  # type: ignore
     from governed_process_runtime import (  # type: ignore
+        CorrectionDecisionRequired,
         GovernedProcessRuntime,
         GovernedRuntimeError,
         RunConflictError,
@@ -627,6 +629,7 @@ def compile_blueprint(value: Mapping[str, Any]) -> dict[str, Any]:
         "max_correction_attempts": blueprint["max_attempts"],
         "max_attempts": (
             sum(stage["kind"] == "action" for stage in stages)
+            + 1  # the baseline final verification is itself an attempt
             + blueprint["max_attempts"]
         ),
         "external_effects": False,
@@ -1889,7 +1892,25 @@ class ProcessAutomationService:
             run_id, checkpoint_id,
             segment_id=node["node_id"], resume_node_id=node["node_id"],
         )
-        self.runtime.begin_attempt(run_id, node["node_id"])
+        try:
+            self.runtime.begin_automation_attempt(run_id, node["node_id"])
+        except CorrectionDecisionRequired:
+            blocked_node_id = next(
+                graph_node["node_id"]
+                for graph_node in definition["graph"]["nodes"]
+                if graph_node["kind"] == "terminal_state"
+                and graph_node["outcome"] == "blocked"
+            )
+            self.runtime.block_at_attempt_ceiling(
+                run_id,
+                segment_id=node["node_id"],
+                target_node_id=blocked_node_id,
+                reason=(
+                    "Action attempt admission reached the immutable Run ceiling "
+                    "before isolated execution"
+                ),
+            )
+            return
         prior_outputs, source_ids = self._prior_outputs(run_id)
         metadata = definition["output_schema"]["x-ora-process"]
         contract = metadata["operation_contracts"][node["operation"]]
@@ -2175,7 +2196,49 @@ class ProcessAutomationService:
             run_id, f"pre-{node['node_id']}-{next_attempt}",
             segment_id=node["node_id"], resume_node_id=node["node_id"],
         )
-        attempt_record = self.runtime.begin_attempt(run_id, node["node_id"])
+        try:
+            attempt_record = self.runtime.begin_automation_attempt(
+                run_id, node["node_id"],
+            )
+        except CorrectionDecisionRequired as exc:
+            current = self.runtime.load_run(run_id)
+            error_body = {
+                "error_type": type(exc).__name__,
+                "error": str(exc)[:1_000],
+            }
+            self.runtime._record_runtime_event(
+                run_id,
+                "isolated_process_verification_failed",
+                {
+                    "run_id": run_id,
+                    "definition_ref": copy.deepcopy(current["definition_ref"]),
+                    "node_id": node["node_id"],
+                    "attempt": current["contracts"]["correction_loop"]["attempt"],
+                    "max_attempts": current["contracts"]["correction_loop"]["max_attempts"],
+                    "verification_start_record_id": None,
+                    "worker_request_digest": _digest_json(request),
+                    "execution_context_binding_digest": execution_context_digest,
+                    "result_artifact_id": result["artifact_id"],
+                    "result_identity_digest": result["identity"]["digest"],
+                    "error_type": error_body["error_type"],
+                    "error_digest": _digest_json(error_body),
+                    "failure_stage": "attempt_admission",
+                    "retryable": False,
+                    "exhausted": True,
+                },
+                node_id=node["node_id"],
+                artifact_ids=[result["artifact_id"]],
+            )
+            self.runtime.block_at_attempt_ceiling(
+                run_id,
+                segment_id=node["node_id"],
+                target_node_id=node["routes"]["BLOCKED"],
+                reason=(
+                    "Verification attempt admission reached the immutable Run "
+                    "ceiling before worker execution"
+                ),
+            )
+            return
         attempt = int(attempt_record["event"]["details"]["attempt"])
         start_record = self.runtime._record_runtime_event(
             run_id,

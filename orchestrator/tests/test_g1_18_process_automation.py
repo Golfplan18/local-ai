@@ -366,8 +366,9 @@ class ProcessAutomationContractTests(unittest.TestCase):
             "Wrong, partial, contradictory, or fabricated success cannot authorize `ACCEPT`",
             "Restart resumes only verification",
             "Unsupported keywords fail during authoring",
-            "# 32 passed, 12 subtests passed; exit 0",
-            "# 374 passed, 201 subtests passed; exit 0",
+            "one final-verification baseline",
+            "# 34 passed, 12 subtests passed; exit 0",
+            "# 376 passed, 201 subtests passed; exit 0",
         ):
             self.assertIn(token, evidence)
 
@@ -385,7 +386,7 @@ class ProcessAutomationContractTests(unittest.TestCase):
         for token in (
             "G1.17 is user-deferred",
             "without an architecture choice",
-            "G1.18’s bounded correction is implemented and awaits independent re-judgment",
+            "G1.18’s bounded criterion, recovery, schema, and attempt-reservation corrections are implemented and await independent re-judgment",
             "G1.19 and G1.20 remain unauthorized",
             "no Trigger, Persona, outbound effect, alternate engine, or G1.20 telemetry",
         ):
@@ -882,6 +883,12 @@ class ProcessAutomationExecutionTests(ProcessAutomationFixture):
         )
         with self.assertRaises(automation.ProcessAutomationWorkerError):
             restarted.execute(paused["run_id"])
+        self.assertEqual(
+            restarted.run_state(paused["run_id"])["status"],
+            "paused_after_failure",
+        )
+        with self.assertRaises(automation.ProcessAutomationWorkerError):
+            restarted.execute(paused["run_id"])
         exhausted = restarted.run_state(paused["run_id"])
         self.assertEqual(exhausted["run_state"], "blocked")
         final_records = restarted.runtime.load_records(paused["run_id"])
@@ -889,7 +896,7 @@ class ProcessAutomationExecutionTests(ProcessAutomationFixture):
             (record.get("event") or {}).get("event_type")
             == "isolated_process_verification_failed"
             for record in final_records
-        ), 3)
+        ), 4)
         self.assertFalse(any(
             (record.get("transition") or {}).get("directive") == "ACCEPT"
             for record in final_records
@@ -946,6 +953,144 @@ class ProcessAutomationExecutionTests(ProcessAutomationFixture):
             (record.get("transition") or {}).get("directive") == "ACCEPT"
             for record in records
         ), 1)
+
+    def test_action_retry_allowance_reserves_verification_and_restart_at_ceiling(self):
+        authored = self.author()
+        classify_calls = 0
+
+        def exhaust_action_corrections(request):
+            nonlocal classify_calls
+            if request["operation"] == "email.classify":
+                classify_calls += 1
+                if classify_calls <= 3:
+                    raise RuntimeError("bounded action failure")
+            return worker_module.execute(request)
+
+        self.service.worker = automation.IsolatedProcessWorker(
+            runner=exhaust_action_corrections,
+        )
+        state = self.begin(authored["proposal"]["definition_ref"])
+        for expected_attempt in range(1, 4):
+            with self.assertRaises(automation.ProcessAutomationWorkerError):
+                self.service.execute(state["run_id"])
+            failed = self.service.run_state(state["run_id"])
+            self.assertEqual(failed["status"], "paused_after_failure")
+            self.assertEqual(failed["attempt"], expected_attempt)
+
+        paused = self.service.execute(state["run_id"])
+        self.assertEqual(paused["status"], "awaiting_human_checkpoint")
+        self.assertEqual(paused["attempt"], 5)
+
+        with mock.patch.object(
+            self.service, "_verify_result",
+            side_effect=SystemExit("crash immediately before verification"),
+        ):
+            with self.assertRaisesRegex(SystemExit, "before verification"):
+                self.service.resolve_checkpoint(
+                    state["run_id"], outcome="approved",
+                    decision_by="principal:user",
+                )
+
+        boundary = self.service.run_state(state["run_id"])
+        self.assertEqual(boundary["run_state"], "running")
+        self.assertEqual(boundary["current_node"]["node_id"], "final-review")
+        self.assertEqual(boundary["attempt"], 6)
+        self.assertEqual(boundary["max_attempts"], 7)
+
+        restarted_operations = []
+
+        def recovered_worker(request):
+            restarted_operations.append((request["kind"], request["operation"]))
+            return worker_module.execute(request)
+
+        restarted = automation.ProcessAutomationService(
+            runtime=GovernedProcessRuntime(self.root / "runs"),
+            registry=ProcessDefinitionRegistry(self.root / "registry"),
+            management_interview=ManagementInterviewService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                sessions_root=self.root / "sessions", repository_root=ROOT,
+            ),
+            library=ProcessLibraryLifecycleService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                registry_root=self.root / "registry", seed_definitions=[],
+            ),
+            worker=automation.IsolatedProcessWorker(runner=recovered_worker),
+        )
+        completed = restarted.execute(state["run_id"])
+        self.assertEqual(completed["run_state"], "completed")
+        self.assertEqual(completed["attempt"], 7)
+        self.assertEqual(
+            restarted_operations,
+            [("verify", "verify.process_result")],
+        )
+        records = restarted.runtime.load_records(state["run_id"])
+        self.assertEqual(sum(
+            (record.get("event") or {}).get("event_type")
+            == "isolated_process_verification_started"
+            for record in records
+        ), 1)
+        self.assertEqual(sum(
+            (record.get("transition") or {}).get("directive") == "ACCEPT"
+            for record in records
+        ), 1)
+
+    def test_correction_attempt_ceiling_blocks_deterministically_across_restart(self):
+        authored = self.author()
+
+        def unavailable_action(_request):
+            raise RuntimeError("action remains unavailable")
+
+        self.service.worker = automation.IsolatedProcessWorker(
+            runner=unavailable_action,
+        )
+        state = self.begin(authored["proposal"]["definition_ref"])
+        with self.assertRaisesRegex(
+            GovernedRuntimeError, "segment must match the current graph node",
+        ):
+            self.runtime.begin_automation_attempt(
+                state["run_id"], "final-review",
+            )
+        with self.assertRaisesRegex(
+            GovernedRuntimeError, "unavailable before the ceiling",
+        ):
+            self.runtime.block_at_attempt_ceiling(
+                state["run_id"], segment_id="classify",
+                target_node_id="blocked", reason="premature block",
+            )
+        maximum = state["max_attempts"]
+        correction_allowance = 3
+        for _ in range(1 + correction_allowance):
+            with self.assertRaises(automation.ProcessAutomationWorkerError):
+                self.service.execute(state["run_id"])
+
+        blocked = self.service.execute(state["run_id"])
+        self.assertEqual(blocked["run_state"], "blocked")
+        self.assertEqual(blocked["attempt"], 1 + correction_allowance)
+        self.assertLess(blocked["attempt"], maximum)
+        records = self.runtime.load_records(state["run_id"])
+        self.assertEqual(sum(
+            (record.get("transition") or {}).get("directive") == "BLOCKED"
+            for record in records
+        ), 1)
+
+        restarted = automation.ProcessAutomationService(
+            runtime=GovernedProcessRuntime(self.root / "runs"),
+            registry=ProcessDefinitionRegistry(self.root / "registry"),
+            management_interview=ManagementInterviewService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                sessions_root=self.root / "sessions", repository_root=ROOT,
+            ),
+            library=ProcessLibraryLifecycleService(
+                runtime=GovernedProcessRuntime(self.root / "runs"),
+                registry_root=self.root / "registry", seed_definitions=[],
+            ),
+            worker=automation.IsolatedProcessWorker(runner=unavailable_action),
+        )
+        replay = restarted.execute(state["run_id"])
+        self.assertEqual(replay["state_digest"], blocked["state_digest"])
+        self.assertEqual(
+            restarted.runtime.load_records(state["run_id"]), records,
+        )
 
     def test_duplicate_begin_returns_same_run_and_cross_identity_changes_run(self):
         authored = self.author()

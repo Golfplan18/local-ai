@@ -4916,6 +4916,157 @@ class GovernedProcessRuntime:
                 runtime_authoritative=True,
             )
 
+    def _automation_attempt_budget(
+        self,
+        run_id: str,
+        definition: Mapping[str, Any],
+        segment_id: str,
+    ) -> tuple[int, int, int]:
+        metadata = (
+            (definition.get("output_schema") or {})
+            .get("x-ora-process")
+        )
+        if not isinstance(metadata, Mapping):
+            raise GovernedRuntimeError(
+                "automation attempt accounting requires x-ora-process metadata"
+            )
+        allowance = metadata.get("max_correction_attempts")
+        if isinstance(allowance, bool) or not isinstance(allowance, int) or allowance < 0:
+            raise GovernedRuntimeError(
+                "automation correction-attempt allowance is invalid"
+            )
+        attempts_by_segment: dict[str, int] = {}
+        for record in self.load_records(run_id):
+            event = record.get("event") or {}
+            details = event.get("details") or {}
+            if event.get("event_type") != "attempt_started":
+                continue
+            persisted_segment = str(details.get("segment_id") or "")
+            attempts_by_segment[persisted_segment] = (
+                attempts_by_segment.get(persisted_segment, 0) + 1
+            )
+        corrections_used = sum(
+            max(0, count - 1) for count in attempts_by_segment.values()
+        )
+        return allowance, corrections_used, attempts_by_segment.get(segment_id, 0)
+
+    def begin_automation_attempt(
+        self,
+        run_id: str,
+        segment_id: str,
+    ) -> dict[str, Any]:
+        """Reserve an automation baseline or correction attempt without stealing future baselines."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            if segment_id != run["current_node_id"]:
+                raise RunConflictError(
+                    "automation attempt segment must match the current graph node"
+                )
+            current_node = self._graph_nodes(definition).get(segment_id)
+            if not current_node or current_node["kind"] not in {
+                "action", "verification_boundary",
+            }:
+                raise GovernedRuntimeError(
+                    "automation attempts require an action or verification boundary"
+                )
+            latest_attempt_event = None
+            for record in reversed(self.load_records(run_id)):
+                event = record.get("event") or {}
+                if event.get("event_type") in ("attempt_started", "attempt_completed"):
+                    latest_attempt_event = event
+                    break
+            if (
+                latest_attempt_event
+                and latest_attempt_event.get("event_type") == "attempt_started"
+            ):
+                raise RunConflictError(
+                    "the active attempt must complete before another begins"
+                )
+            correction = run["contracts"]["correction_loop"]
+            current = int(correction["attempt"])
+            maximum = int(correction["max_attempts"])
+            allowance, corrections_used, prior_segment_attempts = (
+                self._automation_attempt_budget(run_id, definition, segment_id)
+            )
+            if current >= maximum or (
+                prior_segment_attempts > 0 and corrections_used >= allowance
+            ):
+                raise CorrectionDecisionRequired(
+                    "automation attempt ceiling reached; reserved baseline attempts "
+                    "cannot be consumed as additional corrections"
+                )
+            correction["attempt"] = current + 1
+            return self._append_event_locked(
+                run,
+                "attempt_started",
+                {
+                    "segment_id": segment_id,
+                    "attempt": correction["attempt"],
+                    "max_attempts": maximum,
+                },
+                node_id=run["current_node_id"],
+                runtime_authoritative=True,
+            )
+
+    def block_at_attempt_ceiling(
+        self,
+        run_id: str,
+        *,
+        segment_id: str,
+        target_node_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Persist the fail-closed terminal route after attempt admission is denied."""
+
+        with _locked():
+            run = self.load_run(run_id)
+            definition = self.load_definition(run_id)
+            correction = run["contracts"]["correction_loop"]
+            if run["state"] != "running":
+                raise RunConflictError(
+                    "attempt-ceiling blocking requires a running Process Run"
+                )
+            if segment_id != run["current_node_id"]:
+                raise RunConflictError(
+                    "attempt-ceiling segment must match the current graph node"
+                )
+            allowance, corrections_used, prior_segment_attempts = (
+                self._automation_attempt_budget(run_id, definition, segment_id)
+            )
+            global_ceiling = int(correction["attempt"]) >= int(
+                correction["max_attempts"]
+            )
+            correction_ceiling = (
+                prior_segment_attempts > 0 and corrections_used >= allowance
+            )
+            if not global_ceiling and not correction_ceiling:
+                raise CorrectionDecisionRequired(
+                    "attempt-ceiling blocking is unavailable before the ceiling"
+                )
+            nodes = self._graph_nodes(definition)
+            target = nodes.get(target_node_id)
+            if not target or not (
+                target["kind"] == "terminal_state"
+                and target["outcome"] == "blocked"
+            ):
+                raise GovernedRuntimeError(
+                    "attempt ceiling must route to a declared blocked terminal state"
+                )
+            if target_node_id not in set(
+                run["contracts"]["approved_plan"]["approved_node_ids"]
+            ):
+                raise AuthorityDeniedError(
+                    "attempt-ceiling target is outside the approved plan"
+                )
+            return self._mechanical_block_locked(
+                run,
+                source_node_id=run["current_node_id"],
+                target_node_id=target_node_id,
+                reason=reason,
+            )
+
     def complete_attempt(
         self,
         run_id: str,
