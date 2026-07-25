@@ -1706,7 +1706,11 @@ class ProcessAutomationService:
                         "Run control retry does not bind current authority"
                     )
                 execution_id = details.get("execution_id")
-                expected_state = "pending" if action == "resume" else "running"
+                expected_state = details.get("run_state")
+                if expected_state not in {"running", "pending"}:
+                    raise ProcessAutomationIntegrityError(
+                        "Run control retry lacks its exact persisted source state"
+                    )
                 if (
                     current["state"] != expected_state
                     or current["current_node_id"] != details.get("node_id")
@@ -1745,7 +1749,7 @@ class ProcessAutomationService:
                         resume_node_id=current["current_node_id"],
                         reason="Recovered the Principal's persisted pause decision",
                     )
-                elif action == "stop" and current["state"] == "running":
+                elif action == "stop" and current["state"] in {"running", "pending"}:
                     definition = self.runtime.load_definition(run_id)
                     self.runtime.block_by_process_run_control(
                         run_id,
@@ -1781,6 +1785,7 @@ class ProcessAutomationService:
                 "control_state_digest": control_state_digest,
                 "action": action,
                 "execution_id": execution_id,
+                "run_state": run["state"],
                 "node_id": run["current_node_id"],
                 "attempt": run["contracts"]["correction_loop"]["attempt"],
                 "decision_by": run["contracts"]["authority"]["principal_id"],

@@ -5291,9 +5291,9 @@ class GovernedProcessRuntime:
         with _locked():
             run = self.load_run(run_id)
             definition = self.load_definition(run_id)
-            if run["state"] != "running":
+            if run["state"] not in {"running", "pending"}:
                 raise RunConflictError(
-                    "Process Run control blocking requires a running Run"
+                    "Process Run control blocking requires a running or pending Run"
                 )
             if not self._is_automation_definition(definition):
                 raise AuthorityDeniedError(
@@ -5343,6 +5343,7 @@ class GovernedProcessRuntime:
                 or applied_details.get("run_id") != run_id
                 or request_details.get("definition_ref") != run["definition_ref"]
                 or applied_details.get("definition_ref") != run["definition_ref"]
+                or request_details.get("run_state") != run["state"]
                 or request_details.get("node_id") != run["current_node_id"]
                 or applied_details.get("node_id") != run["current_node_id"]
                 or request_details.get("idempotency_key")

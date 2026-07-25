@@ -56,7 +56,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_phase_2_5_run_inspector.py \
   orchestrator/tests/test_phase_2_6_process_library_lifecycle.py \
   --tb=short
-# 135 passed, 84 subtests passed; exit 0
+# 136 passed, 84 subtests passed; exit 0
 ```
 
 ### Browser DOM matrix

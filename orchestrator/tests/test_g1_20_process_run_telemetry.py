@@ -106,7 +106,7 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         evidence = (ROOT / "outputs" / "g1-20" / "closeout-evidence.md").read_text()
         for token in (
             "python3 -m pytest -q \\",
-            "# 135 passed, 84 subtests passed; exit 0",
+            "# 136 passed, 84 subtests passed; exit 0",
             "# 28/28 + 15/15 + 26/26 + 19/19 + 8/8 = 96/96; exit 0",
             "python3 scripts/verify-implementation.py --check drift",
             "# 2/2 body-identical; exit 0",
@@ -354,6 +354,44 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             if (record.get("event") or {}).get("event_type")
             == "process_run_control_requested"
         ]) == 1
+
+    def test_stop_from_human_handoff_uses_the_same_authenticated_blocked_route(self):
+        state = self._handoff()
+        controls = self.service.run_controls(state["run_id"])
+        assert controls["available_actions"] == ["stop"]
+        with mock.patch.object(
+            self.service,
+            "_record_control_applied",
+            side_effect=RuntimeError("interrupted pending stop"),
+        ):
+            with pytest.raises(RuntimeError, match="interrupted pending stop"):
+                self.service.control_run(
+                    state["run_id"],
+                    action="stop",
+                    control_state_digest=controls["control_state_digest"],
+                    idempotency_key="control:stop:human-handoff",
+                )
+        restarted = automation.ProcessAutomationService(
+            runtime=self.runtime,
+            registry=self.registry,
+            management_interview=self.interview,
+            library=self.library,
+            worker=self.worker,
+        )
+        stopped = restarted.control_run(
+            state["run_id"],
+            action="stop",
+            control_state_digest=controls["control_state_digest"],
+            idempotency_key="control:stop:human-handoff",
+        )
+        assert stopped["run"]["run_state"] == "blocked"
+        assert stopped["run"]["current_node"]["node_id"] == "blocked"
+        transitions = [
+            record for record in self.runtime.load_records(state["run_id"])
+            if record.get("record_type") == "transition"
+        ]
+        assert transitions[-1]["transition"]["directive"] == "BLOCKED"
+        assert transitions[-1]["transition"]["evaluation_boundary"] == "mechanical_graph_route"
 
     def test_control_retry_recovers_request_persisted_before_application(self):
         ref = self._accepted_ref()
