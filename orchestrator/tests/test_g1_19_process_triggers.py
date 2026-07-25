@@ -688,8 +688,11 @@ class TestProcessTriggerDocumentation:
             )
         )
         for token in (
-            "G1.19 is implemented and submitted",
+            "G1.19 is revised and resubmitted",
             "G1.19 IMPLEMENTED FOR JUDGMENT",
+            "G1.19 AUTHORITY CORRECTION SUBMITTED",
+            "7fd98388f7f90475cae1a5de0a34f321ad3d3ee9",
+            "fixed 30-second scan is removed",
             "independent judgment is pending",
             "G1.17 is user-deferred",
             "G1.12, G1.3, and G1.7 remain user-deferred",
