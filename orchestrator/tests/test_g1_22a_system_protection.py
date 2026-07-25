@@ -619,7 +619,8 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
         for token in (
             "G1.19 is independently accepted",
             "G1.22A IMPLEMENTED / JUDGMENT PENDING",
-            "pre-channel self-protection and non-channel enforcement tranche is implemented and submitted",
+            "pre-channel self-protection and non-channel enforcement tranche is implemented at runtime",
+            "submitted for independent judgment",
             "full G1.22 is not claimed",
             "G1.21 remains blocked on G1.17",
             "Windows raw-drive refusal is statically bounded",
