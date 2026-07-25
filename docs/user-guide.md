@@ -387,6 +387,25 @@ Registration makes the exact definition durable; promotion makes it discoverable
 
 The worked email Process classifies and summarizes one supplied email, pauses before drafting, and produces an **UNSENT DRAFT**. It cannot send the draft. Sending, recurring execution, and channels belong to later separately governed work.
 
+### Deploy and manage a Trigger
+
+Open **Processes → Trigger Manager** only after the reusable Process is available. A Trigger is a separate immutable deployment contract; it is not inserted into the Process Definition and it grants no new action or external-effect authority.
+
+1. Choose **New Trigger**, name it, bind its stable ID, Project, and exact Process version/digest, then choose the cause:
+   - **Manual** adds an explicit **Run now** control.
+   - **File change** consumes an operating-system notification for one approved absolute file or directory selector. Repeated delivery of the same captured file identity creates no second Run; changed bytes form a new event identity.
+   - **Framework completion** requires one exact completed source definition, its authenticated `ACCEPT`, and exact result identity.
+   - **Time** supports a named IANA timezone and daily or weekly local-calendar boundary. It requires a written explanation of why no file, framework, inbound, or other runtime event can represent the passage of time.
+   - **Inbound email/Telegram** may be drafted but cannot be activated until G1.21 supplies an authenticated channel. Trigger Manager does not send messages or hold channel credentials.
+2. Bind each Process input to an approved literal or available event source. A milestone check-in may bind `project_snapshot`; Ora then captures the Project Matrix plus bounded excerpts from standard Project Dialogues, excludes private/stealth Dialogues, and authenticates that packet before beginning the Run.
+3. Save the draft. Registration still creates no standing work. Read the displayed Process, Project, condition, inputs, Runtime-Principle record, and exact Trigger digest.
+4. Check the explicit review statement and choose **Approve and activate**. A stale digest or changed state is rejected and reloaded; do not approve the replacement without reviewing it.
+5. Use **Pause Trigger**, **Resume Trigger**, or **Retire** to change future firing eligibility. These controls do not pause, resume, stop, or erase a Run already created; manage that Run through its own Inspector.
+
+Every accepted firing first persists one source-bound claim, then creates one deterministic governed Process Run through the same automation service described above. Concurrent delivery, browser retry, and restart recovery return that same firing/Run identity. A firing that reaches a human checkpoint remains visible as waiting rather than being called complete. Select its history row to open the Run Inspector.
+
+Time Triggers are deliberately intermittent: they act **only while Ora is running** and install no cron, launchd, scheduled sweep, or 24/7 fallback. Choose **Run once after Ora returns** to coalesce missed calendar windows into one current Run, or **Skip missed window** to record the omission without a Run. Cleanup, backlog processing, and work that already has an exact runtime event are not valid reasons to use time.
+
 ### Find and invoke a reusable Process Definition
 
 Open the **Process Library** and select a row only after checking:
@@ -406,9 +425,9 @@ The current public Library route supports a bounded non-external action entry fo
 
 ### Understand activation and standing automation
 
-Activation makes an exact definition available within a declared scope; it is not permission to do everything the definition can describe. A standing automated Process additionally needs a trigger binding and an authority binding. The trigger begins a new governed Run under those bindings; it does not grant new authority.
+Activation makes an exact definition available within a declared scope; it is not permission to do everything the definition can describe. A standing automated Process additionally needs an explicitly reviewed Trigger and authority binding. Each Trigger firing begins a new governed Run under those exact bindings; it does not grant new authority.
 
-G1.1 exposes activated definitions under **Automated Processes**, but it does not ship a general trigger-management or broad activation interface. If no supported activation path is offered, the correct state is waiting for activation—not manual registry editing or an assumed deployment. Treat trigger creation, remote messaging, publication, and other reserved effects as separate work requiring explicit authority.
+The **Automated Processes** sidebar section is a projection of authenticated Trigger deployments. It is not inferred from registration or from a definition-shaped Artifact. Open a row in Trigger Manager to see its source condition, lifecycle state, and latest firing. Remote messaging, publication, credentials, and other reserved effects remain separate work requiring explicit authority.
 
 ### Pause, stop, discuss, and recover
 
@@ -551,6 +570,7 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Added G1.19 Trigger Manager guidance: immutable drafts and exact activation review, manual/file/framework/time causes, Project milestone snapshots, source-bound exactly-once Run creation, pause/resume/retire semantics, restart recovery, explicit app intermittency, and the G1.21 inbound-channel boundary.
 - **2026-07-24** — Corrected the remaining G1.20 boundaries: rejected/stale Pause requests leave the Run untouched, accepted checkpoint-plus-pause state commits atomically, and quality starts derive their exact current source, subject, and Model Profile binding inside the runtime rather than trusting caller fields.
 - **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.
 - **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.

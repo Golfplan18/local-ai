@@ -5344,6 +5344,34 @@ def _process_automation_error_status(exc: Exception) -> int:
     return 503
 
 
+def _process_trigger_service():
+    """Construct G1.19 over the accepted automation/runtime storage."""
+
+    from process_triggers import ProcessTriggerService
+
+    return ProcessTriggerService()
+
+
+def _process_trigger_error_status(exc: Exception) -> int:
+    from process_triggers import (
+        ProcessTriggerConflict,
+        ProcessTriggerError,
+        ProcessTriggerInputRequired,
+        ProcessTriggerIntegrityError,
+    )
+
+    exact_type_name = type(exc).__name__
+    if isinstance(exc, ProcessTriggerInputRequired) or exact_type_name == "ProcessTriggerInputRequired":
+        return 422
+    if isinstance(exc, ProcessTriggerConflict) or exact_type_name == "ProcessTriggerConflict":
+        return 409
+    if isinstance(exc, ProcessTriggerIntegrityError) or exact_type_name == "ProcessTriggerIntegrityError":
+        return 503
+    if isinstance(exc, ProcessTriggerError) or exact_type_name == "ProcessTriggerError":
+        return 400
+    return 503
+
+
 @app.route("/api/process-entry/construction-label", methods=["GET", "POST"])
 def process_entry_construction_label():
     """Evidence-gated Programming/Build bridge-trial decision.
@@ -6133,6 +6161,80 @@ def process_automation_authoring(conversation_id):
     return _json_response({"ok": True, "authoring": state})
 
 
+@app.route("/api/process-triggers", methods=["GET", "POST"])
+def process_triggers_collection():
+    """List Trigger deployments or create one immutable draft spec."""
+
+    try:
+        service = _process_trigger_service()
+        if request.method == "GET":
+            result = service.list()
+            status = 200
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or set(payload) != {"spec"}:
+                from process_triggers import ProcessTriggerInputRequired
+
+                raise ProcessTriggerInputRequired(
+                    "Trigger creation requires exactly one spec object"
+                )
+            result = service.create(payload["spec"])
+            status = 201
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)}, _process_trigger_error_status(exc)
+        )
+    return _json_response({"ok": True, "trigger": result} if request.method == "POST" else {"ok": True, **result}, status)
+
+
+@app.route("/api/process-triggers/<trigger_id>", methods=["GET", "POST"])
+def process_trigger_item(trigger_id):
+    """Read or act on one exact Trigger lifecycle/firing identity."""
+
+    try:
+        service = _process_trigger_service()
+        if request.method == "GET":
+            result = service.get(str(trigger_id))
+        else:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                from process_triggers import ProcessTriggerInputRequired
+
+                raise ProcessTriggerInputRequired("Trigger action must be an object")
+            action = str(payload.get("action") or "")
+            if action == "activate" and set(payload) == {
+                "action", "expected_spec_digest", "approval", "idempotency_key",
+            }:
+                result = service.activate(
+                    str(trigger_id),
+                    expected_spec_digest=str(payload["expected_spec_digest"]),
+                    approval=payload["approval"],
+                    idempotency_key=str(payload["idempotency_key"]),
+                )
+            elif action in {"pause", "resume", "retire"} and set(payload) == {
+                "action", "expected_state_digest", "idempotency_key",
+            }:
+                result = service.lifecycle(
+                    str(trigger_id), action=action,
+                    expected_state_digest=str(payload["expected_state_digest"]),
+                    idempotency_key=str(payload["idempotency_key"]),
+                )
+            elif action == "fire" and set(payload) == {"action", "request_id"}:
+                result = service.fire_manual(
+                    str(trigger_id), request_id=str(payload["request_id"]),
+                    requested_by="principal:user",
+                )
+            else:
+                from process_triggers import ProcessTriggerInputRequired
+
+                raise ProcessTriggerInputRequired("Trigger action fields are invalid")
+    except Exception as exc:
+        return _json_response(
+            {"ok": False, "error": str(exc)}, _process_trigger_error_status(exc)
+        )
+    return _json_response({"ok": True, "trigger": result})
+
+
 @app.route("/api/process-automation/runs", methods=["POST"])
 def process_automation_begin_run():
     """Begin and advance one exact promoted definition to its next stop."""
@@ -6171,6 +6273,8 @@ def process_automation_begin_run():
             style_profile=payload.get("style_profile"),
         )
         state = service.execute(state["run_id"])
+        if state.get("run_state") == "completed":
+            _process_trigger_service().dispatch_framework_completion(state["run_id"])
     except Exception as exc:
         return _json_response(
             {"ok": False, "error": str(exc)},
@@ -6208,6 +6312,11 @@ def process_automation_run_state(run_id):
                 from process_automation import ProcessAutomationInputRequired
 
                 raise ProcessAutomationInputRequired("Run action fields are invalid")
+        if request.method == "POST":
+            if state.get("trigger_binding"):
+                _process_trigger_service().synchronize_run(str(run_id))
+            elif state.get("run_state") == "completed":
+                _process_trigger_service().dispatch_framework_completion(str(run_id))
     except Exception as exc:
         return _json_response(
             {"ok": False, "error": str(exc)},
@@ -6332,6 +6441,9 @@ def process_attention_projection():
 
     try:
         projection = _process_delegation_service().projection()
+        projection["automated_processes"] = (
+            _process_trigger_service().attention_projection()
+        )
         inspector = _process_run_inspector_service()
         run_ids = sorted({
             str(row.get("run_id") or "")
@@ -6442,6 +6554,7 @@ def process_run_control(run_id):
             control_state_digest=str(payload.get("control_state_digest") or ""),
             idempotency_key=str(payload.get("idempotency_key") or ""),
         )
+        _process_trigger_service().synchronize_run(str(run_id))
     except Exception as exc:
         return _json_response(
             {"ok": False, "error": str(exc)},
@@ -20445,6 +20558,12 @@ if __name__ == "__main__":
         sched = get_scheduler()
         sched.start()
 
+    # G1.19 justified calendar Triggers are app-managed and intermittent.
+    # This driver installs no cron/launchd task and exists only while Ora runs.
+    from process_triggers import ProcessTriggerClock
+    process_trigger_clock = ProcessTriggerClock()
+    process_trigger_clock.start()
+
     # Start meta-layer oversight daemon if requested
     if args.oversight:
         try:
@@ -20480,6 +20599,7 @@ if __name__ == "__main__":
         print(f"MCP tools: {mcp_count}")
     if args.scheduler:
         print("Scheduler: running")
+    print("Trigger Manager: running (app-only; no 24/7 availability promise)")
     print("Press Ctrl+C to stop.")
 
     def _shutdown_handler(sig, frame):
@@ -20496,6 +20616,7 @@ if __name__ == "__main__":
             pass
         if args.scheduler:
             sched.stop()
+        process_trigger_clock.stop()
         raise SystemExit(0)
 
     _signal.signal(_signal.SIGINT, _shutdown_handler)

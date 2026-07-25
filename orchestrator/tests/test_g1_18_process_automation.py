@@ -388,13 +388,12 @@ class ProcessAutomationContractTests(unittest.TestCase):
             "G1.17 is user-deferred",
             "without an architecture choice",
             "G1.18 is independently accepted",
-            "G1.20 is implemented and submitted for independent judgment",
-            "G1.19 remains unauthorized until G1.20 is accepted",
-            "No Trigger, scheduler, Persona, channel, outbound effect, alternate engine, or generic Run force-control entered G1.20",
+            "G1.20 is independently accepted",
+            "G1.19 is current and authorized",
+            "No Trigger, scheduler, Persona, channel, outbound authority, parallel engine, or generic force-control entered the gate",
         ):
             self.assertIn(token, combined)
         self.assertNotIn("G1.17 is complete", combined)
-        self.assertNotIn("G1.19 is authorized", combined)
 
 
 class ProcessAutomationAuthoringTests(ProcessAutomationFixture):

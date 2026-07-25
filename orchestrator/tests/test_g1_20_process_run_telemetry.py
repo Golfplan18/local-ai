@@ -111,13 +111,11 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
         ).read_text()
         combined = "\n".join((tracker, program, registry))
         for token in (
-            "G1.20 is implemented and submitted for independent judgment",
-            "G1.19 remains unauthorized until G1.20 is accepted",
+            "G1.20 is independently accepted",
+            "G1.19 is current and authorized",
             "G1.17 is user-deferred",
         ):
             assert token in combined
-        assert "Gate G1.20: PASS" not in combined
-        assert "G1.20 — ✅" not in combined
         evidence = (ROOT / "outputs" / "g1-20" / "closeout-evidence.md").read_text()
         for token in (
             "python3 -m pytest -q \\",
@@ -129,7 +127,6 @@ class TestG120ProcessRunTelemetry(ProcessAutomationFixture):
             "git diff 87d29cc8562cf443d10215f662daa499bd14777d..HEAD --check",
         ):
             assert token in evidence
-        assert "G1.19 is authorized" not in combined
 
     def test_opt_in_quality_review_is_handoff_only_authority_inert_and_idempotent(self):
         state = self._handoff()

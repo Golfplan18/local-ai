@@ -2461,6 +2461,77 @@ class ProcessAutomationService:
         one_run_profile: str | None = None,
         style_profile: str | None = None,
     ) -> dict[str, Any]:
+        return self._begin_run(
+            definition_ref=definition_ref,
+            project_ref=project_ref,
+            inputs=inputs,
+            idempotency_key=idempotency_key,
+            principal_id=principal_id,
+            process_profile=process_profile,
+            step_profiles=step_profiles,
+            one_run_profile=one_run_profile,
+            style_profile=style_profile,
+            trigger_binding=None,
+        )
+
+    def begin_triggered_run(
+        self,
+        *,
+        definition_ref: Mapping[str, Any],
+        project_ref: str,
+        inputs: Mapping[str, Any],
+        idempotency_key: str,
+        principal_id: str,
+        trigger_binding: Mapping[str, Any],
+        process_profile: str | None = None,
+        step_profiles: Mapping[str, Any] | None = None,
+        style_profile: str | None = None,
+    ) -> dict[str, Any]:
+        """Begin a standing invocation only after its firing ledger authenticates.
+
+        The public begin_run path cannot supply this binding.  ProcessTriggerService
+        installs the authenticator on its shared service instance; constructing a
+        generic automation service and calling this method directly fails closed.
+        """
+
+        authenticator = getattr(self, "trigger_authenticator", None)
+        if not callable(authenticator):
+            raise ProcessAutomationIntegrityError(
+                "standing Trigger execution requires the authenticated Trigger Manager"
+            )
+        try:
+            exact_binding = authenticator(trigger_binding)
+        except Exception as exc:
+            raise ProcessAutomationIntegrityError(
+                "standing Trigger firing identity did not authenticate"
+            ) from exc
+        return self._begin_run(
+            definition_ref=definition_ref,
+            project_ref=project_ref,
+            inputs=inputs,
+            idempotency_key=idempotency_key,
+            principal_id=principal_id,
+            process_profile=process_profile,
+            step_profiles=step_profiles,
+            one_run_profile=None,
+            style_profile=style_profile,
+            trigger_binding=exact_binding,
+        )
+
+    def _begin_run(
+        self,
+        *,
+        definition_ref: Mapping[str, Any],
+        project_ref: str,
+        inputs: Mapping[str, Any],
+        idempotency_key: str,
+        principal_id: str,
+        process_profile: str | None,
+        step_profiles: Mapping[str, Any] | None,
+        one_run_profile: str | None,
+        style_profile: str | None,
+        trigger_binding: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
         project = _safe_id(project_ref, "project_ref")
         key = _safe_id(idempotency_key, "idempotency_key")
         principal = _safe_id(principal_id, "principal_id")
@@ -2481,6 +2552,8 @@ class ProcessAutomationService:
             "idempotency_key": key,
             "execution_context": execution_context,
         }
+        if trigger_binding is not None:
+            identity["trigger_binding"] = copy.deepcopy(dict(trigger_binding))
         invocation_digest = _digest_json(identity)
         run_id = "automated-run-" + invocation_digest.split(":", 1)[1][:32]
         metadata = definition["output_schema"]["x-ora-process"]
@@ -3256,8 +3329,12 @@ class ProcessAutomationService:
             "checkpoint_id": run["contracts"]["continuation"]["checkpoint_id"],
             "pause_kind": controls.get("pause_kind"),
             "result": None,
-            "standing_automation": False,
+            "standing_automation": bool(run["input_bindings"].get("trigger_binding")),
         }
+        if run["input_bindings"].get("trigger_binding"):
+            body["trigger_binding"] = copy.deepcopy(
+                run["input_bindings"]["trigger_binding"]
+            )
         if result is not None:
             body["result"] = {
                 "artifact_id": result["artifact_id"],

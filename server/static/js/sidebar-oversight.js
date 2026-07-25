@@ -339,14 +339,28 @@
       card.dataset.needsAttention = 'false';
       const name = document.createElement('div');
       name.className = 'oversight-card-name';
-      name.textContent = row.title || row.definition_ref.definition_id;
+      name.textContent = row.name || row.title || row.definition_ref.definition_id;
       card.appendChild(name);
       const meta = document.createElement('div');
       meta.className = 'oversight-card-meta';
       appendBadge(meta, row.status || 'Deployed');
-      appendBadge(meta, `trigger: ${row.trigger_binding}`);
-      appendBadge(meta, `authority: ${row.authority_binding}`);
+      appendBadge(meta, `trigger: ${(row.trigger_binding || {}).kind || 'unknown'}`);
+      appendBadge(meta, `authority: ${(row.authority_binding || {}).principal_id || 'unknown'}`);
       card.appendChild(meta);
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.title = 'Open Trigger Manager';
+      const openTrigger = () => {
+        if (window.OraProcessTriggerManager) {
+          window.OraProcessTriggerManager.open(row.trigger_id);
+        }
+      };
+      card.addEventListener('click', openTrigger);
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault(); openTrigger();
+        }
+      });
       attentionAutomatedList.appendChild(card);
     });
   };

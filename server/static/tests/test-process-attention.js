@@ -81,8 +81,9 @@ var attentionPayload = {
   automated_processes: [
     {
       definition_ref: { definition_id: 'cash/weekly', version: '1.0.0', digest: 'sha256:x' },
-      title: 'Weekly cash review', status: 'Deployed', trigger_binding: 'weekly',
-      authority_binding: 'finance', quiet: true,
+      trigger_id: 'weekly-cash', name: 'Weekly cash review', status: 'active',
+      trigger_binding: { kind: 'time', spec_digest: 'sha256:trigger' },
+      authority_binding: { principal_id: 'principal:finance' }, quiet: true,
     },
   ],
   telemetry_by_run: {
@@ -180,8 +181,8 @@ async function run() {
       && w.document.getElementById('processAttentionPendingCount').textContent === '2'
       && w.document.getElementById('processAttentionAutomatedCount').textContent === '1');
   record('deployed row exposes trigger and authority bindings',
-    automated[0].textContent.indexOf('trigger: weekly') >= 0
-      && automated[0].textContent.indexOf('authority: finance') >= 0);
+    automated[0].textContent.indexOf('trigger: time') >= 0
+      && automated[0].textContent.indexOf('authority: principal:finance') >= 0);
   record('completed work exposes exact result and acceptance evidence',
     unread[1].textContent.indexOf('report (sha256:result)') >= 0
       && unread[1].textContent.indexOf('"outcome":"PASS"') >= 0);

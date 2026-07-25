@@ -2241,6 +2241,34 @@ The existing Run Inspector modal renders elapsed/remaining time, attempts/retrie
 
 G1.20 adds no Trigger record, schedule, standing activation, Persona/MindSpec binding, outbound channel, new external-effect authority, or generic runtime force-control. Those boundaries preserve G1.19, G1.17, G1.21, and G1.22 ownership respectively.
 
+## 21. G1.19 Trigger Manager
+
+### Separate activation object over one Process engine
+
+`orchestrator/process_triggers.py` adds a Trigger as an immutable, content-digested activation specification beside—not inside—the strict Process Definition. The spec binds one stable Trigger ID, exact promoted G1.18 definition reference, Project, Principal, cause/condition, input-source map, existing Model/Style selections, and (for time only) the Runtime-Principle record. Definition registration continues to mean no activation. `ProcessTriggerService.create()` authenticates exact Process Library availability but leaves the Trigger `draft`; `activate()` requires the exact spec digest and a Principal approval bound to the server-derived activation-request digest. Inbound drafts cannot activate until G1.21 supplies an authenticated channel.
+
+Definitions and independent anchors are stored under `data/process-triggers/`; lifecycle and firing facts form an atomically rewritten append-only digest chain. Every read and listing recomputes the spec digest, independent anchor, sequence, prior-record link, and record digest. Pause, resume, and retirement bind the current state digest, so a concurrent firing or lifecycle decision makes an older browser request stale before mutation. The **Automated Processes** projection now comes only from these authenticated active/paused/retired deployments rather than inferring standing automation from registry or Artifact shape.
+
+### Exactly-once firing and governed Run join
+
+Manual, file-change, framework-completion, and time dispatch first persist `firing_claimed`. Its deterministic identity binds the exact Trigger/spec and source: manual request identity; captured file paths plus content/stat identities; completed source Run, definition, `ACCEPT`, and result; or exact scheduled calendar window. Concurrent/repeated delivery reads the existing claim. The claim also persists validated Process inputs and a bounded deterministic invocation key before execution. Framework-completion edges are checked as one definition graph during creation and activation; direct or multi-Trigger causal cycles are rejected before deployment.
+
+Only the shared `ProcessAutomationService` performs work. `begin_triggered_run()` is unavailable on a generic service: the Trigger Manager installs a ledger authenticator that revalidates the exact claim before adding `trigger_binding` to the ordinary Run input identity. It then uses the existing `begin_run`/`execute`, definition registry, Project/Model/Style resolution, worker, checkpoints, attempts, final review, Inspector, Pause/Resume/Stop, and recovery contracts. A human/failure checkpoint is recorded as a waiting firing, never completion. `synchronize_run()` joins later public Run actions to the firing and emits a framework-completion source only after the exact Run has one authenticated `ACCEPT`. Restart recovery resumes claims interrupted before Run binding through the same idempotent Run identity; it does not replay a completed node or bypass a human/user pause.
+
+File-change activation is an additional consumer of `runtime_event_dispatcher.py`'s existing OS notifications. No polling fallback was added. Each matched real file is captured once with path, SHA-256, size, modification identity, and a bounded UTF-8 excerpt; repeated notification for that same identity is idempotent, while changed content forms a new firing. Framework completion is runtime-derived and refuses running, blocked, wrong-definition, wrong-project, result-less, or non-accepted sources. Milestone check-in can bind `project_snapshot`, a digest-authenticated packet containing the exact Project Matrix content and bounded excerpts from standard Project-bound Dialogues; private and stealth Dialogues are excluded.
+
+### Runtime-Principle disposition for time
+
+Time is permitted only when **passage of time is the declared input** and the spec says, in machine-checked fields, that no file/framework/inbound runtime event can represent it, Ora acts only while running, and no cron/launchd/deferred-sweep fallback exists. This is valid for a declared calendar report or Project milestone check-in because no earlier mutation or completion event represents “the local calendar boundary has arrived.” Cleanup, backlog processing, retention repair, and other work with a real runtime cause fail this justification and must use that event or an explicit campaign.
+
+Schedules store an IANA timezone, local time, daily/weekly calendar rule, start date, grace window, and explicit intermittency policy. Occurrences are recalculated in the named zone on every date, including DST transitions; no fixed UTC offset is carried forward. `run_once` coalesces missed windows into the most recent due firing after Ora returns. `skip` records the missed current window without creating a Run. `ProcessTriggerClock` is an app-owned daemon thread started and stopped with the server; it promises no action while the machine or app is off and installs no OS task.
+
+### Public and browser surfaces and held boundaries
+
+The server exposes `GET/POST /api/process-triggers` and `GET/POST /api/process-triggers/<id>` for exact create/read/activate/pause/resume/retire/manual-fire operations. OS events and clock ticks have no public caller-authored endpoint. The sidebar **Trigger Manager** provides immutable draft authoring, exact review, activation, lifecycle controls, manual firing, firing history, and Inspector navigation. Stale and infrastructure failures remain visible and force readback. The existing `/api/process-attention` Automated Processes group reads the authenticated Trigger projection.
+
+G1.19 adds no second Process engine, telemetry database, Persona/MindSpec precedence, outbound message transport, credentials, remote publication, or external-effect authority. Email and Telegram remain inactive contract vocabulary for G1.21. Triggered Processes remain limited to G1.18's promoted non-external automation definitions; G1.22 retains outbound/security authority. G1.17 and the hardware/Windows tranche remain deferred.
+
 ---
 
 # Appendices
@@ -3007,6 +3035,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-07-24** — Added Chapter 21 for G1.19: immutable separately approved Trigger specs, content/source-bound exactly-once firing, ordinary governed Run invocation/recovery, OS file and accepted-framework events, Project milestone snapshots, named-zone justified app-only calendar operation, Trigger Manager UI/API, and the held G1.17/G1.21/G1.22 boundaries.
 - **2026-07-24** — Closed the remaining G1.20 integrity findings: Pause authenticates before mutation and atomically commits its checkpoint/state pair, so rejected, stale, and racing losers leave no checkpoint; quality starts independently derive the current source, subject, and evaluator binding at the runtime boundary, and direct fabricated start/outcome records are unavailable.
 - **2026-07-24** — Corrected the G1.20 gate submission: user Pause is now a persistent authority state releasable only by an authenticated Resume control; execute/retry, direct runtime calls, concurrency, interruption, and restart fail closed around it. Removed inferred zero token/cost claims from no-tools workers. Layer 2 now receives digest-verified bounded Artifact content, exact inputs, criteria, instructions, and failure trace, or deterministically returns `INDETERMINATE` without a model call.
 - **2026-07-24** — Added Chapter 20 for G1.20: deterministic Run telemetry, authenticated worker liveness, restart-safe pause/resume/stop for G1.18 automated Runs, authority-inert opt-in quality evaluation only at handoff/output-failure seams, browser/sidebar surfaces, and explicit scheduling/Persona/channel/security boundaries.
