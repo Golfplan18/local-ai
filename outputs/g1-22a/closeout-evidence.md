@@ -1,6 +1,6 @@
 # G1.22A Closeout Evidence — Pre-Channel System Protection
 
-Date: 2026-07-25
+Date: 2026-07-26
 
 Runtime baseline: `f7eb86a43f2c9c8970ea780908dc85abf83d29f2`
 
@@ -10,13 +10,15 @@ Security correction implementation: `8f1cd4289680cf092716e87521414449e4e33483`
 
 Residual authority correction: `fc731394128bcad5350c77d87248707274228c4c`
 
-Reconciled vault record: `44f53fc4d61d2f416867acd1376fc39c005030c8`
+Shell-wrapper correction: `7fe125d9fa87e41bcb64be4bdc9db6967c1a9329`
+
+Reconciled vault record: `eb202f3c4a99a6e011ee468e2b21470fb8b8e7e4`
 
 Environment: macOS 26.5.2, Python 3.14.3
 
 Gate state: pre-channel tranche implemented for independent judgment. G1.21 and G1.22B remain held; full G1.22 is not claimed.
 
-Correction state: the five original security findings, the credential-deletion correctness defect, and the two residual authority gaps are corrected and submitted for independent re-judgment. This packet does not claim Gate acceptance.
+Correction state: the five original security findings, the credential-deletion correctness defect, the two residual authority gaps, and the remaining `env` nested-command bypass are corrected and submitted for independent re-judgment. This packet does not claim Gate acceptance.
 
 ## Scope and architecture disposition
 
@@ -69,6 +71,17 @@ The residual correction closes both independently reproduced paths at the earlie
 
 These changes add no approval engine and no channel authority. They strengthen the existing Paused queue, authenticated approval store, risk gate, and execution path.
 
+## Shell-wrapper correction disposition
+
+The 2026-07-26 correction closes the sealed scan's remaining `env` nested-command path and audits the known shell-launch surface:
+
+1. A known shell profile must account for every executable the command can launch. Terminal `env` inspection plus environment assignments remain read-only, but a utility operand or ambiguous execution option makes the command unknown.
+2. Generic launcher utilities, execution-capable `awk`, `find` execution predicates, and child-process options on `tar`, `pandoc`, `yt-dlp`, and `zip` fail closed. A single help/version flag cannot give an unknown executable a known profile.
+3. The registered dispatcher rejects these forms before approval consumption or handler entry. The direct shell sink repeats the refusal before `subprocess.run` or `subprocess.Popen`, in foreground and background modes.
+4. The exact protected approval-store targets remain unreachable. Refusal leaves a pre-issued exact approval token unconsumed, proving that later review cannot be spent on hidden nested execution.
+
+This correction changes no channel, outbound, Persona, hardware, Windows-live, or G1.24 authority.
+
 ## Adversarial proofs
 
 The focused suite proves:
@@ -84,7 +97,9 @@ The focused suite proves:
 9. direct credential store/delete cannot bypass the active receipt; failed deletion propagates and cannot report success; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
 10. exact, equivalent, pattern, recursive, symlink, and hardlink forms of approval-authority access are refused before file or shell execution, including a recursive root whose tree contains a later authority alias;
 11. chat-only, substituted-task, stale-queue, foreign-Dialogue, foreign-Principal, altered-queue, already-resolved, replayed, and ambiguous inline task state grants no authority and changes no queue or approval record, while exact authenticated approval and one execution still work; and
-12. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
+12. utility-bearing `env`, generic launch wrappers, embedded execution languages, and profiled-tool execution options are refused before approval consumption, handler entry, or foreground/background subprocess creation;
+13. bounded terminal `env` inspection and assignment-only forms remain available, while registered-dispatcher refusals preserve their exact unused token; and
+14. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
 
 ## Exact command provenance
 
@@ -97,7 +112,7 @@ cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
   orchestrator/tests/test_g1_22a_system_protection.py \
   --tb=short
-# 31 passed; exit 0
+# 32 passed, 10 subtests passed; exit 0
 ```
 
 ### Security correction reproducer matrix
@@ -136,6 +151,45 @@ python3 -m pytest -q \
 # 8 passed; exit 0
 ```
 
+### Shell-wrapper reproducer matrix
+
+```bash
+cd /Users/oracle/ora-msi-central-routing
+python3 -m pytest -q \
+  orchestrator/tests/test_shell_profiles.py::TestFailClosed::test_command_launching_wrappers_and_profiled_launch_options_are_unknown \
+  orchestrator/tests/test_shell_profiles.py::TestFailClosed::test_env_inspection_and_assignment_only_forms_remain_read_only \
+  orchestrator/tests/test_shell_profiles.py::TestFailClosed::test_help_flag_does_not_profile_an_unknown_executable \
+  orchestrator/tests/test_shell_profiles.py::TestFailClosed::test_find_delete_and_exec_unknown_or_dangerous \
+  orchestrator/tests/test_dispatcher_gate.py::TestGateBeforeExecution::test_command_launching_wrappers_cannot_consume_approval_or_enter_handler \
+  orchestrator/tests/test_dispatcher_gate.py::TestGateBeforeExecution::test_env_inspection_only_forms_reach_registered_handler \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestApprovalAndReceipts::test_direct_shell_sink_refuses_unknown_wrappers_in_both_modes \
+  --tb=short
+# 7 passed, 36 subtests passed; exit 0
+```
+
+### Sealed-scan proof-of-concept after correction
+
+```bash
+cd /Users/oracle/ora-msi-central-routing
+python3 /private/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/codex-security-scans-APsi4h/ora-msi-central-routing/7333a312685b7e8045a475392092c82bfca31ad0_20260726T025522Z_44p5fte5/findings/env-nested-shell-authority-bypass/poc/reproduce_profile_bypass.py \
+  --source-root /Users/oracle/ora-msi-central-routing
+{
+  "direct_policy": "deny",
+  "direct_policy_code": "approval-authority-scope",
+  "opaque_policy": "deny",
+  "opaque_policy_code": "unclassified-effect",
+  "wrapped_mutability": "irreversible",
+  "wrapped_policy": "deny",
+  "wrapped_policy_code": "unclassified-effect",
+  "wrapped_profile": "env",
+  "wrapped_subprocess_reached": false,
+  "wrapped_unknown": true
+}
+# exit 1
+```
+
+The sealed reproducer uses exit `0` only when the vulnerable condition is present. Exit `1` here is the expected corrected result: its nested subprocess was not reached and the utility-bearing `env` form was unclassified and denied.
+
 ### Owning G1.22A authority matrix
 
 ```bash
@@ -150,7 +204,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_resolution_chain.py \
   orchestrator/tests/test_slash_commands.py \
   --tb=short
-# 360 passed, 1 warning; exit 0
+# 366 passed, 1 warning, 36 subtests passed; exit 0
 ```
 
 ### Owning plus adjacent runtime matrix
@@ -172,7 +226,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_project_registry.py \
   orchestrator/tests/test_governed_process_runtime.py \
   --tb=short
-# 597 passed, 4 warnings, 69 subtests passed; exit 0
+# 603 passed, 4 warnings, 105 subtests passed; exit 0
 ```
 
 ### Static cross-platform shell/profile regression
@@ -180,10 +234,10 @@ python3 -m pytest -q \
 ```bash
 cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
-  orchestrator/tests/test_shell_profiles.py \
+  orchestrator/tests/test_portability.py \
   orchestrator/tests/test_dispatcher_windows_live.py \
   --tb=short
-# 46 passed, 2 skipped; exit 0
+# 68 passed, 2 skipped; exit 0
 ```
 
 ### Provider and credential regression matrix
@@ -236,9 +290,11 @@ python3 -m py_compile \
   orchestrator/tools/search_files.py \
   orchestrator/boot.py \
   server/server.py \
+  orchestrator/tests/test_dispatcher_gate.py \
   orchestrator/tests/test_g1_22a_system_protection.py \
   orchestrator/tests/test_risk_gate.py \
   orchestrator/tests/test_risk_gate_pipeline.py \
+  orchestrator/tests/test_shell_profiles.py \
   orchestrator/tests/test_project_registry.py \
   orchestrator/tests/test_resolution_chain.py \
   orchestrator/tests/test_slash_commands.py \
@@ -263,6 +319,9 @@ cd /Users/oracle/ora-msi-central-routing
 git diff f7eb86a43f2c9c8970ea780908dc85abf83d29f2..HEAD --check
 # exit 0
 
+git diff 7333a312685b7e8045a475392092c82bfca31ad0..7fe125d9fa87e41bcb64be4bdc9db6967c1a9329 --check
+# exit 0
+
 cd /Users/oracle/Documents/vault
 git diff ac6a5236f1879bfce6591e7af7661c5dfbf7bea2..8a29cb4b51 --check
 # exit 0
@@ -274,12 +333,17 @@ git diff 63ad64b3d5..7e1f04fd4e --check
 cd /Users/oracle/Documents/vault
 git diff 7e1f04fd4e..44f53fc4d6 --check
 # exit 0
+
+cd /Users/oracle/Documents/vault
+git diff d101a6c00a..eb202f3c4a --check
+# exit 0
 ```
 
-The vault uses three exact G1.22A ranges because unrelated MSI commit
+The vault uses four exact G1.22A ranges because unrelated MSI commit
 `63ad64b3d5` was independently added between the initial G1.22A record and
 the security-correction record. The third range isolates the residual-authority
-record. Those commits and the unrelated vault working
+record; the fourth isolates this shell-wrapper correction from the then-current
+vault head. Those commits and the unrelated vault working
 tree are outside this Gate's scope and were not modified, staged, or claimed
 by these checks.
 
