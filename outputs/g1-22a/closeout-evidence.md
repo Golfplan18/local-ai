@@ -8,13 +8,15 @@ Vault baseline after recording G1.19 acceptance: `ac6a5236f1879bfce6591e7af7661c
 
 Security correction implementation: `8f1cd4289680cf092716e87521414449e4e33483`
 
-Reconciled vault record: `7e1f04fd4e049c9ddd0b930840cf192b3f5bcfc2`
+Residual authority correction: `fc731394128bcad5350c77d87248707274228c4c`
+
+Reconciled vault record: `44f53fc4d61d2f416867acd1376fc39c005030c8`
 
 Environment: macOS 26.5.2, Python 3.14.3
 
 Gate state: pre-channel tranche implemented for independent judgment. G1.21 and G1.22B remain held; full G1.22 is not claimed.
 
-Correction state: five confirmed security findings and the credential-deletion correctness defect are corrected and submitted for independent re-judgment. This packet does not claim Gate acceptance.
+Correction state: the five original security findings, the credential-deletion correctness defect, and the two residual authority gaps are corrected and submitted for independent re-judgment. This packet does not claim Gate acceptance.
 
 ## Scope and architecture disposition
 
@@ -58,6 +60,15 @@ The 2026-07-25 correction closes the scan's five reproduced paths at their share
 
 Credential deletion now propagates backend and verification failures. A successful terminal receipt is available only after exact keyring state proves `present=false`; a failed deletion records failure rather than manufacturing absence.
 
+## Residual authority correction disposition
+
+The residual correction closes both independently reproduced paths at the earliest shared boundaries:
+
+1. Approval-authority protection now evaluates the possible resolved target set rather than comparing exact text. Equivalent normalized paths, existing symlinks and hardlinks, wildcard/bracket/brace selectors, unresolved variables, immediate directory access, and recursive roots that contain an authority alias are refused before a handler, filesystem iterator, or shell subprocess can execute. Direct file read/write/list, edit, search, and shell entry points independently repeat the sink-side refusal. Shallow access that mechanically cannot reach the nested authority files remains available.
+2. Inline task-approval markers in chat history are untrusted locators only. The runtime selects exactly one active HMAC-authenticated pending task hold for the exact Dialogue and Principal, verifies its queue-record digest, task fingerprint, nonce, and action, and derives the continuation payload from that server-side event. Missing, fabricated, altered, stale, foreign, already-resolved, replayed, and ambiguous state appends neither authority nor queue mutation. One exact authenticated approval produces one one-shot task token and the legitimate task executes once.
+
+These changes add no approval engine and no channel authority. They strengthen the existing Paused queue, authenticated approval store, risk gate, and execution path.
+
 ## Adversarial proofs
 
 The focused suite proves:
@@ -71,7 +82,9 @@ The focused suite proves:
 7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational;
 8. record substitution, adjacent-digest rewriting, corrupt approval storage, audit-write failure, and concurrent terminal completion fail closed;
 9. direct credential store/delete cannot bypass the active receipt; failed deletion propagates and cannot report success; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
-10. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
+10. exact, equivalent, pattern, recursive, symlink, and hardlink forms of approval-authority access are refused before file or shell execution, including a recursive root whose tree contains a later authority alias;
+11. chat-only, substituted-task, stale-queue, foreign-Dialogue, foreign-Principal, altered-queue, already-resolved, replayed, and ambiguous inline task state grants no authority and changes no queue or approval record, while exact authenticated approval and one execution still work; and
+12. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
 
 ## Exact command provenance
 
@@ -84,7 +97,7 @@ cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
   orchestrator/tests/test_g1_22a_system_protection.py \
   --tb=short
-# 30 passed; exit 0
+# 31 passed; exit 0
 ```
 
 ### Security correction reproducer matrix
@@ -106,39 +119,71 @@ python3 -m pytest -q \
 # 10 passed; exit 0
 ```
 
-### Protection and direct-boundary matrix
+### Residual-authority reproducer matrix
 
 ```bash
 cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
-  orchestrator/tests/test_g1_22a_system_protection.py \
-  orchestrator/tests/test_tool_events.py \
-  orchestrator/tests/test_dispatcher_gate.py \
-  orchestrator/tests/test_user_settings.py \
-  orchestrator/tests/test_retrieval_rebuild.py \
-  orchestrator/tests/test_risk_gate.py \
-  orchestrator/tests/test_resolution_chain.py \
-  orchestrator/tests/test_slash_commands.py \
-  orchestrator/tests/test_project_registry.py \
+  orchestrator/tests/test_g1_22a_system_protection.py::TestApprovalAndReceipts::test_approval_authority_refuses_recursive_patterns_and_aliases_pre_execution \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_chat_only_fabricated_marker_cannot_mint_authority \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_stale_foreign_and_substituted_markers_leave_state_unchanged \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_multiple_same_dialogue_holds_are_ambiguous_and_unchanged \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_queue_task_identity_substitution_cannot_authorize \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_server_stream_uses_authenticated_queue_not_history_authority \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_exact_server_state_approves_once_and_executes_once \
+  orchestrator/tests/test_risk_gate.py::TestAuthenticatedInlineTaskApproval::test_server_stream_exact_inline_approval_issues_one_task_token \
   --tb=short
-# 446 passed, 5 subtests passed; exit 0
+# 8 passed; exit 0
 ```
 
-### Adjacent runtime matrix
+### Owning G1.22A authority matrix
 
 ```bash
 cd /Users/oracle/ora-msi-central-routing
 python3 -m pytest -q \
   orchestrator/tests/test_g1_22a_system_protection.py \
+  orchestrator/tests/test_risk_gate.py \
+  orchestrator/tests/test_risk_gate_pipeline.py \
   orchestrator/tests/test_tool_events.py \
   orchestrator/tests/test_dispatcher_gate.py \
+  orchestrator/tests/test_shell_profiles.py \
+  orchestrator/tests/test_resolution_chain.py \
+  orchestrator/tests/test_slash_commands.py \
+  --tb=short
+# 360 passed, 1 warning; exit 0
+```
+
+### Owning plus adjacent runtime matrix
+
+```bash
+cd /Users/oracle/ora-msi-central-routing
+python3 -m pytest -q \
+  orchestrator/tests/test_g1_22a_system_protection.py \
+  orchestrator/tests/test_risk_gate.py \
+  orchestrator/tests/test_risk_gate_pipeline.py \
+  orchestrator/tests/test_tool_events.py \
+  orchestrator/tests/test_dispatcher_gate.py \
+  orchestrator/tests/test_shell_profiles.py \
+  orchestrator/tests/test_resolution_chain.py \
+  orchestrator/tests/test_slash_commands.py \
   orchestrator/tests/test_retrieval_rebuild.py \
   orchestrator/tests/test_user_settings.py \
   orchestrator/tests/test_conversation_lifecycle.py \
   orchestrator/tests/test_project_registry.py \
   orchestrator/tests/test_governed_process_runtime.py \
   --tb=short
-# 359 passed, 69 subtests passed; exit 0
+# 597 passed, 4 warnings, 69 subtests passed; exit 0
+```
+
+### Static cross-platform shell/profile regression
+
+```bash
+cd /Users/oracle/ora-msi-central-routing
+python3 -m pytest -q \
+  orchestrator/tests/test_shell_profiles.py \
+  orchestrator/tests/test_dispatcher_windows_live.py \
+  --tb=short
+# 46 passed, 2 skipped; exit 0
 ```
 
 ### Provider and credential regression matrix
@@ -166,7 +211,7 @@ python3 -m pytest -q \
   orchestrator/tests/test_conversation_lifecycle.py \
   orchestrator/tests/test_project_registry.py \
   --tb=short
-# 253 passed, 9 subtests passed; exit 0
+# 253 passed, 3 warnings, 9 subtests passed; exit 0
 ```
 
 ### Compilation
@@ -186,10 +231,14 @@ python3 -m py_compile \
   orchestrator/user_settings.py \
   orchestrator/tools/bash_execute.py \
   orchestrator/tools/credential_store.py \
+  orchestrator/tools/file_edit.py \
   orchestrator/tools/file_ops.py \
+  orchestrator/tools/search_files.py \
   orchestrator/boot.py \
   server/server.py \
   orchestrator/tests/test_g1_22a_system_protection.py \
+  orchestrator/tests/test_risk_gate.py \
+  orchestrator/tests/test_risk_gate_pipeline.py \
   orchestrator/tests/test_project_registry.py \
   orchestrator/tests/test_resolution_chain.py \
   orchestrator/tests/test_slash_commands.py \
@@ -221,11 +270,16 @@ git diff ac6a5236f1879bfce6591e7af7661c5dfbf7bea2..8a29cb4b51 --check
 cd /Users/oracle/Documents/vault
 git diff 63ad64b3d5..7e1f04fd4e --check
 # exit 0
+
+cd /Users/oracle/Documents/vault
+git diff 7e1f04fd4e..44f53fc4d6 --check
+# exit 0
 ```
 
-The vault uses two exact G1.22A ranges because unrelated MSI commit
+The vault uses three exact G1.22A ranges because unrelated MSI commit
 `63ad64b3d5` was independently added between the initial G1.22A record and
-the security-correction record. That commit and the unrelated vault working
+the security-correction record. The third range isolates the residual-authority
+record. Those commits and the unrelated vault working
 tree are outside this Gate's scope and were not modified, staged, or claimed
 by these checks.
 

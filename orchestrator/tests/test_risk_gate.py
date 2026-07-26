@@ -1082,6 +1082,14 @@ class TestAuthenticatedInlineTaskApproval(unittest.TestCase):
         for patcher in reversed(self._patches):
             patcher.stop()
         self._tmp.cleanup()
+        # The production server lives at server/server.py, while several
+        # older adjacent suites intentionally import that file as top-level
+        # ``server``.  Do not leak the namespace-package import used by the
+        # public-stream checks into those independently valid test paths.
+        server_package = sys.modules.get("server")
+        if server_package is not None and hasattr(server_package, "__path__"):
+            sys.modules.pop("server.server", None)
+            sys.modules.pop("server", None)
 
     def _held(self, *, dialogue="dialogue:owner", principal="principal:user",
               fingerprint="sha256:" + "a" * 64):
