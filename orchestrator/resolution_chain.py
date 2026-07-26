@@ -466,6 +466,7 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
                                                  principal_id=principal_id)
     if message.startswith((
         "[Unauthenticated execution-gate entry",
+        "[Unauthenticated task-gate entry",
         "[Task-gate Principal mismatch",
     )):
         return message

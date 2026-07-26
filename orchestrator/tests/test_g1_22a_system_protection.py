@@ -267,6 +267,130 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             )
             self.assertEqual(decision.outcome, "deny", target)
 
+    def test_approval_authority_refuses_recursive_patterns_and_aliases_pre_execution(self):
+        import dispatcher
+        from tools import file_edit, file_ops, search_files
+        from tools import bash_execute
+        from tools.bash_execute import resolve_shell_profile
+
+        tool_events._grant_approval_authorized(
+            "diagnostic", tool_events.normalize_args_hash("diagnostic", {}),
+            "g1-22a-test",
+        )
+        store = Path(self.approvals)
+        key = Path(self.approvals + ".auth.key")
+        symlink = self.root / "approval-symlink.json"
+        hardlink = self.root / "approval-hardlink.json"
+        symlink.symlink_to(store)
+        os.link(store, hardlink)
+        read_axes = {
+            "category": "read", "mutability": "read",
+            "sensitivity": "private", "egress": "none",
+        }
+
+        for equivalent in (
+            store,
+            key,
+            symlink,
+            hardlink,
+            self.root / "nested" / ".." / store.name,
+        ):
+            decision = protection.classify_tool_call(
+                "file_read", {"path": str(equivalent)}, read_axes,
+            )
+            self.assertEqual(decision.outcome, "deny", equivalent)
+
+        for tool_name, parameters in (
+            ("search_files", {"pattern": "token", "directory": str(self.root)}),
+            ("list_directory", {"path": str(self.root), "max_depth": 4}),
+        ):
+            decision = protection.classify_tool_call(
+                tool_name, parameters, read_axes,
+            )
+            self.assertEqual(decision.outcome, "deny", tool_name)
+
+        for command in (
+            f"cat {self.root}/approvals.*",
+            f"cat {self.root}/approvals.{{json,bak}}",
+            f"rg token {self.root}",
+            f"grep -rn token {self.root}",
+            "cat $UNRESOLVED_APPROVAL_PATH",
+            f"cat {symlink}",
+            f"cat {hardlink}",
+        ):
+            profile = resolve_shell_profile(command, cwd=str(self.root))
+            decision = protection.classify_tool_call(
+                "bash_execute", {"command": command},
+                {**read_axes, **profile}, shell_profile=profile,
+            )
+            self.assertEqual(decision.outcome, "deny", command)
+
+        # Access depth remains exact: a non-recursive listing of an ancestor
+        # that cannot itself reach the authority files remains legitimate,
+        # while listing their immediate parent is denied.
+        shallow_command = f"ls {self.root.parent}"
+        shallow_profile = resolve_shell_profile(
+            shallow_command, cwd=str(self.root),
+        )
+        self.assertNotEqual(protection.classify_tool_call(
+            "bash_execute", {"command": shallow_command},
+            {**read_axes, **shallow_profile}, shell_profile=shallow_profile,
+        ).outcome, "deny")
+        parent_command = f"ls {self.root}"
+        parent_profile = resolve_shell_profile(
+            parent_command, cwd=str(self.root),
+        )
+        self.assertEqual(protection.classify_tool_call(
+            "bash_execute", {"command": parent_command},
+            {**read_axes, **parent_profile}, shell_profile=parent_profile,
+        ).outcome, "deny")
+
+        dispatcher.reset_consecutive()
+        original = dispatcher.TOOL_REGISTRY["search_files"]["handler"]
+        never_execute = mock.Mock(side_effect=AssertionError("handler ran"))
+        dispatcher.TOOL_REGISTRY["search_files"]["handler"] = never_execute
+        try:
+            result = dispatcher.dispatch(
+                "search_files",
+                {"pattern": "token", "directory": str(self.root)},
+            )
+        finally:
+            dispatcher.TOOL_REGISTRY["search_files"]["handler"] = original
+        self.assertIn("SYSTEM PROTECTION", result)
+        never_execute.assert_not_called()
+
+        self.assertIn("BLOCKED", file_ops.file_read(str(symlink)))
+        before = store.read_bytes()
+        self.assertIn("BLOCKED", file_ops.file_write(str(hardlink), "changed"))
+        self.assertFalse(file_edit.edit_file(
+            str(symlink), "diagnostic", "changed",
+        )["success"])
+        self.assertEqual(store.read_bytes(), before)
+        self.assertIn("BLOCKED", search_files.grep_files(
+            "token", str(self.root),
+        )[0]["error"])
+        self.assertIn("BLOCKED", search_files.list_directory(str(self.root)))
+        with mock.patch.object(bash_execute.subprocess, "run") as run:
+            refused = bash_execute.execute_command(
+                f"cat {self.root}/approvals.*", cwd=str(self.root),
+            )
+        run.assert_not_called()
+        self.assertIn("SYSTEM PROTECTION", refused["stderr"])
+
+        # A recursive root that is lexically disjoint but contains a
+        # filesystem alias is also refused before traversal starts.
+        with tempfile.TemporaryDirectory(dir=str(Path.home())) as alias_root:
+            nested = Path(alias_root) / "nested"
+            nested.mkdir()
+            (nested / "store-link.json").symlink_to(store)
+            os.link(key, nested / "key-hardlink")
+            aliased_tree = protection.classify_tool_call(
+                "search_files",
+                {"pattern": "token", "directory": alias_root},
+                read_axes,
+            )
+            self.assertEqual(aliased_tree.outcome, "deny")
+
     def test_signed_approval_store_tampering_fails_closed(self):
         args_hash = tool_events.normalize_args_hash("diagnostic", {"x": 1})
         tool_events._grant_approval_authorized(

@@ -3,6 +3,7 @@ working directory containment, and background process management."""
 
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -332,7 +333,15 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
                 writes.append(a.split("=", 1)[1])
         writes.extend(non_flags)
 
-    if base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir", "rm"):
+    if base == "ls":
+        # Directory listing is filesystem access even when its operand is a
+        # bare relative name. With no operand it addresses the effective cwd.
+        reads.extend(non_flags or ["."])
+    elif base == "find":
+        # The first positional is the traversal root; later positionals are
+        # expression operands, not additional files.
+        reads.append(non_flags[0] if non_flags else ".")
+    elif base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir", "rm"):
         # Every operand is a created/written target — surface all (bare names
         # resolve against the effective cwd) so a target in a protected path
         # gates like file_write.  ``rm`` is included even though its effect is
@@ -375,6 +384,10 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
         for i, a in enumerate(args):
             if a in ("-o", "--output", "-P", "--paths") and i + 1 < len(args):
                 writes.append(args[i + 1])
+    elif base == "rg":
+        # ripgrep defaults to recursive traversal of cwd when no path follows
+        # the pattern.
+        reads.extend(non_flags[1:] or ["."])
     elif base == "sed" or base in _PATTERN_THEN_FILE_READERS:
         # grep/rg/jq: first operand is the pattern/filter, the rest are the
         # files/dirs read. Bare filenames count — 'grep k id_rsa' reads id_rsa.
@@ -648,21 +661,66 @@ def resolve_shell_profile(command_string: str, cwd: str = None) -> dict:
     forced_unknown = False
 
     def _abs(p: str) -> str:
-        e = os.path.expanduser(p)
+        e = str(p).replace("${WORKSPACE}", WORKSPACE).replace(
+            "$WORKSPACE", WORKSPACE,
+        )
+        e = os.path.expanduser(os.path.expandvars(e))
         return e if os.path.isabs(e) else os.path.join(eff_cwd, e)
 
     # Collect read/write target paths (absolute, effective-cwd-resolved)
     # across all segments so the dispatcher can escalate sensitivity (secret
     # reads) and protected-config writes.
-    read_paths, write_paths = [], []
+    read_paths, write_paths, authority_scopes = [], [], []
     for seg in segments:
         r, w = _command_target_paths(seg)
+        if any(re.search(r"(?:\$[A-Za-z_{]|%[A-Za-z_][A-Za-z0-9_]*%)", p)
+               for p in (r + w)):
+            forced_unknown = True
         # A relative operand under an unknown cwd cannot be classified → the
         # whole command fails closed.
         if not cwd_known and any(_looks_relative(p) for p in (r + w)):
             forced_unknown = True
-        read_paths.extend(_abs(p) for p in r)
-        write_paths.extend(_abs(p) for p in w)
+        abs_reads = [_abs(p) for p in r]
+        abs_writes = [_abs(p) for p in w]
+        read_paths.extend(abs_reads)
+        write_paths.extend(abs_writes)
+        try:
+            scope_tokens = _strip_env_prefix(shlex.split(seg))
+        except (ValueError, NameError):
+            scope_tokens = []
+        scope_base = os.path.basename(scope_tokens[0]) if scope_tokens else ""
+        scope_flags = set(
+            token for token in scope_tokens[1:] if token.startswith("-")
+        )
+        recursive_flag = bool(
+            scope_flags & {"-r", "-R", "--recursive"}
+        ) or any(
+            token.startswith("-") and not token.startswith("--")
+            and "r" in token[1:].lower()
+            for token in scope_flags
+        )
+        recursive_read = (
+            scope_base in {"find", "rg"}
+            or scope_base in _ARCHIVE_TRANSFORM_BASES
+            or (
+                scope_base in {"grep", "egrep", "fgrep"}
+                and recursive_flag
+            )
+            or (scope_base == "ls" and recursive_flag)
+        )
+        children_read = scope_base == "ls" and not recursive_read
+        recursive_write = (
+            scope_base in {"rm", "cp", "mv"}
+            and recursive_flag
+        )
+        authority_scopes.extend({
+            "path": path, "recursive": recursive_read,
+            "children": children_read, "patterns": True,
+        } for path in abs_reads)
+        authority_scopes.extend({
+            "path": path, "recursive": recursive_write,
+            "children": False, "patterns": True,
+        } for path in abs_writes)
         # Apply this segment's cd/pushd/popd effect to the effective cwd for
         # the NEXT segments (the shell evaluates left to right).
         kind, arg = _cd_effect(seg)
@@ -708,7 +766,8 @@ def resolve_shell_profile(command_string: str, cwd: str = None) -> dict:
         mut = "reversible_write"
     return {"mutability": mut, "sensitivity": sens, "egress": egr,
             "unknown": False, "profile": _first_profile,
-            "read_paths": read_paths, "write_paths": write_paths}
+            "read_paths": read_paths, "write_paths": write_paths,
+            "authority_scopes": authority_scopes}
 
 
 # ── Command execution ──────────────────────────────────────────────────────
@@ -756,6 +815,47 @@ def execute_command(command_string: str, timeout: int = 60,
     if command_string.rstrip().endswith("&") and not background:
         background = True
         command_string = command_string.rstrip().rstrip("&").rstrip()
+
+    # Direct-call backstop: dispatcher performs the same check before its
+    # generic approval gate, but this execution boundary must not become an
+    # alias/pattern escape hatch for internal callers.
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        profile = resolve_shell_profile(command_string, cwd=cwd)
+        scopes = list(profile.get("authority_scopes") or [])
+        if not scopes:
+            scopes = [{
+                "path": path, "recursive": False,
+                "children": False, "patterns": True,
+            } for path in (
+                list(profile.get("read_paths") or [])
+                + list(profile.get("write_paths") or [])
+            )]
+        conflicts = any(
+            system_protection.approval_authority_conflict(
+                scope.get("path") or "",
+                recursive=bool(scope.get("recursive")),
+                patterns=bool(scope.get("patterns")),
+                children=bool(scope.get("children")),
+            )
+            for scope in scopes
+        )
+    except Exception:
+        conflicts = True
+    if conflicts:
+        refusal = (
+            "SYSTEM PROTECTION: shell target could include approval "
+            "authority state; command was not executed"
+        )
+        if background:
+            return {"pid": None, "status": refusal}
+        return {
+            "stdout": "", "stderr": refusal, "returncode": -1,
+            "timed_out": False, "truncated": False,
+        }
 
     env = _clean_env()
 

@@ -884,6 +884,33 @@ def normalize_args_hash(action: str, params: dict | None) -> str:
     ).hexdigest()
 
 
+def _queue_authority_digest(record_dict: dict) -> str:
+    """Bind the immutable authority-bearing portion of one Paused record.
+
+    Display name and engagement may change without changing authority.  The
+    stable queue identity, kind, originating Dialogue, and exact event payload
+    may not.  Their digest lives inside the independently authenticated
+    approval store, so rewriting the JSONL queue cannot manufacture a valid
+    approval request.
+    """
+
+    event = record_dict.get("event") or {}
+    body = {
+        "id": str(record_dict.get("id") or record_dict.get("queue_id") or ""),
+        "kind": str(record_dict.get("kind") or ""),
+        "conversation_id": str(
+            record_dict.get("conversation_id")
+            or event.get("conversation_id")
+            or ""
+        ),
+        "event": event,
+    }
+    encoded = json.dumps(
+        body, sort_keys=True, separators=(",", ":"), default=str,
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
 def _load_approvals() -> dict:
     path = _approvals_path()
     if not os.path.exists(path):
@@ -962,7 +989,8 @@ def _register_pending_approval(action: str, args_hash: str,
     return nonce
 
 
-def _bind_pending_queue(nonce: str, queue_id: str) -> bool:
+def _bind_pending_queue(nonce: str, queue_id: str,
+                        record_dict: dict) -> bool:
     bound = [False]
 
     def _do():
@@ -970,6 +998,9 @@ def _bind_pending_queue(nonce: str, queue_id: str) -> bool:
         for item in data.get("pending", []):
             if item.get("nonce") == nonce and not item.get("consumed"):
                 item["queue_id"] = queue_id
+                item["queue_authority_digest"] = _queue_authority_digest(
+                    record_dict,
+                )
                 bound[0] = True
                 break
         if bound[0]:
@@ -1003,6 +1034,7 @@ def _consume_pending_approval(
     event_principal = event.get("principal_id")
     review_request_digest = event.get("review_request_digest")
     review_selectors = event.get("review_selectors") or []
+    queue_authority_digest = _queue_authority_digest(record_dict)
     consumed = [None]
 
     def _do():
@@ -1019,6 +1051,7 @@ def _consume_pending_approval(
                 and item.get("principal_id") == principal_id == event_principal
                 and item.get("review_request_digest") == review_request_digest
                 and item.get("review_selectors") == review_selectors
+                and item.get("queue_authority_digest") == queue_authority_digest
             ):
                 item["consumed"] = True
                 item["consumed_at"] = _now_iso()
@@ -1360,7 +1393,10 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
             "context_summary": {"action": action, "why": why},
         }
         written = add_entry(entry)
-        if not _bind_pending_queue(approval_nonce, written.id):
+        written_record = written.to_dict()
+        if not _bind_pending_queue(
+            approval_nonce, written.id, written_record,
+        ):
             _discard_pending_approval(approval_nonce)
             return None
         return written.id

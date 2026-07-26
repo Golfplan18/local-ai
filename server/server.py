@@ -4008,7 +4008,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         _tg_marker = _rgate_srv.is_task_gate_continuation(history or [])
         if _tg_marker is not None:
             _tg_reply = _rgate_srv.handle_task_gate_reply(
-                _tg_marker, user_input, panel_id)
+                _tg_marker, user_input, panel_id,
+                principal_id="principal:user",
+            )
             if _tg_reply is not None:
                 turn_state["kind"] = "risk_hold"
                 yield _sse("response", text=_tg_reply)

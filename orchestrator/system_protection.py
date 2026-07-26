@@ -22,6 +22,8 @@ This layer contributes three things that the generic risk gate cannot infer:
 from __future__ import annotations
 
 import copy
+import fnmatch
+import glob
 import hmac
 import hashlib
 import json
@@ -197,6 +199,163 @@ def _path_key(path: str | os.PathLike[str]) -> str:
     return _rp.norm_key(Path(os.path.abspath(os.path.expanduser(str(path))))).replace("\\", "/")
 
 
+def approval_authority_paths() -> tuple[str, ...]:
+    """Return the effective approval store and independent key paths.
+
+    The effective path may be redirected by the owning runtime during tests or
+    an authenticated oversight sandbox.  Every protection consumer must use
+    the same effective identity, not a baked default.
+    """
+
+    try:
+        try:
+            import tool_events as _tool_events
+        except ImportError:  # pragma: no cover
+            from orchestrator import tool_events as _tool_events
+        store = str(_tool_events._approvals_path())
+    except Exception:
+        store = str(_rp.sandboxed_file(
+            str(Path(_rp.DATA_DIR) / "execution-approvals.json"),
+        ))
+    canonical = str(Path(_rp.DATA_DIR) / "execution-approvals.json")
+    paths = (store, store + ".auth.key", canonical, canonical + ".auth.key")
+    return tuple(dict.fromkeys(paths))
+
+
+def _same_existing_file(left: str, right: str) -> bool:
+    try:
+        return os.path.exists(left) and os.path.exists(right) and os.path.samefile(
+            left, right,
+        )
+    except (OSError, ValueError):
+        return False
+
+
+def _brace_expansions(pattern: str, *, limit: int = 64) -> tuple[str, ...]:
+    """Expand simple POSIX-shell brace alternatives for policy comparison."""
+
+    pending = [pattern]
+    expanded: list[str] = []
+    while pending and len(pending) + len(expanded) <= limit:
+        value = pending.pop()
+        match = re.search(r"\{([^{}]*)\}", value)
+        if match is None:
+            expanded.append(value)
+            continue
+        alternatives = match.group(1).split(",")
+        if len(alternatives) < 2:
+            return tuple()
+        for alternative in alternatives:
+            pending.append(
+                value[:match.start()] + alternative + value[match.end():]
+            )
+    return tuple(expanded) if not pending else tuple()
+
+
+def _tree_contains_approval_authority(
+    root: str, authorities: Sequence[str], authority_keys: Sequence[str],
+) -> bool:
+    """Detect symlink/hard-link authority aliases inside a recursive scope."""
+
+    if not os.path.isdir(root):
+        return False
+    walk_error = [False]
+
+    def _onerror(_error):
+        walk_error[0] = True
+
+    try:
+        for current, dirnames, filenames in os.walk(
+            root, followlinks=False, onerror=_onerror,
+        ):
+            for name in tuple(dirnames) + tuple(filenames):
+                item = os.path.join(current, name)
+                item_key = _path_key(item)
+                for authority, authority_key in zip(
+                    authorities, authority_keys,
+                ):
+                    if (
+                        item_key == authority_key
+                        or _same_existing_file(item, authority)
+                        or (
+                            os.path.islink(item)
+                            and _is_within(authority_key, item_key)
+                        )
+                    ):
+                        return True
+    except (OSError, ValueError):
+        return True
+    return walk_error[0]
+
+
+def approval_authority_conflict(
+    path: str | os.PathLike[str], *, recursive: bool = False,
+    patterns: bool = False, children: bool = False,
+) -> bool:
+    """Whether one requested filesystem scope could reach approval authority.
+
+    This comparison covers lexical equivalents, symlink resolution, existing
+    hard-link aliases, recursive ancestors, and shell glob/brace/variable
+    access forms.  Unresolved shell variables fail closed because their target
+    cannot be proven disjoint from the authority files before execution.
+    """
+
+    raw = str(path or "")
+    if not raw:
+        return False
+    expanded = os.path.expanduser(os.path.expandvars(raw))
+    authorities = approval_authority_paths()
+    authority_keys = tuple(_path_key(item) for item in authorities)
+
+    unresolved_variable = bool(re.search(
+        r"(?:\$[A-Za-z_{]|%[A-Za-z_][A-Za-z0-9_]*%)", expanded,
+    ))
+    if patterns and unresolved_variable:
+        return True
+
+    has_pattern = patterns and (
+        glob.has_magic(expanded) or any(marker in expanded for marker in "{}")
+    )
+    if has_pattern:
+        alternatives = _brace_expansions(expanded)
+        if not alternatives and any(marker in expanded for marker in "{}"):
+            return True
+        for alternative in alternatives or (expanded,):
+            pattern_key = _path_key(alternative)
+            for authority_key in authority_keys:
+                if fnmatch.fnmatchcase(authority_key, pattern_key):
+                    return True
+        try:
+            for matched in glob.glob(expanded, recursive=True):
+                matched_key = _path_key(matched)
+                if any(matched_key == key for key in authority_keys):
+                    return True
+                if any(_same_existing_file(matched, auth) for auth in authorities):
+                    return True
+                if recursive and _tree_contains_approval_authority(
+                    matched, authorities, authority_keys,
+                ):
+                    return True
+        except (OSError, ValueError):
+            return True
+        # POSIX shells expand braces even though Python's glob does not. A
+        # brace pattern rooted in an authority ancestor is therefore
+        # conservatively refused.
+    candidate_key = _path_key(expanded)
+    for authority, authority_key in zip(authorities, authority_keys):
+        if candidate_key == authority_key or _same_existing_file(expanded, authority):
+            return True
+        if children and os.path.dirname(authority_key) == candidate_key:
+            return True
+        if recursive and _is_within(authority_key, candidate_key):
+            return True
+    if recursive and _tree_contains_approval_authority(
+        expanded, authorities, authority_keys,
+    ):
+        return True
+    return False
+
+
 def _is_within(candidate: str, root: str) -> bool:
     return candidate == root or candidate.startswith(root.rstrip("/") + "/")
 
@@ -231,8 +390,6 @@ def _critical_exact_files() -> set[str]:
     files = {
         root / "orchestrator" / "boot.py",
         root / "orchestrator" / "system_protection.py",
-        Path(_rp.DATA_DIR) / "execution-approvals.json",
-        Path(_rp.DATA_DIR) / "execution-approvals.json.auth.key",
         root / "config" / "routing-config.json",
         root / "config" / "capabilities.json",
         root / "config" / "mcp-servers.json",
@@ -241,6 +398,7 @@ def _critical_exact_files() -> set[str]:
         value = os.environ.get(env_name)
         if value:
             files.add(Path(value))
+    files.update(Path(path) for path in approval_authority_paths())
     return {_path_key(path) for path in files}
 
 
@@ -419,11 +577,7 @@ def _selector_policy(selectors: Sequence[str], *, dedicated_action: bool,
         # Approval authority and its authentication key are unavailable to
         # every generic file surface, including reads.  Other exact critical
         # files retain the existing mutation-only rule.
-        approval_authority = {
-            _path_key(Path(_rp.DATA_DIR) / "execution-approvals.json"),
-            _path_key(Path(_rp.DATA_DIR) / "execution-approvals.json.auth.key"),
-        }
-        if candidate in approval_authority and not dedicated_action:
+        if approval_authority_conflict(candidate) and not dedicated_action:
             return "deny", "approval authority state requires its dedicated runtime path"
         if mutating and candidate in exact_files and not dedicated_action:
             return "deny", "critical boot/authority state requires a dedicated governed update path"
@@ -543,6 +697,7 @@ def classify_tool_call(
     selectors: list[str] = []
     destructive_intent: bool | None = None
     action = str(tool_name or "")
+    authority_scopes: list[tuple[str, bool, bool, bool]] = []
     if axes.get("unknown"):
         return PolicyDecision(
             "deny", "unclassified tool effect fails closed", action,
@@ -552,12 +707,30 @@ def classify_tool_call(
         path = parameters.get("path", parameters.get("file_path"))
         if path:
             selectors.append(path_selector(str(path)))
+            authority_scopes.append((str(path), False, False, False))
     elif tool_name == "bash_execute":
         action = "bash:" + str((shell_profile or {}).get("profile") or "unknown")
         for path in (shell_profile or {}).get("read_paths", []):
             selectors.append(path_selector(str(path)))
         for path in (shell_profile or {}).get("write_paths", []):
             selectors.append(path_selector(str(path)))
+        declared_scopes = list(
+            (shell_profile or {}).get("authority_scopes") or []
+        )
+        if declared_scopes:
+            for scope in declared_scopes:
+                authority_scopes.append((
+                    str(scope.get("path") or ""),
+                    bool(scope.get("recursive")),
+                    bool(scope.get("patterns")),
+                    bool(scope.get("children")),
+                ))
+        else:
+            for path in (
+                list((shell_profile or {}).get("read_paths", []))
+                + list((shell_profile or {}).get("write_paths", []))
+            ):
+                authority_scopes.append((str(path), False, True, False))
         command = str(parameters.get("command") or "")
         destructive_intent = bool(re.search(r"(?:^|[;&|\s])(rm|rmdir|find\b[^\n;&|]*\s-delete|dd\b[^\n;&|]*\sof=)(?:\s|$)", command))
         profile = str((shell_profile or {}).get("profile") or "unknown").lower()
@@ -595,6 +768,18 @@ def classify_tool_call(
         path = parameters.get("directory", parameters.get("path"))
         if path:
             selectors.append(path_selector(str(path)))
+            authority_scopes.append((str(path), True, True, True))
+
+    if any(
+        approval_authority_conflict(
+            path, recursive=recursive, patterns=patterns, children=children,
+        )
+        for path, recursive, patterns, children in authority_scopes
+    ):
+        return PolicyDecision(
+            "deny", "approval authority state is outside generic file and shell access",
+            action, tuple(selectors), "approval-authority-scope",
+        )
 
     return classify_action(
         action,

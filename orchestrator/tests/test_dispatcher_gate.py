@@ -566,7 +566,10 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # A path outside the known-private roots resolves to sensitive.
         result = dispatcher.dispatch(
             "list_directory", {"path": self.tmp.name})
-        self.assertIn("GATED", result)
+        # This fixture also contains the protected approval store; the shared
+        # pre-effect floor is therefore stronger than an ordinary sensitivity
+        # prompt and must refuse traversal outright.
+        self.assertIn("SYSTEM PROTECTION", result)
 
     def test_list_directory_workspace_allowed(self):
         listing = os.path.join(self.workspace, "listing")

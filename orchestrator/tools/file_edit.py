@@ -9,6 +9,18 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> dict:
     old_string must appear exactly once in the file.
     Path validation is handled by the dispatcher, not here.
     """
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(file_path):
+            return {"success": False,
+                    "error": "BLOCKED: approval authority state"}
+    except Exception:
+        return {"success": False,
+                "error": "BLOCKED: authority classification unavailable"}
+
     file_path = os.path.expanduser(file_path)
 
     if not os.path.isfile(file_path):

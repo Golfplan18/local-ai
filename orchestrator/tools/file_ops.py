@@ -22,6 +22,17 @@ ALLOWED_BASES = [WORKSPACE, VAULT, CONVERSATIONS]
 
 def _validate_path(path: str) -> tuple[bool, str]:
     """Return (allowed, reason). Blocks dangerous paths."""
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(path):
+            return False, "Access denied to approval authority state"
+    except Exception:
+        # Failure to classify authority state cannot make a generic file
+        # boundary permissive.
+        return False, "Approval authority classification unavailable"
     path = os.path.realpath(os.path.expanduser(path))
 
     # Block path traversal
@@ -31,14 +42,6 @@ def _validate_path(path: str) -> tuple[bool, str]:
     # Block deny-listed patterns — separator-normalized + case-folded so Windows
     # backslash paths still match the '/'-shaped patterns (W1 class, §7).
     path_match = path.replace("\\", "/").lower()
-    approval_authority = {
-        _rp.norm_key(_rp.DATA_DIR / "execution-approvals.json").replace("\\", "/"),
-        _rp.norm_key(
-            _rp.DATA_DIR / "execution-approvals.json.auth.key"
-        ).replace("\\", "/"),
-    }
-    if _rp.norm_key(path).replace("\\", "/") in approval_authority:
-        return False, "Access denied to approval authority state"
     for pattern in DENY_LIST:
         if pattern in path_match:
             return False, f"Access denied to sensitive path: {pattern}"

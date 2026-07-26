@@ -9748,7 +9748,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         _tg_marker = _rgate.is_task_gate_continuation(history or [])
         if _tg_marker is not None:
             _tg_reply = _rgate.handle_task_gate_reply(
-                _tg_marker, user_input, conversation_id)
+                _tg_marker, user_input, conversation_id,
+                principal_id="principal:user",
+            )
             if _tg_reply is not None:
                 turn_state["kind"] = "risk_hold"
                 return _tg_reply

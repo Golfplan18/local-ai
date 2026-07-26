@@ -21,6 +21,7 @@ if _TESTS_DIR not in sys.path:
 import live_guard  # noqa: E402,F401 — quarantines durable oversight/telemetry writes
 
 import boot  # noqa: E402
+import oversight_queue  # noqa: E402
 import risk_gate as rg  # noqa: E402
 import tool_events as te  # noqa: E402
 
@@ -40,8 +41,10 @@ class TerminalRiskGateTest(unittest.TestCase):
                               os.path.join(self._tmp, "approvals.json")),
             mock.patch.object(boot, "load_routing_config", return_value={}),
             mock.patch.object(boot, "PIPELINE_TRACE_AVAILABLE", False),
-            # No queue card writes hitting real files.
-            mock.patch.object(rg, "write_task_gate_card", return_value="q1"),
+            mock.patch.object(
+                oversight_queue, "HUMAN_QUEUE_PATH",
+                os.path.join(self._tmp, "human-queue.jsonl"),
+            ),
         ]
         for p in self._patches:
             p.start()
@@ -98,7 +101,12 @@ class TerminalRiskGateTest(unittest.TestCase):
         self.assertIn("EXECUTED", out)
 
     def test_task_gate_reply_one_mints_token(self):
-        marker = rg.build_task_gate_prompt("irreversible", "fpZ", "q1")
+        queue_id = rg.write_task_gate_card(
+            "irreversible", "fpZ", "c1", "terminal", "deploy prod",
+        )
+        marker = rg.build_task_gate_prompt(
+            "irreversible", "fpZ", queue_id,
+        )
         history = [{"role": "user", "content": "deploy prod"},
                    {"role": "assistant", "content": marker}]
         out = boot.run_pipeline("1", history=history, conversation_id="c1")
