@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shlex
 import sys
 import tempfile
 import threading
@@ -390,6 +391,34 @@ class TestApprovalAndReceipts(SystemProtectionBase):
                 read_axes,
             )
             self.assertEqual(aliased_tree.outcome, "deny")
+
+    def test_direct_shell_sink_refuses_unknown_wrappers_in_both_modes(self):
+        from tools import bash_execute
+
+        protected = shlex.quote(self.approvals)
+        commands = (
+            f"env cat {protected}",
+            f"env FOO=1 sh -c 'cat {self.approvals}'",
+            f"awk 'BEGIN{{system(\"cat {self.approvals}\")}}'",
+            f"find {shlex.quote(str(self.root))} -execdir cat {protected} ';'",
+            f"pandoc --filter cat {protected}",
+        )
+        for background in (False, True):
+            for command in commands:
+                with self.subTest(background=background, command=command), \
+                        mock.patch.object(
+                            bash_execute.subprocess, "run",
+                        ) as run, mock.patch.object(
+                            bash_execute.subprocess, "Popen",
+                        ) as popen:
+                    result = bash_execute.execute_command(
+                        command, cwd=str(self.root), background=background,
+                    )
+                refusal = result.get("status") if background \
+                    else result.get("stderr")
+                self.assertIn("SYSTEM PROTECTION", refusal)
+                run.assert_not_called()
+                popen.assert_not_called()
 
     def test_signed_approval_store_tampering_fails_closed(self):
         args_hash = tool_events.normalize_args_hash("diagnostic", {"x": 1})

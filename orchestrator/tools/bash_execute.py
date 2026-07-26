@@ -212,6 +212,25 @@ _GIT_IRREVERSIBLE_PUSH_FLAGS = {
 _UNKNOWN = {"mutability": "irreversible", "sensitivity": "secret",
             "egress": "external", "unknown": True}
 
+# Utilities whose primary contract is to invoke another executable.  They are
+# deliberately explicit even though most already fall through to _UNKNOWN:
+# this is the audit surface that prevents a future allowlist addition from
+# silently turning a launcher into a terminal read/write profile.
+_COMMAND_LAUNCHING_WRAPPERS = {
+    "command", "exec", "nice", "nohup", "timeout", "xargs", "parallel",
+    "setsid", "stdbuf", "ionice", "taskset", "chroot", "sudo", "doas",
+    "su", "runuser", "watch",
+}
+
+_FIND_EXECUTION_PREDICATES = {"-exec", "-execdir", "-ok", "-okdir"}
+
+_VERSION_HELP_BASES = (
+    _READ_ONLY_BASES | _REVERSIBLE_BASES | {
+        "find", "git", "python3", "python", "pip", "pip3", "npm", "node",
+        "brew", "curl", "wget", "rm",
+    }
+)
+
 _REDIRECT_RE = re.compile(r"^\d*(>>|>)$")            # '>', '>>', '2>', '1>>'
 _REDIRECT_PREFIX_RE = re.compile(r"^\d*(>>|>)(.+)$")  # '2>/dev/null', '>file'
 
@@ -240,6 +259,84 @@ def _redirect_write_targets(tokens: list[str]) -> list[str]:
 
 
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _env_is_inspection_only(args: list[str]) -> bool:
+    """Return True only when ``env`` has no utility operand.
+
+    POSIX ``env`` prints the resulting environment when options and
+    NAME=VALUE assignments exhaust its argv; otherwise it launches the first
+    remaining operand.  Only the small cross-platform inspection grammar is
+    admitted here.  Ambiguous or execution-bearing options (notably ``-S``)
+    fail closed with the utility-bearing forms.
+    """
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if _ENV_ASSIGN_RE.match(token):
+            i += 1
+            continue
+        if token in {
+            "-i", "--ignore-environment", "-0", "--null", "-v", "--debug",
+            "--help", "--version",
+        }:
+            i += 1
+            continue
+        if token in {"-u", "--unset"}:
+            if i + 1 >= len(args) or not args[i + 1]:
+                return False
+            i += 2
+            continue
+        if token.startswith("--unset=") and token.split("=", 1)[1]:
+            i += 1
+            continue
+        if token == "--":
+            return i + 1 == len(args)
+        return False
+    return True
+
+
+def _has_command_launching_option(base: str, args: list[str]) -> bool:
+    """Recognize child-process options on otherwise profiled utilities."""
+    if base == "find":
+        return any(arg in _FIND_EXECUTION_PREDICATES for arg in args)
+    if base == "tar":
+        for arg in args:
+            if arg in {
+                "-I", "--use-compress-program", "--to-command",
+                "--info-script", "--rsh-command",
+            }:
+                return True
+            if arg.startswith((
+                "-I", "--use-compress-program=", "--to-command=",
+                "--info-script=", "--rsh-command=",
+                "--checkpoint-action=exec=",
+            )):
+                return True
+        return False
+    if base == "pandoc":
+        return any(
+            arg in {"-F", "--filter", "-L", "--lua-filter", "--pdf-engine"}
+            or arg.startswith((
+                "-F", "-L", "--filter=", "--lua-filter=", "--pdf-engine=",
+            ))
+            for arg in args
+        )
+    if base == "yt-dlp":
+        return any(
+            arg == "--exec" or arg.startswith("--exec=")
+            or arg.startswith("--exec-before-download")
+            or arg.startswith("--exec-after-download")
+            for arg in args
+        )
+    if base == "zip":
+        return any(
+            arg == "-TT" or arg.startswith("-TT")
+            or arg == "--unzip-command"
+            or arg.startswith("--unzip-command=")
+            for arg in args
+        )
+    return False
 
 
 def _strip_env_prefix(tokens: list[str]) -> list[str]:
@@ -434,6 +531,19 @@ def _segment_axes(segment: str) -> dict:
     # resolved by the dispatcher via _command_target_paths).
     _redir_writes = _redirect_write_targets(tokens)
 
+    # A known profile is valid only when it describes every executable the
+    # shell can launch. ``env`` is terminal only when options/assignments
+    # exhaust argv; every utility-bearing or ambiguous form fails closed.
+    if base == "env":
+        if not _env_is_inspection_only(args):
+            return dict(_UNKNOWN)
+        return {"mutability": "reversible_write" if _redir_writes else "read",
+                "sensitivity": "private", "egress": "none"}
+    if base in _COMMAND_LAUNCHING_WRAPPERS or base == "awk":
+        return dict(_UNKNOWN)
+    if _has_command_launching_option(base, args):
+        return dict(_UNKNOWN)
+
     # cd / export / pushd / popd as leading no-op prefixes: read-neutral.
     # NOTE: `source` (and its POSIX synonym `.`) are deliberately NOT here — they
     # execute the CONTENTS of a file (arbitrary, model-editable code), so they are
@@ -443,8 +553,12 @@ def _segment_axes(segment: str) -> dict:
                 "ps", "hostname", "uptime", "id", "sleep", "true", "false"):
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
-    # '<tool> --version' / '-V' is always a read.
-    if "--version" in args or "-V" in args or "--help" in args or "-h" in args:
+    # A single help/version argument is a read only for an already-known
+    # utility.  Never let ``unknown-executable --help`` create a profile for
+    # an arbitrary binary.
+    if base in _VERSION_HELP_BASES and len(args) == 1 and args[0] in {
+        "--version", "-V", "--help", "-h",
+    }:
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
 
@@ -453,12 +567,14 @@ def _segment_axes(segment: str) -> dict:
         if base == "sed" and any(f.startswith("-i") for f in flags):
             return {"mutability": "reversible_write", "sensitivity": "private",
                     "egress": "none"}
-        if base == "find" and ("-delete" in args or "-exec" in args):
+        if base == "find" and (
+            "-delete" in args or _has_command_launching_option(base, args)
+        ):
             return dict(_UNKNOWN)
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
     if base == "find":
-        if "-delete" in args or "-exec" in args:
+        if "-delete" in args or _has_command_launching_option(base, args):
             return dict(_UNKNOWN)
         return {"mutability": "read", "sensitivity": "private", "egress": "none"}
 
@@ -818,13 +934,19 @@ def execute_command(command_string: str, timeout: int = 60,
 
     # Direct-call backstop: dispatcher performs the same check before its
     # generic approval gate, but this execution boundary must not become an
-    # alias/pattern escape hatch for internal callers.
+    # alias/pattern or command-wrapper escape hatch for internal callers.
+    unclassified = True
     try:
         try:
             import system_protection
         except ImportError:  # pragma: no cover
             from orchestrator import system_protection
         profile = resolve_shell_profile(command_string, cwd=cwd)
+        # Preserve the dedicated Windows/no-POSIX-shell refusal below.  That
+        # state is represented as an unknown profile but is a platform
+        # availability failure, not a command-shape classification result.
+        unclassified = bool(profile.get("unknown")) and \
+            _posix_shell_available()
         scopes = list(profile.get("authority_scopes") or [])
         if not scopes:
             scopes = [{
@@ -845,8 +967,11 @@ def execute_command(command_string: str, timeout: int = 60,
         )
     except Exception:
         conflicts = True
-    if conflicts:
+    if unclassified or conflicts:
         refusal = (
+            "SYSTEM PROTECTION: shell command contains unclassified "
+            "execution; command was not executed"
+            if unclassified else
             "SYSTEM PROTECTION: shell target could include approval "
             "authority state; command was not executed"
         )

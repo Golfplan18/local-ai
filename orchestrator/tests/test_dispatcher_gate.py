@@ -197,6 +197,70 @@ class TestGateBeforeExecution(DispatchBase):
         self.assertEqual(self.shell_calls, [])
         self.assertFalse(os.path.exists(marker))
 
+    def test_command_launching_wrappers_cannot_consume_approval_or_enter_handler(self):
+        protected = tool_events.APPROVALS_PATH
+        key = protected + ".auth.key"
+        commands = (
+            f"env cat {shlex.quote(protected)}",
+            f"env FOO=1 sh -c 'cat {protected}'",
+            f"command cat {shlex.quote(protected)}",
+            f"exec cat {shlex.quote(key)}",
+            f"nice cat {shlex.quote(protected)}",
+            f"nohup cat {shlex.quote(key)}",
+            f"timeout 1 cat {shlex.quote(protected)}",
+            f"awk 'BEGIN{{system(\"cat {protected}\")}}'",
+            f"find {shlex.quote(self.workspace)} -execdir cat {shlex.quote(protected)} ';'",
+            f"tar --use-compress-program=cat -cf out.tar {shlex.quote(protected)}",
+            f"pandoc --filter cat {shlex.quote(protected)}",
+            f"yt-dlp --exec 'cat {protected}' https://example.invalid/video",
+            f"zip -TT cat out.zip {shlex.quote(protected)}",
+        )
+        for background in (False, True):
+            for command in commands:
+                with self.subTest(background=background, command=command):
+                    dispatcher.reset_consecutive()
+                    dispatcher.execute_command.reset_mock()
+                    params = {
+                        "command": command,
+                        "cwd": self.workspace,
+                        "background": background,
+                    }
+                    args_hash = tool_events.normalize_args_hash(
+                        "bash_execute", params,
+                    )
+                    token = tool_events._grant_approval_authorized(
+                        "bash_execute", args_hash,
+                    )
+                    with mock.patch.object(
+                        bash_execute.subprocess, "run",
+                    ) as run, mock.patch.object(
+                        bash_execute.subprocess, "Popen",
+                    ) as popen:
+                        result = dispatcher.dispatch("bash_execute", params)
+                    self.assertIn("SYSTEM PROTECTION", result)
+                    dispatcher.execute_command.assert_not_called()
+                    run.assert_not_called()
+                    popen.assert_not_called()
+                    self.assertEqual(
+                        tool_events.check_and_consume_approval(
+                            "bash_execute", args_hash,
+                        ),
+                        token,
+                    )
+
+    def test_env_inspection_only_forms_reach_registered_handler(self):
+        commands = ("env", "env FOO=bar", "env -i FOO=bar", "env -u HOME")
+        for command in commands:
+            dispatcher.reset_consecutive()
+            result = dispatcher.dispatch(
+                "bash_execute", {"command": command, "cwd": self.workspace},
+            )
+            self.assertNotIn("SYSTEM PROTECTION", result, command)
+            self.assertNotIn("GATED", result, command)
+        self.assertEqual(
+            [call[0] for call in self.shell_calls], list(commands),
+        )
+
     def test_git_force_push_blocked(self):
         result = dispatcher.dispatch(
             "bash_execute", {"command": "git push --force origin main"})
@@ -476,7 +540,10 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         r = dispatcher.dispatch(
             "bash_execute",
             {"command": "awk -f ~/.ssh/id_rsa data.txt", "cwd": self.tmp.name})
-        self.assertIn("GATED", r)
+        # awk is itself an execution language (system()/command pipes), so
+        # the wrapper audit now applies the stronger pre-approval refusal.
+        self.assertIn("SYSTEM PROTECTION", r)
+        self.assertEqual(self.shell_calls, [])
 
     def test_env_prefix_does_not_hide_secret_read(self):
         r = dispatcher.dispatch(
