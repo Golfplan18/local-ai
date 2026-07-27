@@ -313,10 +313,18 @@ class TestPhase35Closeout(unittest.TestCase):
         self.assertIn("Gate 3.5 passed at runtime closeout commit `71f0ecf7`; G1.1 is complete", technical)
         self.assertIn("G1.1 is complete after independent Gate 3.5 acceptance", tracker)
         self.assertIn(
-            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, and generic-API-isolation corrections are implemented and await independent re-judgment",
+            "G1.18 was independently accepted on 2026-07-24",
             tracker,
         )
         self.assertIn("G1.3, and G1.7 are user-deferred", tracker)
+        boundary_pattern = re.compile(
+            r"\*\*Current executable Gate-1 boundary:\*\* (G1\.\d+)"
+        )
+        tracker_boundaries = boundary_pattern.findall(self.tracker)
+        registry_boundaries = boundary_pattern.findall(self.registry)
+        self.assertEqual(len(tracker_boundaries), 1)
+        self.assertEqual(len(registry_boundaries), 1)
+        self.assertEqual(tracker_boundaries, registry_boundaries)
         self.assertIn("Parts 1 and 2 plus Phases 3.1–3.5 are accepted", design)
         self.assertIn("G1.1 is complete", design)
         current = "\n".join((technical, tracker, design))

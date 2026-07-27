@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -214,8 +215,8 @@ class TestPhase33UserGuidance(unittest.TestCase):
     def test_evidence_recovery_and_lifecycle_limits_are_honest(self):
         for token in (
             "there is no user button that can convert stale or missing evidence into acceptance",
-            "does **not** provide a general button to force an arbitrary active Run to pause, stop, resume, or reopen",
-            "does not ship a general trigger-management or broad activation interface",
+            "These force controls are not general controls for every governed Run family",
+            "Trigger Manager does not send messages or hold channel credentials",
             "It does not replay a recorded mutation",
             "**Archive** marks the outputs archived; it does not delete source files",
             "**Discard** marks the outputs discarded; it does not delete source files",
@@ -250,11 +251,20 @@ class TestPhase33UserGuidance(unittest.TestCase):
         for token in (
             "Parts 1 and 2 plus Phases 3.1–3.5 accepted",
             "G1.1 is complete after independent Gate 3.5 acceptance",
-            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, and generic-API-isolation corrections are implemented and await independent re-judgment",
+            "G1.18 was independently accepted on 2026-07-24",
             "G1.3, and G1.7 are user-deferred",
         ):
             with self.subTest(registry_token=token):
                 self.assertIn(token, self.registry)
+
+        boundary_pattern = re.compile(
+            r"\*\*Current executable Gate-1 boundary:\*\* (G1\.\d+)"
+        )
+        tracker_boundaries = boundary_pattern.findall(self.tracker)
+        registry_boundaries = boundary_pattern.findall(self.registry)
+        self.assertEqual(len(tracker_boundaries), 1)
+        self.assertEqual(len(registry_boundaries), 1)
+        self.assertEqual(tracker_boundaries, registry_boundaries)
 
         current_records = "\n".join((self.design, self.tracker, self.registry))
         for obsolete in (
