@@ -1,7 +1,9 @@
 # G1.23 Mac/general soft-launch closeout evidence
 
-Date: 2026-07-26 (America/Los_Angeles)  
-Behavioral runtime commit: `53087d10e119565b956b6fc55738ef494ea9d346`  
+Date: 2026-07-26 (America/Los_Angeles)
+
+Behavioral runtime commit: `53087d10e119565b956b6fc55738ef494ea9d346`
+
 Scope: G1.23 Phases 1–2 and static Windows refusal-path analysis only.
 
 ## Boundary
