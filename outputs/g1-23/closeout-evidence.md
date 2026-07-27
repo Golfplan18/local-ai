@@ -4,6 +4,8 @@ Date: 2026-07-26 (America/Los_Angeles)
 
 Behavioral runtime commit: `53087d10e119565b956b6fc55738ef494ea9d346`
 
+Phase-2 recovery correction: `331291497164589c169be49c4de8b039e345fa5e`
+
 Scope: G1.23 Phases 1–2 and static Windows refusal-path analysis only.
 
 ## Boundary
@@ -63,7 +65,18 @@ The product gap was real: the Paused API/UI projected only a raw `ExecutionRevie
 
 Untrusted branch strings, shell punctuation, non-review refs, and overlong refs are not projected.
 
-Disposition: **NEEDS FIX → FIXED.** The branch mechanism was safe; the missing user explanation is now shipped and exercised through the real DOM surface.
+Independent judgment then found one recovery defect in the branch mechanism: it published a base-only placeholder ref before the throwaway-index snapshot succeeded and ignored several Git return codes. A failed `write-tree` could therefore return a branch name even though no attempted changes had been captured. The recovery correction now:
+
+- checks `read-tree`, `add -A`, `write-tree`, `commit-tree`, ref lookup, `update-ref`, and exact readback;
+- completes the attempt commit before publishing any ref;
+- uses compare-and-swap publication against the exact previous ref identity;
+- restores that exact ref, or deletes a newly created ref, if publication cannot be authenticated;
+- leaves the user's HEAD, staged index, and working tree unchanged; and
+- withholds the handback and preserved-attempt claim whenever capture returns no authenticated ref.
+
+Fault injection covers every listed stage for both new and pre-existing refs. The Judge's exact `write-tree` reproducer now returns `None`, with calls ending at `write-tree` and no branch operation.
+
+Disposition: **NEEDS FIX → FIXED.** Both the safe branch publication/recovery contract and the missing user explanation are now shipped and exercised through real Git and DOM surfaces.
 
 ## Static Windows refusal-path analysis
 
@@ -90,7 +103,7 @@ Working directory for every command: `/Users/oracle/ora-msi-central-routing`.
 ORA_SCRATCH=/private/tmp/g1-23-scratch PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider orchestrator/tests/test_g1_23_execution_review_readiness.py orchestrator/tests/test_execution_loop.py orchestrator/tests/test_execution_packet.py orchestrator/tests/test_execution_persistence.py orchestrator/tests/test_execution_provenance.py orchestrator/tests/test_execution_review.py orchestrator/tests/test_evidence_runner.py orchestrator/tests/test_isolated_actuator.py orchestrator/tests/test_windows_appcontainer.py orchestrator/tests/test_execution_families.py orchestrator/tests/test_model_router.py orchestrator/tests/test_router_config_name.py --tb=short
 ```
 
-Result: `411 passed, 2 subtests passed in 7.02s`; exit `0`. The live-Windows suite is intentionally absent.
+Result: `416 passed, 14 subtests passed in 8.64s`; exit `0`. The live-Windows suite is intentionally absent.
 
 ### Focused plus adjacent Python matrix
 
@@ -98,7 +111,30 @@ Result: `411 passed, 2 subtests passed in 7.02s`; exit `0`. The live-Windows sui
 ORA_SCRATCH=/private/tmp/g1-23-scratch PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider orchestrator/tests/test_g1_23_execution_review_readiness.py orchestrator/tests/test_execution_loop.py orchestrator/tests/test_evidence_runner.py orchestrator/tests/test_model_router.py orchestrator/tests/test_router_config_name.py orchestrator/tests/test_trace_manifest.py::TestPhysicalModelCallConfig::test_truncation_retry_records_each_effective_attempt --tb=short
 ```
 
-Result: `196 passed, 4 warnings in 3.63s`; exit `0`. Warnings are the pre-existing `datetime.utcnow()` deprecations in `pipeline_trace.py`.
+Result: `201 passed, 12 subtests passed, 4 warnings in 5.06s`; exit `0`. Warnings are the pre-existing `datetime.utcnow()` deprecations in `pipeline_trace.py`.
+
+### Judge recovery reproducer
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY'
+from orchestrator import execution_loop as el
+calls=[]
+def failing_git(repo, args, env=None):
+    calls.append(tuple(args))
+    if args[0] in {'branch','read-tree','add'}:
+        return 0, ''
+    if args[0] == 'write-tree':
+        return 1, 'simulated write-tree failure'
+    raise AssertionError(args)
+ref = el.create_escalation_branch(
+    '/tmp/does-not-matter', 'a'*40, 'recovery-probe',
+    trace_dir='/tmp/turn-1', git=failing_git)
+print(ref)
+print(calls)
+PY
+```
+
+Result: `None`, followed by `[('read-tree', ...), ('add', '-A'), ('write-tree',)]`; exit `0`. No ref operation occurs.
 
 ### Browser DOM
 
@@ -111,7 +147,7 @@ Result: `18 / 18 tests passed`; exit `0`.
 ### Syntax and diff integrity
 
 ```bash
-PYTHONPYCACHEPREFIX=/private/tmp/g1-23-pycache python3 -m py_compile orchestrator/boot.py orchestrator/execution_loop.py orchestrator/router.py server/server.py orchestrator/tests/test_g1_23_execution_review_readiness.py
+PYTHONPYCACHEPREFIX=/private/tmp/g1-23-pycache python3 -m py_compile orchestrator/boot.py orchestrator/execution_loop.py orchestrator/router.py server/server.py orchestrator/tests/test_g1_23_execution_review_readiness.py orchestrator/tests/test_execution_loop.py
 node --check server/static/js/sidebar-oversight.js
 node --check server/static/tests/test-process-attention.js
 git diff --check
