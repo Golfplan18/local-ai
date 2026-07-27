@@ -19,6 +19,9 @@ from server import server
 
 
 ROOT = Path(__file__).resolve().parents[2]
+VAULT_ORA = Path(
+    os.environ.get("ORA_VAULT_ROOT", "/Users/oracle/Documents/vault")
+) / "Projects" / "Ora"
 
 
 def test_execution_review_uses_a_bounded_verdict_output_cap(monkeypatch):
@@ -243,3 +246,37 @@ def test_windows_appcontainer_is_opt_in_and_live_proof_remains_separate():
     assert "ORA_WINDOWS_APPCONTAINER" not in launcher
     assert "win32" in live_test
     assert "AppContainer" in live_test
+
+
+def test_g1_23_records_preserve_submission_and_deferral_boundaries():
+    report = (
+        VAULT_ORA / "Working — Execution Review Soft-Launch Check 2026-07-26.md"
+    ).read_text(encoding="utf-8")
+    tracker = (VAULT_ORA / "Working — Ora Setup and Refinement.md").read_text(
+        encoding="utf-8"
+    )
+    registry = (
+        VAULT_ORA / "Registry — Ora Overview and Document Registry.md"
+    ).read_text(encoding="utf-8")
+    canonical = (
+        VAULT_ORA / "Reference — Ora Execution Review Architecture.md"
+    ).read_text(encoding="utf-8")
+
+    expected_runtime = "53087d10e119565b956b6fc55738ef494ea9d346"
+    expected_evidence = "da4f3f7c84c311551334d7928d7ea82987b2fc7c"
+    for record in (report, tracker):
+        assert expected_runtime in record
+        assert expected_evidence in record
+
+    assert "G1.22A is neither accepted nor failed-complete" in tracker
+    assert "G1.22A is explicitly user-deferred and incomplete" in registry
+    assert "shell-env-assignment-execution-bypass" in tracker
+    assert "shell-env-assignment-execution-bypass" in registry
+    assert "Working — Execution Review Soft-Launch Check 2026-07-26.md" in registry
+
+    for record in (report, tracker, registry, canonical):
+        assert "Phase 3" in record
+        assert "deferred" in record.lower()
+    assert "Live Windows Phase 3 remains deferred with G1.3" in registry
+    assert "ORA_EXECUTION_LOOP=1`, set in `start.sh`" not in tracker
+    assert "`ORA_EXECUTION_LOOP` (master gate, `=1` in `start.sh`)" not in canonical
