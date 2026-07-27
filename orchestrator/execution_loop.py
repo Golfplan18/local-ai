@@ -914,6 +914,9 @@ def run_verify(review_text: str, *, verify_invoker: Callable | None,
     try:
         system = _VERIFY_SYSTEM + (_SINGLE_FAMILY_ADDENDUM if same_family else "")
         raw = verify_invoker(system, review_text, endpoint)
+        actual_endpoint = getattr(raw, "endpoint", None)
+        if isinstance(actual_endpoint, dict) and actual_endpoint:
+            rec["reviewer"] = _endpoint_ref(actual_endpoint)
         parsed = parse_verify_output(raw or "")
         conf = parsed["confidence"]
         if same_family:

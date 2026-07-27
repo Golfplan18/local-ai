@@ -20764,6 +20764,21 @@ def api_oversight_paused():
     rows = []
     for e in entries:
         verdict = e.verdict or {}
+        context_summary = e.context_summary or {}
+        review_kind = (
+            "execution_review_escalation"
+            if context_summary.get("kind") == "execution_review_escalation"
+            else ""
+        )
+        attempt_branch = ""
+        if review_kind:
+            candidate = context_summary.get("abandoned_attempt_branch")
+            if (isinstance(candidate, str)
+                    and re.fullmatch(
+                        r"execution-review/escalation-[A-Za-z0-9_-]{1,180}",
+                        candidate,
+                    )):
+                attempt_branch = candidate
         reasoning = (verdict.get("reasoning") or verdict.get("raw_output") or "").strip()
         if len(reasoning) > 600:
             reasoning = reasoning[:600] + "…"
@@ -20779,6 +20794,14 @@ def api_oversight_paused():
             "reasoning_excerpt": reasoning,
             "trace_ref": e.trace_ref,
             "trace_step": (e.event or {}).get("trace_step", ""),
+            "review_kind": review_kind,
+            "abandoned_attempt_branch": attempt_branch,
+            "user_explanation": (
+                "Ora could not independently verify this turn. It preserved an "
+                "inspectable attempt reference and did not automatically merge the "
+                "review branch. Review or discuss the evidence before approving."
+                if review_kind else ""
+            ),
         })
     return json.dumps({"entries": rows}), 200, {"Content-Type": "application/json"}
 

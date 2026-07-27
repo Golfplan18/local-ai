@@ -402,7 +402,9 @@
     if (entry.event_type) {
       const tag = document.createElement('span');
       tag.className = 'badge';
-      tag.textContent = entry.event_type;
+      tag.textContent = entry.review_kind === 'execution_review_escalation'
+        ? 'Execution Review'
+        : entry.event_type;
       meta.appendChild(tag);
     }
     if (entry.discussion_conversation_id) {
@@ -447,6 +449,21 @@
   const buildPausedDetail = (entry) => {
     const det = document.createElement('div');
     det.className = 'oversight-detail';
+
+    if (entry.review_kind === 'execution_review_escalation') {
+      const explanation = document.createElement('div');
+      explanation.className = 'oversight-detail-reasoning execution-review-explanation';
+      explanation.textContent = entry.user_explanation
+        || 'Ora could not independently verify this turn. Review the evidence before approving.';
+      det.appendChild(explanation);
+
+      if (entry.abandoned_attempt_branch) {
+        const branch = document.createElement('div');
+        branch.className = 'oversight-detail-reasoning execution-review-branch';
+        branch.textContent = `Preserved attempt: ${entry.abandoned_attempt_branch}`;
+        det.appendChild(branch);
+      }
+    }
 
     const reasoning = document.createElement('div');
     reasoning.className = 'oversight-detail-reasoning';

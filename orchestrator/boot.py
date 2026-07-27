@@ -9498,18 +9498,97 @@ def _make_web_consultation_invoker(config_name: str | None, slot: str):
     return _invoke
 
 
+_EXECUTION_REVIEW_MAX_TOKENS = 2400
+
+
+class _ExecutionVerifyResponse(str):
+    """String-compatible verifier output carrying the endpoint that produced it."""
+
+    def __new__(cls, value: str, endpoint: dict | None):
+        obj = super().__new__(cls, value or "")
+        obj.endpoint = dict(endpoint or {})
+        return obj
+
+
 def _make_execution_verify_invoker(config: dict, config_name: str | None):
     """Execution Review Phase 6: the verify-slot model-call callback
     ``(system, user, endpoint) -> str`` for the different-family execution-review
     verify. Calls the SELECTED endpoint (chosen by the loop's family selector), never
     a fixed slot — so the diversity requirement is honoured. None-safe: returns "" on
     a missing endpoint / failed call so the verify degrades rather than raising."""
+    def _bounded_endpoint(endpoint: dict) -> dict:
+        verify_endpoint = dict(endpoint)
+        configured_cap = verify_endpoint.get("max_tokens")
+        try:
+            configured_cap = int(configured_cap)
+        except (TypeError, ValueError):
+            configured_cap = _EXECUTION_REVIEW_MAX_TOKENS
+        verify_endpoint["max_tokens"] = min(
+            max(1, configured_cap), _EXECUTION_REVIEW_MAX_TOKENS)
+        verify_endpoint["_disable_truncation_retry"] = True
+        return verify_endpoint
+
+    def _usable_verdict(raw: str) -> bool:
+        if not isinstance(raw, str) or not raw.strip():
+            return False
+        if raw.lstrip().startswith("[Error"):
+            return False
+        try:
+            try:
+                import execution_loop as _el_verify
+            except ImportError:  # pragma: no cover
+                from orchestrator import execution_loop as _el_verify
+            parsed = _el_verify.parse_verify_output(raw)
+            return parsed.get("verdict") in {"PASS", "FAIL"} or bool(
+                parsed.get("findings")
+            )
+        except Exception:
+            return False
+
     def _invoke(system: str, user: str, endpoint: dict | None) -> str:
         try:
             if endpoint is None:
                 return ""
-            return call_model([{"role": "system", "content": system},
-                               {"role": "user", "content": user}], endpoint)
+            # Execution Review emits a compact structured verdict, not a long-form
+            # deliverable.  Passing the general 32k output ceiling made a beta
+            # mutation review wait more than ten minutes on a reasoning endpoint.
+            # Keep an explicitly lower endpoint cap, but never raise a caller's
+            # already-bounded value.  Copy so shared routing state is immutable.
+            candidates = [endpoint]
+            try:
+                try:
+                    import execution_loop as _el_verify
+                except ImportError:  # pragma: no cover
+                    from orchestrator import execution_loop as _el_verify
+                router_obj = _get_router()
+                executor_fam = _el_verify.executor_family(
+                    config, config_name, router_obj
+                )
+                declared = router_obj.resolve_different_family_candidates(
+                    "verification", executor_fam, config_name=config_name
+                )
+                selected_id = endpoint.get("id") or endpoint.get("name")
+                candidates.extend(
+                    candidate
+                    for candidate in declared
+                    if (candidate.get("id") or candidate.get("name")) != selected_id
+                )
+            except Exception:
+                pass
+
+            last = ""
+            for candidate in candidates:
+                verify_endpoint = _bounded_endpoint(candidate)
+                last = call_model(
+                    [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    verify_endpoint,
+                )
+                if _usable_verdict(last):
+                    return _ExecutionVerifyResponse(last, candidate)
+            return _ExecutionVerifyResponse(last, candidates[-1])
         except Exception:
             return ""
     return _invoke
@@ -14905,8 +14984,10 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     """
     initial = int(endpoint.get("max_tokens") or _DEFAULT_API_MAX_TOKENS)
     retry_cap = initial * 2
+    disable_retry = bool(endpoint.get("_disable_truncation_retry"))
+    attempts = (initial,) if disable_retry else (initial, retry_cap)
     text = ""
-    for attempt_index, attempt in enumerate((initial, retry_cap), start=1):
+    for attempt_index, attempt in enumerate(attempts, start=1):
         try:
             _record_physical_model_call_config(
                 endpoint,
@@ -14919,7 +15000,7 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
             return f"[Error calling {label} API: {e}]"
         if not truncated:
             return text
-        if attempt == retry_cap:
+        if disable_retry or attempt == retry_cap:
             try:
                 print(
                     f"[truncation] {label} hit max_tokens={attempt} after "

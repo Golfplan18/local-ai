@@ -107,11 +107,28 @@ var attentionPayload = {
   phase_2_5_authorized: false,
 };
 var markedRead = [];
+var pausedPayload = {
+  entries: [
+    {
+      id: 'execution-review-1', name: 'Review failed vault edit',
+      queued_at: '2026-07-26T12:00:00Z', engagement: 'seen',
+      discussion_conversation_id: null, redefinition: false,
+      project_nexus: 'ora', event_type: 'ExecutionReviewEscalation',
+      reasoning_excerpt: 'The independent verifier rejected the evidence.',
+      review_kind: 'execution_review_escalation',
+      abandoned_attempt_branch: 'execution-review/escalation-beta-edit-123',
+      user_explanation: 'Ora could not independently verify this turn. It preserved an inspectable attempt reference and did not automatically merge the review branch. Review or discuss the evidence before approving.',
+    },
+  ],
+};
 global.fetch = function (url) {
   if (url === '/api/process-attention') {
     return Promise.resolve({ ok: true, json: function () { return Promise.resolve(attentionPayload); } });
   }
-  if (url === '/api/oversight/paused' || url === '/api/oversight/operating') {
+  if (url === '/api/oversight/paused') {
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve(pausedPayload); } });
+  }
+  if (url === '/api/oversight/operating') {
     return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ entries: [] }); } });
   }
   if (url === '/api/conversations') {
@@ -203,6 +220,19 @@ async function run() {
     !w.document.getElementById('logo-a').classList.contains('wordmark-attract'));
   record('Run Inspector stays progressively disclosed until selected',
     !w.document.querySelector('[data-process-run-inspector]'));
+
+  var reviewCard = w.document.querySelector('#oversightPausedList .oversight-card');
+  record('Execution Review escalation is named rather than shown as a raw event',
+    !!reviewCard && reviewCard.textContent.indexOf('Execution Review') >= 0
+      && reviewCard.textContent.indexOf('ExecutionReviewEscalation') < 0);
+  reviewCard.click();
+  await flush();
+  reviewCard = w.document.querySelector('#oversightPausedList .oversight-card');
+  record('Execution Review detail explains the hold and non-merge behavior',
+    reviewCard.textContent.indexOf('could not independently verify') >= 0
+      && reviewCard.textContent.indexOf('did not automatically merge') >= 0);
+  record('Execution Review detail exposes the exact preserved attempt reference',
+    reviewCard.textContent.indexOf('execution-review/escalation-beta-edit-123') >= 0);
 
   var passed = results.filter(function (result) { return result.ok; }).length;
   console.log('');
