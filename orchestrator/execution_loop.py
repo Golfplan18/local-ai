@@ -1063,8 +1063,9 @@ def create_escalation_branch(repo_root: str | None, base_sha: str | None,
     HEAD are left EXACTLY as the executor left them (Phase 6 never resets/rewrites the
     user's working branch to manufacture an unmerged branch, ⚖ Rev-1 P4). The branch
     is unmerged by construction (it diverges from the base the user is on). Respects
-    ``.gitignore`` (``add -A`` skips ignored/secret files). Returns the branch ref or
-    None. Never raises."""
+    ``.gitignore`` (``add -A`` skips ignored/secret files). The attempt commit is
+    completed before a compare-and-swap ref publication, and the ref is returned only
+    after exact readback. Returns the branch ref or None. Never raises."""
     git = git or _er._git
     if not (repo_root and _looks_like_sha(base_sha)):
         return None
@@ -1072,20 +1073,17 @@ def create_escalation_branch(repo_root: str | None, base_sha: str | None,
         # The branch name carries a PER-TURN discriminator (the trace dir basename,
         # unique per run) IN ADDITION to the conversation-stable task_id. Without it
         # a SECOND escalation in the same conversation reused the same name and the
-        # `branch -f` below force-overwrote the FIRST abandoned attempt — silently
+        # a ref update reused the FIRST abandoned-attempt name — silently
         # discarding it and mis-linking its handback (§13: the abandoned work is
         # never silently discarded). Falls back to task_id-only when no trace_dir.
         disc = _safe_ref(os.path.basename(str(trace_dir).rstrip("/\\"))) if trace_dir else ""
         branch = _ESCALATION_BRANCH_PREFIX + _safe_ref(task_id)
         if disc and disc != "task":
             branch += "-" + disc
-        # 1. Create/point the branch at the pre-execution base — does NOT touch the
-        #    working tree, the index, or HEAD (a ref write only).
-        rc, _ = git(repo_root, ["branch", "-f", branch, base_sha])
-        if rc != 0:
-            return None
-        # 2. Snapshot the CURRENT working tree (the abandoned attempt) onto the branch
-        #    via a throwaway index so the user's .git/index + HEAD are untouched.
+        # Build the CURRENT working-tree snapshot and its commit BEFORE publishing a
+        # branch ref. A branch that points only at ``base_sha`` is not a preserved
+        # attempt, and must never be projected to Paused after a plumbing failure.
+        # The throwaway index leaves the user's .git/index + HEAD untouched.
         import tempfile
         fd, idx_path = tempfile.mkstemp(prefix="er-escal-idx-")
         os.close(fd)
@@ -1096,23 +1094,79 @@ def create_escalation_branch(repo_root: str | None, base_sha: str | None,
         env = dict(os.environ)
         env["GIT_INDEX_FILE"] = idx_path
         try:
-            git(repo_root, ["read-tree", base_sha], env=env)
-            git(repo_root, ["add", "-A"], env=env)
+            rc_read, _ = git(repo_root, ["read-tree", base_sha], env=env)
+            if rc_read != 0:
+                return None
+            rc_add, _ = git(repo_root, ["add", "-A"], env=env)
+            if rc_add != 0:
+                return None
             rc_wt, tree = git(repo_root, ["write-tree"], env=env)
-            if rc_wt == 0 and _looks_like_sha(tree):
-                rc_c, commit = git(
-                    repo_root,
-                    ["commit-tree", tree, "-p", base_sha, "-m",
-                     f"execution-review: abandoned attempt (escalated) — task {task_id}"],
-                    env=env)
-                if rc_c == 0 and _looks_like_sha(commit):
-                    git(repo_root, ["update-ref", f"refs/heads/{branch}", commit])
+            if rc_wt != 0 or not _looks_like_sha(tree):
+                return None
+            rc_c, commit = git(
+                repo_root,
+                ["commit-tree", tree, "-p", base_sha, "-m",
+                 f"execution-review: abandoned attempt (escalated) — task {task_id}"],
+                env=env)
+            if rc_c != 0 or not _looks_like_sha(commit):
+                return None
         finally:
             try:
                 os.unlink(idx_path)
             except OSError:
                 pass
-        return branch
+
+        # Publish last, using compare-and-swap so a concurrent or pre-existing
+        # same-name ref cannot be silently overwritten. If the required readback
+        # fails, roll back only while the ref still points at OUR commit; this
+        # preserves both the prior ref and any concurrent third-party update.
+        full_ref = f"refs/heads/{branch}"
+        rc_old, old_commit = git(
+            repo_root, ["rev-parse", "--verify", "--quiet", full_ref])
+        if rc_old == 0:
+            if not _looks_like_sha(old_commit):
+                return None
+            expected_old = old_commit
+        elif rc_old == 1:
+            old_commit = None
+            expected_old = "0" * len(commit)
+        else:
+            return None
+
+        rc_update, _ = git(
+            repo_root, ["update-ref", full_ref, commit, expected_old])
+        if rc_update != 0:
+            return None
+
+        rc_verify, published = git(repo_root, ["rev-parse", "--verify", full_ref])
+        if rc_verify == 0 and published == commit:
+            return branch
+
+        # The publication cannot be authenticated. Restore the exact old ref (or
+        # delete the newly created ref) with another CAS. Never force-move a ref.
+        if old_commit:
+            rc_restore, _ = git(
+                repo_root, ["update-ref", full_ref, old_commit, commit])
+        else:
+            rc_restore, _ = git(
+                repo_root, ["update-ref", "-d", full_ref, commit])
+        if rc_restore != 0:
+            _mark_failure(
+                RuntimeError(f"failed to restore unverified escalation ref {full_ref}"),
+                "execution_loop_escalation_branch_restore")
+            return None
+
+        rc_restored, restored = git(
+            repo_root, ["rev-parse", "--verify", "--quiet", full_ref])
+        restored_ok = (
+            (old_commit is not None and rc_restored == 0 and restored == old_commit)
+            or (old_commit is None and rc_restored == 1)
+        )
+        if not restored_ok:
+            _mark_failure(
+                RuntimeError(f"could not authenticate restored escalation ref {full_ref}"),
+                "execution_loop_escalation_branch_restore_readback")
+        return None
     except Exception as e:
         _mark_failure(e, "execution_loop_escalation_branch")
         return None

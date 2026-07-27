@@ -460,12 +460,17 @@ class TestEscalationBranch(unittest.TestCase):
     def test_branch_is_unmerged_and_leaves_user_state_untouched(self):
         (Path(self.d) / "a.txt").write_text("CHANGED\n")
         (Path(self.d) / "new.txt").write_text("added\n")
+        # Preserve a real staged-index state as well as the working tree. The
+        # escalation snapshot must use only its throwaway index.
+        self._git("add", "a.txt")
+        index_before = self._git("write-tree").stdout.strip()
         branch = el.create_escalation_branch(self.d, self.base, "task-1", trace_dir=self.d)
         self.assertTrue(branch)
         self.assertEqual(self._git("rev-parse", "--verify", branch).returncode, 0)
         # user HEAD + working tree untouched
         self.assertEqual(self._git("rev-parse", "HEAD").stdout.strip(), self.base)
         self.assertEqual((Path(self.d) / "a.txt").read_text(), "CHANGED\n")
+        self.assertEqual(self._git("write-tree").stdout.strip(), index_before)
         # abandoned attempt captured on the branch
         tree = self._git("ls-tree", "-r", "--name-only", branch).stdout
         self.assertIn("new.txt", tree)
@@ -491,7 +496,7 @@ class TestEscalationBranch(unittest.TestCase):
     def test_second_escalation_same_conversation_does_not_overwrite_first(self):
         # §13: the abandoned attempt is never silently discarded. Two escalations
         # in the SAME conversation share task_id; the per-turn trace_dir basename
-        # discriminates them so the second does not `branch -f` over the first.
+        # discriminates them so the second does not replace the first ref.
         (Path(self.d) / "a.txt").write_text("ATTEMPT-ONE\n")
         b1 = el.create_escalation_branch(self.d, self.base, "conv-42",
                                          trace_dir="/traces/turn-aaa")
@@ -505,6 +510,107 @@ class TestEscalationBranch(unittest.TestCase):
         # The first branch still holds the FIRST abandoned attempt, not the second.
         self.assertEqual(self._git("show", f"{b1}:a.txt").stdout, "ATTEMPT-ONE\n")
         self.assertEqual(self._git("show", f"{b2}:a.txt").stdout, "ATTEMPT-TWO\n")
+
+    def test_every_capture_failure_preserves_ref_head_index_and_worktree(self):
+        stages = ("read-tree", "add", "write-tree", "commit-tree", "update-ref", "readback")
+        for stage in stages:
+            with self.subTest(stage=stage):
+                task_id = f"fault-{stage}"
+                trace_dir = f"/traces/turn-{stage}"
+                branch = f"execution-review/escalation-{task_id}-turn-{stage}"
+                self._git("branch", branch, self.base)
+                old_ref = self._git("rev-parse", branch).stdout.strip()
+
+                (Path(self.d) / "a.txt").write_text(f"ATTEMPT-{stage}\n")
+                self._git("add", "a.txt")
+                (Path(self.d) / f"untracked-{stage}.txt").write_text("attempt\n")
+                head_before = self._git("rev-parse", "HEAD").stdout.strip()
+                index_before = self._git("write-tree").stdout.strip()
+                status_before = self._git("status", "--porcelain=v1").stdout
+                failed = False
+
+                def fault_git(repo, args, env=None):
+                    nonlocal failed
+                    op = args[0]
+                    is_readback = (
+                        op == "rev-parse"
+                        and args[1:2] == ["--verify"]
+                        and "--quiet" not in args
+                    )
+                    if not failed and (op == stage or (stage == "readback" and is_readback)):
+                        failed = True
+                        return 1, f"simulated {stage} failure"
+                    return er._git(repo, args, env=env)
+
+                result = el.create_escalation_branch(
+                    self.d, self.base, task_id, trace_dir=trace_dir, git=fault_git)
+
+                self.assertTrue(failed)
+                self.assertIsNone(result)
+                self.assertEqual(self._git("rev-parse", branch).stdout.strip(), old_ref)
+                self.assertEqual(self._git("rev-parse", "HEAD").stdout.strip(), head_before)
+                self.assertEqual(self._git("write-tree").stdout.strip(), index_before)
+                self.assertEqual(self._git("status", "--porcelain=v1").stdout, status_before)
+
+                # Reset only this subtest's fixture state; the assertion above has
+                # already proved the function itself did not touch it.
+                self._git("reset", "--hard", "-q", self.base)
+                self._git("clean", "-fdq")
+
+    def test_failed_new_ref_readback_removes_the_unverified_ref(self):
+        branch = "execution-review/escalation-new-ref-turn-new"
+        (Path(self.d) / "a.txt").write_text("ATTEMPT\n")
+        failed = False
+
+        def fault_git(repo, args, env=None):
+            nonlocal failed
+            is_readback = (
+                args[0] == "rev-parse"
+                and args[1:2] == ["--verify"]
+                and "--quiet" not in args
+            )
+            if is_readback and not failed:
+                failed = True
+                return 1, "simulated readback failure"
+            return er._git(repo, args, env=env)
+
+        result = el.create_escalation_branch(
+            self.d, self.base, "new-ref", trace_dir="/traces/turn-new", git=fault_git)
+        self.assertTrue(failed)
+        self.assertIsNone(result)
+        self.assertNotEqual(self._git("rev-parse", "--verify", branch).returncode, 0)
+
+    def test_every_capture_failure_leaves_no_new_ref(self):
+        stages = ("read-tree", "add", "write-tree", "commit-tree", "update-ref", "readback")
+        for stage in stages:
+            with self.subTest(stage=stage):
+                task_id = f"new-{stage}"
+                trace_dir = f"/traces/new-turn-{stage}"
+                branch = f"execution-review/escalation-{task_id}-new-turn-{stage}"
+                (Path(self.d) / "a.txt").write_text(f"ATTEMPT-{stage}\n")
+                failed = False
+
+                def fault_git(repo, args, env=None):
+                    nonlocal failed
+                    op = args[0]
+                    is_readback = (
+                        op == "rev-parse"
+                        and args[1:2] == ["--verify"]
+                        and "--quiet" not in args
+                    )
+                    if not failed and (op == stage or (stage == "readback" and is_readback)):
+                        failed = True
+                        return 1, f"simulated {stage} failure"
+                    return er._git(repo, args, env=env)
+
+                result = el.create_escalation_branch(
+                    self.d, self.base, task_id, trace_dir=trace_dir, git=fault_git)
+
+                self.assertTrue(failed)
+                self.assertIsNone(result)
+                self.assertNotEqual(
+                    self._git("rev-parse", "--verify", branch).returncode, 0)
+                self._git("reset", "--hard", "-q", self.base)
 
 
 # ── snapshot_pre_execution (planning seam) — REAL temp git repo ────────────────
@@ -762,6 +868,33 @@ class TestRunLoop(unittest.TestCase):
         self.assertIsNone(pkt.loop["stop_condition"])
         self.assertIn("escalation WITHHELD", pkt.loop["note"])
         self.assertEqual(pushes, [])   # never a null-branch evidence escalation
+
+    def test_failed_attempt_capture_never_projects_a_preserved_attempt(self):
+        calls = []
+
+        def failing_git(repo, args, env=None):
+            calls.append(tuple(args))
+            if args[0] in {"read-tree", "add"}:
+                return 0, ""
+            if args[0] == "write-tree":
+                return 1, "simulated write-tree failure"
+            raise AssertionError(args)
+
+        def failed_capture(*args, **kwargs):
+            return el.create_escalation_branch(
+                "/tmp/does-not-matter", "a" * 40, "recovery-probe",
+                trace_dir="/tmp/turn-1", git=failing_git)
+
+        pkt, _, pushes = self._run(
+            {"any_mutation": True}, V_FAIL_HIGH, FakeRunner(sufficient=False),
+            branch_creator=failed_capture)
+
+        self.assertEqual(calls[-1][0], "write-tree")
+        self.assertIsNone(pkt.loop["stop_condition"])
+        self.assertIsNone(pkt.loop.get("escalation"))
+        self.assertTrue(pkt.loop["escalation_withheld"])
+        self.assertNotIn("preserved attempt", pkt.loop["note"].lower())
+        self.assertEqual(pushes, [])
 
     def test_same_family_fail_reason_does_not_claim_different_family(self):
         # Adversarial re-check fold: a same-family VERDICT:FAIL escalation reason must
