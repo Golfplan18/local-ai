@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -263,10 +264,23 @@ def test_g1_23_records_preserve_submission_and_deferral_boundaries():
     ).read_text(encoding="utf-8")
 
     expected_runtime = "53087d10e119565b956b6fc55738ef494ea9d346"
-    expected_evidence = "da4f3f7c84c311551334d7928d7ea82987b2fc7c"
+    expected_recovery = "331291497164589c169be49c4de8b039e345fa5e"
+    expected_evidence = "92ecc1e7b87d49f0d4edbae756eb5f19ed0c0d17"
     for record in (report, tracker):
         assert expected_runtime in record
         assert expected_evidence in record
+    for record in (report, tracker, registry, canonical):
+        assert expected_recovery in record
+
+    evidence_path = ROOT / "outputs" / "g1-23" / "closeout-evidence.md"
+    assert hashlib.sha256(evidence_path.read_bytes()).hexdigest() == (
+        "5ab372a613654dc3fa505a550377fe266003ba4c621d80f43f2d0f5560897b9a"
+    )
+    assert "416 passed, 14 subtests passed" in report
+    assert "201 passed, 12 subtests passed" in report
+    assert "creates the attempt commit before compare-and-swap ref publication" in tracker
+    assert "branch mechanism itself passed" not in report.lower()
+    assert "da4f3f7c84c311551334d7928d7ea82987b2fc7c" not in report
 
     assert "G1.22A is neither accepted nor failed-complete" in tracker
     assert "G1.22A is explicitly user-deferred and incomplete" in registry
