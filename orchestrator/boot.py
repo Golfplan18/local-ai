@@ -15078,6 +15078,88 @@ def call_api_endpoint(messages: list, endpoint: dict, images: list = None) -> st
 # `max_tokens` override on the endpoint dict still wins when set.
 _DEFAULT_API_MAX_TOKENS = 32000
 
+# Published output caps, read once from the model registry. Before 2026-08-01
+# nothing consulted these and every call used the flat default above, which was
+# wrong in both directions: it exceeded gpt-4o's limit (the provider rejects the
+# request outright, and _call_api_with_truncation_retry returns that rejection as
+# *text* rather than raising, so the failure arrives silently) while throttling
+# models that will emit far more. Order of preference is now: explicit
+# per-endpoint max_tokens, then the model's published cap, then the default.
+_MODEL_OUTPUT_CAPS: dict | None = None
+
+
+def _model_output_caps() -> dict:
+    """Map model identifier -> published max output tokens.
+
+    The registry records this at
+    ``models/<provider>/<model>/_provenance/litellm/max_output_tokens``, present
+    for 234 of 337 entries. Both the qualified key (``openai/gpt-4o``) and the
+    bare name (``gpt-4o``) are indexed, because endpoint dicts carry either. A
+    bare name claimed by two providers is left out rather than guessed at.
+    """
+    global _MODEL_OUTPUT_CAPS
+    if _MODEL_OUTPUT_CAPS is not None:
+        return _MODEL_OUTPUT_CAPS
+    caps: dict[str, int] = {}
+    ambiguous: set[str] = set()
+    try:
+        registry_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "config", "model-registry.json")
+        with open(registry_path, "r", encoding="utf-8") as handle:
+            models = (json.load(handle) or {}).get("models") or {}
+        for key, entry in models.items():
+            if not isinstance(entry, dict):
+                continue
+            provenance = entry.get("_provenance") or {}
+            litellm = provenance.get("litellm") or {}
+            value = litellm.get("max_output_tokens")
+            if not isinstance(value, int) or value <= 0:
+                continue
+            caps[key] = value
+            bare = key.split("/")[-1]
+            if bare in caps and caps[bare] != value:
+                ambiguous.add(bare)
+            else:
+                caps[bare] = value
+        for name in ambiguous:
+            caps.pop(name, None)
+    except Exception:
+        # A missing or malformed registry must not stop model calls; the
+        # default below still applies.
+        caps = {}
+    _MODEL_OUTPUT_CAPS = caps
+    return caps
+
+
+def _model_max_output_tokens(endpoint: dict) -> int | None:
+    """Published output cap for this endpoint's model, or None if unknown."""
+    if not isinstance(endpoint, dict):
+        return None
+    name = endpoint.get("model") or endpoint.get("model_id")
+    if not isinstance(name, str) or not name:
+        return None
+    return _model_output_caps().get(name)
+
+
+# "max_tokens is too large: 32000. This model supports at most 16384 completion
+# tokens" — providers state the real limit in the rejection, which is the only
+# authority when the registry is stale or the model is unlisted.
+_PROVIDER_STATED_CAP_RE = re.compile(
+    r"supports?\s+at\s+most\s+(\d+)\s+(?:completion\s+)?tokens", re.IGNORECASE)
+
+
+def _provider_stated_cap(error: object) -> int | None:
+    """The limit a provider named while rejecting an over-large request."""
+    match = _PROVIDER_STATED_CAP_RE.search(str(error))
+    if not match:
+        return None
+    try:
+        value = int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
 
 def _openai_max_tokens_param(model: str) -> str:
     """Pick the right output-cap parameter name for an OpenAI / OpenAI-
@@ -15112,12 +15194,19 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     failure from analytical failure — the symptom that drove the
     three-cycle verifier loop on the 2026-05-22 smoke test.
     """
-    initial = int(endpoint.get("max_tokens") or _DEFAULT_API_MAX_TOKENS)
+    initial = int(
+        endpoint.get("max_tokens")
+        or _model_max_output_tokens(endpoint)
+        or _DEFAULT_API_MAX_TOKENS
+    )
     retry_cap = initial * 2
     disable_retry = bool(endpoint.get("_disable_truncation_retry"))
     attempts = (initial,) if disable_retry else (initial, retry_cap)
     text = ""
+    corrected_cap: int | None = None
     for attempt_index, attempt in enumerate(attempts, start=1):
+        if corrected_cap is not None:
+            attempt = min(attempt, corrected_cap)
         try:
             _record_physical_model_call_config(
                 endpoint,
@@ -15127,7 +15216,32 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
             )
             text, truncated = make_call(attempt)
         except Exception as e:
-            return f"[Error calling {label} API: {e}]"
+            # Providers name their real limit when rejecting an over-large
+            # request. That statement outranks both the registry (which can lag
+            # a model's published ceiling) and the default, so take it and retry
+            # once rather than returning the rejection as text.
+            stated = _provider_stated_cap(e)
+            if stated is None or stated >= attempt or corrected_cap is not None:
+                return f"[Error calling {label} API: {e}]"
+            corrected_cap = stated
+            try:
+                print(
+                    f"[max-tokens-correction] {label} rejected "
+                    f"max_tokens={attempt}; provider states {stated}, retrying",
+                    flush=True,
+                )
+            except Exception:
+                pass
+            try:
+                _record_physical_model_call_config(
+                    endpoint,
+                    max_tokens=stated,
+                    attempt_index=attempt_index,
+                    provider_attempt=label,
+                )
+                text, truncated = make_call(stated)
+            except Exception as retry_error:
+                return f"[Error calling {label} API: {retry_error}]"
         if not truncated:
             return text
         if disable_retry or attempt == retry_cap:
