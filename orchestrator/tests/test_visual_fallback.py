@@ -67,7 +67,7 @@ class BuildVisualFallbackFrameTests(unittest.TestCase):
     """Direct unit tests for the pure helper ``_build_visual_fallback_frame``."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.build = server._build_visual_fallback_frame
 
@@ -216,7 +216,7 @@ class ChatQueueRetryTests(unittest.TestCase):
     """Endpoint-level tests for the vision-retry persistence surface."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
         # Isolate the disk queue to a throwaway temp directory. The
@@ -371,7 +371,7 @@ class VisualFallbackSseIntegrationTests(unittest.TestCase):
     event. Uses mocks at the step1/step2 layer so no real pipeline runs."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 

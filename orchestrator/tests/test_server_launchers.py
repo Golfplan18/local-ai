@@ -25,7 +25,7 @@ PLIST_TEMPLATE = ROOT / "installer" / "macos" / "com.ora.server.plist.template"
 APP_LAUNCHER = ROOT / "installer" / "macos" / "ora-app-launcher.sh"
 SWAP_ICON = ROOT / "swap-icon.sh"
 SERVICE_MANAGER = ROOT / "scripts" / "ora-launchd.sh"
-SERVER = ROOT / "server" / "server.py"
+SERVER = ROOT / "server" / "app.py"
 GITIGNORE = ROOT / ".gitignore"
 LAUNCH_EXAMPLE = ROOT / ".claude" / "launch.json.example"
 
@@ -78,7 +78,7 @@ def _run_with_fake_python(tmp_path: Path, *args: str, overrides: dict[str, str] 
     workspace = tmp_path / "ora root"
     server_dir = workspace / "server"
     server_dir.mkdir(parents=True)
-    (server_dir / "server.py").write_text("# test sentinel\n", encoding="utf-8")
+    (server_dir / "app.py").write_text("# test sentinel\n", encoding="utf-8")
 
     capture = tmp_path / "capture"
     capture.mkdir()
@@ -146,7 +146,7 @@ class TestServerLaunchers(unittest.TestCase):
     
         assert completed.returncode == 0, completed.stderr
         assert argv == [
-            str(workspace / "server" / "server.py"),
+            str(workspace / "server" / "app.py"),
             "--oversight",
             "--scheduler",
         ]
@@ -175,7 +175,7 @@ class TestServerLaunchers(unittest.TestCase):
     
         assert completed.returncode == 0, completed.stderr
         assert argv == [
-            str(workspace / "server" / "server.py"),
+            str(workspace / "server" / "app.py"),
             "--scheduler",
             "--future-option",
         ]
@@ -184,7 +184,7 @@ class TestServerLaunchers(unittest.TestCase):
     def test_foreground_launcher_honors_activated_virtualenv_before_path_fallback(self):
         workspace = self.tmp_path / "ora root"
         (workspace / "server").mkdir(parents=True)
-        (workspace / "server" / "server.py").write_text(
+        (workspace / "server" / "app.py").write_text(
             "# test sentinel\n", encoding="utf-8"
         )
     
@@ -233,7 +233,7 @@ class TestServerLaunchers(unittest.TestCase):
             venv_python
         )
         assert (capture / "argv").read_text(encoding="utf-8").splitlines() == [
-            str(workspace / "server" / "server.py"),
+            str(workspace / "server" / "app.py"),
             "--oversight",
         ]
         child_env = dict(
@@ -252,8 +252,8 @@ class TestServerLaunchers(unittest.TestCase):
     
         assert 'SERVER_LAUNCHER="$WORKSPACE/run-ora-server.sh"' in source
         assert 'nohup "$SERVER_LAUNCHER" "$@"' in source
-        assert source.count("server/server.py") == 1  # exact-argv legacy-process guard
-        assert 'exec "$PYTHON" "$WORKSPACE/server/server.py"' not in source
+        assert source.count("server/app.py") == 1  # exact-argv legacy-process guard
+        assert 'exec "$PYTHON" "$WORKSPACE/server/app.py"' not in source
         assert "pkill" not in source
 
     def test_interactive_start_rejects_zero_timeout_before_launching(self):
@@ -398,7 +398,7 @@ class TestServerLaunchers(unittest.TestCase):
         home = self.tmp_path / "home"
         workspace = home / "ora root"
         fake_bin = self.tmp_path / "bin"
-        target = workspace / "server" / "server.py"
+        target = workspace / "server" / "app.py"
         marker = self.tmp_path / "new-server-launched"
         fake_bin.mkdir(parents=True)
         target.parent.mkdir(parents=True)
@@ -456,10 +456,10 @@ class TestServerLaunchers(unittest.TestCase):
         source = STOP.read_text(encoding="utf-8")
     
         assert 'exec "$SERVICE_MANAGER" stop --ora-home "$WORKSPACE"' in source
-        assert 'ORA_STOP_SERVER_TARGET="$WORKSPACE/server/server.py"' in source
+        assert 'ORA_STOP_SERVER_TARGET="$WORKSPACE/server/app.py"' in source
         assert "ps -axww -o pid=,command=" in source
         assert "for _attempt in {1..150}" in source
-        assert 'pkill -f "server/server.py"' not in source
+        assert 'pkill -f "server/app.py"' not in source
         assert "pgrep -f --" not in source
 
     def test_launchd_template_supervises_the_foreground_launcher(self):
@@ -508,7 +508,7 @@ class TestServerLaunchers(unittest.TestCase):
         ]
         for item in configurations:
             assert item["runtimeExecutable"] == "REPLACE_WITH_LOCAL_PYTHON"
-            assert item["runtimeArgs"] == ["${workspaceFolder}/server/server.py"]
+            assert item["runtimeArgs"] == ["${workspaceFolder}/server/app.py"]
             assert item["cwd"] == "${workspaceFolder}"
             assert item["env"] == {"PORT": str(item["port"])}
             assert item["autoPort"] is False
@@ -518,7 +518,7 @@ class TestServerLaunchers(unittest.TestCase):
     def test_server_without_ora_home_bootstraps_from_its_own_checkout(self):
         resolve = _load_server_workspace_contract()
         checkout = self.tmp_path / "portable checkout"
-        server_file = checkout / "server" / "server.py"
+        server_file = checkout / "server" / "app.py"
         server_file.parent.mkdir(parents=True)
         server_file.touch()
         env = {}
@@ -533,7 +533,7 @@ class TestServerLaunchers(unittest.TestCase):
         explicit = self.tmp_path / "selected checkout"
         env = {"ORA_HOME": f"  {explicit}  "}
     
-        workspace = resolve(env, self.tmp_path / "other" / "server" / "server.py")
+        workspace = resolve(env, self.tmp_path / "other" / "server" / "app.py")
     
         assert Path(workspace) == explicit
         assert env["ORA_HOME"] == str(explicit)
@@ -633,7 +633,7 @@ class TestServerLaunchers(unittest.TestCase):
         assert 'exec "$WORKSPACE/start.sh"' in source
         assert '"$SCRIPT_DIR/../../.."' in source
         assert "$HOME/ora" not in source
-        assert "server/server.py" not in source
+        assert "server/app.py" not in source
 
     def test_icon_swap_targets_relocatable_ora_bundle_and_generated_variants(self):
         source = SWAP_ICON.read_text(encoding="utf-8")
@@ -782,7 +782,7 @@ class TestServerLaunchers(unittest.TestCase):
         assert completed.returncode == 0, completed.stderr
         assert workspace == real_home
         assert child_env["ORA_HOME"] == str(real_home.resolve())
-        assert argv[0] == str(real_home.resolve() / "server" / "server.py")
+        assert argv[0] == str(real_home.resolve() / "server" / "app.py")
 
     @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_service_stop_kills_only_owned_python_server_not_path_decoys(self):
@@ -791,9 +791,9 @@ class TestServerLaunchers(unittest.TestCase):
         fake_bin = self.tmp_path / "bin"
         fake_bin.mkdir(parents=True)
         (workspace / "server").mkdir(parents=True)
-        (workspace / "server" / "server.py").write_text("# sentinel\n", encoding="utf-8")
+        (workspace / "server" / "app.py").write_text("# sentinel\n", encoding="utf-8")
     
-        target = workspace / "server" / "server.py"
+        target = workspace / "server" / "app.py"
         killed_state = self.tmp_path / "killed"
         kill_log = self.tmp_path / "kill.log"
         (fake_bin / "uname").write_text("#!/bin/sh\nprintf 'Darwin\\n'\n", encoding="utf-8")

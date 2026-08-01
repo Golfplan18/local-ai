@@ -8,7 +8,7 @@
 
 ### Processing Instructions
 
-1. **Add `_save_conversation(user_input, ai_response, panel_id, is_new_session)` to `server/server.py`**. This function executes three steps every time, immediately after every response:
+1. **Add `_save_conversation(user_input, ai_response, panel_id, is_new_session)` to `server/app.py`**. This function executes three steps every time, immediately after every response:
 
    **Step 1 — Raw log.** Append the pair to `~/Documents/conversations/raw/`. One file per session, appended throughout. Filename: `YYYY-MM-DD_HH-MM_topic-slug_session-[6-char-id].md`. File header on first write includes session metadata (start time, panel_id, model, source_platform: local). Each pair entry: `<!-- pair NNN | timestamp -->` followed by `**User:**` and `**Assistant:**` blocks separated by `---`.
 

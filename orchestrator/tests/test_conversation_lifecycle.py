@@ -1953,7 +1953,7 @@ class TestServerLifecycleWiring(unittest.TestCase):
         server_dir = str(repo / "server")
         if server_dir not in sys.path:
             sys.path.insert(0, server_dir)
-        import server  # type: ignore
+        from server import app as server  # type: ignore
         cls.server = server
 
     def setUp(self):

@@ -234,7 +234,7 @@ class ExportEndpointTests(unittest.TestCase):
         pm.DEFAULT_VAULT_PROJECTS_DIR = self.vault / "Projects"
         from orchestrator.embedding import install_test_stub
         install_test_stub()
-        import server
+        from server import app as server
         self.client = server.app.test_client()
 
     def tearDown(self):
@@ -309,7 +309,7 @@ class ExportEndpointTests(unittest.TestCase):
 
     def test_pandoc_deferred_when_incapable(self):
         # No Pandoc → docx/pdf report deferred (501), never write.
-        import server as _srv
+        from server import app as _srv
         _mod = _srv.__dict__  # endpoint imports orchestrator.export lazily
         from orchestrator import export as _ex
         orig = _ex.export_capabilities

@@ -55,7 +55,7 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
     """Smoke tests for /api/capability/image_varies (Contracts §3.6)."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 
@@ -143,7 +143,7 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
     """Smoke tests for /api/capability/image_to_prompt (Contracts §3.7)."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 
@@ -241,7 +241,7 @@ class CapabilityVideoGeneratesRouteTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 

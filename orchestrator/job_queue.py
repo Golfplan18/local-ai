@@ -29,7 +29,7 @@ Design notes
 * **Per-conversation persistence.** Jobs live in
   ``~/ora/sessions/<conversation_id>/jobs.json``. Same path convention
   as the existing ``vision-retry-queue.json`` mirror in
-  ``server/server.py`` so future operators have one mental model.
+  ``server/app.py`` so future operators have one mental model.
 * **In-memory + disk mirror.** All mutations write through to disk in
   the same call. Read paths are in-memory (no per-call disk hit).
   Reload-on-init rehydrates from disk so a server restart picks up

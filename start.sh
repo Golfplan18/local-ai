@@ -84,7 +84,7 @@ owned_server_pids() {
   # server file. This catches a still-running pre-identity server (whose
   # /health response has no ora_home) without treating path mentions in an
   # editor, test, or similarly-prefixed backup as an Ora process.
-  ORA_START_SERVER_TARGET="$WORKSPACE/server/server.py"
+  ORA_START_SERVER_TARGET="$WORKSPACE/server/app.py"
   export ORA_START_SERVER_TARGET
   ps -axww -o pid=,command= | awk '
     {

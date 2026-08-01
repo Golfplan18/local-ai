@@ -1182,7 +1182,7 @@ class TestServerStreamWrapper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         cls.S = server
 
     def setUp(self):
@@ -1806,7 +1806,7 @@ class TestTraceWalkServerRoutes(TraceManifestBase):
     @classmethod
     def setUpClass(cls):
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         cls.S = server
 
     def setUp(self):
@@ -2781,7 +2781,7 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
     def setUpClass(cls):
         import boot
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
-        import server
+        from server import app as server
         cls.boot = boot
         cls.S = server
 

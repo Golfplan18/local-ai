@@ -24,7 +24,7 @@ import conversation_memory as memory  # noqa: E402
 import process_definition_registry as registry_module  # noqa: E402
 import process_delegation_attention as delegation  # noqa: E402
 import process_plan_approval as planning  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 from tests import test_phase_2_3_plan_approval as phase23  # noqa: E402
 from tests import test_governed_process_runtime as runtime_fixtures  # noqa: E402
 

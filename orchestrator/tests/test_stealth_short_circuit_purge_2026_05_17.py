@@ -51,7 +51,7 @@ class TestPipelineStreamHoistsStealthAboveShortCircuits(unittest.TestCase):
     """
 
     def setUp(self):
-        server_py = Path(HERE).parent / "server" / "server.py"
+        server_py = Path(HERE).parent / "server" / "app.py"
         self.src = server_py.read_text()
 
         # Locate the _pipeline_stream function body (next def after it).

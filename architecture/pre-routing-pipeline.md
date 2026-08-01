@@ -247,7 +247,7 @@ When the user supplies the missing input, Stage 3 re-runs the completeness check
 
 ## Manual Mode-Selection Override (server layer)
 
-The four-stage pipeline is the default mode-selection mechanism, not the sole one. The `/chat` and `/chat/multipart` endpoints accept a `manual_mode_selection` field carrying an explicit mode pick. Current senders are the maintenance scripts `scripts/refresh-image-modes.py` and `scripts/refresh-mode-pages.py`; the V3 UI does not send the field yet (its interactive mode picker belongs to the in-flight mode-selection redesign — see `server/static/js/input-state.js`), but any caller of either endpoint may supply it. After the four-stage pipeline runs inside Step 1, the server (`server/server.py::_pipeline_stream`) applies the override when **all** of the following hold:
+The four-stage pipeline is the default mode-selection mechanism, not the sole one. The `/chat` and `/chat/multipart` endpoints accept a `manual_mode_selection` field carrying an explicit mode pick. Current senders are the maintenance scripts `scripts/refresh-image-modes.py` and `scripts/refresh-mode-pages.py`; the V3 UI does not send the field yet (its interactive mode picker belongs to the in-flight mode-selection redesign — see `server/static/js/input-state.js`), but any caller of either endpoint may supply it. After the four-stage pipeline runs inside Step 1, the server (`server/app.py::_pipeline_stream`) applies the override when **all** of the following hold:
 
 - `manual_mode_selection` is non-empty,
 - it names a mode whose file exists at `~/ora/modes/<slug>.md`,

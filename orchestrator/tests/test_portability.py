@@ -885,7 +885,7 @@ class TestServerRootHonorsOraHome(unittest.TestCase):
                 "for p in (os.path.join(REPO,'orchestrator','tools'), "
                 "os.path.join(REPO,'orchestrator'), os.path.join(REPO,'server'), REPO):\n"
                 "    sys.path.insert(0, p)\n"
-                "import server\n"
+                "from server import app as server\n"
                 "print('RESULT ' + json.dumps({'ws': server.WORKSPACE, "
                 "'conv': server.CONVERSATIONS_DIR}))\n"
             )

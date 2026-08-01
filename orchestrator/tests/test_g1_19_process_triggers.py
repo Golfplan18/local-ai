@@ -14,7 +14,7 @@ from orchestrator import process_triggers as triggers
 from orchestrator.tests.test_g1_18_process_automation import ProcessAutomationFixture
 from orchestrator.tests.test_g1_18_process_automation import ANSWERS
 from orchestrator.process_entry_routing import route_process_entry
-from server import server
+from server import app as server
 
 
 ROOT = Path(__file__).resolve().parents[2]

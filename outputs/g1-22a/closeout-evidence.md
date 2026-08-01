@@ -289,7 +289,7 @@ python3 -m py_compile \
   orchestrator/tools/file_ops.py \
   orchestrator/tools/search_files.py \
   orchestrator/boot.py \
-  server/server.py \
+  server/app.py \
   orchestrator/tests/test_dispatcher_gate.py \
   orchestrator/tests/test_g1_22a_system_protection.py \
   orchestrator/tests/test_risk_gate.py \

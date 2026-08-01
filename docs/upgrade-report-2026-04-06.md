@@ -29,7 +29,7 @@ Upgraded the Wisdom Nexus local AI orchestrator from 7 built-in tools (web_searc
 | File | Change |
 |---|---|
 | `orchestrator/boot.py` | Added dispatcher import, replaced execute_tool() with dispatcher routing, added persistent context loading to load_boot_md() |
-| `server/server.py` | Added dispatcher/hooks/compaction imports, added _tool_status_label() for new tool SSE indicators, updated _direct_stream() to use dispatcher, added MCP init + hooks + scheduler startup + shutdown handler to __main__ |
+| `server/app.py` | Added dispatcher/hooks/compaction imports, added _tool_status_label() for new tool SSE indicators, updated _direct_stream() to use dispatcher, added MCP init + hooks + scheduler startup + shutdown handler to __main__ |
 | `boot/boot.md` | Added 7 new tool definitions (bash_execute, file_edit, search_files, list_directory, spawn_subagent, schedule_task, stop_process), MCP tools note, permission system note, debugging and testing protocol |
 | `config/endpoints.json` | Added context_window field (32768) to all three local model endpoints |
 

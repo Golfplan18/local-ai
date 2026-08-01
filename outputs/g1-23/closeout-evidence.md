@@ -147,7 +147,7 @@ Result: `18 / 18 tests passed`; exit `0`.
 ### Syntax and diff integrity
 
 ```bash
-PYTHONPYCACHEPREFIX=/private/tmp/g1-23-pycache python3 -m py_compile orchestrator/boot.py orchestrator/execution_loop.py orchestrator/router.py server/server.py orchestrator/tests/test_g1_23_execution_review_readiness.py orchestrator/tests/test_execution_loop.py
+PYTHONPYCACHEPREFIX=/private/tmp/g1-23-pycache python3 -m py_compile orchestrator/boot.py orchestrator/execution_loop.py orchestrator/router.py server/app.py orchestrator/tests/test_g1_23_execution_review_readiness.py orchestrator/tests/test_execution_loop.py
 node --check server/static/js/sidebar-oversight.js
 node --check server/static/tests/test-process-attention.js
 git diff --check

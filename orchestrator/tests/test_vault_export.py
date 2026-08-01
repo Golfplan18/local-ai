@@ -863,7 +863,7 @@ class TestFlaskEndpoint(unittest.TestCase):
         # Import lazily — pulling server.py drags a lot of orchestrator code.
         sys.path.insert(0, str(Path.home() / "ora" / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as e:  # pragma: no cover — environment drift

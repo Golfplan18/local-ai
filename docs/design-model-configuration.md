@@ -374,5 +374,5 @@ Periodic script (monthly, on-demand, or triggered by "model not found" error):
 ### Modified Files
 - `/Users/oracle/ora/config/endpoints.json` → new schema
 - `/Users/oracle/ora/orchestrator/boot.py` → routing calls use new router
-- `/Users/oracle/ora/server/server.py` → new API endpoints for config UI
+- `/Users/oracle/ora/server/app.py` → new API endpoints for config UI
 - `/Users/oracle/ora/server/index.html` → new configuration screen

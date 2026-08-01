@@ -38,7 +38,7 @@ Disk space used by models: ~116 GB total (45 + 61 + 10)
 - Python: 3.14.3
 - pip packages: chromadb, ddgs, duckduckgo-search, keyring, anthropic, openai, google-generativeai, flask, mlx-lm
 - Orchestrator: ~/ora/orchestrator/boot.py
-- Chat server: ~/ora/server/server.py — Server test: PASS
+- Chat server: ~/ora/server/app.py — Server test: PASS
 - Framework library: ~/ora/frameworks/
 - Active boot.md: ~/ora/boot/boot.md (v1)
 - ChromaDB: installed (inactive until vault is indexed)

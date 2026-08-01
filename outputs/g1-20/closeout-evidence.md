@@ -88,7 +88,7 @@ python3 -m py_compile \
   orchestrator/process_automation.py \
   orchestrator/process_run_inspector.py \
   orchestrator/tools/bash_execute.py \
-  server/server.py \
+  server/app.py \
   orchestrator/tests/test_g1_18_process_automation.py \
   orchestrator/tests/test_g1_20_process_run_telemetry.py
 node --check server/static/js/process-run-inspector.js

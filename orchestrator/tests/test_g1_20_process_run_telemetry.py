@@ -20,7 +20,7 @@ from orchestrator.tests.test_g1_18_process_automation import (
     ProcessAutomationFixture,
     _body,
 )
-from server import server
+from server import app as server
 
 
 class TestG120ProcessRunTelemetry(ProcessAutomationFixture):

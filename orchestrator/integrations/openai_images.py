@@ -24,7 +24,7 @@ Authentication
 
 API key is read at call time from the macOS Keychain via the
 ``keyring`` library, matching the pattern already used by
-``orchestrator/boot.py`` and ``server/server.py``: service ``"ora"``,
+``orchestrator/boot.py`` and ``server/app.py``: service ``"ora"``,
 username ``"openai-api-key"``.
 
 The Visual Intelligence Implementation Plan §11.13 describes the

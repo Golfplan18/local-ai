@@ -125,7 +125,7 @@ python3 -m py_compile \
   orchestrator/process_triggers.py \
   orchestrator/process_automation.py \
   orchestrator/runtime_event_dispatcher.py \
-  server/server.py \
+  server/app.py \
   orchestrator/tests/test_g1_19_process_triggers.py
 node --check server/static/js/process-trigger-manager.js
 node --check server/static/js/sidebar-oversight.js

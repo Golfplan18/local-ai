@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "orchestrator"))
 sys.path.insert(0, str(ROOT / "server"))
 
 try:
-    import server as S  # type: ignore  # noqa: E402
+    from server import app as S  # type: ignore  # noqa: E402
     IMPORT_ERROR = None
 except Exception as exc:  # pragma: no cover - skip path
     S = None

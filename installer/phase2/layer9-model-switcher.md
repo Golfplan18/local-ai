@@ -62,7 +62,7 @@
 
    b. Write a `[workspace]/config/models.json` file that records, for each assigned endpoint, its display name, model identifier, provider family, estimated RAM, and whether it is local or cloud. This file is the canonical reference for the pipeline orchestrator to identify which model is in which role.
 
-9. **Integrate into the chat server header.** Modify `[workspace]/server/server.py` to expose a settings button (⚙) in the top-right corner of the chat interface header. Clicking the button opens the model switcher panel as an overlay or side drawer without navigating away from the conversation. Add keyboard shortcut Cmd+M (macOS) / Ctrl+M (Windows/Linux) to open and close the panel.
+9. **Integrate into the chat server header.** Modify `[workspace]/server/app.py` to expose a settings button (⚙) in the top-right corner of the chat interface header. Clicking the button opens the model switcher panel as an overlay or side drawer without navigating away from the conversation. Add keyboard shortcut Cmd+M (macOS) / Ctrl+M (Windows/Linux) to open and close the panel.
 
 10. **Test the switcher.** Apply the "All Local" preset, save, restart the chat server, and verify the server reads the `slot_assignments` key from `endpoints.json` on startup. Send a test message that would route through the pipeline. Confirm the server's log identifies the correct endpoint for each slot.
 

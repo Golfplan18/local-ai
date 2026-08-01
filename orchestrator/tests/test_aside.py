@@ -18,7 +18,7 @@ from orchestrator.embedding import install_test_stub  # noqa: E402
 install_test_stub()
 
 from orchestrator.router import Router  # noqa: E402
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 from sidebar_window import SidebarWindow  # noqa: E402
 
 

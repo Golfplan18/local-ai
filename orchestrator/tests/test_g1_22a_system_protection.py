@@ -905,7 +905,7 @@ class TestCredentialBoundary(SystemProtectionBase):
 class TestSystemProtectionDocumentation(unittest.TestCase):
     def test_compound_server_deletions_declare_every_mutated_state_file(self):
         root = Path(__file__).resolve().parents[2]
-        source = (root / "server" / "server.py").read_text(encoding="utf-8")
+        source = (root / "server" / "app.py").read_text(encoding="utf-8")
         for token in (
             "settings_path = _user_settings._SETTINGS_PATH",
             "_sp.path_selector(settings_path)",

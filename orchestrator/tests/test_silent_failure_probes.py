@@ -51,7 +51,7 @@ class ProbeUniversalAntiConfab(unittest.TestCase):
 
 class ProbeServerVisualHook(unittest.TestCase):
     def test_server_invokes_visual_hook_on_response(self):
-        server_text = (Path(WORKTREE_ROOT) / "server" / "server.py").read_text()
+        server_text = (Path(WORKTREE_ROOT) / "server" / "app.py").read_text()
         self.assertIn("_server_run_visual_hook(response, context_pkg)",
                       server_text)
 

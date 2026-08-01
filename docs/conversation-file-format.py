@@ -9,10 +9,10 @@ This module is documentation-as-code. The actual save / load logic lives in:
   * ``orchestrator/conversation_memory.py`` — load and save the
     ``conversation.json`` envelope; turn append; tag retrieval; sidebar
     enumeration; mark read / errored; rename / pin; fork; ensure WELCOME.
-  * ``server/server.py::_save_conversation`` — write per-turn chunk files
+  * ``server/app.py::_save_conversation`` — write per-turn chunk files
     (markdown body + YAML frontmatter) and index them into the ChromaDB
     ``conversations`` collection.
-  * ``server/server.py`` endpoints — read both surfaces for the sidebar
+  * ``server/app.py`` endpoints — read both surfaces for the sidebar
     list, output pane, retry, dismiss, etc.
 
 The models below are the canonical shape for each storage surface. They are

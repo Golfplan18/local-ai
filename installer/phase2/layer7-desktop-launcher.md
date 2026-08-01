@@ -13,7 +13,7 @@ the exact checkout that owns the process.
 - `[workspace]/run-ora-server.sh` is the canonical foreground launcher. It
   canonicalizes `ORA_HOME`, supplies the runtime feature policy and executable
   search path, resolves Python, enables oversight by default, and `exec`s
-  `[workspace]/server/server.py` without backgrounding.
+  `[workspace]/server/app.py` without backgrounding.
 - `[workspace]/start.sh` is the interactive cross-platform entry point. It
   delegates to the foreground launcher, discovers the selected port in
   5000–5010, verifies that `/health` reports this checkout's canonical
@@ -21,7 +21,7 @@ the exact checkout that owns the process.
   launcher only when no macOS supervised service is installed.
 - `[workspace]/stop.sh` delegates to the macOS service manager when launchd is
   available. Its unsupervised fallback may terminate only a Python process whose
-  next argument is this checkout's exact `server/server.py`; path substrings,
+  next argument is this checkout's exact `server/app.py`; path substrings,
   other worktrees, editors, tests, and similarly named backups are not matches.
 - On macOS, `[workspace]/scripts/ora-launchd.sh` renders
   `installer/macos/com.ora.server.plist.template`. The per-user service runs the
@@ -39,9 +39,9 @@ the exact checkout that owns the process.
 
 An installer or fork reconciliation **must not**:
 
-- reintroduce `pkill -f server/server.py`, a repo-agnostic `pgrep`, or another
+- reintroduce `pkill -f server/app.py`, a repo-agnostic `pgrep`, or another
   broad process-kill pattern;
-- place an independent `python server/server.py` command or duplicate feature
+- place an independent `python server/app.py` command or duplicate feature
   flags in `start.sh`, an app bundle, or a service wrapper;
 - accept the first process answering `/health` without matching its `ora_home`;
 - hardcode port 5000 when the server may select 5001–5010;

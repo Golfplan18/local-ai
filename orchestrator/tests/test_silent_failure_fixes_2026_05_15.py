@@ -89,7 +89,7 @@ class TestServerSideVisualHook(unittest.TestCase):
     """
 
     def test_server_runs_visual_hook_after_gear_pipeline(self):
-        server_py = Path(HERE).parent / "server" / "server.py"
+        server_py = Path(HERE).parent / "server" / "app.py"
         text = server_py.read_text()
         # The hook must be invoked inside _run_pipeline_from_step2 before
         # the final SSE emission.
@@ -105,7 +105,7 @@ class TestStealthManifestSidecar(unittest.TestCase):
     """
 
     def test_manifest_write_site_exists_in_server(self):
-        server_py = Path(HERE).parent / "server" / "server.py"
+        server_py = Path(HERE).parent / "server" / "app.py"
         text = server_py.read_text()
         self.assertIn("conversation-manifest.jsonl", text)
         # The write must record the four required fields.
