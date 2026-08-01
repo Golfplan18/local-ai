@@ -16,7 +16,6 @@ from datetime import datetime
 
 WORKSPACE = os.path.expanduser("~/ora/")
 REGISTRY_PATH = os.path.join(WORKSPACE, "config/scheduled-tasks.json")
-OUTPUT_DIR = os.path.join(WORKSPACE, "output/scheduled/")
 
 
 def _load_registry() -> dict:
