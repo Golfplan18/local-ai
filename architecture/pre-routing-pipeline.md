@@ -313,7 +313,7 @@ The bucket headers are matched case-insensitively by regex: the thinking-tools b
 **Runtime resolution.** Two module-level registries resolve the listed ids at `build_system_prompt_for_gear` time:
 
 - **Thinking-tool ids** resolve against the `### ` headings of the `## Tier 1 Tool Definitions` section of `~/ora/modules/tools/thinking-tools.md` (loader: `_load_thinking_tools`). The tool id is the heading text up to the em-dash (`AGO — Aims, Goals, Objectives` → `AGO`); for headings without an em-dash the parenthetical alias is stripped (`Provocation (Po)` → `Provocation`); a bare heading (`Concept Fan`) is its own id.
-- **Mental-model ids** resolve against filename stems in `~/ora/knowledge/mental-models/` (loader: `_load_mental_models`) — currently 131 lens notes, vault-paired with `Lenses/`. The id is the filename without extension (`nash-equilibrium.md` → `nash-equilibrium`); YAML frontmatter is stripped from the loaded body.
+- **Mental-model ids** resolve against filename stems in `~/ora/lenses/` (loader: `_load_mental_models`) — currently 131 lens notes, vault-paired with `Lenses/`. The id is the filename without extension (`nash-equilibrium.md` → `nash-equilibrium`); YAML frontmatter is stripped from the loaded body.
 
 **Injection target.** The resolved definitions inject into the **Breadth analyst's system prompt only**, as a `## ANALYTICAL PERSPECTIVES — <mode>` block placed ahead of the `## MODE INSTRUCTIONS` section. The Depth analyst is intentionally skipped — depth is already focused; the perspectives layer is a lateral-thinking aid. The evaluator, reviser, verifier, consolidator, and formatter never receive it.
 

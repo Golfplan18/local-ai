@@ -323,7 +323,7 @@ date modified: 2026-06-17
 
 - **Filenames:** lowercase-hyphenated (kebab-case). Names are concept-name-first when distinctive (`prospect-theory.md`); author-name-first when the author is the load-bearing reference (`pearl-causal-graphs.md`, `klein-pre-mortem.md`).
 - **YAML on both sides:** vault and ora copies both carry frontmatter.
-- **Pairing:** `vault/Lenses/<lens>.md` ↔ `~/ora/knowledge/mental-models/<lens>.md`. One-to-one filename match. See `Framework — System File Drift Correction.md`.
+- **Pairing:** `vault/Lenses/<lens>.md` ↔ `~/ora/lenses/<lens>.md`. One-to-one filename match. See `Framework — System File Drift Correction.md`.
 
 ## See also
 

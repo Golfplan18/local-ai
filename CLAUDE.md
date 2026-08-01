@@ -11,7 +11,7 @@ This file provides guidance to Claude Code when working in this repository.
 The pairing convention:
 - `~/ora/frameworks/book/<name>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Framework — <Title Case Name>.md` (or `Specification — <Title>.md` for the F-stage specs). Vault has YAML, ora does not.
 - `~/ora/modes/<name>.md` ↔ `/Users/oracle/Documents/vault/Modes/<name>.md`. Both have YAML; preserve.
-- `~/ora/knowledge/mental-models/<name>.md` ↔ `/Users/oracle/Documents/vault/Lenses/<name>.md`. Both have YAML; preserve.
+- `~/ora/lenses/<name>.md` ↔ `/Users/oracle/Documents/vault/Lenses/<name>.md`. Both have YAML; preserve.
 - `~/ora/modules/tools/.../<name>.md` ↔ `/Users/oracle/Documents/vault/Modules/Tools/.../<name>.md`. Neither has YAML.
 - **`~/ora/architecture/<name>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Reference — <Title>.md`** (kebab-case ora filename ↔ vault canonical name). Vault has YAML, ora does not. Decision K: this subdirectory holds the 8 pre-routing-pipeline architecture files the orchestrator reads at runtime exclusively. The 8 files are: `territories.md`, `mode-template.md`, `disambiguation-style-guide.md`, `lens-library-specification.md`, `pre-routing-pipeline.md`, `signal-vocabulary-registry.md`, `within-territory-trees.md`, `cross-territory-adjacency.md`. **Exception:** `signal-vocabulary-registry.md` pairs with `Registry — Signal Vocabulary Registry.md` (Registry — prefix, not Reference —) because it functions as a registry, not a reference document. **Note (2026-05-12):** `runtime-configuration.md` was retired — Decision C reversed; runtime fields (gear, expected_runtime, type_filter, context_budget) now live in each mode file's `## DEFAULT GEAR` and `## RAG PROFILE` sections rather than a separate file. The archived runtime-configuration is at `~/ora/Old AI Working Files/runtime-configuration.md.archived-2026-05-12`.
 - **`~/ora/frameworks/territories/<territory-id>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Framework — <Territory Display Name>.md`** (Phase 10 deliverables; 21 self-contained territory frameworks). Vault has YAML, ora does not.
@@ -93,7 +93,7 @@ Models are assigned to named slots (not tied to gears): `sidebar`, `breadth`, `d
 - **ChromaDB** vector store with `knowledge`, `conversations`, and `atomics` collections (plus project collections such as MSI's `msi_news_articles` / `msi_conversations`)
 - **Embeddings** via **bge-m3 (1024-dim)** through Ollama — migrated from `nomic-embed-text` (768-dim) on 2026-05-29. The embedder model and physical collection names are **machine-specific config** in `config/chromadb.json` (gitignored; schema + BGE-M3 defaults documented in `config/chromadb.json.template`). `orchestrator/embedding.py` loads it at import (falling back to the same BGE-M3 defaults if absent); all call sites use the `get_collection` / `get_or_create_collection` helpers, which resolve logical→physical collection names and bind the embedder so a collection can never silently fall through to a different model. MSI article IDs are portable slugs (not absolute paths) so collections survive a Mac↔server round-trip.
 - **Knowledge indexer**: `orchestrator/tools/knowledge_index.py` indexes markdown files with YAML frontmatter
-- **Mental models**: `knowledge/mental-models/` — 240 atomic notes indexed into ChromaDB, surface via Step 2 concept RAG
+- **Mental models**: `lenses/` — 240 atomic notes indexed into ChromaDB, surface via Step 2 concept RAG
 
 ### Visual Intelligence Subsystem (2026-04-17)
 - **Client compiler** at `server/static/ora-visual-compiler/`: 22 typed renderers covering QUANT (Vega-Lite), PROCESS (Mermaid), CAUSAL (CLD / stock-and-flow / DAGitty / fishbone), DECISION (tree + EV rollback, influence diagram, ACH, 2×2), RISK (bow-tie), ARGUMENT (IBIS, pro-con), RELATIONAL (concept map), SPATIAL (C4). Validates against 23 JSON Schema 2020-12 definitions, dispatches to type-specific renderer, runs accessibility layer (Lundgard-Satyanarayan 4-level descriptions + element-level ARIA + Olli keyboard nav), then artifact-level adversarial review (overlap / text truncation / WCAG 2.1 contrast). Critical findings force fallback to table or prose per Protocol §8.5.
@@ -196,7 +196,7 @@ server/static/annotation-parser.js           — annotationLayer (user) → stru
 frameworks/book/                             — Pipeline stage specifications (F-Analysis, F-Evaluate, etc.)
 modes/                                       — Mode files (64 modes + INDEX.md)
 modules/tools/                               — Thinking tools (Tier 1) and question banks (Tier 2)
-knowledge/mental-models/                     — Tier 3 mental model lenses (240 + INDEX.md); ships with the repo, as modes/ does — Ora's analytical functions need both
+lenses/                     — Tier 3 mental model lenses (240 + INDEX.md); ships with the repo, as modes/ does — Ora's analytical functions need both
 config/model-registry.json                   — Curated runtime registry (OpenRouter + LiteLLM + Arena + AA); written by scripts/sync_model_registry.py
 config/models.json                           — Active local-model registry (machine-specific, gitignored). Source of truth for local-model discovery + vision_capable routing; read by router.py / boot.py / local_model_discovery.py. Distinct from model-registry.json (cloud catalog), NOT superseded by it.
 config/routing-config.json                   — Single source of truth for endpoints, capability routing, slot assignments, gear4 overrides, vision_extraction policy. Subsumed config/endpoints.json (retired in Chunk 12, commit e3bb000f).
@@ -332,8 +332,8 @@ echo '<envelope-json>' | node ~/ora/server/static/ora-visual-compiler/tools/rend
 /opt/homebrew/bin/python3 -c "from orchestrator.vault_export import export_session_to_vault; print(export_session_to_vault('<conversation_id>'))"
 
 # Index mental models into ChromaDB
-/opt/homebrew/bin/python3 ~/ora/orchestrator/tools/knowledge_index.py ~/ora/knowledge/mental-models/
+/opt/homebrew/bin/python3 ~/ora/orchestrator/tools/knowledge_index.py ~/ora/lenses/
 
 # Reindex (clear + rebuild)
-/opt/homebrew/bin/python3 ~/ora/orchestrator/tools/knowledge_index.py --reindex ~/ora/knowledge/mental-models/
+/opt/homebrew/bin/python3 ~/ora/orchestrator/tools/knowledge_index.py --reindex ~/ora/lenses/
 ```

@@ -36,7 +36,7 @@ def _resolve_server_workspace(environ=None, server_file=None) -> str:
 # lives under orchestrator/, which the sys.path bootstrap below has to add first.
 WORKSPACE = _resolve_server_workspace()
 MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
-MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
+MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "lenses/")
 MAX_ITERATIONS = 10
 
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))

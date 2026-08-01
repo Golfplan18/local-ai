@@ -215,7 +215,7 @@ preserved. Valid thinking-tool ids are the `### ` headings of the `## Tier 1
 Tool Definitions` section of `modules/tools/thinking-tools.md` (id = heading
 text up to the em-dash, else with the parenthetical alias stripped, else the
 bare heading). Valid mental-model ids are filename stems in
-`knowledge/mental-models/`. Unknown ids resolve silently to nothing for the
+`lenses/`. Unknown ids resolve silently to nothing for the
 user (stderr-only warning). The resolved definitions inject into the
 **Breadth analyst's system prompt only** — no other pipeline role receives
 them. In shipped mode files this section sits after `## DEFAULT GEAR`,
@@ -284,7 +284,7 @@ The 2026-05-26 gear redesign (commit `d4ce7da`) renamed the `## EVALUATION CRITE
 
 ### Analytical Perspectives allowlist (revised 2026-06-11)
 
-Mode files carry an optional `## ANALYTICAL PERSPECTIVES` body section — a machine-parsed two-bucket allowlist of Tier 1 de Bono thinking tools and Tier 3 mental-model lenses. At runtime the orchestrator resolves the listed ids (thinking tools against the `## Tier 1 Tool Definitions` section of `modules/tools/thinking-tools.md`; mental models against `knowledge/mental-models/` filename stems) and injects the resolved definitions into the **Breadth analyst's system prompt only** — the Depth analyst, evaluator, reviser, verifier, consolidator, and formatter never receive them. Unknown ids resolve silently to nothing for the user (stderr-only warning); an empty or absent section is a clean no-op, so the section is optional. The stanza in the body-subsections block above shows the exact bucket-header lines and example bullets. This allowlist is distinct from the `lens_dependencies` YAML block (a dispatch-gating dependency declaration per `Reference — Lens Library Specification.md` §5) — `lens_dependencies` governs whether the mode may dispatch; `## ANALYTICAL PERSPECTIVES` governs what perspective content the Breadth analyst's prompt carries. Mechanism details (loaders, id-derivation rules, caching, fail-soft semantics): `Reference — Pre-Routing Pipeline Architecture.md` § "Analyst System Prompt Injection — Analytical Perspectives".
+Mode files carry an optional `## ANALYTICAL PERSPECTIVES` body section — a machine-parsed two-bucket allowlist of Tier 1 de Bono thinking tools and Tier 3 mental-model lenses. At runtime the orchestrator resolves the listed ids (thinking tools against the `## Tier 1 Tool Definitions` section of `modules/tools/thinking-tools.md`; mental models against `lenses/` filename stems) and injects the resolved definitions into the **Breadth analyst's system prompt only** — the Depth analyst, evaluator, reviser, verifier, consolidator, and formatter never receive them. Unknown ids resolve silently to nothing for the user (stderr-only warning); an empty or absent section is a clean no-op, so the section is optional. The stanza in the body-subsections block above shows the exact bucket-header lines and example bullets. This allowlist is distinct from the `lens_dependencies` YAML block (a dispatch-gating dependency declaration per `Reference — Lens Library Specification.md` §5) — `lens_dependencies` governs whether the mode may dispatch; `## ANALYTICAL PERSPECTIVES` governs what perspective content the Breadth analyst's prompt carries. Mechanism details (loaders, id-derivation rules, caching, fail-soft semantics): `Reference — Pre-Routing Pipeline Architecture.md` § "Analyst System Prompt Injection — Analytical Perspectives".
 
 ---
 

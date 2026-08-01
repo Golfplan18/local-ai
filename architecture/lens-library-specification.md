@@ -1,6 +1,6 @@
 # Reference — Lens Library Specification
 
-*This file specifies the uniform structure all lens artifacts follow, with type-specific inner content. Lenses are not modes — they don't dispatch; they're invoked from within modes. Current active scope is 240 content lens artifacts in `Lenses/` mirrored to `~/ora/knowledge/mental-models/`; `Lenses/INDEX.md` is an index, not a lens. The public comparison campaign uses a smaller 116-lens injectable subset. The original Phase 5 estimate of ~120–140 artifacts is historical and has been superseded by the expanded runtime library.*
+*This file specifies the uniform structure all lens artifacts follow, with type-specific inner content. Lenses are not modes — they don't dispatch; they're invoked from within modes. Current active scope is 240 content lens artifacts in `Lenses/` mirrored to `~/ora/lenses/`; `Lenses/INDEX.md` is an index, not a lens. The public comparison campaign uses a smaller 116-lens injectable subset. The original Phase 5 estimate of ~120–140 artifacts is historical and has been superseded by the expanded runtime library.*
 
 ---
 
