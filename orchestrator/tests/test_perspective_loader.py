@@ -10,7 +10,7 @@ Covers:
   - real cui-bono.md mode file resolves cleanly end-to-end
 
 All tests run offline against the actual files in ``~/ora/modules/`` and
-``~/ora/knowledge/mental-models/``.
+``~/ora/lenses/``.
 """
 
 from __future__ import annotations

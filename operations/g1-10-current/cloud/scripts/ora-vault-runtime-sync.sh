@@ -9,7 +9,7 @@
 # vault-sync can never wipe the registry. There is no clock fallback.
 set -euo pipefail
 SRC="$HOME/ora/vault-sync/Lenses"
-DST="$HOME/ora/knowledge/mental-models"
+DST="$HOME/ora/lenses"
 LOG="$HOME/ora-vault-runtime-sync.log"
 exec >>"$LOG" 2>&1
 n=$(find "$SRC" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l)

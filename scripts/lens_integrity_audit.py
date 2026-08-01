@@ -3,7 +3,7 @@
 
 The picker exposes lenses from two sources:
   - direct mode declarations in ``modes/*`` under ``lens_dependencies``
-  - inverse declarations in ``knowledge/mental-models/*`` under
+  - inverse declarations in ``lenses/*`` under
     ``applicability``
 
 This script reports both surfaces and keeps unresolved direct declarations

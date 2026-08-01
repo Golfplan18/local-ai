@@ -181,7 +181,7 @@ FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
 MODES_DIR = os.path.join(WORKSPACE, "modes/")
 MODULES_DIR = os.path.join(WORKSPACE, "modules/")
 THINKING_TOOLS_MD = os.path.join(WORKSPACE, "modules/tools/thinking-tools.md")
-MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "knowledge/mental-models/")
+MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "lenses/")
 
 
 def _routing_config_json_path() -> str:
@@ -8278,7 +8278,7 @@ def _load_thinking_tools() -> dict[str, str]:
 
 
 def _load_mental_models() -> dict[str, str]:
-    """Walk ``knowledge/mental-models/*.md`` → ``{stem: body}``.
+    """Walk ``lenses/*.md`` → ``{stem: body}``.
 
     ``stem`` is the filename without extension (``nash-equilibrium.md`` →
     ``nash-equilibrium``). ``body`` is the markdown content with the YAML
@@ -8304,6 +8304,12 @@ def _load_mental_models() -> dict[str, str]:
 
     for path in sorted(globmod.glob(os.path.join(MENTAL_MODELS_DIR, "*.md"))):
         stem = os.path.splitext(os.path.basename(path))[0]
+        # INDEX.md is the human-readable index, not a lens — the lens library
+        # specification says so twice. The loader never filtered it, so any host
+        # whose runtime directory carried INDEX.md was injecting a table of
+        # contents into analyst prompts as though it were an analytical lens.
+        if stem == "INDEX":
+            continue
         try:
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
