@@ -75,7 +75,11 @@ _STEP_LABELS = {
     "step1-pre-routing": "Route selection",
     "step2-context": "Context package",
     "step3-depth": "Depth analysis",
+    "step3-direct-response": "Direct model response",
     "step3-single-analyst-fallback": "Single-analyst fallback",
+    "step3-gear4-fallback-to-gear3": "Gear 4 fallback to Gear 3",
+    "step3-gear3-no-endpoint": "Gear 3 endpoint error",
+    "step3-direct-no-endpoint": "Direct endpoint error",
     "step4-eval": "Evaluation",
     "step5-revised": "Revision",
     "step6-verifier-cycle-1": "Verifier cycle 1",
@@ -83,6 +87,7 @@ _STEP_LABELS = {
     "step7-consolidated": "Consolidation",
     "step7-external-consolidation-handoff": "External consolidation handoff",
     "step8-formatted": "Final formatting",
+    "step-terminal-output": "Terminal routed output",
     "step-health": "Step health",
 }
 
@@ -800,7 +805,7 @@ def write_step_health(trace_dir: str | None,
 # path including the metadata-only short-circuits.
 
 MANIFEST_FILENAME = "trace-manifest.json"
-MANIFEST_SCHEMA_VERSION = 1
+MANIFEST_SCHEMA_VERSION = 2
 
 # Turn kinds whose *normal* end is not a completed analytical pipeline.
 # A turn of one of these kinds that exits without an error hint finalizes
@@ -812,25 +817,68 @@ SHORT_CIRCUIT_KINDS = frozenset({
 })
 
 # Required (always-written on a clean run) step files per gear for full
-# pipeline turns. Everything else that lands as step*.json is a legitimate
-# observed step (verifier cycles, claim verification, unflagged scans,
-# quality gate, web consultation, contingency fallbacks) but is deliberately
-# NOT expected-counted, so its absence can never render as a missing step
-# (design Q3 as modified by the 2026-07-11 design-gate verdict).
+# pipeline turns. Conditional stages are classified separately below: when
+# present they are normal actual work, and when absent they are truthful
+# skips rather than missing or unexpected work.
 _REQUIRED_STEPS_COMMON = ["step1-phase-a", "step1-pre-routing"]
 _REQUIRED_STEPS_BY_GEAR = {
-    1: _REQUIRED_STEPS_COMMON + ["step2-context"],
-    2: _REQUIRED_STEPS_COMMON + ["step2-context"],
+    1: _REQUIRED_STEPS_COMMON + [
+        "step2-context", "step3-direct-response", "step-terminal-output",
+    ],
+    2: _REQUIRED_STEPS_COMMON + [
+        "step2-context", "step3-direct-response", "step-terminal-output",
+    ],
     3: _REQUIRED_STEPS_COMMON + [
         "step2-context", "step3-depth", "step4-eval", "step5-revised",
+        "step-terminal-output",
     ],
     4: _REQUIRED_STEPS_COMMON + [
         "step2-context", "step3-depth", "step3-breadth",
         "step4-eval-of-depth", "step4-eval-of-breadth",
         "step5-revised-depth", "step5-revised-breadth",
-        "step7-consolidated", "step8-formatted",
+        "step7-consolidated", "step8-formatted", "step-terminal-output",
     ],
 }
+
+_GEAR_EXECUTION_STEPS = {
+    gear: [step for step in steps if step not in _REQUIRED_STEPS_COMMON
+           and step != "step2-context"]
+    for gear, steps in _REQUIRED_STEPS_BY_GEAR.items()
+}
+
+# Normal conditional stages are known parts of a Gear path. Their absence is
+# a skip, not an anomaly, and their presence is actual work, not an
+# ``unexpected`` step. Dynamic verifier/recovery names are classified below.
+_OPTIONAL_STEPS_BY_GEAR = {
+    1: ["step2-web-consultation"],
+    2: ["step2-web-consultation"],
+    3: [
+        "step2-web-consultation", "step4.5-claim-verification",
+        "step5.5-unflagged-scan", "step6-verifier-cycle-1",
+        "step6-verifier-cycle-2", "step6-verifier-cycle-3",
+        "step6_5-quality-gate",
+    ],
+    4: [
+        "step2-web-consultation",
+        "step4.5-claim-verification-depth",
+        "step4.5-claim-verification-breadth",
+        "step5.5-unflagged-scan-depth",
+        "step5.5-unflagged-scan-breadth",
+        "step6-verifier-cycle-1", "step6-verifier-cycle-2",
+        "step6-verifier-cycle-3", "step8_6-quality-gate-pass-1",
+        "step8_6-quality-gate-pass-2", "step8_6-quality-gate-pass-3",
+    ],
+}
+
+_CONTINGENCY_STEP_PATTERNS = (
+    re.compile(r"^step3-single-analyst-fallback$"),
+    re.compile(r"^step3-gear4-fallback-to-gear3$"),
+    re.compile(r"^step3-(?:gear3|direct)-no-endpoint$"),
+    re.compile(r"^step6-cycle-[1-3]-re-revision(?:-depth|-breadth)?$"),
+    re.compile(r"^step6_5-quality-gate-redo$"),
+    re.compile(r"^step7-external-consolidation-handoff$"),
+    re.compile(r"^step8_6-quality-gate-(?:formatting-redo|reconsolidate|reformat)$"),
+)
 
 # step*.json files that are derived summaries, not pipeline steps. They are
 # excluded from ``actual_steps`` and listed under ``derived_artifacts``
@@ -866,6 +914,8 @@ _CONTINGENCY_SATISFIERS = {
         },
     },
 }
+
+_GEAR4_FALLBACK_MARKER = "step3-gear4-fallback-to-gear3"
 
 
 def trace_ref_for_dir(trace_dir: str | None) -> str | None:
@@ -1091,6 +1141,12 @@ def _manifest_skeleton(conversation_id: str | None,
         "expected_steps": [],
         "actual_steps": [],
         "derived_artifacts": [],
+        "missing_steps": [],
+        "skipped_steps": [],
+        "replaced_steps": [],
+        "contingency_steps": [],
+        "unexpected_steps": [],
+        "stage_replacements": {},
         "redaction_level": ("private" if conversation_tag == "private"
                             else "default"),
         "retention_state": "default",
@@ -1106,25 +1162,23 @@ def _manifest_skeleton(conversation_id: str | None,
 
 def _expected_steps_for(kind: str, gear: int | None,
                         actual: list[str] | None = None) -> list[str]:
-    """Static required-step derivation (design Q3: per-gear tables).
+    """Return the normal required path without rewriting history.
 
-    Short-circuit kinds expect nothing beyond metadata — except ``direct``
-    (the gear-1/2 bypass), which runs step1 before bypassing and therefore
-    expects the step1 files. A pipeline turn expects its gear's table,
-    adjusted for any contingency-fallback marker actually observed (see
-    ``_CONTINGENCY_SATISFIERS`` — a legitimate reduced-footprint completion,
-    not a missing step). A clarification resume expects the gear table
-    minus the step1 files (the resume reuses the paused turn's stored
-    step1 dict; step1 is never re-run, so expecting it would manufacture a
-    false missing-step warning). Unknown gear → empty list (never guess).
-    Lists are sorted so expected/actual diff cleanly.
+    Contingencies are represented separately by ``replaced_steps`` and
+    ``contingency_steps``. They never mutate the path that was normally
+    expected; that distinction is what lets Trace Walk say “replaced” rather
+    than silently erasing work from the manifest.
     """
     if kind == "trace-debug":
         return ["step-debug-request", "step-debug-result"]
     if kind == "trace-probe":
         return ["step-probe-prepare", "step-probe-approval", "step-probe-model-attempt", "step-probe-result", "step-health"]
     if kind == "direct":
-        return sorted(_REQUIRED_STEPS_COMMON)
+        return sorted(_REQUIRED_STEPS_COMMON + [
+            "step3-direct-response", "step-terminal-output",
+        ])
+    if kind == "direct-entry":
+        return ["step3-direct-response", "step-terminal-output"]
     if kind in SHORT_CIRCUIT_KINDS or kind == "clarification_pending":
         # A paused (clarification_pending) turn legitimately ends after
         # step1; its step1 files show up in actual_steps as observed.
@@ -1132,15 +1186,11 @@ def _expected_steps_for(kind: str, gear: int | None,
     table = _REQUIRED_STEPS_BY_GEAR.get(gear) if gear else None
     if not table:
         return []
+    if kind == "framework-milestone":
+        return sorted(_GEAR_EXECUTION_STEPS.get(gear, []))
     required = set(table)
     if kind == "clarification_resume":
         required = {s for s in required if not s.startswith("step1")}
-    else:
-        actual_set = set(actual or [])
-        for marker, replaced in _CONTINGENCY_SATISFIERS.get(gear, {}).items():
-            if marker in actual_set:
-                required -= replaced
-                required.add(marker)
     return sorted(required)
 
 
@@ -1166,6 +1216,107 @@ def _scan_turn_dir(trace_dir: str) -> tuple[list[str], list[str]]:
             actual.append(stem)
         # metadata.json / trace-manifest.json are structural, not steps.
     return sorted(actual), sorted(derived)
+
+
+def _is_contingency_step(step: str) -> bool:
+    return any(pattern.match(step) for pattern in _CONTINGENCY_STEP_PATTERNS)
+
+
+def _stage_replacements_for(actual: list[str]) -> dict[str, list[str]]:
+    actual_set = set(actual)
+    replacements: dict[str, list[str]] = {}
+    for gear, rules in _CONTINGENCY_SATISFIERS.items():
+        for marker, replaced in rules.items():
+            if marker in actual_set:
+                replacements[marker] = sorted(replaced - actual_set)
+    if _GEAR4_FALLBACK_MARKER in actual_set:
+        replacements[_GEAR4_FALLBACK_MARKER] = sorted(
+            step for step in _GEAR_EXECUTION_STEPS[4]
+            if step not in {
+                # ``step3-depth`` is reused by the effective Gear 3 path. It
+                # must remain actual (or skipped when Gear 3 cannot start),
+                # never simultaneously claim to be replaced Gear 4 work.
+                "step3-depth", "step-terminal-output",
+            }
+            and step not in actual_set
+        )
+    return replacements
+
+
+def _manifest_taxonomy(kind: str, gear: int | None, status: str,
+                       actual: list[str], derived: list[str]) -> dict[str, Any]:
+    """Classify the inventory without inventing or erasing execution.
+
+    ``actual_steps`` is always the literal on-disk inventory. Missing is
+    reserved for a normally required step absent from a completed turn.
+    Exceptional exits classify not-reached work as skipped. Conditional
+    normal stages are skipped when absent and never become unexpected when
+    present. A contingency can replace normal work while remaining actual.
+    """
+    expected = _expected_steps_for(kind, gear, actual)
+    observed = set(actual) | set(derived)
+    replacements = _stage_replacements_for(actual)
+    replaced = sorted({
+        step
+        for steps in replacements.values()
+        for step in steps
+    })
+    contingency = sorted(step for step in actual if _is_contingency_step(step))
+    absent_required = [
+        step for step in expected
+        if step not in observed and step not in replaced
+    ]
+    if status == "completed":
+        missing = absent_required
+        exceptional_skips: list[str] = []
+    else:
+        missing = []
+        exceptional_skips = absent_required
+
+    optional = [] if kind in {
+        "direct", "direct-entry",
+    } else list(_OPTIONAL_STEPS_BY_GEAR.get(gear or 0, []))
+    if kind == "framework-milestone":
+        # Framework children receive an already-built execution context and
+        # never run full-pipeline Step 2 web consultation.
+        optional = [step for step in optional
+                    if step != "step2-web-consultation"]
+    skipped = sorted(set(exceptional_skips) | {
+        step for step in optional
+        if step not in observed and step not in replaced
+    })
+    known_normal = set(expected) | set(optional) | {
+        # A terminal can legitimately follow a short-circuit response (for
+        # example a risk hold) even though the short-circuit has no analytical
+        # expected table.
+        "step-terminal-output",
+    }
+    unexpected = sorted(
+        step for step in actual
+        if step not in known_normal
+        and step not in contingency
+        and step not in replaced
+    )
+    return {
+        "expected_steps": expected,
+        "actual_steps": actual,
+        "derived_artifacts": derived,
+        "missing_steps": missing,
+        "skipped_steps": skipped,
+        "replaced_steps": replaced,
+        "contingency_steps": contingency,
+        "unexpected_steps": unexpected,
+        "stage_replacements": replacements,
+    }
+
+
+def _effective_gear_from_inventory(gear: int | None,
+                                   actual: list[str]) -> int | None:
+    # This marker is written before calling Gear 3, including the branch where
+    # Gear 3 itself fails before it can produce step-health.json.
+    if _GEAR4_FALLBACK_MARKER in actual:
+        return 3
+    return gear
 
 
 def finalize_manifest(trace_dir: str | None,
@@ -1247,6 +1398,7 @@ def finalize_manifest(trace_dir: str | None,
                     gear = _sh_gear
             except Exception:
                 pass
+        gear = _effective_gear_from_inventory(gear, actual)
         if mode is None:
             try:
                 with open(os.path.join(trace_dir,
@@ -1261,7 +1413,11 @@ def finalize_manifest(trace_dir: str | None,
         if kind == "chat" and gear:
             kind = f"chat-gear{gear}"
 
-        if status_hint == "error":
+        inventory_error = any(
+            step in actual
+            for step in ("step3-gear3-no-endpoint", "step3-direct-no-endpoint")
+        )
+        if status_hint == "error" or inventory_error:
             status = "error"
         elif status_hint == "paused":
             status = "paused"
@@ -1274,6 +1430,7 @@ def finalize_manifest(trace_dir: str | None,
 
         finalized_at = (manifest.get("finalized_at")
                         or _dt.datetime.utcnow().isoformat() + "Z")
+        taxonomy = _manifest_taxonomy(kind, gear, status, actual, derived)
         manifest.update({
             "schema_version": MANIFEST_SCHEMA_VERSION,
             "trace_kind": kind,
@@ -1293,6 +1450,7 @@ def finalize_manifest(trace_dir: str | None,
             "derived_artifacts": derived,
             "finalized_at": finalized_at,
         })
+        manifest.update(taxonomy)
         if parent_trace_ref:
             manifest["parent_trace_ref"] = parent_trace_ref
         if child_trace_refs is not None:
@@ -1362,6 +1520,78 @@ def finalize_manifest(trace_dir: str | None,
               file=sys.stderr)
 
 
+def refresh_manifest_inventory(trace_dir: str | None) -> dict[str, Any] | None:
+    """Refresh categorical step sets after a post-finalization trace write.
+
+    Server output routing and conversation persistence occur after the stream
+    wrapper has finalized its manifest. This narrow refresh preserves every
+    terminal/lineage field and only re-scans the existing turn directory.
+    """
+    if not trace_dir:
+        return None
+    try:
+        owned = _validated_existing_trace_dir(trace_dir)
+        manifest = read_manifest(str(owned))
+        if manifest is None:
+            return None
+        actual, derived = _scan_turn_dir(str(owned))
+        gear = _effective_gear_from_inventory(manifest.get("gear"), actual)
+        kind = str(manifest.get("trace_kind") or "unknown")
+        if kind.startswith("chat-gear") and gear:
+            kind = f"chat-gear{gear}"
+        status = str(manifest.get("terminal_status") or "open")
+        refreshed = dict(manifest)
+        refreshed.update({
+            "schema_version": MANIFEST_SCHEMA_VERSION,
+            "trace_kind": kind,
+            "gear": gear,
+        })
+        refreshed.update(_manifest_taxonomy(kind, gear, status, actual, derived))
+        _atomic_write_json(str(owned / MANIFEST_FILENAME), refreshed)
+        return refreshed
+    except Exception as exc:
+        print(f"[pipeline_trace] refresh_manifest_inventory failed: {exc}",
+              file=sys.stderr)
+        return None
+
+
+def record_terminal_output(trace_dir_or_ref: str | None,
+                           terminal_value: Any,
+                           *, route: str,
+                           output_target: str = "",
+                           persisted: bool | None = None) -> None:
+    """Best-effort capture of the exact value returned after output routing.
+
+    The raw value remains local forensic evidence. Browser projections and
+    exports apply the recursive redaction policy below. This helper never
+    raises and therefore cannot change routing, persistence, or return values.
+    """
+    if not trace_dir_or_ref:
+        return
+    try:
+        trace_dir = trace_dir_or_ref
+        if not os.path.isabs(trace_dir):
+            trace_dir = resolve_trace_ref(trace_dir_or_ref)
+        if not trace_dir:
+            return
+        text_value = terminal_value if isinstance(terminal_value, str) else str(terminal_value)
+        write_step(trace_dir, "step-terminal-output", {
+            "terminal_value": terminal_value,
+            "value_type": type(terminal_value).__name__,
+            "characters": len(text_value),
+            "sha256": hashlib.sha256(text_value.encode("utf-8")).hexdigest(),
+            "routing": {
+                "route": route,
+                "output_target": output_target,
+                "persisted": persisted,
+            },
+        })
+        refresh_manifest_inventory(trace_dir)
+    except Exception as exc:
+        print(f"[pipeline_trace] terminal output trace failed: {exc}",
+              file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -1417,13 +1647,120 @@ def _step_role_label(step_name: str) -> str:
 
 
 def _manifest_step_sets(manifest: dict[str, Any]) -> tuple[list[str], list[str], list[str], list[str], list[str]]:
+    """Compatibility view used by trace-debug and older callers."""
+    sets = _manifest_all_step_sets(manifest)
+    return (
+        sets["expected"], sets["actual"], sets["derived"],
+        sets["missing"], sets["unexpected"],
+    )
+
+
+def _manifest_all_step_sets(manifest: dict[str, Any]) -> dict[str, list[str]]:
     expected = _dedupe_strings(manifest.get("expected_steps"))
     actual = _dedupe_strings(manifest.get("actual_steps"))
     derived = _dedupe_strings(manifest.get("derived_artifacts"))
     observed = set(actual) | set(derived)
-    missing = [step for step in expected if step not in observed]
-    unexpected = [step for step in actual if step not in expected]
-    return expected, actual, derived, missing, unexpected
+    persisted_missing = manifest.get("missing_steps")
+    persisted_unexpected = manifest.get("unexpected_steps")
+    return {
+        "expected": expected,
+        "actual": actual,
+        "derived": derived,
+        "missing": (
+            _dedupe_strings(persisted_missing)
+            if isinstance(persisted_missing, list)
+            else [step for step in expected if step not in observed]
+        ),
+        "skipped": _dedupe_strings(manifest.get("skipped_steps")),
+        "replaced": _dedupe_strings(manifest.get("replaced_steps")),
+        "contingency": _dedupe_strings(manifest.get("contingency_steps")),
+        "unexpected": (
+            _dedupe_strings(persisted_unexpected)
+            if isinstance(persisted_unexpected, list)
+            else [step for step in actual if step not in expected]
+        ),
+    }
+
+
+def _redacted_text_summary(value: str, kind: str = "text") -> dict[str, Any]:
+    encoded = value.encode("utf-8", errors="replace")
+    return {
+        "redacted": True,
+        "kind": kind,
+        "characters": len(value),
+        "bytes": len(encoded),
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+    }
+
+
+_SAFE_PROJECTION_KEYS = frozenset({
+    # Fixed schema/measurement names only. Unrecognized keys are hashed below
+    # because a model/tool payload can otherwise place a secret in a dict key.
+    "actual", "attempt", "attempts", "broken", "bytes", "call_ok",
+    "call_reason", "characters", "chunks", "count", "cycle", "elapsed",
+    "elapsed_seconds", "endpoint", "endpoint_used", "error", "errors",
+    "failed", "gear", "health", "injected", "iterations", "kind", "label",
+    "max_cycles", "missing", "ok", "output_target", "parsed", "passed",
+    "persisted", "reason", "redacted", "response", "result", "retry",
+    "route", "routing", "sha256", "signals", "slot", "source", "status",
+    "step", "steps", "terminal_value", "trace", "unexpected", "value_type",
+    "verdict", "verdict_resolved",
+})
+
+
+def _safe_payload_projection(value: Any, depth: int = 0) -> Any:
+    """Project structure and measurements without returning raw text/state.
+
+    Trace payloads intentionally contain exact forensic inputs and outputs.
+    Browser and export surfaces have a different trust boundary: every string
+    and byte sequence becomes only a length/hash summary, recursively. Keys
+    are retained only when they look like bounded schema identifiers.
+    """
+    if depth > 20:
+        return {"redacted": True, "kind": "depth-limit"}
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return _redacted_text_summary(value)
+    if isinstance(value, (bytes, bytearray)):
+        raw = bytes(value)
+        return {
+            "redacted": True,
+            "kind": "bytes",
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+    if isinstance(value, dict):
+        projected: dict[str, Any] = {}
+        for raw_key, child in value.items():
+            key = str(raw_key)
+            if key not in _SAFE_PROJECTION_KEYS:
+                key = "field-" + hashlib.sha256(
+                    key.encode("utf-8", errors="replace")
+                ).hexdigest()[:12]
+            while key in projected:
+                key += "-duplicate"
+            projected[key] = _safe_payload_projection(child, depth + 1)
+        return projected
+    if isinstance(value, (list, tuple, set)):
+        return [_safe_payload_projection(child, depth + 1) for child in value]
+    return _redacted_text_summary(str(value), kind=type(value).__name__)
+
+
+def _safe_projection_error(error: str) -> str:
+    """Collapse read failures to fixed codes without paths or raw state."""
+    lowered = str(error or "").lower()
+    if "file too large" in lowered:
+        return "file-too-large"
+    if "not a regular file" in lowered or "non-regular" in lowered:
+        return "non-regular-file-refused"
+    if "symlink" in lowered:
+        return "symlink-refused"
+    if "decode" in lowered:
+        return "text-decode-failed"
+    if "json parse" in lowered:
+        return "json-parse-failed"
+    return "read-failed"
 
 
 def _safe_projection_context_locked(trace_ref: str) -> tuple[Path, dict[str, Any], str, str] | None:
@@ -1442,7 +1779,15 @@ def _safe_projection_context_locked(trace_ref: str) -> tuple[Path, dict[str, Any
 
 
 def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str, Any]) -> dict[str, Any]:
-    expected, actual, derived, missing, unexpected = _manifest_step_sets(manifest)
+    sets = _manifest_all_step_sets(manifest)
+    expected = sets["expected"]
+    actual = sets["actual"]
+    derived = sets["derived"]
+    missing = sets["missing"]
+    skipped = sets["skipped"]
+    replaced = sets["replaced"]
+    contingency = sets["contingency"]
+    unexpected = sets["unexpected"]
     ordered: list[str] = []
     for step in expected + actual:
         if step.startswith("step") and step not in ordered:
@@ -1455,6 +1800,10 @@ def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str,
         "expected": step in expected,
         "actual": step in actual,
         "missing": step in missing,
+        "skipped": step in skipped,
+        "replaced": step in replaced,
+        "contingency": step in contingency,
+        "unexpected": step in unexpected,
         "health": step == "step-health",
     } for step in ordered]
     fields = {
@@ -1464,7 +1813,7 @@ def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str,
             "trace_kind", "terminal_status", "gear", "mode", "framework_id",
             "milestone_id", "redaction_level", "retention_state",
             "parent_trace_ref", "child_trace_refs", "finalized_at",
-            "investigates_trace_ref", "probe_trace_refs", "contract_capture_error",
+            "investigates_trace_ref", "probe_trace_refs",
         )
     }
     fields.update({
@@ -1473,7 +1822,14 @@ def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str,
         "actual_steps": actual,
         "derived_artifacts": derived,
         "missing_steps": missing,
+        "skipped_steps": skipped,
+        "replaced_steps": replaced,
+        "contingency_steps": contingency,
         "unexpected_steps": unexpected,
+        "stage_replacements": manifest.get("stage_replacements") or {},
+        "contract_capture_error": _safe_payload_projection(
+            manifest.get("contract_capture_error")
+        ),
         "steps": steps,
         "open": manifest.get("terminal_status") == "open",
     })
@@ -1503,7 +1859,10 @@ def _trace_step_projection_locked(trace_ref: str,
                                   safe_step: str,
                                   trace_dir: Path,
                                   manifest: dict[str, Any]) -> dict[str, Any] | None:
-    expected, actual, derived, _missing, _unexpected = _manifest_step_sets(manifest)
+    sets = _manifest_all_step_sets(manifest)
+    expected = sets["expected"]
+    actual = sets["actual"]
+    derived = sets["derived"]
     allowed = set(expected) | set(actual)
     if safe_step == "step-health":
         if "step-health" not in derived and not (trace_dir / "step-health.json").exists():
@@ -1537,6 +1896,11 @@ def _trace_step_projection_locked(trace_ref: str,
         "label": _step_role_label(safe_step),
         "expected": safe_step in expected,
         "actual": safe_step in actual,
+        "missing": safe_step in sets["missing"],
+        "skipped": safe_step in sets["skipped"],
+        "replaced": safe_step in sets["replaced"],
+        "contingency": safe_step in sets["contingency"],
+        "unexpected": safe_step in sets["unexpected"],
         "health": safe_step == "step-health",
         "json_present": json_present,
         "markdown_present": markdown_present,
@@ -1544,6 +1908,29 @@ def _trace_step_projection_locked(trace_ref: str,
         "markdown": markdown,
         "errors": errors,
     }
+
+
+def _safe_trace_step_projection_locked(
+        trace_ref: str, safe_step: str, trace_dir: Path,
+        manifest: dict[str, Any]) -> dict[str, Any] | None:
+    """Apply the browser/export redaction boundary to a bounded raw read."""
+    raw = _trace_step_projection_locked(
+        trace_ref, safe_step, trace_dir, manifest
+    )
+    if raw is None:
+        return None
+    safe = dict(raw)
+    markdown = raw.get("markdown")
+    safe["payload"] = _safe_payload_projection(raw.get("payload"))
+    safe["markdown"] = None
+    safe["markdown_summary"] = (
+        _redacted_text_summary(markdown, kind="markdown")
+        if isinstance(markdown, str) else None
+    )
+    safe["errors"] = [
+        _safe_projection_error(error) for error in raw.get("errors") or []
+    ]
+    return safe
 
 
 def trace_step_projection(trace_ref: str | None, step_name: str | None) -> dict[str, Any] | None:
@@ -1566,7 +1953,9 @@ def trace_step_projection(trace_ref: str | None, step_name: str | None) -> dict[
             if ctx is None:
                 return None
             trace_dir, manifest, _conv, _turn = ctx
-            return _trace_step_projection_locked(trace_ref, safe_step, trace_dir, manifest)
+            return _safe_trace_step_projection_locked(
+                trace_ref, safe_step, trace_dir, manifest
+            )
     except Exception:
         return None
 
@@ -1638,18 +2027,25 @@ def trace_export_html(trace_ref: str | None) -> tuple[str, str] | None:
             if manifest.get("terminal_status") == "open":
                 warning = '<div class="warning">This trace is still open and may be incomplete.</div>'
             if manifest.get("redaction_level") == "private":
-                warning += '<div class="warning">Private trace: handle the exported file accordingly.</div>'
+                warning += '<div class="warning">Private trace: raw content is omitted from this export.</div>'
             for row in manifest.get("steps") or []:
                 name = row.get("step_name")
                 try:
                     safe_step = _safe_trace_filename(name, label="trace step projection")
                 except Exception:
                     safe_step = ""
-                step = _trace_step_projection_locked(safe_ref, safe_step, trace_dir, raw_manifest) if safe_step else None
+                step = _safe_trace_step_projection_locked(
+                    safe_ref, safe_step, trace_dir, raw_manifest
+                ) if safe_step else None
                 if step is None:
                     sections.append(f"<section><h2>{html.escape(name or 'unknown', quote=True)}</h2><p>Step unavailable.</p></section>")
                     continue
-                md_html = _escaped_simple_markdown(step.get("markdown")) if step.get("markdown") else "<p>No Markdown sibling recorded.</p>"
+                md_summary = step.get("markdown_summary")
+                md_html = (
+                    "<p>Markdown content redacted. Structural metadata:</p>"
+                    f"<pre><code>{html.escape(json.dumps(md_summary, indent=2), quote=True)}</code></pre>"
+                    if md_summary else "<p>No Markdown sibling recorded.</p>"
+                )
                 payload = html.escape(json.dumps(step.get("payload"), indent=2, default=_json_default), quote=True) if step.get("payload") is not None else ""
                 errors = "".join(f"<li>{html.escape(e, quote=True)}</li>" for e in step.get("errors") or [])
                 sections.append(
@@ -1660,7 +2056,19 @@ def trace_export_html(trace_ref: str | None) -> tuple[str, str] | None:
                     + (f"<ul class=\"errors\">{errors}</ul>" if errors else "")
                     + "</section>"
                 )
-            missing = "".join(f"<li>{html.escape(s, quote=True)}</li>" for s in manifest.get("missing_steps") or []) or "<li>None</li>"
+            category_html = []
+            for title, field in (
+                ("Missing expected steps", "missing_steps"),
+                ("Skipped stages", "skipped_steps"),
+                ("Replaced stages", "replaced_steps"),
+                ("Contingency stages", "contingency_steps"),
+                ("Genuinely unexpected stages", "unexpected_steps"),
+            ):
+                items = "".join(
+                    f"<li>{html.escape(s, quote=True)}</li>"
+                    for s in manifest.get(field) or []
+                ) or "<li>None</li>"
+                category_html.append(f"<h2>{title}</h2><ul>{items}</ul>")
             summary = html.escape(json.dumps({k: manifest.get(k) for k in (
                 "trace_ref", "trace_kind", "terminal_status", "gear", "mode",
                 "framework_id", "milestone_id", "retention_state", "redaction_level",
@@ -1669,7 +2077,7 @@ def trace_export_html(trace_ref: str | None) -> tuple[str, str] | None:
             doc = f"""<!doctype html>
 <html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"{html.escape(TRACE_EXPORT_CSP, quote=True)}\"><title>Ora Trace Walk</title><style>
 body{{font-family:Georgia,'Times New Roman',serif;margin:2rem;line-height:1.5;background:#f7f1e6;color:#201b16}}pre{{white-space:pre-wrap;background:#211f1b;color:#f5efe2;padding:1rem;border-radius:10px;overflow:auto}}code{{font-family:Menlo,Consolas,monospace}}.warning{{border:1px solid #a65f00;background:#fff4d8;padding:.75rem;margin:.75rem 0;border-radius:8px}}.step{{border-top:1px solid #c7bca8;padding-top:1rem;margin-top:1rem}}table{{border-collapse:collapse}}td,th{{border:1px solid #b8ad99;padding:.25rem .5rem}}blockquote{{border-left:4px solid #9c7b4f;margin-left:0;padding-left:1rem;color:#584834}}.errors{{color:#8a1f11}}</style></head>
-<body><h1>Ora Trace Walk</h1>{warning}<pre><code>{summary}</code></pre><h2>Missing expected steps</h2><ul>{missing}</ul>{''.join(sections)}</body></html>"""
+<body><h1>Ora Trace Walk</h1>{warning}<pre><code>{summary}</code></pre>{''.join(category_html)}{''.join(sections)}</body></html>"""
             encoded = doc.encode("utf-8")
             if len(encoded) > MAX_TRACE_EXPORT_BYTES:
                 notice = html.escape(f"Export too large: {len(encoded)} bytes > {MAX_TRACE_EXPORT_BYTES} bytes", quote=True)

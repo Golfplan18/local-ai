@@ -3663,9 +3663,24 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         ep, fast_slot = resolve_single_pass_endpoint(
             config, gear, config_name=config_name)
         if ep is None:
+            terminal_value = "No active endpoint configured."
             if turn_state is not None:
                 turn_state["status"] = "error"
-            yield _sse("error", text="No active endpoint configured.")
+            if trace_dir:
+                try:
+                    from orchestrator import pipeline_trace as _pt_no_endpoint
+                    _pt_no_endpoint.write_step(
+                        trace_dir, "step3-direct-no-endpoint", {
+                            "gear": gear, "endpoint_available": False,
+                        })
+                    _pt_no_endpoint.record_terminal_output(
+                        trace_dir, terminal_value,
+                        route="server-pipeline-error",
+                        output_target="screen", persisted=False,
+                    )
+                except Exception:
+                    pass
+            yield _sse("error", text=terminal_value)
             return
         messages = [{"role": "system", "content": system_prompt}]
         if history:
@@ -3677,7 +3692,20 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             gear=gear,
             config_name=config_name,
             images=images,
+            step_name="step3-direct-response",
         )
+        if trace_dir:
+            try:
+                from orchestrator import pipeline_trace as _pt_direct
+                _pt_direct.write_step(trace_dir, "step3-direct-response", {
+                    "gear": gear,
+                    "raw_response": response,
+                    "endpoint": (
+                        ep.get("name") if isinstance(ep, dict) else str(ep)
+                    ),
+                })
+            except Exception:
+                pass
 
     elif gear == 3:
         response = run_gear3(context_pkg, config, history, images=images, config_name=config_name)
@@ -3698,6 +3726,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
              {"role": "user", "content": user_input}],
             endpoint, images=images
         )
+
+    effective_trace_gear = context_pkg.get("_trace_effective_gear")
+    if isinstance(effective_trace_gear, int):
+        gear = effective_trace_gear
+        if turn_state is not None:
+            turn_state["gear"] = effective_trace_gear
 
     # Prepend degradation signal if any (never silent)
     if degradation_signal:
@@ -3738,7 +3772,9 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 )
             except Exception:
                 pass
-        turn_state["status"] = "completed"
+        turn_state["status"] = (
+            context_pkg.get("_trace_terminal_status") or "completed"
+        )
     yield _sse("pipeline_stage", stage="complete", gear=gear,
                mode=step1["mode"], label="Pipeline complete")
     yield _sse("response", text=response)
@@ -4141,7 +4177,25 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     if endpoint is None:
         turn_state["kind"] = "no_endpoint_error"
         turn_state["status"] = "error"
-        yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+        terminal_value = (
+            "No AI endpoints configured. Add a connection or install a local model."
+        )
+        if trace_dir:
+            try:
+                from orchestrator import pipeline_trace as _pt_no_endpoint
+                _pt_no_endpoint.write_step(
+                    trace_dir, "step3-direct-no-endpoint", {
+                        "endpoint_available": False,
+                        "entry": "server-pipeline",
+                    })
+                _pt_no_endpoint.record_terminal_output(
+                    trace_dir, terminal_value,
+                    route="server-pipeline-error",
+                    output_target="screen", persisted=False,
+                )
+            except Exception:
+                pass
+        yield _sse("error", text=terminal_value)
         return
 
     # --- Resolution-chain continuation short-circuit ---
@@ -4767,17 +4821,39 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     up empty here (e.g. the active endpoint was removed in the window
     between the two checks), the turn genuinely produced no response and
     must finalize as an error, not the "direct" short-circuit its kind
-    already carries (design-gate condition 1). The other call site
-    (``agentic_loop_stream``'s ``/direct`` command path) never opens a
-    trace at all, so it passes no turn_state and this is a no-op there.
+    already carries (design-gate condition 1). The explicit-direct wrapper
+    also passes turn_state so the same production function records its real
+    response or endpoint error in that direct-entry trace.
     """
+    _ds_trace_dir = (
+        turn_state.get("trace_dir")
+        if isinstance(turn_state, dict)
+        else None
+    )
     config   = load_config()
     endpoint = get_endpoint(config)
 
     if endpoint is None:
+        terminal_value = (
+            "No AI endpoints configured. Add a connection or install a local model."
+        )
         if turn_state is not None:
             turn_state["status"] = "error"
-        yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+        if _ds_trace_dir:
+            try:
+                from orchestrator import pipeline_trace as _pt_direct_error
+                _pt_direct_error.write_step(
+                    _ds_trace_dir, "step3-direct-no-endpoint",
+                    {"endpoint_available": False},
+                )
+                _pt_direct_error.record_terminal_output(
+                    _ds_trace_dir, terminal_value,
+                    route="server-direct-error",
+                    output_target="screen", persisted=False,
+                )
+            except Exception:
+                pass
+        yield _sse("error", text=terminal_value)
         return
 
     messages = list(history)
@@ -4796,11 +4872,6 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     # recorder's turn context here (no trace dir → events go to the global
     # sink, marked surface=chat).
     _ds_tag = _effective_conversation_tag(panel_id, conversation_tag)
-    _ds_trace_dir = (
-        turn_state.get("trace_dir")
-        if isinstance(turn_state, dict)
-        else None
-    )
     try:
         try:
             import tool_events as _te_ds
@@ -4856,15 +4927,44 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     except Exception as _rge_ds:
         print(f"[risk-gate] direct-stream hold skipped: {_rge_ds}")
 
+    def _call_direct_stage(model_messages, model_endpoint, images=None):
+        boot_context = _boot_context_api()
+        tokens = boot_context.set_model_stage_context(
+            "step3-direct-response", gear=1,
+        )
+        try:
+            return call_model(model_messages, model_endpoint, images=images)
+        finally:
+            boot_context.reset_model_stage_context(tokens)
+
     response = ""
     for iteration in range(MAX_ITERATIONS):
         # Pass images only on the first call (they accompany the user's original message)
-        response = call_model(messages, endpoint, images=images if iteration == 0 else None)
+        response = _call_direct_stage(
+            messages, endpoint, images=images if iteration == 0 else None,
+        )
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
             reset_consecutive()
             clean = strip_tool_calls(response)
+            if _ds_trace_dir:
+                try:
+                    from orchestrator import pipeline_trace as _pt_direct_response
+                    _pt_direct_response.write_step(
+                        _ds_trace_dir, "step3-direct-response", {
+                            "raw_response": clean,
+                            "endpoint": (
+                                endpoint.get("name")
+                                if isinstance(endpoint, dict) else str(endpoint)
+                            ),
+                            "iterations": iteration + 1,
+                        })
+                except Exception:
+                    pass
+            if (turn_state is not None
+                    and turn_state.get("kind") != "direct"):
+                turn_state["status"] = "completed"
             yield _sse("response", text=clean)
             try:
                 _rgate_ds.record_route_observed(
@@ -4901,7 +5001,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
         # Context compaction check
         ctx_window = endpoint.get("context_window", 1_000_000)
-        messages = compact_context(messages, call_model, ctx_window)
+        messages = compact_context(messages, _call_direct_stage, ctx_window)
 
     # Agentic loop reached MAX_ITERATIONS while still emitting tool calls
     # (or the model produced nothing on the last iteration). Surface the
@@ -4920,6 +5020,21 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                max_iterations=MAX_ITERATIONS,
                stripped_response_chars=len(clean),
                final_response_was_empty_after_strip=(not clean.strip()))
+    if _ds_trace_dir:
+        try:
+            from orchestrator import pipeline_trace as _pt_direct_overrun
+            _pt_direct_overrun.write_step(
+                _ds_trace_dir, "step3-direct-response", {
+                    "raw_response": clean,
+                    "endpoint": endpoint_name,
+                    "iterations": MAX_ITERATIONS,
+                    "agentic_loop_overrun": True,
+                })
+        except Exception:
+            pass
+    if (turn_state is not None
+            and turn_state.get("kind") != "direct"):
+        turn_state["status"] = "completed"
     yield _sse("response", text=clean)
     # A MAX_ITERATIONS overrun is the highest-mutation direct exit (many tool
     # calls ran); record route_observed here too so this path isn't missed.
@@ -4929,6 +5044,57 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                                         output_text=clean)  # Phase 3
     except Exception:
         pass
+
+
+def _traced_direct_entry_stream(user_input, history, images=None,
+                                panel_id="main", conversation_tag=""):
+    """Trace the real explicit server direct-entry path, fail-open."""
+    turn_state = {
+        "trace_dir": None, "kind": "direct-entry", "status": None,
+        "mode": None, "gear": 1,
+    }
+    try:
+        from orchestrator import pipeline_trace as _pt_direct_entry
+    except Exception:
+        _pt_direct_entry = None
+    if _pt_direct_entry is not None:
+        try:
+            turn_state["trace_dir"] = _pt_direct_entry.start_trace(
+                conversation_id=panel_id,
+                raw_input=user_input,
+                stealth=(conversation_tag == "stealth"),
+                conversation_tag=conversation_tag,
+            )
+        except Exception:
+            turn_state["trace_dir"] = None
+    trace_ref = None
+    if _pt_direct_entry is not None and turn_state["trace_dir"]:
+        try:
+            trace_ref = _pt_direct_entry.trace_ref_for_dir(
+                turn_state["trace_dir"]
+            )
+        except Exception:
+            trace_ref = None
+    if trace_ref:
+        yield _sse("trace_ref", ref=trace_ref)
+    try:
+        yield from _direct_stream(
+            user_input, history, images=images,
+            panel_id=panel_id, conversation_tag=conversation_tag,
+            turn_state=turn_state,
+        )
+    except BaseException:
+        turn_state["status"] = "error"
+        raise
+    finally:
+        if _pt_direct_entry is not None:
+            try:
+                _pt_direct_entry.finalize_manifest(
+                    turn_state["trace_dir"], kind=turn_state["kind"],
+                    status_hint=turn_state["status"], gear=turn_state["gear"],
+                )
+            except Exception:
+                pass
 
 
 def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,
@@ -4985,7 +5151,7 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                     conversation_tag=turn_tag,
                 )
             else:
-                yield from _direct_stream(
+                yield from _traced_direct_entry_stream(
                     user_input, history, images=images,
                     panel_id=panel_id, conversation_tag=turn_tag,
                 )
@@ -9505,6 +9671,33 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     trace_ref      = None
     process_invocation_state = None
 
+    def _record_http_terminal(value, *, route, persisted, status_hint=None):
+        """Best-effort trace of the exact plain-HTTP boundary value."""
+        if not trace_ref:
+            return
+        try:
+            from orchestrator import pipeline_trace as _pt_http_terminal
+            _pt_http_terminal.record_terminal_output(
+                trace_ref, value, route=route,
+                output_target=output_target, persisted=persisted,
+            )
+            if status_hint:
+                trace_dir = _pt_http_terminal.resolve_trace_ref(trace_ref)
+                manifest = _pt_http_terminal.read_manifest(trace_dir) or {}
+                _pt_http_terminal.finalize_manifest(
+                    trace_dir,
+                    kind=manifest.get("trace_kind") or "chat",
+                    status_hint=status_hint,
+                    mode=manifest.get("mode"),
+                    gear=manifest.get("gear"),
+                    parent_trace_ref=manifest.get("parent_trace_ref"),
+                    framework_id=manifest.get("framework_id"),
+                    milestone_id=manifest.get("milestone_id"),
+                    child_trace_refs=manifest.get("child_trace_refs"),
+                )
+        except Exception:
+            pass
+
     try:
         # MLX per-machine serialization lives inside call_model
         # (mlx_mutex.acquire on the local branch) since the 2026-05-19
@@ -9655,6 +9848,15 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
+                if chunk_id:
+                    # This is the first boundary at which every user-visible
+                    # transform, optional file route, and conversation persistence
+                    # has succeeded. The stream wrapper finalized earlier, so the
+                    # terminal recorder also refreshes only the manifest inventory.
+                    _record_http_terminal(
+                        final_response, route="server-conversation-save",
+                        persisted=True,
+                    )
 
             # Clear orphan-recovery markers if this conversation was
             # previously interrupted. A successful save means we caught
@@ -9723,11 +9925,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
 
     if _is_conversation_deleted(panel_id):
         _delete_pending_submission(submission_id)
-        return json.dumps({
+        deleted_reply = json.dumps({
             "status": "deleted",
             "conversation_id": panel_id,
             "chunk_id": None,
-        }), 410
+        })
+        _record_http_terminal(
+            deleted_reply, route="server-http-deleted",
+            persisted=False, status_hint="error",
+        )
+        return deleted_reply, 410
 
     # On a successful save, finalize the submission log (move pending →
     # processed). On a failure, leave the pending file in place — the
@@ -9770,12 +9977,17 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # The submission log stays in pending/ on failure — it will be picked
     # up by the next-boot orphan scan if the server crashed, or is left
     # for manual cleanup if the pipeline returned without a response.
-    return json.dumps({
+    error_reply = json.dumps({
         "status":          "errored",
         "conversation_id": panel_id,
         "chunk_id":        chunk_id,
         "failure_summary": summary,
     })
+    _record_http_terminal(
+        error_reply, route="server-http-error",
+        persisted=False, status_hint="error",
+    )
+    return error_reply
 
 
 def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,

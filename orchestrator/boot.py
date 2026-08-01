@@ -124,6 +124,31 @@ def reset_turn_trace_context(token) -> None:
         pass
 
 
+def set_model_stage_context(step_name: str | None,
+                            **metadata):
+    """Bind one physical model/tool loop to its owning logical stage."""
+    if not step_name:
+        return None
+    step_token = _CURRENT_STEP_CV.set(step_name)
+    call_token = _CALL_METADATA_CV.set({"step": step_name, **metadata})
+    return step_token, call_token
+
+
+def reset_model_stage_context(tokens) -> None:
+    """Restore tokens returned by :func:`set_model_stage_context`."""
+    if not tokens:
+        return
+    step_token, call_token = tokens
+    try:
+        _CALL_METADATA_CV.reset(call_token)
+    except Exception:
+        pass
+    try:
+        _CURRENT_STEP_CV.reset(step_token)
+    except Exception:
+        pass
+
+
 def _filter_private_values(mind_content: str) -> str:
     """Strip the ``## Private Context`` section from mind.md content unless
     the current conversation is tagged private/stealth."""
@@ -10238,7 +10263,21 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             config, gear, config_name=config_name)
         if endpoint is None:
             turn_state["status"] = "error"
-            return "[No AI endpoints configured.]"
+            terminal_value = "[No AI endpoints configured.]"
+            if trace_dir and PIPELINE_TRACE_AVAILABLE:
+                try:
+                    pipeline_trace.write_step(
+                        trace_dir, "step3-direct-no-endpoint",
+                        {"gear": gear, "endpoint_available": False},
+                    )
+                    pipeline_trace.record_terminal_output(
+                        trace_dir, terminal_value,
+                        route="cli-no-endpoint-return",
+                        output_target=output_target, persisted=False,
+                    )
+                except Exception:
+                    pass
+            return terminal_value
 
         messages = [{"role": "system", "content": system_prompt}]
         # Include relevant history
@@ -10252,7 +10291,20 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             slot=fast_slot,
             gear=gear,
             config_name=config_name,
+            step_name="step3-direct-response",
         )
+        if trace_dir and PIPELINE_TRACE_AVAILABLE:
+            try:
+                pipeline_trace.write_step(trace_dir, "step3-direct-response", {
+                    "gear": gear,
+                    "raw_response": response,
+                    "endpoint": (
+                        endpoint.get("name")
+                        if isinstance(endpoint, dict) else str(endpoint)
+                    ),
+                })
+            except Exception:
+                pass
 
     elif gear == 3:
         # Gear 3: Sequential review — Depth analyzes, Breadth reviews, Depth revises.
@@ -10282,6 +10334,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
              {"role": "user", "content": user_input}],
             get_active_endpoint(config)
         )
+
+    effective_trace_gear = context_pkg.get("_trace_effective_gear")
+    if isinstance(effective_trace_gear, int):
+        gear = effective_trace_gear
+        turn_state["gear"] = effective_trace_gear
 
     # Prepend degradation signal if any (never silent)
     if degradation_signal:
@@ -10340,8 +10397,20 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             )
         except Exception:
             pass
-    turn_state["status"] = "completed"
-    return route_output(response, output_target, context_pkg)
+    terminal_value = route_output(response, output_target, context_pkg)
+    if trace_dir and PIPELINE_TRACE_AVAILABLE:
+        try:
+            pipeline_trace.record_terminal_output(
+                trace_dir, terminal_value, route="cli-route-output",
+                output_target=output_target,
+                persisted=(output_target != "screen"),
+            )
+        except Exception:
+            pass
+    turn_state["status"] = (
+        context_pkg.get("_trace_terminal_status") or "completed"
+    )
+    return terminal_value
 
 
 def _run_model_with_tools(messages: list, endpoint: dict,
@@ -10357,6 +10426,22 @@ def _run_model_with_tools(messages: list, endpoint: dict,
     Without this surface, a model stuck in a tool-call loop produced an
     empty-or-incomplete response with no signal that the cap was reached.
     """
+    stage_tokens = set_model_stage_context(step_name)
+    try:
+        return _run_model_with_tools_impl(
+            messages, endpoint, max_iterations=max_iterations,
+            images=images, trace_dir=trace_dir, step_name=step_name,
+        )
+    finally:
+        reset_model_stage_context(stage_tokens)
+
+
+def _run_model_with_tools_impl(messages: list, endpoint: dict,
+                               max_iterations: int = 10,
+                               images: list = None,
+                               trace_dir: str | None = None,
+                               step_name: str | None = None) -> str:
+    """Implementation body for the stage-scoped agentic model loop."""
     response = ""
     for iteration in range(max_iterations):
         # Pass images only on the first call
@@ -10420,15 +10505,23 @@ def _run_model_with_tools(messages: list, endpoint: dict,
 def run_single_pass_with_tools(messages: list, endpoint: dict, *,
                                slot: str, gear: int,
                                config_name: str | None,
-                               images: list | None = None) -> str:
+                               images: list | None = None,
+                               step_name: str | None = None) -> str:
     """Run a Gear-1/2 call under an authenticated cell identity.
 
     The browser path previously invoked ``_run_model_with_tools`` without
     carrying its named configuration into the physical-call trace. That both
     hid active-profile substitution and made slot-level campaign fidelity
     impossible to prove. Keep the metadata scope across every tool-loop call.
+
+    ``step_name`` overrides the default ``gear{N}-single-pass`` label for
+    callers that own a named pipeline step. The direct-response path passes
+    ``step3-direct-response`` so trace-completeness attributes the physical
+    call to the step that made it, which is what the Gear 1-4 trace coverage
+    added on 2026-07-16 asserts. The configuration metadata below is carried
+    either way, so both properties hold at once.
     """
-    step_name = f"gear{gear}-single-pass"
+    step_name = step_name or f"gear{gear}-single-pass"
     step_token = _CURRENT_STEP_CV.set(step_name)
     meta_token = _CALL_METADATA_CV.set({
         "step": step_name,
@@ -12060,6 +12153,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     ``config_name`` (install Chunk 2c) selects a named configuration from
     config/configurations/ instead of the legacy pipelines[context] block.
     """
+    trace_dir = context_pkg.get("trace_dir")
     depth_endpoint = get_analysis_slot_endpoint(
         config, "depth", 3, config_name=config_name)
     breadth_endpoint = get_analysis_slot_endpoint(
@@ -12107,16 +12201,26 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                             "check the diversity filter or mutex state)"
                         )
         diag = ("\n\n" + "\n".join(chain_lines)) if chain_lines else ""
-        return (
+        diagnostic = (
             f"[Configuration {config_name or '(default)'!r} couldn't resolve "
             f"depth or breadth endpoints.{diag}\n\n"
             "Fix paths: register missing ids via "
             "scripts/sync_endpoints_from_catalog.py; wait out any cooldowns; "
             "or pick a different configuration in the Models pane.]"
         )
+        context_pkg["_trace_effective_gear"] = 3
+        context_pkg["_trace_terminal_status"] = "error"
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            try:
+                pipeline_trace.write_step(trace_dir, "step3-gear3-no-endpoint", {
+                    "configured": bool(config_name),
+                    "diagnostic": diagnostic,
+                })
+            except Exception:
+                pass
+        return diagnostic
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
-    trace_dir = context_pkg.get("trace_dir")
     contingencies_fired: list[str] = []
     step_health: dict[str, tuple[bool, str]] = {}
 
@@ -13101,11 +13205,24 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     """
     import concurrent.futures
 
+    trace_dir = context_pkg.get("trace_dir")
+
     depth_endpoint, breadth_endpoint, parallel_safe = resolve_gear4_endpoints(
         config, execution_context, config_name=config_name
     )
 
     if depth_endpoint is None or breadth_endpoint is None:
+        context_pkg["_trace_effective_gear"] = 3
+        if PIPELINE_TRACE_AVAILABLE and trace_dir:
+            try:
+                pipeline_trace.write_step(
+                    trace_dir, "step3-gear4-fallback-to-gear3", {
+                        "reason": "gear4_endpoint_resolution_failed",
+                        "depth_endpoint_available": depth_endpoint is not None,
+                        "breadth_endpoint_available": breadth_endpoint is not None,
+                    })
+            except Exception:
+                pass
         return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     # parallel_safe is now a UI hint, not a control-flow gate. When False
@@ -13117,7 +13234,6 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # structure) is retired as of the 2026-05-19 concurrency overhaul.
 
     cleaned_prompt = context_pkg["cleaned_prompt"]
-    trace_dir = context_pkg.get("trace_dir")
     external_consolidation = bool(
         isinstance(context_pkg, dict)
         and context_pkg.get("external_consolidation")
@@ -13229,11 +13345,25 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         else:
             contingencies_fired.append(
                 f"step3-{failed[0]}-analyst-unrecoverable-fallback-to-gear3")
+        context_pkg["_trace_effective_gear"] = 3
         if PIPELINE_TRACE_AVAILABLE and trace_dir:
-            pipeline_trace.write_step_health(
-                trace_dir, step_health, gear=4,
-                contingencies_fired=contingencies_fired,
-            )
+            try:
+                pipeline_trace.write_step_health(
+                    trace_dir, step_health, gear=4,
+                    contingencies_fired=contingencies_fired,
+                )
+            except Exception:
+                pass
+            try:
+                pipeline_trace.write_step(
+                    trace_dir, "step3-gear4-fallback-to-gear3", {
+                        "reason": "gear4_analyst_unrecoverable",
+                        "failed_streams": failed,
+                        "depth_ok": depth_ok,
+                        "breadth_ok": breadth_ok,
+                    })
+            except Exception:
+                pass
         return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
 
     # --- Step 3 trace (Depth + Breadth analyst outputs) ---
@@ -15991,20 +16121,102 @@ def run_agentic_loop(user_input: str, history: list = None,
         return run_pipeline(user_input, history, output_target)
 
     # Legacy direct mode — bypass pipeline
-    config = load_routing_config()
-    endpoint = get_active_endpoint(config)
+    trace_dir = None
+    trace_token = None
+    tool_token = None
+    tool_module = None
+    status = None
+    if PIPELINE_TRACE_AVAILABLE:
+        try:
+            trace_dir = pipeline_trace.start_trace(
+                conversation_id=None, raw_input=user_input,
+                ambiguity_mode="assume",
+            )
+        except Exception:
+            trace_dir = None
+    try:
+        trace_token = set_turn_trace_context(trace_dir)
+        try:
+            import tool_events as tool_module
+        except ImportError:
+            from orchestrator import tool_events as tool_module
+        tool_token = tool_module.set_turn_context(
+            trace_dir=trace_dir, conversation_id="_orphan",
+            stealth=False, surface="terminal",
+        )
+    except Exception:
+        pass
 
-    messages = history or []
-    if not messages or messages[0]["role"] != "system":
-        messages.insert(0, {"role": "system", "content": load_boot_md()})
-    messages.append({"role": "user", "content": user_input})
+    try:
+        config = load_routing_config()
+        endpoint = get_active_endpoint(config)
 
-    if endpoint is None:
-        return ("[No AI endpoints configured. Add a commercial AI connection or "
+        messages = history or []
+        if not messages or messages[0]["role"] != "system":
+            messages.insert(0, {"role": "system", "content": load_boot_md()})
+        messages.append({"role": "user", "content": user_input})
+
+        if endpoint is None:
+            status = "error"
+            terminal_value = (
+                "[No AI endpoints configured. Add a commercial AI connection or "
                 "install a local model.\n"
-                "To add a connection, run the Browser Evaluation Setup Framework.")
+                "To add a connection, run the Browser Evaluation Setup Framework."
+            )
+            if trace_dir and PIPELINE_TRACE_AVAILABLE:
+                try:
+                    pipeline_trace.write_step(
+                        trace_dir, "step3-direct-no-endpoint",
+                        {"endpoint_available": False},
+                    )
+                    pipeline_trace.record_terminal_output(
+                        trace_dir, terminal_value,
+                        route="cli-direct-no-endpoint-return",
+                        output_target=output_target, persisted=False,
+                    )
+                except Exception:
+                    pass
+            return terminal_value
 
-    return _run_model_with_tools(messages, endpoint)
+        response = _run_model_with_tools(
+            messages, endpoint, trace_dir=trace_dir,
+            step_name="step3-direct-response",
+        )
+        if trace_dir and PIPELINE_TRACE_AVAILABLE:
+            try:
+                pipeline_trace.write_step(trace_dir, "step3-direct-response", {
+                    "raw_response": response,
+                    "endpoint": (
+                        endpoint.get("name")
+                        if isinstance(endpoint, dict) else str(endpoint)
+                    ),
+                })
+                pipeline_trace.record_terminal_output(
+                    trace_dir, response, route="cli-direct-return",
+                    output_target=output_target, persisted=False,
+                )
+            except Exception:
+                pass
+        status = "completed"
+        return response
+    except BaseException:
+        status = "error"
+        raise
+    finally:
+        if PIPELINE_TRACE_AVAILABLE:
+            try:
+                pipeline_trace.finalize_manifest(
+                    trace_dir, kind="direct-entry",
+                    status_hint=status, gear=1,
+                )
+            except Exception:
+                pass
+        try:
+            if tool_module is not None:
+                tool_module.reset_turn_context(tool_token)
+        except Exception:
+            pass
+        reset_turn_trace_context(trace_token)
 
 
 def _is_known_style_id(style_id: str) -> bool:

@@ -92,7 +92,7 @@ class TestSkeleton(TraceManifestBase):
     def test_start_trace_writes_manifest_skeleton(self):
         d = self.start()
         m = self.manifest(d)
-        self.assertEqual(m["schema_version"], 1)
+        self.assertEqual(m["schema_version"], 2)
         self.assertEqual(m["trace_kind"], "unknown")
         self.assertEqual(m["terminal_status"], "open")
         self.assertEqual(m["conversation_id"], "conv-a")
@@ -103,6 +103,11 @@ class TestSkeleton(TraceManifestBase):
         self.assertEqual(m["child_trace_refs"], [])
         self.assertEqual(m["retention_state"], "default")
         self.assertEqual(m["redaction_level"], "default")
+        self.assertEqual(m["missing_steps"], [])
+        self.assertEqual(m["skipped_steps"], [])
+        self.assertEqual(m["replaced_steps"], [])
+        self.assertEqual(m["contingency_steps"], [])
+        self.assertEqual(m["unexpected_steps"], [])
         self.assertIsNone(m["finalized_at"])
 
     def test_private_tag_sets_redaction_level(self):
@@ -510,7 +515,11 @@ class TestFinalizeStatusAndKind(TraceManifestBase):
         self.assertEqual(m["trace_kind"], "direct")
         self.assertEqual(m["terminal_status"], "short_circuit")
         self.assertEqual(m["expected_steps"],
-                         ["step1-phase-a", "step1-pre-routing"])
+                         ["step-terminal-output", "step1-phase-a",
+                          "step1-pre-routing", "step3-direct-response"])
+        self.assertEqual(m["missing_steps"], [])
+        self.assertEqual(m["skipped_steps"],
+                         ["step-terminal-output", "step3-direct-response"])
 
     def test_abandoned_mid_pipeline(self):
         # step1 landed, no step-health, kind chat, no hints → abandoned;
@@ -529,7 +538,7 @@ class TestFinalizeStatusAndKind(TraceManifestBase):
                   "step3-depth", "step3-breadth", "step4-eval-of-depth",
                   "step4-eval-of-breadth", "step5-revised-depth",
                   "step5-revised-breadth", "step7-consolidated",
-                  "step8-formatted"):
+                  "step8-formatted", "step-terminal-output"):
             self.touch_step(d, s)
         pipeline_trace.write_step_health(d, {"step3": (True, "ok")}, 4, [])
         pipeline_trace.finalize_manifest(d, kind="chat")
@@ -549,14 +558,17 @@ class TestFinalizeStatusAndKind(TraceManifestBase):
         self.touch_step(d, "step1-phase-a")
         self.touch_step(d, "step1-pre-routing")
         self.touch_step(d, "step2-context")
+        self.touch_step(d, "step3-direct-response")
+        self.touch_step(d, "step-terminal-output")
         pipeline_trace.finalize_manifest(d, kind="chat",
                                          status_hint="completed", gear=2)
         m = self.manifest(d)
         self.assertEqual(m["trace_kind"], "chat-gear2")
         self.assertEqual(m["terminal_status"], "completed")
         self.assertEqual(m["expected_steps"],
-                         ["step1-phase-a", "step1-pre-routing",
-                          "step2-context"])
+                         ["step-terminal-output", "step1-phase-a",
+                          "step1-pre-routing", "step2-context",
+                          "step3-direct-response"])
 
     def test_error_hint_beats_step_health(self):
         # A turn that completed its gear but crashed on the way out is an
@@ -613,6 +625,8 @@ class TestExpectedActualDerivation(TraceManifestBase):
         for s in observed:
             self.assertIn(s, m["actual_steps"])
             self.assertNotIn(s, m["expected_steps"])
+            self.assertNotIn(s, m["skipped_steps"])
+            self.assertNotIn(s, m["unexpected_steps"])
 
     def test_clarification_resume_expects_no_step1(self):
         # The resume reuses the paused turn's stored step1 dict; expecting
@@ -622,8 +636,8 @@ class TestExpectedActualDerivation(TraceManifestBase):
         pipeline_trace.finalize_manifest(d, kind="clarification_resume")
         m = self.manifest(d)
         self.assertEqual(m["expected_steps"],
-                         ["step2-context", "step3-depth", "step4-eval",
-                          "step5-revised"])
+                         ["step-terminal-output", "step2-context",
+                          "step3-depth", "step4-eval", "step5-revised"])
 
     def test_mode_from_pre_routing_when_no_hint(self):
         d = self.start()
@@ -653,7 +667,8 @@ class TestGearDegradeAndContingencies(TraceManifestBase):
         # last, by whichever gear function actually completed) must win.
         d = self.start()
         for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
-                  "step3-depth", "step4-eval", "step5-revised"):
+                  "step3-depth", "step4-eval", "step5-revised",
+                  "step-terminal-output"):
             self.touch_step(d, s)
         pipeline_trace.write_step_health(d, {}, 3, [])
         pipeline_trace.finalize_manifest(d, kind="chat", gear=4)
@@ -674,18 +689,23 @@ class TestGearDegradeAndContingencies(TraceManifestBase):
     def test_gear3_single_analyst_fallback_satisfies_requirement(self):
         d = self.start()
         for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
-                  "step3-single-analyst-fallback"):
+                  "step3-single-analyst-fallback", "step-terminal-output"):
             self.touch_step(d, s)
         pipeline_trace.write_step_health(d, {}, 3, [])
         pipeline_trace.finalize_manifest(d, kind="chat")
         m = self.manifest(d)
         self.assertEqual(m["gear"], 3)
-        self.assertNotIn("step3-depth", m["expected_steps"])
-        self.assertNotIn("step4-eval", m["expected_steps"])
-        self.assertNotIn("step5-revised", m["expected_steps"])
-        self.assertIn("step3-single-analyst-fallback", m["expected_steps"])
-        self.assertEqual(
-            set(m["expected_steps"]) - set(m["actual_steps"]), set())
+        self.assertIn("step3-depth", m["expected_steps"])
+        self.assertIn("step4-eval", m["expected_steps"])
+        self.assertIn("step5-revised", m["expected_steps"])
+        self.assertNotIn("step3-single-analyst-fallback", m["expected_steps"])
+        self.assertEqual(set(m["replaced_steps"]), {
+            "step3-depth", "step4-eval", "step5-revised",
+        })
+        self.assertEqual(m["contingency_steps"],
+                         ["step3-single-analyst-fallback"])
+        self.assertEqual(m["missing_steps"], [])
+        self.assertEqual(m["unexpected_steps"], [])
 
     def test_gear4_external_consolidation_handoff_satisfies_requirement(self):
         d = self.start()
@@ -694,16 +714,21 @@ class TestGearDegradeAndContingencies(TraceManifestBase):
                   "step4-eval-of-breadth", "step5-revised-depth",
                   "step5-revised-breadth", "step7-external-consolidation-handoff"):
             self.touch_step(d, s)
+        self.touch_step(d, "step-terminal-output")
         pipeline_trace.write_step_health(d, {}, 4, [])
         pipeline_trace.finalize_manifest(d, kind="chat")
         m = self.manifest(d)
         self.assertEqual(m["gear"], 4)
-        self.assertNotIn("step7-consolidated", m["expected_steps"])
-        self.assertNotIn("step8-formatted", m["expected_steps"])
-        self.assertIn("step7-external-consolidation-handoff",
-                      m["expected_steps"])
-        self.assertEqual(
-            set(m["expected_steps"]) - set(m["actual_steps"]), set())
+        self.assertIn("step7-consolidated", m["expected_steps"])
+        self.assertIn("step8-formatted", m["expected_steps"])
+        self.assertNotIn("step7-external-consolidation-handoff",
+                         m["expected_steps"])
+        self.assertEqual(set(m["replaced_steps"]), {
+            "step7-consolidated", "step8-formatted",
+        })
+        self.assertEqual(m["contingency_steps"],
+                         ["step7-external-consolidation-handoff"])
+        self.assertEqual(m["missing_steps"], [])
 
     def test_normal_gear4_completion_unaffected_by_contingency_logic(self):
         # No fallback marker present — the normal full table still applies.
@@ -712,7 +737,7 @@ class TestGearDegradeAndContingencies(TraceManifestBase):
                   "step3-depth", "step3-breadth", "step4-eval-of-depth",
                   "step4-eval-of-breadth", "step5-revised-depth",
                   "step5-revised-breadth", "step7-consolidated",
-                  "step8-formatted"):
+                  "step8-formatted", "step-terminal-output"):
             self.touch_step(d, s)
         pipeline_trace.write_step_health(d, {}, 4, [])
         pipeline_trace.finalize_manifest(d, kind="chat")
@@ -1674,7 +1699,10 @@ class TestRunPipelineFinalization(unittest.TestCase):
 class TestTraceWalkProjection(TraceManifestBase):
     def _completed_trace(self):
         d = self.start("conv-walk")
-        self.touch_step(d, "step1-phase-a", {"prompt": "<script>x</script>"})
+        self.touch_step(d, "step1-phase-a", {
+            "prompt": "<script>x</script>",
+            "sk-user-secret-key": "system prompt secret",
+        })
         Path(os.path.join(d, "step1-phase-a.md")).write_text(
             "# Heading\n\n<script>alert(1)</script>\n\n[bad](https://example.test)\n\n![img](x)",
             encoding="utf-8",
@@ -1715,14 +1743,19 @@ class TestTraceWalkProjection(TraceManifestBase):
         )
         step = pipeline_trace.trace_step_projection(ref, "step1-phase-a")
         self.assertIsNone(step["markdown"])
-        self.assertTrue(any("file too large" in e for e in step["errors"]))
+        self.assertIn("file-too-large", step["errors"])
 
     def test_export_escapes_trace_content_and_omits_active_urls(self):
         _d, ref = self._completed_trace()
         html_doc, filename = pipeline_trace.trace_export_html(ref)
         self.assertTrue(filename.startswith("ora-trace-conv-walk-"))
         self.assertIn("Content-Security-Policy", html_doc)
-        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html_doc)
+        self.assertNotIn("alert(1)", html_doc)
+        self.assertNotIn("https://example.test", html_doc)
+        self.assertNotIn("sk-user-secret-key", html_doc)
+        self.assertNotIn("system prompt secret", html_doc)
+        self.assertIn("Markdown content redacted", html_doc)
+        self.assertIn("sha256", html_doc)
         self.assertNotIn("<script", html_doc.lower())
         self.assertNotIn("href=", html_doc.lower())
         self.assertNotIn("<img", html_doc.lower())
@@ -2726,6 +2759,861 @@ class TestTraceDebugChunk3(TraceManifestBase):
         for thread in threads:
             thread.join()
         self.assertEqual(sum(bool(result.get("ok")) for result in results), 1)
+
+
+class TestTraceCompletenessV5Behavior(TraceManifestBase):
+    """Behavioral coverage through the real Gear and CLI/server funnels.
+
+    Production functions under test are never replaced. The only call seams
+    replaced below are model, web-search, retrieval, embedding, and Chroma
+    boundaries; trace failures use real filesystem permissions.
+    """
+
+    CONFIG_NAME = "qwen-9b-only"
+
+    @classmethod
+    def setUpClass(cls):
+        import boot
+        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
+        import server
+        cls.boot = boot
+        cls.S = server
+
+    def setUp(self):
+        super().setUp()
+        import orchestrator.pipeline_trace as opt
+        for mod in (self.boot.pipeline_trace, opt):
+            patcher = mock.patch.object(mod, "TRACE_ROOT", self.root)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.opt = opt
+        self.provider_calls = []
+        self.provider_lock = threading.Lock()
+        self.emit_flagged_claim = False
+        self.emit_web_intent = False
+        self.emit_supplement = False
+        self.supplement_sent = False
+
+    @staticmethod
+    def _long(text):
+        return text + "\n\n" + ("Substantive production-path evidence. " * 24)
+
+    def _provider(self, messages, _endpoint, images=None):
+        snapshot = [dict(m) for m in messages]
+        with self.provider_lock:
+            self.provider_calls.append(snapshot)
+        system = str(messages[0].get("content") or "") if messages else ""
+        user = str(messages[-1].get("content") or "") if messages else ""
+        low_system = system.lower()
+        low_user = user.lower()
+
+        if "ambiguity_mode:" in low_system:
+            raw = user.split("[Current prompt]\n")[-1].strip()
+            return (
+                "### CLEANED PROMPT (Operational Notation)\n" + raw +
+                "\n\n### CLEANED PROMPT (Natural Language)\n" + raw +
+                "\n\n### CORRECTIONS LOG\nNone.\n\n"
+                "### INFERRED ITEMS\nNone."
+            )
+        if "identifying web search intents" in low_system:
+            if self.emit_web_intent:
+                return (
+                    "INTENTS:\n- query: current trace evidence\n"
+                    "  justification: Grounds the requested factual angle."
+                )
+            return "INTENTS:\n(none)"
+        if "light factual-sanity check" in low_system:
+            return "FLAGS:\n(none)"
+        if "checking whether web search results contradict" in low_system:
+            return "CONFLICTS:\n(none)"
+        if "scanning a revised analysis" in low_system:
+            return "EXTRACTED:\n(none)"
+
+        if (self.emit_supplement and not self.supplement_sent
+                and user.strip() == "gear3 feature request"):
+            self.supplement_sent = True
+            return self._long(
+                "## SUPPLEMENTAL RAG REQUEST\n"
+                "gap_statement: Need a local evidence record\n"
+                "query_terms: trace evidence source\n"
+                "why_it_matters: Grounds the analyst conclusion"
+            )
+        if "supplemental rag result" in low_user:
+            return self._long("## ANALYSIS\nSupplement incorporated into analysis.")
+        if "evaluate per the universal seven-section contract" in low_user:
+            flagged = ""
+            if self.emit_flagged_claim:
+                flagged = (
+                    "\n\n## FLAGGED CLAIMS\n"
+                    "- **Claim 1 — `dated-event` — risk: high**\n"
+                    "  - claim: \"The event occurred in 2024\"\n"
+                    "  - why_flagged: The date is externally checkable.\n"
+                    "  - challenge_query: event occurrence 2024\n"
+                )
+            else:
+                flagged = "\n\n## FLAGGED CLAIMS\nNone.\n"
+            return self._long("## EVALUATION\nThe analysis is usable." + flagged)
+        if "revise per the universal reviser output contract" in low_user or "address the verifier's findings" in low_user:
+            return self._long(
+                "## ADDRESSED\nAll material feedback.\n\n"
+                "## CLAIM RESOLUTIONS\nVerified where evidence exists.\n\n"
+                "## REVISED DRAFT\nFinal revised production answer. "
+                + ("Grounded production detail. " * 12) + "\n\n"
+                "## CHANGELOG\nGrounding improved."
+            )
+        if ("conclude with verified" in low_user or "run v1-v9" in low_user
+                or "candidate analysis" in low_user
+                or "candidate deliverable" in low_user):
+            return self._long("VERDICT: PASS\nPROBLEM: NONE\nAll checks pass.")
+        if "the output is the **corpus**" in low_user:
+            return self._long("## CONSOLIDATED ANALYSIS\nBoth streams consolidated.")
+        if "flowing prose addressed to the user" in low_user:
+            return self._long("## Final Answer\nProduction-formatted deliverable.")
+        if "evaluate" in low_user and "analyst output" in low_user:
+            return self._long("## EVALUATION\nNo blocking issue.\n\n## FLAGGED CLAIMS\nNone.")
+        return self._long("## ANALYSIS\nIndependent production analysis.")
+
+    def _context(self, trace_dir, gear, prompt="production trace request"):
+        mode = "subjective-inquiry" if gear == 3 else "root-cause-analysis"
+        return {
+            "cleaned_prompt": prompt,
+            "raw_prompt": prompt,
+            "natural_language_prompt": prompt,
+            "operational_notation": prompt,
+            "mode": mode,
+            "mode_name": mode,
+            "mode_text": self.boot.load_mode(mode),
+            "gear": gear,
+            "triage_tier": 1,
+            "conversation_rag": "",
+            "concept_rag": "",
+            "relationship_rag": "",
+            "web_rag": "",
+            "trace_dir": trace_dir,
+            "execution_context": "interactive",
+        }
+
+    def _only_turn(self, conversation):
+        conv_dir = Path(self.root) / conversation
+        turns = [path for path in conv_dir.iterdir() if path.is_dir()]
+        self.assertEqual(len(turns), 1)
+        return turns[0]
+
+    @contextlib.contextmanager
+    def _routing_config(self, endpoints):
+        """Exercise the real config loader with a temp production-shaped file."""
+        path = Path(self.tmp.name) / f"routing-{len(list(Path(self.tmp.name).glob('routing-*')))}.json"
+        default = endpoints[0]["id"] if endpoints else None
+        path.write_text(json.dumps({
+            "endpoints": endpoints,
+            "default_endpoint": default,
+            "slot_assignments": ({
+                "classification": default,
+                "step1_cleanup": default,
+                "fast": default,
+                "primary": default,
+                "breadth": default,
+            } if default else {}),
+            "buckets": {},
+        }))
+        with mock.patch.dict(
+            os.environ, {"ORA_ROUTING_CONFIG_PATH": str(path)}, clear=False,
+        ), mock.patch.object(
+            self.boot, "_router_instance", False,
+        ), mock.patch.dict(
+            self.S.get_endpoint.__globals__, {"_router_instance": False},
+        ):
+            yield path
+
+    @contextlib.contextmanager
+    def _fake_openai_transport(self, response_text="provider terminal value"):
+        """Replace only the external SDK transport; retain Ora call telemetry."""
+        calls = []
+
+        class Completions:
+            def create(_self, **kwargs):
+                calls.append(kwargs)
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(
+                        message=SimpleNamespace(content=response_text),
+                        finish_reason="stop",
+                    )],
+                    usage=SimpleNamespace(
+                        prompt_tokens=11,
+                        completion_tokens=5,
+                        total_tokens=16,
+                    ),
+                )
+
+        client = SimpleNamespace(
+            chat=SimpleNamespace(completions=Completions()),
+        )
+        module = SimpleNamespace(OpenAI=lambda **_kwargs: client)
+        with mock.patch.dict(sys.modules, {"openai": module}):
+            yield calls
+
+    @contextlib.contextmanager
+    def _production_conversation_memory(self):
+        """Temporarily undo incomplete fake-module residue from prior tests."""
+        real = conversation_memory
+        self.assertTrue(hasattr(real, "_DEFAULT_SESSIONS_ROOT"))
+        sentinel = object()
+        old_top = sys.modules.get("conversation_memory", sentinel)
+        old_package = sys.modules.get(
+            "orchestrator.conversation_memory", sentinel
+        )
+        package = sys.modules.get("orchestrator")
+        old_attribute = getattr(package, "conversation_memory", sentinel)
+        sessions = Path(self.tmp.name) / "sessions"
+        sessions.mkdir()
+        try:
+            sys.modules["conversation_memory"] = real
+            sys.modules["orchestrator.conversation_memory"] = real
+            if package is not None:
+                setattr(package, "conversation_memory", real)
+            with mock.patch.object(
+                real, "_DEFAULT_SESSIONS_ROOT", sessions,
+            ):
+                yield real
+        finally:
+            for name, previous in (
+                ("conversation_memory", old_top),
+                ("orchestrator.conversation_memory", old_package),
+            ):
+                if previous is sentinel:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = previous
+            if package is not None:
+                if old_attribute is sentinel:
+                    try:
+                        delattr(package, "conversation_memory")
+                    except AttributeError:
+                        pass
+                else:
+                    setattr(package, "conversation_memory", old_attribute)
+
+    def test_cli_gear1_records_exact_value_after_screen_file_and_both_routes(self):
+        expected = "provider terminal value"
+        targets = []
+        cases = []
+        for label in ("screen", "file", "both"):
+            target = Path(self.tmp.name) / f"{label}.txt"
+            targets.append(target)
+            output_target = (
+                "screen" if label == "screen" else f"{label}:{target}"
+            )
+            with mock.patch.object(self.boot, "call_model", return_value=expected):
+                result = self.boot.run_pipeline(
+                    "hello", conversation_id=f"v5-cli-{label}",
+                    output_target=output_target,
+                )
+            cases.append((label, target, result))
+
+        self.assertEqual(cases[0][2], expected)
+        self.assertEqual(cases[1][2], f"[Output written to {targets[1]}]")
+        self.assertEqual(cases[2][2], expected)
+        self.assertEqual(targets[1].read_text(), expected)
+        self.assertEqual(targets[2].read_text(), expected)
+        for label, _target, result in cases:
+            turn = self._only_turn(f"v5-cli-{label}")
+            manifest = json.loads((turn / "trace-manifest.json").read_text())
+            terminal = json.loads((turn / "step-terminal-output.json").read_text())
+            direct = json.loads((turn / "step3-direct-response.json").read_text())
+            self.assertEqual(manifest["gear"], 1)
+            self.assertEqual(manifest["missing_steps"], [])
+            self.assertEqual(manifest["unexpected_steps"], [])
+            self.assertEqual(direct["raw_response"], expected)
+            self.assertEqual(terminal["terminal_value"], result)
+
+    def test_cli_gear3_and_gear4_entry_points_record_exact_terminal_value(self):
+        cases = (
+            ("v5-cli-gear3", 3,
+             "Use the endowment effect to analyze why I prefer keeping "
+             "this old chair."),
+            ("v5-cli-gear4", 4,
+             "Use five whys to analyze why a houseplant has leaves that keep "
+             "turning yellow despite weekly watering."),
+        )
+        for conversation, expected_gear, prompt in cases:
+            with self.subTest(gear=expected_gear), \
+                 mock.patch.object(
+                     self.boot, "call_model", side_effect=self._provider,
+                 ):
+                result = self.boot.run_pipeline(
+                    prompt, conversation_id=conversation,
+                    config_name=self.CONFIG_NAME,
+                )
+            turn = self._only_turn(conversation)
+            manifest = json.loads((turn / "trace-manifest.json").read_text())
+            terminal = json.loads(
+                (turn / "step-terminal-output.json").read_text()
+            )
+            self.assertEqual(manifest["gear"], expected_gear)
+            self.assertEqual(manifest["terminal_status"], "completed")
+            self.assertEqual(manifest["missing_steps"], [])
+            self.assertEqual(terminal["terminal_value"], result)
+
+    def test_explicit_cli_direct_entry_is_traced_without_changing_return(self):
+        secret = "cli-direct-private-response-secret"
+        with mock.patch.object(self.boot, "call_model", return_value=secret):
+            result = self.boot.run_agentic_loop(
+                "cli-direct-private-prompt-secret", use_pipeline=False,
+            )
+        self.assertEqual(result, secret)
+        turn = self._only_turn("_orphan")
+        manifest = json.loads((turn / "trace-manifest.json").read_text())
+        self.assertEqual(manifest["trace_kind"], "direct-entry")
+        self.assertEqual(manifest["terminal_status"], "completed")
+        self.assertEqual(manifest["missing_steps"], [])
+        projection = pipeline_trace.trace_step_projection(
+            pipeline_trace.trace_ref_for_dir(str(turn)),
+            "step3-direct-response",
+        )
+        projected = json.dumps(projection)
+        self.assertNotIn(secret, projected)
+        self.assertNotIn("cli-direct-private-prompt-secret", projected)
+
+    def test_server_gear2_funnel_records_web_consultation_and_direct_response(self):
+        trace_dir = pipeline_trace.start_trace(
+            "v5-server-gear2", raw_input="current fact lookup"
+        )
+        config = self.boot.load_routing_config()
+        turn_state = {"kind": "chat", "status": None, "gear": None}
+        self.emit_web_intent = True
+        search_result = [{
+            "title": "Current source", "url": "https://example.test/current",
+            "snippet": "Current externally grounded fact.",
+        }]
+        step2_globals = self.S.run_step2_context_assembly.__globals__
+        web_globals = step2_globals["assemble_consultation_package"].__globals__
+        search_globals = web_globals["_execute_intent_query"].__globals__
+        search_mock = mock.Mock(return_value=search_result)
+
+        def web_provider(messages, endpoint, images=None):
+            user = str(messages[-1].get("content") or "") if messages else ""
+            if (self.emit_web_intent
+                    and user.startswith("USER PROMPT:\ncurrent fact lookup\n")
+                    and "RECENT CONVERSATION CONTEXT:" in user):
+                with self.provider_lock:
+                    self.provider_calls.append([dict(m) for m in messages])
+                return (
+                    "INTENTS:\n- query: current trace evidence\n"
+                    "  justification: Grounds the requested factual angle."
+                )
+            return self._provider(messages, endpoint, images=images)
+
+        with mock.patch.object(self.boot, "call_model", side_effect=web_provider), \
+             mock.patch.dict(step2_globals, {"call_model": web_provider}), \
+             mock.patch.dict(search_globals,
+                             {"web_search_structured": search_mock}):
+            step1 = self.boot.run_step1_cleanup(
+                "current fact lookup", "", config, trace_dir=trace_dir,
+                config_name=self.CONFIG_NAME,
+            )
+            step1.update({
+                "mode": "factual-lookup",
+                "cleaned_prompt": "current fact lookup",
+                "operational_notation": "current fact lookup",
+                "raw_prompt": "current fact lookup",
+                "triage_tier": 2,
+                "pre_routing": {},
+            })
+            chunks = list(self.S._run_pipeline_from_step2(
+                step1, config, [],
+                "current fact lookup", trace_dir=trace_dir,
+                config_name=self.CONFIG_NAME, turn_state=turn_state,
+            ))
+        events = [json.loads(chunk[6:]) for chunk in chunks]
+        response = [e["text"] for e in events if e.get("type") == "response"][-1]
+        pipeline_trace.record_terminal_output(
+            trace_dir, response, route="server-stream-response",
+            output_target="screen", persisted=True,
+        )
+        pipeline_trace.finalize_manifest(
+            trace_dir, kind="chat", status_hint=turn_state["status"],
+            gear=turn_state["gear"],
+        )
+        manifest = self.manifest(trace_dir)
+        web_step = json.loads(Path(trace_dir, "step2-web-consultation.json").read_text())
+        self.assertEqual(manifest["gear"], 2)
+        self.assertIn("step2-web-consultation", manifest["actual_steps"])
+        self.assertNotIn("step2-web-consultation", manifest["unexpected_steps"])
+        self.assertIn("step3-direct-response", manifest["actual_steps"])
+        self.assertEqual(manifest["missing_steps"], [])
+        self.assertEqual(web_step["status"], "ran")
+        search_mock.assert_called_once()
+        self.assertGreater(web_step["chunks_total"], 0)
+
+    def test_real_gear3_assembles_supplement_and_flagged_claim_evidence(self):
+        import claim_verification
+        trace_dir = self.start("v5-gear3-features")
+        context = self._context(
+            trace_dir, 3, prompt="gear3 feature request"
+        )
+        self.emit_supplement = True
+        self.emit_flagged_claim = True
+        search_result = [{
+            "title": "Claim source", "url": "https://example.test/claim",
+            "snippet": "The source records the event in 2024.",
+        }]
+        with mock.patch.object(self.boot, "call_model", side_effect=self._provider), \
+             mock.patch.object(self.boot, "assemble_ranked_context",
+                               return_value="SUPPLEMENT_EVIDENCE_SECRET"), \
+             mock.patch.object(claim_verification, "web_search_structured",
+                               return_value=search_result):
+            output = self.boot.run_gear3(
+                context, self.boot.load_routing_config(),
+                config_name=self.CONFIG_NAME,
+            )
+        self.assertIn("Final revised production answer", output)
+        requests = Path(trace_dir, "supplemental-rag.jsonl").read_text()
+        self.assertIn("trace evidence source", requests)
+        self.assertTrue(any(
+            "SUPPLEMENT_EVIDENCE_SECRET" in str(message.get("content"))
+            for call in self.provider_calls for message in call
+        ))
+        claim_step = json.loads(
+            Path(trace_dir, "step4.5-claim-verification.json").read_text()
+        )
+        revised_step = json.loads(Path(trace_dir, "step5-revised.json").read_text())
+        self.assertEqual(claim_step["trace"]["status"], "ran")
+        self.assertEqual(len(claim_step["flagged_claims_parsed"]), 1)
+        self.assertTrue(claim_step["per_claim_evidence"][0]["chunks"])
+        self.assertIn("FLAGGED CLAIM EVIDENCE", revised_step["user_message"])
+        pipeline_trace.record_terminal_output(
+            trace_dir, output, route="gear3-production-return",
+        )
+        pipeline_trace.finalize_manifest(
+            trace_dir, kind="chat", status_hint="completed", gear=3,
+        )
+        manifest = self.manifest(trace_dir)
+        self.assertNotIn("step4.5-claim-verification",
+                         manifest["unexpected_steps"])
+        self.assertNotIn("step4.5-claim-verification",
+                         manifest["skipped_steps"])
+
+    def test_real_gear4_preserves_distinct_parallel_stage_traces(self):
+        trace_dir = self.start("v5-gear4-normal")
+        context = self._context(trace_dir, 4)
+        with mock.patch.object(self.boot, "call_model", side_effect=self._provider):
+            output = self.boot.run_gear4(
+                context, self.boot.load_routing_config(),
+                config_name=self.CONFIG_NAME,
+            )
+        pipeline_trace.record_terminal_output(
+            trace_dir, output, route="gear4-production-return",
+        )
+        pipeline_trace.finalize_manifest(
+            trace_dir, kind="framework-milestone",
+            status_hint="completed", gear=4,
+        )
+        manifest = self.manifest(trace_dir)
+        for step in (
+            "step3-depth", "step3-breadth",
+            "step4-eval-of-depth", "step4-eval-of-breadth",
+            "step5-revised-depth", "step5-revised-breadth",
+            "step7-consolidated", "step8-formatted",
+            "step-terminal-output",
+        ):
+            self.assertIn(step, manifest["actual_steps"])
+        self.assertEqual(manifest["missing_steps"], [])
+        self.assertEqual(manifest["unexpected_steps"], [])
+
+    def test_gear4_to_gear3_before_health_finalizes_effective_gear_and_error(self):
+        trace_dir = self.start("v5-gear4-no-endpoints")
+        context = self._context(trace_dir, 4)
+        output = self.boot.run_gear4(
+            context, self.boot.load_routing_config(),
+            config_name="v5-configuration-does-not-exist",
+        )
+        self.assertIn("couldn't resolve", output)
+        pipeline_trace.finalize_manifest(
+            trace_dir, kind="chat", status_hint=None, gear=4,
+        )
+        manifest = self.manifest(trace_dir)
+        self.assertEqual(manifest["gear"], 3)
+        self.assertEqual(manifest["trace_kind"], "chat-gear3")
+        self.assertEqual(manifest["terminal_status"], "error")
+        self.assertIn("step3-gear4-fallback-to-gear3",
+                      manifest["contingency_steps"])
+        self.assertIn("step3-gear3-no-endpoint",
+                      manifest["contingency_steps"])
+        self.assertEqual(manifest["missing_steps"], [])
+        self.assertIn("step3-depth", manifest["skipped_steps"])
+        self.assertIn("step4-eval", manifest["skipped_steps"])
+        self.assertTrue(
+            set(manifest["actual_steps"]).isdisjoint(
+                manifest["replaced_steps"]
+            )
+        )
+
+    def test_real_writer_failure_during_retry_and_fallback_changes_no_output(self):
+        def run_once(conversation, make_read_only):
+            trace_dir = self.start(conversation)
+            context = self._context(trace_dir, 4)
+            calls = {"count": 0}
+
+            def provider(messages, endpoint, images=None):
+                calls["count"] += 1
+                if context.get("_trace_effective_gear") != 3:
+                    return ""
+                return self._provider(messages, endpoint, images=images)
+
+            if make_read_only:
+                os.chmod(trace_dir, 0o500)
+            try:
+                with mock.patch.object(self.boot, "call_model", side_effect=provider):
+                    output = self.boot.run_gear4(
+                        context, self.boot.load_routing_config(),
+                        config_name=self.CONFIG_NAME,
+                    )
+            finally:
+                if make_read_only:
+                    os.chmod(trace_dir, 0o700)
+            return output, calls["count"], context
+
+        writable = run_once("v5-fallback-writable", False)
+        failed_writer = run_once("v5-fallback-readonly", True)
+        self.assertEqual(failed_writer[0], writable[0])
+        self.assertEqual(failed_writer[1], writable[1])
+        self.assertGreaterEqual(failed_writer[1], 6)
+        self.assertEqual(failed_writer[2]["_trace_effective_gear"], 3)
+
+    def test_private_server_direct_entry_persists_exact_terminal_but_projects_no_content(self):
+        import chromadb
+        import orchestrator.embedding as embedding
+
+        class Collection:
+            def add(self, **_kwargs):
+                return None
+
+        conv = "v5-private-direct"
+        processed = Path(self.tmp.name) / "processed"
+        raw = Path(self.tmp.name) / "raw"
+        processed.mkdir()
+        raw.mkdir()
+        self.S._session_data.pop(conv, None)
+        self.S._closed_conversations.discard(conv)
+        self.S._deleted_conversations.discard(conv)
+        with self._production_conversation_memory(), \
+             mock.patch.object(self.S, "CONVERSATIONS_DIR", str(processed)), \
+             mock.patch.object(self.S, "CONVERSATIONS_RAW", str(raw)), \
+             mock.patch.object(self.S, "call_model",
+                               return_value="server-direct-response-secret"), \
+             mock.patch.object(self.S, "_nomic_embed", return_value=[0.0]), \
+             mock.patch.object(chromadb, "PersistentClient", return_value=object()), \
+             mock.patch.object(embedding, "get_or_create_collection",
+                               return_value=Collection()):
+            reply = self.S._invoke_pipeline_unlocked(
+                "/direct server-direct-prompt-secret", [], conv, False,
+                tag="private", output_destination=str(processed),
+            )
+        payload = json.loads(reply[0] if isinstance(reply, tuple) else reply)
+        self.assertEqual(payload["status"], "ok")
+        turn = self._only_turn(conv)
+        manifest = json.loads((turn / "trace-manifest.json").read_text())
+        terminal = json.loads((turn / "step-terminal-output.json").read_text())
+        self.assertEqual(manifest["trace_kind"], "direct-entry")
+        self.assertEqual(manifest["redaction_level"], "private")
+        self.assertEqual(manifest["missing_steps"], [])
+        self.assertIn("server-direct-response-secret",
+                      terminal["terminal_value"])
+        chunks = list(processed.glob("*.md"))
+        self.assertEqual(len(chunks), 1)
+        self.assertIn(terminal["terminal_value"], chunks[0].read_text())
+        ref = self.opt.trace_ref_for_dir(str(turn))
+        projected = json.dumps(self.opt.trace_step_projection(
+            ref, "step-terminal-output"
+        ))
+        export, _filename = self.opt.trace_export_html(ref)
+        for raw_secret in (
+            "server-direct-response-secret", "server-direct-prompt-secret",
+        ):
+            self.assertNotIn(raw_secret, projected)
+            self.assertNotIn(raw_secret, export)
+
+    def test_server_file_route_records_value_after_route_and_successful_save(self):
+        import chromadb
+        import orchestrator.embedding as embedding
+
+        class Collection:
+            def add(self, **_kwargs):
+                return None
+
+        conv = "v5-server-file-route"
+        processed = Path(self.tmp.name) / "server-file-processed"
+        raw = Path(self.tmp.name) / "server-file-raw"
+        routed_file = Path(self.tmp.name) / "server-routed.txt"
+        processed.mkdir()
+        raw.mkdir()
+        self.S._session_data.pop(conv, None)
+        self.S._closed_conversations.discard(conv)
+        self.S._deleted_conversations.discard(conv)
+        with self._production_conversation_memory(), \
+             mock.patch.object(self.S, "CONVERSATIONS_DIR", str(processed)), \
+             mock.patch.object(self.S, "CONVERSATIONS_RAW", str(raw)), \
+             mock.patch.object(self.S, "call_model",
+                               return_value="server-file-response-secret"), \
+             mock.patch.object(self.boot, "call_model",
+                               return_value="server-file-response-secret"), \
+             mock.patch.object(self.S, "_nomic_embed", return_value=[0.0]), \
+             mock.patch.object(chromadb, "PersistentClient", return_value=object()), \
+             mock.patch.object(embedding, "get_or_create_collection",
+                               return_value=Collection()):
+            reply = self.S._invoke_pipeline_unlocked(
+                f"/save {routed_file} hello", [], conv, False,
+                output_destination=str(processed),
+                config_name=self.CONFIG_NAME,
+            )
+        payload = json.loads(reply[0] if isinstance(reply, tuple) else reply)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(routed_file.read_text(), "server-file-response-secret")
+        expected_terminal = f"[Output written to {routed_file}]"
+        turn = self._only_turn(conv)
+        terminal = json.loads((turn / "step-terminal-output.json").read_text())
+        manifest = json.loads((turn / "trace-manifest.json").read_text())
+        self.assertEqual(terminal["terminal_value"], expected_terminal)
+        self.assertEqual(
+            terminal["routing"], {
+                "route": "server-conversation-save",
+                "output_target": f"file:{routed_file}",
+                "persisted": True,
+            },
+        )
+        self.assertEqual(manifest["missing_steps"], [])
+        chunk = next(processed.glob("*.md")).read_text()
+        self.assertIn(expected_terminal, chunk)
+
+    def test_explicit_server_direct_stealth_suppresses_trace(self):
+        conv = "v5-stealth-direct"
+        with mock.patch.object(
+            self.S, "call_model", return_value="stealth direct response",
+        ):
+            chunks = list(self.S.agentic_loop_stream(
+                "stealth direct prompt", [], use_pipeline=False,
+                panel_id=conv, conversation_tag="stealth",
+            ))
+        events = [json.loads(chunk[6:]) for chunk in chunks]
+        responses = [event.get("text") for event in events
+                     if event.get("type") == "response"]
+        self.assertEqual(responses, ["stealth direct response"])
+        self.assertFalse(any(event.get("type") == "trace_ref"
+                             for event in events))
+        self.assertFalse((Path(self.root) / conv).exists())
+
+    def test_real_no_endpoint_entries_record_failure_and_delivered_terminal(self):
+        empty = []
+        with self._routing_config(empty):
+            cli_value = self.boot.run_pipeline(
+                "hello", conversation_id="v5-no-endpoint-cli",
+            )
+            direct_value = self.boot.run_agentic_loop(
+                "hello", use_pipeline=False,
+            )
+            server_chunks = list(self.S.agentic_loop_stream(
+                "hello", [], use_pipeline=True,
+                panel_id="v5-no-endpoint-server",
+            ))
+            with self._production_conversation_memory():
+                server_reply = self.S._invoke_pipeline_unlocked(
+                    "hello", [], "v5-no-endpoint-http", False,
+                )
+
+        self.assertEqual(cli_value, "[No AI endpoints configured.]")
+        self.assertIn("No AI endpoints configured", direct_value)
+        server_events = [json.loads(chunk[6:]) for chunk in server_chunks]
+        server_error = next(event["text"] for event in server_events
+                            if event.get("type") == "error")
+        server_reply_text = (
+            server_reply[0] if isinstance(server_reply, tuple)
+            else server_reply
+        )
+        self.assertEqual(json.loads(server_reply_text)["status"], "errored")
+
+        cases = (
+            (self._only_turn("v5-no-endpoint-cli"), cli_value),
+            (self._only_turn("_orphan"), direct_value),
+            (self._only_turn("v5-no-endpoint-server"), server_error),
+            (self._only_turn("v5-no-endpoint-http"), server_reply_text),
+        )
+        for turn, delivered in cases:
+            with self.subTest(turn=turn.parent.name):
+                manifest = json.loads(
+                    (turn / "trace-manifest.json").read_text()
+                )
+                terminal = json.loads(
+                    (turn / "step-terminal-output.json").read_text()
+                )
+                self.assertEqual(manifest["terminal_status"], "error")
+                self.assertIn("step3-direct-no-endpoint",
+                              manifest["contingency_steps"])
+                self.assertEqual(manifest["missing_steps"], [])
+                self.assertEqual(terminal["terminal_value"], delivered)
+                self.assertFalse(terminal["routing"]["persisted"])
+
+    def test_framework_gear1_no_endpoint_records_each_real_attempt(self):
+        import milestone_executor
+
+        parent = self.start("v5-framework-no-endpoint")
+        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
+        framework = SimpleNamespace(name="v5-framework", layers={})
+        milestone = SimpleNamespace(
+            id="m1", name="Milestone One", gear=1,
+            required_prior=[], layers_covered=[],
+            output_format="Return text.",
+            verification_criterion="Text exists.",
+            conditional_layers="", drift_check_question="",
+        )
+        scratch = SimpleNamespace(
+            read_all_prior=lambda _ids: {},
+            write_milestone=lambda _mid, _deliverable: None,
+        )
+        config = {"endpoints": [], "default_endpoint": None,
+                  "slot_assignments": {}}
+        with mock.patch.object(self.boot, "_router_instance", False), \
+             mock.patch.object(milestone_executor.time, "sleep",
+                               return_value=None):
+            with self.assertRaises(milestone_executor.MilestoneExecutionError):
+                milestone_executor._run_milestone(
+                    framework, milestone, scratch, "user input", config,
+                    parent_trace_dir=parent,
+                    parent_trace_ref=parent_ref,
+                    selected_mode="all", trace_context={},
+                )
+
+        child_refs = self.manifest(parent)["child_trace_refs"]
+        self.assertEqual(len(child_refs), milestone_executor.MAX_RETRIES)
+        for child_ref in child_refs:
+            child = Path(pipeline_trace.resolve_trace_ref(child_ref))
+            manifest = json.loads(
+                (child / "trace-manifest.json").read_text()
+            )
+            self.assertTrue(
+                (child / "step3-direct-no-endpoint.json").is_file()
+            )
+            self.assertEqual(manifest["terminal_status"], "error")
+            self.assertIn("step3-direct-no-endpoint",
+                          manifest["contingency_steps"])
+            self.assertEqual(manifest["missing_steps"], [])
+            self.assertIn("step3-direct-response",
+                          manifest["skipped_steps"])
+
+    def test_real_pipeline_to_direct_fallback_is_short_circuit(self):
+        endpoint = {
+            "id": "v5-fallback-endpoint", "name": "v5-fallback-endpoint",
+            "type": "api", "service": "openai", "model": "gpt-4o",
+            "api_key": "test-only", "enabled": True, "status": "active",
+            # gpt-4o accepts at most 16384 completion tokens. Without an
+            # explicit value the endpoint falls back to _DEFAULT_API_MAX_TOKENS
+            # (32000) and the provider rejects the call with a 400, which
+            # _with_truncation_retry returns as text rather than raising — so
+            # the assertion below sees an error string instead of the response.
+            # Declared here to keep this test about fallback short-circuiting.
+            # The default itself is wrong in both directions (it also throttles
+            # models supporting far more) and is tracked separately.
+            "max_tokens": 16384,
+        }
+        with self._routing_config([endpoint]), mock.patch.object(
+            self.S, "call_model", return_value="fallback response",
+        ):
+            chunks = list(self.S.agentic_loop_stream(
+                "hello", [], use_pipeline=True,
+                panel_id="v5-real-direct-fallback",
+            ))
+        events = [json.loads(chunk[6:]) for chunk in chunks]
+        self.assertEqual(
+            [event.get("text") for event in events
+             if event.get("type") == "response"],
+            ["fallback response"],
+        )
+        turn = self._only_turn("v5-real-direct-fallback")
+        manifest = json.loads((turn / "trace-manifest.json").read_text())
+        self.assertEqual(manifest["trace_kind"], "direct")
+        self.assertEqual(manifest["terminal_status"], "short_circuit")
+        self.assertIn("step3-direct-response", manifest["actual_steps"])
+        self.assertIn("step-terminal-output", manifest["skipped_steps"])
+
+    def test_failed_real_server_save_records_exact_error_not_persistence(self):
+        endpoint = {
+            "id": "v5-save-endpoint", "name": "v5-save-endpoint",
+            "type": "api", "service": "openai", "model": "gpt-4o",
+            "api_key": "test-only", "enabled": True, "status": "active",
+        }
+        conv = "v5-save-refused"
+        identity = self.S._conversation_storage_identity(conv)
+        self.S._session_data.pop(conv, None)
+        self.S._deleted_conversations.discard(identity)
+        self.S._closed_conversations.add(identity)
+        self.addCleanup(self.S._closed_conversations.discard, identity)
+        with self._routing_config([endpoint]), mock.patch.object(
+            self.S, "call_model", return_value="unsaved response",
+        ):
+            reply = self.S._invoke_pipeline_unlocked(
+                "/direct persist this", [], conv, False,
+            )
+        reply_text = reply[0] if isinstance(reply, tuple) else reply
+        payload = json.loads(reply_text)
+        self.assertEqual(payload["status"], "errored")
+        self.assertIsNone(payload["chunk_id"])
+        turn = self._only_turn(conv)
+        terminal = json.loads(
+            (turn / "step-terminal-output.json").read_text()
+        )
+        manifest = json.loads((turn / "trace-manifest.json").read_text())
+        self.assertEqual(terminal["terminal_value"], reply_text)
+        self.assertEqual(terminal["routing"]["route"], "server-http-error")
+        self.assertFalse(terminal["routing"]["persisted"])
+        self.assertEqual(manifest["terminal_status"], "error")
+
+    def test_direct_and_gear1_physical_events_keep_owning_stage(self):
+        endpoint = {
+            "id": "v5-physical-endpoint",
+            "name": "v5-physical-endpoint",
+            "type": "api", "service": "openai", "model": "gpt-4o",
+            "api_key": "test-only", "enabled": True, "status": "active",
+        }
+        with self._routing_config([endpoint]), \
+             self._fake_openai_transport() as sdk_calls, \
+             mock.patch.dict(os.environ, {"ORA_TOOL_EVENTS": "on"},
+                             clear=False):
+            direct = self.boot.run_agentic_loop(
+                "physical direct", use_pipeline=False,
+            )
+            normal = self.boot.run_pipeline(
+                "hello", conversation_id="v5-physical-gear1",
+            )
+        self.assertEqual(direct, "provider terminal value")
+        self.assertEqual(normal, "provider terminal value")
+        self.assertEqual(len(sdk_calls), 2)
+
+        for turn in (
+            self._only_turn("_orphan"),
+            self._only_turn("v5-physical-gear1"),
+        ):
+            configs = [json.loads(line) for line in
+                       (turn / "model-call-config.jsonl").read_text().splitlines()]
+            usage = [json.loads(line) for line in
+                     (turn / "usage.jsonl").read_text().splitlines()]
+            events = [json.loads(line) for line in
+                      (turn / "tool-events.jsonl").read_text().splitlines()]
+            model_events = [event for event in events
+                            if event.get("event") == "model_call"]
+            self.assertTrue(configs)
+            self.assertTrue(usage)
+            self.assertTrue(model_events)
+            self.assertTrue(all(
+                record["step"] == "step3-direct-response"
+                for record in configs
+            ))
+            self.assertTrue(all(
+                record["step_hint"] == "step3-direct-response"
+                for record in usage
+            ))
+            self.assertTrue(all(
+                event["args_redacted"]["step"] == "step3-direct-response"
+                for event in model_events
+            ))
 
 
 if __name__ == "__main__":
