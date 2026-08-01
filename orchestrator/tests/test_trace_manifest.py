@@ -1930,7 +1930,13 @@ class TestExecutionGateTraceRefs(TraceManifestBase):
 
         def fake_add_entry(entry):
             captured.update(entry)
-            return SimpleNamespace(id="queue-1")
+            # _queue_gate_entry uses both `.id` and `.to_dict()` on whatever
+            # add_entry returns. This stub only carried `.id`, so the call
+            # raised inside a swallowing except and returned None. The test has
+            # been red since the caller gained to_dict(), while still asserting
+            # a guarantee worth keeping: a paused oversight entry carries the
+            # exact trace_ref of the conversation that produced it.
+            return SimpleNamespace(id="queue-1", to_dict=lambda: dict(entry))
 
         with mock.patch("oversight_queue.add_entry", side_effect=fake_add_entry):
             qid = tool_events._queue_gate_entry(
@@ -3499,40 +3505,16 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
             self.assertIn("step3-direct-response",
                           manifest["skipped_steps"])
 
-    def test_real_pipeline_to_direct_fallback_is_short_circuit(self):
-        endpoint = {
-            "id": "v5-fallback-endpoint", "name": "v5-fallback-endpoint",
-            "type": "api", "service": "openai", "model": "gpt-4o",
-            "api_key": "test-only", "enabled": True, "status": "active",
-            # gpt-4o accepts at most 16384 completion tokens. Without an
-            # explicit value the endpoint falls back to _DEFAULT_API_MAX_TOKENS
-            # (32000) and the provider rejects the call with a 400, which
-            # _with_truncation_retry returns as text rather than raising — so
-            # the assertion below sees an error string instead of the response.
-            # Declared here to keep this test about fallback short-circuiting.
-            # The default itself is wrong in both directions (it also throttles
-            # models supporting far more) and is tracked separately.
-            "max_tokens": 16384,
-        }
-        with self._routing_config([endpoint]), mock.patch.object(
-            self.S, "call_model", return_value="fallback response",
-        ):
-            chunks = list(self.S.agentic_loop_stream(
-                "hello", [], use_pipeline=True,
-                panel_id="v5-real-direct-fallback",
-            ))
-        events = [json.loads(chunk[6:]) for chunk in chunks]
-        self.assertEqual(
-            [event.get("text") for event in events
-             if event.get("type") == "response"],
-            ["fallback response"],
-        )
-        turn = self._only_turn("v5-real-direct-fallback")
-        manifest = json.loads((turn / "trace-manifest.json").read_text())
-        self.assertEqual(manifest["trace_kind"], "direct")
-        self.assertEqual(manifest["terminal_status"], "short_circuit")
-        self.assertIn("step3-direct-response", manifest["actual_steps"])
-        self.assertIn("step-terminal-output", manifest["skipped_steps"])
+    # test_real_pipeline_to_direct_fallback_is_short_circuit was removed on
+    # 2026-08-01. It mocked server.call_model to force a pipeline failure and
+    # assert the direct fallback short-circuited. The direct path was later
+    # rerouted through the named configuration, so that patch stopped
+    # intercepting: the request went to the live provider and the test
+    # asserted against whatever OpenAI replied. With a correct fake transport
+    # no fallback occurs at all, so the scenario no longer reproduces and the
+    # test could not verify its own premise. Re-add it only with a genuine
+    # pipeline-failure injection. Direct-path trace attribution stays covered
+    # by test_direct_and_gear1_physical_events_keep_owning_stage.
 
     def test_failed_real_server_save_records_exact_error_not_persistence(self):
         endpoint = {
