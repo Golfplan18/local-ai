@@ -103,14 +103,14 @@ def _extract_json(text: str) -> dict | None:
 def autofill(env: dict, mode: str, vtype: str, idx: int = 1) -> dict:
     """Fill the mechanical envelope fields the model shouldn't have to author,
     and guarantee a minimal ``semantic_description`` so accessibility is never
-    the thing that blocks a render. Never overwrites authored content.
+    the thing that blocks a render. The requested type is authoritative because
+    validation and rendering are performed against that exact schema.
     """
     env = dict(env)
     env.setdefault("schema_version", SCHEMA_VERSION)
     env.setdefault("id", f"fig-{idx}")
     env.setdefault("mode_context", mode or "unknown")
-    if not env.get("type"):
-        env["type"] = vtype
+    env["type"] = vtype
     env.setdefault("relation_to_prose", "integrated")
 
     sd = env.get("semantic_description")

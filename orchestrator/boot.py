@@ -9681,7 +9681,8 @@ def run_pipeline(user_input: str, history: list = None,
                  config_name: str | None = None,
                  conversation_tag: str = "",
                  style_id: str | None = None,
-                 style_register: str | None = None) -> str:
+                 style_register: str | None = None,
+                 extra_context: dict | None = None) -> str:
     """Trace-manifest wrapper (Trace Walk Chunk 0). Owns the single
     try/except/finally that finalizes the turn's trace-manifest.json on
     every exit path — normal return, caught-error-and-return, and
@@ -9689,7 +9690,8 @@ def run_pipeline(user_input: str, history: list = None,
     wrapper. The actual pipeline body is ``_run_pipeline_impl``; see its
     docstring for the pipeline description. ``turn_state`` is the
     branch-local kind/status channel the impl assigns at each early-return
-    site.
+    site. ``extra_context`` carries caller-supplied context such as a requested
+    ``visual_kind`` into the assembled package before visual routing runs.
     """
     turn_state = {
         "trace_dir": None, "kind": "unknown", "status": None,
@@ -9707,6 +9709,7 @@ def run_pipeline(user_input: str, history: list = None,
             user_input, history, output_target, execution_context,
             conversation_id, ambiguity_mode, stealth, config_name,
             conversation_tag, style_id, style_register,
+            extra_context=extra_context,
             turn_state=turn_state)
     except BaseException:
         turn_state["status"] = "error"
@@ -9760,6 +9763,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                        conversation_tag: str = "",
                        style_id: str | None = None,
                        style_register: str | None = None,
+                       extra_context: dict | None = None,
                        turn_state: dict | None = None) -> str:
     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
 
@@ -9805,6 +9809,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             conversation_tag,
             style_id,
             style_register,
+            extra_context=extra_context,
         )
     config = load_routing_config()
 
@@ -10104,6 +10109,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name,
                                              conversation_tag=conversation_tag)
+    if extra_context:
+        context_pkg.update(
+            (key, value) for key, value in extra_context.items()
+            if value is not None
+        )
     # Carry execution context so the visual hook's interactive-vs-autonomous
     # gate reads a real value rather than defaulting to 'interactive'.
     context_pkg.setdefault("execution_context", execution_context)
@@ -16227,7 +16237,8 @@ def strip_tool_calls(text: str) -> str:
 
 def run_agentic_loop(user_input: str, history: list = None,
                      use_pipeline: bool = True,
-                     output_target: str = "screen") -> str:
+                     output_target: str = "screen",
+                     extra_context: dict | None = None) -> str:
     """Main entry point: routes through the full pipeline or direct model call.
 
     Args:
@@ -16236,9 +16247,14 @@ def run_agentic_loop(user_input: str, history: list = None,
         use_pipeline: If True, run Step 1 + Step 2 + gear-appropriate execution.
                       If False, bypass pipeline (legacy single-model mode).
         output_target: "screen", "file:/path", or "both:/path"
+        extra_context: optional context additions, including a requested
+                       ``visual_kind``, forwarded to the pipeline.
     """
     if use_pipeline:
-        return run_pipeline(user_input, history, output_target)
+        return run_pipeline(
+            user_input, history, output_target,
+            extra_context=extra_context,
+        )
 
     # Legacy direct mode — bypass pipeline
     trace_dir = None

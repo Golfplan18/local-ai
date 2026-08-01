@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +100,90 @@ class TestAutofill(unittest.TestCase):
         env = vs.autofill({}, "systems-dynamics", "causal_loop_diagram")
         self.assertEqual(env["type"], "causal_loop_diagram")
         self.assertIn("short_alt", env["semantic_description"])
+
+    def test_requested_type_overrides_mismatched_model_type(self):
+        env = vs.autofill(
+            {"type": "causal_loop_diagram"},
+            "root-cause-analysis",
+            "fishbone",
+        )
+        self.assertEqual(env["type"], "fishbone")
+
+
+class TestVisualKindThreading(unittest.TestCase):
+    def test_pipeline_merges_extra_context_before_visual_hook(self):
+        import boot
+
+        seen = {}
+
+        def fake_step1(user_input, conv_context, config, **kwargs):
+            return {"mode": "root-cause-analysis", "cleaned_prompt": user_input}
+
+        def fake_step2(step1, config, **kwargs):
+            return {"gear": 4, "cleaned_prompt": step1["cleaned_prompt"]}
+
+        def fake_hook(response, context_pkg):
+            seen.update(context_pkg)
+            return response
+
+        with (
+            mock.patch.object(boot, "PIPELINE_TRACE_AVAILABLE", False),
+            mock.patch.object(boot, "load_routing_config", return_value={}),
+            mock.patch.object(boot, "run_step1_cleanup", side_effect=fake_step1),
+            mock.patch.object(boot, "run_step2_context_assembly", side_effect=fake_step2),
+            mock.patch.object(boot, "run_gear4", return_value="answer"),
+            mock.patch.object(boot, "_run_visual_hook", side_effect=fake_hook),
+            mock.patch.object(boot, "route_output", side_effect=lambda text, *_: text),
+        ):
+            result = boot.run_pipeline(
+                "diagnose this",
+                extra_context={"visual_kind": "fishbone", "ignored": None},
+            )
+
+        self.assertEqual(result, "answer")
+        self.assertEqual(seen["visual_kind"], "fishbone")
+        self.assertNotIn("ignored", seen)
+
+    def test_agentic_loop_forwards_extra_context(self):
+        import boot
+
+        extra = {"visual_kind": "tornado"}
+        with mock.patch.object(boot, "run_pipeline", return_value="answer") as run:
+            self.assertEqual(
+                boot.run_agentic_loop("show sensitivity", extra_context=extra),
+                "answer",
+            )
+        self.assertEqual(run.call_args.kwargs["extra_context"], extra)
+
+    def test_regenerate_honors_manual_visual_type(self):
+        import boot
+        from server import app as server
+
+        seen = {}
+
+        def target_types(mode, preferred_kind=None):
+            seen["args"] = (mode, preferred_kind)
+            return [preferred_kind] if preferred_kind else ["concept_map"]
+
+        with (
+            mock.patch.object(boot, "_mode_target_types", side_effect=target_types),
+            mock.patch.object(boot, "_resolve_synthesis_endpoint", return_value={"id": "test"}),
+            mock.patch.object(boot, "_strip_visual_blocks_and_markers", side_effect=lambda text: text),
+            mock.patch.object(vs, "synthesize_envelope", return_value=({"type": "fishbone"}, [])),
+            server.app.test_request_context(
+                "/api/visual/regenerate",
+                method="POST",
+                json={
+                    "prose": "Recurring failures",
+                    "mode": "root-cause-analysis",
+                    "manual_visual_type": "fishbone",
+                },
+            ),
+        ):
+            response = server.visual_regenerate()
+
+        self.assertTrue(response.get_json()["ok"])
+        self.assertEqual(seen["args"], ("root-cause-analysis", "fishbone"))
 
 
 if __name__ == "__main__":

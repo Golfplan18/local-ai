@@ -125,7 +125,10 @@ except ImportError:
     RUNTIME_PIPELINE_AVAILABLE = False
 
 try:
-    from flask import Flask, request, Response, stream_with_context, send_from_directory
+    from flask import (
+        Flask, request, Response, jsonify, stream_with_context,
+        send_from_directory,
+    )
     import flask
 except ImportError:
     print("Flask not installed. Run: pip install flask")
@@ -3309,7 +3312,8 @@ def _build_visual_diagnostics_frame(context_pkg: dict | None) -> dict | None:
 @app.route("/api/visual/regenerate", methods=["POST"])
 def visual_regenerate():
     """Phase 1 — on-demand envelope synthesis for the visual pane's
-    'Regenerate visual' button. Body: ``{prose, mode}``. Runs the same
+    'Regenerate visual' button. Body: ``{prose, mode,
+    manual_visual_type?}``; ``visual_kind`` is an alias. Runs the same
     synthesize→validate→repair loop the pipeline uses on a miss, and returns
     a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
     """
@@ -3319,6 +3323,9 @@ def visual_regenerate():
         data = {}
     prose = (data.get("prose") or "").strip()
     mode = data.get("mode") or ""
+    preferred_kind = (
+        data.get("manual_visual_type") or data.get("visual_kind") or ""
+    ).strip() or None
     if not prose:
         return jsonify({"ok": False, "reason": "no prose supplied"}), 400
     try:
@@ -3327,7 +3334,7 @@ def visual_regenerate():
         from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
     except Exception as exc:
         return jsonify({"ok": False, "reason": f"synthesis unavailable: {exc}"}), 500
-    target_types = _mode_target_types(mode) or ["concept_map"]
+    target_types = _mode_target_types(mode, preferred_kind) or ["concept_map"]
     endpoint = _resolve_synthesis_endpoint()
     if not endpoint:
         return jsonify({"ok": False, "reason": "no synthesis endpoint resolved"}), 503
