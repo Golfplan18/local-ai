@@ -26,6 +26,12 @@ def _path_is_shielded(path: str) -> bool:
     source of truth shared with the shell-read gate."""
     try:
         try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(path):
+            return True
+        try:
             import tool_events
         except ImportError:
             from orchestrator import tool_events
@@ -100,6 +106,18 @@ def grep_files(pattern: str, directory: str, file_extension: str = None,
     `grep` when available for speed, else a cross-platform Python walker;
     BOTH pass results through the same secret-descendant withholding filter.
     """
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(
+            directory, recursive=True, patterns=True,
+        ):
+            return [{"error": "BLOCKED: approval authority state"}]
+    except Exception:
+        return [{"error": "BLOCKED: authority classification unavailable"}]
+
     directory = os.path.expanduser(directory)
     if not os.path.isdir(directory):
         return [{"error": f"Directory not found: {directory}"}]
@@ -145,6 +163,18 @@ def list_directory(path: str, max_depth: int = 2) -> str:
     Excludes hidden files/directories (starting with .) and node_modules.
     Returns a formatted directory tree string.
     """
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(
+            path, recursive=True, patterns=True,
+        ):
+            return "BLOCKED: approval authority state"
+    except Exception:
+        return "BLOCKED: authority classification unavailable"
+
     path = os.path.expanduser(path)
     if not os.path.isdir(path):
         return f"Directory not found: {path}"

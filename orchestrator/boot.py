@@ -12,6 +12,7 @@ import time
 import sys
 import json
 import re
+import hashlib
 import glob as globmod
 import contextvars
 from contextvars import ContextVar
@@ -243,13 +244,10 @@ def _export_provider_keys_to_env() -> None:
         import provider_registry as _reg
         pairs = _reg.env_bridge_pairs()
     except Exception:
-        # Registry unavailable — fall back to the original search trio so
-        # the web-search cascade still works.
-        pairs = [
-            ("TAVILY_API_KEY", "tavily-api-key"),
-            ("BRAVE_API_KEY",  "brave-api-key"),
-            ("EXA_API_KEY",    "exa-api-key"),
-        ]
+        # Credential identity is registry-authoritative. Guessing even a
+        # historically valid account when the registry is unavailable would
+        # turn an infrastructure failure into noncanonical secret access.
+        return
     for env_name, kr_key in pairs:
         if not env_name or os.environ.get(env_name, "").strip():
             continue
@@ -730,10 +728,14 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     from visual_synthesis import synthesize_envelope, SYSTEM_PROMPT
 
     def _call_fn(prompt: str) -> str:
-        return call_model(
+        return call_model_for_cell(
             [{"role": "system", "content": SYSTEM_PROMPT},
              {"role": "user", "content": prompt}],
             endpoint,
+            step_name="visual-synthesis",
+            slot="gear2_rag_lookup",
+            gear=2,
+            config_name=config_name,
         )
 
     env, attempts = synthesize_envelope(clean_prose, mode or "unknown", target_types, _call_fn)
@@ -1596,7 +1598,10 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
     router = _get_router()
     if router:
         # Map v1 slot names to v2 resolution
-        if slot in ("sidebar", "step1_cleanup", "rag_planner", "classification"):
+        if slot in (
+            "sidebar", "step1_cleanup", "rag_planner", "classification",
+            "fast", "gear2_rag_lookup",
+        ):
             ep = router.resolve_utility_slot(slot, context, config_name=config_name)
         elif slot in ("consolidator", "consolidation"):
             ep = router.resolve_post_analysis_slot("consolidation", context, config_name=config_name)
@@ -1652,6 +1657,54 @@ def get_slot_endpoint(config: dict, slot: str, context: str = "interactive",
                 if (e.get("id") or e.get("name")) == model_id:
                     return e
     return None
+
+
+def resolve_single_pass_endpoint(config: dict, gear: int,
+                                 config_name: str | None = None) -> tuple:
+    """Resolve a Gear-1/2 endpoint and its authoritative cell name.
+
+    Named configurations fail closed instead of falling through to the active
+    profile. Gear 2 uses the dedicated ``gear2_rag_lookup`` cell populated by
+    the Fast-1 selector; ``step1_cleanup`` remains a backward-compatible cell
+    fallback inside the same named configuration.
+    """
+    if gear == 1:
+        return (
+            get_slot_endpoint(config, "classification", config_name=config_name),
+            "classification",
+        )
+    if gear == 2:
+        endpoint = (
+            get_slot_endpoint(config, "fast", config_name=config_name)
+            or get_slot_endpoint(
+                config, "step1_cleanup", config_name=config_name)
+            or (get_active_endpoint(config) if config_name is None else None)
+        )
+        return endpoint, "gear2_rag_lookup"
+    raise ValueError("single-pass endpoint resolution only supports Gear 1 or 2")
+
+
+def get_analysis_slot_endpoint(config: dict, slot: str, gear: int,
+                               context: str = "interactive",
+                               config_name: str | None = None) -> dict | None:
+    """Resolve one analysis slot from the exact requested gear.
+
+    ``get_slot_endpoint`` intentionally prefers the richer Gear-4 cell for
+    ad-hoc depth/breadth lookups. A running Gear-3 pipeline must not use that
+    convenience order: doing so executes the wrong model and makes its retry
+    appear to be a fallback when it is actually the first legal Gear-3 model.
+    """
+    if slot not in {"depth", "breadth"} or gear not in {3, 4}:
+        raise ValueError("analysis slot resolution requires depth/breadth at Gear 3/4")
+    router = _get_router()
+    if router:
+        ep = router.resolve_endpoint(
+            slot, gear, context, config_name=config_name)
+        if ep:
+            return router._to_v1_endpoint(ep)
+    if config_name is not None:
+        return None
+    return get_slot_endpoint(config, slot, context=context)
 
 
 def get_endpoint_by_id(endpoint_id: str) -> dict | None:
@@ -1972,6 +2025,20 @@ def route_for_image_input(context_pkg: dict,
             print(f"[visual-routing] routing-config load failed: {e}. Skipping vision gate.")
             return requested_model, context_pkg
 
+    # G1.16 — a project binding freezes the vision-routing mode at the same
+    # time as its text profile.  The caller threads only a validated lock
+    # snapshot; invalid/tampered locks fail closed rather than silently using
+    # the current global vision setting.
+    project_locks = context_pkg.get("model_profile_locks")
+    if project_locks:
+        try:
+            from orchestrator import model_profiles as _mp
+        except ImportError:
+            import model_profiles as _mp  # type: ignore
+        routing_config = _mp.routing_config_with_project_locks(
+            routing_config, project_locks,
+        )
+
     vision_cfg = routing_config.get("vision_extraction", {}) or {}
     if not vision_cfg.get("enabled", True):
         # Explicitly disabled — skip the gate, keep image_path as a bare
@@ -2125,16 +2192,21 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
             "id": str,                    # filename stem (no .md)
             "display_name": str,          # 60-char-limit picker title
             "display_description": str,   # 500-char-limit picker body
-            "category": str,              # "standard" | "user-created" | "one-off"
+            "category": str,              # "process-definition" | "standard" |
+                                            # "user-created" | "one-off"
+            "kind": str,                  # "process_definition" | "framework"
         }
 
-    Category resolution for V3 Phase 2: every shipped framework is "standard".
+    Category resolution: authenticated Process Definitions occupy the
+    ``process-definition`` group; other shipped rows remain ``standard``.
     User-created and one-off categories land when those provenance sources
-    exist (Process Formalization F-Design output / framework-generated
-    one-offs). The ``provenance`` field of a registry entry is the long-term
-    source of truth; for now we tag everything in frameworks/book/ as standard.
+    exist. The curated invocability registry—not file presence—is the exposure
+    boundary for both kinds.
     """
-    from framework_invocability import is_user_pickable_framework
+    from framework_invocability import (
+        is_process_definition_framework,
+        is_user_pickable_framework,
+    )
 
     if not is_user_pickable_framework(framework_id):
         return None
@@ -2152,12 +2224,27 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
     if not display_name or not display_description:
         return None
 
-    return {
+    metadata = {
         "id": framework_id,
         "display_name": display_name,
         "display_description": display_description,
         "category": "standard",
+        "kind": "framework",
     }
+    if is_process_definition_framework(framework_id):
+        from process_entry_routing import load_programming_entry
+
+        process_entry = load_programming_entry(WORKSPACE)
+        metadata.update({
+            "category": "process-definition",
+            "kind": "process_definition",
+            "definition_ref": process_entry["definition_ref"],
+            "scope": process_entry["scope"],
+            "status": process_entry["status"],
+            "entrypoints": process_entry["entrypoints"],
+            "activated": process_entry["activated"],
+        })
+    return metadata
 
 
 def _first_paragraph(body: str) -> str:
@@ -6174,9 +6261,69 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
     # expansion. Fixes the detector-layering bug where Phase A's expanded
     # operational notation either masked or false-positive-matched the
     # post-expansion Stage 1 detector. When this fires, Phase A AND
-    # pre-routing are skipped entirely; the raw prompt goes through as
-    # the cleaned prompt, mode=simple, gear=2.
+    # pre-routing are skipped entirely. Direct bypasses keep the raw prompt
+    # and dispatch ``simple`` (Gear 1); retrieval-without-judgment requests
+    # dispatch ``factual-lookup`` (Gear 2). The two outcomes must not share a
+    # branch: treating the Gear-2 dispatch dict as a generic bypass silently
+    # removed retrieval, tools, and the dedicated fast cell.
     early_bypass = pre_phase_a_bypass_check(raw_prompt)
+    if early_bypass is not None and early_bypass.get("gear2_rag_dispatch"):
+        dispatched_mode = (
+            early_bypass.get("dispatched_mode_id") or "factual-lookup")
+        result = {
+            "cleaned_prompt": raw_prompt,
+            "operational_notation": raw_prompt,
+            "mode": dispatched_mode,
+            "triage_tier": 1,
+            "corrections_log": "",
+            "inferred_items": "",
+            "raw_response": "",
+            "detected_invocation": dispatched_mode,
+            "classification_confidence": "high",
+            "classification_runner_up": "",
+            "classification_reasoning": early_bypass["rationale"],
+            "classification_intent": "LOOKUP",
+            "pre_routing": {
+                "dispatched_mode_id": dispatched_mode,
+                "territory": "T0",
+                "bypass_to_direct_response": False,
+                "gear2_rag_dispatch": True,
+                "pending_clarification": None,
+                "pending_clarification_stage": None,
+                "completeness_gaps": [],
+                "dispatch_announcement": None,
+                "lighter_sibling_mode_id": None,
+                "confidence": "high",
+                "stage1_match_count": 1,
+                "pre_phase_a_bypass": False,
+                "pre_phase_a_rationale": early_bypass["rationale"],
+            },
+        }
+        if PIPELINE_TRACE_AVAILABLE:
+            pipeline_trace.write_step(trace_dir, "step1-phase-a", {
+                "status": "skipped_pre_phase_a_gear2_dispatch",
+                "raw_prompt": raw_prompt,
+                "conversation_context_present": bool(conversation_context),
+                "ambiguity_mode": ambiguity_mode,
+                "dispatch_rationale": early_bypass["rationale"],
+                "dispatched_mode_id": dispatched_mode,
+            }, markdown=(
+                "# Step 1 — Phase A SKIPPED (pre-Phase-A Gear 2 dispatch)\n\n"
+                f"**Raw prompt:** {raw_prompt}\n\n"
+                f"**Dispatch rationale:** {early_bypass['rationale']}\n\n"
+                "The prompt requires retrieval but no judgment. It dispatches "
+                f"to mode=`{dispatched_mode}`, gear=2.\n"
+            ))
+            pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
+                "status": "dispatched_pre_phase_a_gear2",
+                "dispatched_mode_id": dispatched_mode,
+                "rationale": early_bypass["rationale"],
+            }, markdown=(
+                "# Step 1 — Pre-Routing Gear 2 Dispatch\n\n"
+                f"**Mode:** `{dispatched_mode}`  \n"
+                f"**Rationale:** {early_bypass['rationale']}\n"
+            ))
+        return result
     if early_bypass is not None:
         result = {
             "cleaned_prompt": raw_prompt,
@@ -6220,7 +6367,7 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                 "Phase A and the four-stage pre-routing pipeline were "
                 "both skipped. The prompt was detected as a "
                 "chitchat / lookup / system-command by the pre-Phase-A "
-                "trigger scan on the raw prompt. mode=`simple`, gear=2.\n"
+                "trigger scan on the raw prompt. mode=`simple`, gear=1.\n"
             ))
             pipeline_trace.write_step(trace_dir, "step1-pre-routing", {
                 "status": "skipped_pre_phase_a_bypass",
@@ -6293,8 +6440,38 @@ AMBIGUITY_MODE: {ambiguity_mode}
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_msg},
     ]
-    cleanup_response = call_model(messages, endpoint)
-    step1_result = parse_step1_output(cleanup_response)
+    _step_token = _CURRENT_STEP_CV.set("step1-phase-a")
+    _meta_token = _CALL_METADATA_CV.set({
+        "step": "step1-phase-a",
+        "slot": "step1_cleanup",
+        "gear": 1,
+        "config_name": config_name,
+    })
+    try:
+        cleanup_response = call_model(messages, endpoint)
+    finally:
+        _CALL_METADATA_CV.reset(_meta_token)
+        _CURRENT_STEP_CV.reset(_step_token)
+    cleanup_healthy, cleanup_health_reason = _step_output_health(
+        cleanup_response, "phase-a", min_chars=1)
+    if cleanup_healthy:
+        step1_result = parse_step1_output(cleanup_response)
+    else:
+        # A provider error is not a cleaned prompt.  Keep the user's exact
+        # input as both natural-language and operational fallbacks so routing
+        # and later stages never analyse an authentication/transport message.
+        step1_result = {
+            "cleaned_prompt": raw_prompt,
+            "operational_notation": raw_prompt,
+            "mode": "adversarial",
+            "triage_tier": 1,
+            "corrections_log": "",
+            "inferred_items": "",
+            "raw_response": cleanup_response,
+            "detected_invocation": "",
+            "phase_a_transport_failed": True,
+            "phase_a_failure_reason": cleanup_health_reason,
+        }
     # Preserve the user's actual sentence on step1_result so downstream
     # steps (step 2 context assembly, the analyst/eval/verify user-message
     # construction) can present the user's actual words alongside Phase
@@ -6306,8 +6483,18 @@ AMBIGUITY_MODE: {ambiguity_mode}
     # --- Trace: Phase A inputs and parsed outputs ---
     if PIPELINE_TRACE_AVAILABLE:
         pipeline_trace.write_step(trace_dir, "step1-phase-a", {
-            "status": "parse_failed" if step1_result.get("phase_a_parse_failed") else "ok",
+            "status": (
+                "model_error_passthrough"
+                if step1_result.get("phase_a_transport_failed")
+                else "parse_failed"
+                if step1_result.get("phase_a_parse_failed")
+                else "ok"
+            ),
             "phase_a_parse_failed": bool(step1_result.get("phase_a_parse_failed")),
+            "phase_a_transport_failed": bool(
+                step1_result.get("phase_a_transport_failed")),
+            "phase_a_failure_reason": step1_result.get(
+                "phase_a_failure_reason"),
             "raw_prompt": raw_prompt,
             "conversation_context": conversation_context,
             "conversation_context_present": bool(conversation_context),
@@ -7105,10 +7292,14 @@ def _build_rag_selection(config: dict, config_name: str | None = None):
         gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
         if gate_ep is not None:
             def _gate_call(system: str, user: str) -> str:
-                return call_model(
+                return call_model_for_cell(
                     [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
                     gate_ep,
+                    step_name="rag-fit-gate",
+                    slot=slot,
+                    gear=1,
+                    config_name=config_name,
                 )
             fit_gate = make_fit_gate(_gate_call)
     except Exception as exc:
@@ -7158,10 +7349,14 @@ def _build_web_extraction(config: dict, config_name: str | None = None) -> dict:
             gate_ep = get_slot_endpoint(config, slot, config_name=config_name)
             if gate_ep is not None:
                 def _gate_call(system: str, user: str) -> str:
-                    return call_model(
+                    return call_model_for_cell(
                         [{"role": "system", "content": system},
                          {"role": "user", "content": user}],
                         gate_ep,
+                        step_name="web-extraction-fit-gate",
+                        slot=slot,
+                        gear=1,
+                        config_name=config_name,
                     )
                 fit_gate = make_fit_gate(_gate_call)
         except Exception as exc:
@@ -7570,10 +7765,15 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                                       "reason": "no_fast_endpoint"}
             else:
                 _wx = _build_web_extraction(config, config_name=config_name)
+                # F-Consult may issue more than one physical call (intent
+                # discovery, prompt sanity, conflict checks).  Carry the
+                # frozen named configuration across every one of them.
+                _consultation_call = _make_web_consultation_invoker(
+                    config_name, _WEB_CONSULT_DEFAULT_SLOT)
                 try:
                     wc_result = assemble_consultation_package(
                         user_prompt=cleaned_prompt or cleaned_nl or raw_prompt,
-                        call_model=call_model,
+                        call_model=_consultation_call,
                         fast_endpoint=fast_ep,
                         conversation_context=(
                             conv_rag[:2000] if conv_rag else ""
@@ -7860,6 +8060,39 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                 + "\n"
             ))
 
+    # G1.5 — direct Operation-Matrix status retrieval.  Matrix sources are a
+    # small identity-bound lane, separate from semantic vault RAG: explicit
+    # status questions must resolve the exact operation nexus and its registered
+    # children even when ordinary retrieval is unavailable or the turn routes
+    # to Gear 1.  The resolver is read-only and emits its own fail-closed source
+    # warning on missing, ambiguous, or invalid records.
+    project_status_context = ""
+    project_status_requested = False
+    try:
+        try:
+            from project_status import (
+                build_project_status_context,
+                requested_projects,
+            )
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator.project_status import (
+                build_project_status_context,
+                requested_projects,
+            )
+        project_status_requested = bool(requested_projects(cleaned_prompt))
+        if project_status_requested:
+            project_status_context = build_project_status_context(cleaned_prompt)
+    except Exception as exc:
+        print(f"[project-status] deterministic retrieval failed: {exc}",
+              file=sys.stderr, flush=True)
+        if project_status_requested:
+            project_status_context = (
+                "## FAIL-CLOSED STATUS\n\nThe deterministic Operation-Matrix "
+                "resolver failed before it could authenticate the requested "
+                "project source. Do not infer current status from conversation "
+                "memory or unrelated RAG."
+            )
+
     return {
         # `cleaned_prompt` is Phase A's repaired natural-language prompt.
         # It is the prompt the downstream pipeline sees after typo cleanup,
@@ -7889,6 +8122,9 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
+        # G1.5 authenticated Operation-Matrix + registered-child context.
+        # Empty for every non-status request.
+        "project_status_context": project_status_context,
         # Step 2 F-Consult web-consultation context (empty string when
         # the consultation didn't run or no intents were emitted).
         # Injected by build_system_prompt_for_gear as the ## WEB CONTEXT
@@ -8686,6 +8922,61 @@ def build_system_prompt_for_gear(
             ),
         ))
 
+    # G1.1 Phase 2.1 — the entry router's server-recomputed decision follows
+    # the Inquiry into every pipeline role.  This is intentionally routing
+    # evidence only: Phase 2.1 does not create a Process Run, grant authority,
+    # begin the management interview, invoke a definition, or activate one.
+    # Keeping those limits in the prompt prevents ordinary generation from
+    # silently becoming construction and prevents a classified construction
+    # request from being mistaken for already-authorized implementation.
+    process_entry = context_package.get("process_entry")
+    if isinstance(process_entry, dict):
+        parts.append(_fenced(
+            "GOVERNED PROCESS ENTRY (ROUTING EVIDENCE ONLY)",
+            json.dumps(
+                process_entry,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ),
+            note=(
+                "This server-validated contract classifies the entry route. "
+                "It grants no authority, creates no Process Run, and does not "
+                "prove invocation or activation. Preserve its exact project "
+                "and definition identities; do not infer later-phase approval."
+            ),
+        ))
+
+    # G1.1 Phase 2.8 — unlike the routing contract above, this envelope is
+    # emitted only after the exact Process Definition has been resolved and a
+    # governed Run plus runtime-issued invocation record have been persisted.
+    # It is the production execution instruction for a ready Process Library
+    # invocation; the response is subsequently bound to that same Run before
+    # the Dialogue is saved.
+    governed_invocation = context_package.get("governed_process_invocation")
+    if isinstance(governed_invocation, dict):
+        execution_contract = governed_invocation.get("execution_contract")
+        if not isinstance(execution_contract, dict):
+            raise ValueError(
+                "governed Process invocation lacks its exact execution contract"
+            )
+        parts.append(_fenced(
+            "GOVERNED PROCESS INVOCATION (RUNTIME-AUTHORITATIVE)",
+            json.dumps(
+                execution_contract,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ),
+            note=(
+                "Execute the exact entry-node operation for this persisted Run "
+                "using only its bound inputs and non-external authority. Produce "
+                "the requested result for the declared verification boundary. "
+                "Do not activate, publish, mutate external state, change the "
+                "definition identity, or claim independent acceptance."
+            ),
+        ))
+
     # Baseline criteria injection (2026-05-24): every role-specific step
     # gets the BRIEF + EC and VERIFICATION CRITERIA up front, so the
     # analyst sees what good looks like before writing, the evaluator and
@@ -8695,8 +8986,9 @@ def build_system_prompt_for_gear(
     #
     # The role-specific section (depth/breadth guidance for analyst,
     # revision guidance for reviser, etc.) layers ON TOP of this baseline.
-    # Gear 1 is structurally protected — it doesn't route through
-    # build_system_prompt_for_gear at all.
+    # Gear 1 is structurally protected: its exact endpoint/configuration is
+    # resolved by the single-pass dispatcher, but its prompt uses boot.md
+    # directly and does not route through this analytical-step builder.
     if brief_and_eval:
         parts.append(_fenced(
             f"MODE BRIEF & EVALUATION CRITERIA — {mode_name}", brief_and_eval,
@@ -8854,12 +9146,28 @@ def build_system_prompt_for_gear(
     if context_package["conversation_rag"]:
         reference_blocks.append(_fenced(
             "CONVERSATION CONTEXT", context_package["conversation_rag"]))
+    if context_package.get("contributor_context"):
+        reference_blocks.append(_fenced(
+            "DIALOGUE CONTRIBUTORS (explicit creation-time references)",
+            context_package["contributor_context"],
+        ))
     if context_package["concept_rag"]:
         reference_blocks.append(_fenced(
             "KNOWLEDGE CONTEXT", context_package["concept_rag"]))
     if context_package.get("relationship_rag"):
         reference_blocks.append(_fenced(
             "RELATIONSHIP CONTEXT", context_package["relationship_rag"]))
+    if context_package.get("project_status_context"):
+        reference_blocks.append(_fenced(
+            "PROJECT STATUS (authenticated Operation Matrix and registered children)",
+            context_package["project_status_context"],
+            note=(
+                "Use these exact vault sources for the requested current status. "
+                "Distinguish completed, active, deferred, blocked, and merely "
+                "intended work. Source warnings fail closed; do not replace a "
+                "missing status with conversation memory or unrelated RAG."
+            ),
+        ))
     if context_package.get("web_rag"):
         reference_blocks.append(_fenced(
             "WEB CONTEXT (Step 2 F-Consult consultation)", context_package["web_rag"]))
@@ -9058,6 +9366,19 @@ def build_system_prompt_for_gear(
     return "\n".join(parts)
 
 
+def _single_pass_system_prompt(context_package: dict, gear: int) -> str:
+    """Select the Gear-1/2 system prompt without losing G1.5 status data.
+
+    Gear 1 normally receives the deliberately small boot prompt.  An explicit
+    project-status request is the one bounded exception: its deterministic
+    Matrix context must reach the model even when the general RAG lanes stay
+    off.  Gear 2 already uses the full context-package builder.
+    """
+    if gear == 1 and not context_package.get("project_status_context"):
+        return load_boot_md()
+    return build_system_prompt_for_gear(context_package, "breadth")
+
+
 def format_for_vault(response: str, context_pkg: dict = None) -> str:
     """Apply presentation formatting: wrap response in YAML frontmatter for vault files.
 
@@ -9162,17 +9483,56 @@ def _make_criteria_invoker(config: dict, config_name: str | None):
     case the criteria pass records absence rather than failing (condition 6
     distinguishes 'no model' from 'model failed')."""
     try:
-        endpoint = (get_slot_endpoint(config, "sidebar", config_name=config_name)
-                    or get_active_endpoint(config))
+        endpoint = (
+            get_slot_endpoint(config, "sidebar", config_name=config_name)
+            or (get_active_endpoint(config) if config_name is None else None)
+        )
     except Exception:
         endpoint = None
     if endpoint is None:
         return None
 
     def _invoke(system: str, user: str) -> str:
-        return call_model([{"role": "system", "content": system},
-                           {"role": "user", "content": user}], endpoint)
+        step_token = _CURRENT_STEP_CV.set("planning-criteria")
+        meta_token = _CALL_METADATA_CV.set({
+            "step": "planning-criteria",
+            "slot": "sidebar",
+            "gear": 1,
+            "config_name": config_name,
+        })
+        try:
+            return call_model([{"role": "system", "content": system},
+                               {"role": "user", "content": user}], endpoint)
+        finally:
+            _CALL_METADATA_CV.reset(meta_token)
+            _CURRENT_STEP_CV.reset(step_token)
     return _invoke
+
+
+def _make_web_consultation_invoker(config_name: str | None, slot: str):
+    """Return an F-Consult callback carrying the exact utility-cell identity."""
+    def _invoke(messages, endpoint):
+        return call_model_for_cell(
+            messages,
+            endpoint,
+            step_name="web-consultation",
+            slot=slot,
+            gear=1,
+            config_name=config_name,
+        )
+    return _invoke
+
+
+_EXECUTION_REVIEW_MAX_TOKENS = 2400
+
+
+class _ExecutionVerifyResponse(str):
+    """String-compatible verifier output carrying the endpoint that produced it."""
+
+    def __new__(cls, value: str, endpoint: dict | None):
+        obj = super().__new__(cls, value or "")
+        obj.endpoint = dict(endpoint or {})
+        return obj
 
 
 def _make_execution_verify_invoker(config: dict, config_name: str | None):
@@ -9181,12 +9541,79 @@ def _make_execution_verify_invoker(config: dict, config_name: str | None):
     verify. Calls the SELECTED endpoint (chosen by the loop's family selector), never
     a fixed slot — so the diversity requirement is honoured. None-safe: returns "" on
     a missing endpoint / failed call so the verify degrades rather than raising."""
+    def _bounded_endpoint(endpoint: dict) -> dict:
+        verify_endpoint = dict(endpoint)
+        configured_cap = verify_endpoint.get("max_tokens")
+        try:
+            configured_cap = int(configured_cap)
+        except (TypeError, ValueError):
+            configured_cap = _EXECUTION_REVIEW_MAX_TOKENS
+        verify_endpoint["max_tokens"] = min(
+            max(1, configured_cap), _EXECUTION_REVIEW_MAX_TOKENS)
+        verify_endpoint["_disable_truncation_retry"] = True
+        return verify_endpoint
+
+    def _usable_verdict(raw: str) -> bool:
+        if not isinstance(raw, str) or not raw.strip():
+            return False
+        if raw.lstrip().startswith("[Error"):
+            return False
+        try:
+            try:
+                import execution_loop as _el_verify
+            except ImportError:  # pragma: no cover
+                from orchestrator import execution_loop as _el_verify
+            parsed = _el_verify.parse_verify_output(raw)
+            return parsed.get("verdict") in {"PASS", "FAIL"} or bool(
+                parsed.get("findings")
+            )
+        except Exception:
+            return False
+
     def _invoke(system: str, user: str, endpoint: dict | None) -> str:
         try:
             if endpoint is None:
                 return ""
-            return call_model([{"role": "system", "content": system},
-                               {"role": "user", "content": user}], endpoint)
+            # Execution Review emits a compact structured verdict, not a long-form
+            # deliverable.  Passing the general 32k output ceiling made a beta
+            # mutation review wait more than ten minutes on a reasoning endpoint.
+            # Keep an explicitly lower endpoint cap, but never raise a caller's
+            # already-bounded value.  Copy so shared routing state is immutable.
+            candidates = [endpoint]
+            try:
+                try:
+                    import execution_loop as _el_verify
+                except ImportError:  # pragma: no cover
+                    from orchestrator import execution_loop as _el_verify
+                router_obj = _get_router()
+                executor_fam = _el_verify.executor_family(
+                    config, config_name, router_obj
+                )
+                declared = router_obj.resolve_different_family_candidates(
+                    "verification", executor_fam, config_name=config_name
+                )
+                selected_id = endpoint.get("id") or endpoint.get("name")
+                candidates.extend(
+                    candidate
+                    for candidate in declared
+                    if (candidate.get("id") or candidate.get("name")) != selected_id
+                )
+            except Exception:
+                pass
+
+            last = ""
+            for candidate in candidates:
+                verify_endpoint = _bounded_endpoint(candidate)
+                last = call_model(
+                    [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    verify_endpoint,
+                )
+                if _usable_verdict(last):
+                    return _ExecutionVerifyResponse(last, candidate)
+            return _ExecutionVerifyResponse(last, candidates[-1])
         except Exception:
             return ""
     return _invoke
@@ -9300,6 +9727,23 @@ def run_pipeline(user_input: str, history: list = None,
         reset_conversation_tag_context(tag_token)
 
 
+def _framework_project_nexus() -> str | None:
+    """Resolve the authenticated active project for framework execution."""
+    try:
+        from active_project import get_active_project
+        import project_meta as _pm
+    except ImportError:
+        from orchestrator.active_project import get_active_project
+        from orchestrator import project_meta as _pm
+    nexus = get_active_project()
+    if not nexus or nexus.lower() in ("commons", "general"):
+        return None
+    nexus = _pm.validate_nexus(nexus)
+    if _pm.read_project_meta(nexus) is None:
+        raise _pm.ProjectMetaError(f"active project {nexus!r} is unavailable")
+    return nexus
+
+
 def _run_pipeline_impl(user_input: str, history: list = None,
                        output_target: str = "screen",
                        execution_context: str = "interactive",
@@ -9408,7 +9852,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         _tg_marker = _rgate.is_task_gate_continuation(history or [])
         if _tg_marker is not None:
             _tg_reply = _rgate.handle_task_gate_reply(
-                _tg_marker, user_input, conversation_id)
+                _tg_marker, user_input, conversation_id,
+                principal_id="principal:user",
+            )
             if _tg_reply is not None:
                 turn_state["kind"] = "risk_hold"
                 return _tg_reply
@@ -9495,7 +9941,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             result_text = run_framework_command(
                 _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
                 config, trace_dir=trace_dir, conversation_tag=conversation_tag,
-                trace_context=_trace_ctx)
+                trace_context=_trace_ctx,
+                project_nexus=_framework_project_nexus(),
+                one_run_profile=config_name)
             try:
                 _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
             except Exception:
@@ -9541,6 +9989,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
             conversation_id=conversation_id,
+            current_project_nexus=_framework_project_nexus(),
         )
 
     # --- Framework slash-command short-circuit ---
@@ -9591,7 +10040,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 _fw_out = run_framework_command(
                     user_input, config, trace_dir=trace_dir,
                     conversation_tag=conversation_tag,
-                    trace_context=_trace_ctx)
+                    trace_context=_trace_ctx,
+                    project_nexus=_framework_project_nexus(),
+                    one_run_profile=config_name)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -9612,6 +10063,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         turn_state["kind"] = "framework_elicitation"
         return framework_elicitation.start_elicitation(
             framework_name, history or [], config,
+            project_nexus=_framework_project_nexus(),
+            one_run_profile=config_name,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
@@ -9805,21 +10258,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     #     analysis modes that explicitly opt in.
     if gear <= 2:
         # Gear 1-2: Single model pass with context package.
-        system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
-        if gear == 1:
-            endpoint = get_slot_endpoint(config, "classification",
-                                         config_name=config_name)
-        else:
-            # Gear 2: prefer the `fast` slot (new in the 2026-05-24 redesign,
-            # being wired by the parallel model-selector thread). Fall back
-            # to `step1_cleanup` then to active endpoint when fast is not yet
-            # configured — so the dispatch is safe before the slot lands.
-            endpoint = (
-                get_slot_endpoint(config, "fast", config_name=config_name)
-                or get_slot_endpoint(config, "step1_cleanup",
-                                     config_name=config_name)
-                or get_active_endpoint(config)
-            )
+        system_prompt = _single_pass_system_prompt(context_pkg, gear)
+        endpoint, fast_slot = resolve_single_pass_endpoint(
+            config, gear, config_name=config_name)
         if endpoint is None:
             turn_state["status"] = "error"
             terminal_value = "[No AI endpoints configured.]"
@@ -9845,8 +10286,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
 
         # Run agentic loop for tool support
-        response = _run_model_with_tools(
-            messages, endpoint, trace_dir=trace_dir,
+        response = run_single_pass_with_tools(
+            messages, endpoint,
+            slot=fast_slot,
+            gear=gear,
+            config_name=config_name,
             step_name="step3-direct-response",
         )
         if trace_dir and PIPELINE_TRACE_AVAILABLE:
@@ -10056,6 +10500,60 @@ def _run_model_with_tools_impl(messages: list, endpoint: dict,
         except Exception:
             pass
     return stripped
+
+
+def run_single_pass_with_tools(messages: list, endpoint: dict, *,
+                               slot: str, gear: int,
+                               config_name: str | None,
+                               images: list | None = None,
+                               step_name: str | None = None) -> str:
+    """Run a Gear-1/2 call under an authenticated cell identity.
+
+    The browser path previously invoked ``_run_model_with_tools`` without
+    carrying its named configuration into the physical-call trace. That both
+    hid active-profile substitution and made slot-level campaign fidelity
+    impossible to prove. Keep the metadata scope across every tool-loop call.
+
+    ``step_name`` overrides the default ``gear{N}-single-pass`` label for
+    callers that own a named pipeline step. The direct-response path passes
+    ``step3-direct-response`` so trace-completeness attributes the physical
+    call to the step that made it, which is what the Gear 1-4 trace coverage
+    added on 2026-07-16 asserts. The configuration metadata below is carried
+    either way, so both properties hold at once.
+    """
+    step_name = step_name or f"gear{gear}-single-pass"
+    step_token = _CURRENT_STEP_CV.set(step_name)
+    meta_token = _CALL_METADATA_CV.set({
+        "step": step_name,
+        "slot": slot,
+        "gear": gear,
+        "config_name": config_name,
+    })
+    try:
+        return _run_model_with_tools(
+            messages, endpoint, images=images, step_name=step_name)
+    finally:
+        _CALL_METADATA_CV.reset(meta_token)
+        _CURRENT_STEP_CV.reset(step_token)
+
+
+def call_model_for_cell(messages: list, endpoint: dict, *,
+                        step_name: str, slot: str, gear: int,
+                        config_name: str | None,
+                        images: list | None = None) -> str:
+    """Call one model while binding the exact named-configuration cell."""
+    step_token = _CURRENT_STEP_CV.set(step_name)
+    meta_token = _CALL_METADATA_CV.set({
+        "step": step_name,
+        "slot": slot,
+        "gear": gear,
+        "config_name": config_name,
+    })
+    try:
+        return call_model(messages, endpoint, images=images)
+    finally:
+        _CALL_METADATA_CV.reset(meta_token)
+        _CURRENT_STEP_CV.reset(step_token)
 
 
 _INLINE_DISPATCH_DIRECTIVE = """## DISPATCH PROTOCOL — INLINE-ONLY RESPONSE
@@ -11606,9 +12104,19 @@ def _run_unflagged_claim_scan(
         }, []
 
     try:
+        def _scan_call(messages: list, endpoint: dict, images=None):
+            return call_model_for_cell(
+                messages, endpoint,
+                step_name="unflagged-claim-scan",
+                slot=_WEB_CONSULT_DEFAULT_SLOT,
+                gear=1,
+                config_name=config_name,
+                images=images,
+            )
+
         result = extract_and_verify_unflagged_claims(
             revised_draft, flagged_claims,
-            call_model=call_model,
+            call_model=_scan_call,
             fast_endpoint=fast_ep,
         )
     except Exception as exc:
@@ -11631,14 +12139,12 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     Step 3 — Depth analyses (mode DEPTH MODEL INSTRUCTIONS via step='analyst').
     Step 4 — Breadth evaluates (f-evaluate.md + mode evaluator subsections).
     Step 5 — Depth revises (f-revise.md + mode Reviser guidance).
-    Step 6 — Breadth verifies (f-verify.md + mode Verifier checks), with up
-             to 2 correction cycles.
-    Step 6.5 — Final-output quality gate (f-quality-gate.md): judge the
-             deliverable against the mode's VERIFICATION CRITERIA on the
-             verification slot; on a real FAIL, re-run the reviser ONCE with
-             the gate's itemized REQUIRED FIXES (the re-run is final), then
-             ship. Recorded under the ``step6_5-quality-gate*`` contingency
-             names; PASS and BROKEN ship the reviser's draft as-is.
+    Step 6 — Breadth verifies (f-verify.md + mode Verifier checks) under the
+             Process Run's configurable correction policy.
+    Step 6.5 — Final-output quality gate (f-quality-gate.md): independently
+             inspect the current deliverable against the mode's VERIFICATION
+             CRITERIA. A supported correction is reinspected before release;
+             FAIL or BROKEN never releases the unaccepted candidate.
 
     Output: the reviser's revised draft (its ``## REVISED DRAFT`` body),
     gated by the per-cycle verifier (step 6) and the final-output quality
@@ -11648,8 +12154,10 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     config/configurations/ instead of the legacy pipelines[context] block.
     """
     trace_dir = context_pkg.get("trace_dir")
-    depth_endpoint = get_slot_endpoint(config, "depth", config_name=config_name)
-    breadth_endpoint = get_slot_endpoint(config, "breadth", config_name=config_name)
+    depth_endpoint = get_analysis_slot_endpoint(
+        config, "depth", 3, config_name=config_name)
+    breadth_endpoint = get_analysis_slot_endpoint(
+        config, "breadth", 3, config_name=config_name)
 
     if depth_endpoint is None and breadth_endpoint is None:
         # S11 (2026-05-22): when the cascade comes up empty, surface
@@ -11667,7 +12175,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             except ImportError:
                 from orchestrator import endpoint_health as _eh
             for label, slot_name in (("depth", "depth"), ("breadth", "breadth")):
-                chain = router_obj.get_slot_chain(slot_name, 4, config_name)
+                chain = router_obj.get_slot_chain(slot_name, 3, config_name)
                 if not chain:
                     chain_lines.append(f"  {label} chain: (no chain declared in {config_name!r})")
                     continue
@@ -12002,8 +12510,67 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         framework_name="f-verify.md",
     )
 
-    MAX_VERIFY_CYCLES = 2
-    for cycle in range(MAX_VERIFY_CYCLES + 1):
+    # Phase 1.4: the attempt ceiling comes from the attached Process Run when
+    # one is bound; otherwise the domain-general runtime defaults apply. A
+    # ceiling is permission, not an instruction to consume every attempt.
+    _binding_requested = bool(context_pkg.get("process_run_binding"))
+    _governed_binding_fault = False
+    try:
+        try:
+            import governed_process_runtime as _gpr
+        except ImportError:  # pragma: no cover
+            from orchestrator import governed_process_runtime as _gpr
+        _process_binding = context_pkg.get("process_run_binding") or {}
+        _bound_runtime = _process_binding.get("runtime")
+        _bound_run_id = _process_binding.get("run_id")
+        if _bound_runtime is not None and _bound_run_id:
+            _bound_run = _bound_runtime.load_run(_bound_run_id)
+            _bound_correction = _bound_run["contracts"]["correction_loop"]
+            _correction_policy = _gpr.correction_policy_defaults({
+                key: _bound_correction[key]
+                for key in _gpr.DEFAULT_CORRECTION_POLICY
+            })
+            _correction_segment = str(
+                _process_binding.get("segment_id") or "gear3-verification"
+            )
+            _bound_runtime.start_segment(_bound_run_id, _correction_segment)
+        else:
+            _bound_runtime = None
+            _bound_run_id = None
+            _correction_segment = "gear3-verification"
+            _correction_policy = _gpr.correction_policy_defaults(
+                context_pkg.get("correction_loop_policy")
+            )
+    except Exception as _policy_error:
+        # A malformed optional binding cannot invent a permissive policy. Use
+        # conservative defaults and mark the bound path unhealthy for release.
+        _bound_runtime = None
+        _bound_run_id = None
+        _correction_segment = "gear3-verification"
+        _correction_policy = {
+            "max_attempts": 3,
+            "progress_evidence_required": True,
+            "repeated_defect_limit": 3,
+            "allowed_directives": ["REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+            "no_progress_directives": ["REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
+        }
+        contingencies_fired.append("gear3-correction-policy-invalid-using-safe-defaults")
+        _record("gear3-correction-policy", False, str(_policy_error)[:200])
+        _governed_binding_fault = _binding_requested
+
+    max_verify_attempts = int(_correction_policy["max_attempts"])
+    prior_candidate_digest: str | None = None
+    prior_defect_fingerprint: str | None = None
+    repeated_defect_count = 0
+    for cycle in range(max_verify_attempts):
+        if _bound_runtime is not None:
+            try:
+                _bound_runtime.begin_attempt(_bound_run_id, _correction_segment)
+            except Exception as _attempt_error:
+                contingencies_fired.append("gear3-governed-attempt-start-refused")
+                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
+                _governed_binding_fault = True
+                break
         verify_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
             f"## ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
@@ -12067,10 +12634,37 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             )
         unblocks = passed or (broken and bool(broken_structural_ok))
         verdict_label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
+        candidate_digest = (
+            "sha256:" + hashlib.sha256((revised_analysis or "").encode("utf-8")).hexdigest()
+        )
+        defect_fingerprint = (
+            "sha256:" + hashlib.sha256((verified or "").encode("utf-8")).hexdigest()
+        )
+        if defect_fingerprint == prior_defect_fingerprint:
+            repeated_defect_count += 1
+        else:
+            repeated_defect_count = 1
+        progress_evidence = (
+            prior_candidate_digest is None or candidate_digest != prior_candidate_digest
+        )
+        if _bound_runtime is not None:
+            try:
+                _bound_runtime.complete_attempt(
+                    _bound_run_id,
+                    _correction_segment,
+                    defect_codes=[f"verifier-{verdict_label.lower()}"],
+                    evidence_refs=[],
+                    artifact_digests=[candidate_digest],
+                )
+            except Exception as _attempt_error:
+                contingencies_fired.append("gear3-governed-attempt-completion-refused")
+                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
+                _governed_binding_fault = True
+                break
 
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
-            "max_cycles": MAX_VERIFY_CYCLES + 1,
+            "max_attempts": max_verify_attempts,
             "system_prompt": verify_system,
             "user_message": verify_user,
             "verdict_raw": verified,
@@ -12083,7 +12677,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "broken_structural_check_ok": broken_structural_ok,
             "broken_structural_check_reason": broken_structural_reason,
         }, markdown=(
-            f"# Step 6 — Verifier (Gear 3, cycle {cycle + 1}/{MAX_VERIFY_CYCLES + 1})\n\n"
+            f"# Step 6 — Verifier (Gear 3, attempt {cycle + 1}/{max_verify_attempts})\n\n"
             f"**Verdict:** {verdict_label}\n\n{verified}\n"
         ))
         if broken:
@@ -12099,7 +12693,34 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                     f"step6-cycle{cycle + 1}-verifier-BROKEN-structural-fail-re-revising"
                 )
 
-        if unblocks or cycle == MAX_VERIFY_CYCLES:
+        if unblocks or cycle + 1 >= max_verify_attempts:
+            break
+
+        no_progress = (
+            bool(_correction_policy["progress_evidence_required"])
+            and not progress_evidence
+        )
+        repeated_limit_reached = (
+            repeated_defect_count
+            >= int(_correction_policy["repeated_defect_limit"])
+        )
+        revision_allowed = not no_progress and not repeated_limit_reached
+        if revision_allowed and _bound_runtime is not None:
+            try:
+                _bound_runtime.validate_correction_directive(_bound_run_id, "REVISE")
+            except Exception as _policy_refusal:
+                revision_allowed = False
+                _record("gear3-governed-correction-policy", False,
+                        str(_policy_refusal)[:200])
+        if not revision_allowed:
+            reasons = []
+            if no_progress:
+                reasons.append("no-progress")
+            if repeated_limit_reached:
+                reasons.append("repeated-defect-limit")
+            contingencies_fired.append(
+                "step6-correction-stopped-" + "-and-".join(reasons or ["contract-refusal"])
+            )
             break
 
         # Verifier rejected — reviser addresses the verifier's findings.
@@ -12140,15 +12761,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             f"{revised_analysis}\n"
         ))
         contingencies_fired.append(f"step6-cycle{cycle + 1}-verifier-rejected-revised-again")
+        prior_candidate_digest = candidate_digest
+        prior_defect_fingerprint = defect_fingerprint
 
-    # --- Step 6.5: Final-output quality gate (single bounded redo) ----------
+    # --- Step 6.5: Final-output quality gate + correction reinspection ------
     # The verify loop above gates the revision cycle mid-pipeline; this is the
     # FINAL check of the deliverable against the mode's VERIFICATION CRITERIA,
     # run on the dedicated 'verification' judge slot with the f-quality-gate
-    # contract. On a real FAIL, re-run the reviser ONCE with the gate's itemized
-    # REQUIRED FIXES, then ship — the re-run is final (mirrors the in-loop
-    # re-revise above). Ported from MSI gear-3's signature-move audit
-    # (verdict-string FAIL -> one escalated re-revise).
+    # contract. A real FAIL may produce a corrected candidate, but that new
+    # identity must pass a fresh independent gate before release. BROKEN is an
+    # unavailable observation, never an implicit quality or shipping verdict.
     gate_endpoint = (
         get_slot_endpoint(config, "verification", config_name=config_name)
         or breadth_endpoint
@@ -12157,48 +12779,192 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         context_pkg, slot="breadth", step="verifier",
         framework_name=QUALITY_GATE_FRAMEWORK,
     )
-    gate_user = (
-        f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
-        "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
-        "is its `## REVISED DRAFT` body — the other sections are pipeline "
-        f"scaffolding)\n\n{revised_analysis}\n\n"
-        "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
-        "(PASS gate) and the universal checks. Gear 3 has no separate "
-        "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
-        "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
-        "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
-        "specification."
-    )
-    gate_messages = [
-        {"role": "system", "content": gate_system},
-        {"role": "user", "content": gate_user},
-    ]
-    try:
-        gate_out, gate_call_ok, gate_call_reason = _call_with_retry(
-            gate_messages, gate_endpoint, "quality-gate",
-            min_chars=30, retry_hint=None,
-            images=_images_for_endpoint(images, gate_endpoint),
-            slot="verification", gear=3, config_name=config_name,
+    def _run_gear3_final_gate(candidate: str, pass_number: int,
+                              prior_findings: str | None = None):
+        nonlocal _governed_binding_fault
+        candidate_body = extract_revised_draft_section(candidate) or candidate
+        candidate_digest = hashlib.sha256(
+            (candidate_body or "").encode("utf-8")).hexdigest()
+        mode_digest = hashlib.sha256(
+            (context_pkg.get("mode_text") or "").encode("utf-8")).hexdigest()
+        if _bound_runtime is not None:
+            subject_run_id = _bound_run_id
+            subject_artifact_id = _process_binding["final_review"][
+                "candidate_artifact_id"]
+        else:
+            trace_identity = str(trace_dir or f"inline:{candidate_digest}")
+            subject_run_id = f"pipeline-trace:{trace_identity}"
+            subject_artifact_id = f"inline-response:{candidate_digest}"
+        evidence_artifact_id = (
+            f"quality-gate:{candidate_digest}:pass-{pass_number}")
+        subject_identity = (
+            "## REVIEW SUBJECT IDENTITY (runtime-issued)\n"
+            f"- Process Run: {subject_run_id}\n"
+            f"- Process Definition: mode:{context_pkg.get('mode_name') or 'unknown'}"
+            f"@runtime sha256:{mode_digest}\n"
+            f"- Candidate Artifact: {subject_artifact_id} "
+            f"sha256:{candidate_digest}\n"
+            f"- Evidence Artifact: {evidence_artifact_id} "
+            "(content digest assigned from this returned review)\n"
+            "- Review Boundary: final-output-quality-gate\n"
+            "The Candidate Artifact digest binds exactly the `## REVISED DRAFT` "
+            "body below; pipeline scaffolding is context, not part of the "
+            "released artifact.\n\n"
         )
-    except Exception as e:
-        gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
-        gate_call_ok, gate_call_reason = False, str(e)
+        gate_user = (
+            subject_identity
+            + f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
+            "## CANDIDATE ANALYSIS (reviser output; the user-facing deliverable "
+            "is its `## REVISED DRAFT` body — the other sections are pipeline "
+            f"scaffolding)\n\n{candidate}\n\n"
+        )
+        if prior_findings:
+            gate_user += (
+                "## PRIOR QUALITY FINDINGS\n\n"
+                f"{prior_findings}\n\n"
+                "This candidate was produced after those findings. Inspect the "
+                "new candidate identity independently; do not inherit the prior "
+                "verdict.\n\n"
+            )
+        gate_user += (
+            "Grade the deliverable against the mode's `## VERIFICATION CRITERIA` "
+            "(PASS gate) and the universal checks. Gear 3 has no separate "
+            "formatter, so OMIT the PROBLEM line. Conclude with the itemized "
+            "checklist, a `## REQUIRED FIXES` section on FAIL, and a final "
+            "`VERDICT:` line (PASS / FAIL / BROKEN) per the F-QUALITY-GATE "
+            "specification."
+        )
+        gate_messages = [
+            {"role": "system", "content": gate_system},
+            {"role": "user", "content": gate_user},
+        ]
+        try:
+            gate_out, call_ok, call_reason = _call_with_retry(
+                gate_messages, gate_endpoint, "quality-gate",
+                min_chars=30, retry_hint=None,
+                images=_images_for_endpoint(images, gate_endpoint),
+                slot="verification", gear=3, config_name=config_name,
+            )
+        except Exception as e:
+            gate_out = f"QUALITY_GATE_EXCEPTION: {e}"
+            call_ok, call_reason = False, str(e)
+        passed = _verifier_passed(gate_out)
+        broken = _verifier_broken(gate_out) or not call_ok
+        label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
+        governed_directive = None
+        if _bound_runtime is not None:
+            try:
+                review_binding = _process_binding["final_review"]
+                evaluator = _process_binding["process_coherence_evaluator"]
+                if not callable(evaluator):
+                    raise TypeError("process_coherence_evaluator must be callable")
+                observed = _bound_runtime.record_reviewed_text_candidate(
+                    _bound_run_id,
+                    candidate_text=candidate,
+                    review_text=gate_out,
+                    outcome=label,
+                    candidate_artifact_id=review_binding["candidate_artifact_id"],
+                    evidence_artifact_id=(
+                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
+                    ),
+                    evidence_id=review_binding["evidence_id"],
+                    candidate_node_id=review_binding["candidate_node_id"],
+                    evidence_node_id=review_binding["evidence_node_id"],
+                    candidate_action=review_binding["candidate_action"],
+                    evidence_action=review_binding["evidence_action"],
+                    candidate_selector=review_binding["candidate_selector"],
+                    evidence_selector=review_binding["evidence_selector"],
+                    reviewer_id=review_binding["reviewer_id"],
+                    satisfied_conditions=review_binding.get("satisfied_conditions", []),
+                )
+                decision = evaluator({
+                    "run_id": _bound_run_id,
+                    "segment_id": _correction_segment,
+                    "observation": label,
+                    "gate_call_ok": bool(call_ok),
+                    "pass_number": pass_number,
+                    "candidate_artifact_id": review_binding["candidate_artifact_id"],
+                    "evidence_artifact_id": (
+                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
+                    ),
+                    "evidence_ref": observed["evidence_ref"],
+                })
+                if not isinstance(decision, dict):
+                    raise TypeError("Process Coherence evaluation must return a decision mapping")
+                transition_args = {
+                    "target_node_id": decision["target_node_id"],
+                    "reason": decision["reason"],
+                    "evaluation_boundary": decision["evaluation_boundary"],
+                    "authority_request": decision.get("authority_request"),
+                    "evidence_refs": [observed["evidence_ref"]],
+                }
+                if "failure_class" in decision:
+                    if "directive" in decision:
+                        raise ValueError(
+                            "Process Coherence decision must supply failure_class or directive, not both"
+                        )
+                    governed_directive = _gpr.directive_for_failure_class(
+                        decision["failure_class"]
+                    )
+                    _bound_runtime.dispatch_evaluated_failure(
+                        _bound_run_id,
+                        decision["failure_class"],
+                        **transition_args,
+                    )
+                else:
+                    governed_directive = decision["directive"]
+                    _bound_runtime.apply_transition(
+                        _bound_run_id,
+                        governed_directive,
+                        **transition_args,
+                    )
+            except Exception as _governed_review_error:
+                _governed_binding_fault = True
+                contingencies_fired.append("gear3-governed-final-review-refused")
+                _record(
+                    "gear3-governed-final-review",
+                    False,
+                    str(_governed_review_error)[:200],
+                )
+        _trace_step_g3(f"step6_5-quality-gate-pass-{pass_number}", {
+            "pass": pass_number,
+            "system_prompt": gate_system,
+            "user_message": gate_user,
+            "verdict_raw": gate_out,
+            "verdict_resolved": label,
+            "passed": passed,
+            "broken": broken,
+            "call_ok": call_ok,
+            "call_reason": call_reason,
+            "governed_directive": governed_directive,
+            "candidate_identity": (
+                "sha256:" + candidate_digest
+            ),
+            "candidate_artifact_id": subject_artifact_id,
+            "evidence_artifact_id": evidence_artifact_id,
+            "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
+        }, markdown=(
+            f"# Step 6.5 — Final-output quality gate (Gear 3, pass {pass_number})\n\n"
+            f"**Verdict:** {label}\n\n{gate_out}\n"
+        ))
+        return (
+            gate_out, call_ok, call_reason, passed, broken, label, gate_user,
+            governed_directive,
+        )
 
-    gate_passed = _verifier_passed(gate_out)
-    # A failed gate CALL (transport error after retry) ships as BROKEN rather
-    # than firing a content redo a broken judge can't justify — same fail-open
-    # posture as the per-stream verifier's BROKEN handling.
-    gate_broken = _verifier_broken(gate_out) or not gate_call_ok
-    gate_verdict_label = (
-        "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
-    # Execution Review Phase 4 (condition 4): thread the scoped text-review verdict
-    # LABEL ONLY (never raw verifier text) onto a namespaced context_pkg subdict for
-    # the terminal packet builder. Not read by any prompt assembly — no leak.
-    context_pkg["execution_review"] = {"verdict": gate_verdict_label,
-                                       "scope": "text_review"}
+    (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
+     gate_verdict_label, gate_user, governed_directive) = (
+        _run_gear3_final_gate(revised_analysis, 1)
+    )
     gate_redo_fired = False
-    if not gate_passed and not gate_broken:
-        # Real FAIL -> one final re-revise carrying the gate's REQUIRED FIXES.
+    if (
+        not gate_passed
+        and not gate_broken
+        and (_bound_runtime is None or governed_directive == "REVISE")
+    ):
+        # A real execution-level FAIL supplies actionable fixes to the existing
+        # reviser path. The resulting candidate is never released until a fresh
+        # independent pass inspects its new identity.
         gate_redo_fired = True
         gate_redo_messages = [
             {"role": "system", "content": revise_system},
@@ -12208,8 +12974,8 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
                 "## QUALITY-GATE — REQUIRED FIXES (the final output did not "
                 f"meet the mode's verification criteria)\n\n{gate_out}\n\n"
                 "Address every required fix and revise again per the mirror "
-                "contract. This is the final revision — there is no further "
-                "review pass."
+                "contract. The corrected candidate will receive a fresh "
+                "independent review before any release."
             )},
         ]
         revised_analysis, _qg_redo_ok, _qg_redo_reason = _call_with_retry(
@@ -12232,19 +12998,44 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         ))
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
-        # Execution Review Phase 4 (Rev 1): the FAIL redo produced a NEW deliverable
-        # the gate never re-reviewed — so the prior FAIL no longer describes the
-        # shipped text. Overwrite the stale verdict with a scoped unreviewed status
-        # (verdict=None; no raw verifier text) rather than mislabel the final
-        # producer claim with a verdict that reviewed a different candidate.
-        context_pkg["execution_review"] = {
-            "verdict": None, "scope": "text_review",
-            "status": "failed-then-redone-unreviewed"}
+        (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
+         gate_verdict_label, gate_user, governed_directive) = (
+            _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
+        )
+        contingencies_fired.append(
+            f"step6_5-gear3-quality-gate-reinspection-{gate_verdict_label}"
+        )
     else:
         contingencies_fired.append(
             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
+
+    release_deliverable = bool(
+        gate_passed
+        and not gate_broken
+        and not _governed_binding_fault
+        and (_bound_runtime is None or governed_directive == "ACCEPT")
+    )
+    review_status = None
+    if gate_redo_fired and release_deliverable:
+        review_status = "passed-after-correction-reinspection"
+    elif gate_broken and gate_redo_fired:
+        review_status = "review-unavailable-after-correction-withheld"
+    elif gate_broken:
+        review_status = "review-unavailable-withheld"
+    elif not gate_passed:
+        review_status = "failed-after-final-reinspection-withheld"
+    elif _governed_binding_fault:
+        review_status = "governed-runtime-integrity-failure-withheld"
+    elif _bound_runtime is not None and governed_directive != "ACCEPT":
+        review_status = "process-coherence-did-not-accept-withheld"
+    context_pkg["execution_review"] = {
+        "verdict": gate_verdict_label,
+        "scope": "text_review",
+        "status": review_status,
+    }
     _record("step6_5-quality-gate", gate_call_ok,
-            f"verdict={gate_verdict_label} redo={gate_redo_fired}")
+            f"verdict={gate_verdict_label} redo={gate_redo_fired} "
+            f"released={release_deliverable}")
     _trace_step_g3("step6_5-quality-gate", {
         "system_prompt": gate_system,
         "user_message": gate_user,
@@ -12253,13 +13044,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         "passed": gate_passed,
         "broken": gate_broken,
         "redo_fired": gate_redo_fired,
+        "released": release_deliverable,
+        "governed_directive": governed_directive,
         "call_ok": gate_call_ok,
         "call_reason": gate_call_reason,
         "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
     }, markdown=(
         "# Step 6.5 — Final-output quality gate (Gear 3)\n\n"
         f"**Verdict:** {gate_verdict_label}  \n"
-        f"**Redo fired:** {gate_redo_fired}\n\n{gate_out}\n"
+        f"**Redo fired:** {gate_redo_fired}  \n"
+        f"**Released:** {release_deliverable}\n\n{gate_out}\n"
     ))
 
     # Gear 3 has no formatter — it returns the reviser output directly. Surface
@@ -12271,7 +13065,14 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     # fall back to the full text only when the draft section can't be isolated,
     # so this is never worse than the prior behaviour.
     deliverable = revised_analysis
-    if CLAIM_VERIFICATION_AVAILABLE:
+    if not release_deliverable:
+        deliverable = (
+            "## Deliverable withheld\n\n"
+            "The current candidate was not released because independent final "
+            f"review concluded `{gate_verdict_label}`. The candidate and review "
+            "record remain available for the governed continuation route."
+        )
+    elif CLAIM_VERIFICATION_AVAILABLE:
         try:
             _draft_body = extract_revised_draft_section(revised_analysis or "")
         except Exception:
@@ -12346,8 +13147,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
       Step 8.6 — Final-output quality gate (f-quality-gate.md): judge the
                deliverable against the mode's VERIFICATION CRITERIA; on FAIL,
                one bounded redo per problem type — PROBLEM=ANALYSIS re-runs
-               step 7 then re-formats; PROBLEM=FORMATTING re-runs step 8 — then
-               ship.
+               step 7 then re-formats; PROBLEM=FORMATTING re-runs step 8. A
+               fresh PASS is required for release; FAIL or BROKEN withholds.
 
     Reliability contingency table (per step):
       Step 3 — Per-stream recovery: each analyst tries its PRIMARY model with
@@ -12387,7 +13188,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                one bounded redo of the implicated producer (consolidator for an
                ANALYSIS verdict, then re-format; formatter for a FORMATTING
                verdict), recorded under the ``step8_6-quality-gate-*``
-               contingency names; PASS and BROKEN ship as-is.
+               contingency names. Only PASS releases the inspected identity;
+               FAIL and BROKEN remain observations for transition policy and
+               withhold the candidate.
 
     Reliability ceiling: this layer protects against transient model
     misbehaviour (refusal, clarification-loop, brief stub, tool-call leak).
@@ -13536,7 +14339,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     # dedicated 'verification' judge slot. On FAIL the judge classifies the
     # PROBLEM: ANALYSIS (substance) routes the redo back to the step-7
     # consolidator and then re-formats the corrected corpus; FORMATTING routes
-    # it back to the step-8 formatter. One redo per problem type, then ship —
+    # it back to the step-8 formatter. One redo per problem type, then stop —
     # enforced by the two used-flags + a hard 3-pass backstop, re-gating between
     # redos so a deliverable failing on both axes is repaired on each once.
     # Ported from MSI's voice-editor approval gate (failure_kind text|formatting
@@ -13553,6 +14356,9 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
     )
     _qg_analysis_redo_used = False
     _qg_formatting_redo_used = False
+    gate_passed = False
+    gate_broken = True
+    gate_verdict_label = "BROKEN"
     for _qg_pass in range(3):
         gate_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
@@ -13583,8 +14389,8 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             gate_call_ok, gate_call_reason = False, str(e)
 
         gate_passed = _verifier_passed(gate_out)
-        # A failed gate CALL ships as BROKEN rather than firing a content redo
-        # a broken judge can't justify (fail-open, as the verifier does).
+        # A failed gate call is BROKEN. A broken judge cannot justify a content
+        # redo or a release, so the current candidate is retained but withheld.
         gate_broken = _verifier_broken(gate_out) or not gate_call_ok
         problem = _parse_quality_gate_problem(gate_out)
         gate_verdict_label = (
@@ -13593,8 +14399,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         # verdict LABEL ONLY (never raw verifier text) onto a namespaced
         # context_pkg subdict for the terminal packet builder; last gate pass wins.
         # Not read by any prompt assembly — no leak.
-        context_pkg["execution_review"] = {"verdict": gate_verdict_label,
-                                           "scope": "text_review"}
+        context_pkg["execution_review"] = {
+            "verdict": gate_verdict_label,
+            "scope": "text_review",
+        }
         _record(f"step8_6-quality-gate-pass{_qg_pass + 1}", gate_call_ok,
                 f"verdict={gate_verdict_label} problem={problem}")
         _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {
@@ -13617,15 +14425,18 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             f"{gate_out}\n"
         ))
 
-        # PASS or BROKEN -> ship. BROKEN = judge couldn't decide; fail-open,
-        # matching the verifier's BROKEN handling.
-        if gate_passed or gate_broken:
+        if gate_passed:
             contingencies_fired.append(
                 f"step8_6-quality-gate-{gate_verdict_label}-pass{_qg_pass + 1}")
             break
+        if gate_broken:
+            contingencies_fired.append(
+                f"step8_6-quality-gate-BROKEN-pass{_qg_pass + 1}-withheld"
+            )
+            break
 
         # FAIL -> fire the one redo for the identified problem type. If that
-        # type is already spent, ship (one redo per problem type).
+        # type is already spent, withhold (one redo per problem type).
         if problem == "FORMATTING" and not _qg_formatting_redo_used:
             _qg_formatting_redo_used = True
             _qg_fmt_msgs = format_messages + [
@@ -13754,10 +14565,22 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
                         formatted, context_pkg, config, config_name, "f-format")
             continue
 
-        # The problem-type redo for this verdict is already spent — ship.
+        # The problem-type redo for this verdict is already spent — withhold.
         contingencies_fired.append(
-            f"step8_6-quality-gate-FAIL-{problem}-redo-exhausted-shipping")
+            f"step8_6-quality-gate-FAIL-{problem}-redo-exhausted-withheld")
         break
+
+    release_deliverable = bool(gate_passed and not gate_broken)
+    review_status = None
+    if gate_broken:
+        review_status = "review-unavailable-withheld"
+    elif not gate_passed:
+        review_status = "failed-after-final-reinspection-withheld"
+    context_pkg["execution_review"] = {
+        "verdict": gate_verdict_label,
+        "scope": "text_review",
+        "status": review_status,
+    }
 
     # Per-turn step-health summary — captures every step's verdict plus
     # the contingency paths that fired. Lives at ``step-health.json`` in
@@ -13770,6 +14593,13 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Final pollution sweep before handing back to the user-facing layer.
     formatted = _strip_dispatch_noise(formatted)
+    if not release_deliverable:
+        formatted = (
+            "## Deliverable withheld\n\n"
+            "The current candidate was not released because independent final "
+            f"review concluded `{gate_verdict_label}`. The candidate and review "
+            "record remain available for the governed continuation route."
+        )
 
     # Stash the pre-formatter analyst/reviser outputs so the visual hook's
     # diagram-recovery pass can find a model-drawn mermaid/DSL diagram that the
@@ -14284,8 +15114,10 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     """
     initial = int(endpoint.get("max_tokens") or _DEFAULT_API_MAX_TOKENS)
     retry_cap = initial * 2
+    disable_retry = bool(endpoint.get("_disable_truncation_retry"))
+    attempts = (initial,) if disable_retry else (initial, retry_cap)
     text = ""
-    for attempt_index, attempt in enumerate((initial, retry_cap), start=1):
+    for attempt_index, attempt in enumerate(attempts, start=1):
         try:
             _record_physical_model_call_config(
                 endpoint,
@@ -14298,7 +15130,7 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
             return f"[Error calling {label} API: {e}]"
         if not truncated:
             return text
-        if attempt == retry_cap:
+        if disable_retry or attempt == retry_cap:
             try:
                 print(
                     f"[truncation] {label} hit max_tokens={attempt} after "
@@ -14533,6 +15365,24 @@ def _provider_key(entry: dict) -> str:
     return _keyring_lookup("ora", entry.get("keyring_username", ""))
 
 
+def _canonical_provider_key(provider_id: str) -> str:
+    """Resolve only registry-declared credential identities.
+
+    Runtime endpoint/config dictionaries are routing data, not credential
+    stores. G1.22 therefore refuses inline ``api_key`` and arbitrary
+    ``credential_key`` fields; desktop keyring and deployment environment
+    variables remain available only through the canonical provider registry.
+    """
+
+    if _provider_registry is None:
+        return ""
+    try:
+        entry = _provider_registry.by_id(provider_id)
+    except Exception:
+        return ""
+    return _provider_key(entry or {})
+
+
 def _resolve_direct_endpoint(model_id: str, base_endpoint: dict) -> dict | None:
     """Map an OpenRouter ``vendor/model`` id to a direct-vendor endpoint.
 
@@ -14595,10 +15445,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     if service == "claude":
         try:
             import anthropic
-            key = endpoint.get("api_key") or os.environ.get("ANTHROPIC_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "anthropic-api-key") or ""
+            key = _canonical_provider_key("anthropic")
             client = anthropic.Anthropic(api_key=key)
             system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
             conv = [m for m in messages if m["role"] != "system"]
@@ -14650,10 +15497,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     elif service == "openai":
         try:
             from openai import OpenAI
-            key = endpoint.get("api_key") or os.environ.get("OPENAI_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "openai-api-key") or ""
+            key = _canonical_provider_key("openai")
             client = OpenAI(api_key=key)
             api_messages = messages
             if images:
@@ -14698,10 +15542,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
     elif service == "gemini":
         try:
             from google import genai
-            key = endpoint.get("api_key") or os.environ.get("GEMINI_API_KEY", "")
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "gemini-api-key") or ""
+            key = _canonical_provider_key("gemini")
             if not key:
                 return "[Error calling Gemini API: No API key found. Store via: keyring set ora gemini-api-key]"
             client = genai.Client(api_key=key)
@@ -14834,13 +15675,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 )
         try:
             from openai import OpenAI
-            key = (
-                endpoint.get("api_key")
-                or os.environ.get("OPENROUTER_API_KEY", "")
-            )
-            if not key:
-                import keyring
-                key = keyring.get_password("ora", "openrouter-api-key") or ""
+            key = _canonical_provider_key("openrouter")
             if not key:
                 return (
                     "[Error calling OpenRouter API: No API key found. "
@@ -14926,18 +15761,7 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 base_url = _e.get("base_url") if _e else None
             if not base_url:
                 return f"[Error calling {service} API: no base_url configured]"
-            key = endpoint.get("api_key") or ""
-            if not key:
-                env_var = endpoint.get("_env_var")
-                if not env_var and _provider_registry is not None:
-                    _e = _provider_registry.by_id(service)
-                    env_var = _e.get("env_var") if _e else None
-                if env_var:
-                    key = os.environ.get(env_var, "") or ""
-            if not key:
-                cred = endpoint.get("credential_key") or f"ora/{service}-api-key"
-                if cred.startswith("ora/"):
-                    key = _keyring_lookup("ora", cred.split("/", 1)[1])
+            key = _canonical_provider_key(service)
             if not key:
                 return (
                     f"[Error calling {service} API: No API key found. "

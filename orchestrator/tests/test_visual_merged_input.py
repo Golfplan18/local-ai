@@ -423,8 +423,15 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["conversation_id"], "main")
         self.assertEqual(payload["chunk_id"], "session-test-pair-001")
-        # /chat must not thread any merged-input extras.
-        self.assertIsNone(captured.get("extra_context"))
+        # /chat still carries no merged visual extras, but Phase 2.1 now
+        # threads the server-recomputed, authority-neutral entry contract.
+        context = captured.get("extra_context")
+        self.assertEqual(set(context), {"process_entry"})
+        self.assertEqual(context["process_entry"]["intent"],
+                         "ordinary_generation")
+        self.assertEqual(context["process_entry"]["status"], "ready")
+        self.assertFalse(context["process_entry"]["creates_process_run"])
+        self.assertEqual(context["process_entry"]["authority_effects"], [])
 
 
 if __name__ == "__main__":

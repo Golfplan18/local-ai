@@ -134,11 +134,6 @@ Spawn an isolated AI call with a fresh context. `system_prompt` (REQUIRED), `use
 ```xml
 <tool_call><n>spawn_subagent</n><parameters>{"system_prompt": "You are a helpful assistant.", "user_prompt": "Summarize this text."}</parameters></tool_call>
 ```
-### schedule_task
-Schedule a recurring task. `prompt` (REQUIRED), `interval_minutes` (REQUIRED), `model_slot` (opt, "small"). Use when the user requests periodic monitoring or recurring tasks. Requires user approval.
-```xml
-<tool_call><n>schedule_task</n><parameters>{"prompt": "Check server status", "interval_minutes": 30}</parameters></tool_call>
-```
 ### stop_process
 Stop a background process by PID. `pid` (REQUIRED). Use after testing background services. Requires user approval.
 ```xml

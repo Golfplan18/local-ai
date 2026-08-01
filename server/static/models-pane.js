@@ -346,7 +346,7 @@
     var header = _hostEl && _hostEl.querySelector('[data-section="header"]');
     if (header) {
       header.innerHTML = '<p class="ora-models-error">'
-        + 'Could not load model configuration: '
+        + 'Could not load Model Profiles: '
         + ((err && err.message) || 'unknown error')
         + '</p>';
     }
@@ -571,7 +571,7 @@
       + '<header class="ora-models-section-header">'
       +   '<h3>Presets</h3>'
       +   '<span class="ora-models-section-hint">Auto-picked from the model registry. '
-      +     'Click a card to activate; Customize to fork into a new configuration.</span>'
+      +     'Click a card to activate; Customize to fork into a new Model Profile.</span>'
       + '</header>'
       + '<div class="ora-models-row ora-models-preset-row">'
       +   cards.join('')
@@ -1227,7 +1227,7 @@
       +       'your saved picks may go deprecated.</li>'
       +     '<li><strong>Quick fix if Free isn\'t enough:</strong> add a small '
       +       'amount of OpenRouter credit or set up direct provider keys '
-      +       '(External APIs tab). Even a cheap-tier paid configuration like '
+      +       '(External APIs tab). Even a cheap-tier paid Model Profile like '
       +       'Budget gets you consistent results.</li>'
       +   '</ul>'
       +   '<div class="ora-models-free-modal-actions">'
@@ -1250,10 +1250,10 @@
   }
 
   function _customizeFrom(name) {
-    // Prompt for a name; default to auto-incremented Configuration NN.
+    // Prompt for a name; default to auto-incremented Model Profile NN.
     var suggested = prompt(
-      'Name for the new configuration?\n\nLeave blank to use the next '
-      + 'auto-numbered name (Configuration 01, 02, …).',
+      'Name for the new Model Profile?\n\nLeave blank to use the next '
+      + 'auto-numbered name (Model Profile 01, 02, …).',
       ''
     );
     if (suggested === null) return;  // user cancelled
@@ -1322,7 +1322,7 @@
   }
 
   function _deleteCustom(name) {
-    if (!confirm('Delete configuration "' + name + '"?\n\nThis is permanent.')) {
+    if (!confirm('Delete Model Profile "' + name + '"?\n\nThis is permanent.')) {
       return;
     }
     fetch('/api/configurations/' + encodeURIComponent(name), {
@@ -1350,7 +1350,7 @@
     var activeName = (_configs && _configs.active_name) || '';
     var scrollState = _capturePaneScroll();
 
-    // "+ New configuration" now lives as a button in the section
+    // "+ New Model Profile" now lives as a button in the section
     // header (was previously a tile in the first column of the row,
     // which caused the row to reflow every time a new config was
     // added). Cards are fixed-width grid cells; the row caps its
@@ -1361,17 +1361,17 @@
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
-      +   '<h3>Custom configurations</h3>'
+      +   '<h3>Custom Model Profiles</h3>'
       +   '<button type="button" class="ora-models-section-btn"'
-      +     ' data-action="new" title="Create a new blank configuration">'
-      +     '+ New configuration</button>'
+      +     ' data-action="new" title="Create a new blank Model Profile">'
+      +     '+ New Model Profile</button>'
       +   '<span class="ora-models-section-hint">'
       +     'Click any card to activate. Customize copies a card into a new entry.'
       +   '</span>'
       + '</header>'
       + '<div class="ora-models-row ora-models-custom-row">'
       +   (cards.length ? cards.join('') : '<p class="ora-models-empty-msg">'
-      +     'No saved configurations yet. Use “+ New configuration” above or '
+      +     'No saved Model Profiles yet. Use “+ New Model Profile” above or '
       +     '“Customize” on any preset card to start one.</p>')
       + '</div>';
     _restorePaneScroll(scrollState);
@@ -2715,7 +2715,7 @@
       + '<header class="ora-models-section-header">'
       +   '<h3>Local model hardware</h3>'
       +   '<span class="ora-models-section-hint">'
-      +     'RAM math reflects what the active configuration actually loads. '
+      +     'RAM math reflects what the active Model Profile actually loads. '
       +     'Installed-but-not-referenced models cost zero RAM.'
       +   '</span>'
       + '</header>'

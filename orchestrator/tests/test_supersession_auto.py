@@ -34,6 +34,7 @@ from orchestrator.historical import supersession_judge as judge_mod
 from orchestrator.tools import supersession_sweep as sweep_mod
 from orchestrator.tools import backfill_tags_metadata as backfill_mod
 from orchestrator import maintenance_scheduler as sched
+from orchestrator import runtime_hygiene as hygiene
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +409,13 @@ class TestNewsSweepApplyFailure(unittest.TestCase):
         self.log = os.path.join(self.tmp, "Working — News Supersession Log.md")
         self._saved_log = news_res.LOG_FILE
         news_res.LOG_FILE = self.log
+        self.data = os.path.join(self.tmp, "data")
+        os.makedirs(self.data)
+        self.data_patch = mock.patch.object(
+            hygiene._rp, "DATA_DIR_STR", self.data,
+        )
+        self.data_patch.start()
+        self._campaign = 0
 
         self.cand = {
             "newer": {"slug": "2026-02-01_newer", "h1": "Newer story",
@@ -420,6 +428,7 @@ class TestNewsSweepApplyFailure(unittest.TestCase):
         }
 
     def tearDown(self):
+        self.data_patch.stop()
         news_res.LOG_FILE = self._saved_log
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -436,7 +445,10 @@ class TestNewsSweepApplyFailure(unittest.TestCase):
                                   lambda **k: dict(apply_result)), \
                 mock.patch.object(news_res, "refresh_chromadb",
                                   lambda slugs: None):
-            return sweep_mod.task_news_supersession()
+            self._campaign += 1
+            return sweep_mod.task_news_supersession(
+                campaign_id=f"test-news-{self._campaign}",
+            )
 
     def test_apply_failure_fails_open_not_logged_as_resolved(self):
         result = self._run({"mutated_files": [], "errors": ["survivor not found"]})
@@ -460,6 +472,13 @@ class TestEngramSweep(unittest.TestCase):
         os.makedirs(self.engrams)
         self.db = os.path.join(self.tmp, "graph.db")
         self.log = os.path.join(self.tmp, "Working — Engram Cleaning Log.md")
+        self.data = os.path.join(self.tmp, "data")
+        os.makedirs(self.data)
+        self.data_patch = mock.patch.object(
+            hygiene._rp, "DATA_DIR_STR", self.data,
+        )
+        self.data_patch.start()
+        self._campaign = 0
 
         self._saved = {
             "det_dir": eng_det.ENGRAMS_DIR, "det_db": eng_det.GRAPH_DB,
@@ -488,6 +507,7 @@ class TestEngramSweep(unittest.TestCase):
         ])
 
     def tearDown(self):
+        self.data_patch.stop()
         eng_det.ENGRAMS_DIR = self._saved["det_dir"]
         eng_det.GRAPH_DB = self._saved["det_db"]
         eng_det.LOG_FILE = self._saved["det_log"]
@@ -501,7 +521,10 @@ class TestEngramSweep(unittest.TestCase):
         jr = judge_mod.JudgeResult(decision, reason, slot="evaluator")
         with mock.patch.object(judge_mod, "judge_pair",
                                lambda *a, **k: jr):
-            return sweep_mod.task_engram_cleaning()
+            self._campaign += 1
+            return sweep_mod.task_engram_cleaning(
+                campaign_id=f"test-engram-{self._campaign}",
+            )
 
     def test_supersede_applies_mutations_and_logs(self):
         result = self._run_with_judge("supersede")
@@ -548,7 +571,7 @@ class TestEngramSweep(unittest.TestCase):
         result = self._run_with_judge("error", "model down")
         self.assertEqual(result.stats["errors"], 1)
         self.assertEqual(result.stats["superseded"], 0)
-        self.assertTrue(result.success)  # sweep itself succeeded
+        self.assertFalse(result.success)
         self.assertTrue(any("model down" in a for a in result.alerts))
         self.assertFalse(os.path.exists(self.log))  # NOT logged as resolved
         # pair resurfaces next sweep
@@ -604,7 +627,10 @@ class TestEngramSweep(unittest.TestCase):
         with mock.patch.object(judge_mod, "judge_pair", lambda *a, **k: jr), \
                 mock.patch.object(eng_res, "apply_changed_mind",
                                   lambda **k: dict(broken_apply)):
-            result = sweep_mod.task_engram_cleaning()
+            self._campaign += 1
+            result = sweep_mod.task_engram_cleaning(
+                campaign_id=f"test-engram-{self._campaign}",
+            )
 
         self.assertEqual(result.stats["superseded"], 0)
         self.assertEqual(result.stats["errors"], 1)
@@ -617,25 +643,27 @@ class TestEngramSweep(unittest.TestCase):
         with mock.patch.object(judge_mod, "judge_pair", lambda *a, **k: jr), \
                 mock.patch.object(eng_res, "apply_changed_mind",
                                   lambda **k: dict(broken_apply)):
-            result2 = sweep_mod.task_engram_cleaning()
+            self._campaign += 1
+            result2 = sweep_mod.task_engram_cleaning(
+                campaign_id=f"test-engram-{self._campaign}",
+            )
         self.assertEqual(result2.stats["date_gap_candidates"], 1)
 
-    def test_log_write_failure_after_mutation_surfaces_loudly(self):
-        """If the mutation succeeds but the subsequent log write raises,
-        the decision must not silently vanish — the mutation already
-        happened and is counted, but a loud alert records the audit-trail
-        gap. (Adversarial review finding, minor.)"""
+    def test_log_write_failure_rolls_back_subject_mutation(self):
+        """An audit-write failure restores the campaign transaction."""
         jr = judge_mod.JudgeResult("supersede", "clear reversal", slot="evaluator")
         with mock.patch.object(judge_mod, "judge_pair", lambda *a, **k: jr), \
                 mock.patch.object(sweep_mod, "_append_judged_log",
                                   side_effect=OSError("disk full")):
-            result = sweep_mod.task_engram_cleaning()
+            self._campaign += 1
+            result = sweep_mod.task_engram_cleaning(
+                campaign_id=f"test-engram-{self._campaign}",
+            )
 
-        self.assertEqual(result.stats["superseded"], 1)
-        self.assertTrue(
-            any("MUTATED BUT LOG WRITE FAILED" in a for a in result.alerts))
+        self.assertFalse(result.success)
+        self.assertEqual(result.stats["errors"], 1)
         with open(self.b_path, encoding="utf-8") as f:
-            self.assertIn("type: supersedes", f.read())
+            self.assertNotIn("type: supersedes", f.read())
 
 
 # ---------------------------------------------------------------------------
@@ -855,10 +883,10 @@ class TestSchedulerGating(unittest.TestCase):
                   encoding="utf-8") as f:
             f.write(f"---\nmaintenance:\n{block}---\n\n# Control\n")
 
-    def test_defaults_include_new_tasks_weekly(self):
+    def test_event_tasks_are_exposed_and_default_off(self):
         config = sched.load_config()  # no control doc → defaults
-        self.assertEqual(config["news_supersession"], "weekly")
-        self.assertEqual(config["engram_cleaning"], "weekly")
+        self.assertEqual(config["news_supersession"], "off")
+        self.assertEqual(config["engram_cleaning"], "off")
 
     def test_off_is_the_escape_hatch(self):
         self._write_control_doc(
@@ -870,21 +898,19 @@ class TestSchedulerGating(unittest.TestCase):
         self.assertNotIn("news_supersession", due)
         self.assertNotIn("engram_cleaning", due)
 
-    def test_never_run_tasks_are_due(self):
+    def test_clock_cadence_cannot_reenable_event_tasks(self):
+        self._write_control_doc(
+            "  news_supersession: daily\n  engram_cleaning: monthly\n")
         config = sched.load_config()
         due = sched.due_tasks(config, state={})
-        self.assertIn("news_supersession", due)
-        self.assertIn("engram_cleaning", due)
+        self.assertEqual(config["news_supersession"], "off")
+        self.assertEqual(config["engram_cleaning"], "off")
+        self.assertNotIn("news_supersession", due)
+        self.assertNotIn("engram_cleaning", due)
 
-    def test_task_functions_registered(self):
-        self.assertEqual(
-            sched.TASK_FUNCTIONS["news_supersession"],
-            ("orchestrator.tools.supersession_sweep",
-             "task_news_supersession"))
-        self.assertEqual(
-            sched.TASK_FUNCTIONS["engram_cleaning"],
-            ("orchestrator.tools.supersession_sweep",
-             "task_engram_cleaning"))
+    def test_event_tasks_absent_from_clock_dispatch(self):
+        self.assertNotIn("news_supersession", sched.TASK_FUNCTIONS)
+        self.assertNotIn("engram_cleaning", sched.TASK_FUNCTIONS)
 
 
 if __name__ == "__main__":

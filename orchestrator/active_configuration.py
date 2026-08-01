@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -78,12 +79,12 @@ def set_active_name(name: str) -> None:
     the next chat request.
     """
     if not isinstance(name, str) or not name.strip():
-        raise ValueError("active configuration name must be a non-empty string")
+        raise ValueError("active Model Profile name must be a non-empty string")
     name = name.strip()
     target = _config_path(name)
     if not target.exists():
         raise ValueError(
-            f"no configuration named {name!r} at {target}; "
+            f"no Model Profile named {name!r} at {target}; "
             "pick an existing name or create one first"
         )
     with _lock:
@@ -100,6 +101,16 @@ def _runtime_overlay_active() -> bool:
 
 
 def _config_path(name: str, *, for_write: bool = False) -> Path:
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or name != name.strip()
+        or name in {".", ".."}
+        or "/" in name
+        or "\\" in name
+        or "\x00" in name
+    ):
+        raise ValueError("Model Profile name must be one exact path-safe leaf")
     if _runtime_overlay_active() and name in _RUNTIME_OVERLAY_CONFIG_NAMES:
         runtime = RUNTIME_CONFIGURATIONS_DIR / f"{name}.json"
         if for_write or runtime.exists():
@@ -129,7 +140,7 @@ def _registry_path() -> Path:
 def _load_config(name: str) -> dict:
     path = _config_path(name)
     if not path.exists():
-        raise FileNotFoundError(f"no configuration named {name!r} at {path}")
+        raise FileNotFoundError(f"no Model Profile named {name!r} at {path}")
     with open(path) as f:
         return json.load(f)
 
@@ -448,7 +459,7 @@ def duplicate_configuration(source_name: str, new_name: str | None = None) -> st
     """Copy an existing configuration into a new file.
 
     Returns the name actually used. When ``new_name`` is None, picks
-    the next available ``Configuration NN`` (NN auto-incrementing).
+    the next available ``Model Profile NN`` (NN auto-incrementing).
     The copy inherits everything from the source including toggles
     and slot picks; its ``preset_lineage`` is set to ``custom`` and
     ``description`` carries a "copied from <source>" note.
@@ -459,12 +470,12 @@ def duplicate_configuration(source_name: str, new_name: str | None = None) -> st
     source_path = _config_path(source_name)
     if not source_path.exists():
         raise FileNotFoundError(
-            f"source configuration {source_name!r} not found at {source_path}")
+            f"source Model Profile {source_name!r} not found at {source_path}")
     if new_name is None or not new_name.strip():
         new_name = _next_auto_name()
     new_name = new_name.strip()
     if _config_path(new_name).exists():
-        raise ValueError(f"configuration {new_name!r} already exists; "
+        raise ValueError(f"Model Profile {new_name!r} already exists; "
                          f"pick a different name or delete the existing one")
     with _lock:
         with open(source_path) as f:
@@ -498,11 +509,11 @@ def create_blank_configuration(new_name: str | None = None) -> str:
         new_name = _next_auto_name()
     new_name = new_name.strip()
     if _config_path(new_name).exists():
-        raise ValueError(f"configuration {new_name!r} already exists")
+        raise ValueError(f"Model Profile {new_name!r} already exists")
     with _lock:
         config = {
             "name": new_name,
-            "description": "Custom configuration created from the Models pane.",
+            "description": "Custom Model Profile created from the Models pane.",
             "preset_lineage": "custom",
             "_incomplete": True,
             "cells": {
@@ -578,13 +589,13 @@ def delete_configuration(name: str) -> None:
     """
     if name in {"background-default", "user-pipeline"}:
         raise ValueError(
-            f"{name!r} is a system configuration and cannot be deleted")
+            f"{name!r} is a system Model Profile and cannot be deleted")
     if name in PRESET_ORDER:
         raise ValueError(
             f"{name!r} is a system preset and cannot be deleted")
     path = _config_path(name)
     if not path.exists():
-        raise FileNotFoundError(f"no configuration named {name!r}")
+        raise FileNotFoundError(f"no Model Profile named {name!r}")
     was_active = (name == get_active_name())
     with _lock:
         path.unlink()
@@ -601,18 +612,23 @@ def delete_configuration(name: str) -> None:
 
 
 def _next_auto_name() -> str:
-    """Pick the next available 'Configuration NN' name (zero-padded
+    """Pick the next available 'Model Profile NN' name (zero-padded
     to 2 digits)."""
-    existing = set()
+    used_numbers: set[int] = set()
     for directory in _configuration_dirs_for_read():
         if directory.exists():
-            for path in directory.glob("Configuration *.json"):
-                existing.add(path.stem)
+            # Retain old auto-names as issued history while all newly-created
+            # profiles use the public G1.16 term.
+            for pattern in ("Configuration *.json", "Model Profile *.json"):
+                for path in directory.glob(pattern):
+                    match = re.fullmatch(r"(?:Configuration|Model Profile) (\d+)", path.stem)
+                    if match:
+                        used_numbers.add(int(match.group(1)))
     for n in range(1, 1000):
-        candidate = f"Configuration {n:02d}"
-        if candidate not in existing:
+        candidate = f"Model Profile {n:02d}"
+        if n not in used_numbers:
             return candidate
-    raise RuntimeError("ran out of auto-incremented Configuration NN names")
+    raise RuntimeError("ran out of auto-incremented Model Profile NN names")
 
 
 # ── Configuration listing for the Models pane ────────────────────────────

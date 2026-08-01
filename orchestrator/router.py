@@ -715,24 +715,55 @@ class Router:
         would defeat the requirement). An UNKNOWN executor family (empty) or an
         UNKNOWN candidate family yields ``None`` too: an unconfirmed difference must
         not be presented as cross-family assurance. Pure config read; never raises."""
+        candidates = self.resolve_different_family_candidates(
+            slot,
+            exclude_family,
+            context=context,
+            config_name=config_name,
+            gear=gear,
+        )
+        return candidates[0] if candidates else None
+
+    def resolve_different_family_candidates(
+        self,
+        slot: str,
+        exclude_family: str | None,
+        context: str = "interactive",
+        config_name: str | None = None,
+        gear: int = 4,
+    ) -> list[dict]:
+        """Return the eligible cross-family candidate chain in profile order.
+
+        The single-result selector remains the ordinary public resolution API.
+        Execution Review also needs the remaining declared candidates so an
+        unavailable verifier cannot suppress the Model Profile's failover chain.
+        Every returned row has a confirmed family distinct from the executor.
+        """
         try:
             exclude = (exclude_family or "").strip().lower()
-            for ep_id in self._post_analysis_candidate_ids(slot, context, config_name, gear):
+            if not exclude:
+                return []
+            candidates = []
+            for ep_id in self._post_analysis_candidate_ids(
+                slot, context, config_name, gear
+            ):
                 if not ep_id:
                     continue
                 resolved = self._resolve_endpoint_id(ep_id)
                 ep = self._endpoints.get(resolved)
-                if not ep or not ep.get("enabled", False) or ep.get("status") != "active":
+                if (
+                    not ep
+                    or not ep.get("enabled", False)
+                    or ep.get("status") != "active"
+                ):
                     continue
-                fam = (ep.get("training_family") or "").strip().lower()
-                # Only a KNOWN family that differs from a KNOWN executor family
-                # counts as confirmed cross-family (§12 uncorrelated blind spots).
-                if not exclude or not fam or fam == exclude:
+                fam = self._training_family(ep)
+                if not fam or fam == exclude:
                     continue
-                return self._to_v1_endpoint(ep)
-            return None
+                candidates.append(self._to_v1_endpoint(ep))
+            return candidates
         except Exception:
-            return None
+            return []
 
     def resolve_full_pipeline(self, requested_gear: int,
                               context: str = "interactive",
@@ -868,23 +899,19 @@ class Router:
         if config_name is not None:
             return config_name
         if context == "interactive":
-            # G1.35×G1.33 — the active project's default model profile (if set
-            # and resolvable) overrides the account-wide active configuration:
-            # per the plan §1.3 inheritance, a project default is "closer" than
-            # the global default, but a per-run config_name (handled above) still
-            # wins over both. Best-effort; never breaks chat.
+            # G1.16 — the active project's profile is an immutable snapshot,
+            # not a late read of the mutable preset file.  A malformed/stale
+            # binding fails closed instead of silently dropping to the global
+            # profile and executing under different authority than the user
+            # selected.  Explicit config_name above is the one-run override.
             try:
                 from orchestrator import active_project as _ap
-                from orchestrator import project_meta as _pm
+                from orchestrator import model_profiles as _mp
                 nexus = _ap.get_active_project()
-                if nexus and nexus.lower() not in ("commons", "general"):
-                    rec = _pm.read_project_meta(nexus)
-                    prof = (rec or {}).get("default_model_profile")
-                    if (isinstance(prof, str) and prof.strip()
-                            and self._load_configuration(prof.strip()) is not None):
-                        return prof.strip()
-            except Exception:
-                pass
+                resolved = _mp.resolve_effective_profile(project_nexus=nexus)
+                return resolved["selected"]["runtime_name"]
+            except ImportError:
+                pass  # compatibility for partial/source-only installations
             try:
                 from orchestrator import active_configuration as ac
                 return ac.get_active_name()
@@ -902,6 +929,18 @@ class Router:
         The cache is keyed on name; :meth:`reload` clears it so file edits
         take effect on the next call.
         """
+        # G1.16 project bindings use a runtime-only token whose content comes
+        # from the authenticated project snapshot.  It is never treated as a
+        # filesystem path or accepted from the configuration directory.  It is
+        # reauthenticated on every load rather than returned from the ordinary
+        # configuration cache, so a stale token cannot survive a rebind.
+        try:
+            from orchestrator import model_profiles as _mp
+            if name.startswith(_mp.LOCK_TOKEN_PREFIX):
+                return _mp.load_project_locked_profile(name)
+        except ImportError:
+            pass
+
         cached = self._configurations.get(name)
         if cached is not None:
             return cached
@@ -959,6 +998,13 @@ class Router:
         """
         if slot in ("step1_cleanup", "rag_planner", "classification"):
             return ["utility", slot]
+        if slot in ("fast", "gear2_rag_lookup"):
+            # ``fast 1`` is persisted in two cells by active_configuration:
+            # gear3.depth for sequential work and gear2_rag_lookup for the
+            # single-pass RAG path. The runtime must resolve the latter
+            # directly; aliasing ``fast`` to step1_cleanup silently discarded
+            # the selected fast model on browser Gear-2 requests.
+            return ["utility", "gear2_rag_lookup"]
         if slot == "sidebar":
             # ``sidebar`` is the project-tool entry point for utility-class
             # calls (small / cheap model). Configurations from auto-populate
@@ -1305,6 +1351,7 @@ class Router:
             "name": ep["id"],
             "type": ep.get("type", ""),
             "status": ep.get("status", "active"),
+            "training_family": self._training_family(ep),
         }
 
         if ep["type"] == "local":
@@ -1334,6 +1381,57 @@ class Router:
             v1["retrieval_approach"] = ep.get("capabilities", {}).get("retrieval_approach", "pre-assembled")
 
         return v1
+
+    @staticmethod
+    def _training_family(ep: dict | None) -> str:
+        """Return confirmed model-family metadata for diversity selection.
+
+        Older catalogue rows carry ``training_family`` explicitly. Newer
+        vendor-authoritative direct endpoints sometimes omit it even though their
+        canonical provider is known. A direct provider is a valid family boundary;
+        a generic transport (notably OpenRouter) is not, because it fronts many
+        unrelated model families and must remain unknown.
+        """
+        if not isinstance(ep, dict):
+            return ""
+        explicit = str(ep.get("training_family") or "").strip().lower()
+        if explicit:
+            return explicit
+        model = str(
+            ep.get("model_id") or ep.get("model") or ep.get("id") or ""
+        ).strip().lower()
+        if "/" in model:
+            model = model.rsplit("/", 1)[-1]
+        model_aliases = (
+            (("gpt-", "o1", "o3", "o4"), "gpt"),
+            (("claude",), "claude"),
+            (("gemini",), "gemini"),
+            (("qwen",), "qwen"),
+            (("glm",), "glm"),
+            (("deepseek",), "deepseek"),
+            (("minimax",), "minimax"),
+            (("kimi", "moonshot"), "kimi"),
+            (("grok",), "grok"),
+            (("mistral", "codestral", "ministral"), "mistral"),
+            (("llama",), "llama"),
+        )
+        for prefixes, family in model_aliases:
+            if model.startswith(prefixes):
+                return family
+        provider = str(ep.get("provider") or "").strip().lower()
+        service = str(ep.get("service") or "").strip().lower()
+        candidate = provider or service
+        if candidate in {"", "api", "browser", "local", "openrouter"}:
+            return ""
+        aliases = {
+            "openai": "gpt",
+            "anthropic": "claude",
+            "google": "gemini",
+            "xai": "grok",
+            "alibaba": "qwen",
+            "moonshot": "kimi",
+        }
+        return aliases.get(candidate, candidate)
 
     def _generate_warnings(self, assignments: dict, gear: int, context: str) -> list:
         """Generate warnings for a set of assignments."""

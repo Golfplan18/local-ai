@@ -164,7 +164,7 @@ class UserSettingsModuleTests(unittest.TestCase):
         )
 
     def test_set_and_get_api_key_via_keyring_stub(self):
-        self._mod.set_api_key("anthropic", "secret123")
+        self._mod._set_api_key_storage("anthropic", "secret123")
         self.assertTrue(self._mod.api_key_present("anthropic"))
         self.assertFalse(self._mod.api_key_present("openai"))
         self.assertEqual(
@@ -172,9 +172,18 @@ class UserSettingsModuleTests(unittest.TestCase):
             "secret123",
         )
 
+    def test_public_credential_mutation_requires_active_protection_receipt(self):
+        from orchestrator.system_protection import ProtectionDenied
+
+        with self.assertRaises(ProtectionDenied):
+            self._mod.set_api_key("anthropic", "secret123")
+        self.assertFalse(self._mod.api_key_present("anthropic"))
+        with self.assertRaises(ProtectionDenied):
+            self._mod.delete_api_key("anthropic")
+
     def test_artificial_analysis_provider_registered(self):
         # Key writes to ora/aa-api-key under the keyring service.
-        self._mod.set_api_key("artificial_analysis", "aa_secret_value")
+        self._mod._set_api_key_storage("artificial_analysis", "aa_secret_value")
         self.assertTrue(self._mod.api_key_present("artificial_analysis"))
         self.assertEqual(
             self._fake_keyring.store[("ora", "aa-api-key")],
@@ -182,13 +191,13 @@ class UserSettingsModuleTests(unittest.TestCase):
         )
 
     def test_delete_api_key_removes_from_keyring(self):
-        self._mod.set_api_key("anthropic", "secret123")
-        self._mod.delete_api_key("anthropic")
+        self._mod._set_api_key_storage("anthropic", "secret123")
+        self._mod._delete_api_key_storage("anthropic")
         self.assertFalse(self._mod.api_key_present("anthropic"))
 
     def test_delete_missing_key_is_noop(self):
         # Should not raise even though the key was never set.
-        self._mod.delete_api_key("anthropic")
+        self._mod._delete_api_key_storage("anthropic")
         self.assertFalse(self._mod.api_key_present("anthropic"))
 
     def test_unknown_provider_rejected(self):
@@ -200,7 +209,7 @@ class UserSettingsModuleTests(unittest.TestCase):
             self._mod.set_api_key("anthropic", "")
 
     def test_list_api_key_status_returns_all_providers(self):
-        self._mod.set_api_key("anthropic", "x")
+        self._mod._set_api_key_storage("anthropic", "x")
         rows = self._mod.list_api_key_status()
         provider_ids = {r["provider"] for r in rows}
         self.assertIn("anthropic", provider_ids)
@@ -255,10 +264,62 @@ class SettingsEndpointTests(unittest.TestCase):
         )
         self._keyring_patch.start()
 
+        import oversight_actions
+        import oversight_queue
+        import tool_events
+        protection_data = self._tmp_path / "protection-data"
+        protection_data.mkdir()
+        self._protection_patches = [
+            mock.patch.object(
+                tool_events, "APPROVALS_PATH",
+                str(protection_data / "execution-approvals.json"),
+            ),
+            mock.patch.object(
+                tool_events, "GLOBAL_SINK_DEFAULT",
+                str(protection_data / "tool-events.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_queue, "HUMAN_QUEUE_PATH",
+                str(protection_data / "human-queue.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_actions, "HUMAN_QUEUE_PATH",
+                str(protection_data / "human-queue.jsonl"),
+            ),
+            mock.patch.object(
+                oversight_actions, "OVERSIGHT_DATA_DIR",
+                str(protection_data),
+            ),
+        ]
+        for patcher in self._protection_patches:
+            patcher.start()
+        tool_events._queued_hashes.clear()
+
         self.client = self.S.app.test_client()
+
+    def _approve_protected_retry(self, first_response, callback):
+        self.assertEqual(first_response.status_code, 409)
+        payload = first_response.get_json()
+        self.assertEqual(payload["status"], "awaiting_system_protection_approval")
+        import oversight_queue
+        import tool_events
+        entry = oversight_queue.find_paused_by_id(payload["queue_id"])
+        self.assertIsNotNone(entry)
+        message = tool_events.resolve_gate_entry({
+            "id": entry.id,
+            "kind": entry.kind,
+            "conversation_id": entry.conversation_id,
+            "event": entry.event,
+        }, approve=True)
+        self.assertIn("One-shot token", message)
+        return callback()
 
     def tearDown(self):
         if self.import_ok:
+            import tool_events
+            tool_events._queued_hashes.clear()
+            for patcher in reversed(self._protection_patches):
+                patcher.stop()
             self._US._SETTINGS_PATH = self._saved_path
             self._US._CONFIG_DIR = self._saved_dir
             self._keyring_patch.stop()
@@ -298,9 +359,17 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
 
     def test_api_key_post_stores_in_keyring_stub(self):
-        resp = self.client.post(
+        first = self.client.post(
             "/api/settings/api-key",
             json={"provider": "elevenlabs", "value": "xyz123"},
+        )
+        self.assertNotIn(("ora", "elevenlabs-api-key"), self._fake_keyring.store)
+        resp = self._approve_protected_retry(
+            first,
+            lambda: self.client.post(
+                "/api/settings/api-key",
+                json={"provider": "elevenlabs", "value": "xyz123"},
+            ),
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -324,9 +393,45 @@ class SettingsEndpointTests(unittest.TestCase):
     def test_api_key_delete_removes_from_keyring(self):
         # Pre-populate.
         self._fake_keyring.set_password("ora", "openai-api-key", "abc")
-        resp = self.client.delete("/api/settings/api-key/openai")
+        first = self.client.delete("/api/settings/api-key/openai")
+        self.assertIn(("ora", "openai-api-key"), self._fake_keyring.store)
+        resp = self._approve_protected_retry(
+            first,
+            lambda: self.client.delete("/api/settings/api-key/openai"),
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(("ora", "openai-api-key"), self._fake_keyring.store)
+
+    def test_api_key_delete_backend_failure_is_not_reported_as_success(self):
+        self._fake_keyring.set_password("ora", "openai-api-key", "abc")
+        first = self.client.delete("/api/settings/api-key/openai")
+        with mock.patch.object(
+            self._fake_keyring, "delete_password",
+            side_effect=RuntimeError("backend locked"),
+        ):
+            response = self._approve_protected_retry(
+                first,
+                lambda: self.client.delete(
+                    "/api/settings/api-key/openai"
+                ),
+            )
+        self.assertNotEqual(response.status_code, 200)
+        self.assertIn("remains present", response.get_json()["error"])
+        self.assertEqual(
+            self._fake_keyring.get_password("ora", "openai-api-key"), "abc",
+        )
+        from orchestrator import system_protection
+        terminal_pair = system_protection.verify_audit()[-2:]
+        self.assertEqual(
+            [record["event_type"] for record in terminal_pair],
+            ["protected_action_started", "protected_action_failed"],
+        )
+        self.assertEqual(
+            terminal_pair[0]["request"]["action"], "credential_delete",
+        )
+        self.assertEqual(
+            terminal_pair[1]["execution_id"], terminal_pair[0]["execution_id"],
+        )
 
     def test_api_key_delete_unknown_provider_returns_400(self):
         resp = self.client.delete("/api/settings/api-key/notreal")

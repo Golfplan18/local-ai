@@ -30,7 +30,7 @@
   let filesCache = null;
   let convosCache = null;
   let candidateSearchTimer = null;
-  let configsCache = null;   // /api/configurations profile names
+  let configsCache = null;   // /api/model-profiles names + health
   let stylesCache = null;    // /api/styles/registry profiles
   let mode = 'edit';  // 'edit' | 'create'
   let pendingNexus = null;  // a previewed nexus rename awaiting Apply
@@ -475,12 +475,11 @@
   async function _ensureRegistries() {
     if (configsCache === null) {
       try {
-        const d = await (await fetch('/api/configurations')).json();
-        const names = [
-          ...Object.keys((d && d.presets) || {}),
-          ...Object.keys((d && d.customs) || {}),
-        ];
-        configsCache = names.map(n => ({ value: n, label: n }));
+        const d = await (await fetch('/api/model-profiles')).json();
+        configsCache = ((d && d.profiles) || []).map(p => ({
+          value: p.name,
+          label: p.name + ' — ' + ((p.health && p.health.status) || 'unavailable'),
+        }));
       } catch (e) { configsCache = []; }
     }
     if (stylesCache === null) {

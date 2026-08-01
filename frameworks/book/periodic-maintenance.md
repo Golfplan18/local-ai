@@ -4,12 +4,12 @@
 Periodic Maintenance
 
 ## Display Description
-Four scheduled vault-maintenance tasks for work that genuinely requires full-vault scans or has no runtime trigger (per the Runtime Principle). Use sparingly — most maintenance should happen at runtime, not on a schedule.
+Four explicit historical-audit commands retained after production maintenance moved to exact events and deadlines. None runs on a clock.
 
 
 ## Purpose
 
-Four scheduled tasks — only work that genuinely requires full-vault scans or has no runtime trigger. Per the Runtime Principle: if a process can run at runtime, it must run at runtime. Scheduled maintenance exists only for tasks where runtime execution is impossible.
+Four corpus-scale diagnostics remain callable as explicit campaigns. G1.10 established that new orphan, metadata, graph, and lifecycle work has runtime triggers; a full-vault pass is therefore a historical-debt or reporting campaign, not scheduled maintenance.
 
 ## What runs at runtime (not here)
 
@@ -22,11 +22,11 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 | Index regeneration | server.py startup | One directory listing comparison at boot |
 | RAG manifest freshness | server.py startup | One mtime comparison + conditional recompile at boot |
 
-## What runs on schedule (this framework)
+## What runs only as an explicit campaign (this framework)
 
-### Weekly: Task 1 — Orphan Relationship Cleanup
+### Task 1 — Orphan Relationship Cleanup
 
-**Why this can't run at runtime:** Deletions and renames happen in Obsidian, not through the pipeline. There is no runtime hook for external vault edits.
+**Current trigger:** OS file events now observe Obsidian deletions and renames. The full scan exists only to reconcile historical debt or verify event coverage.
 
 **What:** Scan all relationship targets across all notes. Remove references to deleted or consolidated notes. Rebuild graph index.
 
@@ -39,9 +39,9 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 
 **Alert condition:** More than 10 orphans found (may indicate bulk vault reorganization).
 
-### Monthly: Task 2 — Vault Health Audit (includes Provenance Audit)
+### Task 2 — Vault Health Audit (includes Provenance Audit)
 
-**Why this can't run at runtime:** Needs the complete vault picture. No per-session trigger for "scan every note for missing properties."
+**Current trigger:** note-write validation prevents new property debt. The complete-vault picture is an explicitly requested report.
 
 **What:** Comprehensive vault scan producing a health report with action items. Provenance audit (previously separate) is folded in — stale incubators are found during the same scan.
 
@@ -60,9 +60,9 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 - Any check finds issues requiring attention
 - More than 20 stale incubators (review queue growing)
 
-### Monthly: Task 3 — Relationship Graph Density
+### Task 3 — Relationship Graph Density
 
-**Why this can't run at runtime:** Aggregate statistics require the full picture. Could also be triggered on-demand.
+**Current trigger:** graph mutations provide incremental signals; exact aggregate reporting is on demand.
 
 **Metrics:**
 - Average relationships per note
@@ -74,9 +74,9 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 
 **Alert condition:** Density declined compared to previous month.
 
-### Monthly: Task 4 — Archive and Cleanup
+### Task 4 — Archive and Cleanup
 
-**Why this can't run at runtime:** No runtime trigger for "is this log 30 days old." Classic housekeeping.
+**Current trigger:** output creation binds lifecycle and any expiration deadline; append events enforce size thresholds. This command is recovery/audit-only.
 
 **Actions:**
 - Review queue entries older than 90 days → move to `~/ora/data/archive/`
@@ -88,17 +88,16 @@ These all execute in `runtime_pipeline.py` after every session or at server star
 - Each task runs independently. A task failure is logged but does not halt subsequent tasks.
 - All tasks log to `~/ora/logs/maintenance-YYYY-MM-DD.log`.
 - Alert summary generated at end of each run.
-- Callable from Python (`orchestrator/tools/periodic_maintenance.py`), and scheduled automatically.
+- Callable from Python (`orchestrator/tools/periodic_maintenance.py`) only through an explicit campaign.
 
 ## Scheduling
 
-Cadences are governed by `orchestrator/maintenance_scheduler.py`, which runs
-from the oversight daemon (hourly check, `ORA_MAINTENANCE_SCHEDULER_SEC`). The
-control surface is the vault doc `Reference — Ora Periodic Maintenance.md` —
-its frontmatter `maintenance:` block sets each task to
-`daily`/`weekly`/`monthly`/`off` and is re-read on every check, so edits take
-effect without a restart. (The original cron runner,
-`scripts/run-maintenance.sh`, was never installed and has been removed.)
+Production scheduling is retired. Defaults for all four tasks are `off` in
+`Reference — Ora Periodic Maintenance.md`. `daily_note` uses one persisted
+calendar deadline; News and Engram work uses exact artifact-write events. The
+legacy scheduler can report or run a deliberately enabled campaign when called
+directly, but the oversight daemon never starts it and errors never arm a clock
+fallback.
 
 ## Dependencies
 

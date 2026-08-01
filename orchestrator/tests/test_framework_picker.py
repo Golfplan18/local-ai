@@ -10,8 +10,8 @@ Covers ``parse_framework_picker_metadata`` and ``list_pickable_frameworks``:
   Phase A — Prompt Cleanup) live in this category by design.
 - The picker list is sorted by ``(category, display_name)`` so the UI can
   render groups without re-sorting.
-- Display Name and Display Description respect the design-doc length caps
-  (60 / 500 chars) for the 17 shipped pickable frameworks.
+- Display Name and Display Description enforce the design-doc length caps
+  (60 / 500 chars) across the shipped picker rows.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ PIPELINE_INTERNAL_IDS = {
     "phase-a-prompt-cleanup", "supplemental-rag-protocol",
 }
 
-EXPECTED_PICKABLE_COUNT = 17
+EXPECTED_PICKABLE_COUNT = 18
 
 
 class TestParseFrameworkPickerMetadata(unittest.TestCase):
@@ -49,6 +49,19 @@ class TestParseFrameworkPickerMetadata(unittest.TestCase):
         self.assertTrue(meta["display_description"].startswith(
             "Convert any document"))
         self.assertEqual(meta["category"], "standard")
+        self.assertEqual(meta["kind"], "framework")
+
+    def test_programming_is_an_authenticated_process_definition_row(self):
+        meta = parse_framework_picker_metadata("programming")
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta["category"], "process-definition")
+        self.assertEqual(meta["kind"], "process_definition")
+        self.assertEqual(meta["definition_ref"], {
+            "definition_id": "ora/programming",
+            "version": "2.0.1",
+            "digest": "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927",
+        })
+        self.assertFalse(meta["activated"])
 
     def test_pipeline_internal_returns_none(self):
         # Pipeline-internal frameworks deliberately omit Display Name /
@@ -80,6 +93,7 @@ class TestListPickableFrameworks(unittest.TestCase):
             self.assertIn("display_name", r)
             self.assertIn("display_description", r)
             self.assertIn("category", r)
+            self.assertIn("kind", r)
             self.assertTrue(r["display_name"].strip())
             self.assertTrue(r["display_description"].strip())
 

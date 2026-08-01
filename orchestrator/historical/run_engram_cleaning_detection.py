@@ -242,6 +242,77 @@ def detect_date_gap(
     return [(newer, older) for _gap, newer, older in candidates[:limit]]
 
 
+def detect_date_gap_for_engram(
+    exact_meta: dict,
+    by_slug: dict,
+    by_h1: dict,
+    limit: int = 8,
+    resolved_set: Optional[set[tuple[str, str]]] = None,
+    min_gap_days: Optional[int] = None,
+) -> list[tuple[dict, dict]]:
+    """Bounded date-gap candidates touching one exact Engram.
+
+    This is the event-driven counterpart to ``detect_date_gap``. It asks the
+    relationship database only for edges whose source or target can identify
+    the written Engram; it never walks the historical relationship corpus.
+    """
+    if resolved_set is None:
+        resolved_set = set()
+    if min_gap_days is None:
+        min_gap_days = DEFAULT_DATE_GAP_DAYS
+    slug = str(exact_meta.get("slug") or "")
+    h1 = str(exact_meta.get("h1") or "")
+    if not slug or not h1:
+        return []
+
+    conn = sqlite3.connect(GRAPH_DB)
+    try:
+        cur = conn.cursor()
+        placeholders = ",".join("?" for _ in DATE_GAP_CONFIDENCES)
+        cur.execute(
+            "SELECT source, target FROM relationships "
+            f"WHERE type='contradicts' AND confidence IN ({placeholders}) "
+            "AND (source IN (?, ?) OR target IN (?, ?)) "
+            "ORDER BY source, target LIMIT ?",
+            (*DATE_GAP_CONFIDENCES, slug, h1, slug, h1, max(limit * 8, limit)),
+        )
+        edges = cur.fetchall()
+    finally:
+        conn.close()
+
+    candidates: list[tuple[int, dict, dict]] = []
+    seen: set[tuple[str, str]] = set()
+    for source_key, target_key in edges:
+        a = _resolve_endpoint(source_key, by_slug, by_h1)
+        b = _resolve_endpoint(target_key, by_slug, by_h1)
+        if not a or not b or a["slug"] == b["slug"]:
+            continue
+        if slug not in {a["slug"], b["slug"]}:
+            continue
+        if is_archived(a) or is_archived(b):
+            continue
+        date_a = engram_date(a)
+        date_b = engram_date(b)
+        if not date_a or not date_b:
+            continue
+        try:
+            gap = abs((datetime.fromisoformat(date_a)
+                       - datetime.fromisoformat(date_b)).days)
+        except ValueError:
+            continue
+        if gap < min_gap_days:
+            continue
+        canonical = tuple(sorted([a["slug"], b["slug"]]))
+        if canonical in seen or canonical in resolved_set:
+            continue
+        seen.add(canonical)
+        newer, older = (a, b) if date_a > date_b else (b, a)
+        candidates.append((gap, newer, older))
+
+    candidates.sort(key=lambda item: (-item[0], item[1]["slug"], item[2]["slug"]))
+    return [(newer, older) for _gap, newer, older in candidates[:limit]]
+
+
 def detect_bidirectional(
     by_slug: dict, by_h1: dict, limit: int = 25,
     resolved_set: Optional[set[tuple[str, str]]] = None,

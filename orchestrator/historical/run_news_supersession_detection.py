@@ -214,6 +214,7 @@ def detect_topic_cluster(
     limit: int,
     resolved_set: Optional[set[tuple[str, str]]] = None,
     recent_only: bool = False,
+    source_paths: Optional[set[str]] = None,
 ) -> list[dict]:
     """Surface supersession candidate pairs via topic clustering.
 
@@ -264,7 +265,16 @@ def detect_topic_cluster(
     # Recent filter cutoff
     cutoff = datetime.now() - timedelta(days=30)
 
+    normalized_sources = None
+    if source_paths is not None:
+        normalized_sources = {
+            os.path.abspath(os.path.expanduser(p)) for p in source_paths
+        }
+
     for path, meta in by_path.items():
+        if (normalized_sources is not None
+                and os.path.abspath(os.path.expanduser(path)) not in normalized_sources):
+            continue
         if recent_only:
             try:
                 d = datetime.fromisoformat(meta["date_created"])

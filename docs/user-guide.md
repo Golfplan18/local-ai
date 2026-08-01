@@ -2,9 +2,32 @@
 
 *Task-indexed guide for installing, running, and operating an installed Ora system. It derives from [[Reference — Ora Technical Documentation]] and adds no new claims. Find your task, do the steps.*
 
+**Documentation baselines.** Install and general-operation guidance remains pinned to `7a5e8f40`, with the verified supervision and currency updates through runtime commit `86a888bc` reconciled into this vault canonical once on 2026-07-19. The governed-process section is pinned to the accepted G1.1 Part 2 runtime at `6740f2fcc6663b5d5e1f57db9ce57de3578ac42c` and the Phase 3.1 as-built record. This one-time promotion of verified runtime guide behavior does not reverse the standing direction of truth: future guide edits begin here and synchronize body-only to `docs/user-guide.md`.
+
 **Platform labels.** Every command is labeled. `[macOS]` is the tested path (Apple Silicon). `[Linux server]` is the supported headless path. `[Windows-native]` and `[WSL]` are labeled where they differ; **`[Windows-native]` is intended but untested** — treat it as best-effort until a clean-room Windows install has been verified. If a command carries no label, it applies everywhere Ora runs.
 
 **What things are called (nomenclature, 2026-07-11).** A working session with Ora is a **Dialogue**. You type into the **Inquiry** pane, read results in the **Findings** pane, and see diagrams in the **Exhibits** pane (the canvas beside the text). The small side-model chat panes in the upper right are the **Aside**, and the browse window for your Dialogues, engrams, and files — opened from the sidebar — is the **Library**. The interface uses these names as of the 2026-07-11 update; internal file and folder names — such as the `conversations` folder where Dialogues are stored — keep their original names.
+
+---
+
+## Start a Dialogue without duplicating prior work
+
+1. Choose **New Dialogue** from the sidebar, the spine `+`, or the New Dialogue keyboard shortcut. Standard, Private, and Stealth creation all use the same review flow; the privacy choice remains visible in the heading.
+2. Give the Dialogue a short title and an expanded description of what you want to explore or accomplish. The description must contain at least 20 characters and three terms so retrieval has enough subject matter to work with.
+3. Choose **Find related material**. Ora searches both prior Dialogues and atomic notes. Nothing is created at this point.
+4. Review the surfaced set. For each item you may:
+   - **Add contributor** — include that source as read-only reference material in the new Dialogue without making it an ancestor.
+   - **Continue** — return to an existing live Dialogue.
+   - **Fork** — create a child of an existing live Dialogue, preserving its parent lineage.
+5. If you still want a new Dialogue, select any contributors, confirm that you reviewed the suggestions, and choose **Create Dialogue**. Editing the description invalidates the prior review and requires another search.
+
+The confirmation asks Ora to issue a server-side creation contract bound to the exact title, description, selected contributors, privacy target, and active project you reviewed. Changing any of those inputs invalidates that confirmation. The new Dialogue is persisted only after the final Create action; concurrent delivery or a network retry returns the same Dialogue instead of creating another one.
+
+Its description then appears in Inquiry as an **unsent draft**; review or edit it before submitting the first turn. Continue and Fork use the same rule, carrying the description as an unsent draft rather than sending it automatically.
+
+A Dialogue may have one parent and many contributors. A parent represents fork ancestry and carries conversational history. Contributors are explicit Dialogue or atomic-note references that Ora resolves into bounded, read-only reference context on each turn. Private material cannot contribute into a Standard Dialogue, and Stealth material cannot cross out of Stealth.
+
+Use **Library** when you want the same search outside creation. A Library result can be opened, used to seed a new contributor review, continued when it is a live Dialogue, or forked when it is a live Dialogue. Archived Dialogues and atomic notes remain read-only, so Continue and Fork are unavailable for those rows.
 
 ---
 
@@ -173,6 +196,305 @@ Invoke a framework with no input to have Ora walk you through it one question at
 
 ---
 
+## Governed processes
+
+Use a governed Process when you want Ora to carry durable work across planning, execution, evidence, decisions, correction, and later reuse. Use ordinary Inquiry when you only want an answer, explanation, comparison, or draft.
+
+The distinction is consequential. A governed Process creates a Process Run with an exact definition, project, plan, authority, artifact scope, evidence requirements, and persistent history. It may construct or invoke a reusable capability. Ordinary generation does none of those things merely because the answer mentions automation or Programming.
+
+### Start the right kind of work
+
+You can start governed work from five places:
+
+1. Describe the outcome directly in the **Inquiry** pane. Ora classifies whether you are asking for ordinary generation, an existing capability, construction or modification, or activation.
+2. Use the **Programming** action. If you previously chose the broader **Build** label after Ora proved non-programming construction, the same action may be labeled Build; the label does not change capability identity or authority.
+3. Choose an exact Process Definition from the shared framework/process picker.
+4. Open the **Process Library** and select an exact registered definition.
+5. Name an available capability as the operator in ordinary language, such as “Have Programming verify this repository.”
+
+Describe the result, not the technical implementation. “Set up a repeatable monthly cash-flow review” is enough to begin construction. “Summarize the Programming documentation” and “Use Programming as an example” remain ordinary generation because Programming is the subject, not the operator.
+
+When Ora infers construction, it must show the construction form before any Process Run or effect begins. The form asks **What should happen?** and requires a visible project choice. If that form does not appear when you intended reusable or recurring work, cancel and use the Programming/Build action or restate the effect you want established. Do not assume an ordinary answer created a capability.
+
+### Confirm the project and artifact scope
+
+Every construction begins with project confirmation. Choose the project whose purpose, files, Dialogues, and permissions should contain the work. **Commons** is the universal view, but selecting it is still a real scope choice; it is not permission to affect every project.
+
+The project chooser binds the construction request. The later plan binds the exact artifacts. Before approval, check the Principal view’s scope and the Technical view’s target paths, repository identity, inputs, outputs, and requested actions.
+
+- If the wrong project is selected, cancel before continuing and restart under the correct project.
+- If the project is right but an artifact, repository, output, or permission is wrong, choose **Change scope or permissions** at plan review.
+- If the plan names an ambiguous or unexpected target, do not approve it. Ask for a corrected plan.
+- A project choice does not grant mutation, publication, messaging, activation, or other reserved authority. Those remain separate.
+
+### Answer the management interview
+
+Ora asks only about unresolved parts of the management contract. The ten dimensions are:
+
+| Dimension | What a useful answer supplies |
+|---|---|
+| Intended result | A concrete completed outcome, not “build an automation.” |
+| Affected parties | Who uses, receives, approves, or could be harmed by the result. |
+| Inputs and outputs | What the Process reads and what exact result it should produce. |
+| Reuse | One-time work or a capability intended for later Runs. |
+| Initiation | Manual request, a separately authorized trigger, or another declared start. |
+| Authority | What Ora may decide or change and what must return to you. |
+| Exceptions | Conditions that require correction, blocking, or a human decision. |
+| Permissions | Exact systems, files, tools, and effects that may be used. |
+| Evidence | What would prove the result is current and correct. |
+| Stopping | When the Process must stop rather than continue or improvise. |
+
+Answer the question currently shown. “I do not know,” placeholders, and vague objectives do not silently resolve a dimension; Ora leaves it open and asks for usable input. If you submit the same answer twice because of a retry or connection failure, the recorded answer is returned instead of being consumed as the answer to the next question.
+
+Temporary analytical frameworks may help you think during the interview. Their results return to the same Dialogue; they do not replace the governing Process or acquire its authority.
+
+When all ten dimensions are resolved, the same management surface changes to **Prepare canonical plan**. Confirm the **Exact target folder**, then enter the exact target-relative items—one file or directory path per line. The folder and items become authenticated planning inputs, not an inferred grant. Ambiguous paths, parent-directory escapes, wildcards, missing targets, and empty scope fail closed. Choose **Prepare plan** to create the proposal; this still does not approve or start anything.
+
+### Review and approve the plan
+
+Ora produces one canonical plan with two views:
+
+- **Principal view:** outcome, users, scope, authority, risks, exceptions, proof, and activation request.
+- **Technical view:** artifacts, architecture, dependencies, implementation sequence, tests, evidence identities, versioning, and recovery.
+
+The browser opens these as **Principal view** and **Technical view** tabs in the **Plan review** surface. The surface shows the exact plan ID, version, and digest above both projections. Switching tabs changes only the projection—not the plan being decided.
+
+Review the Principal view first. Open the Technical view when you need to confirm exact paths, selectors, commands, tests, or repository state. Both views refer to the same plan identity; changing a material field requires a new version.
+
+At the approval boundary, choose one exact action:
+
+- **Approve and start** approves this plan version and delegates it.
+- **Approve without starting** records the approval but withholds execution until a later explicit start.
+- **Request plan changes** keeps the objective and asks for a revised plan.
+- **Change scope or permissions** requires a revised plan with different authority or artifacts.
+- **Stop and retain the plan** ends the pre-execution Run without discarding the reviewed plan.
+
+These five buttons send authenticated actions for the exact plan shown. Actions that revise, change scope, or retain the plan ask for a material reason before submission. If the server rejects an action, the error remains visible in the Plan review surface and no success state is invented.
+
+After **Approve without starting**, the surface says execution remains withheld and shows **Start approved plan**. Use that control later to delegate the exact approved plan and approval receipt. Do not type “start” into the Inquiry pane as a substitute for this control.
+
+Check the target baseline immediately before approval. If the target changed after planning, Ora marks the plan stale and withholds approval until a revision binds the current identity.
+
+Plan approval is not blanket consent. Construction, registration, invocation, activation, trigger binding, and external effects are separate authorities. Approving construction does not activate the resulting capability. Approving a plan does not let a model expand the project or artifact scope later.
+
+### Leave and return
+
+After **Approve and start**, the delegated Run appears under **Processes**:
+
+| Surface | What it means |
+|---|---|
+| **Pending** | A live Run is executing, waiting at a declared boundary, or blocked. Healthy work stays visually quiet. |
+| **Unread** | A result or focused decision has returned and has not yet been opened. |
+| **Automated Processes** | An activated standing definition is visible with its declared trigger and authority bindings. This view does not itself create or edit those bindings. |
+| **Process Library** | Exact registered definitions available for discovery and permitted invocation, with version, digest, scope, package, and lifecycle metadata. |
+
+Select a Process card to return to its governing Dialogue. Choose **Inspect** to open the authenticated Run Inspector. Opening an Unread card marks the governing Dialogue read; it does not accept the result or grant authority.
+
+You may close the browser or restart Ora. The Dialogue binding, plan, Run, artifacts, attempts, checkpoints, evidence, and receipts persist. Reopen the same Dialogue, Pending card, or Inspector after restart. Do not start a duplicate Run merely because the browser was closed.
+
+If you return while the management interview, plan review, or approved-without-start state is active, Ora reconstructs and reopens that surface for the Dialogue. It returns to the exact current question, plan version, stale state, or **Start approved plan** control. New Inquiry text cannot bypass that active management boundary.
+
+Leaving does not create an autonomous background Agent. Ora preserves exact state and advances only through supported runtime events and declared routes. It does not invent new work because you are absent.
+
+### Respond to a decision request
+
+When a Run needs reserved authority, it appears prominently in Pending or Unread. Open **Inspect** and read the Overview before choosing:
+
+- **Outcome** — what the Run is trying to produce.
+- **State** — the current visible state and graph phase.
+- **Next** — the declared route or routes available from here.
+- **You** — the exact decision required from the Principal.
+
+If the Run is waiting for authority, the Inspector shows **Authority requested** with the request type, requested authority, and declared options. Choose:
+
+- **Approve request** to grant only that exact request.
+- **Deny request** to follow the request’s declared denial or blocked route.
+- **Authority unavailable** when the requested authority cannot be supplied.
+
+Use the governing Dialogue when you need discussion before deciding. Discussion does not itself approve, deny, modify scope, or advance the Run. Return to the explicit authority control for the actual decision.
+
+Never approve from the short label alone. Check the evidence, affected artifact, requested selector, and consequence. An `ESCALATE` request means the Process cannot own the next decision; it is not a recommendation that must be accepted.
+
+### Read the Run Inspector
+
+The Inspector opens on Overview and provides nine progressively disclosed views:
+
+| View | Use it to answer |
+|---|---|
+| **Overview** | What is the outcome, current state, credible next action, and required user action? |
+| **Plan** | Which exact canonical plan and approval govern this Run? |
+| **Current State** | Which node is active, how many attempts/retries have occurred, what telemetry is current, and what routes remain? |
+| **Decisions** | Which human checkpoints and graph decisions occurred, who decided, under what authority, and where did they route? |
+| **Changes** | What happened to the approved repository or external target, and which receipts bind the effects? |
+| **Evidence** | Which checks apply to which exact result identities, and are they current? |
+| **Permissions** | What authority, artifact scope, reserved actions, and stop/escalation rules govern the Run? |
+| **Artifacts** | Which result, capability, evidence, receipt, and working artifacts exist? |
+| **Technical** | What definition, records, files, diff, tests, logs, and machine details support the projection? |
+
+The evidence banner has literal meaning:
+
+- **Current evidence supports the result** means the required passing evidence is bound to the current result and target identity.
+- **Current evidence does not yet support acceptance** means evidence is missing, failed, stale, or bound to an older identity.
+
+Read the Evidence view before treating a result as complete. A produced artifact is not the same as an accepted result. Final `ACCEPT` is a governed transition supported by current independent review; there is no user button that can convert stale or missing evidence into acceptance.
+
+If Changes reports an unexpected repository, ambiguous targets, or external drift, stop and resolve that condition. Do not infer that the newest artifact is the approved target.
+
+### Watch Run telemetry
+
+Every Inspector read includes deterministic Run telemetry. Overview shows:
+
+- elapsed time and an estimated remaining time when completed attempts provide enough history;
+- total attempts and retries;
+- authenticated token/cost usage, or explicit unknown/unavailable values when no runtime-authenticated usage receipt exists. A no-tools worker may still call a model, so tool isolation is never shown as zero usage;
+- health and isolated-worker liveness; and
+- the latest persisted error when one exists.
+
+Open **Current State** for the complete packet, including attempts by segment, the attempt ceiling, Artifact counts, the estimate basis, and whether an older error was later resolved. An estimate is a deterministic projection from completed attempt durations, not a promise. **Worker alive** means Ora owns the exact process recorded for this Run. **Orphaned after restart** means ownership was lost; Ora withholds replay and moves the Run to a recovery checkpoint.
+
+The sidebar Process zone shows a smaller health/attempt/worker summary. Healthy work remains visually quiet. A health label never means the result is accepted; Evidence remains the acceptance source.
+
+At an explicit human handoff or persisted output failure, the Inspector may offer **Evaluate this handoff or failure**. Ora supplies the evaluator with digest-verified bounded Artifact content, the exact inputs and governing criteria/instructions, and exact failure details when applicable—not only opaque IDs. If that material is missing, drifted, unreadable, or too large for the bounded packet, Ora returns `INDETERMINATE` without calling the model. Any verdict remains an observation only: even `PASS` cannot approve, retry, authorize, complete, or accept the Run. The control is absent at ordinary execution steps, and Ora does not evaluate every step automatically.
+
+### Inspect or edit technical work
+
+Open **Changes** for the approved target and the diff from its baseline. Use **Copy target path** when it is available, then inspect the files in your preferred editor. Open **Technical** for exact records, tests, logs, definition identity, and lower-level state.
+
+You may edit an authorized target externally. Ora detects that the target identity changed and invalidates evidence tied to the earlier state. The edited artifact must be recaptured and re-inspected before acceptance. Do not paste an inline hash or statement that “tests passed” as a substitute for authenticated repository state and test evidence.
+
+If the working tree contains unrelated changes, preserve them. Do not approve a plan that assumes they can be overwritten. Ask for a narrower artifact scope or a revised plan.
+
+### Author a reusable Process
+
+Use this path only after the management interview is complete:
+
+1. In the plan-preparation surface, choose **Author reusable Process**.
+2. Review the proposed name, purpose, exact version/digest, ordered steps, and every human checkpoint. Ora does not add a Trigger, Persona, schedule, activation, outbound action, or external effect here.
+3. Choose **Request definition changes** and give a concrete reason, or choose **Approve and register exact definition**. Approval applies only to the exact proposal identity shown.
+4. When Ora reports that the Process is available, close the review and open **Process Library** when you are ready to run it.
+
+Registration makes the exact definition durable; promotion makes it discoverable in the current Project. Neither action runs it, schedules it, activates standing work, or grants sending/publication authority. A changed proposal needs a new review and identity.
+
+### Run a reusable Process manually
+
+1. Open **Process Library** and select an available reusable Process.
+2. Read its exact identity and enter the required inputs. The form is generated from the registered input schema; missing, extra, wrong-type, out-of-range, too-short/long, non-enumerated, duplicate-array, or otherwise unsupported values are rejected before a Run begins.
+3. Check **I confirm this Run belongs to Project: …**. The Project controls scope. Any existing Project, Process, Step, or one-run Model Profile selections and the existing output Style are resolved and bound by the server; Persona is unavailable and is not selected.
+4. Choose **Start governed Run**. Ora starts one restart-safe Run of that exact version in a separate no-tools worker.
+5. At each human checkpoint, inspect what has already been produced. Choose **Approve checkpoint** only to advance that Run, or **Deny and stop**. Checkpoint approval does not activate, schedule, send, or widen authority.
+6. If action or final verification work pauses after a failure, choose **Retry from checkpoint** only after reading the error. Completed steps are preserved; Ora does not replay them merely because the service restarted. Every action and final verification has one reserved baseline attempt; later tries consume the visible shared correction allowance. A retry can never consume a later step's baseline, and either correction or total exhaustion stops the Run as blocked before more worker execution.
+7. Treat the displayed result as authenticated only when the Run is completed after independent verification.
+
+The worked email Process classifies and summarizes one supplied email, pauses before drafting, and produces an **UNSENT DRAFT**. It cannot send the draft. Sending, recurring execution, and channels belong to later separately governed work.
+
+### Deploy and manage a Trigger
+
+Open **Processes → Trigger Manager** only after the reusable Process is available. A Trigger is a separate immutable deployment contract; it is not inserted into the Process Definition and it grants no new action or external-effect authority.
+
+1. Choose **New Trigger**, name it, bind its stable ID, Project, and exact Process version/digest, then choose the cause:
+   - **Manual** adds an explicit **Run now** control.
+   - **File change** consumes an operating-system notification for one approved absolute file or directory selector. Repeated delivery of the same captured file identity creates no second Run; changed bytes form a new event identity.
+   - **Framework completion** requires one exact completed source definition, its authenticated `ACCEPT`, and exact result identity.
+   - **Time** supports a named IANA timezone and daily or weekly local-calendar boundary. It requires a written explanation of why no file, framework, inbound, or other runtime event can represent the passage of time.
+   - **Inbound email/Telegram** may be drafted but cannot be activated until G1.21 supplies an authenticated channel. Trigger Manager does not send messages or hold channel credentials.
+2. Bind each Process input to an approved literal or available event source. A milestone check-in may bind `project_snapshot`; Ora then captures the Project Matrix plus bounded excerpts from standard Project Dialogues, excludes private/stealth Dialogues, and authenticates that packet before beginning the Run.
+3. Save the draft. Registration still creates no standing work. Read the displayed Process, Project, condition, inputs, Runtime-Principle record, and exact Trigger digest.
+4. Check the explicit review statement and choose **Approve and activate**. A stale digest or changed state is rejected and reloaded; do not approve the replacement without reviewing it.
+5. Use **Pause Trigger**, **Resume Trigger**, or **Retire** to change future firing eligibility. These controls do not pause, resume, stop, or erase a Run already created; manage that Run through its own Inspector.
+
+Every accepted firing first persists one source-bound claim, then creates one deterministic governed Process Run through the same automation service described above. Concurrent delivery, browser retry, and restart recovery return that same firing/Run identity. A firing that reaches a human checkpoint remains visible as waiting rather than being called complete. Select its history row to open the Run Inspector.
+
+Time Triggers are deliberately intermittent: they act **only while Ora is running** and install no cron, launchd, scheduled sweep, polling loop, or 24/7 fallback. At startup Ora reconciles missed windows once, then schedules one in-app wake for the next authenticated calendar occurrence. Activation, Pause, Resume, and retirement recalculate that wake; with no active time Trigger, no periodic work runs. Choose **Run once after Ora returns** to coalesce missed calendar windows into one current Run, or **Skip missed window** to record the omission without a Run. Cleanup, backlog processing, and work that already has an exact runtime event are not valid reasons to use time.
+
+### Find and invoke a reusable Process Definition
+
+Open the **Process Library** and select a row only after checking:
+
+- display name and description;
+- exact `definition_id@version`;
+- digest;
+- project or universal scope;
+- package identity and member count; and
+- lifecycle status.
+
+After selection, state **What should happen?** and confirm the project. Ora resolves the exact registered identity and starts one restart-safe governed Run only when the definition is available, active where required, in scope, and compatible with the supplied inputs. A retry returns the same Run and result rather than executing the definition again.
+
+If Ora reports **awaiting activation**, no invocation and no Process Run have started. Request activation explicitly. Registration does not imply activation, and activation does not invent a trigger or external-effect permission. Forged, stale, unavailable, inactive, and out-of-scope references fail closed.
+
+The current public Library route supports a bounded non-external action entry followed by verification. More complex external-effect entry shapes use dedicated governed paths. A Library invocation may produce a result that still awaits independent final acceptance.
+
+### Understand activation and standing automation
+
+Activation makes an exact definition available within a declared scope; it is not permission to do everything the definition can describe. A standing automated Process additionally needs an explicitly reviewed Trigger and authority binding. Each Trigger firing begins a new governed Run under those exact bindings; it does not grant new authority.
+
+The **Automated Processes** sidebar section is a projection of authenticated Trigger deployments. It is not inferred from registration or from a definition-shaped Artifact. Open a row in Trigger Manager to see its source condition, lifecycle state, and latest firing. Remote messaging, publication, credentials, and other reserved effects remain separate work requiring explicit authority.
+
+### Pause, stop, discuss, and recover
+
+At plan review you can **Stop and retain the plan** before execution. During execution, a Run may pause at a declared human checkpoint, wait for authority, or become `BLOCKED`. Open the governing Dialogue to discuss the condition; use the Inspector’s explicit decision control to change state.
+
+For a G1.18 automated Run, Overview also offers controls that bind the exact current state:
+
+- **Pause run** stops the exact live isolated worker, preserves the attempt history, and atomically creates a user-pause checkpoint distinct from a failure or human handoff. A stale or rejected Pause leaves the existing checkpoint and Run untouched.
+- **Resume run** is the only action that can release a user pause. Ordinary Execute/Retry cannot bypass it. Resume continues the same Run from its authenticated checkpoint; it does not create a replacement Run or replay completed steps.
+- **Stop run** stops the worker and ends the Run as blocked while preserving its history and Artifacts.
+
+The browser refreshes after each decision. If the Run changed before the request arrived, the stale control is rejected; reload and inspect the new state rather than repeating the old decision. Retrying a successfully recorded control returns the same state. If Ora restarted after recording your decision but before applying it, retry reconciles that exact decision rather than creating a second effect.
+
+These force controls are not general controls for every governed Run family. Other Runs continue to use their declared checkpoint, authority, correction, or blocked routes. No terminal Run can be reopened. Do not use Archive or Discard as a substitute for stopping active work; lifecycle choices appear only after the Run is terminal.
+
+Recovery is identity-preserving:
+
+1. Restart Ora using the platform instructions in this guide.
+2. Reopen the same Dialogue or Process card.
+3. Inspect Current State, Changes, and Evidence.
+4. Continue only from the declared next route or exact user decision.
+
+Ora reconstructs persisted state and validates effects recorded after checkpoints. It does not replay a recorded mutation. If an external action may have happened but its receipt is missing or inconsistent, do not retry the action. Inspect the external system and return evidence through the governed recovery route.
+
+### Close a terminal Run
+
+Every terminal Run requires one explicit lifecycle disposition:
+
+- **Promote** preserves an authenticated capability as a reusable promoted definition. This appears only when an eligible capability artifact and accepted result are bound to the Run.
+- **Preserve** keeps the effective output artifacts in their current retained state without promoting a capability.
+- **Archive** marks the outputs archived; it does not delete source files.
+- **Discard** marks the outputs discarded; it does not delete source files.
+
+The choice is recorded once with an identity-bound receipt. Retrying the same request returns the recorded lifecycle state. None of the four choices activates standing automation.
+
+There is no general **Reopen** action after lifecycle closure. If more work is required, start a new governed Run against the exact retained artifact or definition. Before terminal acceptance, use correction, replanning, redefinition, or an authority route rather than closing and attempting to reopen.
+
+### Troubleshoot a governed Process
+
+| What you see | What it means | What to do |
+|---|---|---|
+| A recurring setup request returned an ordinary answer | The request was classified as generation rather than construction | Use Programming/Build or restate the effect to establish; confirm that the project form appears before proceeding |
+| The interview repeats a question | The answer did not materially resolve that dimension | Give a concrete answer tied to the requested result, party, input/output, permission, evidence, or stop condition |
+| A retried answer does not advance | The original answer was already persisted | Continue from the question now shown; do not reword solely to force another state change |
+| Prepare plan rejects the target or scope | The folder is unavailable or an item is empty, ambiguous, absolute, wildcarded, or escapes the target | Confirm one exact existing target folder and enter only exact target-relative items, one per line |
+| A plan action shows an error | The exact plan, baseline, approval receipt, authority, or persisted state did not validate | Keep the surface open, read the error, reload the same Dialogue if needed, and act only on the reconstructed current plan |
+| The plan says stale | The target identity changed after planning | Request a revised plan against the current baseline; do not approve the old version |
+| Approval succeeded but execution did not start | You chose Approve without starting, or delegation was withheld | Reopen the same Dialogue and choose **Start approved plan** after resolving any stale target |
+| A Run appears stuck in Pending | It may be healthy, waiting at a declared boundary, blocked, or missing evidence | Open Inspect; read Overview, Current State, Evidence, and You. Do not start a duplicate Run |
+| Remaining time says “Not enough history” | No completed attempt duration supports an estimate yet | Use the exact current node and health state; do not infer a deadline |
+| Worker says orphaned after restart | Persisted worker start has no matching finish or live owner | Let Ora create the recovery checkpoint, then inspect the last error and resume only through the offered control |
+| Pause/stop says the control is stale | The Run changed after the displayed control contract was rendered | Reload the Inspector and decide against the new exact state |
+| Optional quality review says PASS | A model found no issue in the handoff/failure packet | Treat it as advisory only; acceptance still requires the Evidence view and governed final review |
+| A decision card appears | Reserved authority is required | Inspect the exact request and evidence, then Approve, Deny, mark Authority unavailable, or discuss in the governing Dialogue |
+| Evidence is stale | The result, target, or evidence artifact changed | Recapture and re-run the required inspection; stale proof cannot support `ACCEPT` |
+| Changes shows the wrong or ambiguous target | The approved target cannot be authenticated | Withhold action and request corrected scope; do not select the newest artifact by assumption |
+| Ora restarted during work | Durable state should reconstruct from records | Reopen the same Dialogue/Run and inspect its current state; do not replay effects or create a replacement Run |
+| An external effect may have partially completed | Repeating it could duplicate or worsen the effect | Stop further action, inspect the external state and receipts, and use the declared recovery or authority route |
+| A Library capability is missing or says awaiting activation | It is unavailable, inactive, out of scope, or not authenticated | Confirm project, exact version/digest, and lifecycle. Request activation only through a supported explicit path |
+| A result exists but the Run is not completed | Production and acceptance are separate | Read Evidence; wait for or perform the declared independent review rather than treating output presence as completion |
+| Promote is unavailable | The Run has no authenticated promotable capability binding | Choose Preserve, Archive, or Discard as appropriate; do not infer a reusable capability from artifact shape |
+| A closed Run needs more work | Lifecycle closure is final for that Run | Start a new Run bound to the retained artifact or exact Process Definition; no generic reopen control exists |
+
+For server, model, and installation failures, use the general **Troubleshoot** section later in this guide. For internal graph, schema, migration, or rollback diagnosis, consult the technical documentation; those are maintainer tasks, not user controls.
+
+---
+
 ## Where your things live
 
 - **Vault** — `~/Documents/vault/`. Put files here that you want Ora to search: notes, documents, project files.
@@ -248,6 +570,16 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 ## Changelog
 
+- **2026-07-24** — Corrected G1.19 guidance after gate review: one firing claim now supplies the complete invocation and one Run; Pause is reauthenticated at the claim boundary with retry-idempotent lifecycle controls; time uses startup reconciliation plus recalculated one-shot wakes rather than interval polling.
+- **2026-07-24** — Added G1.19 Trigger Manager guidance: immutable drafts and exact activation review, manual/file/framework/time causes, Project milestone snapshots, source-bound exactly-once Run creation, pause/resume/retire semantics, restart recovery, explicit app intermittency, and the G1.21 inbound-channel boundary.
+- **2026-07-24** — Corrected the remaining G1.20 boundaries: rejected/stale Pause requests leave the Run untouched, accepted checkpoint-plus-pause state commits atomically, and quality starts derive their exact current source, subject, and Model Profile binding inside the runtime rather than trusting caller fields.
+- **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.
+- **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.
+- **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, action and final-verification baselines are reserved separately from correction retries, and either ceiling blocks rather than leaving work running.
+- **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.
+- **2026-07-20** — G1.4: documented the shipped description-rich Dialogue creation review, combined prior-Dialogue/atomic-note discovery, server-issued exactly-once creation contract, contributor versus parent lineage, Continue/Fork alternatives, unsent-draft behavior, privacy boundaries, and the same actions in Library. The vault remains canonical and the runtime guide body is synchronized from it.
+- **2026-07-19** — G1.1 Phase 3.3 Gate correction: documented the shipped browser management surface, exact target/scope preparation, Principal/Technical tabs, five authenticated plan decisions, explicit later **Start approved plan** delegation, restart reconstruction, stale-plan handling, and visible failures. The correction adds only the browser-to-existing-governed-contract integration required by Gate 3.3; it does not enter Phase 3.4.
+- **2026-07-19** — G1.1 Phase 3.3: added task-indexed governed-process guidance for entry, project/artifact scope, management interview, canonical plan approval, leave-and-return, attention and decisions, evidence, technical inspection/external edits, Process Library invocation, activation/standing-automation limits, pause/stop/discussion/recovery, terminal artifact lifecycle, and user troubleshooting. Recorded the one-time `86a888bc` runtime-to-vault reconciliation provenance and restored vault-canonical body parity. No runtime behavior changed during that one-time documentation reconciliation; the later Gate 3.3 browser correction is recorded separately above.
 - **2026-07-12** — macOS operation now follows the consolidated supervision contract: `ora-launchd.sh install` is the recommended setup, `start.sh` and `stop.sh` delegate when supervision is installed, every operational step uses the exact reported port in the 5000–5010 range, and troubleshooting covers launchd logs plus the Documents/TCC permission caveat. The repository mirror remains body-identical.
 - **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (both unassigned and project-assigned Dialogues appear there); Commons saves now land at the vault root; and V3 uses one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
 - **2026-07-11** — Interface strings caught up to the nomenclature (ora PR #211): the running UI now shows these names, so the earlier "interface may still show older labels" caveat was removed. Still terminology-only; content remains pinned to `7a5e8f40`.

@@ -48,6 +48,7 @@ import live_guard  # noqa: E402,F401  — arm the oversight write quarantine
 # different object than the one the test patched). Set ORA_HOME instead.
 import pipeline_trace  # noqa: E402
 import conversation_memory  # noqa: E402
+from orchestrator import runtime_hygiene  # noqa: E402
 
 
 class TraceManifestBase(unittest.TestCase):
@@ -66,6 +67,12 @@ class TraceManifestBase(unittest.TestCase):
         )
         data_patcher.start()
         self.addCleanup(data_patcher.stop)
+        hygiene_data_patcher = mock.patch.object(
+            runtime_hygiene._rp, "DATA_DIR_STR",
+            os.path.join(self.tmp.name, "data"),
+        )
+        hygiene_data_patcher.start()
+        self.addCleanup(hygiene_data_patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     # -- helpers -----------------------------------------------------------
@@ -345,6 +352,114 @@ class TestTraceRef(TraceManifestBase):
         self.assertEqual(pinned["child_trace_refs"], ["conv-pin/child-a"])
         unpinned = pipeline_trace.set_retention_state(ref, "default")
         self.assertEqual(unpinned["retention_state"], "default")
+        from orchestrator.runtime_hygiene import DeadlineQueue
+        deadlines = DeadlineQueue()._load()["deadlines"]
+        self.assertEqual(
+            len([key for key in deadlines
+                 if key.startswith("trace-retention-unpin:")]),
+            1,
+        )
+
+    def test_refinalization_preserves_one_exact_retention_contract(self):
+        d = self.start("conv-refinalize")
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed")
+        first = self.manifest(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed")
+        second = self.manifest(d)
+        self.assertEqual(first["finalized_at"], second["finalized_at"])
+        from orchestrator.runtime_hygiene import DeadlineQueue
+        deadlines = DeadlineQueue()._load()["deadlines"]
+        self.assertEqual(
+            len([key for key in deadlines if key.startswith("trace-retention:")]),
+            1,
+        )
+
+    def test_finalization_intent_write_failure_cannot_report_lifecycle_success(self):
+        d = self.start("conv-intent-fail")
+        with mock.patch.object(
+            runtime_hygiene.RetentionIntentStore, "put",
+            side_effect=OSError("forced intent persistence failure"),
+        ):
+            pipeline_trace.finalize_manifest(
+                d, kind="chat", status_hint="completed",
+            )
+        manifest = self.manifest(d)
+        self.assertEqual(manifest["terminal_status"], "open")
+        self.assertIsNone(manifest["finalized_at"])
+
+    def test_finalization_queue_failure_recovers_exact_intent_after_restart(self):
+        d = self.start("conv-queue-recover")
+        with mock.patch.object(
+            runtime_hygiene.DeadlineQueue, "put",
+            side_effect=OSError("forced queue failure"),
+        ):
+            pipeline_trace.finalize_manifest(
+                d, kind="chat", status_hint="completed",
+            )
+        pending_manifest = self.manifest(d)
+        self.assertEqual(pending_manifest["terminal_status"], "completed")
+        self.assertEqual(pending_manifest["retention_deadline"]["status"], "pending")
+
+        store = runtime_hygiene.retention_intent_store(
+            pipeline_trace._rp.DATA_DIR_STR,
+        )
+        queue = runtime_hygiene.DeadlineQueue(store.storage_root)
+        report = runtime_hygiene.recover_retention_intents(
+            store=store, queue=queue,
+        )
+        self.assertEqual(report["failed"], [])
+        self.assertEqual(report["registered"], [
+            pending_manifest["retention_deadline"]["key"],
+        ])
+        deadline = queue._load()["deadlines"][report["registered"][0]]
+        self.assertEqual(deadline["payload"]["trace_ref"],
+                         pipeline_trace.trace_ref_for_dir(d))
+
+    def test_unpin_intent_write_failure_leaves_trace_pinned(self):
+        d = self.start("conv-unpin-intent-fail")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed",
+        )
+        pipeline_trace.set_retention_state(ref, "pinned")
+        with (
+            mock.patch.object(
+                runtime_hygiene.RetentionIntentStore, "put",
+                side_effect=OSError("forced unpin intent failure"),
+            ),
+            self.assertRaisesRegex(OSError, "forced unpin intent failure"),
+        ):
+            pipeline_trace.set_retention_state(ref, "default")
+        self.assertEqual(self.manifest(d)["retention_state"], "pinned")
+
+    def test_unpin_queue_failure_recovers_exact_intent_after_restart(self):
+        d = self.start("conv-unpin-queue-recover")
+        ref = pipeline_trace.trace_ref_for_dir(d)
+        pipeline_trace.finalize_manifest(
+            d, kind="chat", status_hint="completed",
+        )
+        pipeline_trace.set_retention_state(ref, "pinned")
+        with mock.patch.object(
+            runtime_hygiene.DeadlineQueue, "put",
+            side_effect=OSError("forced unpin queue failure"),
+        ):
+            unpinned = pipeline_trace.set_retention_state(ref, "default")
+        self.assertEqual(unpinned["retention_state"], "default")
+        self.assertEqual(unpinned["retention_deadline"]["status"], "pending")
+
+        store = runtime_hygiene.retention_intent_store(
+            pipeline_trace._rp.DATA_DIR_STR,
+        )
+        queue = runtime_hygiene.DeadlineQueue(store.storage_root)
+        report = runtime_hygiene.recover_retention_intents(
+            store=store, queue=queue,
+        )
+        self.assertEqual(report["failed"], [])
+        self.assertEqual(report["registered"], [
+            unpinned["retention_deadline"]["key"],
+        ])
 
 
 class TestFinalizeStatusAndKind(TraceManifestBase):
@@ -3389,6 +3504,15 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
             "id": "v5-fallback-endpoint", "name": "v5-fallback-endpoint",
             "type": "api", "service": "openai", "model": "gpt-4o",
             "api_key": "test-only", "enabled": True, "status": "active",
+            # gpt-4o accepts at most 16384 completion tokens. Without an
+            # explicit value the endpoint falls back to _DEFAULT_API_MAX_TOKENS
+            # (32000) and the provider rejects the call with a 400, which
+            # _with_truncation_retry returns as text rather than raising — so
+            # the assertion below sees an error string instead of the response.
+            # Declared here to keep this test about fallback short-circuiting.
+            # The default itself is wrong in both directions (it also throttles
+            # models supporting far more) and is tracked separately.
+            "max_tokens": 16384,
         }
         with self._routing_config([endpoint]), mock.patch.object(
             self.S, "call_model", return_value="fallback response",

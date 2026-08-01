@@ -231,7 +231,10 @@
 
 <script src="/static/js/sidebar.js?v=create-flow-20260630" defer></script>
 <script src="/static/js/project-modal.js?v=binding-20260701" defer></script>
+<script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
+<script src="/static/js/process-run-inspector.js?v=g1-20-telemetry-controls" defer></script>
+<script src="/static/js/process-trigger-manager.js?v=g1-19-trigger-contract" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
 <script src="/static/js/tooltip.js" defer></script>
@@ -299,6 +302,8 @@
 <script src="/static/js/style-audience-toggle.js?v=g136-20260701" defer></script>
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
+<script src="/static/js/process-entry.js?v=g1-18" defer></script>
+<script src="/static/js/process-plan-review.js?v=g1-18" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
@@ -407,17 +412,19 @@
         .sidebar-project-new:hover {
           background: var(--background-modifier-hover); color: var(--text-normal);
         }
-        /* Active Project (+ pin) stays at the TOP as the context that filters
-           the list; Model configuration is a setting, anchored as a bottom
-           footer (order:1 pushes only it below the flex:1 accordion). */
+        /* Active Project and its Model Profile stay together at the top.
+           Output style remains the sole bottom footer. */
         .sidebar-fixed-section { position: relative; padding: 4px 12px 8px; }
-        .sidebar-modelconfig-section,
         .sidebar-outputstyle-section {
           order: 1;
           border-top: 1px solid var(--background-modifier-border);
           margin-top: 6px; padding-top: 8px;
         }
-        /* Active Project + Model configuration are top-level section headers —
+        .sidebar-modelconfig-section {
+          border-top: 1px solid var(--background-modifier-border);
+          padding-top: 6px;
+        }
+        /* Active Project + Model Profile are top-level section headers —
            match the supergroup headers (Dialogues / Automated Processes),
            a tier above the muted Pinned/Unread sub-labels. */
         .sidebar-fixed-section .sidebar-group-label {
@@ -572,22 +579,21 @@
           </button>
         </div>
       </div>
-      <!-- Both this and Model configuration are order:1, so they sit below the
-           flex:1 accordion (Automated Processes is its last section). Output
-           style is first in DOM, so it renders directly above Model config. -->
+      <div class="sidebar-fixed-section sidebar-modelconfig-section">
+        <div class="sidebar-group-label">Model Profile</div>
+        <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
+                title="Choose this project's Model Profile"
+                aria-haspopup="menu" aria-expanded="false">
+          <span class="sidebar-modelconfig-name" id="sidebarModelConfigName">—</span>
+          <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
+        </button>
+      </div>
+      <!-- Output style is a bottom footer below the flex:1 accordion. -->
       <div class="sidebar-fixed-section sidebar-outputstyle-section">
         <div class="sidebar-group-label">Output style</div>
         <button class="sidebar-modelconfig-current" id="sidebarOutputStyleBtn" type="button"
                 title="Configure output style">
           <span class="sidebar-modelconfig-name" id="sidebarOutputStyleName">—</span>
-          <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
-        </button>
-      </div>
-      <div class="sidebar-fixed-section sidebar-modelconfig-section">
-        <div class="sidebar-group-label">Model configuration</div>
-        <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
-                title="Configure models">
-          <span class="sidebar-modelconfig-name" id="sidebarModelConfigName">—</span>
           <span class="sidebar-project-chevron" aria-hidden="true">▾</span>
         </button>
       </div>
@@ -656,32 +662,61 @@
                   data-super-toggle="processes"
                   aria-expanded="false">
             <span class="sidebar-supergroup-arrow">▸</span>
-            <span class="sidebar-supergroup-label">Automated Processes</span>
+            <span class="sidebar-supergroup-label">Processes</span>
             <span class="sidebar-supergroup-count" id="sidebarProcessesCount"
                   data-count="0">0</span>
           </button>
           <div class="sidebar-supergroup-body">
             <div class="sidebar-processes-toolbar">
+              <button class="sidebar-processes-open" id="sidebarProcessLibraryOpen"
+                      type="button">Process Library</button>
+              <button class="sidebar-processes-open" id="sidebarTriggerManagerOpen"
+                      type="button">Trigger Manager</button>
               <button class="sidebar-processes-open" id="sidebarReviewQueueOpen"
                       type="button">Open review queue</button>
             </div>
             <div class="sidebar-groups">
-              <!-- Paused: queue entries waiting on user resolution. Mirrors
-                   the Pinned/Unread/Active inner-group pattern used by
-                   Dialogues above. -->
+              <div class="sidebar-group" data-group="process-unread">
+                <div class="sidebar-group-label">
+                  Unread
+                  <span class="sidebar-group-count" id="processAttentionUnreadCount"
+                        data-count="0">0</span>
+                </div>
+                <div class="oversight-list" id="processAttentionUnreadList"
+                     aria-label="Unread Process results and decisions"></div>
+              </div>
+              <div class="sidebar-group" data-group="process-pending">
+                <div class="sidebar-group-label">
+                  Pending
+                  <span class="sidebar-group-count" id="processAttentionPendingCount"
+                        data-count="0">0</span>
+                </div>
+                <div class="oversight-list" id="processAttentionPendingList"
+                     aria-label="Live Process Runs"></div>
+              </div>
+              <div class="sidebar-group" data-group="process-automated">
+                <div class="sidebar-group-label">
+                  Automated Processes
+                  <span class="sidebar-group-count" id="processAttentionAutomatedCount"
+                        data-count="0">0</span>
+                </div>
+                <div class="oversight-list" id="processAttentionAutomatedList"
+                     aria-label="Deployed standing Process Definitions"></div>
+              </div>
+              <!-- Legacy oversight queues remain visible while their callers
+                   migrate; they are not the governed Process projections. -->
               <div class="sidebar-group" data-group="paused">
                 <div class="sidebar-group-label">
-                  Paused
+                  Legacy review queue
                   <span class="sidebar-group-count" id="sidebarPausedCount"
                         data-count="0">0</span>
                 </div>
                 <div class="oversight-list" id="oversightPausedList"
                      aria-label="Paused queue entries"></div>
               </div>
-              <!-- Operating: long-running tasks in motion. Read-only in v1. -->
               <div class="sidebar-group" data-group="operating">
                 <div class="sidebar-group-label">
-                  Operating
+                  Legacy operating
                   <span class="sidebar-group-count" id="sidebarOperatingCount"
                         data-count="0">0</span>
                 </div>
@@ -700,7 +735,8 @@
   <!-- LEFT COLUMN — input on top, draggable bridge strip, output on bottom -->
   <div class="left-column">
     <div class="pane input-pane">
-      <textarea spellcheck="false"></textarea>
+      <textarea spellcheck="false" placeholder="What should happen?"
+                aria-label="What should happen?"></textarea>
       <!-- V3 Input Handling Phase 8 — attachment chip row. The
            file-drop dispatcher (in this file's inline script) renders
            per-file chips here when a file is dropped on the pane or
@@ -714,6 +750,17 @@
            Click handlers dispatch `ora:input-toolbar:*` events; picker modules
            wire the framework and analysis dropdowns. -->
       <div class="input-pane-toolbar" role="toolbar" aria-label="Inquiry options">
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarProgramming"
+                aria-label="Programming"
+                title="Programming"
+                data-input-toolbar="programming">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarFramework"
                 aria-label="Frameworks"
@@ -766,6 +813,13 @@
             <circle cx="12" cy="7" r="4"/>
           </svg>
         </button>
+        <button class="input-pane-toolbar__btn input-pane-toolbar__btn--text" type="button"
+                id="inputToolbarModelProfile"
+                aria-label="Model Profile inherited"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                title="Choose a Model Profile for the next run"
+                data-input-toolbar="model-profile">—</button>
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarImageGenerate"
                 aria-label="Generate image from prompt"
@@ -1081,7 +1135,10 @@
   <div class="right-column">
     <div class="chat-zone" id="chatZone">
       <div class="pane chat-input-pane">
-        <textarea spellcheck="false"></textarea>
+        <textarea spellcheck="false"
+                  aria-label="Aside (informational, not saved or sent to Runs)"
+                  placeholder="Ask Aside — informational only"
+                  data-authoritative="false" data-persisted="false"></textarea>
         <button type="button" class="chat-zone-minimize-btn" id="chatZoneMinimizeBtn"
                 aria-label="Minimize Aside" title="Minimize Aside">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
@@ -1895,13 +1952,41 @@
     }
   };
 
-  const submitToMainPipeline = async (text) => {
+  const submitToMainPipeline = async (
+    text,
+    processEntryRequest = null,
+    processEntryContract = null
+  ) => {
+    // G1.1 Phase 3.3 — governed construction never enters the ordinary
+    // multipart generation path. The review surface owns the authenticated
+    // management interview and exact plan actions through JSON /chat.
+    if (processEntryContract
+        && processEntryContract.intent === 'capability_construction') {
+      if (!window.OraProcessPlanReview
+          || typeof window.OraProcessPlanReview.begin !== 'function') {
+        renderAssistantTurn('[Governed management review is unavailable.]');
+        return;
+      }
+      await window.OraProcessPlanReview.begin(
+        text,
+        processEntryRequest,
+        processEntryContract,
+        leftInputArea
+      );
+      return;
+    }
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', currentConversationId());
     body.append('panel_id',        currentConversationId());
     body.append('is_main_feed',    'true');
     body.append('tag',             currentTag());
+    // G1.1 Phase 2.1 — send the user's entry request, never the client
+    // preview result. The server authenticates the selected definition and
+    // recomputes the routing contract before the pipeline can observe it.
+    if (processEntryRequest) {
+      body.append('process_entry_request', JSON.stringify(processEntryRequest));
+    }
 
     // V3 Input Handling Phase 4 — pass the picker's framework selection
     // through to the pipeline so the framework branch of
@@ -1920,6 +2005,14 @@
       const lens = window.OraInputState.getAnalysisLens();
       if (lens && lens.id) body.append('manual_lens_selection', lens.id);
     }
+    // G1.16 — the input-box selection is a one-run override. It travels on
+    // the existing authenticated multipart field and is cleared as soon as
+    // this exact request is on the wire.
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.getOneRunOverride === 'function') {
+      const profile = window.OraModelProfiles.getOneRunOverride();
+      if (profile) body.append('config_name', profile);
+    }
     // G1.36 honne/tatemae — mark this turn internal so it reads in the project's
     // interaction style (default external uses the output style).
     try {
@@ -1928,7 +2021,8 @@
       }
     } catch (e) {}
 
-    // V3 Phase 7.2 — include canvas content if any. captureFromPanel
+    // V3 Phase 7.2 / G1.1 Phase 2.7 — include canvas content only in this
+    // explicit Inquiry submission. captureFromPanel
     // returns null when the userInputLayer has no shapes, in which case
     // we omit the field. /chat/multipart accepts spatial-only or
     // text-only or combined.
@@ -1938,6 +2032,7 @@
         const spatial = window.OraCanvas.capture();
         if (spatial) {
           body.append('spatial_representation', JSON.stringify(spatial));
+          body.append('exhibits_submission_intent', 'explicit_send');
           canvasHasContent = true;
         }
       } catch (e) {
@@ -2035,6 +2130,10 @@
       console.warn('[v3 submit] HTTP', resp.status);
       refreshSidebarAfterSubmit();
       return;
+    }
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.acknowledgeSubmission === 'function') {
+      window.OraModelProfiles.acknowledgeSubmission(resp);
     }
 
     // V3 Backlog 2A — plain-HTTP reply. {status, conversation_id, chunk_id}
@@ -2167,17 +2266,28 @@
     ].join('\n');
   };
 
-  const submitWithFrameworkCheck = async (text) => {
+  const submitWithFrameworkCheck = async (
+    text,
+    processEntryRequest = null,
+    processEntryContract = null
+  ) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
+    }
+    // Process Definitions have their own governed entry contract. Sending
+    // Programming through the legacy framework gap analyzer would confuse
+    // entry routing with the later management interview and milestone
+    // executor, both outside Phase 2.1.
+    if (fw.kind === 'process_definition') {
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
     }
 
     // Iteration loop. Round N: analyze with priorResponses, popup if
@@ -2200,11 +2310,15 @@
         // Analyzer down — submit anyway so the user isn't trapped. Phase
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
-        return submitToMainPipeline(augmentedPrompt);
+        return submitToMainPipeline(
+          augmentedPrompt, processEntryRequest, processEntryContract
+        );
       }
 
       if (!_hasGaps(report)) {
-        return submitToMainPipeline(augmentedPrompt);
+        return submitToMainPipeline(
+          augmentedPrompt, processEntryRequest, processEntryContract
+        );
       }
 
       const choice = await window.OraFrameworkSetupPopup.show(report);
@@ -2225,7 +2339,9 @@
 
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
-        return submitToMainPipeline(augmentedPrompt + note);
+        return submitToMainPipeline(
+          augmentedPrompt + note, processEntryRequest, processEntryContract
+        );
       }
 
       // choice.action === 'continue' — loop and re-analyze. If the user's
@@ -2234,7 +2350,9 @@
     }
 
     // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(augmentedPrompt);
+    return submitToMainPipeline(
+      augmentedPrompt, processEntryRequest, processEntryContract
+    );
   };
 
   let imageGenerateMode = false;
@@ -2409,7 +2527,7 @@
     trimScratchpadHistory();
   };
 
-  const submitInput = () => {
+  const submitInput = async () => {
     const rightContent = rightInputArea.value.trim();
     if (rightContent) {
       if (window.OraSlashCommands
@@ -2423,6 +2541,15 @@
       return;
     }
     if (!requireMutableInquiry()) return;
+    // A persisted management interview or plan owns this Dialogue until it is
+    // retained or terminal. Reopen the exact state instead of allowing new
+    // Inquiry text to bypass the governed action boundary after reload.
+    if (window.OraProcessPlanReview
+        && typeof window.OraProcessPlanReview.ensureActive === 'function'
+        && await window.OraProcessPlanReview.ensureActive(currentConversationId())) {
+      window.OraProcessPlanReview.open(leftInputArea);
+      return;
+    }
     const leftContent = leftInputArea.value.trim();
     const hasAttachedImages = !!(window.OraInputAttachments
       && typeof window.OraInputAttachments.imageFiles === 'function'
@@ -2447,23 +2574,57 @@
       return;
     }
 
-    leftInputArea.value = '';
-    if (leftContent) {
-      renderUserTurn(leftContent);
-    } else {
-      renderUserTurn('[canvas content]');
-    }
     if (routeAsImageGeneration) {
+      leftInputArea.value = '';
+      renderUserTurn(leftContent);
       setImageGenerateMode(false);
       submitImageGenerationPrompt(leftContent);
       return;
     }
+    // Canvas-only input has no natural-language objective to classify.
+    // Preserve its existing submission path; text-bearing Inquiries always
+    // cross the Phase 2.1 server router before they are cleared or rendered.
+    if (!leftContent) {
+      leftInputArea.value = '';
+      renderUserTurn('[canvas content]');
+      submitWithFrameworkCheck(leftContent, null);
+      return;
+    }
+    let prepared = null;
+    try {
+      const selectedFramework = (window.OraInputState
+        && typeof window.OraInputState.getFramework === 'function')
+        ? window.OraInputState.getFramework() : null;
+      if (!window.OraProcessEntry
+          || typeof window.OraProcessEntry.prepareInquiry !== 'function') {
+        throw new Error('governed Process entry is unavailable');
+      }
+      prepared = await window.OraProcessEntry.prepareInquiry(leftContent, selectedFramework);
+    } catch (error) {
+      renderAssistantTurn('[Entry routing failed: ' + (error.message || error) + ']');
+      return;
+    }
+    if (!prepared) return;
+    leftInputArea.value = '';
+    renderUserTurn(leftContent);
     // V3 Input Handling Phase 7 — route through the framework gap check.
     // When no framework is selected, the wrapper passes straight through
     // to submitToMainPipeline; when one is selected, the popup may
     // intervene before submission.
-    submitWithFrameworkCheck(leftContent);
+    submitWithFrameworkCheck(leftContent, prepared.request, prepared.contract);
   };
+
+  // Programming action and Process Library entries begin outside the Inquiry
+  // textarea, but converge on the same submit boundary once the project and
+  // exact definition requirements are satisfied.
+  document.addEventListener('ora:process-entry:ready', (event) => {
+    const prepared = event.detail;
+    if (!prepared || !prepared.request || !prepared.objective) return;
+    if (!requireMutableInquiry()) return;
+    leftInputArea.value = '';
+    renderUserTurn(prepared.objective);
+    submitToMainPipeline(prepared.objective, prepared.request, prepared.contract);
+  });
 
   // V3 Backlog 7 — pulse the O on submit for visual feedback. The
   // animation removes itself when the class is cleared, so we toggle

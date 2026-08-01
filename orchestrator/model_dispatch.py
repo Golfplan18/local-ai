@@ -46,6 +46,7 @@ def invoke_chat(
     slot: str = "breadth",
     extra_messages: Optional[list[dict]] = None,
     context: str = "interactive",
+    config_name: Optional[str] = None,
 ) -> str:
     """Invoke a model via Ora's existing routing infrastructure.
 
@@ -66,6 +67,9 @@ def invoke_chat(
       extra_messages: optional list of additional messages to insert
                      between the system and user messages (e.g.,
                      few-shot examples).
+      config_name:   exact resolved Model Profile/configuration. When supplied,
+                     endpoint resolution fails closed rather than falling back
+                     to the globally active profile.
 
     Returns:
       The model's text response (stripped of any leading/trailing
@@ -94,7 +98,9 @@ def invoke_chat(
             f"Could not load endpoints config: {e}.",
         ) from e
 
-    endpoint = get_slot_endpoint(config, slot, context=context)
+    endpoint = get_slot_endpoint(
+        config, slot, context=context, config_name=config_name,
+    )
     if not endpoint:
         raise ModelDispatchError(
             "no_slot_endpoint",
@@ -132,7 +138,12 @@ def invoke_chat(
     return stripped
 
 
-def get_slot_info(slot: str = "breadth", *, context: str = "interactive") -> dict:
+def get_slot_info(
+    slot: str = "breadth",
+    *,
+    context: str = "interactive",
+    config_name: Optional[str] = None,
+) -> dict:
     """Inspect what endpoint the given slot would resolve to.
 
     Returns a dict with at least ``name``, ``model_name``, ``type``, and
@@ -151,7 +162,9 @@ def get_slot_info(slot: str = "breadth", *, context: str = "interactive") -> dic
         config = load_routing_config()
     except Exception:
         return {}
-    endpoint = get_slot_endpoint(config, slot, context=context) or {}
+    endpoint = get_slot_endpoint(
+        config, slot, context=context, config_name=config_name,
+    ) or {}
     return {
         k: endpoint.get(k)
         for k in ("name", "model_name", "model", "type", "service", "role")

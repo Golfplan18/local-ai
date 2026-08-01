@@ -29,6 +29,7 @@ migration — because it is already live in on-disk pointer files, browser
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import hashlib
 import os
@@ -96,9 +97,9 @@ MAX_FOLDER_COMPONENT_UNITS = 80
 PROJECT_CHILD_RESERVE_UNITS = 120
 _WINDOWS_INVALID_COMPONENT_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
-# Inert default slots added now (G1.33 decision 3): wired as the model-profile,
-# style, and persona sub-steps land. ``private`` and the profile are honored
-# earliest; style/persona stay inert until G1.36/G1.37.
+# Project-object slots introduced by G1.33.  G1.16 makes the Model Profile and
+# its runtime-authenticated locks authoritative; style is already active while
+# Persona remains owned by the following bounded gate.
 _DEFAULT_SLOTS: dict[str, Any] = {
     "default_model_profile": None,
     "interaction_style": None,
@@ -762,16 +763,12 @@ def touch_project(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any]
 
 # Fields the management modal / API may patch on a project record.
 _UPDATABLE_FIELDS = {
-    "name", "status", "default_model_profile", "interaction_style",
-    "output_style", "persona", "model_locks", "private", "last_accessed_at",
+    "name", "status", "interaction_style", "output_style", "persona",
+    "private", "last_accessed_at",
 }
 
 
-def update_project_meta(
-    nexus: str, updates: dict, pointer_dir: Path | None = None
-) -> dict[str, Any] | None:
-    """Patch whitelisted fields on a project record. Unknown fields are ignored;
-    an invalid ``status``/``name`` raises. Commons is synthetic (no-op)."""
+def _clean_project_updates(updates: dict | None) -> dict[str, Any]:
     clean = {k: v for k, v in (updates or {}).items() if k in _UPDATABLE_FIELDS}
     if "status" in clean and clean["status"] not in PROJECT_STATUSES:
         raise ProjectMetaError(
@@ -782,14 +779,65 @@ def update_project_meta(
         if not isinstance(nm, str) or not nm.strip():
             raise ProjectMetaError("name must be a non-empty string")
         clean["name"] = nm.strip()
+    return clean
+
+
+def _apply_project_updates(data: dict[str, Any], clean: dict[str, Any]) -> None:
+    if "name" in clean:
+        # The API/public field stays `name`; persistence uses additive
+        # display_name so a rolled-back reader keeps deriving paths from the
+        # unchanged legacy name/folder identity.
+        data["display_name"] = clean["name"]
+    data.update({key: value for key, value in clean.items() if key != "name"})
+
+
+def update_project_meta(
+    nexus: str, updates: dict, pointer_dir: Path | None = None
+) -> dict[str, Any] | None:
+    """Patch whitelisted fields on a project record. Unknown fields are ignored;
+    an invalid ``status``/``name`` raises. Commons is synthetic (no-op)."""
+    clean = _clean_project_updates(updates)
 
     def mutate(data: dict[str, Any]) -> None:
-        if "name" in clean:
-            # The API/public field stays `name`; persistence uses additive
-            # display_name so a rolled-back reader keeps deriving paths from the
-            # unchanged legacy name/folder identity.
-            data["display_name"] = clean["name"]
-        data.update({key: value for key, value in clean.items() if key != "name"})
+        _apply_project_updates(data, clean)
+
+    return _update_pointer(nexus, mutate, pointer_dir)
+
+
+def set_project_model_binding(
+    nexus: str,
+    profile_name: str | None,
+    model_locks: dict,
+    pointer_dir: Path | None = None,
+    updates: dict | None = None,
+) -> dict[str, Any] | None:
+    """Persist the Model Profile name and its runtime-authenticated locks.
+
+    These fields deliberately bypass ``update_project_meta``'s public patch
+    whitelist.  Callers must first construct ``model_locks`` through
+    ``model_profiles.capture_project_binding``; a browser cannot submit an
+    invented snapshot or change the name without replacing the exact lock in
+    the same atomic pointer write.
+    """
+    nexus = canonicalize_project_nexus(nexus)
+    if profile_name is not None:
+        if not isinstance(profile_name, str) or not profile_name.strip():
+            raise ProjectMetaError("default_model_profile must be a non-empty string or null")
+        profile_name = profile_name.strip()
+        if not isinstance(model_locks, dict) or not model_locks:
+            raise ProjectMetaError("a Model Profile binding requires non-empty model_locks")
+        if model_locks.get("project_nexus") != nexus:
+            raise ProjectMetaError(
+                "Model Profile locks must be issued for this exact project nexus"
+            )
+    elif model_locks:
+        raise ProjectMetaError("an unbound project cannot retain model_locks")
+    clean = _clean_project_updates(updates)
+
+    def mutate(data: dict[str, Any]) -> None:
+        data["default_model_profile"] = profile_name
+        data["model_locks"] = copy.deepcopy(model_locks)
+        _apply_project_updates(data, clean)
 
     return _update_pointer(nexus, mutate, pointer_dir)
 
@@ -1465,6 +1513,7 @@ __all__ = [
     "set_project_status",
     "touch_project",
     "update_project_meta",
+    "set_project_model_binding",
     "ensure_project_folder",
     "project_folder_path",
     "list_project_files",

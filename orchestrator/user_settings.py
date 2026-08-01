@@ -296,19 +296,65 @@ def set_api_key(provider: str, value: str) -> None:
     """Store an API key for ``provider`` in the system keyring."""
     if not value:
         raise SettingsError("api key value cannot be empty")
+    try:
+        from orchestrator import system_protection as _sp
+    except ImportError:  # pragma: no cover
+        import system_protection as _sp
+    username = _provider_username(provider)
+    _sp.require_active_execution(
+        "credential_store", f"credential:ora/{username}",
+    )
+    _set_api_key_storage(provider, value)
+
+
+def _set_api_key_storage(provider: str, value: str) -> None:
+    """Keyring adapter; authority must be enforced by the public caller."""
+    if not value:
+        raise SettingsError("api key value cannot be empty")
     import keyring  # pulled lazily so tests can stub via sys.modules
     keyring.set_password(_KEYRING_SERVICE, _provider_username(provider), value)
 
 
 def delete_api_key(provider: str) -> None:
     """Remove an API key for ``provider`` from the keyring (if present)."""
-    import keyring
     try:
-        keyring.delete_password(_KEYRING_SERVICE, _provider_username(provider))
-    except Exception:
-        # Keyring backends raise different exceptions for "not found".
-        # Treat all of them as "already absent."
-        pass
+        from orchestrator import system_protection as _sp
+    except ImportError:  # pragma: no cover
+        import system_protection as _sp
+    username = _provider_username(provider)
+    _sp.require_active_execution(
+        "credential_delete", f"credential:ora/{username}",
+    )
+    _delete_api_key_storage(provider)
+
+
+def _delete_api_key_storage(provider: str) -> None:
+    """Keyring deletion adapter; authority is enforced by the public caller."""
+    import keyring
+    username = _provider_username(provider)
+    try:
+        keyring.delete_password(_KEYRING_SERVICE, username)
+    except Exception as exc:
+        # Backends disagree on the not-found exception type. Treat it as
+        # already absent only when a strict post-read proves absence; every
+        # other backend failure propagates.
+        try:
+            remaining = keyring.get_password(_KEYRING_SERVICE, username)
+        except Exception as verify_exc:
+            raise SettingsError(
+                f"credential deletion could not be verified: {verify_exc}"
+            ) from exc
+        if remaining is None:
+            return
+        raise SettingsError("credential deletion failed; credential remains present") from exc
+    try:
+        remaining = keyring.get_password(_KEYRING_SERVICE, username)
+    except Exception as exc:
+        raise SettingsError(
+            f"credential deletion could not be verified: {exc}"
+        ) from exc
+    if remaining is not None:
+        raise SettingsError("credential deletion failed; credential remains present")
 
 
 def api_key_present(provider: str) -> bool:

@@ -79,6 +79,11 @@ except Exception:  # pragma: no cover - defensive
 DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
 DEFAULT_OUTPUT_DIR = os.path.normpath(VAULT_DIR)
 
+try:
+    import system_protection as _sp
+except ImportError:  # pragma: no cover
+    from orchestrator import system_protection as _sp
+
 
 KNOWN_COMMANDS = runtime_command_names()
 
@@ -112,7 +117,12 @@ def is_runtime_command(user_input: str) -> bool:
         return False
 
 
-def run_runtime_command(user_input: str) -> str:
+def run_runtime_command(
+    user_input: str,
+    *,
+    conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     """Parse and execute a runtime slash command.
 
     Returns a user-facing markdown string. Errors are caught and surfaced
@@ -161,6 +171,18 @@ def run_runtime_command(user_input: str) -> str:
             return proj_match_text
         return f"[Unknown slash command: {cmd}]"
     try:
+        if cmd == "/approve":
+            return _cmd_approve(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
+        if cmd == "/deny":
+            return _cmd_deny(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
+        if cmd in {"/maintenance", "/maint"}:
+            return _cmd_maintenance(
+                args, conversation_id=conversation_id, principal_id=principal_id,
+            )
         return handler(args)
     except Exception as exc:
         return f"[Unexpected error in {cmd}: {exc}]"
@@ -269,7 +291,10 @@ def _registry_categories() -> list[str]:
     })
 
 
-def _cmd_maintenance(args: list[str]) -> str:
+def _cmd_maintenance(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     """Grouped maintenance command aliases."""
     if not args or args[0].lower() in ("help", "-h", "--help"):
         return _cmd_help(["maintenance"])
@@ -283,9 +308,13 @@ def _cmd_maintenance(args: list[str]) -> str:
     if sub in ("queue", "status"):
         return _cmd_queue(rest)
     if sub == "approve":
-        return _cmd_approve(rest)
+        return _cmd_approve(
+            rest, conversation_id=conversation_id, principal_id=principal_id,
+        )
     if sub == "deny":
-        return _cmd_deny(rest)
+        return _cmd_deny(
+            rest, conversation_id=conversation_id, principal_id=principal_id,
+        )
     if sub == "cleaning":
         return _cmd_cleaning(rest)
     if sub == "news":
@@ -330,6 +359,37 @@ def _project_registry():
 # ---------- Project plugin command handlers (project-agnostic) ----------
 
 
+def _protected_slash_effect(action: str, selector: str, params: dict, callback):
+    """Run one opaque slash effect through G1.22 one-shot review + receipt."""
+    logical = {"selector": selector, "kind": "logical",
+               "params_digest": _sp.params_digest(params)}
+    logical["digest"] = _sp.params_digest(logical)
+    protection = _sp.authorize_server_action(
+        action, selectors=[selector], params=params, pre_state=[logical],
+        surface="slash_command",
+    )
+    try:
+        with _sp.protected_effect(protection):
+            result = callback()
+    except Exception as exc:
+        try:
+            _sp.complete_execution(
+                protection, ok=False, result={"error": type(exc).__name__},
+                post_state=[logical],
+            )
+        except Exception as receipt_error:
+            raise _sp.ProtectionAuditError(
+                f"slash effect failed and its failure receipt could not persist: {receipt_error}"
+            ) from exc
+        raise
+    _sp.complete_execution(
+        protection, ok=True,
+        result={"result_digest": _sp.params_digest({"result": result})},
+        post_state=[logical],
+    )
+    return result
+
+
 def _cmd_project_tool(args: list[str]) -> str:
     """`/project-tool <nexus> <tool-name> [<json-stdin>]` — invoke a project tool.
 
@@ -357,9 +417,25 @@ def _cmd_project_tool(args: list[str]) -> str:
     try:
         if tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT:
             stdin_obj = _json.loads(rest[0]) if rest else {}
-            result = _pr.invoke_project_tool(nexus, tool_name, stdin_json=stdin_obj)
+            result = _protected_slash_effect(
+                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
+                {"nexus": nexus, "tool": tool_name,
+                 "input_digest": _sp.params_digest({"stdin": stdin_obj})},
+                lambda: _pr.invoke_project_tool(
+                    nexus, tool_name, stdin_json=stdin_obj,
+                ),
+            )
         else:
-            result = _pr.invoke_project_tool(nexus, tool_name, args=rest)
+            result = _protected_slash_effect(
+                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
+                {"nexus": nexus, "tool": tool_name,
+                 "args_digest": _sp.params_digest({"args": rest})},
+                lambda: _pr.invoke_project_tool(nexus, tool_name, args=rest),
+            )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
     except _pr.ToolInvocationError as exc:
         body = (f"```\n{exc.stderr}\n```" if getattr(exc, "stderr", "") else "")
         return f"[/project-tool: {exc}]\n{body}"
@@ -393,11 +469,43 @@ def _cmd_project_register(args: list[str]) -> str:
     _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-register <path-to-project-root>"
+    protection = None
     try:
-        project = _pr.register_project(args[0])
+        project = _pr.load_project_at(args[0])
+        pointer = _pr._pointer_path(project.nexus)
+        manifest = Path(project.root) / _pr.MANIFEST_FILENAME
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_register", selectors=[_sp.path_selector(pointer)],
+            params={
+                "nexus": project.nexus,
+                "root": str(project.root),
+                "manifest_identity": _sp.capture_path_identity(manifest),
+            },
+            pre_state=[pre_state], surface="slash_command",
+        )
+        with _sp.protected_effect(protection):
+            project = _pr.register_project(args[0])
+        _sp.complete_execution(
+            protection, ok=True,
+            result={"registered": project.nexus, "root": str(project.root)},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
     except _pr.ManifestError as exc:
         return f"[/project-register: invalid project — {exc}]"
     except Exception as exc:
+        if protection is not None:
+            try:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+            except Exception as receipt_error:
+                return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
         return f"[/project-register: {exc}]"
     return (f"Registered project **{project.nexus}** ({project.name}) "
             f"at `{project.root}`. {len(project.tools)} tool(s), "
@@ -409,7 +517,37 @@ def _cmd_project_unregister(args: list[str]) -> str:
     _pr = _project_registry()
     if len(args) != 1:
         return "Usage: /project-unregister <nexus>"
-    if _pr.unregister_project(args[0]):
+    nexus = args[0]
+    protection = None
+    try:
+        pointer = _pr._pointer_path(nexus)
+        pre_state = _sp.capture_path_identity(pointer)
+        protection = _sp.authorize_server_action(
+            "project_unregister", selectors=[_sp.path_selector(pointer)],
+            params={"nexus": nexus}, pre_state=[pre_state],
+            surface="slash_command",
+        )
+        with _sp.protected_effect(protection):
+            removed = _pr.unregister_project(nexus)
+        _sp.complete_execution(
+            protection, ok=removed, result={"removed": removed, "nexus": nexus},
+            post_state=[_sp.capture_path_identity(pointer)],
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return exc.args[0]
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
+    except Exception as exc:
+        if protection is not None:
+            try:
+                _sp.complete_execution(
+                    protection, ok=False, result={"error": type(exc).__name__},
+                    post_state=[_sp.capture_path_identity(pointer)],
+                )
+            except Exception as receipt_error:
+                return f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {receipt_error}]"
+        return f"[/project-unregister: {exc}]"
+    if removed:
         return f"Unregistered project **{args[0]}**. (Project files on disk untouched.)"
     return f"[/project-unregister: no project named {args[0]!r} was registered]"
 
@@ -431,7 +569,20 @@ def _try_project_slash_command(cmd: str, args: list[str]) -> Optional[str]:
         return f"[/{name}: project-registry error: {exc}]"
     if project is None:
         return None
-    return _pr.invoke_project_slash_command(project.nexus, name, args=args)
+    try:
+        return _protected_slash_effect(
+            "project_slash_execute",
+            f"project:{project.nexus}/slash:{name}",
+            {"nexus": project.nexus, "command": name,
+             "args_digest": _sp.params_digest({"args": args})},
+            lambda: _pr.invoke_project_slash_command(
+                project.nexus, name, args=args,
+            ),
+        )
+    except _sp.ProtectionReviewRequired as exc:
+        return str(exc)
+    except _sp.SystemProtectionError as exc:
+        return f"[SYSTEM PROTECTION — {exc}]"
 
 
 # ---------- Path helpers ----------
@@ -594,7 +745,10 @@ def _cmd_queue(args: list[str]) -> str:
     word = "entry" if len(entries) == 1 else "entries"
     lines = [f"**Human queue:** {len(entries)} pending {word}", ""]
     for e in entries:
-        kind = "redefinition" if e.redefinition else "escalation"
+        request_type = e.authority_request_type or (
+            "ped_redefinition" if e.redefinition else "legacy_untyped"
+        )
+        kind = request_type.replace("_", " ")
         project = e.event.get("project_nexus") or "(none)"
         reasoning = (e.verdict.get("reasoning") or "").strip()
         if len(reasoning) > 240:
@@ -610,13 +764,16 @@ def _cmd_queue(args: list[str]) -> str:
     lines.append("")
     lines.append(
         "Use `/approve <index>` or `/deny <index> [<reason>]` to act on a "
-        "redefinition entry."
+        "typed authority request. PED redefinitions use the legacy mechanical "
+        "archive/repoint handler; other request types require their own handler."
     )
     return "\n".join(lines)
 
 
-def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
-                                 reason: str = "") -> str | None:
+def _maybe_resolve_gate_entry_at(
+    idx: int, approve: bool, reason: str = "", *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str | None:
     """Kind-dispatch for /approve and /deny: Execution Review gate entries
     (kind=execution_gate) resolve through tool_events, never through
     redefinition_handler. Returns None for non-gate entries."""
@@ -638,6 +795,23 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
         _kind = rec.get("kind")
         if _kind not in ("execution_gate", "task_gate"):
             return None
+        event = rec.get("event") or {}
+        expected_dialogue = str(
+            rec.get("discussion_conversation_id")
+            or event.get("conversation_id")
+            or ""
+        )
+        expected_principal = str(event.get("principal_id") or "principal:user")
+        if (
+            not conversation_id
+            or conversation_id != expected_dialogue
+            or not principal_id
+            or principal_id != expected_principal
+        ):
+            return (
+                "[This Dialogue and Principal do not own the selected queue "
+                "entry; the entry was not changed.]"
+            )
         if _kind == "task_gate":
             # Execution Review Phase 2: irreversible-tier task hold.
             try:
@@ -645,14 +819,22 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
             except ImportError:
                 from orchestrator import risk_gate
             message = risk_gate.resolve_task_gate_entry(rec, approve=approve,
-                                                        reason=reason)
+                                                        reason=reason,
+                                                        principal_id=principal_id)
         else:
             try:
                 import tool_events
             except ImportError:
                 from orchestrator import tool_events
             message = tool_events.resolve_gate_entry(rec, approve=approve,
-                                                     reason=reason)
+                                                     reason=reason,
+                                                     principal_id=principal_id)
+        if message.startswith((
+            "[Unauthenticated execution-gate entry",
+            "[Unauthenticated task-gate entry",
+            "[Task-gate Principal mismatch",
+        )):
+            return message
         with file_lock(queue_path):
             with open(queue_path) as f:
                 current = [l for l in f if l.strip()]
@@ -668,7 +850,33 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
         return None
 
 
-def _cmd_approve(args: list[str]) -> str:
+def _authority_request_type_at(idx: int) -> str | None:
+    """Return the explicit queue authority type without invoking a handler."""
+    try:
+        import json as _json
+        from oversight_actions import human_queue_path
+        queue_path = human_queue_path()
+        if not os.path.isfile(queue_path):
+            return None
+        with open(queue_path) as f:
+            lines = [line for line in f if line.strip()]
+        if idx < 0 or idx >= len(lines):
+            return None
+        record = _json.loads(lines[idx])
+        if record.get("kind") in ("execution_gate", "task_gate"):
+            return None
+        request_type = str(record.get("authority_request_type") or "")
+        if not request_type and record.get("redefinition"):
+            request_type = "ped_redefinition"
+        return request_type or "legacy_untyped"
+    except Exception:
+        return None
+
+
+def _cmd_approve(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     if not args:
         return (
             "**Usage:** `/approve <index> [<proposed-definition>]`\n\n"
@@ -682,9 +890,19 @@ def _cmd_approve(args: list[str]) -> str:
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     proposed = " ".join(args[1:]) if len(args) > 1 else None
 
-    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=True)
+    gate_msg = _maybe_resolve_gate_entry_at(
+        idx, approve=True, conversation_id=conversation_id,
+        principal_id=principal_id,
+    )
     if gate_msg is not None:
         return gate_msg
+
+    request_type = _authority_request_type_at(idx)
+    if request_type and request_type != "ped_redefinition":
+        return (
+            f"[No approval handler is registered for authority request type "
+            f"`{request_type}`; the queue entry was not changed.]"
+        )
 
     from redefinition_handler import approve_redefinition
     result = approve_redefinition(idx, proposed)
@@ -699,7 +917,10 @@ def _cmd_approve(args: list[str]) -> str:
     )
 
 
-def _cmd_deny(args: list[str]) -> str:
+def _cmd_deny(
+    args: list[str], *, conversation_id: str = "",
+    principal_id: str = "principal:user",
+) -> str:
     if not args:
         return (
             "**Usage:** `/deny <index> [<reason>]`\n\n"
@@ -721,9 +942,19 @@ def _cmd_deny(args: list[str]) -> str:
         return f"[`{args[0]}` is not a valid index. Use `/queue` to list indexes.]"
     reason = " ".join(args[1:]) if len(args) > 1 else ""
 
-    gate_msg = _maybe_resolve_gate_entry_at(idx, approve=False, reason=reason)
+    gate_msg = _maybe_resolve_gate_entry_at(
+        idx, approve=False, reason=reason,
+        conversation_id=conversation_id, principal_id=principal_id,
+    )
     if gate_msg is not None:
         return gate_msg
+
+    request_type = _authority_request_type_at(idx)
+    if request_type and request_type != "ped_redefinition":
+        return (
+            f"[No denial handler is registered for authority request type "
+            f"`{request_type}`; the queue entry was not changed.]"
+        )
 
     from redefinition_handler import deny_redefinition
     result = deny_redefinition(idx, reason)
@@ -843,6 +1074,12 @@ def _cmd_cleaning(args: list[str]) -> str:
 
     if sub == "resolve":
         apply = "--apply" in args
+        if apply:
+            return (
+                "[SYSTEM PROTECTION — legacy `/cleaning resolve --apply` does "
+                "not declare exact mutation selectors. Use a reviewed bounded "
+                "campaign or the authenticated event-triggered maintenance path.]"
+            )
         dry_run = not apply
 
         try:
@@ -1020,6 +1257,12 @@ def _cmd_news(args: list[str]) -> str:
 
     if sub == "resolve":
         apply = "--apply" in args
+        if apply:
+            return (
+                "[SYSTEM PROTECTION — legacy `/news resolve --apply` does not "
+                "declare exact mutation selectors. Use a reviewed bounded "
+                "campaign or the authenticated event-triggered maintenance path.]"
+            )
         dry_run = not apply
 
         try:

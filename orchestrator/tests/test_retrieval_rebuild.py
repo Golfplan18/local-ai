@@ -21,6 +21,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -83,12 +84,46 @@ class RetrievalRebuild(unittest.TestCase):
                 "profile_id": "", "progress": "", "last_summary": None,
             })
         self.client = self.S.app.test_client()
+        import oversight_queue
+        import tool_events
+        from orchestrator import system_protection
+        self._protection = system_protection
+        self._tool_events = tool_events
+        self._oversight_queue = oversight_queue
+        self._vector_root = Path(self._tmp.name) / "chromadb"
+        self._vector_root.mkdir()
+        self._config_path = Path(self._tmp.name) / "chromadb.json"
+        self._config_path.write_text("{}", encoding="utf-8")
+        self._patches = [
+            mock.patch.object(self.S.rp, "CHROMADB_DIR", self._vector_root),
+            mock.patch.object(
+                self.S._retrieval_config, "CHROMADB_CONFIG_PATH", self._config_path,
+            ),
+            mock.patch.object(
+                system_protection, "_actions_path",
+                return_value=str(Path(self._tmp.name) / "actions.jsonl"),
+            ),
+            mock.patch.object(
+                tool_events, "APPROVALS_PATH",
+                str(Path(self._tmp.name) / "approvals.json"),
+            ),
+            mock.patch.object(
+                oversight_queue, "HUMAN_QUEUE_PATH",
+                str(Path(self._tmp.name) / "queue.jsonl"),
+            ),
+        ]
+        for patcher in self._patches:
+            patcher.start()
+        tool_events._queued_hashes.clear()
 
     def tearDown(self):
         if self.import_ok:
             self._wait_done()
             self.S._REEMBED_SCRIPT = self._saved_script
             self.S._resolve_reembed_profile = self._saved_resolve
+            self._tool_events._queued_hashes.clear()
+            for patcher in reversed(self._patches):
+                patcher.stop()
             self._tmp.cleanup()
 
     def _fake_script(self, body):
@@ -104,6 +139,19 @@ class RetrievalRebuild(unittest.TestCase):
             data=json.dumps({"embedding_profile_id": profile_id}),
             content_type="application/json",
         )
+
+    def _approved_start(self, profile_id=PROFILE["id"]):
+        first = self._start(profile_id)
+        self.assertEqual(first.status_code, 409, first.data)
+        self.assertEqual(
+            json.loads(first.data)["status"],
+            "awaiting_system_protection_approval",
+        )
+        with open(self._oversight_queue.HUMAN_QUEUE_PATH, encoding="utf-8") as stream:
+            records = [json.loads(line) for line in stream if line.strip()]
+        result = self._tool_events.resolve_gate_entry(records[-1], approve=True)
+        self.assertIn("One-shot token", result)
+        return self._start(profile_id)
 
     def _status(self):
         return json.loads(self.client.get("/api/retrieval/rebuild/status").data)
@@ -138,7 +186,7 @@ class RetrievalRebuild(unittest.TestCase):
 
     def test_successful_rebuild_reports_progress_and_restart_flag(self):
         self._fake_script(FAKE_OK)
-        resp = self._start()
+        resp = self._approved_start()
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(json.loads(resp.data)["status"], "started")
         final = self._wait_done()
@@ -151,7 +199,7 @@ class RetrievalRebuild(unittest.TestCase):
 
     def test_failed_rebuild_surfaces_returncode(self):
         self._fake_script(FAKE_FAIL)
-        self.assertEqual(self._start().status_code, 200)
+        self.assertEqual(self._approved_start().status_code, 200)
         final = self._wait_done()
         summary = final["last_summary"]
         self.assertFalse(summary["ok"])
@@ -164,7 +212,7 @@ class RetrievalRebuild(unittest.TestCase):
                 "print('  progress: 1/10 (10.0%)  rate: 1.0 docs/sec', flush=True)\n"
                 "time.sleep(1.5)\nsys.exit(0)\n")
         self._fake_script(slow)
-        self.assertEqual(self._start().status_code, 200)
+        self.assertEqual(self._approved_start().status_code, 200)
         time.sleep(0.2)
         second = self._start()
         self.assertEqual(second.status_code, 409)

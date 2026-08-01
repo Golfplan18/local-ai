@@ -4,6 +4,7 @@ command classification, audit logging, and consecutive call limiting."""
 from __future__ import annotations
 
 import hashlib
+import contextlib
 import json
 import os
 import sys
@@ -77,6 +78,11 @@ try:
     import tool_events
 except ImportError:
     from orchestrator import tool_events
+
+try:
+    import system_protection
+except ImportError:  # pragma: no cover
+    from orchestrator import system_protection
 
 # Non-critical imports (hooks, MCP)
 try:
@@ -166,7 +172,7 @@ def _wrap_knowledge_search(params):
 
 def _wrap_credential_store(params):
     return credential_store(
-        params.get("action", "retrieve"),
+        params.get("action", "status"),
         params.get("service", ""),
         params.get("username", ""),
         params.get("value"),
@@ -184,32 +190,11 @@ def _wrap_spawn_subagent(params):
     )
 
 def _wrap_schedule_task(params):
-    """Create a scheduled task entry."""
-    import uuid
-    from datetime import datetime as _dt
-    registry_path = os.path.join(WORKSPACE, "config/scheduled-tasks.json")
-    try:
-        with open(registry_path) as f:
-            registry = json.load(f)
-    except Exception:
-        registry = {"tasks": [], "settings": {"max_concurrent": 3}}
-
-    task_id = str(uuid.uuid4())[:8]
-    entry = {
-        "id": task_id,
-        "prompt": params.get("prompt", ""),
-        "interval_minutes": params.get("interval_minutes", 30),
-        "model_slot": params.get("model_slot", "small"),
-        "timeout_minutes": 10,
-        "created_at": _dt.now().isoformat(),
-        "last_run": None,
-        "run_count": 0,
-        "active": True,
-    }
-    registry["tasks"].append(entry)
-    with open(registry_path, "w") as f:
-        json.dump(registry, f, indent=2)
-    return f"Scheduled task {task_id}: '{entry['prompt'][:60]}' every {entry['interval_minutes']}m"
+    """Reject legacy recurring prompts; G1.19 owns future trigger creation."""
+    raise RuntimeError(
+        "schedule_task is retired: bind work to an exact event or one-shot "
+        "deadline; user-facing Trigger Manager work remains G1.19"
+    )
 
 
 # ── Scheduled task registry management ─────────────────────────────────────
@@ -271,7 +256,10 @@ def _wrap_pause_scheduled_task(params):
 
 
 def _wrap_resume_scheduled_task(params):
-    return _update_scheduled_task_status(params.get("id", ""), active=True)
+    raise RuntimeError(
+        "resume_scheduled_task is retired: legacy registry rows cannot regain "
+        "execution authority"
+    )
 
 
 def _wrap_remove_scheduled_task(params):
@@ -322,8 +310,6 @@ TOOL_REGISTRY = {
     "spawn_subagent":   {"handler": _wrap_spawn_subagent,   "permission": "approve", "category": "execute",
                          "mutability": "read", "sensitivity": "private", "egress": "external",
                          "enforcement": "boundary_only"},
-    "schedule_task":         {"handler": _wrap_schedule_task,         "permission": "approve", "category": "write",
-                              "mutability": "reversible_write", "sensitivity": "private", "egress": "none"},
     "list_scheduled_tasks":  {"handler": _wrap_list_scheduled_tasks,  "permission": "auto",    "category": "read",
                               "mutability": "read", "sensitivity": "private", "egress": "none"},
     "pause_scheduled_task":  {"handler": _wrap_pause_scheduled_task,  "permission": "approve", "category": "write",
@@ -652,6 +638,17 @@ def _resolve_call_axes(tool_name: str, entry: dict | None,
                 axes.get("mutability", "read"), "irreversible")
             axes["protected_config"] = True
 
+    if tool_name == "credential_store":
+        credential_action = str(parameters.get("action") or "status").lower()
+        if credential_action == "status":
+            axes.update({"category": "read", "mutability": "read",
+                         "sensitivity": "private", "egress": "none"})
+        elif credential_action in {"store", "delete"}:
+            axes.update({"category": "write", "mutability": "reversible_write",
+                         "sensitivity": "secret", "egress": "none"})
+        else:
+            axes.update(tool_events.FAIL_CLOSED)
+
     # Read-only tools that take an arbitrary directory/path argument reach
     # the filesystem just like file_read — a grep or listing of ~/.ssh
     # exposes the same content, so resolve sensitivity on their target too.
@@ -728,6 +725,55 @@ def dispatch(tool_name: str, parameters: dict,
     axes, classification, shell_profile = _resolve_call_axes(
         tool_name, entry, parameters)
 
+    # G1.22A: classification at the same pre-effect boundary as the existing
+    # execution gate.  The generic capability axes cannot express absolute
+    # whole-system prohibitions or distinguish a reviewed non-channel external
+    # write from an ordinary reversible local write.
+    protection_policy = system_protection.classify_tool_call(
+        tool_name, parameters, axes, shell_profile=shell_profile,
+    )
+    if protection_policy.outcome == "deny":
+        duration = int((time.time() - start) * 1000)
+        tool_events.record({
+            "event": "gate", "action": protection_policy.action,
+            "category": axes.get("category", "execute"),
+            "mutability": axes.get("mutability", "irreversible"),
+            "sensitivity": axes.get("sensitivity", "secret"),
+            "egress": axes.get("egress", "external"),
+            "gate": {"decision": "blocked", "why": protection_policy.reason},
+            "exit": {"ok": False, "reason": protection_policy.policy_code},
+            "duration_ms": duration, "enforcement_model": "in_harness",
+        })
+        return f"[SYSTEM PROTECTION — {protection_policy.reason}]"
+    if protection_policy.outcome == "review":
+        # Reuse the one-shot Paused approval path.  Escalating the resolved
+        # axes here makes auto-approve mechanically unable to carry the call.
+        axes["mutability"] = "irreversible"
+        axes["protection_policy"] = protection_policy.policy_code
+
+    protection_pre_state = []
+    protection_approval_binding = None
+    if protection_policy.outcome == "review":
+        try:
+            for selector in protection_policy.selectors:
+                protection_pre_state.append(
+                    system_protection.capture_selector_identity(selector)
+                )
+            review_request, review_digest = (
+                system_protection.prepare_protection_request(
+                    protection_policy,
+                    params_digest=system_protection.params_digest(parameters),
+                    pre_state=protection_pre_state,
+                    surface="tool_dispatcher",
+                )
+            )
+            protection_approval_binding = {
+                "request_digest": review_digest,
+                "selectors": review_request["selectors"],
+            }
+        except system_protection.SystemProtectionError as exc:
+            return f"[SYSTEM PROTECTION — {exc}]"
+
     # BLOCKED bash patterns short-circuit exactly as before.
     if classification and classification["level"] == "blocked":
         duration = int((time.time() - start) * 1000)
@@ -780,12 +826,43 @@ def dispatch(tool_name: str, parameters: dict,
         description=str(description or "")[:200],
         model_facing=True, interactive_approver=interactive,
         queue_extra=queue_extra,
+        approval_binding=protection_approval_binding,
     )
     if not decision.allowed:
         duration = int((time.time() - start) * 1000)
         _log_dispatch(tool_name, parameters, classification,
                       f"gate-{decision.decision}", decision.why, duration)
         return decision.message or f"[GATED — {decision.why}]"
+
+    protection_execution = None
+    if protection_policy.outcome == "review":
+        if not decision.approval_id:
+            return "[SYSTEM PROTECTION — protected action lacks consumed approval identity]"
+        try:
+            protection_execution = system_protection.begin_execution(
+                protection_policy,
+                approval_id=decision.approval_id,
+                approval_action=tool_name,
+                approval_args_hash=tool_events.normalize_args_hash(
+                    tool_name, parameters,
+                ),
+                params_digest=system_protection.params_digest(parameters),
+                pre_state=protection_pre_state,
+                surface="tool_dispatcher",
+            )
+        except system_protection.SystemProtectionError as exc:
+            duration = int((time.time() - start) * 1000)
+            tool_events.record({
+                "event": "gate", "action": protection_policy.action,
+                "category": axes.get("category", "execute"),
+                "mutability": axes.get("mutability", "irreversible"),
+                "sensitivity": axes.get("sensitivity", "private"),
+                "egress": axes.get("egress", "none"),
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "protection audit unavailable"},
+                "duration_ms": duration, "enforcement_model": "in_harness",
+            })
+            return f"[SYSTEM PROTECTION — {exc}]"
 
     # Permission gate (existing approve tier). Skipped when the gate
     # already collected a live human approval — one prompt, not two.
@@ -827,26 +904,55 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Execute
     try:
-        if is_mcp:
-            if _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
-                result = _mcp_client.call_mcp_tool(tool_name, parameters)
+        effect_context = (
+            system_protection.protected_effect(protection_execution)
+            if protection_execution is not None
+            else contextlib.nullcontext()
+        )
+        with effect_context:
+            if is_mcp:
+                if _mcp_client and hasattr(_mcp_client, 'call_mcp_tool'):
+                    result = _mcp_client.call_mcp_tool(tool_name, parameters)
+                else:
+                    result = f"[MCP unavailable — no client for {tool_name}]"
+            elif tool_name in ("web_fetch", "web_search"):
+                # Execution Review Phase 8 (§2.3): the dispatcher records these
+                # itself below, so suppress the tools-module LIBRARY GUARD for
+                # the duration of this SYNCHRONOUS handler call (thread-local,
+                # same-thread exact — the double-record kill, judge OQ-5).
+                with tool_events.suppress_library_recording():
+                    result = entry["handler"](parameters)
             else:
-                result = f"[MCP unavailable — no client for {tool_name}]"
-        elif tool_name in ("web_fetch", "web_search"):
-            # Execution Review Phase 8 (§2.3): the dispatcher records these
-            # itself below, so suppress the tools-module LIBRARY GUARD for
-            # the duration of this SYNCHRONOUS handler call (thread-local,
-            # same-thread exact — the double-record kill, judge OQ-5).
-            with tool_events.suppress_library_recording():
                 result = entry["handler"](parameters)
-        else:
-            result = entry["handler"](parameters)
         if isinstance(result, (dict, list)):
             result_str = json.dumps(result)
         else:
             result_str = str(result)
     except Exception as e:
         result_str = f"[Tool error — {tool_name}: {e}]"
+
+    if protection_execution is not None:
+        protected_ok = not result_str.startswith((
+            "[Tool error", "[MCP error", "[MCP unavailable", "[Permission",
+            "[Path validation",
+        ))
+        post_state = []
+        try:
+            for selector in protection_policy.selectors:
+                post_state.append(
+                    system_protection.capture_selector_identity(selector)
+                )
+            system_protection.complete_execution(
+                protection_execution,
+                ok=protected_ok,
+                result=result_str,
+                post_state=post_state,
+            )
+        except system_protection.SystemProtectionError as exc:
+            # The effect may already have occurred; never report ordinary
+            # success without its terminal receipt.  The write-ahead record
+            # remains a restart-visible broken-infrastructure signal.
+            result_str = f"[SYSTEM PROTECTION BROKEN INFRASTRUCTURE — {exc}]"
 
     # Post-tool hooks
     hook_outputs = fire_hooks("post_tool", {"tool_name": tool_name, "result": result_str[:500]})

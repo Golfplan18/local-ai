@@ -146,6 +146,14 @@ class TestConfigNameUtility(unittest.TestCase):
     def test_interactive_rag_planner(self):
         self._equivalence("rag_planner", "interactive", "user-pipeline")
 
+    def test_interactive_fast_resolves_gear2_rag_lookup_cell(self):
+        direct = self.router.resolve_utility_slot(
+            "gear2_rag_lookup", "interactive", config_name="user-pipeline")
+        alias = self.router.resolve_utility_slot(
+            "fast", "interactive", config_name="user-pipeline")
+        self.assertIsNotNone(direct)
+        self.assertEqual(alias["id"], direct["id"])
+
     def test_agent_step1_cleanup(self):
         self._equivalence("step1_cleanup", "agent", "background-default")
 

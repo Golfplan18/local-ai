@@ -18,6 +18,9 @@
 @import url("./components/analysis-picker.css");
 @import url("./components/framework-setup-popup.css");
 @import url("./components/project-modal.css");
+@import url("./components/process-entry.css");
+@import url("./components/process-run-inspector.css");
+@import url("./components/process-trigger-manager.css");
 @import url("./components/export-toolbar.css");
 @import url("./components/bridges.css");
 @import url("./components/spine.css");

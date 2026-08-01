@@ -184,24 +184,87 @@ class TestGateBeforeExecution(DispatchBase):
     def test_unknown_shell_command_blocked_under_auto_approve(self):
         result = dispatcher.dispatch(
             "bash_execute", {"command": "timedatectl set-time now"})
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         self.assertEqual(self.shell_calls, [])
         recs = self._queue_lines()
-        self.assertEqual(len(recs), 1)
-        self.assertEqual(recs[0]["kind"], "execution_gate")
+        self.assertEqual(recs, [])
 
     def test_gate_blocks_before_any_execution_side_effect(self):
         marker = os.path.join(self.tmp.name, "should-not-exist")
         result = dispatcher.dispatch(
             "bash_execute", {"command": f"unknowncmd42 && touch {marker}"})
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         self.assertEqual(self.shell_calls, [])
         self.assertFalse(os.path.exists(marker))
+
+    def test_command_launching_wrappers_cannot_consume_approval_or_enter_handler(self):
+        protected = tool_events.APPROVALS_PATH
+        key = protected + ".auth.key"
+        commands = (
+            f"env cat {shlex.quote(protected)}",
+            f"env FOO=1 sh -c 'cat {protected}'",
+            f"command cat {shlex.quote(protected)}",
+            f"exec cat {shlex.quote(key)}",
+            f"nice cat {shlex.quote(protected)}",
+            f"nohup cat {shlex.quote(key)}",
+            f"timeout 1 cat {shlex.quote(protected)}",
+            f"awk 'BEGIN{{system(\"cat {protected}\")}}'",
+            f"find {shlex.quote(self.workspace)} -execdir cat {shlex.quote(protected)} ';'",
+            f"tar --use-compress-program=cat -cf out.tar {shlex.quote(protected)}",
+            f"pandoc --filter cat {shlex.quote(protected)}",
+            f"yt-dlp --exec 'cat {protected}' https://example.invalid/video",
+            f"zip -TT cat out.zip {shlex.quote(protected)}",
+        )
+        for background in (False, True):
+            for command in commands:
+                with self.subTest(background=background, command=command):
+                    dispatcher.reset_consecutive()
+                    dispatcher.execute_command.reset_mock()
+                    params = {
+                        "command": command,
+                        "cwd": self.workspace,
+                        "background": background,
+                    }
+                    args_hash = tool_events.normalize_args_hash(
+                        "bash_execute", params,
+                    )
+                    token = tool_events._grant_approval_authorized(
+                        "bash_execute", args_hash,
+                    )
+                    with mock.patch.object(
+                        bash_execute.subprocess, "run",
+                    ) as run, mock.patch.object(
+                        bash_execute.subprocess, "Popen",
+                    ) as popen:
+                        result = dispatcher.dispatch("bash_execute", params)
+                    self.assertIn("SYSTEM PROTECTION", result)
+                    dispatcher.execute_command.assert_not_called()
+                    run.assert_not_called()
+                    popen.assert_not_called()
+                    self.assertEqual(
+                        tool_events.check_and_consume_approval(
+                            "bash_execute", args_hash,
+                        ),
+                        token,
+                    )
+
+    def test_env_inspection_only_forms_reach_registered_handler(self):
+        commands = ("env", "env FOO=bar", "env -i FOO=bar", "env -u HOME")
+        for command in commands:
+            dispatcher.reset_consecutive()
+            result = dispatcher.dispatch(
+                "bash_execute", {"command": command, "cwd": self.workspace},
+            )
+            self.assertNotIn("SYSTEM PROTECTION", result, command)
+            self.assertNotIn("GATED", result, command)
+        self.assertEqual(
+            [call[0] for call in self.shell_calls], list(commands),
+        )
 
     def test_git_force_push_blocked(self):
         result = dispatcher.dispatch(
             "bash_execute", {"command": "git push --force origin main"})
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         self.assertEqual(self.shell_calls, [])
 
     def test_profiled_read_command_executes(self):
@@ -221,7 +284,7 @@ class TestGateBeforeExecution(DispatchBase):
 
     def test_blocked_patterns_still_block(self):
         result = dispatcher.dispatch("bash_execute", {"command": "mkfs /dev/sda"})
-        self.assertIn("BLOCKED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         self.assertEqual(self.shell_calls, [])
 
     def test_approval_token_round_trip_through_dispatch(self):
@@ -236,9 +299,10 @@ class TestGateBeforeExecution(DispatchBase):
         self.assertIn("GATED", r1)
         self.assertEqual(len(self.shell_calls), 0)
         self.assertTrue(os.path.exists(victim))
-        args_hash = tool_events.normalize_args_hash("bash_execute", params)
-        tool_events.grant_approval("bash_execute", args_hash)
-        tool_events._queued_hashes.clear()
+        queued = self._queue_lines()
+        self.assertEqual(len(queued), 1)
+        approval = tool_events.resolve_gate_entry(queued[0], approve=True)
+        self.assertIn("One-shot token", approval)
         dispatcher.reset_consecutive()
         r2 = dispatcher.dispatch("bash_execute", params)
         self.assertNotIn("GATED", r2)
@@ -259,13 +323,13 @@ class TestGateBeforeExecution(DispatchBase):
             return True
 
         result = dispatcher.dispatch(
-            "bash_execute", {"command": "unprofiledcmd99 --do-thing"},
+            "bash_execute", {"command": "rm exact-reviewed-target"},
             permission_callback=approver)
         # One prompt (the gate's), not two — and the command then runs.
         self.assertEqual(calls, ["bash_execute"])
         self.assertNotIn("GATED", result)
         self.assertEqual([call[0] for call in self.shell_calls],
-                         ["unprofiledcmd99 --do-thing"])
+                         ["rm exact-reviewed-target"])
 
 
 @unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
@@ -331,7 +395,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                                  "tool_events.py"),
             "content": "# defanged",
         })
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
 
     def test_shell_redirect_into_protected_config_is_gated(self):
         # The critical review finding: 'echo x > config/hooks/y' must gate
@@ -343,7 +407,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             "bash_execute",
             {"command": f'echo pwn > {shlex.quote(target)}',
              "cwd": self.workspace})
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         self.assertFalse(os.path.exists(target))
 
     def test_shell_read_of_secret_path_is_gated(self):
@@ -476,7 +540,10 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         r = dispatcher.dispatch(
             "bash_execute",
             {"command": "awk -f ~/.ssh/id_rsa data.txt", "cwd": self.tmp.name})
-        self.assertIn("GATED", r)
+        # awk is itself an execution language (system()/command pipes), so
+        # the wrapper audit now applies the stronger pre-approval refusal.
+        self.assertIn("SYSTEM PROTECTION", r)
+        self.assertEqual(self.shell_calls, [])
 
     def test_env_prefix_does_not_hide_secret_read(self):
         r = dispatcher.dispatch(
@@ -515,7 +582,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
                                      "cwd": self.workspace})
-            self.assertIn("GATED", r, cmd)
+            self.assertIn("SYSTEM PROTECTION", r, cmd)
 
     def test_search_files_excludes_secret_descendants(self):
         # A recursive search over an allowed private root must not return the
@@ -566,7 +633,10 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # A path outside the known-private roots resolves to sensitive.
         result = dispatcher.dispatch(
             "list_directory", {"path": self.tmp.name})
-        self.assertIn("GATED", result)
+        # This fixture also contains the protected approval store; the shared
+        # pre-effect floor is therefore stronger than an ordinary sensitivity
+        # prompt and must refuse traversal outright.
+        self.assertIn("SYSTEM PROTECTION", result)
 
     def test_list_directory_workspace_allowed(self):
         listing = os.path.join(self.workspace, "listing")
@@ -586,7 +656,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                     "pip install requests", "brew install jq"):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd, "cwd": self.workspace})
-            self.assertIn("GATED", r, cmd)
+            self.assertIn("SYSTEM PROTECTION", r, cmd)
         self.assertEqual(self.shell_calls, [])
 
         # The limiter is a separate contract. Reset it so these assertions
@@ -601,28 +671,30 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
                          ["pip list", "npm ls", "brew list",
                           "python3 --version"])
 
-    def test_credential_store_blocked_then_standing_allow_passes(self):
+    def test_credential_values_are_never_retrievable_by_tool_or_standing_allow(self):
         r1 = dispatcher.dispatch("credential_store",
                                  {"action": "retrieve", "service": "svc-x",
                                   "username": "u"})
-        self.assertIn("GATED", r1)
-        recs = self._queue_lines()
-        self.assertEqual(recs[0]["event"]["standing_scope"],
-                         "credential_store:svc-x")
+        self.assertIn("SYSTEM PROTECTION", r1)
         tool_events.grant_standing_allow("credential_store:svc-x")
         tool_events._queued_hashes.clear()
         dispatcher.reset_consecutive()
         r2 = dispatcher.dispatch("credential_store",
                                  {"action": "retrieve", "service": "svc-x",
                                   "username": "u"})
-        self.assertNotIn("GATED", r2)
+        self.assertIn("SYSTEM PROTECTION", r2)
+        dispatcher.reset_consecutive()
+        r3 = dispatcher.dispatch("credential_store",
+                                 {"action": "status", "service": "ora",
+                                  "username": "openai-api-key"})
+        self.assertNotIn("SYSTEM PROTECTION", r3)
         dispatcher.credential_store.assert_called_once_with(
-            "retrieve", "svc-x", "u", None)
-        # Existence-only logging: the secret-sensitivity event carries no args.
+            "status", "ora", "openai-api-key", None)
+        # Status is existence-only; no credential value can reach the result.
         ev = [e for e in self._events()
               if e["action"] == "credential_store" and e["event"] != "gate"]
         self.assertTrue(ev)
-        self.assertNotIn("args_redacted", ev[-1])
+        self.assertEqual(ev[-1]["sensitivity"], "private")
 
 
 @unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
@@ -630,7 +702,7 @@ class TestMCPGateClosure(DispatchBase):
     def test_undeclared_mcp_tool_gated_and_recorded(self):
         tool_events.reset_mcp_axes_cache()
         result = dispatcher.dispatch("mcp_unknownsrv_do_thing", {"a": 1})
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         gate_events = [e for e in self._events() if e["event"] == "gate"]
         self.assertTrue(any(e["action"] == "mcp_unknownsrv_do_thing"
                             for e in gate_events))

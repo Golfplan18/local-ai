@@ -96,6 +96,48 @@ Some prose. 1. not a prompt (no entry open).
 """
 
 
+class TestRunnerRoot(unittest.TestCase):
+    def test_default_root_is_the_checkout_containing_the_runner(self):
+        self.assertEqual(campaign.ORA_HOME, REPO_ROOT.resolve())
+
+    def test_default_corpus_uses_active_projects_ora_path(self):
+        self.assertEqual(
+            campaign.DEFAULT_CORPUS,
+            Path.home() / "Documents" / "vault" / "Projects" / "Ora"
+            / "Reference — Trigger Prompt Corpus.md",
+        )
+
+    def test_campaign_source_prefers_local_then_historical_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            checkout = root / "accepted"
+            historical = root / "ora" / "data" / "campaign"
+            historical.mkdir(parents=True)
+            (historical / "campaign-manifest.jsonl").write_text("\n")
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    checkout, user_home=root, env={}),
+                historical.resolve(),
+            )
+            local = checkout / "data" / "campaign"
+            local.mkdir(parents=True)
+            (local / "campaign-manifest.jsonl").write_text("\n")
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    checkout, user_home=root, env={}),
+                local.resolve(),
+            )
+
+    def test_explicit_campaign_source_wins(self):
+        with tempfile.TemporaryDirectory() as td:
+            explicit = Path(td) / "evidence"
+            self.assertEqual(
+                campaign.resolve_campaign_dir(
+                    REPO_ROOT, env={"ORA_CAMPAIGN_DIR": str(explicit)}),
+                explicit.resolve(),
+            )
+
+
 class TestParseCorpus(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False)
@@ -312,10 +354,45 @@ class TestCampaignAudit(unittest.TestCase):
         self.assertEqual(summary["completeness"]["complete_selected"], 1)
         health = summary["accepted_trace_health"]
         self.assertEqual(health["accepted_trace_count"], 2)
+        self.assertEqual(health["accepted_trace_with_health"], 2)
+        self.assertEqual(health["bare_control_records_excluded"], 1)
         self.assertEqual(health["severity_counts"]["clean"], 1)
         self.assertEqual(health["severity_counts"]["verification_gap"], 1)
         self.assertEqual(health["category_counts"]["verification_gap"], 1)
         self.assertEqual(summary["stale_manifest_keys"], ["mode:old-tech"])
+
+    def test_both_bare_controls_are_excluded_from_trace_health(self):
+        clean = self._trace("trace-clean", [])
+        for pipe, trace in (
+            ("premium", clean),
+            ("single-pass", None),
+            ("single-pass-9b", None),
+        ):
+            campaign.append_manifest({
+                "technique": "argument-audit",
+                "kind": "mode",
+                "pipeline": pipe,
+                "status": "ok",
+                "trace_dir": trace,
+                "at": "2026-07-20T03:27:14+00:00",
+            })
+        summary = campaign.audit_campaign(
+            self.corpus_path,
+            pipelines=["premium", "single-pass", "single-pass-9b"],
+        )
+        health = summary["accepted_trace_health"]
+        self.assertEqual(health["accepted_trace_count"], 1)
+        self.assertEqual(health["accepted_trace_with_health"], 1)
+        self.assertEqual(health["bare_control_records_excluded"], 2)
+        self.assertEqual(health["accepted_trace_missing_health"], [])
+
+    def test_missing_manifest_fails_closed(self):
+        with self.assertRaisesRegex(
+                FileNotFoundError, "authoritative campaign manifest not found"):
+            campaign.audit_campaign(
+                self.corpus_path,
+                campaign_dir=self.root / "missing-campaign",
+            )
 
     def test_write_campaign_audit_outputs_json_and_markdown(self):
         campaign.append_manifest({
@@ -328,7 +405,13 @@ class TestCampaignAudit(unittest.TestCase):
         self.assertTrue(json_path.exists())
         self.assertTrue(md_path.exists())
         self.assertIn("Premium Resume Selector", md_path.read_text())
+        self.assertIn("Historical Coverage Limitation", md_path.read_text())
+        self.assertIn("Campaign-row completeness and trace-health coverage are separate", md_path.read_text())
         self.assertEqual(json.loads(json_path.read_text())["corpus"]["entries"], 6)
+        self.assertEqual(
+            json.loads(json_path.read_text())["source"]["manifest_path"],
+            str(campaign.MANIFEST_PATH.resolve()),
+        )
 
 
 class TestVisualExtraction(unittest.TestCase):
@@ -426,11 +509,14 @@ class TestFidelityGate(unittest.TestCase):
     EXPECTED = {"anthropic/claude-opus-4.8", "openai/gpt-5.5",
                 "openai/gpt-5.4-mini"}
 
-    def _trace(self, usage_records, step_files=None):
+    def _trace(self, usage_records, step_files=None, call_records=None):
         tmp = tempfile.mkdtemp()
         self.addCleanup(lambda: __import__("shutil").rmtree(tmp, ignore_errors=True))
         Path(tmp, "usage.jsonl").write_text(
             "\n".join(json.dumps(r) for r in usage_records))
+        if call_records is not None:
+            Path(tmp, "model-call-config.jsonl").write_text(
+                "\n".join(json.dumps(r) for r in call_records))
         for name, body in (step_files or {}).items():
             Path(tmp, name).write_text(json.dumps(body))
         return tmp
@@ -466,6 +552,70 @@ class TestFidelityGate(unittest.TestCase):
         res = campaign.verify_trace_fidelity(t, self.EXPECTED)
         self.assertFalse(res["ok"])
         self.assertIn("step_failed", {v["kind"] for v in res["violations"]})
+
+    def test_unreleased_quality_gate_fails(self):
+        t = self._trace(
+            [self._rec("openai/gpt-5.5")],
+            {"step6_5-quality-gate.json": {
+                "verdict_resolved": "BROKEN",
+                "released": False,
+            }},
+        )
+        res = campaign.verify_trace_fidelity(t, self.EXPECTED)
+        self.assertFalse(res["ok"])
+        self.assertIn("quality_gate_not_passed",
+                      {v["kind"] for v in res["violations"]})
+
+    def test_corrected_gear3_quality_gate_uses_terminal_summary(self):
+        t = self._trace(
+            [self._rec("openai/gpt-5.5")],
+            {
+                "step6_5-quality-gate-pass-1.json": {
+                    "verdict_resolved": "FAIL",
+                    "released": None,
+                },
+                "step6_5-quality-gate-pass-2.json": {
+                    "verdict_resolved": "PASS",
+                    "released": None,
+                },
+                "step6_5-quality-gate.json": {
+                    "verdict_resolved": "PASS",
+                    "released": True,
+                },
+            },
+        )
+        self.assertTrue(campaign.verify_trace_fidelity(t, self.EXPECTED)["ok"])
+
+    def test_corrected_gear4_quality_gate_uses_last_numbered_pass(self):
+        t = self._trace(
+            [self._rec("openai/gpt-5.5")],
+            {
+                "step8_6-quality-gate-pass-1.json": {
+                    "verdict_resolved": "FAIL",
+                },
+                "step8_6-quality-gate-pass-2.json": {
+                    "verdict_resolved": "PASS",
+                },
+            },
+        )
+        self.assertTrue(campaign.verify_trace_fidelity(t, self.EXPECTED)["ok"])
+
+    def test_last_numbered_quality_gate_failure_is_terminal(self):
+        t = self._trace(
+            [self._rec("openai/gpt-5.5")],
+            {
+                "step8_6-quality-gate-pass-1.json": {
+                    "verdict_resolved": "PASS",
+                },
+                "step8_6-quality-gate-pass-2.json": {
+                    "verdict_resolved": "BROKEN",
+                },
+            },
+        )
+        res = campaign.verify_trace_fidelity(t, self.EXPECTED)
+        self.assertFalse(res["ok"])
+        self.assertIn("quality_gate_not_passed",
+                      {v["kind"] for v in res["violations"]})
 
     def test_ok_true_step_and_no_ok_key_pass(self):
         t = self._trace([self._rec("openai/gpt-5.5")],
@@ -515,6 +665,85 @@ class TestFidelityGate(unittest.TestCase):
                          self._rec("claude-code:claude-opus-4.8")])
         self.assertTrue(campaign.verify_trace_fidelity(t, expected)["ok"])
 
+    def test_path_legal_run_does_not_require_unused_subscription_cell(self):
+        expected = {"qwen/big", "minimax/reviewer",
+                    "claude-code:claude-opus-4.8"}
+        contract = {
+            "config_name": "campaign-optimum-plus",
+            "cells": {
+                "analysis": {"gear3": {
+                    "depth": {"primary": "qwen/big"},
+                    "breadth": {"primary": "minimax/reviewer"},
+                }},
+                "post_analysis": {"consolidation": {
+                    "primary": "claude-code:claude-opus-4.8",
+                }},
+            },
+        }
+        calls = [
+            {"physical_attempt": True, "endpoint_id": "qwen/big",
+             "config_name": "campaign-optimum-plus", "slot": "depth",
+             "gear": 3, "step": "analyst"},
+            {"physical_attempt": True, "endpoint_id": "minimax/reviewer",
+             "config_name": "campaign-optimum-plus", "slot": "breadth",
+             "gear": 3, "step": "evaluator"},
+        ]
+        t = self._trace(
+            [self._rec("qwen/big"), self._rec("minimax/reviewer")],
+            call_records=calls,
+        )
+        self.assertTrue(
+            campaign.verify_trace_fidelity(t, expected, contract)["ok"])
+
+    def test_same_config_primary_in_wrong_cell_fails(self):
+        expected = {"qwen/big", "claude-code:claude-opus-4.8"}
+        contract = {
+            "config_name": "campaign-optimum-plus",
+            "cells": {
+                "analysis": {"gear4": {
+                    "depth": {"primary": "qwen/big"},
+                }},
+                "post_analysis": {"consolidation": {
+                    "primary": "claude-code:claude-opus-4.8",
+                }},
+            },
+        }
+        calls = [{
+            "physical_attempt": True,
+            "endpoint_id": "qwen/big",
+            "config_name": "campaign-optimum-plus",
+            "slot": "consolidation",
+            "gear": 4,
+            "step": "consolidator",
+        }]
+        t = self._trace([self._rec("qwen/big")], call_records=calls)
+        result = campaign.verify_trace_fidelity(t, expected, contract)
+        self.assertFalse(result["ok"])
+        self.assertIn("cell_primary_mismatch",
+                      {v["kind"] for v in result["violations"]})
+
+    def test_physical_call_with_wrong_configuration_fails(self):
+        expected = {"qwen/big"}
+        contract = {
+            "config_name": "campaign-optimum-plus",
+            "cells": {"analysis": {"gear3": {
+                "depth": {"primary": "qwen/big"},
+            }}},
+        }
+        calls = [{
+            "physical_attempt": True,
+            "endpoint_id": "qwen/big",
+            "config_name": None,
+            "slot": "depth",
+            "gear": 3,
+            "step": "analyst",
+        }]
+        t = self._trace([self._rec("qwen/big")], call_records=calls)
+        result = campaign.verify_trace_fidelity(t, expected, contract)
+        self.assertFalse(result["ok"])
+        self.assertIn("configuration_identity_mismatch",
+                      {v["kind"] for v in result["violations"]})
+
     def test_expected_primaries_collects_all_cells(self):
         with mock.patch.object(campaign, "CONFIGURATIONS_DIR",
                                Path(tempfile.mkdtemp())) as _:
@@ -527,6 +756,114 @@ class TestFidelityGate(unittest.TestCase):
             (campaign.CONFIGURATIONS_DIR / "c.json").write_text(json.dumps(cfg))
             exp = campaign.load_expected_primaries("c")
         self.assertEqual(exp, {"a/x", "b/y"})  # fallbacks excluded
+
+
+class TestSubscriptionPathPacing(unittest.TestCase):
+    def _tech(self, mode="structured-output"):
+        return campaign.Technique(
+            id=mode,
+            kind="mode",
+            intended_mode=mode,
+            prompt="test",
+            key=f"mode:{mode}",
+            capture_slug=mode,
+        )
+
+    def test_gear2_capture_probes_haiku_not_unreachable_opus(self):
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(campaign, "ORA_HOME", Path(td)):
+            modes = Path(td, "modes")
+            modes.mkdir()
+            Path(modes, "structured-output.md").write_text(
+                "## DEFAULT GEAR\n\nGear 2\n")
+            contract = {"cells": {
+                "utility": {"gear2_rag_lookup": {
+                    "primary": campaign.CLAUDE_CODE_HAIKU,
+                }},
+                "analysis": {"gear4": {"depth": {
+                    "primary": campaign.CLAUDE_CODE_OPUS,
+                }}},
+            }}
+            selected = campaign._subscription_probe_endpoint(
+                self._tech(), contract)
+        self.assertEqual(selected, campaign.CLAUDE_CODE_HAIKU)
+
+    def test_gear4_capture_probes_opus(self):
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(campaign, "ORA_HOME", Path(td)):
+            modes = Path(td, "modes")
+            modes.mkdir()
+            Path(modes, "deep-mode.md").write_text(
+                "## DEFAULT GEAR\n\nGear 4\n")
+            contract = {"cells": {"analysis": {"gear4": {
+                "depth": {"primary": campaign.CLAUDE_CODE_OPUS},
+            }}}}
+            selected = campaign._subscription_probe_endpoint(
+                self._tech("deep-mode"), contract)
+        self.assertEqual(selected, campaign.CLAUDE_CODE_OPUS)
+
+    def test_subscription_auth_failure_fails_fast_without_sleep(self):
+        result = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="Not logged in · Please run /login\n",
+        )
+        with mock.patch("subprocess.run", return_value=result), \
+             mock.patch("time.sleep") as sleep:
+            with self.assertRaisesRegex(
+                    RuntimeError, "subscription authentication unavailable"):
+                campaign._wait_for_subscription_window(
+                    campaign.CLAUDE_CODE_HAIKU, max_wait_s=900)
+        sleep.assert_not_called()
+
+    def test_subscription_rate_limit_waits_and_reprobes(self):
+        closed = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="Usage limit reached; try again later",
+        )
+        opened = mock.Mock(returncode=0, stdout="OK\n", stderr="")
+        with mock.patch("subprocess.run", side_effect=[closed, opened]), \
+             mock.patch("time.sleep") as sleep:
+            campaign._wait_for_subscription_window(
+                campaign.CLAUDE_CODE_HAIKU, max_wait_s=900)
+        sleep.assert_called_once_with(900)
+
+
+class TestOraPipelineConversationBinding(unittest.TestCase):
+    class _Response:
+        def __init__(self, body):
+            self.body = json.dumps(body).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self.body
+
+    def test_waits_for_new_assistant_and_uses_its_exact_trace(self):
+        old = {"role": "assistant", "content": "old", "trace_ref": "c/old"}
+        new = {"role": "assistant", "content": "new result",
+               "trace_ref": "c/new"}
+        responses = [
+            self._Response({"messages": [old]}),
+            self._Response({"status": "ok"}),
+            self._Response({"messages": [old]}),
+            self._Response({"messages": [old, new]}),
+        ]
+        tech = campaign.Technique(
+            id="x", kind="mode", intended_mode="x", prompt="test")
+        with mock.patch.object(campaign.urllib.request, "urlopen",
+                               side_effect=responses), \
+             mock.patch.object(campaign.time, "sleep"):
+            result = campaign.run_ora_pipeline(
+                "http://server", "campaign-optimum", tech, "c")
+        self.assertEqual(result["text"], "new result")
+        self.assertEqual(result["trace_dir"],
+                         str(campaign.TRACES_DIR / "c/new"))
 
 
 class TestOptimumPlus(unittest.TestCase):

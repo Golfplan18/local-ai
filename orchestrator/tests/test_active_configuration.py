@@ -400,15 +400,15 @@ class TestDuplicateAndCreate(_Fixture):
         self._write_config("source", {"cells": {}})
         n1 = self.module.duplicate_configuration("source")
         n2 = self.module.duplicate_configuration("source")
-        self.assertEqual(n1, "Configuration 01")
-        self.assertEqual(n2, "Configuration 02")
+        self.assertEqual(n1, "Model Profile 01")
+        self.assertEqual(n2, "Model Profile 02")
 
     def test_duplicate_skips_taken_auto_numbers(self):
         self._write_config("source", {"cells": {}})
         self._write_config("Configuration 01", {"cells": {}})
         self._write_config("Configuration 02", {"cells": {}})
         n = self.module.duplicate_configuration("source")
-        self.assertEqual(n, "Configuration 03")
+        self.assertEqual(n, "Model Profile 03")
 
     def test_duplicate_rejects_existing_name(self):
         self._write_config("source", {"cells": {}})
@@ -434,7 +434,7 @@ class TestDuplicateAndCreate(_Fixture):
 
     def test_create_blank_auto_names_when_missing(self):
         name = self.module.create_blank_configuration()
-        self.assertEqual(name, "Configuration 01")
+        self.assertEqual(name, "Model Profile 01")
 
 
 class TestDelete(_Fixture):

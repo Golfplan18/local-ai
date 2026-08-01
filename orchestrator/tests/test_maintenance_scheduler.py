@@ -73,7 +73,7 @@ class LoadConfigTests(SchedulerBase):
         cfg = ms.load_config()
         self.assertEqual(cfg["orphan_cleanup"], "monthly")
         self.assertEqual(cfg["archive_cleanup"], "monthly")
-        self.assertEqual(cfg["vault_health"], "monthly")  # untouched default
+        self.assertEqual(cfg["vault_health"], "off")  # untouched default
 
     def test_off_disables_task(self):
         self.doc.write_text(_doc("  orphan_cleanup: off\n"))
@@ -81,7 +81,7 @@ class LoadConfigTests(SchedulerBase):
 
     def test_unknown_cadence_falls_back(self):
         self.doc.write_text(_doc("  orphan_cleanup: fortnightly\n"))
-        self.assertEqual(ms.load_config()["orphan_cleanup"], "weekly")
+        self.assertEqual(ms.load_config()["orphan_cleanup"], "off")
 
     def test_unknown_task_ignored(self):
         self.doc.write_text(_doc("  reticulate_splines: daily\n"))
@@ -101,7 +101,8 @@ class RuntimePathTests(unittest.TestCase):
         vault = Path(tempfile.gettempdir()) / "maintenance-vault"
         with mock.patch.dict(os.environ, {"ORA_VAULT": str(vault)}, clear=True):
             self.assertEqual(
-                Path(ms.control_doc_path()), vault / ms.CONTROL_DOC_NAME
+                Path(ms.control_doc_path()),
+                vault / "Projects" / "Ora" / ms.CONTROL_DOC_NAME,
             )
 
 
@@ -163,29 +164,34 @@ class SweepTests(SchedulerBase):
     def test_dry_run_reports_without_running(self):
         summary = ms.sweep(dry_run=True)
         self.assertTrue(summary["dry_run"])
-        self.assertIn("orphan_cleanup", summary["due"])
+        self.assertEqual(summary["due"], [])
         self.assertEqual(summary["ran"], [])
         self.assertFalse((self.data / "maintenance-state.json").exists())
 
     def test_sweep_runs_due_tasks_and_stamps(self):
+        self.doc.write_text(_doc(
+            "  orphan_cleanup: weekly\n  vault_health: monthly\n"
+            "  graph_density: monthly\n"))
         patcher, fake_pm = self._mock_pm()
         with patcher:
-            summary = ms.sweep()
+            summary = ms.sweep(campaign_id="test-sweep")
         self.assertEqual(set(summary["ran"]),
-                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note",
-                          "news_supersession", "engram_cleaning"})
+                         {"orphan_cleanup", "vault_health", "graph_density"})
         self.assertNotIn("archive_cleanup", summary["ran"])  # off by default
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)
         results = (self.data / "maintenance-results.jsonl").read_text().strip().split("\n")
-        self.assertEqual(len(results), 6)
+        self.assertEqual(len(results), 3)
         self.assertTrue((self.oversight / "maintenance-scheduler-heartbeat.json").exists())
 
     def test_second_sweep_runs_nothing(self):
+        self.doc.write_text(_doc(
+            "  orphan_cleanup: weekly\n  vault_health: monthly\n"
+            "  graph_density: monthly\n"))
         patcher, fake_pm = self._mock_pm()
         with patcher:
-            ms.sweep()
-            summary2 = ms.sweep()
+            ms.sweep(campaign_id="test-sweep")
+            summary2 = ms.sweep(campaign_id="test-sweep")
         self.assertEqual(summary2["due"], [])
         self.assertEqual(summary2["ran"], [])
 
@@ -195,6 +201,7 @@ class SweepTests(SchedulerBase):
         the 2026-06-12 wedge re-armed on every server restart because the
         stamp only landed after task completion."""
         state_seen_by_task = {}
+        self.doc.write_text(_doc("  orphan_cleanup: weekly\n"))
 
         def _task_observes_state():
             with open(str(self.data / "maintenance-state.json")) as f:
@@ -205,30 +212,34 @@ class SweepTests(SchedulerBase):
         with patcher:
             fake_pm.task_1_orphan_cleanup = mock.MagicMock(
                 side_effect=_task_observes_state)
-            ms.sweep()
+            ms.sweep(campaign_id="test-stamp")
         self.assertIn("orphan_cleanup", state_seen_by_task,
                       "stamp must be on disk before the task body runs")
 
     def test_failure_still_stamps_and_logs(self):
+        self.doc.write_text(_doc(
+            "  orphan_cleanup: weekly\n  vault_health: monthly\n"
+            "  graph_density: monthly\n"))
         patcher, fake_pm = self._mock_pm(success=False)
         with patcher:
-            summary = ms.sweep()
+            summary = ms.sweep(campaign_id="test-failure")
         self.assertEqual(summary["ran"], [])
         self.assertEqual(set(summary["failed"]),
-                         {"orphan_cleanup", "vault_health", "graph_density", "daily_note",
-                          "news_supersession", "engram_cleaning"})
+                         {"orphan_cleanup", "vault_health", "graph_density"})
         state = json.loads((self.data / "maintenance-state.json").read_text())
         self.assertIn("orphan_cleanup", state)  # no hourly retry-hammering
 
     def test_task_exception_is_contained(self):
+        self.doc.write_text(_doc(
+            "  orphan_cleanup: weekly\n  vault_health: monthly\n"
+            "  graph_density: monthly\n"))
         patcher, fake_pm = self._mock_pm()
         fake_pm.task_1_orphan_cleanup.side_effect = RuntimeError("boom")
         with patcher:
-            summary = ms.sweep()
+            summary = ms.sweep(campaign_id="test-exception")
         self.assertIn("orphan_cleanup", summary["failed"])
         self.assertEqual(set(summary["ran"]),
-                         {"vault_health", "graph_density", "daily_note",
-                          "news_supersession", "engram_cleaning"})
+                         {"vault_health", "graph_density"})
 
     def test_control_doc_off_respected_in_sweep(self):
         self.doc.write_text(_doc(
@@ -236,9 +247,17 @@ class SweepTests(SchedulerBase):
             "  daily_note: off\n  news_supersession: off\n  engram_cleaning: off\n"))
         patcher, fake_pm = self._mock_pm()
         with patcher:
-            summary = ms.sweep()
+            summary = ms.sweep(campaign_id="test-off")
         self.assertEqual(summary["due"], [])
         fake_pm.task_1_orphan_cleanup.assert_not_called()
+
+    def test_due_campaign_requires_explicit_identity_before_mutation(self):
+        self.doc.write_text(_doc("  orphan_cleanup: weekly\n"))
+        patcher, fake_pm = self._mock_pm()
+        with patcher, self.assertRaisesRegex(ValueError, "campaign id required"):
+            ms.sweep()
+        fake_pm.task_1_orphan_cleanup.assert_not_called()
+        self.assertFalse((self.data / "maintenance-state.json").exists())
 
 
 if __name__ == "__main__":

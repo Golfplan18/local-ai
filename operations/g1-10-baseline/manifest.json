@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-21",
+  "accepted_checkout": {
+    "path": "/Users/oracle/ora-msi-central-routing",
+    "commit": "dab1158019f45f8abee1920f4b626d7354541670"
+  },
+  "live_checkout": {
+    "path": "/Users/oracle/ora",
+    "branch": "codex/programming-candidate-preservation",
+    "commit": "97a8b98efe69c367063404c2a6db099ceedf4976",
+    "disposition": "rejected-preservation-baseline-do-not-merge"
+  },
+  "macos_launchagents": {
+    "com.cloud-ora.sync.plist": "15afe6ff11ae224233136a0c0e5b50a80d2365e90e4489e36cb3b8d8d6a9a534",
+    "com.msi.image-mirror.plist": "129015f9bc95a8c1a50c651549483dfe4b0bc972614c1f9261546cb4507de460",
+    "com.msi.repo-pullsync.plist": "5719efc1a4c4217c5ff99d6750621a253361cb1ebafd4d5a66005f566f273bef",
+    "com.ora.server.plist": "b58feb7b98da59fdc557b0a081f337e3953b975aa39bac59f03c20050631b03a",
+    "com.ora.vault-derive-sync.plist": "fa3d2e820ffb91b23047be633b4aa81f1339fa684203ca7f6a958334d2cd8b8f",
+    "com.ora.vault-git-autocommit.plist": "ee6f10bcec502c58aaa4a541f80ea2226db268984ae5e923d9435b345f5c4212"
+  },
+  "macos_scripts": {
+    "msi-image-mirror.sh": "d8856e1d9e6d456627537d9f5d769f334b510fc0cfa6a7e7e4bd231f39833708",
+    "msi-repo-pullsync.sh": "14265e9a72ff4369a06fd89549b5e960b8dd9e406ee516370ae75742ce030e55",
+    "sync.py": "114538c87a375ba5769f8a3288acb9eb6d50c90539d77570185a36542cb4684b",
+    "vault-derive-sync-launch.py": "806bbff90ce2717f455c952d2efe3c320ef5c214b5473119eb3a81f52c7dff26",
+    "vault-derive-sync.sh": "4c25cbea1519a847a409ec701f37549cbc685c4ccc7e13a7c9d277a1779d6a73",
+    "vault-git-autocommit.py": "ab1acabed2c5b8062b7a2dbcc1be82f381cc297dc8a131d9b6cb5895491e9c56"
+  },
+  "cloud_scripts": {
+    "msi-deploy.sh": "47d5ec6c8fb00b860dc16ea1edca8f9b888780035c3d5cd5550ad04617534cf8",
+    "msi_vault_outbox.sh": "0dd605f8abb02714b4c30d7e2df304fee462360c246ef3ba6e6e8a7eb0f8e6ec",
+    "ora-audit-models.py": "51d1afb376ff08a4bc278a5509f5a39f0b44803a595e293b5420fbdddbe1fd28",
+    "ora-deploy.sh": "fb7f012ecdfc0b678927898c61ff2e87285dedf4e4da6b8e28a9198342e396ef",
+    "ora-vault-runtime-sync.sh": "362910a0e7fc833679cf067b3dfbabe28c9914e4a70ac28b4cfc414f9d97b83c",
+    "wsj-reauth-guard.sh": "cecb023e80abe57c898463c62072345fbff3283449745e049fdfc00f6de014d1"
+  },
+  "cloud_crontab_sha256": "5acac84a1c486b40da54bb067463256ece39ec8dce5f2ae3035c50622f53f0b6",
+  "g1_24_reserved": [
+    "external DCP routine verification",
+    "delivered full-state audit"
+  ]
+}

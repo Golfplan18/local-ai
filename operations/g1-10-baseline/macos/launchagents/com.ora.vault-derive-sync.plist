@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Auto-sync: re-derive vault Papers into both site repos and push to main
+     every 15 minutes. The server's */15 deploy crons publish from there.
+     Enable:  cp this file to ~/Library/LaunchAgents/ and
+              launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ora.vault-derive-sync.plist
+     Disable: launchctl bootout gui/$(id -u)/com.ora.vault-derive-sync -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ora.vault-derive-sync</string>
+  <!-- Launched THROUGH /opt/homebrew/bin/python3 (which holds Full Disk Access)
+       so the bash/find/node children inherit read access to ~/Documents/vault.
+       A bare /bin/bash entry point is TCC-blocked from the Documents folder. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/python3</string>
+    <string>/Users/oracle/sites/scripts/vault-derive-sync-launch.py</string>
+    <string>--push</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/oracle/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/oracle/sites/.vault-sync/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/oracle/sites/.vault-sync/launchd.err.log</string>
+</dict>
+</plist>

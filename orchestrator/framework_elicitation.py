@@ -28,6 +28,8 @@ elicitation item from the 2026-05-04 implementation handoff.
 """
 from __future__ import annotations
 
+import base64
+import json
 import os
 import re
 import sys
@@ -51,7 +53,8 @@ from framework_parser import (
 ELICITATION_SLOT = "sidebar"  # small model — same slot as drift check + mode select
 
 MARKER_PATTERN = re.compile(
-    r"<!--\s*ora-framework:\s*([A-Za-z0-9_\-\.]+)/([A-Za-z0-9_\-]+)/([A-Za-z0-9_\-]+)\s*-->",
+    r"<!--\s*ora-framework:\s*([A-Za-z0-9_\-\.]+)/([A-Za-z0-9_\-]+)/"
+    r"([A-Za-z0-9_\-]+)(?:/([A-Za-z0-9_\-]+))?\s*-->",
 )
 MARKER_TEMPLATE = "<!-- ora-framework: {framework_id}/{mode}/{state} -->"
 ELICITING_STATE = "eliciting"
@@ -66,6 +69,36 @@ class ContinuationContext:
     framework_id: str   # framework filename without .md (e.g., "corpus-formalization")
     mode: str           # mode name (e.g., "C-Design")
     state: str          # currently always "eliciting"
+    project_nexus: str | None = None
+    one_run_profile: str | None = None
+    context_error: str | None = None
+
+
+def _decode_execution_context(token: str | None) -> dict:
+    if not token:
+        return {"project_nexus": None, "one_run_profile": None}
+    try:
+        padding = "=" * (-len(token) % 4)
+        value = json.loads(base64.urlsafe_b64decode(token + padding).decode("utf-8"))
+    except Exception as exc:
+        raise ValueError("framework execution context marker is malformed") from exc
+    if not isinstance(value, dict) or set(value) != {"project_nexus", "one_run_profile"}:
+        raise ValueError("framework execution context marker schema is invalid")
+    project_nexus = value.get("project_nexus")
+    one_run_profile = value.get("one_run_profile")
+    try:
+        if project_nexus is not None:
+            from project_meta import validate_nexus
+            project_nexus = validate_nexus(project_nexus)
+        if one_run_profile is not None:
+            from model_profiles import validate_profile_name
+            one_run_profile = validate_profile_name(one_run_profile)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("framework execution context marker values are invalid") from exc
+    return {
+        "project_nexus": project_nexus,
+        "one_run_profile": one_run_profile,
+    }
 
 
 # ---------- Public API ----------
@@ -86,10 +119,15 @@ def is_continuation(history: list) -> Optional[ContinuationContext]:
         m = MARKER_PATTERN.search(msg.get("content", "") or "")
         if not m:
             return None
+        try:
+            execution_context = _decode_execution_context(m.group(4))
+            context_error = None
+        except ValueError as exc:
+            execution_context = {"project_nexus": None, "one_run_profile": None}
+            context_error = str(exc)
         return ContinuationContext(
-            framework_id=m.group(1),
-            mode=m.group(2),
-            state=m.group(3),
+            framework_id=m.group(1), mode=m.group(2), state=m.group(3),
+            context_error=context_error, **execution_context,
         )
     return None
 
@@ -99,6 +137,8 @@ def start_elicitation(
     history: list,
     config: dict,
     initial_user_message: str = "",
+    project_nexus: str | None = None,
+    one_run_profile: str | None = None,
 ) -> str:
     """Begin a fresh interactive framework execution.
 
@@ -133,6 +173,8 @@ def start_elicitation(
     return _run_elicitation_turn(
         fw, mode, milestone, history, config,
         latest_user_text=initial_user_message,
+        project_nexus=project_nexus,
+        one_run_profile=one_run_profile,
     )
 
 
@@ -142,6 +184,7 @@ def continue_elicitation(
     config: dict,
     latest_user_text: str = "",
     conversation_id: str | None = None,
+    current_project_nexus: str | None = None,
 ) -> str:
     """Advance an in-progress framework execution by one turn.
 
@@ -152,6 +195,14 @@ def continue_elicitation(
     deliverable approval token to THIS conversation, so an approval in one
     conversation can't admit the same framework/mode deliverable in another.
     """
+    if ctx.context_error:
+        return f"[Framework continuation rejected: {ctx.context_error}.]"
+    if ctx.project_nexus != current_project_nexus:
+        return (
+            "[Framework continuation rejected: the active project changed after "
+            "elicitation began. Restart the framework in the intended project.]"
+        )
+
     fw_filename = (
         ctx.framework_id if ctx.framework_id.endswith(".md") else ctx.framework_id + ".md"
     )
@@ -173,6 +224,8 @@ def continue_elicitation(
         fw, ctx.mode, milestone, history, config,
         latest_user_text=latest_user_text,
         conversation_id=conversation_id,
+        project_nexus=ctx.project_nexus,
+        one_run_profile=ctx.one_run_profile,
     )
 
 
@@ -186,6 +239,8 @@ def _run_elicitation_turn(
     config: dict,
     latest_user_text: str,
     conversation_id: str | None = None,
+    project_nexus: str | None = None,
+    one_run_profile: str | None = None,
 ) -> str:
     """One elicitation turn: summarize state, decide next step, emit response."""
     summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
@@ -199,12 +254,16 @@ def _run_elicitation_turn(
             "information. Could you start by describing the workflow or context this "
             "is for, and any sources/inputs the framework should know about?"
         )
-        return _wrap_with_marker(question, fw.name, mode)
+        return _wrap_with_marker(
+            question, fw.name, mode, project_nexus, one_run_profile,
+        )
 
     if summary.action == "PRODUCE_DELIVERABLE":
         return _produce_deliverable(fw, mode, milestone, summary, history,
                                     latest_user_text, config,
-                                    conversation_id=conversation_id)
+                                    conversation_id=conversation_id,
+                                    project_nexus=project_nexus,
+                                    one_run_profile=one_run_profile)
 
     # ASK_NEXT path
     question = summary.next_question or (
@@ -218,7 +277,9 @@ def _run_elicitation_turn(
             + "\n\n"
             + question
         )
-    return _wrap_with_marker(body, fw.name, mode)
+    return _wrap_with_marker(
+        body, fw.name, mode, project_nexus, one_run_profile,
+    )
 
 
 def _produce_deliverable(
@@ -230,6 +291,8 @@ def _produce_deliverable(
     latest_user_text: str,
     config: dict,
     conversation_id: str | None = None,
+    project_nexus: str | None = None,
+    one_run_profile: str | None = None,
 ) -> str:
     """Hand control to the existing milestone executor with the elicited facts
     as the user input. The result is rendered with format_execution_result.
@@ -291,7 +354,11 @@ def _produce_deliverable(
             # Keep the elicitation flow alive across the hold: the approval
             # re-attaches the framework marker so the next turn re-produces
             # the deliverable (now with a valid token).
-            resume={"fw": fw.name, "mode": mode or ""})
+            resume={
+                "fw": fw.name, "mode": mode or "",
+                "project_nexus": project_nexus,
+                "one_run_profile": one_run_profile,
+            })
         if _hold is not None:
             return _hold
     except Exception as _rge:
@@ -317,7 +384,10 @@ def _produce_deliverable(
         pass
     result = None
     try:
-        result = execute_framework(fw_filename, deliverable_input, config=config)
+        result = execute_framework(
+            fw_filename, deliverable_input, config=config,
+            project_nexus=project_nexus, config_name=one_run_profile,
+        )
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"
     finally:
@@ -566,15 +636,37 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
     return "\n\n".join(lines)
 
 
-def _wrap_with_marker(body: str, framework_id: str, mode: str) -> str:
+def _wrap_with_marker(
+    body: str,
+    framework_id: str,
+    mode: str,
+    project_nexus: str | None = None,
+    one_run_profile: str | None = None,
+) -> str:
     """Append the eliciting marker on its own line at the end of the message."""
-    return f"{body.rstrip()}\n\n{elicitation_marker(framework_id, mode)}"
+    return (
+        f"{body.rstrip()}\n\n"
+        f"{elicitation_marker(framework_id, mode, project_nexus, one_run_profile)}"
+    )
 
 
-def elicitation_marker(framework_id: str, mode: str) -> str:
+def elicitation_marker(
+    framework_id: str,
+    mode: str,
+    project_nexus: str | None = None,
+    one_run_profile: str | None = None,
+) -> str:
     """The eliciting-state marker for a framework/mode. Public so the Phase 2
     task gate can re-attach it to an approval reply and keep the elicitation
     flow alive across an irreversible-deliverable hold."""
     fw_id = framework_id[:-3] if framework_id.endswith(".md") else framework_id
-    return MARKER_TEMPLATE.format(
+    marker = MARKER_TEMPLATE.format(
         framework_id=fw_id, mode=mode or "", state=ELICITING_STATE)
+    if project_nexus is None and one_run_profile is None:
+        return marker
+    context = json.dumps(
+        {"project_nexus": project_nexus, "one_run_profile": one_run_profile},
+        sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")
+    token = base64.urlsafe_b64encode(context).decode("ascii").rstrip("=")
+    return marker[:-4] + f"/{token} -->"

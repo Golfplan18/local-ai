@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from ped_parser import parse_ped_file, ParsedPED
@@ -110,6 +110,49 @@ def evaluate_age_based_review(ped: ParsedPED, max_age_days: int = 30) -> Optiona
     if age_days >= max_age_days:
         return f"Last iteration was {age_days} days ago (latest iteration #{latest.get('iteration')})"
     return None
+
+
+def age_review_deadline(ped: ParsedPED, max_age_days: int = 30) -> str | None:
+    """Exact persisted deadline for the latest PED iteration."""
+    if not ped.iteration_history:
+        return None
+    latest = max(ped.iteration_history, key=lambda x: x.get("iteration", 0))
+    import re
+    date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", latest.get("raw_text", ""))
+    if not date_match:
+        return None
+    try:
+        last_date = datetime.strptime(date_match.group(1), "%Y-%m-%d").replace(
+            tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return (last_date + timedelta(days=max_age_days)).isoformat()
+
+
+def register_age_review_deadlines(queue=None) -> list[str]:
+    """Bind one exact deadline per latest registered PED iteration."""
+    if queue is None:
+        from orchestrator.runtime_hygiene import deadline_queue
+        queue = deadline_queue()
+    keys = []
+    for nexus in list_known_projects():
+        ped_path = load_ped_path(nexus)
+        if not ped_path or not os.path.isfile(ped_path):
+            continue
+        try:
+            ped = parse_ped_file(ped_path)
+            due_at = age_review_deadline(ped)
+        except Exception:
+            continue
+        if due_at is None:
+            continue
+        latest = max(ped.iteration_history, key=lambda x: x.get("iteration", 0))
+        key = f"project-revisit:{nexus}:{latest.get('iteration', 0)}:{due_at[:10]}"
+        queue.put(key, due_at, "project_revisit", {
+            "nexus": nexus, "ped_path": os.path.abspath(ped_path),
+        })
+        keys.append(key)
+    return keys
 
 
 def sweep_project(nexus: str, ped_path: str) -> Optional[RevisitTriggerEvent]:

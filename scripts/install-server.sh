@@ -157,6 +157,7 @@ DEPS=(
   anthropic
   openai
   google-generativeai
+  watchfiles
   keyring        # silences "Tool import failed: No module named 'keyring'"
                  # from boot.py's tool loader; in normal server operation
                  # API keys come from env (~/.config/ora-server.env), so

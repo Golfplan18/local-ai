@@ -386,6 +386,7 @@ def continue_resolution(
     latest_user_text: str,
     conversation_id: str = "",
     config: Optional[dict] = None,
+    principal_id: str = "principal:user",
 ) -> str:
     """Advance an in-progress resolution by one turn.
 
@@ -411,9 +412,9 @@ def continue_resolution(
             )
 
     if user_text == "1":
-        return _commit_approve_as_proposed(ctx, conversation_id)
+        return _commit_approve_as_proposed(ctx, conversation_id, principal_id)
     if user_text == "2":
-        return _commit_deny(ctx, history, conversation_id)
+        return _commit_deny(ctx, history, conversation_id, principal_id)
     if user_text == "3":
         return _commit_apply_alternative(ctx, conversation_id)
 
@@ -422,7 +423,8 @@ def continue_resolution(
 
 
 def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
-                             approve: bool, reason: str = "") -> str | None:
+                             approve: bool, reason: str = "",
+                             principal_id: str = "principal:user") -> str | None:
     """Kind-dispatch for Execution Review gate entries. Returns the commit
     message when the entry is an execution_gate (handled here), else None
     (fall through to redefinition semantics)."""
@@ -431,7 +433,19 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
     entry = find_paused_by_id(queue_id)
     if entry is None or entry.kind not in ("execution_gate", "task_gate"):
         return None
-    record = {"kind": entry.kind, "event": entry.event,
+    discussion_id = str(entry.discussion_conversation_id or "")
+    if not conversation_id or discussion_id != conversation_id:
+        return (
+            "[Resolution conversation does not own this queue entry; "
+            "the entry was not changed.]"
+        )
+    event_principal = str((entry.event or {}).get("principal_id") or "")
+    if not principal_id or event_principal != principal_id:
+        return (
+            "[Resolution Principal does not own this queue entry; "
+            "the entry was not changed.]"
+        )
+    record = {"id": entry.id, "kind": entry.kind, "event": entry.event,
               "conversation_id": (entry.event or {}).get("conversation_id")}
     if entry.kind == "task_gate":
         # Execution Review Phase 2: an irreversible-tier task hold.
@@ -440,25 +454,57 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
         except ImportError:
             from orchestrator import risk_gate
         message = risk_gate.resolve_task_gate_entry(record, approve=approve,
-                                                    reason=reason)
+                                                    reason=reason,
+                                                    principal_id=principal_id)
     else:
         try:
             import tool_events
         except ImportError:
             from orchestrator import tool_events
         message = tool_events.resolve_gate_entry(record, approve=approve,
-                                                 reason=reason)
+                                                 reason=reason,
+                                                 principal_id=principal_id)
+    if message.startswith((
+        "[Unauthenticated execution-gate entry",
+        "[Unauthenticated task-gate entry",
+        "[Task-gate Principal mismatch",
+    )):
+        return message
     remove_by_id(entry.id)
     _mark_conversation_resolved(conversation_id)
     return message
 
 
-def _commit_approve_as_proposed(ctx: ContinuationContext, conversation_id: str) -> str:
+def _non_ped_authority_message(queue_id: str) -> str | None:
+    """Prevent typed authority requests from falling into the PED handler."""
+    from oversight_queue import find_paused_by_id
+
+    entry = find_paused_by_id(queue_id)
+    if entry is None or entry.kind in ("execution_gate", "task_gate"):
+        return None
+    request_type = entry.authority_request_type or (
+        "ped_redefinition" if entry.redefinition else "legacy_untyped"
+    )
+    if request_type == "ped_redefinition":
+        return None
+    return (
+        f"[This resolution requires a handler for authority request type "
+        f"`{request_type}`. The queue entry was not changed.]"
+    )
+
+
+def _commit_approve_as_proposed(
+    ctx: ContinuationContext, conversation_id: str, principal_id: str,
+) -> str:
     """User typed 1 — apply redefinition as the system originally proposed."""
     gate_msg = _maybe_commit_gate_entry(ctx.queue_id, conversation_id,
-                                        approve=True)
+                                        approve=True,
+                                        principal_id=principal_id)
     if gate_msg is not None:
         return gate_msg
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import approve_redefinition
 
@@ -491,6 +537,9 @@ def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) ->
             "[Option 3 has no alternative content yet — keep discussing until "
             "the AI proposes a substantive alternative, then type 3 again.]"
         )
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
 
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import approve_redefinition
@@ -518,13 +567,18 @@ def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) ->
 
 def _commit_deny(
     ctx: ContinuationContext, history: list, conversation_id: str,
+    principal_id: str,
 ) -> str:
     """User typed 2 — deny the redefinition with a reason from recent context."""
     gate_msg = _maybe_commit_gate_entry(ctx.queue_id, conversation_id,
                                         approve=False,
-                                        reason=_extract_deny_reason(history))
+                                        reason=_extract_deny_reason(history),
+                                        principal_id=principal_id)
     if gate_msg is not None:
         return gate_msg
+    authority_msg = _non_ped_authority_message(ctx.queue_id)
+    if authority_msg is not None:
+        return authority_msg
     from oversight_queue import find_raw_index_by_id
     from redefinition_handler import deny_redefinition
 

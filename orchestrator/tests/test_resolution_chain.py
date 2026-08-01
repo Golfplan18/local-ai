@@ -364,6 +364,101 @@ class TestContinueResolution(unittest.TestCase):
         self.assertIn("response", text)
         self.assertIsNotNone(MARKER_PATTERN.search(text))
 
+    def _execution_gate_entry(self, *, principal_id="principal:owner"):
+        import oversight_queue
+        with mock.patch.object(
+            oversight_queue, "_generate_name", return_value="Execution review",
+        ):
+            entry = oversight_queue.add_entry({
+                "kind": "execution_gate",
+                "event": {
+                    "event_type": "execution_gate",
+                    "principal_id": principal_id,
+                    "action": "delete_file",
+                },
+                "verdict": {"reasoning": "Exact review is required."},
+            }, config={})
+        self.assertTrue(
+            oversight_queue.link_discussion(entry.id, "dialogue:owner")
+        )
+        return oversight_queue.find_paused_by_id(entry.id)
+
+    def test_execution_gate_rejects_foreign_dialogue_without_mutation(self):
+        from resolution_chain import continue_resolution, ContinuationContext
+        from oversight_queue import find_paused_by_id
+
+        entry = self._execution_gate_entry()
+        ctx = ContinuationContext(queue_id=entry.id, last_alternative="")
+        with mock.patch("tool_events.resolve_gate_entry") as resolver:
+            text = continue_resolution(
+                ctx, [], "1", conversation_id="dialogue:foreign",
+                principal_id="principal:owner",
+            )
+        resolver.assert_not_called()
+        self.assertIn("does not own", text)
+        self.assertIsNotNone(find_paused_by_id(entry.id))
+
+    def test_execution_gate_rejects_foreign_principal_without_mutation(self):
+        from resolution_chain import continue_resolution, ContinuationContext
+        from oversight_queue import find_paused_by_id
+
+        entry = self._execution_gate_entry()
+        ctx = ContinuationContext(queue_id=entry.id, last_alternative="")
+        with mock.patch("tool_events.resolve_gate_entry") as resolver:
+            text = continue_resolution(
+                ctx, [], "1", conversation_id="dialogue:owner",
+                principal_id="principal:attacker",
+            )
+        resolver.assert_not_called()
+        self.assertIn("Principal does not own", text)
+        self.assertIsNotNone(find_paused_by_id(entry.id))
+
+    def test_execution_gate_exact_owner_resolves_once(self):
+        from resolution_chain import continue_resolution, ContinuationContext
+        from oversight_queue import find_paused_by_id
+
+        entry = self._execution_gate_entry()
+        ctx = ContinuationContext(queue_id=entry.id, last_alternative="")
+        with mock.patch(
+            "tool_events.resolve_gate_entry", return_value="approved",
+        ) as resolver, mock.patch(
+            "resolution_chain._mark_conversation_resolved",
+        ) as mark_resolved:
+            text = continue_resolution(
+                ctx, [], "1", conversation_id="dialogue:owner",
+                principal_id="principal:owner",
+            )
+        resolver.assert_called_once()
+        self.assertEqual(
+            resolver.call_args.kwargs["principal_id"], "principal:owner"
+        )
+        mark_resolved.assert_called_once_with("dialogue:owner")
+        self.assertEqual(text, "approved")
+        self.assertIsNone(find_paused_by_id(entry.id))
+
+    def test_execution_gate_authentication_failure_preserves_queue_entry(self):
+        from resolution_chain import continue_resolution, ContinuationContext
+        from oversight_queue import find_paused_by_id
+
+        entry = self._execution_gate_entry()
+        ctx = ContinuationContext(queue_id=entry.id, last_alternative="")
+        failure = (
+            "[Unauthenticated execution-gate entry — no matching "
+            "runtime-issued approval request was consumed.]"
+        )
+        with mock.patch(
+            "tool_events.resolve_gate_entry", return_value=failure,
+        ), mock.patch(
+            "resolution_chain._mark_conversation_resolved",
+        ) as mark_resolved:
+            text = continue_resolution(
+                ctx, [], "1", conversation_id="dialogue:owner",
+                principal_id="principal:owner",
+            )
+        self.assertEqual(text, failure)
+        mark_resolved.assert_not_called()
+        self.assertIsNotNone(find_paused_by_id(entry.id))
+
 
 # ---------- Resolved suffix ----------
 

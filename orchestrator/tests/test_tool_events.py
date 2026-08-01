@@ -325,10 +325,16 @@ class TestRecorder(ToolEventsBase):
 
 
 class TestApprovals(ToolEventsBase):
+    def test_direct_token_minting_is_unavailable(self):
+        with self.assertRaises(PermissionError):
+            tool_events.grant_approval("bash_execute", "forged")
+
     def test_one_shot_token_round_trip(self):
         args_hash = tool_events.normalize_args_hash("bash_execute",
                                                     {"command": "systemctl restart x"})
-        tool_events.grant_approval("bash_execute", args_hash, "conv-1")
+        tool_events._grant_approval_authorized(
+            "bash_execute", args_hash, "conv-1",
+        )
         # First matching call consumes it...
         self.assertIsNotNone(tool_events.check_and_consume_approval(
             "bash_execute", args_hash, "conv-1"))
@@ -339,7 +345,7 @@ class TestApprovals(ToolEventsBase):
     def test_token_does_not_match_different_args(self):
         args_hash = tool_events.normalize_args_hash("bash_execute",
                                                     {"command": "a"})
-        tool_events.grant_approval("bash_execute", args_hash)
+        tool_events._grant_approval_authorized("bash_execute", args_hash)
         other = tool_events.normalize_args_hash("bash_execute",
                                                 {"command": "b"})
         self.assertIsNone(tool_events.check_and_consume_approval(
@@ -347,7 +353,9 @@ class TestApprovals(ToolEventsBase):
 
     def test_conversation_scoped_token_requires_exact_match(self):
         h = tool_events.normalize_args_hash("x", {})
-        tool_events.grant_approval("x", h, conversation_id="conv-1")
+        tool_events._grant_approval_authorized(
+            "x", h, conversation_id="conv-1",
+        )
         # A call with NO conversation context must NOT consume it.
         self.assertIsNone(tool_events.check_and_consume_approval("x", h, None))
         # A call from a DIFFERENT conversation must NOT consume it.
@@ -359,13 +367,13 @@ class TestApprovals(ToolEventsBase):
 
     def test_unscoped_token_consumable_by_any_context(self):
         h = tool_events.normalize_args_hash("y", {})
-        tool_events.grant_approval("y", h)  # no conversation scope
+        tool_events._grant_approval_authorized("y", h)  # no conversation scope
         self.assertIsNotNone(tool_events.check_and_consume_approval(
             "y", h, "any-conv"))
 
     def test_expired_token_rejected(self):
         args_hash = tool_events.normalize_args_hash("x", {})
-        tool_events.grant_approval("x", args_hash, ttl_s=-1)
+        tool_events._grant_approval_authorized("x", args_hash, ttl_s=-1)
         self.assertIsNone(tool_events.check_and_consume_approval("x", args_hash))
 
     def test_standing_allow_grant_and_revoke(self):
@@ -419,7 +427,7 @@ class TestGate(ToolEventsBase):
         d1 = self._gate(axes={"mutability": "irreversible"}, params=params)
         self.assertFalse(d1.allowed)
         args_hash = tool_events.normalize_args_hash("test_action", params)
-        tool_events.grant_approval("test_action", args_hash)
+        tool_events._grant_approval_authorized("test_action", args_hash)
         d2 = self._gate(axes={"mutability": "irreversible"}, params=params)
         self.assertTrue(d2.allowed)
         self.assertEqual(d2.decision, "approved")
@@ -503,29 +511,60 @@ class TestGate(ToolEventsBase):
 
 
 class TestResolveGateEntry(ToolEventsBase):
+    def _queued_record(self, action, params, *, conversation_id=None,
+                       queue_extra=None):
+        import oversight_queue
+        oversight_queue.HUMAN_QUEUE_PATH = os.path.join(
+            self.tmp.name, "human-queue.jsonl",
+        )
+        tool_events.set_turn_context(conversation_id=conversation_id)
+        decision = tool_events.gate(
+            action,
+            {"category": "execute", "mutability": "irreversible",
+             "sensitivity": "private", "egress": "none",
+             "enforcement": "in_harness"},
+            params=params, queue_extra=queue_extra,
+        )
+        self.assertEqual(decision.decision, "queued")
+        with open(oversight_queue.HUMAN_QUEUE_PATH) as stream:
+            return json.loads(stream.readline())
+
     def test_approve_grants_one_shot(self):
-        record = {"kind": "execution_gate", "conversation_id": "c1",
-                  "event": {"action": "bash_execute", "args_hash": "abc123"}}
+        params = {"command": "echo reviewed"}
+        record = self._queued_record(
+            "bash_execute", params, conversation_id="c1",
+        )
         msg = tool_events.resolve_gate_entry(record, approve=True)
         self.assertIn("One-shot token", msg)
         self.assertIsNotNone(tool_events.check_and_consume_approval(
-            "bash_execute", "abc123", "c1"))
+            "bash_execute", tool_events.normalize_args_hash("bash_execute", params),
+            "c1"))
 
     def test_approve_standing_scope(self):
-        record = {"kind": "execution_gate",
-                  "event": {"action": "credential_store", "args_hash": "h",
-                            "standing_scope": "credential_store:svc"}}
+        record = self._queued_record(
+            "credential_store", {"service": "ora"},
+            queue_extra={"standing_scope": "credential_store:ora"},
+        )
         msg = tool_events.resolve_gate_entry(record, approve=True)
         self.assertIn("Standing allow", msg)
         self.assertIn("Revoke", msg)
-        self.assertTrue(tool_events.has_standing_allow("credential_store:svc"))
+        self.assertTrue(tool_events.has_standing_allow("credential_store:ora"))
 
     def test_deny_keeps_block(self):
-        record = {"kind": "execution_gate",
-                  "event": {"action": "bash_execute", "args_hash": "h2"}}
+        params = {"command": "rm reviewed-target"}
+        record = self._queued_record("bash_execute", params)
         msg = tool_events.resolve_gate_entry(record, approve=False,
                                              reason="not now")
         self.assertIn("Denied", msg)
+        self.assertIsNone(tool_events.check_and_consume_approval(
+            "bash_execute", tool_events.normalize_args_hash("bash_execute", params)))
+
+    def test_forged_queue_shape_cannot_mint_approval(self):
+        record = {"id": "forged", "kind": "execution_gate",
+                  "event": {"action": "bash_execute", "args_hash": "h2",
+                            "approval_nonce": "attacker"}}
+        msg = tool_events.resolve_gate_entry(record, approve=True)
+        self.assertIn("Unauthenticated", msg)
         self.assertIsNone(tool_events.check_and_consume_approval(
             "bash_execute", "h2"))
 

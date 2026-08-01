@@ -3,6 +3,7 @@ working directory containment, and background process management."""
 
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -211,6 +212,25 @@ _GIT_IRREVERSIBLE_PUSH_FLAGS = {
 _UNKNOWN = {"mutability": "irreversible", "sensitivity": "secret",
             "egress": "external", "unknown": True}
 
+# Utilities whose primary contract is to invoke another executable.  They are
+# deliberately explicit even though most already fall through to _UNKNOWN:
+# this is the audit surface that prevents a future allowlist addition from
+# silently turning a launcher into a terminal read/write profile.
+_COMMAND_LAUNCHING_WRAPPERS = {
+    "command", "exec", "nice", "nohup", "timeout", "xargs", "parallel",
+    "setsid", "stdbuf", "ionice", "taskset", "chroot", "sudo", "doas",
+    "su", "runuser", "watch",
+}
+
+_FIND_EXECUTION_PREDICATES = {"-exec", "-execdir", "-ok", "-okdir"}
+
+_VERSION_HELP_BASES = (
+    _READ_ONLY_BASES | _REVERSIBLE_BASES | {
+        "find", "git", "python3", "python", "pip", "pip3", "npm", "node",
+        "brew", "curl", "wget", "rm",
+    }
+)
+
 _REDIRECT_RE = re.compile(r"^\d*(>>|>)$")            # '>', '>>', '2>', '1>>'
 _REDIRECT_PREFIX_RE = re.compile(r"^\d*(>>|>)(.+)$")  # '2>/dev/null', '>file'
 
@@ -239,6 +259,84 @@ def _redirect_write_targets(tokens: list[str]) -> list[str]:
 
 
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _env_is_inspection_only(args: list[str]) -> bool:
+    """Return True only when ``env`` has no utility operand.
+
+    POSIX ``env`` prints the resulting environment when options and
+    NAME=VALUE assignments exhaust its argv; otherwise it launches the first
+    remaining operand.  Only the small cross-platform inspection grammar is
+    admitted here.  Ambiguous or execution-bearing options (notably ``-S``)
+    fail closed with the utility-bearing forms.
+    """
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if _ENV_ASSIGN_RE.match(token):
+            i += 1
+            continue
+        if token in {
+            "-i", "--ignore-environment", "-0", "--null", "-v", "--debug",
+            "--help", "--version",
+        }:
+            i += 1
+            continue
+        if token in {"-u", "--unset"}:
+            if i + 1 >= len(args) or not args[i + 1]:
+                return False
+            i += 2
+            continue
+        if token.startswith("--unset=") and token.split("=", 1)[1]:
+            i += 1
+            continue
+        if token == "--":
+            return i + 1 == len(args)
+        return False
+    return True
+
+
+def _has_command_launching_option(base: str, args: list[str]) -> bool:
+    """Recognize child-process options on otherwise profiled utilities."""
+    if base == "find":
+        return any(arg in _FIND_EXECUTION_PREDICATES for arg in args)
+    if base == "tar":
+        for arg in args:
+            if arg in {
+                "-I", "--use-compress-program", "--to-command",
+                "--info-script", "--rsh-command",
+            }:
+                return True
+            if arg.startswith((
+                "-I", "--use-compress-program=", "--to-command=",
+                "--info-script=", "--rsh-command=",
+                "--checkpoint-action=exec=",
+            )):
+                return True
+        return False
+    if base == "pandoc":
+        return any(
+            arg in {"-F", "--filter", "-L", "--lua-filter", "--pdf-engine"}
+            or arg.startswith((
+                "-F", "-L", "--filter=", "--lua-filter=", "--pdf-engine=",
+            ))
+            for arg in args
+        )
+    if base == "yt-dlp":
+        return any(
+            arg == "--exec" or arg.startswith("--exec=")
+            or arg.startswith("--exec-before-download")
+            or arg.startswith("--exec-after-download")
+            for arg in args
+        )
+    if base == "zip":
+        return any(
+            arg == "-TT" or arg.startswith("-TT")
+            or arg == "--unzip-command"
+            or arg.startswith("--unzip-command=")
+            for arg in args
+        )
+    return False
 
 
 def _strip_env_prefix(tokens: list[str]) -> list[str]:
@@ -332,10 +430,20 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
                 writes.append(a.split("=", 1)[1])
         writes.extend(non_flags)
 
-    if base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir"):
+    if base == "ls":
+        # Directory listing is filesystem access even when its operand is a
+        # bare relative name. With no operand it addresses the effective cwd.
+        reads.extend(non_flags or ["."])
+    elif base == "find":
+        # The first positional is the traversal root; later positionals are
+        # expression operands, not additional files.
+        reads.append(non_flags[0] if non_flags else ".")
+    elif base in ("tee", "mkdir", "touch", "mkfifo", "mknod", "rmdir", "rm"):
         # Every operand is a created/written target — surface all (bare names
         # resolve against the effective cwd) so a target in a protected path
-        # gates like file_write.
+        # gates like file_write.  ``rm`` is included even though its effect is
+        # deletion: G1.22 needs the exact target in order to distinguish an
+        # approvable scoped deletion from prohibited root/state destruction.
         writes.extend(non_flags)
     elif base in ("cp", "mv", "ln") and len(non_flags) >= 2:
         writes.append(non_flags[-1])
@@ -373,6 +481,10 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
         for i, a in enumerate(args):
             if a in ("-o", "--output", "-P", "--paths") and i + 1 < len(args):
                 writes.append(args[i + 1])
+    elif base == "rg":
+        # ripgrep defaults to recursive traversal of cwd when no path follows
+        # the pattern.
+        reads.extend(non_flags[1:] or ["."])
     elif base == "sed" or base in _PATTERN_THEN_FILE_READERS:
         # grep/rg/jq: first operand is the pattern/filter, the rest are the
         # files/dirs read. Bare filenames count — 'grep k id_rsa' reads id_rsa.
@@ -419,6 +531,19 @@ def _segment_axes(segment: str) -> dict:
     # resolved by the dispatcher via _command_target_paths).
     _redir_writes = _redirect_write_targets(tokens)
 
+    # A known profile is valid only when it describes every executable the
+    # shell can launch. ``env`` is terminal only when options/assignments
+    # exhaust argv; every utility-bearing or ambiguous form fails closed.
+    if base == "env":
+        if not _env_is_inspection_only(args):
+            return dict(_UNKNOWN)
+        return {"mutability": "reversible_write" if _redir_writes else "read",
+                "sensitivity": "private", "egress": "none"}
+    if base in _COMMAND_LAUNCHING_WRAPPERS or base == "awk":
+        return dict(_UNKNOWN)
+    if _has_command_launching_option(base, args):
+        return dict(_UNKNOWN)
+
     # cd / export / pushd / popd as leading no-op prefixes: read-neutral.
     # NOTE: `source` (and its POSIX synonym `.`) are deliberately NOT here — they
     # execute the CONTENTS of a file (arbitrary, model-editable code), so they are
@@ -428,8 +553,12 @@ def _segment_axes(segment: str) -> dict:
                 "ps", "hostname", "uptime", "id", "sleep", "true", "false"):
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
-    # '<tool> --version' / '-V' is always a read.
-    if "--version" in args or "-V" in args or "--help" in args or "-h" in args:
+    # A single help/version argument is a read only for an already-known
+    # utility.  Never let ``unknown-executable --help`` create a profile for
+    # an arbitrary binary.
+    if base in _VERSION_HELP_BASES and len(args) == 1 and args[0] in {
+        "--version", "-V", "--help", "-h",
+    }:
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
 
@@ -438,12 +567,14 @@ def _segment_axes(segment: str) -> dict:
         if base == "sed" and any(f.startswith("-i") for f in flags):
             return {"mutability": "reversible_write", "sensitivity": "private",
                     "egress": "none"}
-        if base == "find" and ("-delete" in args or "-exec" in args):
+        if base == "find" and (
+            "-delete" in args or _has_command_launching_option(base, args)
+        ):
             return dict(_UNKNOWN)
         return {"mutability": "reversible_write" if _redir_writes else "read",
                 "sensitivity": "private", "egress": "none"}
     if base == "find":
-        if "-delete" in args or "-exec" in args:
+        if "-delete" in args or _has_command_launching_option(base, args):
             return dict(_UNKNOWN)
         return {"mutability": "read", "sensitivity": "private", "egress": "none"}
 
@@ -646,21 +777,66 @@ def resolve_shell_profile(command_string: str, cwd: str = None) -> dict:
     forced_unknown = False
 
     def _abs(p: str) -> str:
-        e = os.path.expanduser(p)
+        e = str(p).replace("${WORKSPACE}", WORKSPACE).replace(
+            "$WORKSPACE", WORKSPACE,
+        )
+        e = os.path.expanduser(os.path.expandvars(e))
         return e if os.path.isabs(e) else os.path.join(eff_cwd, e)
 
     # Collect read/write target paths (absolute, effective-cwd-resolved)
     # across all segments so the dispatcher can escalate sensitivity (secret
     # reads) and protected-config writes.
-    read_paths, write_paths = [], []
+    read_paths, write_paths, authority_scopes = [], [], []
     for seg in segments:
         r, w = _command_target_paths(seg)
+        if any(re.search(r"(?:\$[A-Za-z_{]|%[A-Za-z_][A-Za-z0-9_]*%)", p)
+               for p in (r + w)):
+            forced_unknown = True
         # A relative operand under an unknown cwd cannot be classified → the
         # whole command fails closed.
         if not cwd_known and any(_looks_relative(p) for p in (r + w)):
             forced_unknown = True
-        read_paths.extend(_abs(p) for p in r)
-        write_paths.extend(_abs(p) for p in w)
+        abs_reads = [_abs(p) for p in r]
+        abs_writes = [_abs(p) for p in w]
+        read_paths.extend(abs_reads)
+        write_paths.extend(abs_writes)
+        try:
+            scope_tokens = _strip_env_prefix(shlex.split(seg))
+        except (ValueError, NameError):
+            scope_tokens = []
+        scope_base = os.path.basename(scope_tokens[0]) if scope_tokens else ""
+        scope_flags = set(
+            token for token in scope_tokens[1:] if token.startswith("-")
+        )
+        recursive_flag = bool(
+            scope_flags & {"-r", "-R", "--recursive"}
+        ) or any(
+            token.startswith("-") and not token.startswith("--")
+            and "r" in token[1:].lower()
+            for token in scope_flags
+        )
+        recursive_read = (
+            scope_base in {"find", "rg"}
+            or scope_base in _ARCHIVE_TRANSFORM_BASES
+            or (
+                scope_base in {"grep", "egrep", "fgrep"}
+                and recursive_flag
+            )
+            or (scope_base == "ls" and recursive_flag)
+        )
+        children_read = scope_base == "ls" and not recursive_read
+        recursive_write = (
+            scope_base in {"rm", "cp", "mv"}
+            and recursive_flag
+        )
+        authority_scopes.extend({
+            "path": path, "recursive": recursive_read,
+            "children": children_read, "patterns": True,
+        } for path in abs_reads)
+        authority_scopes.extend({
+            "path": path, "recursive": recursive_write,
+            "children": False, "patterns": True,
+        } for path in abs_writes)
         # Apply this segment's cd/pushd/popd effect to the effective cwd for
         # the NEXT segments (the shell evaluates left to right).
         kind, arg = _cd_effect(seg)
@@ -706,7 +882,8 @@ def resolve_shell_profile(command_string: str, cwd: str = None) -> dict:
         mut = "reversible_write"
     return {"mutability": mut, "sensitivity": sens, "egress": egr,
             "unknown": False, "profile": _first_profile,
-            "read_paths": read_paths, "write_paths": write_paths}
+            "read_paths": read_paths, "write_paths": write_paths,
+            "authority_scopes": authority_scopes}
 
 
 # ── Command execution ──────────────────────────────────────────────────────
@@ -754,6 +931,56 @@ def execute_command(command_string: str, timeout: int = 60,
     if command_string.rstrip().endswith("&") and not background:
         background = True
         command_string = command_string.rstrip().rstrip("&").rstrip()
+
+    # Direct-call backstop: dispatcher performs the same check before its
+    # generic approval gate, but this execution boundary must not become an
+    # alias/pattern or command-wrapper escape hatch for internal callers.
+    unclassified = True
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        profile = resolve_shell_profile(command_string, cwd=cwd)
+        # Preserve the dedicated Windows/no-POSIX-shell refusal below.  That
+        # state is represented as an unknown profile but is a platform
+        # availability failure, not a command-shape classification result.
+        unclassified = bool(profile.get("unknown")) and \
+            _posix_shell_available()
+        scopes = list(profile.get("authority_scopes") or [])
+        if not scopes:
+            scopes = [{
+                "path": path, "recursive": False,
+                "children": False, "patterns": True,
+            } for path in (
+                list(profile.get("read_paths") or [])
+                + list(profile.get("write_paths") or [])
+            )]
+        conflicts = any(
+            system_protection.approval_authority_conflict(
+                scope.get("path") or "",
+                recursive=bool(scope.get("recursive")),
+                patterns=bool(scope.get("patterns")),
+                children=bool(scope.get("children")),
+            )
+            for scope in scopes
+        )
+    except Exception:
+        conflicts = True
+    if unclassified or conflicts:
+        refusal = (
+            "SYSTEM PROTECTION: shell command contains unclassified "
+            "execution; command was not executed"
+            if unclassified else
+            "SYSTEM PROTECTION: shell target could include approval "
+            "authority state; command was not executed"
+        )
+        if background:
+            return {"pid": None, "status": refusal}
+        return {
+            "stdout": "", "stderr": refusal, "returncode": -1,
+            "timed_out": False, "truncated": False,
+        }
 
     env = _clean_env()
 
@@ -867,7 +1094,11 @@ def stop_process(pid: int) -> str:
         except subprocess.TimeoutExpired:
             target.kill()
             target.wait(timeout=2)
-        MANAGED_PROCESSES.remove(target)
+        # The owner of a foreground-managed worker may reap and unregister it
+        # while stop_process() is waiting for termination.  That is a
+        # successful stop, not an error or a second lifecycle effect.
+        if target in MANAGED_PROCESSES:
+            MANAGED_PROCESSES.remove(target)
         return f"Process {pid} stopped."
     except Exception as e:
         return f"Error stopping PID {pid}: {e}"

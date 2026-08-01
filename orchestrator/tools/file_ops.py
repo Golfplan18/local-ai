@@ -22,6 +22,17 @@ ALLOWED_BASES = [WORKSPACE, VAULT, CONVERSATIONS]
 
 def _validate_path(path: str) -> tuple[bool, str]:
     """Return (allowed, reason). Blocks dangerous paths."""
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        if system_protection.approval_authority_conflict(path):
+            return False, "Access denied to approval authority state"
+    except Exception:
+        # Failure to classify authority state cannot make a generic file
+        # boundary permissive.
+        return False, "Approval authority classification unavailable"
     path = os.path.realpath(os.path.expanduser(path))
 
     # Block path traversal

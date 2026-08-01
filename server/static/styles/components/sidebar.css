@@ -451,6 +451,34 @@
   font-size: 13px;
 }
 
+.process-attention-card[data-needs-attention="true"] {
+  border-left: 3px solid var(--interactive-accent);
+  padding-left: 6px;
+}
+
+.process-attention-card[data-surface="automated"] {
+  cursor: default;
+}
+
+.process-attention-card[data-needs-attention="true"] .badge.attention {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, white);
+  font-weight: 700;
+}
+
+.process-attention-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.process-attention-required {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
 .oversight-card-name {
   color: var(--text-normal);
   word-break: break-word;

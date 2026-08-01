@@ -340,6 +340,29 @@ def read_mom(
     except OSError:
         return _empty_mom()
     milestones_raw = _extract_section(text, "Milestones").strip("\n")
+    if not milestones_raw:
+        # Operations Manifest Appendix A uses the qualified canonical headings,
+        # while the older project-management modal reads a single Milestones
+        # field.  Keep the physical Matrix canonical and present both Operation
+        # milestone classes read-only through the legacy surface.  Server-side
+        # writes remain classification-gated to Projects.
+        active = (
+            _extract_section(text, "Active Milestones (Recurring)")
+            or _extract_section(text, "Active Milestones")
+        ).strip("\n")
+        aspirational = (
+            _extract_section(text, "Aspirational Milestones (Maturity Gates)")
+            or _extract_section(text, "Aspirational Milestones")
+        ).strip("\n")
+        blocks: list[str] = []
+        if active:
+            blocks.append(f"### Active Milestones (Recurring)\n\n{active}")
+        if aspirational:
+            blocks.append(
+                "### Aspirational Milestones (Maturity Gates)\n\n"
+                f"{aspirational}"
+            )
+        milestones_raw = "\n\n".join(blocks)
     return {
         "exists": True,
         "matrix_path": str(path),

@@ -170,9 +170,61 @@ class TestFailClosed(unittest.TestCase):
 
     def test_find_delete_and_exec_unknown_or_dangerous(self):
         self.assertTrue(resolve_shell_profile("find . -name x -exec rm {} ;")["unknown"])
+        for predicate in ("-execdir", "-ok", "-okdir"):
+            cmd = f"find . -name x {predicate} cat {{}} ;"
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
         # -delete additionally trips the DANGEROUS classifier tier.
         self.assertEqual(classify_command("find . -name x -delete")["level"],
                          "dangerous")
+
+    def test_command_launching_wrappers_and_profiled_launch_options_are_unknown(self):
+        commands = (
+            "env cat ordinary.txt",
+            "env FOO=1 sh -c 'cat ordinary.txt'",
+            "env -- sh -c 'cat ordinary.txt'",
+            "env -S 'sh -c id'",
+            "command cat ordinary.txt",
+            "exec cat ordinary.txt",
+            "nice cat ordinary.txt",
+            "nohup cat ordinary.txt",
+            "timeout 1 cat ordinary.txt",
+            "xargs cat",
+            "parallel cat ::: ordinary.txt",
+            "setsid cat ordinary.txt",
+            "stdbuf -o0 cat ordinary.txt",
+            "ionice cat ordinary.txt",
+            "taskset -c 0 cat ordinary.txt",
+            "chroot / cat ordinary.txt",
+            "sudo cat ordinary.txt",
+            "doas cat ordinary.txt",
+            "su -c 'cat ordinary.txt'",
+            "runuser -c 'cat ordinary.txt'",
+            "watch cat ordinary.txt",
+            "awk 'BEGIN{system(\"id\")}' ordinary.txt",
+            "tar --use-compress-program=cat -cf out.tar ordinary.txt",
+            "tar --checkpoint-action=exec=cat -cf out.tar ordinary.txt",
+            "pandoc --filter cat ordinary.md",
+            "pandoc --lua-filter filter.lua ordinary.md",
+            "yt-dlp --exec 'cat {}' https://example.invalid/video",
+            "zip -TT cat out.zip ordinary.txt",
+        )
+        for cmd in commands:
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
+
+    def test_env_inspection_and_assignment_only_forms_remain_read_only(self):
+        for cmd in (
+            "env",
+            "env FOO=bar",
+            "env -i FOO=bar",
+            "env -u HOME",
+            "env --unset=HOME FOO=bar",
+        ):
+            profile = resolve_shell_profile(cmd)
+            self.assertFalse(profile["unknown"], cmd)
+            self.assertEqual(profile["mutability"], "read", cmd)
+
+    def test_help_flag_does_not_profile_an_unknown_executable(self):
+        self.assertTrue(resolve_shell_profile("unknowncmd42 --help")["unknown"])
 
     def test_rm_is_irreversible(self):
         self.assertEqual(resolve_shell_profile("rm -f x.txt")["mutability"],

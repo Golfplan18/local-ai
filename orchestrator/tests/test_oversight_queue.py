@@ -79,7 +79,8 @@ class TestListPaused(unittest.TestCase):
         e = entries[0]
         self.assertTrue(e.id)  # synthesized
         self.assertEqual(len(e.id), 16)
-        self.assertIn("Redefinition", e.name)
+        self.assertIn("PED redefinition", e.name)
+        self.assertEqual(e.authority_request_type, "ped_redefinition")
         self.assertIn("p1", e.name)
         self.assertEqual(e.engagement, "unseen")
 

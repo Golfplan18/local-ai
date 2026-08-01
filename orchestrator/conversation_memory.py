@@ -16,6 +16,12 @@ may be changed explicitly through the lifecycle API. Per-turn request payloads
 never retag an existing envelope. The value is used by close-out dispatch and
 by RAG queries to filter private content.
 
+G1.4 adds a bounded ``description`` plus ``contributors`` to the envelope.
+Contributors are reference identities, not copied text: a Dialogue may cite
+another live/archive Dialogue or an exact atomic-note path without acquiring
+fork ancestry.  The server resolves those references into read-only RAG
+context on each turn.
+
 Persistence surface
 -------------------
 
@@ -25,6 +31,7 @@ structured log for a conversation. Envelope shape:
     {
       "conversation_id": "<id>",
       "tag": "" | "stealth" | "private",
+      "process_plan_lifecycle": { ... } | absent,
       "messages": [ ... ]
     }
 
@@ -39,6 +46,9 @@ dict; WP-5.3 adds three optional fields per turn:
       "annotations": [ ... ] | null,
       "vision_extraction_result": { ... } | null
     }
+
+``process_plan_lifecycle`` is a separate digest-bound governed-work field.
+It never shares or changes the privacy ``tag`` namespace.
 
 All three turn-level fields are optional. Missing fields are stored as
 ``null`` (not absent) so forward/backward compatibility is trivial: older
@@ -75,10 +85,13 @@ imported from ``boot.py`` (server-agnostic) or from tests without a server.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
+import re
 import threading
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -145,6 +158,67 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 # existing envelope.
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
+CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
+MAX_CONTRIBUTORS = 20
+
+
+def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str, str]]:
+    """Return the canonical additive contributor-reference shape.
+
+    Conversation references use the browser/runtime identity under ``ref``
+    (a live id or an ``archive:`` id). Atomic notes use one absolute ``path``.
+    ``title`` is display-only provenance; runtime reads never trust it to
+    locate content. Unknown or malformed legacy values are ignored on normal
+    reads and rejected for authoritative creation when ``strict=True``.
+    """
+
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        if strict:
+            raise ValueError("contributors must be a list")
+        return []
+    if len(value) > MAX_CONTRIBUTORS:
+        if strict:
+            raise ValueError(f"contributors exceeds the {MAX_CONTRIBUTORS}-item limit")
+        value = value[:MAX_CONTRIBUTORS]
+
+    normalized: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in value:
+        if not isinstance(item, dict):
+            if strict:
+                raise ValueError("contributor entries must be objects")
+            continue
+        kind = item.get("kind")
+        locator_key = "ref" if kind == "conversation" else "path"
+        allowed = {"kind", locator_key, "title"}
+        locator = item.get(locator_key)
+        title = item.get("title", "")
+        valid = (
+            kind in CONTRIBUTOR_KINDS
+            and set(item).issubset(allowed)
+            and isinstance(locator, str)
+            and bool(locator.strip())
+            and len(locator.strip()) <= 4096
+            and isinstance(title, str)
+            and len(title.strip()) <= 300
+        )
+        if not valid:
+            if strict:
+                raise ValueError("contributor entry is invalid")
+            continue
+        locator = locator.strip()
+        identity = (kind, locator)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        normalized.append({
+            "kind": kind,
+            locator_key: locator,
+            "title": title.strip(),
+        })
+    return normalized
 
 
 def normalize_project_ids(project_ids: Any) -> list[str]:
@@ -249,6 +323,9 @@ def _read_normalized_envelope(
     normalized = normalize_project_ids(data.get("project_ids"))
     needs_heal = "project_ids" in data and data.get("project_ids") != normalized
     data["project_ids"] = normalized
+    # Contributors are an additive v0 field. Sanitise the outward snapshot but
+    # do not churn every pre-G1.4 envelope merely to add an empty list.
+    data["contributors"] = normalize_contributors(data.get("contributors"))
     if not (needs_heal and persist_heal):
         return data
 
@@ -272,6 +349,9 @@ def _read_normalized_envelope(
                     and current.get("project_ids") != current_normalized
                 )
                 current["project_ids"] = current_normalized
+                current["contributors"] = normalize_contributors(
+                    current.get("contributors")
+                )
                 if current_needs_heal:
                     _atomic_write_envelope(path, current)
                 return current
@@ -304,10 +384,306 @@ def _mutate_conversation_envelope(
                 if not isinstance(data, dict):
                     return None
                 data["project_ids"] = normalize_project_ids(data.get("project_ids"))
+                data["contributors"] = normalize_contributors(
+                    data.get("contributors")
+                )
                 mutate(data)
                 return path if _atomic_write_envelope(path, data) else None
         except (OSError, TimeoutError):
             return None
+
+
+class ConversationProcessBindingError(RuntimeError):
+    """A Dialogue cannot safely establish or read its governing Run binding."""
+
+
+class ConversationPlanLifecycleError(RuntimeError):
+    """A Dialogue plan-lifecycle binding is invalid or cannot be persisted."""
+
+
+_PROCESS_BINDING_SCHEMA_VERSION = "ora.dialogue-process-binding/1.0"
+_PROCESS_BINDING_FIELDS = frozenset({
+    "schema_version",
+    "run_id",
+    "definition_ref",
+    "binding_digest",
+    "bound_at",
+})
+_PROCESS_BINDING_REF_FIELDS = frozenset({"definition_id", "version", "digest"})
+
+_PLAN_LIFECYCLE_SCHEMA_VERSION = "ora.dialogue-plan-lifecycle/1.0"
+_PLAN_APPROVAL_SCHEMA_VERSION = "ora.programming-plan-state/1.0"
+_PLAN_LIFECYCLE_FIELD = "process_plan_lifecycle"
+_PLAN_LIFECYCLE_VALUES = frozenset({"plan:in-planning", "plan:approved"})
+_PLAN_REF_FIELDS = frozenset({"plan_id", "version", "digest"})
+_PLAN_LIFECYCLE_FIELDS = frozenset({
+    "schema_version",
+    "lifecycle",
+    "run_id",
+    "binding_digest",
+    "plan_ref",
+    "approval_receipt",
+    "approval_receipt_digest",
+    "lifecycle_digest",
+})
+_APPROVAL_RECEIPT_FIELDS = frozenset({
+    "schema_version",
+    "plan_ref",
+    "baseline_digest",
+    "decision",
+    "decision_by",
+    "decided_at",
+    "idempotency_key",
+})
+
+
+def _digest_json(value: Any) -> str:
+    body = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _validate_plan_lifecycle(value: Any) -> dict[str, Any]:
+    """Validate one digest-bound plan lifecycle stored outside privacy tag."""
+
+    if not isinstance(value, dict) or set(value) != _PLAN_LIFECYCLE_FIELDS:
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle has an invalid field set"
+        )
+    if value.get("schema_version") != _PLAN_LIFECYCLE_SCHEMA_VERSION:
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle has an unsupported schema version"
+        )
+    lifecycle = value.get("lifecycle")
+    if lifecycle not in _PLAN_LIFECYCLE_VALUES:
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle value is invalid"
+        )
+    plan_ref = value.get("plan_ref")
+    if (
+        not isinstance(plan_ref, dict)
+        or set(plan_ref) != _PLAN_REF_FIELDS
+        or not str(plan_ref.get("plan_id") or "").strip()
+        or not re.fullmatch(r"[1-9][0-9]*\.0", str(plan_ref.get("version") or ""))
+        or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", str(plan_ref.get("digest") or "")
+        )
+    ):
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle plan_ref is invalid"
+        )
+    run_id = str(value.get("run_id") or "").strip()
+    if not run_id or plan_ref.get("plan_id") != f"plan:{run_id}":
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle does not bind its exact Run"
+        )
+    binding_digest = str(value.get("binding_digest") or "")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", binding_digest):
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle binding digest is invalid"
+        )
+    approval = value.get("approval_receipt")
+    approval_digest = value.get("approval_receipt_digest")
+    if lifecycle == "plan:in-planning":
+        if approval is not None or approval_digest is not None:
+            raise ConversationPlanLifecycleError(
+                "in-planning lifecycle cannot claim an approval receipt"
+            )
+    else:
+        if not isinstance(approval, dict) or set(approval) != _APPROVAL_RECEIPT_FIELDS:
+            raise ConversationPlanLifecycleError(
+                "approved lifecycle lacks an exact approval receipt"
+            )
+        if (
+            approval.get("schema_version") != _PLAN_APPROVAL_SCHEMA_VERSION
+            or approval.get("plan_ref") != plan_ref
+            or approval.get("decision")
+            not in {"approve_and_start", "approve_without_start"}
+            or not str(approval.get("decision_by") or "").strip()
+            or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}",
+                str(approval.get("baseline_digest") or ""),
+            )
+            or approval_digest != _digest_json(approval)
+        ):
+            raise ConversationPlanLifecycleError(
+                "approved lifecycle receipt identity is invalid"
+            )
+        try:
+            datetime.fromisoformat(
+                str(approval.get("decided_at") or "").replace("Z", "+00:00")
+            )
+        except ValueError as exc:
+            raise ConversationPlanLifecycleError(
+                "approved lifecycle decision time is invalid"
+            ) from exc
+    body = {
+        key: copy.deepcopy(item)
+        for key, item in value.items()
+        if key != "lifecycle_digest"
+    }
+    if value.get("lifecycle_digest") != _digest_json(body):
+        raise ConversationPlanLifecycleError(
+            "process_plan_lifecycle digest does not match its body"
+        )
+    return copy.deepcopy(value)
+
+
+def persist_process_plan_lifecycle(
+    conversation_id: str,
+    lifecycle: dict[str, Any],
+    *,
+    sessions_root: Path | None = None,
+) -> Path:
+    """Persist plan lifecycle independently while preserving privacy exactly."""
+
+    validated = _validate_plan_lifecycle(lifecycle)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+
+    def mutate(data: dict[str, Any]) -> None:
+        prior_tag = data.get("tag", "")
+        existing = data.get(_PLAN_LIFECYCLE_FIELD)
+        if existing is not None:
+            current = _validate_plan_lifecycle(existing)
+            if current["lifecycle_digest"] == validated["lifecycle_digest"]:
+                return
+            if current["lifecycle"] == "plan:approved":
+                raise ConversationPlanLifecycleError(
+                    "approved Dialogue lifecycle is immutable in Phase 2.3"
+                )
+            if current["plan_ref"]["plan_id"] != validated["plan_ref"]["plan_id"]:
+                raise ConversationPlanLifecycleError(
+                    "Dialogue cannot switch plan families"
+                )
+            current_version = int(current["plan_ref"]["version"].split(".", 1)[0])
+            next_version = int(validated["plan_ref"]["version"].split(".", 1)[0])
+            if next_version < current_version or (
+                next_version == current_version
+                and current["plan_ref"] != validated["plan_ref"]
+            ):
+                raise ConversationPlanLifecycleError(
+                    "Dialogue plan lifecycle cannot rewrite a plan version"
+                )
+        data[_PLAN_LIFECYCLE_FIELD] = copy.deepcopy(validated)
+        if data.get("tag", "") != prior_tag:
+            raise ConversationPlanLifecycleError(
+                "plan lifecycle persistence changed Dialogue privacy"
+            )
+
+    path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    if path is None:
+        raise ConversationPlanLifecycleError(
+            "Dialogue envelope is unavailable for plan lifecycle persistence"
+        )
+    return path
+
+
+def load_process_plan_lifecycle(
+    conversation_id: str,
+    *,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Load and authenticate the Dialogue's separate plan lifecycle."""
+
+    envelope = load_conversation_json(conversation_id, sessions_root=sessions_root)
+    if envelope is None or envelope.get(_PLAN_LIFECYCLE_FIELD) is None:
+        return None
+    return _validate_plan_lifecycle(envelope[_PLAN_LIFECYCLE_FIELD])
+
+
+def _validate_process_binding(value: Any) -> dict[str, Any]:
+    """Validate the immutable pointer stored on a Dialogue envelope."""
+
+    if not isinstance(value, dict) or set(value) != _PROCESS_BINDING_FIELDS:
+        raise ConversationProcessBindingError(
+            "governing_process has an invalid field set"
+        )
+    if value.get("schema_version") != _PROCESS_BINDING_SCHEMA_VERSION:
+        raise ConversationProcessBindingError(
+            "governing_process has an unsupported schema version"
+        )
+    run_id = str(value.get("run_id") or "").strip()
+    if not run_id:
+        raise ConversationProcessBindingError("governing_process run_id is empty")
+    definition_ref = value.get("definition_ref")
+    if (not isinstance(definition_ref, dict)
+            or set(definition_ref) != _PROCESS_BINDING_REF_FIELDS
+            or any(not str(definition_ref.get(field) or "").strip()
+                   for field in _PROCESS_BINDING_REF_FIELDS)):
+        raise ConversationProcessBindingError(
+            "governing_process definition_ref is invalid"
+        )
+    if not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", str(definition_ref.get("digest") or "")
+    ):
+        raise ConversationProcessBindingError(
+            "governing_process definition digest is invalid"
+        )
+    digest = str(value.get("binding_digest") or "")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        raise ConversationProcessBindingError(
+            "governing_process binding_digest is invalid"
+        )
+    bound_at = str(value.get("bound_at") or "").strip()
+    if not bound_at:
+        raise ConversationProcessBindingError("governing_process bound_at is empty")
+    try:
+        datetime.fromisoformat(bound_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ConversationProcessBindingError(
+            "governing_process bound_at is not ISO-8601"
+        ) from exc
+    return copy.deepcopy(value)
+
+
+def bind_governing_process(
+    conversation_id: str,
+    binding: dict[str, Any],
+    *,
+    sessions_root: Path | None = None,
+) -> Path:
+    """Bind one immutable governing Process Run to an existing Dialogue.
+
+    Repeating the exact binding is idempotent.  A different binding is never
+    allowed to replace the active Run implicitly; callers must use a future
+    explicit lifecycle operation instead.
+    """
+
+    validated = _validate_process_binding(binding)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+
+    def mutate(data: dict[str, Any]) -> None:
+        existing = data.get("governing_process")
+        if existing is None:
+            data["governing_process"] = copy.deepcopy(validated)
+            return
+        current = _validate_process_binding(existing)
+        immutable_fields = (
+            "schema_version", "run_id", "definition_ref", "binding_digest",
+        )
+        if any(current[field] != validated[field] for field in immutable_fields):
+            raise ConversationProcessBindingError(
+                "Dialogue already has a different governing Process Run"
+            )
+
+    path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    if path is None:
+        raise ConversationProcessBindingError(
+            "Dialogue envelope is unavailable for governing Run binding"
+        )
+    return path
+
+
+def load_governing_process_binding(
+    conversation_id: str,
+    *,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Return the validated governing Run pointer for one Dialogue."""
+
+    envelope = load_conversation_json(conversation_id, sessions_root=sessions_root)
+    if envelope is None or envelope.get("governing_process") is None:
+        return None
+    return _validate_process_binding(envelope["governing_process"])
 
 
 def load_conversation_json(
@@ -370,6 +746,7 @@ def ensure_conversation_envelope(
         "parent_conversation_id": None,
         "fork_point_chunk_id": None,
         "project_ids": normalize_project_ids(project_ids),
+        "contributors": [],
         "messages": [],
     }
     with _conversation_write_lock(cid):
@@ -405,6 +782,72 @@ def ensure_conversation_envelope(
                 flush=True,
             )
             return None
+
+
+def create_conversation_envelope(
+    conversation_id: str,
+    *,
+    title: str,
+    description: str,
+    contributors: list[dict[str, str]] | None = None,
+    tag: str = "",
+    project_ids: list[str] | None = None,
+    sessions_root: Path | None = None,
+    timestamp: str | None = None,
+) -> dict[str, Any]:
+    """Exclusively create one reviewed, zero-turn G1.4 Dialogue.
+
+    The description is durable creation intent but is not silently recorded as
+    a user turn. The browser restores it as an unsent draft after selecting
+    the new Dialogue, preserving the user's final control over submission.
+    """
+
+    from datetime import datetime as _dt
+
+    cid = validate_conversation_id(conversation_id)
+    if not isinstance(title, str):
+        raise ValueError("title must be a string")
+    clean_title = re.sub(r"\s+", " ", title).strip()
+    if not clean_title or len(clean_title) > 200:
+        raise ValueError("title must contain 1 to 200 characters")
+    if not isinstance(description, str):
+        raise ValueError("description must be a string")
+    clean_description = description.strip()
+    meaningful_terms = re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]+", clean_description)
+    if (
+        len(clean_description) < 20
+        or len(clean_description) > 4000
+        or len(meaningful_terms) < 3
+    ):
+        raise ValueError(
+            "description must contain 20 to 4000 characters and at least 3 terms"
+        )
+    if tag not in CONVERSATION_TAGS:
+        raise ValueError("invalid conversation tag")
+    clean_contributors = normalize_contributors(contributors, strict=True)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    path = _conversation_path(cid, root, create_parent=True)
+    created = timestamp or _dt.now().isoformat(timespec="seconds")
+    envelope: dict[str, Any] = {
+        "conversation_id": cid,
+        "display_name": clean_title,
+        "description": clean_description,
+        "tag": tag,
+        "created": created,
+        "parent_conversation_id": None,
+        "fork_point_chunk_id": None,
+        "project_ids": normalize_project_ids(project_ids),
+        "contributors": clean_contributors,
+        "messages": [],
+    }
+    with _conversation_write_lock(cid):
+        with _rp.locked_file(path):
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(json.dumps(envelope, indent=2, ensure_ascii=False))
+                stream.flush()
+                os.fsync(stream.fileno())
+    return copy.deepcopy(envelope)
 
 
 def save_turn_spatial_state(
@@ -556,6 +999,7 @@ def _do_write(
             "parent_conversation_id":  None,
             "fork_point_chunk_id":     None,
             "project_ids":             normalize_project_ids(project_ids),
+            "contributors":            [],
             "messages":                [],
         }
     else:
@@ -574,6 +1018,9 @@ def _do_write(
         # Preserve real memberships, but lazily heal legacy/default sentinels
         # and malformed values whenever an envelope is written.
         existing["project_ids"] = normalize_project_ids(existing.get("project_ids"))
+        existing["contributors"] = normalize_contributors(
+            existing.get("contributors")
+        )
 
     # Normalize annotations payload: accept either wrapper dict or bare list.
     annotations_normalized: Any
@@ -909,6 +1356,11 @@ def iter_conversations(
                 if isinstance(data.get("fork_point_chunk_id"), str) else None
             ),
             "project_ids": list(data.get("project_ids") or []),
+            "description": (
+                data.get("description")
+                if isinstance(data.get("description"), str) else ""
+            ),
+            "contributors": copy.deepcopy(data.get("contributors") or []),
         })
     return summaries
 
@@ -1131,6 +1583,7 @@ def fork_conversation(
 
     # A fork stays in the same projects as its parent (G1.33).
     parent_projects = normalize_project_ids(parent.get("project_ids"))
+    parent_contributors = normalize_contributors(parent.get("contributors"))
 
     child = {
         "conversation_id":         new_id,
@@ -1141,6 +1594,11 @@ def fork_conversation(
         "fork_point_chunk_id":     fork_point_chunk_id,
         "forked_at":               forked_at,
         "project_ids":             list(parent_projects),
+        "description":             (
+            parent.get("description")
+            if isinstance(parent.get("description"), str) else ""
+        ),
+        "contributors":            copy.deepcopy(parent_contributors),
         "messages":                copy.deepcopy(parent_messages),
     }
 
@@ -1354,12 +1812,17 @@ __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
     "MUTABLE_PRIVACY_TAGS",
+    "ConversationPlanLifecycleError",
     "validate_conversation_id",
+    "normalize_contributors",
+    "create_conversation_envelope",
     "WELCOME_CONVERSATION_ID",
     "WELCOME_PLACEHOLDER_BODY",
     "load_conversation_json",
+    "load_process_plan_lifecycle",
     "ensure_conversation_envelope",
     "save_turn_spatial_state",
+    "persist_process_plan_lifecycle",
     "get_prior_spatial_state",
     "get_prior_annotations",
     "get_conversation_tag",

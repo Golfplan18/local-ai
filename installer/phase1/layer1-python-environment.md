@@ -27,7 +27,8 @@
        anthropic \
        openai \
        google-generativeai \
-       flask
+       flask \
+       watchfiles
    ```
 
    Note on `--break-system-packages`: Required on macOS with system Python (PEP 668). The flag is harmless on systems where it is not required.
@@ -40,7 +41,7 @@
 4. Verify key packages imported successfully:
 
    ```python
-   python3 -c "import chromadb; import keyring; try: from ddgs import DDGS
+   python3 -c "import chromadb; import keyring; import watchfiles; try: from ddgs import DDGS
    except ImportError: from duckduckgo_search import DDGS; print('All packages verified.')"
    ```
 

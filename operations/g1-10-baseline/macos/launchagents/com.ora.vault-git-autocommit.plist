@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Auto-commit + push the Obsidian vault every 15 minutes, so the GitHub backup
+     never drifts behind the working tree. Launched THROUGH /opt/homebrew/bin/python3
+     (which holds Full Disk Access) so git can read ~/Documents/vault; a bare
+     /bin/bash entry point is TCC-blocked from Documents.
+     Enable:  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ora.vault-git-autocommit.plist
+     Disable: launchctl bootout gui/$(id -u)/com.ora.vault-git-autocommit
+     MULTI-MACHINE: run on ONE machine only until G1.27 designates a primary committer. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ora.vault-git-autocommit</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/python3</string>
+    <string>/Users/oracle/sites/scripts/vault-git-autocommit.py</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/oracle/.local/bin</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/oracle/sites/.vault-sync/vault-git-autocommit.launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/oracle/sites/.vault-sync/vault-git-autocommit.launchd.err.log</string>
+</dict>
+</plist>

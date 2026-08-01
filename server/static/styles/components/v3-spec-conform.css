@@ -244,6 +244,9 @@
 .conversation-browser-search-btn,
 .conversation-browser-close,
 .conversation-browser-related,
+.conversation-browser-add-contributor,
+.conversation-browser-continue,
+.conversation-browser-fork,
 .conversation-browser-dismiss {
   border: 1px solid var(--background-modifier-border);
   background: transparent;
@@ -258,6 +261,9 @@
 .conversation-browser-search-btn:hover,
 .conversation-browser-close:hover,
 .conversation-browser-related:hover,
+.conversation-browser-add-contributor:hover,
+.conversation-browser-continue:hover,
+.conversation-browser-fork:hover,
 .conversation-browser-dismiss:hover {
   background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
@@ -294,7 +300,7 @@
 
 .conversation-browser-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  grid-template-columns: 20px minmax(0, 1fr) minmax(0, auto) auto;
   gap: 8px;
   align-items: center;
   min-height: 28px;
@@ -323,7 +329,14 @@
 }
 
 .conversation-browser-related {
+  min-width: 0;
+}
+
+.conversation-browser-actions {
   grid-column: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .conversation-browser-dismiss {
@@ -345,6 +358,204 @@
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* ── G1.4 reviewed Dialogue creation ─────────────────────── */
+
+.conversation-create-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.conversation-create-overlay.is-open {
+  display: flex;
+}
+
+.conversation-create-panel {
+  width: min(900px, 100%);
+  max-height: min(820px, calc(100vh - 56px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  overflow: hidden;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+.conversation-create-header,
+.conversation-create-discovery-row,
+.conversation-create-footer,
+.conversation-create-footer-actions,
+.conversation-create-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.conversation-create-header {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.conversation-create-header h2,
+.conversation-create-header p {
+  margin: 0;
+}
+
+.conversation-create-header p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.conversation-create-close {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.conversation-create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.conversation-create-title,
+.conversation-create-description {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  font: inherit;
+  font-weight: 400;
+}
+
+.conversation-create-description {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.conversation-create-discover,
+.conversation-create-cancel,
+.conversation-create-commit,
+.conversation-create-add,
+.conversation-create-continue,
+.conversation-create-fork {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: var(--text-normal);
+  background: transparent;
+  cursor: pointer;
+}
+
+.conversation-create-commit,
+.conversation-create-add[aria-pressed="true"] {
+  color: var(--text-on-accent, #fff);
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+.conversation-create-commit:disabled,
+.conversation-create-reviewed input:disabled + span {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.conversation-create-status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.conversation-create-results {
+  min-height: 64px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.conversation-create-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.conversation-create-result:last-child {
+  border-bottom: 0;
+}
+
+.conversation-create-result-copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
+}
+
+.conversation-create-result-kind {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.conversation-create-result-snippet {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-create-footer {
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.conversation-create-reviewed {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  max-width: 600px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 780px) {
+  .conversation-browser-actions,
+  .conversation-create-result-actions {
+    flex-wrap: wrap;
+  }
+  .conversation-create-result,
+  .conversation-create-footer {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .conversation-create-footer-actions {
+    justify-content: flex-end;
+  }
 }
 
 .conversation-browser-title {

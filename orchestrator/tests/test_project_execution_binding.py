@@ -48,16 +48,40 @@ class RouterProjectProfileTests(unittest.TestCase):
             "background-default")
 
     def test_project_profile_used_when_resolvable(self):
-        self._patch("proj", {"default_model_profile": "user-pipeline"})
+        from orchestrator import model_profiles
+        locks = model_profiles.capture_project_binding("user-pipeline", "proj")
+        self._patch("proj", {
+            "default_model_profile": "user-pipeline", "model_locks": locks,
+        })
+        token = self.router._resolve_config_name(None, "interactive")
+        self.assertTrue(token.startswith("project-lock:proj:"))
         self.assertEqual(
-            self.router._resolve_config_name(None, "interactive"), "user-pipeline")
+            model_profiles.profile_digest(self.router._load_configuration(token)),
+            locks["profile_digest"],
+        )
 
-    def test_unresolvable_profile_falls_through(self):
-        # A stored profile that isn't a real configuration must NOT be returned;
-        # dispatch falls back to the account-wide active configuration.
+    def test_unlocked_legacy_profile_fails_closed(self):
+        # A legacy/browser-forged name without its runtime-issued snapshot must
+        # never fall through and execute under a different global profile.
+        from orchestrator.model_profiles import ModelProfileError
         self._patch("proj", {"default_model_profile": "no-such-config-xyz"})
-        got = self.router._resolve_config_name(None, "interactive")
-        self.assertNotEqual(got, "no-such-config-xyz")
+        with self.assertRaises(ModelProfileError):
+            self.router._resolve_config_name(None, "interactive")
+
+    def test_project_token_is_reauthenticated_after_rebinding(self):
+        from orchestrator import model_profiles
+        first = model_profiles.capture_project_binding("user-pipeline", "proj")
+        record = {"default_model_profile": "user-pipeline", "model_locks": first}
+        self._patch("proj", record)
+        token = self.router._resolve_config_name(None, "interactive")
+        self.router._load_configuration(token)
+        second = model_profiles.capture_project_binding("background-speed", "proj")
+        record.clear()
+        record.update({
+            "default_model_profile": "background-speed", "model_locks": second,
+        })
+        with self.assertRaisesRegex(model_profiles.ModelProfileError, "stale"):
+            self.router._load_configuration(token)
 
     def test_commons_ignores_project(self):
         # Use a real profile that is distinct from the normal interactive

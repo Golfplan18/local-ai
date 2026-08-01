@@ -451,7 +451,8 @@ def has_valid_task_token(fingerprint: str,
 
 
 def grant_task_token(fingerprint: str, conversation_id: str | None = None,
-                     granted_via: str = "tier-gate") -> str:
+                     granted_via: str = "tier-gate", *,
+                     principal_id: str = "principal:user") -> str:
     """Mint a task-approval token (the recorded human approval). Stores the
     granting conversation_id so the stealth closeout purge can reach it;
     consumption is by fingerprint (see consume_task_token). First removes any
@@ -462,8 +463,11 @@ def grant_task_token(fingerprint: str, conversation_id: str | None = None,
         _te.remove_unused_tokens(TASK_ACTION, fingerprint)
     except Exception:
         pass
-    return _te.grant_approval(TASK_ACTION, fingerprint, conversation_id,
-                              ttl_s=TASK_TOKEN_TTL_S, granted_via=granted_via)
+    return _te._grant_approval_authorized(
+        TASK_ACTION, fingerprint, conversation_id,
+        ttl_s=TASK_TOKEN_TTL_S, granted_via=granted_via,
+        principal_id=principal_id,
+    )
 
 
 def consume_task_token(fingerprint: str,
@@ -541,8 +545,10 @@ def build_task_gate_prompt(risk_tier: str, fingerprint: str,
             from framework_elicitation import elicitation_marker
         except ImportError:  # pragma: no cover
             from orchestrator.framework_elicitation import elicitation_marker
-        out += "\n" + elicitation_marker(resume.get("fw", ""),
-                                         resume.get("mode", ""))
+        out += "\n" + elicitation_marker(
+            resume.get("fw", ""), resume.get("mode", ""),
+            resume.get("project_nexus"), resume.get("one_run_profile"),
+        )
     return out
 
 
@@ -768,7 +774,11 @@ def write_task_gate_card(risk_tier: str, fingerprint: str,
         from oversight_queue import add_entry
     except ImportError:  # pragma: no cover
         from orchestrator.oversight_queue import add_entry
+    approval_nonce = None
     try:
+        approval_nonce = _te._register_pending_approval(
+            TASK_ACTION, fingerprint, conversation_id, "principal:user",
+        )
         name = f"Task held: {risk_tier} — {(description or '')[:48]}"
         entry = add_entry({
             "kind": "task_gate",
@@ -776,9 +786,13 @@ def write_task_gate_card(risk_tier: str, fingerprint: str,
             "conversation_id": conversation_id,
             "event": {
                 "event_type": "TaskGateHeld",
+                "action": TASK_ACTION,
+                "args_hash": fingerprint,
+                "approval_nonce": approval_nonce,
                 "risk_tier": risk_tier,
                 "fingerprint": fingerprint,
                 "conversation_id": conversation_id,
+                "principal_id": "principal:user",
                 "surface": surface,
                 "description": description,
                 # Persist the framework resume payload on the card so the
@@ -795,13 +809,29 @@ def write_task_gate_card(risk_tier: str, fingerprint: str,
             },
             "redefinition": False,
         })
+        if not _te._bind_pending_queue(
+            approval_nonce, entry.id, entry.to_dict(),
+        ):
+            _te._discard_pending_approval(approval_nonce)
+            try:
+                from oversight_queue import remove_by_id
+            except ImportError:  # pragma: no cover
+                from orchestrator.oversight_queue import remove_by_id
+            remove_by_id(entry.id)
+            return None
         return getattr(entry, "id", None)
     except Exception:
+        if approval_nonce:
+            try:
+                _te._discard_pending_approval(approval_nonce)
+            except Exception:
+                pass
         return None
 
 
 def resolve_task_gate_entry(record_dict: dict, approve: bool,
-                            reason: str = "") -> str:
+                            reason: str = "", *,
+                            principal_id: str = "principal:user") -> str:
     """Commit handler for kind='task_gate' cards (parallels
     tool_events.resolve_gate_entry). Approve → mint the task token; deny →
     record the blocked decision. Called by resolution_chain / slash_commands
@@ -809,8 +839,25 @@ def resolve_task_gate_entry(record_dict: dict, approve: bool,
     event = record_dict.get("event", {})
     fp = event.get("fingerprint", "")
     conv = event.get("conversation_id")
+    if event.get("principal_id") != principal_id:
+        return "[Task-gate Principal mismatch; the held task was not changed.]"
+    pending = _te._consume_pending_approval(
+        record_dict, principal_id=principal_id,
+    )
+    if (
+        not fp
+        or event.get("action") != TASK_ACTION
+        or event.get("args_hash") != fp
+        or pending is None
+    ):
+        return (
+            "[Unauthenticated task-gate entry — no matching runtime-issued "
+            "task approval request was consumed.]"
+        )
     if approve:
-        grant_task_token(fp, conv, granted_via="paused-queue")
+        grant_task_token(
+            fp, conv, granted_via="paused-queue", principal_id=principal_id,
+        )
         return ("✅ Task approved. Re-send the task (or say 'continue') in the "
                 "origin Dialogue and it will proceed without another hold.")
     try:
@@ -888,18 +935,87 @@ def _remove_task_gate_card(queue_id: str | None) -> None:
         pass
 
 
+def _authenticated_inline_task_gate(
+    marker_ctx: dict, conversation_id: str | None, principal_id: str,
+) -> dict | None:
+    """Resolve a chat marker only against one exact server-side task hold.
+
+    The marker is an untrusted locator and corroborating display identity. It
+    never supplies the fingerprint, resume payload, owner, or authority. A
+    Dialogue with zero or multiple active task holds is ambiguous and fails
+    closed. The selected queue record is authenticated again by the approval
+    store when it is consumed.
+    """
+
+    queue_id = str((marker_ctx or {}).get("queue_id") or "")
+    marker_fp = str((marker_ctx or {}).get("fp") or "")
+    if not queue_id or not marker_fp or not conversation_id or not principal_id:
+        return None
+    try:
+        try:
+            from oversight_queue import list_paused
+        except ImportError:  # pragma: no cover
+            from orchestrator.oversight_queue import list_paused
+        candidates = []
+        for entry in list_paused():
+            event = entry.event or {}
+            if (
+                entry.kind == "task_gate"
+                and str(event.get("conversation_id") or "") == conversation_id
+                and str(event.get("principal_id") or "") == principal_id
+            ):
+                candidates.append(entry)
+        if len(candidates) != 1:
+            return None
+        entry = candidates[0]
+        event = entry.event or {}
+        if entry.id != queue_id or str(event.get("fingerprint") or "") != marker_fp:
+            return None
+        return entry.to_dict()
+    except Exception:
+        return None
+
+
 def handle_task_gate_reply(marker_ctx: dict, user_text: str,
-                           conversation_id: str | None) -> str | None:
-    """A "1"/"2" reply to a task-gate hold. "1" mints the task token (the
-    recorded approval) and instructs re-send; "2" cancels. Anything else →
-    None (fall through to normal processing)."""
+                           conversation_id: str | None, *,
+                           principal_id: str = "principal:user") -> str | None:
+    """Resolve an inline task decision exclusively from authenticated state.
+
+    A "1"/"2" reply is only a decision verb. The exact task, queue record,
+    Dialogue, Principal, and framework resume payload are reloaded from the
+    server-side Paused queue and authenticated approval store. Anything else
+    falls through to normal processing.
+    """
     t = (user_text or "").strip()
-    fp = (marker_ctx or {}).get("fp", "")
-    qid = (marker_ctx or {}).get("queue_id")
-    resume = (marker_ctx or {}).get("resume")
-    if t == "1":
-        grant_task_token(fp, conversation_id, granted_via="tier-gate")
-        _remove_task_gate_card(qid)
+    if t not in {"1", "2"}:
+        return None
+    record = _authenticated_inline_task_gate(
+        marker_ctx, conversation_id, principal_id,
+    )
+    if record is None:
+        return (
+            "[Task approval state is not authenticated; no authority or "
+            "queue state was changed.]"
+        )
+    event = record.get("event") or {}
+    qid = str(record.get("id") or "")
+    resume = event.get("resume")
+    approved = t == "1"
+    resolved = resolve_task_gate_entry(
+        record, approve=approved,
+        reason="cancelled from origin Dialogue" if not approved else "",
+        principal_id=principal_id,
+    )
+    if resolved.startswith((
+        "[Unauthenticated task-gate entry",
+        "[Task-gate Principal mismatch",
+    )):
+        return (
+            "[Task approval state is not authenticated; no authority or "
+            "queue state was changed.]"
+        )
+    _remove_task_gate_card(qid)
+    if approved:
         reply = ("✅ Approved. ")
         if resume and resume.get("fw"):
             # A mid-elicitation deliverable hold: re-attach the framework
@@ -911,15 +1027,15 @@ def handle_task_gate_reply(marker_ctx: dict, user_text: str,
                 from framework_elicitation import elicitation_marker
             except ImportError:  # pragma: no cover
                 from orchestrator.framework_elicitation import elicitation_marker
-            marker = elicitation_marker(resume.get("fw", ""), resume.get("mode", ""))
+            marker = elicitation_marker(
+                resume.get("fw", ""), resume.get("mode", ""),
+                resume.get("project_nexus"), resume.get("one_run_profile"),
+            )
             return (reply + "Say **continue** to produce the deliverable.\n\n"
                     + marker)
         return reply + ("Re-send the task (or repeat it) and it will "
                         "proceed without another hold.")
-    if t == "2":
-        _remove_task_gate_card(qid)
-        return "❌ Cancelled. The held task will not run."
-    return None
+    return "❌ Cancelled. The held task will not run."
 
 
 # ── Criteria pass for standard+ (judge condition 6) ─────────────────────────

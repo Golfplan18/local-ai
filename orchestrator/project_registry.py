@@ -18,6 +18,8 @@ in each project's own directory and are exposed through the manifest.
 from __future__ import annotations
 
 import json
+import hashlib
+import hmac
 import os
 import re
 import subprocess
@@ -273,6 +275,15 @@ class Project:
             if fc.framework == framework and fc.profile_name == profile_name:
                 return fc
         return None
+
+
+@dataclass(frozen=True)
+class ProjectSnapshot:
+    """One immutable manifest byte snapshot and its parsed Project."""
+
+    project: Project
+    manifest_sha256: str
+    manifest_path: Path
 
 
 # ---------------------------------------------------------------------------
@@ -703,11 +714,13 @@ def _parse_str_list(raw: Any, field_name: str, manifest_path: Path) -> list[str]
     return list(raw)
 
 
-def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
+def _parse_project_from_bytes(
+    raw: bytes, manifest_path: Path, root: Path,
+) -> Project:
     try:
-        text = manifest_path.read_text(encoding="utf-8")
-    except OSError as e:
-        raise ManifestError(f"Cannot read manifest {manifest_path}: {e}") from e
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise ManifestError(f"{manifest_path}: manifest is not UTF-8: {e}") from e
     try:
         data = json.loads(text)
     except json.JSONDecodeError as e:
@@ -753,17 +766,52 @@ def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
     )
 
 
+def _parse_project_from_manifest(manifest_path: Path, root: Path) -> Project:
+    """Compatibility parser for tests; registered paths use one snapshot."""
+
+    try:
+        raw = manifest_path.read_bytes()
+    except OSError as e:
+        raise ManifestError(f"Cannot read manifest {manifest_path}: {e}") from e
+    return _parse_project_from_bytes(raw, manifest_path, root)
+
+
+def load_project_snapshot(root_path) -> ProjectSnapshot:
+    """Read, hash, and parse exactly one stable manifest byte snapshot."""
+
+    root = Path(os.path.expanduser(str(root_path))).resolve()
+    manifest_path = root / MANIFEST_FILENAME
+    if not manifest_path.is_file() or manifest_path.is_symlink():
+        raise ManifestError(f"No manifest (regular non-symlink file) at {manifest_path}")
+    try:
+        before = manifest_path.stat(follow_symlinks=False)
+        raw = manifest_path.read_bytes()
+        after = manifest_path.stat(follow_symlinks=False)
+    except OSError as e:
+        raise ManifestError(f"Cannot read manifest {manifest_path}: {e}") from e
+    before_identity = (
+        before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+    )
+    after_identity = (
+        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+    )
+    if before_identity != after_identity or len(raw) != after.st_size:
+        raise ManifestError(f"Manifest changed while being read: {manifest_path}")
+    digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    return ProjectSnapshot(
+        project=_parse_project_from_bytes(raw, manifest_path, root),
+        manifest_sha256=digest,
+        manifest_path=manifest_path,
+    )
+
+
 def load_project_at(root_path) -> Project:
     """Load a project from its root directory.
 
     Reads ``<root>/ora-project.json``, validates, returns Project.
     Raises ManifestError on missing or malformed manifest.
     """
-    root = Path(os.path.expanduser(str(root_path)))
-    manifest_path = root / MANIFEST_FILENAME
-    if not manifest_path.is_file():
-        raise ManifestError(f"No manifest at {manifest_path}")
-    return _parse_project_from_manifest(manifest_path, root)
+    return load_project_snapshot(root_path).project
 
 
 # ---------------------------------------------------------------------------
@@ -772,7 +820,15 @@ def load_project_at(root_path) -> Project:
 
 
 def _pointer_path(nexus: str, pointer_dir: str = POINTER_DIR) -> Path:
-    return Path(os.path.expanduser(pointer_dir)) / f"{nexus}.json"
+    try:
+        try:
+            from project_meta import validate_nexus
+        except ImportError:  # pragma: no cover
+            from orchestrator.project_meta import validate_nexus
+        safe_nexus = validate_nexus(nexus)
+    except (ValueError, TypeError) as exc:
+        raise ProjectError(f"invalid project nexus {nexus!r}: {exc}") from exc
+    return Path(os.path.expanduser(pointer_dir)) / f"{safe_nexus}.json"
 
 
 def _atomic_write_pointer(path: Path, data: dict[str, Any]) -> None:
@@ -811,6 +867,33 @@ def _read_pointer_for_mutation(path: Path) -> dict[str, Any]:
     return data
 
 
+def _load_registered_project(pointer_data: dict, pointer_path: Path) -> Project:
+    """Resolve one pointer only when its issued manifest bytes still match."""
+
+    root = pointer_data.get("root")
+    expected = pointer_data.get("manifest_sha256")
+    if not root:
+        raise ManifestError(f"{pointer_path}: project pointer has no plugin root")
+    if not isinstance(expected, str) or not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", expected
+    ):
+        raise ManifestError(
+            f"{pointer_path}: project plugin must be explicitly re-registered "
+            "to bind its manifest identity"
+        )
+    snapshot = load_project_snapshot(root)
+    if not hmac.compare_digest(snapshot.manifest_sha256, expected):
+        raise ManifestError(
+            f"{pointer_path}: registered project manifest identity changed"
+        )
+    pointer_nexus = pointer_data.get("nexus")
+    if pointer_nexus and pointer_nexus != snapshot.project.nexus:
+        raise ManifestError(
+            f"{pointer_path}: pointer/manifest nexus mismatch"
+        )
+    return snapshot.project
+
+
 def list_projects(pointer_dir: str = POINTER_DIR) -> list[Project]:
     """Read all pointer files in pointer_dir and return loaded projects.
 
@@ -830,23 +913,16 @@ def list_projects(pointer_dir: str = POINTER_DIR) -> list[Project]:
         if not isinstance(pointer_data, dict):
             print(f"[project_registry] Skipping {pf}: pointer must be a JSON object")
             continue
-        root = pointer_data.get("root")
-        if not root:
+        if not pointer_data.get("root"):
             # Container-only project (G1.33): a conversation-container record
             # with no plugin manifest. Not an error — it simply isn't a plugin
             # project, so the plugin view skips it silently. The container view
             # (project_meta) reads these.
             continue
         try:
-            project = load_project_at(root)
+            project = _load_registered_project(pointer_data, pf)
         except ManifestError as e:
             print(f"[project_registry] Skipping {pf}: {e}")
-            continue
-        if pointer_data.get("nexus") and pointer_data["nexus"] != project.nexus:
-            print(
-                f"[project_registry] Pointer/manifest nexus mismatch for {pf}: "
-                f"pointer={pointer_data['nexus']!r}, manifest={project.nexus!r} (skipping)"
-            )
             continue
         projects.append(project)
     return projects
@@ -863,26 +939,36 @@ def get_project(nexus: str, pointer_dir: str = POINTER_DIR) -> Optional[Project]
         return None
     if not isinstance(pointer_data, dict):
         return None
-    root = pointer_data.get("root")
-    if not root:
+    if not pointer_data.get("root"):
         return None
     try:
-        return load_project_at(root)
+        return _load_registered_project(pointer_data, pf)
     except ManifestError:
         return None
 
 
-def register_project(root_path, pointer_dir: str = POINTER_DIR) -> Project:
+def register_project(
+    root_path, pointer_dir: str = POINTER_DIR, *,
+    expected_manifest_sha256: str | None = None,
+) -> Project:
     """Register a project by writing a pointer file at <pointer_dir>/<nexus>.json.
 
-    Validates the manifest before writing the pointer. Idempotent: re-registering
-    the same nexus updates only ``nexus`` and ``root`` (use case: project root
-    moved). Container metadata and unknown future/plugin fields in the shared
-    pointer are preserved.
+    Validates the manifest before writing the pointer. Idempotent:
+    re-registering the same nexus updates the plugin root and exact manifest
+    identity (use case: an approved project move or re-registration).
+    Container metadata and unknown future/plugin fields are preserved.
 
     Returns the loaded Project.
     """
-    project = load_project_at(root_path)
+    snapshot = load_project_snapshot(root_path)
+    if expected_manifest_sha256 is not None and (
+        not isinstance(expected_manifest_sha256, str)
+        or not hmac.compare_digest(
+            snapshot.manifest_sha256, expected_manifest_sha256,
+        )
+    ):
+        raise ManifestError("project manifest changed after authorization")
+    project = snapshot.project
     pdir = Path(os.path.expanduser(pointer_dir))
     pdir.mkdir(parents=True, exist_ok=True)
     pf = _pointer_path(project.nexus, pointer_dir)
@@ -891,6 +977,7 @@ def register_project(root_path, pointer_dir: str = POINTER_DIR) -> Project:
             data = _read_pointer_for_mutation(pf)
             data["nexus"] = project.nexus
             data["root"] = str(project.root)
+            data["manifest_sha256"] = snapshot.manifest_sha256
             _atomic_write_pointer(pf, data)
     except (OSError, TimeoutError) as exc:
         raise ProjectError(f"Could not register project {project.nexus!r}: {exc}") from exc
@@ -900,8 +987,8 @@ def register_project(root_path, pointer_dir: str = POINTER_DIR) -> Project:
 def unregister_project(nexus: str, pointer_dir: str = POINTER_DIR) -> bool:
     """Remove a pointer's plugin binding without deleting container metadata.
 
-    A pure ``{nexus, root}`` plugin pointer is deleted. A shared pointer keeps
-    every other field and only loses ``root``. Returns ``True`` when an active
+    A pure plugin pointer is deleted. A shared pointer keeps every other field
+    and loses ``root`` plus ``manifest_sha256``. Returns ``True`` when an active
     plugin binding was removed, otherwise ``False``.
     """
     pf = _pointer_path(nexus, pointer_dir)
@@ -920,6 +1007,7 @@ def unregister_project(nexus: str, pointer_dir: str = POINTER_DIR) -> bool:
                 from orchestrator.project_meta import pointer_has_container_metadata
             keep_container = pointer_has_container_metadata(data)
             data.pop("root", None)
+            data.pop("manifest_sha256", None)
             if not keep_container:
                 pf.unlink()
             else:

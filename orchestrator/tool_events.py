@@ -36,15 +36,18 @@ closed regardless of whether their recording or queueing succeeded.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import sys
 import threading
 import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Single cross-platform source for Ora roots + path normalization + locking.
 try:
@@ -455,7 +458,8 @@ def set_turn_context(trace_dir: str | None = None,
                      conversation_id: str | None = None,
                      stealth: bool = False,
                      surface: str = "unknown",
-                     risk_tier: str | None = None):
+                     risk_tier: str | None = None,
+                     principal_id: str | None = "principal:user"):
     """Set by the pipeline (step 2), the server (_direct_stream head), and
     daemons at their entry seams. Propagates to Gear-4 workers via
     boot._submit_with_context (contextvars.copy_context).
@@ -473,7 +477,8 @@ def set_turn_context(trace_dir: str | None = None,
     context trace_dir). Existing callers that ignore the return are unaffected."""
     return _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
                           "stealth": bool(stealth), "surface": surface,
-                          "risk_tier": risk_tier})
+                          "risk_tier": risk_tier,
+                          "principal_id": principal_id})
 
 
 def reset_turn_context(token) -> None:
@@ -510,7 +515,8 @@ def get_turn_context() -> dict:
                 "conversation_id": _ENV_CONVERSATION,
                 "stealth": _ENV_STEALTH,
                 "surface": "project" if _ENV_SINK else "unknown",
-                "risk_tier": _ENV_RISK_TIER}
+                "risk_tier": _ENV_RISK_TIER,
+                "principal_id": os.environ.get("ORA_PRINCIPAL_ID") or "principal:user"}
     return dict(ctx)
 
 
@@ -815,6 +821,57 @@ def record(event: dict) -> None:
 # ── Approval tokens ────────────────────────────────────────────────────────
 
 DEFAULT_TOKEN_TTL_S = 3600
+APPROVAL_STORE_SCHEMA_VERSION = 2
+
+
+def _empty_approvals() -> dict:
+    return {
+        "schema_version": APPROVAL_STORE_SCHEMA_VERSION,
+        "tokens": [], "standing": [], "pending": [],
+    }
+
+
+def _approval_key_path() -> str:
+    return _approvals_path() + ".auth.key"
+
+
+def _approval_auth_key() -> bytes:
+    """Load/create authentication material unavailable to generic file tools."""
+
+    path = _approval_key_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with _rp.locked_file(path):
+        if os.path.islink(path):
+            raise RuntimeError("approval authentication key is a symlink")
+        if os.path.isfile(path):
+            value = Path(path).read_bytes()
+            if len(value) != 32:
+                raise RuntimeError("approval authentication key is invalid")
+            return value
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        value = secrets.token_bytes(32)
+        fd = os.open(path, flags, 0o600)
+        try:
+            view = memoryview(value)
+            while view:
+                written = os.write(fd, view)
+                if written <= 0:
+                    raise OSError("short approval-key write")
+                view = view[written:]
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        return value
+
+
+def _approval_store_mac(data: dict, key: bytes) -> str:
+    body = {k: v for k, v in data.items() if k != "store_mac"}
+    encoded = json.dumps(
+        body, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")
+    return "hmac-sha256:" + hmac.new(key, encoded, hashlib.sha256).hexdigest()
 
 
 def normalize_args_hash(action: str, params: dict | None) -> str:
@@ -822,24 +879,73 @@ def normalize_args_hash(action: str, params: dict | None) -> str:
         canonical = json.dumps(params or {}, sort_keys=True, default=str)
     except Exception:
         canonical = str(params)
-    return hashlib.sha1(f"{action}|{canonical}".encode()).hexdigest()[:16]
+    return "sha256:" + hashlib.sha256(
+        f"{action}|{canonical}".encode(),
+    ).hexdigest()
+
+
+def _queue_authority_digest(record_dict: dict) -> str:
+    """Bind the immutable authority-bearing portion of one Paused record.
+
+    Display name and engagement may change without changing authority.  The
+    stable queue identity, kind, originating Dialogue, and exact event payload
+    may not.  Their digest lives inside the independently authenticated
+    approval store, so rewriting the JSONL queue cannot manufacture a valid
+    approval request.
+    """
+
+    event = record_dict.get("event") or {}
+    body = {
+        "id": str(record_dict.get("id") or record_dict.get("queue_id") or ""),
+        "kind": str(record_dict.get("kind") or ""),
+        "conversation_id": str(
+            record_dict.get("conversation_id")
+            or event.get("conversation_id")
+            or ""
+        ),
+        "event": event,
+    }
+    encoded = json.dumps(
+        body, sort_keys=True, separators=(",", ":"), default=str,
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 def _load_approvals() -> dict:
+    path = _approvals_path()
+    if not os.path.exists(path):
+        return _empty_approvals()
+    if os.path.islink(path):
+        raise RuntimeError("approval store is a symlink")
     try:
-        with open(_approvals_path()) as f:
-            return json.load(f)
-    except Exception:
-        return {"tokens": [], "standing": []}
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:
+        raise RuntimeError(f"approval store is unreadable: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError("approval store must be an object")
+    if data.get("schema_version") != APPROVAL_STORE_SCHEMA_VERSION:
+        raise RuntimeError("approval store is unsigned or has an unsupported schema")
+    claimed_mac = data.get("store_mac")
+    if not isinstance(claimed_mac, str) or not hmac.compare_digest(
+        claimed_mac, _approval_store_mac(data, _approval_auth_key()),
+    ):
+        raise RuntimeError("approval store authentication failed")
+    for key in ("tokens", "standing", "pending"):
+        data.setdefault(key, [])
+        if not isinstance(data[key], list):
+            raise RuntimeError(f"approval store field {key!r} must be a list")
+    return data
 
 
 def _save_approvals(data: dict) -> None:
     approvals = _approvals_path()
     os.makedirs(os.path.dirname(approvals), exist_ok=True)
-    tmp = approvals + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=2)
-    os.replace(tmp, approvals)
+    data["schema_version"] = APPROVAL_STORE_SCHEMA_VERSION
+    data["store_mac"] = _approval_store_mac(data, _approval_auth_key())
+    _rp.atomic_write_text(
+        approvals, json.dumps(data, indent=2) + "\n", mode=0o600,
+    )
 
 
 def _with_approvals_lock(fn):
@@ -851,19 +957,129 @@ def _with_approvals_lock(fn):
         return fn()
 
 
-def grant_approval(action: str, args_hash: str,
-                   conversation_id: str | None = None,
-                   ttl_s: int = DEFAULT_TOKEN_TTL_S,
-                   granted_via: str = "queue") -> str:
+def _register_pending_approval(action: str, args_hash: str,
+                               conversation_id: str | None,
+                               principal_id: str,
+                               review_request_digest: str | None = None,
+                               review_selectors: tuple[str, ...] = ()) -> str:
+    """Persist an unguessable runtime-issued request before queueing it.
+
+    A queue-shaped caller dictionary is not approval authority.  Resolution
+    must consume this separately persisted nonce, bound to the exact action,
+    fingerprint, conversation, and eventual queue identity.
+    """
+    nonce = secrets.token_hex(24)
+
+    def _do():
+        data = _load_approvals()
+        data.setdefault("pending", []).append({
+            "nonce": nonce,
+            "action": action,
+            "args_hash": args_hash,
+            "conversation_id": conversation_id,
+            "principal_id": principal_id,
+            "review_request_digest": review_request_digest,
+            "review_selectors": list(review_selectors),
+            "created_at": _now_iso(),
+            "queue_id": None,
+            "consumed": False,
+        })
+        _save_approvals(data)
+    _with_approvals_lock(_do)
+    return nonce
+
+
+def _bind_pending_queue(nonce: str, queue_id: str,
+                        record_dict: dict) -> bool:
+    bound = [False]
+
+    def _do():
+        data = _load_approvals()
+        for item in data.get("pending", []):
+            if item.get("nonce") == nonce and not item.get("consumed"):
+                item["queue_id"] = queue_id
+                item["queue_authority_digest"] = _queue_authority_digest(
+                    record_dict,
+                )
+                bound[0] = True
+                break
+        if bound[0]:
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+    return bound[0]
+
+
+def _discard_pending_approval(nonce: str) -> None:
+    def _do():
+        data = _load_approvals()
+        before = len(data.get("pending", []))
+        data["pending"] = [
+            item for item in data.get("pending", [])
+            if item.get("nonce") != nonce
+        ]
+        if len(data["pending"]) != before:
+            _save_approvals(data)
+    _with_approvals_lock(_do)
+
+
+def _consume_pending_approval(
+    record_dict: dict, *, principal_id: str,
+) -> dict | None:
+    event = record_dict.get("event") or {}
+    nonce = event.get("approval_nonce")
+    queue_id = record_dict.get("id") or record_dict.get("queue_id")
+    action = event.get("action")
+    args_hash = event.get("args_hash")
+    conversation_id = event.get("conversation_id")
+    event_principal = event.get("principal_id")
+    review_request_digest = event.get("review_request_digest")
+    review_selectors = event.get("review_selectors") or []
+    queue_authority_digest = _queue_authority_digest(record_dict)
+    consumed = [None]
+
+    def _do():
+        data = _load_approvals()
+        for item in data.get("pending", []):
+            if item.get("consumed"):
+                continue
+            if (
+                item.get("nonce") == nonce
+                and item.get("queue_id") == queue_id
+                and item.get("action") == action
+                and item.get("args_hash") == args_hash
+                and item.get("conversation_id") == conversation_id
+                and item.get("principal_id") == principal_id == event_principal
+                and item.get("review_request_digest") == review_request_digest
+                and item.get("review_selectors") == review_selectors
+                and item.get("queue_authority_digest") == queue_authority_digest
+            ):
+                item["consumed"] = True
+                item["consumed_at"] = _now_iso()
+                consumed[0] = dict(item)
+                _save_approvals(data)
+                break
+    _with_approvals_lock(_do)
+    return consumed[0]
+
+
+def _grant_approval_authorized(action: str, args_hash: str,
+                               conversation_id: str | None = None,
+                               ttl_s: int = DEFAULT_TOKEN_TTL_S,
+                               granted_via: str = "queue",
+                               principal_id: str = "principal:user",
+                               review_request_digest: str | None = None,
+                               review_selectors: tuple[str, ...] = ()) -> str:
     """Mint a one-shot approval token for a previously gated action."""
-    token_id = hashlib.sha1(
-        f"{action}|{args_hash}|{time.time()}".encode()).hexdigest()[:12]
+    token_id = secrets.token_hex(24)
 
     def _do():
         data = _load_approvals()
         data["tokens"].append({
             "id": token_id, "action": action, "args_hash": args_hash,
             "conversation_id": conversation_id,
+            "principal_id": principal_id,
+            "review_request_digest": review_request_digest,
+            "review_selectors": list(review_selectors),
             "granted_at": _now_iso(), "ttl_s": ttl_s,
             "granted_via": granted_via, "used": False,
         })
@@ -878,11 +1094,26 @@ def grant_approval(action: str, args_hash: str,
     return token_id
 
 
+def grant_approval(*args, **kwargs) -> str:
+    """Refuse direct token minting.
+
+    Approval tokens are authority records, not a convenience API. They are
+    minted only by the live-human branch of :func:`gate`, by authenticated
+    Paused-entry resolution, or by the existing task-gate authority module.
+    Keeping this compatibility name fail-closed also prevents older callers
+    from silently recreating the pre-G1.22 bypass.
+    """
+
+    raise PermissionError(
+        "direct approval-token minting is unavailable; resolve the exact "
+        "runtime-issued approval request"
+    )
+
+
 def grant_standing_allow(scope: str, granted_via: str = "queue") -> str:
     """Standing allow for the sanctioned secret channel (credential_store),
     scoped per service. Revocable via revoke_standing_allow."""
-    allow_id = hashlib.sha1(f"standing|{scope}|{time.time()}".encode()
-                            ).hexdigest()[:12]
+    allow_id = secrets.token_hex(24)
 
     def _do():
         data = _load_approvals()
@@ -980,13 +1211,17 @@ def remove_unused_tokens(action: str, args_hash: str) -> int:
 
 
 def check_and_consume_approval(action: str, args_hash: str,
-                               conversation_id: str | None = None) -> str | None:
+                               conversation_id: str | None = None,
+                               *,
+                               principal_id: str = "principal:user",
+                               review_request_digest: str | None = None) -> str | None:
     """Consume a matching unexpired one-shot token. Returns its id or None."""
     consumed = [None]
 
     def _do():
         data = _load_approvals()
         now = time.time()
+        changed = False
         for entry in data.get("tokens", []):
             if entry.get("used") or entry.get("action") != action:
                 continue
@@ -999,6 +1234,23 @@ def check_and_consume_approval(action: str, args_hash: str,
             tok_conv = entry.get("conversation_id")
             if tok_conv and tok_conv != conversation_id:
                 continue
+            if entry.get("principal_id") != principal_id:
+                continue
+            reviewed = entry.get("review_request_digest")
+            if reviewed or review_request_digest:
+                if (
+                    not isinstance(reviewed, str)
+                    or not isinstance(review_request_digest, str)
+                    or not hmac.compare_digest(reviewed, review_request_digest)
+                ):
+                    # A changed selector or pre-state makes this human review
+                    # stale. Invalidate instead of leaving a token that could
+                    # become usable again after an ABA restore.
+                    entry["used"] = True
+                    entry["invalidated_at"] = _now_iso()
+                    entry["invalidation_reason"] = "review-request-digest-mismatch"
+                    changed = True
+                    continue
             try:
                 granted = datetime.fromisoformat(entry["granted_at"]).timestamp()
             except Exception:
@@ -1008,11 +1260,51 @@ def check_and_consume_approval(action: str, args_hash: str,
             entry["used"] = True
             entry["used_at"] = _now_iso()
             consumed[0] = entry["id"]
+            changed = True
             break
-        if consumed[0]:
+        if changed:
             _save_approvals(data)
     _with_approvals_lock(_do)
     return consumed[0]
+
+
+def bind_consumed_approval(approval_id: str, action: str, args_hash: str,
+                           request_digest: str) -> dict:
+    """Bind one consumed token exactly once to a protected execution start."""
+
+    bound = [None]
+
+    def _do():
+        data = _load_approvals()
+        for entry in data.get("tokens", []):
+            if entry.get("id") != approval_id:
+                continue
+            if (
+                not entry.get("used")
+                or entry.get("action") != action
+                or entry.get("args_hash") != args_hash
+            ):
+                break
+            existing = entry.get("protection_request_digest")
+            if existing is not None:
+                break
+            reviewed = entry.get("review_request_digest")
+            if (
+                not isinstance(reviewed, str)
+                or not hmac.compare_digest(reviewed, request_digest)
+            ):
+                break
+            entry["protection_request_digest"] = request_digest
+            entry["protection_bound_at"] = _now_iso()
+            bound[0] = dict(entry)
+            _save_approvals(data)
+            break
+    _with_approvals_lock(_do)
+    if bound[0] is None:
+        raise PermissionError(
+            "approval is absent, unconsumed, cross-scope, or already bound"
+        )
+    return bound[0]
 
 
 # ── Execution gate ─────────────────────────────────────────────────────────
@@ -1035,7 +1327,8 @@ _queued_hashes: set[str] = set()
 
 def _queue_gate_entry(action: str, args_hash: str, why: str,
                       description: str, ctx: dict,
-                      queue_extra: dict | None = None) -> str | None:
+                      queue_extra: dict | None = None,
+                      approval_binding: dict | None = None) -> str | None:
     """Guarded Paused-queue write. Returns queue entry id, or None when the
     write failed or was skipped (stealth). Never raises."""
     if ctx.get("stealth"):
@@ -1045,8 +1338,15 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
         if key in _queued_hashes:
             return "deduped"
         _queued_hashes.add(key)
+    approval_nonce = None
     try:
         from oversight_queue import add_entry
+        approval_nonce = _register_pending_approval(
+            action, args_hash, ctx.get("conversation_id"),
+            str(ctx.get("principal_id") or "principal:user"),
+            (approval_binding or {}).get("request_digest"),
+            tuple((approval_binding or {}).get("selectors") or ()),
+        )
         desc, _ = scrub_content((description or "")[:200])
         trace_ref = None
         trace_dir = ctx.get("trace_dir")
@@ -1073,7 +1373,15 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
             # the originating conversation when resolved via the Paused UI.
             "event": {"event_type": "ExecutionGateBlocked", "action": action,
                       "args_hash": args_hash,
+                      "approval_nonce": approval_nonce,
                       "conversation_id": ctx.get("conversation_id"),
+                      "principal_id": str(ctx.get("principal_id") or "principal:user"),
+                      "review_request_digest": (approval_binding or {}).get(
+                          "request_digest"
+                      ),
+                      "review_selectors": list(
+                          (approval_binding or {}).get("selectors") or ()
+                      ),
                       "surface": ctx.get("surface", "unknown"),
                       "description": desc,
                       **event_extra},
@@ -1085,8 +1393,19 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
             "context_summary": {"action": action, "why": why},
         }
         written = add_entry(entry)
+        written_record = written.to_dict()
+        if not _bind_pending_queue(
+            approval_nonce, written.id, written_record,
+        ):
+            _discard_pending_approval(approval_nonce)
+            return None
         return written.id
     except Exception as e:
+        if approval_nonce:
+            try:
+                _discard_pending_approval(approval_nonce)
+            except Exception:
+                pass
         _note_failure(e, "queue_gate_entry")
         return None
 
@@ -1094,7 +1413,8 @@ def _queue_gate_entry(action: str, args_hash: str, why: str,
 def gate(action: str, axes: dict, params: dict | None = None,
          description: str = "", model_facing: bool = True,
          interactive_approver=None,
-         queue_extra: dict | None = None) -> GateDecision:
+         queue_extra: dict | None = None,
+         approval_binding: dict | None = None) -> GateDecision:
     """Decide whether an action may execute. Runs BEFORE execution and
     independently of the dispatcher permission mode.
 
@@ -1121,7 +1441,31 @@ def gate(action: str, axes: dict, params: dict | None = None,
         block_why = "sensitive resource on a model-facing surface"
 
     ctx = get_turn_context()
+    principal_id = str(ctx.get("principal_id") or "principal:user")
     args_hash = normalize_args_hash(action, params)
+    review_request_digest = None
+    review_selectors: tuple[str, ...] = ()
+    if approval_binding is not None:
+        if not isinstance(approval_binding, dict):
+            return GateDecision(
+                False, "blocked", "approval binding is malformed",
+                message="[GATED — approval binding is malformed]",
+            )
+        review_request_digest = str(
+            approval_binding.get("request_digest") or ""
+        )
+        review_selectors = tuple(sorted({
+            str(item) for item in approval_binding.get("selectors") or ()
+            if str(item)
+        }))
+        if (
+            not re.fullmatch(r"sha256:[0-9a-f]{64}", review_request_digest)
+            or not review_selectors
+        ):
+            return GateDecision(
+                False, "blocked", "approval binding is incomplete",
+                message="[GATED — approval binding is incomplete]",
+            )
 
     def _record_decision(decision: str, why: str, approval_id=None,
                          queue_id=None):
@@ -1139,8 +1483,20 @@ def gate(action: str, axes: dict, params: dict | None = None,
         return GateDecision(True, "allowed", "within policy")
 
     # 1. A previously granted one-shot token unlocks exactly one matching call.
-    token = check_and_consume_approval(action, args_hash,
-                                       ctx.get("conversation_id"))
+    try:
+        token = check_and_consume_approval(
+            action, args_hash, ctx.get("conversation_id"),
+            principal_id=principal_id,
+            review_request_digest=review_request_digest,
+        )
+    except Exception as exc:
+        _record_decision(
+            "blocked", f"approval infrastructure unavailable: {exc}",
+        )
+        return GateDecision(
+            False, "blocked", "approval infrastructure unavailable",
+            message="[GATED — approval infrastructure unavailable]",
+        )
     if token:
         _record_decision("approved", f"one-shot token consumed ({block_why})",
                          approval_id=token)
@@ -1156,15 +1512,29 @@ def gate(action: str, axes: dict, params: dict | None = None,
         except Exception:
             approved = False
         if approved:
-            token = grant_approval(action, args_hash,
-                                   ctx.get("conversation_id"),
-                                   granted_via="live-prompt")
+            _grant_approval_authorized(
+                action, args_hash, ctx.get("conversation_id"),
+                granted_via="live-prompt",
+                principal_id=principal_id,
+                review_request_digest=review_request_digest,
+                review_selectors=review_selectors,
+            )
             consumed = check_and_consume_approval(action, args_hash,
-                                                  ctx.get("conversation_id"))
+                                                  ctx.get("conversation_id"),
+                                                  principal_id=principal_id,
+                                                  review_request_digest=review_request_digest)
+            if consumed is None:
+                _record_decision(
+                    "blocked", f"approval-token consumption failed ({block_why})",
+                )
+                return GateDecision(
+                    False, "blocked", block_why,
+                    message=f"[GATED — approval persistence failed: {action}]",
+                )
             _record_decision("approved", f"live human approval ({block_why})",
-                             approval_id=consumed or token)
+                             approval_id=consumed)
             return GateDecision(True, "approved", block_why,
-                                approval_id=consumed or token)
+                                approval_id=consumed)
         _record_decision("blocked", f"live human denial ({block_why})")
         return GateDecision(False, "blocked", block_why,
                             message=f"[GATED — denied by user: {action}]")
@@ -1172,7 +1542,11 @@ def gate(action: str, axes: dict, params: dict | None = None,
     # 3. Deny immediately, queue for later approval (all contexts — the
     #    queue entry is a record, never a wait).
     queue_id = _queue_gate_entry(action, args_hash, block_why, description,
-                                 ctx, queue_extra=queue_extra)
+                                 ctx, queue_extra=queue_extra,
+                                 approval_binding={
+                                     "request_digest": review_request_digest,
+                                     "selectors": list(review_selectors),
+                                 } if approval_binding is not None else None)
     if queue_id and queue_id != "deduped":
         _record_decision("queued", block_why, queue_id=queue_id)
         return GateDecision(False, "queued", block_why, queue_id=queue_id,
@@ -1201,14 +1575,21 @@ def clear_queued_hash(conversation_id, args_hash: str) -> None:
 
 
 def resolve_gate_entry(record_dict: dict, approve: bool,
-                       reason: str = "") -> str:
+                       reason: str = "",
+                       *, principal_id: str = "principal:user") -> str:
     """Commit handler for kind=execution_gate Paused entries (called from
     resolution_chain / slash /approve //deny via kind-dispatch)."""
     event = record_dict.get("event") or {}
     action = event.get("action", "")
     args_hash = event.get("args_hash", "")
-    if not action or not args_hash:
-        return "[Malformed execution-gate entry — no action/args recorded.]"
+    pending = _consume_pending_approval(
+        record_dict, principal_id=principal_id,
+    )
+    if not action or not args_hash or pending is None:
+        return (
+            "[Unauthenticated execution-gate entry — no matching runtime-issued "
+            "approval request was consumed.]"
+        )
     clear_queued_hash(record_dict.get("conversation_id"), args_hash)
     if approve:
         standing_scope = event.get("standing_scope")
@@ -1219,9 +1600,13 @@ def resolve_gate_entry(record_dict: dict, approve: bool,
                     f"`{standing_scope}` — future calls to this service pass "
                     f"without re-approval and are logged existence-only. "
                     f"Revoke any time with `/deny {standing_scope}`.")
-        token = grant_approval(action, args_hash,
-                               record_dict.get("conversation_id"),
-                               granted_via="paused-queue")
+        token = _grant_approval_authorized(
+            action, args_hash, record_dict.get("conversation_id"),
+            granted_via="paused-queue",
+            principal_id=principal_id,
+            review_request_digest=pending.get("review_request_digest"),
+            review_selectors=tuple(pending.get("review_selectors") or ()),
+        )
         return (f"**Approved.** One-shot token `{token}` granted for "
                 f"`{action}` (valid {DEFAULT_TOKEN_TTL_S // 60} min). "
                 f"Re-issue the action to run it once.")
