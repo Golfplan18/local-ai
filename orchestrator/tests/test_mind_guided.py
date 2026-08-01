@@ -4,7 +4,7 @@
 Covers ``orchestrator/mind_guided.py`` (question registry validity, the
 answers→mind.md composer, provenance-marker round-trip, free-text
 sanitization) and the ``GET/POST /api/mind/guided`` endpoints in
-``server/server.py`` (prefill, overwrite guard, validation errors).
+``server/app.py`` (prefill, overwrite guard, validation errors).
 
 Run::
 
@@ -192,7 +192,7 @@ class GuidedEndpoints(unittest.TestCase):
     def setUpClass(cls):
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as exc:  # pragma: no cover

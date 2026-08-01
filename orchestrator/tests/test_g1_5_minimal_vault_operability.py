@@ -24,7 +24,7 @@ import matrix_payload  # noqa: E402
 import operation_matrix  # noqa: E402
 import process_entry_routing  # noqa: E402
 import project_status  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 TECHNICAL_NON_STATUS_REQUESTS = (

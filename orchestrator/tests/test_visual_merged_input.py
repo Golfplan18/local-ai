@@ -160,7 +160,7 @@ class MultipartEndpointIntegrationTests(unittest.TestCase):
     """End-to-end multipart endpoint integration — fake pipeline, real server."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
         # Force uploads to a temp directory so tests don't pollute the real vault.
@@ -385,7 +385,7 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
     """The original /chat endpoint must continue to behave as before."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 

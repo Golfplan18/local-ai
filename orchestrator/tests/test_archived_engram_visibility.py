@@ -16,7 +16,7 @@ SERVER_DIR = os.path.join(REPO_ROOT, "server")
 if SERVER_DIR not in sys.path:
     sys.path.insert(0, SERVER_DIR)
 
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 def _engram_row(identity: str, tags, *, score: float = 90.0) -> dict:

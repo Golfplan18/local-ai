@@ -49,7 +49,7 @@ class WP_7_6_3_CancelEndpoint(unittest.TestCase):
         # Lazy server import — drags a lot of orchestrator code in.
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as exc:  # pragma: no cover

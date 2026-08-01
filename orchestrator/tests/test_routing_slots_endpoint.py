@@ -55,7 +55,7 @@ class RoutingSlotsEndpoint(unittest.TestCase):
         # when run from a worktree.
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as exc:  # pragma: no cover
@@ -210,7 +210,7 @@ class OpenRouterPriceSuffix(unittest.TestCase):
     def setUpClass(cls):
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.fn = staticmethod(S._openrouter_price_suffix)
             cls.import_ok = True
         except Exception as exc:  # pragma: no cover

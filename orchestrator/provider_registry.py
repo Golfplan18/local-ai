@@ -19,7 +19,7 @@ Consumers
   rewrite
   maps an OpenRouter ``vendor/model`` id back to the vendor's own API via
   ``or_prefix`` when that vendor's key is present.
-* ``server/server.py`` — ``/api/settings`` returns the enriched rows;
+* ``server/app.py`` — ``/api/settings`` returns the enriched rows;
   ``/api/settings/api-key/verify`` uses ``base_url`` + auth to ping.
 * ``scripts/sync_model_registry.py`` — AA path auto-derives from key
   presence.

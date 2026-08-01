@@ -153,7 +153,7 @@ class TestPhase34MaintainerReference(unittest.TestCase):
 
     def test_code_and_public_plan_surface_map_exist(self):
         plan_review = ROOT / "server" / "static" / "js" / "process-plan-review.js"
-        server = (ROOT / "server" / "server.py").read_text(encoding="utf-8")
+        server = (ROOT / "server" / "app.py").read_text(encoding="utf-8")
         self.assertTrue(plan_review.is_file())
         self.assertIn("`server/static/js/process-plan-review.js`", self.canonical)
         self.assertIn("`/api/process-plan-context/<dialogue>`", self.canonical)

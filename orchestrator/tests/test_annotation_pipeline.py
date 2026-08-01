@@ -279,7 +279,7 @@ class MultipartAnnotationsEndpointTests(unittest.TestCase):
     """End-to-end multipart endpoint integration — fake pipeline, real server."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
         self._tmp = tempfile.mkdtemp(prefix="ora-annot-test-")

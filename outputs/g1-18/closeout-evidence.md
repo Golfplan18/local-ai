@@ -176,7 +176,7 @@ python3 -m py_compile \
   orchestrator/governed_process_runtime.py \
   orchestrator/model_dispatch.py \
   orchestrator/process_library_lifecycle.py \
-  server/server.py
+  server/app.py
 node --check server/static/js/process-entry.js
 node --check server/static/js/process-plan-review.js
 python3 scripts/verify-implementation.py --check drift

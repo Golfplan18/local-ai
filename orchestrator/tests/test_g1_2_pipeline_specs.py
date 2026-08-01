@@ -105,7 +105,7 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         self.assertTrue(lookup["pre_routing"]["gear2_rag_dispatch"])
 
     def test_public_simple_route_reaches_gear1_executor(self):
-        server = (ROOT / "server" / "server.py").read_text(encoding="utf-8")
+        server = (ROOT / "server" / "app.py").read_text(encoding="utf-8")
         start = server.index("# --- Legacy direct fallback for unresolved clarification")
         end = server.index("# --- Phase 9: pre-routing pipeline question gate", start)
         fallback = server[start:end]

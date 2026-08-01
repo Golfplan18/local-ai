@@ -652,7 +652,7 @@ class TestConversationMemoryIdentity(unittest.TestCase):
 class TestServerCanonicalStorage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import server  # type: ignore
+        from server import app as server  # type: ignore
         cls.server = server
 
     def tearDown(self):

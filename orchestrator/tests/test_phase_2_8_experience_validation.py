@@ -25,7 +25,7 @@ import process_definition_registry as registry_module  # noqa: E402
 import process_delegation_attention as delegation  # noqa: E402
 import process_entry_routing as entry  # noqa: E402
 import process_run_inspector as inspector  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 from tests import test_phase_1_7_kernel_trials as phase17  # noqa: E402
 from tests import test_phase_2_4_delegation_attention as phase24  # noqa: E402
 from tests import test_phase_2_5_run_inspector as phase25  # noqa: E402

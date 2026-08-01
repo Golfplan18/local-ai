@@ -26,7 +26,7 @@ import conversation_memory as memory  # noqa: E402
 import governed_process_runtime as runtime  # noqa: E402
 import process_entry_routing as entry  # noqa: E402
 import process_management_interview as interview  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 NOW = "2026-07-18T12:00:00Z"

@@ -30,7 +30,7 @@ from orchestrator.process_definition_registry import ProcessDefinitionRegistry  
 from orchestrator.process_entry_routing import route_process_entry  # noqa: E402
 from orchestrator.process_library_lifecycle import ProcessLibraryLifecycleService  # noqa: E402
 from orchestrator.process_management_interview import ManagementInterviewService  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 ANSWERS = {

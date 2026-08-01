@@ -19,7 +19,7 @@ for _p in (_REPO, os.path.join(_REPO, "server"), os.path.join(_REPO, "orchestrat
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
 install_test_stub()
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 import conversation_memory as cm  # noqa: E402
 
 

@@ -23,7 +23,7 @@ if str(ORCH) not in sys.path:
 import governed_process_runtime as runtime  # noqa: E402
 import process_plan_approval as planning  # noqa: E402
 import process_run_inspector as inspector  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 from tests import test_governed_process_runtime as runtime_fixtures  # noqa: E402
 from tests import test_phase_1_7_kernel_trials as phase17  # noqa: E402
 from tests import test_phase_2_4_delegation_attention as phase24  # noqa: E402

@@ -70,7 +70,7 @@ class VisualE2ESseTests(unittest.TestCase):
 
     def setUp(self) -> None:
         # Import server lazily so orchestrator test ordering stays clean.
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
         self.envelope = _load_cld_envelope()
@@ -162,7 +162,7 @@ class V3LayoutContractTests(unittest.TestCase):
     """V3's hardcoded workspace replaces the retired configuration path."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
 
     def test_legacy_layout_and_theme_routes_are_retired(self) -> None:
@@ -206,7 +206,7 @@ class BridgeVisualBlocksTests(unittest.TestCase):
     """/api/bridge/<panel> persists ora_visual_blocks for polling consumers."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
         # Reset bridge state for this panel so tests are independent.

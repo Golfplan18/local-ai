@@ -14,7 +14,7 @@ sys.path.insert(0, str(WORKSPACE / 'server'))
 
 from orchestrator import model_profiles as mp
 from orchestrator import project_meta as pm
-import server
+from server import app as server
 
 
 class ModelProfileApiTests(unittest.TestCase):

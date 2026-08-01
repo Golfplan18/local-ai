@@ -25,7 +25,7 @@ import active_project  # noqa: E402
 import conversation_memory as runtime_memory  # noqa: E402
 from orchestrator import boot  # noqa: E402
 from orchestrator import conversation_memory as package_memory  # noqa: E402
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 DESCRIPTION = "Explore cash-flow exception patterns and decide a reusable response."

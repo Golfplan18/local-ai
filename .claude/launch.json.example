@@ -4,7 +4,7 @@
     {
       "name": "ora",
       "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
-      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "runtimeArgs": ["${workspaceFolder}/server/app.py"],
       "cwd": "${workspaceFolder}",
       "env": {"PORT": "5000"},
       "port": 5000,
@@ -13,7 +13,7 @@
     {
       "name": "ora-verify",
       "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
-      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "runtimeArgs": ["${workspaceFolder}/server/app.py"],
       "cwd": "${workspaceFolder}",
       "env": {"PORT": "5001"},
       "port": 5001,
@@ -22,7 +22,7 @@
     {
       "name": "ora-preview",
       "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
-      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "runtimeArgs": ["${workspaceFolder}/server/app.py"],
       "cwd": "${workspaceFolder}",
       "env": {"PORT": "5002"},
       "port": 5002,
@@ -31,7 +31,7 @@
     {
       "name": "ora-preview-2",
       "runtimeExecutable": "REPLACE_WITH_LOCAL_PYTHON",
-      "runtimeArgs": ["${workspaceFolder}/server/server.py"],
+      "runtimeArgs": ["${workspaceFolder}/server/app.py"],
       "cwd": "${workspaceFolder}",
       "env": {"PORT": "5003"},
       "port": 5003,

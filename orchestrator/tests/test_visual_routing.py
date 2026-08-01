@@ -518,7 +518,7 @@ class PipelineIntegrationTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 

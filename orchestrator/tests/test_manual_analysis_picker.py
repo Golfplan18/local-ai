@@ -18,7 +18,7 @@ WORKSPACE = os.path.expanduser("~/ora")
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 sys.path.insert(0, os.path.join(WORKSPACE, "server"))
 
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 def _events(chunks: list[str]) -> list[dict]:

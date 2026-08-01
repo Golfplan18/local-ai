@@ -49,7 +49,7 @@ as a G3.32 specification target.
    - pip packages: [list with versions]
    - Universal smoke test (one chat round-trip via OpenRouter free configuration): [PASS / FAIL]
    - Orchestrator: [workspace]/orchestrator/boot.py
-   - Chat server: [workspace]/server/server.py — Server test: [PASS / FAIL]
+   - Chat server: [workspace]/server/app.py — Server test: [PASS / FAIL]
    - Framework library: [workspace]/frameworks/book/ ([count] frameworks)
    - Active boot.md: [version]
    - ChromaDB: installed (inactive until v5)

@@ -16,7 +16,7 @@ from orchestrator import boot
 from orchestrator import evidence_runner as evidence
 from orchestrator import execution_loop
 from orchestrator import router
-from server import server
+from server import app as server
 
 
 ROOT = Path(__file__).resolve().parents[2]

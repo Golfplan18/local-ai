@@ -29,7 +29,7 @@ _SERVER_DIR = os.path.join(_REPO, "server")
 if _SERVER_DIR not in sys.path:
     sys.path.insert(0, _SERVER_DIR)
 
-import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
 install_test_stub()

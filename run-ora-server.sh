@@ -80,16 +80,16 @@ done
 cd "$WORKSPACE"
 if (( oversight )); then
   if (( ${#server_args[@]} )); then
-    exec "$PYTHON" "$WORKSPACE/server/server.py" --oversight "${server_args[@]}"
+    exec "$PYTHON" "$WORKSPACE/server/app.py" --oversight "${server_args[@]}"
   else
     # macOS still ships Bash 3.2, where expanding an empty array under
     # `set -u` raises "unbound variable". launchd normally supplies no args.
-    exec "$PYTHON" "$WORKSPACE/server/server.py" --oversight
+    exec "$PYTHON" "$WORKSPACE/server/app.py" --oversight
   fi
 else
   if (( ${#server_args[@]} )); then
-    exec "$PYTHON" "$WORKSPACE/server/server.py" "${server_args[@]}"
+    exec "$PYTHON" "$WORKSPACE/server/app.py" "${server_args[@]}"
   else
-    exec "$PYTHON" "$WORKSPACE/server/server.py"
+    exec "$PYTHON" "$WORKSPACE/server/app.py"
   fi
 fi

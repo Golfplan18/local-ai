@@ -21,7 +21,7 @@ if str(ORCH) not in sys.path:
     sys.path.insert(0, str(ORCH))
 
 import process_library_lifecycle as library  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 from tests import test_phase_1_7_kernel_trials as phase17  # noqa: E402
 from tests import test_phase_2_6_process_library_lifecycle as phase26  # noqa: E402
 from tests.test_visual_merged_input import _valid_spatial_rep  # noqa: E402

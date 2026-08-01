@@ -138,7 +138,7 @@ class WaveformEndpointTests(unittest.TestCase):
     def setUpClass(cls):
         sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as exc:

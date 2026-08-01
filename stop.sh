@@ -27,7 +27,7 @@ fi
 # Unsupervised cross-platform fallback. Match only a Python interpreter whose
 # next argv is this checkout's exact server file. A plain substring match can
 # kill an editor, tail process, test command, or similarly-prefixed backup.
-ORA_STOP_SERVER_TARGET="$WORKSPACE/server/server.py"
+ORA_STOP_SERVER_TARGET="$WORKSPACE/server/app.py"
 export ORA_STOP_SERVER_TARGET
 pids="$(ps -axww -o pid=,command= | awk '
   {

@@ -368,7 +368,7 @@ class SpatialReasoningMultipartE2ETests(unittest.TestCase):
     """Submit the full integration request and verify every handoff."""
 
     def setUp(self) -> None:
-        import server  # noqa: WPS433
+        from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
 

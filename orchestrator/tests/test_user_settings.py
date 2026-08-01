@@ -235,7 +235,7 @@ class SettingsEndpointTests(unittest.TestCase):
         os.environ["ORA_HOME"] = str(REPO)
         sys.path.insert(0, str(REPO / "server"))
         try:
-            import server as S  # type: ignore
+            from server import app as S  # type: ignore
             cls.S = S
             cls.import_ok = True
         except Exception as exc:

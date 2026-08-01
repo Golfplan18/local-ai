@@ -12,7 +12,7 @@ The universal chat server closes this gap. After this layer completes, the brows
 
 ### Processing Instructions
 
-1. Generate `[workspace]/server/server.py` — a Python HTTP server implementing a browser chat interface with integrated agentic loop. The server must:
+1. Generate `[workspace]/server/app.py` — a Python HTTP server implementing a browser chat interface with integrated agentic loop. The server must:
 
    a. **Serve a chat interface** on `localhost:5000` (or the next available port if 5000 is in use). The interface is a simple HTML page with a text input, a send button, and a response display area. Responses stream token by token so the user sees output as it is generated.
 
@@ -62,7 +62,7 @@ The universal chat server closes this gap. After this layer completes, the brows
 3. Generate `[workspace]/server/start-server.sh` (macOS/Linux) and `[workspace]/server/start-server.bat` (Windows) — shell scripts that launch the server and open the browser interface.
 4. Test the server:
 
-   a. Start the server: `python3 [workspace]/server/server.py &`
+   a. Start the server: `python3 [workspace]/server/app.py &`
    b. Wait 3 seconds for startup.
    c. Send a test request to `localhost:5000/chat` with the message: "What tools do you have access to?"
    d. Verify the response arrives and mentions the tools defined in boot.md.
@@ -90,7 +90,7 @@ The universal chat server closes this gap. After this layer completes, the brows
 
 ```
 UNIVERSAL CHAT SERVER INSTALLED
-Location: [workspace]/server/server.py
+Location: [workspace]/server/app.py
 Interface: http://localhost:5000
 Active endpoint: [endpoint name from registry, or "none configured"]
 Agentic loop: integrated

@@ -139,7 +139,7 @@ owned_server_pids() {
   # similarly-prefixed backup merely because its command mentions server.py.
   # Pass the target through the environment so the awk process itself never
   # carries the needle in its argv.
-  local ORA_LAUNCHD_SERVER_TARGET="$ORA_HOME/server/server.py"
+  local ORA_LAUNCHD_SERVER_TARGET="$ORA_HOME/server/app.py"
   export ORA_LAUNCHD_SERVER_TARGET
   ps -axww -o pid=,command= | awk '
     {

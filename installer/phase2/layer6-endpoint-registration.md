@@ -2,11 +2,11 @@
 
 **Status 2026-06-16: legacy natural-language installer layer.** Do not execute this file as the live installer. Use `scripts/install.py --profile solo`; this layer is retained for G3.32 reconciliation.
 
-**Stage Focus**: Register the local model endpoint in the Phase 1 chat server and verify that the server routes to it correctly. The chat server (`[workspace]/server/server.py`) was installed in Phase 1, Layer 7. This layer does not regenerate it.
+**Stage Focus**: Register the local model endpoint in the Phase 1 chat server and verify that the server routes to it correctly. The chat server (`[workspace]/server/app.py`) was installed in Phase 1, Layer 7. This layer does not regenerate it.
 
 ### Processing Instructions
 
-1. The chat server (`[workspace]/server/server.py`) was installed in Phase 1, Layer 7. Do not regenerate it.
+1. The chat server (`[workspace]/server/app.py`) was installed in Phase 1, Layer 7. Do not regenerate it.
 2. The local model endpoint was installed in Layers 4–5. Add it to the endpoint registry at `[workspace]/config/endpoints.json`:
 
    ```json
@@ -29,7 +29,7 @@
 
 5. Test routing to the local model:
    a. Ensure the local inference engine is running (`ollama serve` or equivalent for MLX).
-   b. Start the chat server: `python3 [workspace]/server/server.py &`
+   b. Start the chat server: `python3 [workspace]/server/app.py &`
    c. Send a test request: "What model are you running on?"
    d. Verify the response identifies the local model (not a commercial AI service).
    e. Stop the server.

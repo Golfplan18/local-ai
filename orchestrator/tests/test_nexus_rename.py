@@ -255,7 +255,7 @@ class RenameEndpointTests(unittest.TestCase):
                 sys.path.insert(0, _p)
         from orchestrator.embedding import install_test_stub
         install_test_stub()
-        import server
+        from server import app as server
         self.server = server
         self.client = server.app.test_client()
         self._orig = nr.rename_nexus

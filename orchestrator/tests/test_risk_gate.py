@@ -1082,7 +1082,7 @@ class TestAuthenticatedInlineTaskApproval(unittest.TestCase):
         for patcher in reversed(self._patches):
             patcher.stop()
         self._tmp.cleanup()
-        # The production server lives at server/server.py, while several
+        # The production server lives at server/app.py, while several
         # older adjacent suites intentionally import that file as top-level
         # ``server``.  Do not leak the namespace-package import used by the
         # public-stream checks into those independently valid test paths.
@@ -1197,9 +1197,9 @@ class TestAuthenticatedInlineTaskApproval(unittest.TestCase):
 
     def test_server_stream_uses_authenticated_queue_not_history_authority(self):
         try:
-            from server import server as server_runtime
+            from server import app as server_runtime
         except ImportError:
-            import server as server_runtime
+            from server import app as server_runtime
         import boot
 
         _queue_id, marker = self._held()
@@ -1220,9 +1220,9 @@ class TestAuthenticatedInlineTaskApproval(unittest.TestCase):
 
     def test_server_stream_exact_inline_approval_issues_one_task_token(self):
         try:
-            from server import server as server_runtime
+            from server import app as server_runtime
         except ImportError:
-            import server as server_runtime
+            from server import app as server_runtime
         import boot
 
         queue_id, marker = self._held()

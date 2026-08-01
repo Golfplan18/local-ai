@@ -23,7 +23,7 @@ import governed_process_runtime as runtime  # noqa: E402
 import process_definition_registry as registry_module  # noqa: E402
 import process_entry_routing as entry  # noqa: E402
 import process_library_lifecycle as library  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 from tests import test_phase_1_7_kernel_trials as phase17  # noqa: E402
 
 

@@ -20,7 +20,7 @@ if str(ORCH) not in sys.path:
 
 import boot  # noqa: E402
 import process_entry_routing as entry  # noqa: E402
-from server import server  # noqa: E402
+from server import app as server  # noqa: E402
 
 
 PROGRAMMING_REF = {
