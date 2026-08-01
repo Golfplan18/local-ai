@@ -99,7 +99,6 @@ docs/pre-upgrade-packages.txt
 
 # Logs and caches
 logs/
-output/
 *.log
 __pycache__/
 *.pyc
