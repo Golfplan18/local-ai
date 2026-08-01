@@ -166,6 +166,7 @@ data/execution-approvals.json.lock
 data/execution-records/
 data/trace-debug/
 data/lifecycle-locks/
+data/runtime-hygiene/
 
 # Per-machine runtime pointers + user stores (like data/active-configuration.json).
 data/active-project.json
