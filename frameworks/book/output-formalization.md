@@ -931,7 +931,7 @@ Known Limitations:
   - Render layer implementations (python-docx, python-pptx, openpyxl) are external; OFF specifies the render layer but does not implement renderers
   - Cross-medium aesthetic composition (via mind.md Aesthetic Sensibility section) is supported architecturally but unvalidated
   - First-use validation expected against bespoke frameworks generated for Word, Excel, PowerPoint
-File Location: ~/Documents/vault/Framework — Output Formalization.md (with mirror at ~/ora/frameworks/book/output-formalization.md)
+File Location: ~/Documents/vault/Projects/Ora/Framework — Output Formalization.md (with mirror at ~/ora/frameworks/book/output-formalization.md)
 Provenance: human-architected with Claude Opus 4.7 collaborative drafting; predecessor design document: Archive/Working — Reference — OFF and Style Guide Overview.md.archived-2026-07-11 (2026-04-23)
 Confidence: medium — architecture is sound and traces from established meta-framework patterns (PFF, CFF); execution layer details may require refinement after first production runs of bespoke framework generation
 Version: 1.1

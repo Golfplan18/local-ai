@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # importing these first caches the worktree copies so the lazy lookups in
 # _resolve_effective_style_id resolve to them. (In production WORKSPACE *is*
 # ~/ora, so this ordering concern is test-only.)
+import pytest             # noqa: E402
+
 import project_registry   # noqa: E402
 import active_project     # noqa: E402
 import user_settings      # noqa: E402
@@ -20,6 +22,23 @@ _orig = (active_project.get_active_project, project_registry.get_project)
 # Neutralize the account-default (settings) source by default; the tests that
 # exercise it set get_setting explicitly and reset to this neutralizer.
 user_settings.get_setting = lambda *a, **k: None
+
+
+@pytest.fixture(autouse=True)
+def _neutralized_settings():
+    """Re-install the neutralizer before EVERY test, not just at import.
+
+    test_style_mindmd patches user_settings.get_setting and restores the real
+    function in its teardown. Because it imports first (alphabetically), that
+    restore lands after this module's import-time assignment and before these
+    tests run, so the shipped account default ("explainer") would win over the
+    engine-config value these cases assert on. Setting it per-test makes the
+    file order-independent.
+    """
+    saved = user_settings.get_setting
+    user_settings.get_setting = lambda *a, **k: None
+    yield
+    user_settings.get_setting = saved
 
 
 def _patch(nexus, proj):

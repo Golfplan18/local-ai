@@ -55,21 +55,22 @@ if str(ORA_ROOT) not in sys.path:
 from orchestrator import runtime_paths as _rp  # noqa: E402
 
 VAULT_ROOT = _rp.vault_dir().resolve()
+VAULT_ORA = VAULT_ROOT / "Projects" / "Ora"
 
 MODES_DIR = VAULT_ROOT / "Modes"
 LENSES_DIR = VAULT_ROOT / "Lenses"
 ORA_MODES_DIR = ORA_ROOT / "modes"
 ORA_LENSES_DIR = ORA_ROOT / "knowledge" / "mental-models"
 
-TERRITORIES_FILE = VAULT_ROOT / "Reference — Analytical Territories.md"
-TEMPLATE_FILE = VAULT_ROOT / "Reference — Mode Specification Template.md"
-SIGNAL_REGISTRY_FILE = VAULT_ROOT / "Registry — Signal Vocabulary Registry.md"
-MODE_REGISTRY_FILE = VAULT_ROOT / "Registry — Mode Registry.md"
-WITHIN_TREES_FILE = VAULT_ROOT / "Reference — Within-Territory Disambiguation Trees.md"
-CROSS_ADJ_FILE = VAULT_ROOT / "Reference — Cross-Territory Adjacency.md"
-DISAMBIG_GUIDE_FILE = VAULT_ROOT / "Reference — Disambiguation Style Guide.md"
-LENS_SPEC_FILE = VAULT_ROOT / "Reference — Lens Library Specification.md"
-PIPELINE_FILE = VAULT_ROOT / "Reference — Pre-Routing Pipeline Architecture.md"
+TERRITORIES_FILE = VAULT_ORA / "Reference — Analytical Territories.md"
+TEMPLATE_FILE = VAULT_ORA / "Reference — Mode Specification Template.md"
+SIGNAL_REGISTRY_FILE = VAULT_ORA / "Registry — Signal Vocabulary Registry.md"
+MODE_REGISTRY_FILE = VAULT_ORA / "Registry — Mode Registry.md"
+WITHIN_TREES_FILE = VAULT_ORA / "Reference — Within-Territory Disambiguation Trees.md"
+CROSS_ADJ_FILE = VAULT_ORA / "Reference — Cross-Territory Adjacency.md"
+DISAMBIG_GUIDE_FILE = VAULT_ORA / "Reference — Disambiguation Style Guide.md"
+LENS_SPEC_FILE = VAULT_ORA / "Reference — Lens Library Specification.md"
+PIPELINE_FILE = VAULT_ORA / "Reference — Pre-Routing Pipeline Architecture.md"
 FRAMEWORK_PAIR_MANIFEST_FILE = (
     VAULT_ROOT / "Projects" / "Ora" /
     "Reference — Vault Ora Framework Pair Manifest.md"

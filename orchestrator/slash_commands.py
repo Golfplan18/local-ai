@@ -1131,7 +1131,9 @@ def _cmd_cleaning(args: list[str]) -> str:
 # ---------- /news — News Supersession Framework ----------
 
 
-_NEWS_QUEUE_FILE = os.path.join(_rp.VAULT_ORA_STR, "Working — News Supersession Queue.md")
+_NEWS_QUEUE_FILE = str(
+    _rp.vault_dir() / "Projects" / "MSI" / "Working — News Supersession Queue.md"
+)
 
 
 def _news_queue_status() -> tuple[int, int, str]:

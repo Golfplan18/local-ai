@@ -84,7 +84,7 @@ The V3 workspace layout is intentionally defined in the interface code. Do not r
 
 ### 4. Reconcile
 
-Run the Documentation-Code Parity (DCP) Framework (canonical: `~/Documents/vault/Framework — Documentation-Code Parity.md`). DCP supersedes both the original Spec-Code Reconciliation and System File Drift Correction frameworks (archived 2026-05-10). It:
+Run the Documentation-Code Parity (DCP) Framework (canonical: `~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md`). DCP supersedes both the original Spec-Code Reconciliation and System File Drift Correction frameworks (archived 2026-05-10). It:
 
 1. Inventories every code module against its paired vault specification
 2. Surfaces drift in four classes (auto-fix-candidate / escalate / missing-feature / deprecation-candidate)

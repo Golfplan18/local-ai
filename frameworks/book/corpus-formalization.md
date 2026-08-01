@@ -1105,7 +1105,7 @@ Known Limitations:
   - Multi-contributor write coordination is specified architecturally but not enforced; relies on user/team coordination
   - Cross-authority chains require human handoff; framework documents the relationship but does not negotiate permissions
   - Empirical validation of evaluation criteria pending first production runs
-File Location: ~/Documents/vault/Framework — Corpus Formalization.md (with mirror at ~/ora/frameworks/book/corpus-formalization.md)
+File Location: ~/Documents/vault/Projects/Ora/Framework — Corpus Formalization.md (with mirror at ~/ora/frameworks/book/corpus-formalization.md)
 Provenance: human-architected with Claude Opus 4.7 collaborative drafting; designed in response to user epiphany during PFF-OFF integration session, 2026-04-23
 Confidence: medium-high — architecture is sound and traces directly from the user's lived workflow-automation experience; parameters and execution layers may require refinement after first production runs
 Version: 1.1

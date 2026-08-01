@@ -19,7 +19,7 @@ Strategies:
                               one-directional edges bidirectional never sees.
     random                  — uniform random sample (unbiased corpus check)
 
-Output: ~/Documents/vault/Working — Engram Cleaning Queue.md
+Output: ~/Documents/vault/Projects/Ora/Working — Engram Cleaning Queue.md
 """
 
 from __future__ import annotations
@@ -38,8 +38,12 @@ import yaml
 
 ENGRAMS_DIR = os.path.expanduser("~/Documents/vault/Engrams")
 GRAPH_DB = os.path.expanduser("~/ora/data/relationship-graph.db")
-QUEUE_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Queue.md")
-LOG_FILE = os.path.expanduser("~/Documents/vault/Working — Engram Cleaning Log.md")
+QUEUE_FILE = os.path.expanduser(
+    "~/Documents/vault/Projects/Ora/Working — Engram Cleaning Queue.md"
+)
+LOG_FILE = os.path.expanduser(
+    "~/Documents/vault/Projects/Ora/Working — Engram Cleaning Log.md"
+)
 
 # PROVISIONAL tuning constant (uncalibrated first guess — retune freely).
 # Minimum days between two engrams' dates for a one-directional contradicts

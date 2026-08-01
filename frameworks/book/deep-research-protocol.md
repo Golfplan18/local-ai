@@ -38,7 +38,7 @@ Optional:
 ## OUTPUT CONTRACT
 
 Primary outputs:
-- **research_report**: Markdown document containing executive summary, per-sub-query sections, cross-query synthesis, named caveats, and bibliography with inline citations. Destination: if `persist=true`, vault root with filename `Reference — [Topic].md` inheriting `nexus` from input if provided; if `persist=false`, returned in-memory to the caller.
+- **research_report**: Markdown document containing executive summary, per-sub-query sections, cross-query synthesis, named caveats, and bibliography with inline citations. Destination: if `persist=true`, `Projects/Ora/Reference — [Topic].md` inheriting `nexus` from input if provided; if `persist=false`, returned in-memory to the caller.
   Quality threshold: every sub-query from the research plan has at least one cited claim; every claim carries an epistemic label; no claim appears without a citable source; the Self-Evaluation layer reports no UNRESOLVED DEFICIENCY on any criterion.
 
 Secondary outputs:
@@ -77,7 +77,7 @@ This framework delivers three sequential milestones. Each milestone is a coheren
 
 ### Milestone 3: Final Research Report
 
-- **Endpoint produced:** Structured markdown research report with Executive Summary (150-250 words answering normalized_query), per-sub-query sections with inline source-class tags and citations, Cross-Query Synthesis, Caveats and Epistemic Notes, Bibliography grouped by source class, Corrections Log, Missing Information Declaration, and Recovery Declaration for any UNRESOLVED DEFICIENCY; if persist=true, saved to vault root as `Reference — [Topic].md` with inherited nexus and YAML frontmatter (type, nexus, tags, dates); if persist=false, returned in-memory to caller.
+- **Endpoint produced:** Structured markdown research report with Executive Summary (150-250 words answering normalized_query), per-sub-query sections with inline source-class tags and citations, Cross-Query Synthesis, Caveats and Epistemic Notes, Bibliography grouped by source class, Corrections Log, Missing Information Declaration, and Recovery Declaration for any UNRESOLVED DEFICIENCY; if persist=true, saved as `Projects/Ora/Reference — [Topic].md` with inherited nexus and YAML frontmatter (type, nexus, tags, dates); if persist=false, returned in-memory to caller.
 - **Verification criterion:** Every sub-query from research_plan has a section in the report; every substantive claim carries a source-class tag; Bibliography contains every cited URL with no orphans in either direction; all 9 Evaluation Criteria scored at or above threshold (or below-threshold deficiencies surfaced with UNRESOLVED DEFICIENCY labels); structural completeness matches Layer 6 Output Format; YAML frontmatter present and correctly populated when persisted.
 - **Layers covered:** 6, 7, 8
 - **Required prior milestones:** M2
@@ -590,10 +590,10 @@ Name: Deep Research Protocol
 Purpose: Produce structured, cited research reports addressing open-ended knowledge gaps via orchestrated multi-step search — vault-first, then parallel Level 1 subagent fan-out to web, browser AI, and API AI sources — with confidence-triggered iteration
 Problem Class: Open-ended research and knowledge gap resolution
 Input Summary: A research query (from TMF, user, or project agent); caller context; optional nexus, source filter, depth cap, subagent cap, persist flag
-Output Summary: Structured markdown research report with executive summary, per-sub-query sections, cross-query synthesis, named caveats, bibliography; saved to vault root with inherited nexus if specified
+Output Summary: Structured markdown research report with executive summary, per-sub-query sections, cross-query synthesis, named caveats, bibliography; saved under `Projects/Ora/` with inherited nexus if specified
 Proven Applications: None yet — initial version
 Known Limitations: Token cost scales 4-15× a single-shot query (per Anthropic's published figures); vault-first retrieval quality depends on vault content; confabulation risk present where external sources are sparse
-File Location: frameworks/book/deep-research-protocol.md (executable); ~/Documents/vault/Framework — Deep Research Protocol.md (canonical)
+File Location: frameworks/book/deep-research-protocol.md (executable); ~/Documents/vault/Projects/Ora/Framework — Deep Research Protocol.md (canonical)
 Provenance: human-created
 Confidence: low
 Version: 1.0

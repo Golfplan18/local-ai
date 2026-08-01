@@ -17,13 +17,13 @@
     "operations/g1-10-current/cloud/scripts/msi_vault_outbox.sh": "0dd605f8abb02714b4c30d7e2df304fee462360c246ef3ba6e6e8a7eb0f8e6ec",
     "operations/g1-10-current/cloud/scripts/ora-audit-models.py": "953d2bc34bd6fe9d89761071992e415b589505f07ecd6fdaceeaf3bce339e0b4",
     "operations/g1-10-current/cloud/scripts/ora-deploy.sh": "18d2b79375386917ac53f793dcf2868a61e3b5de701c446ac326ae2442ae4e7f",
-    "operations/g1-10-current/cloud/scripts/ora-vault-runtime-sync.sh": "e6c0b8f59f5405c87517deab34a12a96895f1c6c9a48c3c7909b486be64129d1",
+    "operations/g1-10-current/cloud/scripts/ora-vault-runtime-sync.sh": "5a06ffe4e3539d5110f4208640079bd2f44dd02d1be984160f232aa68384d567",
     "operations/g1-10-current/cloud/scripts/wsj-reauth-guard.sh": "17c43f84ee6de7505a1354ca9d6ad7a4101f2ea57d5af2708ab4624563e41ff5",
     "operations/g1-10-current/macos/README.md": "feb78840564d581248fc4da8c4794bd9d03f178bc30503225237573fcac5cdbb",
     "operations/g1-10-current/macos/install-macos-cutover.sh": "7ee9d995eb1e2ea0f3e6357f2c31c2a704b91cd7d7bb2d89b6dc6d049b46e74d",
     "operations/g1-10-current/macos/rollback-macos-cutover.sh": "bbabfdd1519cb8360469899eb4aac06c1276a3bd752b4a84a0d3d9f750ea0e61",
     "operations/g1-10-current/macos/vault-cloud-sync.py": "af3d2f260f31d9605dad1d5eb0df4957cf1b800f2a47a730287259da32158a89",
-    "operations/g1-10-current/macos/vault-derive-sync.sh": "9a4f641261319fe5243ff37cf23fdaed1f89d339365e509f77578ac6f8bfe6fb",
+    "operations/g1-10-current/macos/vault-derive-sync.sh": "1743a26eeb29134ed8e55e917ee2d7cb3a9f532d385648c79717e060b7a12b23",
     "operations/g1-10-current/macos/vault-event-pipeline.py": "00b3b0a54e42125ab357ffe48e997946369e89d311cf455e4f122e0229a820c8",
     "operations/g1-10-current/macos/vault-git-sync.py": "946f3b9f2dabe1662a059993702438a0213a62b647a3bff04844386f6ca55a64"
   }

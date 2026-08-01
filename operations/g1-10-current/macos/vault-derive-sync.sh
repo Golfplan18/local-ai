@@ -31,6 +31,7 @@ VAULT_WT="$SYNC_ROOT/vault"
 ORA_WT="$SYNC_ROOT/ora"
 MSI_WT="$SYNC_ROOT/msi"
 VAULT="$VAULT_WT"
+PAPER_ROOT="$VAULT/Projects/Ora"
 LOG="$SYNC_ROOT/vault-derive-sync.log"
 LOCKDIR="$SYNC_ROOT/.lock.d"
 DERIVE="$WORK_ORA/scripts/derive-explainer.mjs"
@@ -75,7 +76,7 @@ while IFS= read -r -d '' paper; do
   else
     fail=$((fail + 1)); echo "DERIVE FAILED: $(basename "$paper")"
   fi
-done < <(find "$VAULT" -maxdepth 1 -name 'Paper — *.md' -print0)
+done < <(find "$PAPER_ROOT" -maxdepth 1 -name 'Paper — *.md' -print0)
 if VAULT_DIR="$VAULT" ORA_DIR="$ORA_WT" MSI_DIR="$MSI_WT" node "$DERIVE" --framework-mirrors --write >/dev/null 2>>"$LOG"; then
   ok=$((ok + 3))
 else

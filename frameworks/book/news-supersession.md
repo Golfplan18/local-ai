@@ -57,7 +57,7 @@ The `wrong:source` and `wrong:target` markers retain `archived` semantics in new
 
 **Required (manual/campaign resolver phase):**
 
-- **Triage queue file** — `Working — News Supersession Queue.md` at vault root, populated by detection and edited by the user with resolution markers. Format: markdown with per-pair sections; each pair has a `[pending]`-prefixed heading and a Resolution line.
+- **Triage queue file** — `Projects/MSI/Working — News Supersession Queue.md`, populated by detection and edited by the user with resolution markers. Format: markdown with per-pair sections; each pair has a `[pending]`-prefixed heading and a Resolution line.
 
 **Optional:**
 
@@ -76,7 +76,7 @@ The `wrong:source` and `wrong:target` markers retain `archived` semantics in new
 
 **Detection phase outputs:**
 
-- **`Working — News Supersession Queue.md`** — markdown triage file at vault root. One section per supersession-candidate pair, each with:
+- **`Projects/MSI/Working — News Supersession Queue.md`** — markdown triage file. One section per supersession-candidate pair, each with:
   - Pair heading: `## [pending] <truncated-newer-article-title>`
   - Article wikilinks, titles, dates, tags
   - Topic-cluster context: shared entities, similarity score, date gap
@@ -93,7 +93,7 @@ The `wrong:source` and `wrong:target` markers retain `archived` semantics in new
   - `[wrong:target]` → adds `archived` tag to target.
   - `[skip]` → no action.
   - `[hypocrisy]` → not applicable to news; if used, treated as `[skip]`.
-- **`Working — News Supersession Log.md`** — append-only resolution evidence including model slot/reason for autonomous judgments and the exact files changed.
+- **`Projects/MSI/Working — News Supersession Log.md`** — append-only resolution evidence including model slot/reason for autonomous judgments and the exact files changed.
 - **ChromaDB metadata refresh** — for affected files, the resolver pushes the updated YAML's metadata into the `knowledge` collection so the new tags flow to retrieval.
 - **Runtime event evidence** — immutable event claim, bounded candidate/judgment evidence, before/after identities, completion or failure, and authenticated rollback state under `data/runtime-hygiene/`.
 
@@ -157,7 +157,7 @@ Uniform random sample. Useful for unbiased corpus-health spot-checks.
 
 ## LAYER 2: TRIAGE QUEUE FORMAT
 
-The detection phase writes `Working — News Supersession Queue.md` at vault root. Format:
+The detection phase writes `Projects/MSI/Working — News Supersession Queue.md`. Format:
 
 ```markdown
 ---
@@ -245,7 +245,7 @@ Not applicable to news (the user does not "hold" two contradicting news articles
 
 ## LAYER 4: RESOLUTION LOG
 
-The resolver appends each completed resolution to `Working — News Supersession Log.md` at vault root, mirroring the Engram Cleaning Log format. The log is the audit trail; rollback via `git revert`.
+The resolver appends each completed resolution to `Projects/MSI/Working — News Supersession Log.md`, mirroring the Engram Cleaning Log format. The log is the audit trail; rollback via `git revert`.
 
 ---
 
@@ -289,7 +289,7 @@ The `/news` family is registered in `~/ora/orchestrator/slash_commands.py` along
 ### Direct CLI (explicit historical campaign only)
 
 ```bash
-# Detection — produces Working — News Supersession Queue.md
+# Detection — produces Projects/MSI/Working — News Supersession Queue.md
 python3 ~/ora/orchestrator/historical/run_news_supersession_detection.py \
     [--strategy topic-cluster|recent|random] \
     [--limit N] [--similarity T]

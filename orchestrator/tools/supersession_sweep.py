@@ -249,7 +249,7 @@ def _news_log_header() -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     return (
         "---\n"
-        "nexus:\n  - ora\n"
+        "nexus:\n  - main-street-independent\n"
         "type: working\n"
         "tags:\n  - news-supersession\n  - log\n"
         f"date created: {today}\n"

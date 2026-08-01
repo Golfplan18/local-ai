@@ -10,7 +10,7 @@ oversight daemon, with the user's vault as the control surface.
 Control document
 ----------------
 
-``<configured vault>/Reference — Ora Periodic Maintenance.md``. Its YAML
+``<configured vault>/Projects/Ora/Reference — Ora Periodic Maintenance.md``. Its YAML
 frontmatter carries the live config:
 
     maintenance:

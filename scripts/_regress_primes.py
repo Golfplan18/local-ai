@@ -17,13 +17,14 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
-ORCH = "/Users/oracle/ora/orchestrator"
+ORCH = str(Path(__file__).resolve().parents[1] / "orchestrator")
 if ORCH not in sys.path:
     sys.path.insert(0, ORCH)
 
 CORPUS = os.path.expanduser(
-    "~/Documents/vault/Reference — Trigger Prompt Corpus.md"
+    "~/Documents/vault/Projects/Ora/Reference — Trigger Prompt Corpus.md"
 )
 
 

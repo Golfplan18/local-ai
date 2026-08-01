@@ -1,4 +1,4 @@
-**Status as of 2026-07-12: legacy natural-language installer appendix, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This appendix is retained as architecture/specification material until the G3.32 natural-language installer update. The former Layer 10 interface framework is retained only as a retirement record and must not recreate its config-driven layouts or legacy themes.
+**Status as of 2026-07-12: legacy natural-language installer appendix, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Projects/Ora/Installer — Ora.md` and `docs/install-guide.md`. This appendix is retained as architecture/specification material until the G3.32 natural-language installer update. The former Layer 10 interface framework is retained only as a retirement record and must not recreate its config-driven layouts or legacy themes.
 
 ### How File Access Actually Works
 

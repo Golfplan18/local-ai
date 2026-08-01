@@ -23,7 +23,7 @@ and news/engram supersession maintenance. Their contracts and manifest boundarie
 are catalogued in the canonical framework below.
 
 Canonical spec:
-    ~/Documents/vault/Framework — Conversation Processing Pipeline.md
+    ~/Documents/vault/Projects/Ora/Framework — Conversation Processing Pipeline.md
 
 Archived design/progress records (historical only):
     ~/Documents/vault/Archive/Working — Framework — Historical Chat

@@ -2720,7 +2720,7 @@ Known Limitations:
   - Full Process Formalization conformance deferred to v0.3 documentation pass
   - INTIMACY entry may require split/rescope after first-use evidence
   - Framework-author reflexivity — architect evaluating his own calibration against his own instrument has a reflexivity constraint. External review by non-architect operators on non-architect subjects is the ultimate universality check. v0.2.2 corrections mitigate but do not eliminate this constraint; calibration against empirical population data (v0.3) is the next step.
-File Location: ~/Documents/vault/Framework — MindSpec Interview.md
+File Location: ~/Documents/vault/Projects/Ora/Framework — MindSpec Interview.md
 Provenance: human-architected with Claude Opus 4.7 structural collaboration
 Confidence: medium — mechanism sound, parameters require validation
 Version: 0.2.3

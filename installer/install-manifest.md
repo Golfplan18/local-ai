@@ -1,10 +1,10 @@
 # Local AI First Boot — Installer Manifest
 
-**Status as of 2026-07-12: legacy natural-language installer specification, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Installer — Ora.md` and `docs/install-guide.md`. This layer set is retained as architecture/specification material and is scheduled for a G3.32 reconciliation into a current natural-language installer. Layer 10 now records the retirement boundary for the superseded config-driven interface rather than specifying installable work.
+**Status as of 2026-07-12: legacy natural-language installer specification, not the live install path.** The live public desktop install is `scripts/install.py --profile solo`, documented in `~/Documents/vault/Projects/Ora/Installer — Ora.md` and `docs/install-guide.md`. This layer set is retained as architecture/specification material and is scheduled for a G3.32 reconciliation into a current natural-language installer. Layer 10 now records the retirement boundary for the superseded config-driven interface rather than specifying installable work.
 
 *Original shape: orchestrated installer. Each layer is a separate file loaded and executed sequentially by a coding agent. Layers must execute in order within each phase. Phase 2 is conditional on the Hardware Evaluation Gate.*
 
-*Current operational source: `scripts/install.py`; user-facing source: `~/Documents/vault/Installer — Ora.md`; architecture paper: `~/Documents/vault/Paper — Installer.md`.*
+*Current operational source: `scripts/install.py`; user-facing source: `~/Documents/vault/Projects/Ora/Installer — Ora.md`; architecture paper: `~/Documents/vault/Projects/Ora/Paper — Installer.md`.*
 
 ## How to Use
 

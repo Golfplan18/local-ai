@@ -96,6 +96,34 @@ def _write_engram(dirpath: str, slug: str, h1: str, date_created: str,
 # ---------------------------------------------------------------------------
 
 
+class TestDurableLogLocations(unittest.TestCase):
+    def test_defaults_follow_project_ownership(self):
+        news_suffix = os.path.join(
+            "Projects", "MSI", "Working — News Supersession Log.md")
+        news_queue_suffix = os.path.join(
+            "Projects", "MSI", "Working — News Supersession Queue.md")
+        engram_suffix = os.path.join(
+            "Projects", "Ora", "Working — Engram Cleaning Log.md")
+        engram_queue_suffix = os.path.join(
+            "Projects", "Ora", "Working — Engram Cleaning Queue.md")
+        hypocrisy_suffix = os.path.join(
+            "Projects", "Ora", "Working — Engram Cleaning Hypocrisy Review.md")
+
+        self.assertTrue(news_det.LOG_FILE.endswith(news_suffix))
+        self.assertTrue(news_res.LOG_FILE.endswith(news_suffix))
+        self.assertTrue(news_det.QUEUE_FILE.endswith(news_queue_suffix))
+        self.assertTrue(news_res.QUEUE_FILE.endswith(news_queue_suffix))
+        self.assertTrue(eng_det.LOG_FILE.endswith(engram_suffix))
+        self.assertTrue(eng_res.LOG_FILE.endswith(engram_suffix))
+        self.assertTrue(eng_det.QUEUE_FILE.endswith(engram_queue_suffix))
+        self.assertTrue(eng_res.QUEUE_FILE.endswith(engram_queue_suffix))
+        self.assertTrue(eng_res.HYPOCRISY_FILE.endswith(hypocrisy_suffix))
+        self.assertIn(
+            "nexus:\n  - main-street-independent\n",
+            sweep_mod._news_log_header(),
+        )
+
+
 class TestNewsDetectorCollectionWiring(unittest.TestCase):
     def test_detect_opens_collection_via_embedding_helper(self):
         """detect_topic_cluster must resolve the logical collection name

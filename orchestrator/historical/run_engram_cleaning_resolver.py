@@ -38,9 +38,15 @@ import yaml
 
 VAULT_ROOT = os.path.expanduser("~/Documents/vault")
 ENGRAMS_DIR = os.path.join(VAULT_ROOT, "Engrams")
-QUEUE_FILE = os.path.join(VAULT_ROOT, "Working — Engram Cleaning Queue.md")
-LOG_FILE = os.path.join(VAULT_ROOT, "Working — Engram Cleaning Log.md")
-HYPOCRISY_FILE = os.path.join(VAULT_ROOT, "Working — Engram Cleaning Hypocrisy Review.md")
+QUEUE_FILE = os.path.join(
+    VAULT_ROOT, "Projects", "Ora", "Working — Engram Cleaning Queue.md"
+)
+LOG_FILE = os.path.join(
+    VAULT_ROOT, "Projects", "Ora", "Working — Engram Cleaning Log.md"
+)
+HYPOCRISY_FILE = os.path.join(
+    VAULT_ROOT, "Projects", "Ora", "Working — Engram Cleaning Hypocrisy Review.md"
+)
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
 COLLECTION_NAME = "knowledge"

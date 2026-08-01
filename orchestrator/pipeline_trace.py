@@ -20,7 +20,7 @@ Design constraints:
   This keeps the trace pluggable and lets tests bypass it.
 
 The full trace contract lives in:
-``~/Documents/vault/Paper — Subtle-Calculation Errors in LLM Pipelines.md``
+``~/Documents/vault/Projects/Ora/Paper — Subtle-Calculation Errors in LLM Pipelines.md``
 """
 
 from __future__ import annotations

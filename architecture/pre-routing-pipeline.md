@@ -247,7 +247,7 @@ When the user supplies the missing input, Stage 3 re-runs the completeness check
 
 ## Manual Mode-Selection Override (server layer)
 
-The four-stage pipeline is the default mode-selection mechanism, not the sole one. The `/chat` and `/chat/multipart` endpoints accept a `manual_mode_selection` field carrying an explicit mode pick. Current senders are the maintenance scripts `scripts/refresh-image-modes.py` and `scripts/refresh-mode-pages.py`; the V3 UI does not send the field yet (its interactive mode picker belongs to the in-flight mode-selection redesign — see `server/static/js/input-state.js`), but any caller of either endpoint may supply it. After the four-stage pipeline runs inside Step 1, the server (`server/app.py::_pipeline_stream`) applies the override when **all** of the following hold:
+The four-stage pipeline is the default mode-selection mechanism, not the sole one. The `/chat` and `/chat/multipart` endpoints accept a `manual_mode_selection` field carrying an explicit mode pick. Current senders are the maintenance scripts `scripts/refresh-image-modes.py` and `scripts/refresh-mode-pages.py`; the V3 UI does not send the field yet (its interactive mode picker belongs to the in-flight mode-selection redesign — see `server/static/js/input-state.js`), but any caller of either endpoint may supply it. After the four-stage pipeline runs inside Step 1, the server (`server/server.py::_pipeline_stream`) applies the override when **all** of the following hold:
 
 - `manual_mode_selection` is non-empty,
 - it names a mode whose file exists at `~/ora/modes/<slug>.md`,
@@ -313,7 +313,7 @@ The bucket headers are matched case-insensitively by regex: the thinking-tools b
 **Runtime resolution.** Two module-level registries resolve the listed ids at `build_system_prompt_for_gear` time:
 
 - **Thinking-tool ids** resolve against the `### ` headings of the `## Tier 1 Tool Definitions` section of `~/ora/modules/tools/thinking-tools.md` (loader: `_load_thinking_tools`). The tool id is the heading text up to the em-dash (`AGO — Aims, Goals, Objectives` → `AGO`); for headings without an em-dash the parenthetical alias is stripped (`Provocation (Po)` → `Provocation`); a bare heading (`Concept Fan`) is its own id.
-- **Mental-model ids** resolve against filename stems in `~/ora/lenses/` (loader: `_load_mental_models`) — currently 131 lens notes, vault-paired with `Lenses/`. The id is the filename without extension (`nash-equilibrium.md` → `nash-equilibrium`); YAML frontmatter is stripped from the loaded body.
+- **Mental-model ids** resolve against filename stems in `~/ora/lenses/` (loader: `_load_mental_models`) — currently 240 content Lens notes, vault-paired with `Lenses/` (INDEX is not a Lens). The id is the filename without extension (`nash-equilibrium.md` → `nash-equilibrium`); YAML frontmatter is stripped from the loaded body.
 
 **Injection target.** The resolved definitions inject into the **Breadth analyst's system prompt only**, as a `## ANALYTICAL PERSPECTIVES — <mode>` block placed ahead of the `## MODE INSTRUCTIONS` section. The Depth analyst is intentionally skipped — depth is already focused; the perspectives layer is a lateral-thinking aid. The evaluator, reviser, verifier, consolidator, and formatter never receive it.
 

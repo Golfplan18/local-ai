@@ -248,7 +248,7 @@ plus citations.]
 
 ### Runtime fields live in the mode file (revised 2026-05-12)
 
-Decision C originally specified that runtime mechanics live in a separate `Reference — Mode Runtime Configuration.md` file, keyed by `mode_id`. This split was reversed on 2026-05-12 after the split caused drift failures (the loader for the runtime config was defined but never wired up; mode files fell back to a hardcoded Gear 2 in code while the runtime config claimed Gear 4 universal; per-stage instruction text appeared in both the mode-file body subsections AND the runtime-config `instructions.*` blocks). The runtime configuration file is now archived at `Old AI Working Files/Reference — Mode Runtime Configuration.md.archived-2026-05-12`.
+Decision C originally specified that runtime mechanics live in a separate `Reference — Mode Runtime Configuration.md` file, keyed by `mode_id`. This split was reversed on 2026-05-12 after the split caused drift failures (the loader for the runtime config was defined but never wired up; mode files fell back to a hardcoded Gear 2 in code while the runtime config claimed Gear 4 universal; per-stage instruction text appeared in both the mode-file body subsections AND the runtime-config `instructions.*` blocks). The runtime configuration file is now archived at `Archive/Reference — Mode Runtime Configuration.md.archived-2026-05-12`.
 
 **All runtime fields now live in the mode file:**
 

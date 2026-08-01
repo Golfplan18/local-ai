@@ -20,7 +20,7 @@ Strategies:
     recent                  — restrict to articles modified in last 30 days
     random                  — uniform random sample of eligible pairs
 
-Output: ~/Documents/vault/Working — News Supersession Queue.md
+Output: ~/Documents/vault/Projects/MSI/Working — News Supersession Queue.md
 """
 
 from __future__ import annotations
@@ -38,8 +38,12 @@ import yaml
 
 VAULT_ROOT = os.path.expanduser("~/Documents/vault")
 RESOURCES_DIR = os.path.join(VAULT_ROOT, "Resources")
-QUEUE_FILE = os.path.join(VAULT_ROOT, "Working — News Supersession Queue.md")
-LOG_FILE = os.path.join(VAULT_ROOT, "Working — News Supersession Log.md")
+QUEUE_FILE = os.path.join(
+    VAULT_ROOT, "Projects", "MSI", "Working — News Supersession Queue.md"
+)
+LOG_FILE = os.path.join(
+    VAULT_ROOT, "Projects", "MSI", "Working — News Supersession Log.md"
+)
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
 COLLECTION_NAME = "knowledge"

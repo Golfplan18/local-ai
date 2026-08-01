@@ -6,7 +6,7 @@ vs open), per-chunk provenance, optional prompt-sanity check. Runs alongside
 vault/conversation/relationship RAG and produces the web portion of the
 consultation package.
 
-See ~/Documents/vault/Specification — F-Consult.md for the design.
+See ~/Documents/vault/Projects/Ora/Specification — F-Consult.md for the design.
 
 Replaces the prior gap-driven sequential web_supplement.py:
   - No "does this need web?" decision pass. Web consultation always runs when

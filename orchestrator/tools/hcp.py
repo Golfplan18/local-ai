@@ -1,8 +1,8 @@
 """
 hcp.py — Hierarchical Context Protocol for long-form document ingestion.
 
-Canonical spec: `~/Documents/vault/Specification — Hierarchical Context
-Protocol.md` (created 2026-07-11 from the recovered 2026-04-11 dictation).
+Canonical spec: `~/Documents/vault/Projects/Ora/Specification — Hierarchical
+Context Protocol.md` (created 2026-07-11 from the recovered 2026-04-11 dictation).
 Long complex works (books, long frameworks, paper syntheses, extended
 outlines) are chunked with a layered context block PREPENDED to each chunk,
 so a chunk retrieved in isolation still carries the meaning its position in

@@ -32,7 +32,7 @@ The user remains the principal. The approved runtime contract nevertheless deleg
 
 **Required (manual/campaign resolver phase):**
 
-- **Triage queue file** — `Working — Engram Cleaning Queue.md` at vault root, populated by detection and edited by the user with resolution markers. Format: markdown with per-pair sections; each pair has a `[pending]`-prefixed heading the user replaces with a resolution marker. Source: detection produces it; user mutates it.
+- **Triage queue file** — `Projects/Ora/Working — Engram Cleaning Queue.md`, populated by detection and edited by the user with resolution markers. Format: markdown with per-pair sections; each pair has a `[pending]`-prefixed heading the user replaces with a resolution marker. Source: detection produces it; user mutates it.
 
 **Optional:**
 
@@ -50,7 +50,7 @@ The user remains the principal. The approved runtime contract nevertheless deleg
 
 **Detection phase outputs:**
 
-- **`Working — Engram Cleaning Queue.md`** — markdown triage file at vault root. One section per contradiction pair, each with:
+- **`Projects/Ora/Working — Engram Cleaning Queue.md`** — markdown triage file. One section per contradiction pair, each with:
   - Pair heading: `## [pending] <truncated-source-claim>`
   - Source/target wikilinks, claim H1s, last-modified dates, confidence
   - Resolution marker line (user edits): `**Resolution:** [pending]`
@@ -66,7 +66,7 @@ The user remains the principal. The approved runtime contract nevertheless deleg
   - `wrong:target` → adds `archived` tag to the target.
   - `hypocrisy` → no automatic mutation; logged for the user's reflection.
   - `skip` → no action.
-- **`Working — Engram Cleaning Log.md`** — append-only resolution evidence including model slot/reason for autonomous judgments and the exact files changed.
+- **`Projects/Ora/Working — Engram Cleaning Log.md`** — append-only resolution evidence including model slot/reason for autonomous judgments and the exact files changed.
 - **ChromaDB metadata refresh** — for affected files, the resolver pushes the updated YAML's metadata into the `knowledge` collection so the new tags (especially `archived`) flow to retrieval.
 - **Runtime event evidence** — immutable event claim, bounded candidate/judgment evidence, before/after identities, completion or failure, and authenticated rollback state under `data/runtime-hygiene/`.
 
@@ -134,7 +134,7 @@ Uniform random sample. Useful for unbiased corpus-health spot-checks.
 
 ## LAYER 2: TRIAGE QUEUE FORMAT
 
-The detection phase writes `Working — Engram Cleaning Queue.md` at vault root. Format:
+The detection phase writes `Projects/Ora/Working — Engram Cleaning Queue.md`. Format:
 
 ```markdown
 ---
@@ -213,7 +213,7 @@ Mirror of the above: target supersedes source.
 
 The contradiction reflects genuine tension or motivated reasoning the user wants to examine. No automatic mutation.
 
-The pair is logged with marker `[hypocrisy]` to a separate file: `Working — Engram Cleaning Hypocrisy Review.md`. The user reviews this file at their own pace and may later apply resolutions through normal vault editing or by re-running detection.
+The pair is logged with marker `[hypocrisy]` to a separate file: `Projects/Ora/Working — Engram Cleaning Hypocrisy Review.md`. The user reviews this file at their own pace and may later apply resolutions through normal vault editing or by re-running detection.
 
 ### `[wrong:source]` / `[wrong:target]`
 
@@ -231,7 +231,7 @@ No mutation. The pair is removed from the queue but logged so it doesn't resurfa
 
 ## LAYER 4: RESOLUTION LOG
 
-The resolver appends each completed resolution to `Working — Engram Cleaning Log.md` at vault root:
+The resolver appends each completed resolution to `Projects/Ora/Working — Engram Cleaning Log.md`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM> — <resolution-marker>
@@ -297,7 +297,7 @@ The `/cleaning` family is registered in `~/ora/orchestrator/slash_commands.py` a
 **Direct CLI** (for scripting or sleep-wake invocation):
 
 ```bash
-# Detection — produces Working — Engram Cleaning Queue.md
+# Detection — produces Projects/Ora/Working — Engram Cleaning Queue.md
 python3 ~/ora/orchestrator/historical/run_engram_cleaning_detection.py [--limit N] [--strategy bidirectional|random]
 
 # Resolver — applies queued resolutions, mutates vault, refreshes chromadb
@@ -333,7 +333,7 @@ Exact Engram writes are the only automatic trigger. Weekly and quarterly sweeps 
 
 - **2026-05-09 (v1.0.1)** — Two implementation bugs surfaced during the first two triage rounds (50 pairs total) and fixed in ora commit `81ea313`:
   - **Resolver parser** was reading the resolution marker from the heading line (`## [pending] ...`) instead of the user-edit canonical `**Resolution:** [marker]` line. Users editing only the Resolution line per the framework's user-facing instructions saw their resolutions silently ignored. Fixed by anchoring the regex on Source/Target wikilinks and capturing the Resolution line as canonical; heading marker is now informational only. Queue-rebuild logic similarly updated to read Resolution lines.
-  - **Detection log filter** was missing entirely. The framework spec promised previously-resolved pairs wouldn't resurface, but the first round-2 detection returned 22/25 same pairs as round 1 because no log-reading was implemented. Fixed by adding `_load_resolved_pair_set()` that extracts canonical (sorted) source-target slug tuples from `Working — Engram Cleaning Log.md` and excluding them from `detect_bidirectional` and `detect_random` candidate sets. New `--include-skipped` CLI flag (and slash-command arg) opts out of the filter to re-surface resolved pairs.
+  - **Detection log filter** was missing entirely. The framework spec promised previously-resolved pairs wouldn't resurface, but the first round-2 detection returned 22/25 same pairs as round 1 because no log-reading was implemented. Fixed by adding `_load_resolved_pair_set()` that extracts canonical (sorted) source-target slug tuples from `Projects/Ora/Working — Engram Cleaning Log.md` and excluding them from `detect_bidirectional` and `detect_random` candidate sets. New `--include-skipped` CLI flag (and slash-command arg) opts out of the filter to re-surface resolved pairs.
   - Slash command status (`_cleaning_queue_status`) updated to count pending pairs by Resolution-line markers, matching the canonical edit point.
   - 14 new unit tests in `orchestrator/tests/test_engram_cleaning.py`; 113 regression tests pass across the touched provenance / RAG / slash-command suites.
 

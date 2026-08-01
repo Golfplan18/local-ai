@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Live test of the four-stage pre-routing pipeline against the 220-prompt
-test corpus at vault/Reference — Pipeline Routing Test Corpus.md.
+test corpus at vault/Projects/Ora/Reference — Pipeline Routing Test Corpus.md.
 
 Reports per-stage accuracy and flags failing prompts. Saves a markdown
 report at the path specified by --report (default in the vault).
@@ -13,16 +13,16 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-WORKSPACE = os.path.expanduser("~/ora")
+WORKSPACE = str(Path(__file__).resolve().parents[1])
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 
 import boot
 
 CORPUS_PATH = Path(
-    "/Users/oracle/Documents/vault/Reference — Pipeline Routing Test Corpus.md"
+    "/Users/oracle/Documents/vault/Projects/Ora/Reference — Pipeline Routing Test Corpus.md"
 )
 DEFAULT_REPORT = Path(
-    "/Users/oracle/Documents/vault/Working — Phase 9 Routing Accuracy Report.md"
+    "/Users/oracle/Documents/vault/Projects/Ora/Working — Phase 9 Routing Accuracy Report.md"
 )
 
 

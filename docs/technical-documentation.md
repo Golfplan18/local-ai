@@ -2660,7 +2660,7 @@ G1.19 adds no second Process engine, telemetry database, Persona/MindSpec preced
 - **[deferred]** Process Coherence event-driven DCP integration (watcher fires DCP-Audit on commits) — _Framework spec: 'optional and is not the user's stated default — manual or scheduled invocation preferred'_
 - **[partial]** DCP-Specify / DCP-Deprecate modes exercised in production — _Specified in framework with milestones + output contracts, but the 40+ Drift Reports are all Sweep/Audit-shaped; no Deprecation Candidates reports observed in Administration/DCP listing sample_
 - **[stale]** `/Users/oracle/ora/scripts/verify-implementation.py` — Territories/Modes implementation verifier; ARCHITECTURE_PAIRS drift-parity check strips vault YAML and byte-compares aga
-- **[implemented]** `/Users/oracle/Documents/vault/Reference — Ora Technical Documentation.md` — the vault-canonical technical documentation; CREATED at Gate 3 (this document)
+- **[implemented]** `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Technical Documentation.md` — the vault-canonical technical documentation; CREATED at Gate 3 (this document)
 - **[created post-pin at Gate 3]** `/Users/oracle/ora/docs/technical-documentation.md` — repo-side mirror of the technical documentation; not present at 7a5e8f40 (created after this commit; byte-identical body; parity rule Appendix C)
 - **[created post-pin at Gate 7]** `/Users/oracle/ora/docs/accessible-overview.md` — repo-side mirror of `Reference — Ora Accessible Overview.md`; not present at 7a5e8f40 (body-only mirror; same parity rule)
 - **[created post-pin at Gate 7]** `/Users/oracle/ora/docs/user-guide.md` — repo-side mirror of `Guide — Using Ora.md`; not present at 7a5e8f40 (body-only mirror; same parity rule)
@@ -2780,7 +2780,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/ora/config/models.json` — [implemented] Active local-model registry (machine-specific, GITIGNORED). local_models auto-managed by discovery; commercial
 - `/Users/oracle/ora/scripts/install-server.sh` — [implemented] LINUX server deployment key handling — the contrast case. Writes OPENROUTER_API_KEY (+ optional ANTHROPIC_API_
 - `/Users/oracle/ora/config/local-models.json` — [unknown] State file for scripts/local_models.py install-side download tracking ({installed:[], selected:{}}). Distinct 
-- `/Users/oracle/Documents/vault/Framework — API Key Setup.md` — [implemented] 'Why' source — conversational guided key-setup framework (v2.1, registry-driven). Documents storage convention
+- `/Users/oracle/Documents/vault/Projects/Ora/Framework — API Key Setup.md` — [implemented] 'Why' source — conversational guided key-setup framework (v2.1, registry-driven). Documents storage convention
 
 ### E.4 — Model / Provider Configuration & Routing
 - `orchestrator/router.py` — [implemented] Core routing engine. Resolves slots to endpoints via named-configuration cell chains (_resolve_from_configurat
@@ -2996,19 +2996,19 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/ora/orchestrator/tests/test_projects_mom_endpoints.py` — [implemented] Tests mom GET/POST HTTP endpoints end-to-end.
 
 ### E.15 — Documentation-Code Parity & Vault↔Repo Mirror Governance
-- `/Users/oracle/Documents/vault/Framework — Documentation-Code Parity.md` — [implemented] Canonical DCP framework spec v1.0: 4 modes, Layers 0-8, pairing rules, classification thresholds, milestones, 
-- `/Users/oracle/Documents/vault/Reference — Documentation-Code Parity Configuration.md` — [implemented] DCP config block: scope defaults, auto-fix bias, classification thresholds, prefix list, exclusion list, sites
+- `/Users/oracle/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md` — [implemented] Canonical DCP framework spec v1.0: 4 modes, Layers 0-8, pairing rules, classification thresholds, milestones,
+- `/Users/oracle/Documents/vault/Projects/Ora/Reference — Documentation-Code Parity Configuration.md` — [implemented] DCP config block: scope defaults, auto-fix bias, classification thresholds, prefix list, exclusion list, sites
 - `/Users/oracle/ora/scripts/check-capability-sync` — [implemented] Mechanical drift detector: verifies capabilities.json + routing-config.json slots block + vault Reference — Ca
 - `/Users/oracle/ora/scripts/verify-implementation.py` — [stale] Territories/Modes implementation verifier; ARCHITECTURE_PAIRS drift-parity check strips vault YAML and byte-co
 - `/Users/oracle/ora/scripts/verify-configuration-equivalence.py` — [implemented] Behavioral-equivalence check: for each (pipeline,slot,gear) tuple, compares live Router.resolve_endpoint outpu
 - `/Users/oracle/ora/scripts/check-model-refresh-drift.py` — [implemented] Guards that live model-refresh runtime activity did not dirty tracked seed config/data files; instructs live r
 - `/Users/oracle/ora/scripts/check-portability.py` — [implemented] Cross-platform portability linter: 16 regex rules for macOS/POSIX-only constructs (pkill, osascript, homebrew 
 - `/Users/oracle/ora/CLAUDE.md` — [implemented] Vault Canonical Rule section: authoritative statement of the pairing convention (which ora path pairs with whi
-- `/Users/oracle/Documents/vault/Reference — Ora Technical Documentation.md` — [implemented] the vault-canonical technical documentation; created at Gate 3 (this document)
+- `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Technical Documentation.md` — [implemented] the vault-canonical technical documentation; created at Gate 3 (this document)
 - `/Users/oracle/ora/docs/technical-documentation.md` — [not present at 7a5e8f40 — created after this commit at Gate 3] repo-side mirror of the technical documentation (byte-identical body; parity rule Appendix C)
-- `/Users/oracle/Documents/vault/Reference — Ora Accessible Overview.md` — [implemented] the vault-canonical accessible overview; created at Gate 5 (derived from this document)
+- `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Accessible Overview.md` — [implemented] the vault-canonical accessible overview; created at Gate 5 (derived from this document)
 - `/Users/oracle/ora/docs/accessible-overview.md` — [not present at 7a5e8f40 — created at Gate 7] repo-side mirror of the accessible overview (body-only; same parity rule)
-- `/Users/oracle/Documents/vault/Guide — Using Ora.md` — [implemented] the vault-canonical how-to guide; created at Gate 6 (derived from this document)
+- `/Users/oracle/Documents/vault/Projects/Ora/Guide — Using Ora.md` — [implemented] the vault-canonical how-to guide; created at Gate 6 (derived from this document)
 - `/Users/oracle/ora/docs/user-guide.md` — [not present at 7a5e8f40 — created at Gate 7] repo-side mirror of the how-to guide (body-only; same parity rule)
 - `/Users/oracle/Documents/vault/Administration/DCP/` — [implemented] DCP output directory: dated Drift Reports, Decision Log, Escalation Queue, Run History, Deprecation Candidates
 
@@ -3047,7 +3047,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/ora/data/projects/` — [implemented] Pointer directory. Three live pointers: main-street-independent.json (root→MSI ora-project), ora-ai-app.json, 
 - `/Users/oracle/sites/mainstreetindependent/ora-project/ora-project.json` — [implemented] Reference implementation manifest (nexus=main-street-independent, v0.1.0): 17 tools, slash_commands, 1 chromad
 - `/Users/oracle/sites/mainstreetindependent/ora-project/` — [implemented] Reference impl root: tools/ (118 entries), scripts/, config/, themes/, framework-overlays/, clusters/, launchd
-- `/Users/oracle/Documents/vault/Reference — Ora Project Plugin Convention.md` — [implemented] Vault canonical 'why' + full manifest schema spec (v1.3, 68KB). §1 architectural divide, §2 structure, §3 mani
+- `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Project Plugin Convention.md` — [implemented] Vault canonical 'why' + full manifest schema spec (v1.3, 68KB). §1 architectural divide, §2 structure, §3 mani
 - `/Users/oracle/ora/server/app.py` — [implemented] HTTP surface: project inspection endpoints (list_projects at ~4375/4380), §13 theme routes (/api/v3-themes/list
 - `/Users/oracle/ora/orchestrator/tests/test_project_execution_binding.py` — [implemented] Tests that a conversation's active project binds into execution context.
 - `/Users/oracle/ora/orchestrator/tests/test_conversation_projects.py` — [implemented] Tests conversation project_ids membership stamping.
