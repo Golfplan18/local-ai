@@ -18,8 +18,15 @@ models/
 
 # User-specific data
 chromadb/
-knowledge/
 reconciliation/
+
+# knowledge/ was ignored in the initial commit (2026-04-01), when it held only
+# user-specific runtime state. The mental-model lenses did not exist yet — the
+# earliest is dated 2026-06-17 — and simply landed in an already-ignored folder.
+# They are not user data: Ora's analytical functions require them, exactly as
+# they require modes/, which has always shipped. Anyone cloning this repo needs
+# both or the analysis does not work. Canonical source for both is the vault
+# (vault/Lenses, vault/Modes), mirrored to the runtime tree and committed here.
 
 # Derived indexes (regenerable from canonical YAML in vault)
 data/*.db
