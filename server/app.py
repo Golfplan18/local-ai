@@ -20384,12 +20384,20 @@ def routing_slots_post():
     return json.dumps({"ok": True, "router_reloaded": reloaded})
 
 
-OPENROUTER_CATALOG = os.path.join(WORKSPACE, "config/openrouter-catalog.json")
 OPENROUTER_REFRESH_SCRIPT = os.path.join(WORKSPACE, "scripts/refresh-openrouter.py")
 DIRECT_API_REFRESH_SCRIPT = os.path.join(WORKSPACE, "scripts/refresh-direct-apis.py")
-DIRECT_API_MARKER         = os.path.join(WORKSPACE, "config/.direct-api-refresh-stamp")
 OPENROUTER_STALE_DAYS = 7
 DIRECT_API_STALE_DAYS = 7
+
+
+def _openrouter_catalog_path() -> str:
+    return str(rp.overlay_path("config", "openrouter-catalog.json"))
+
+
+def _direct_api_marker_path() -> str:
+    return os.environ.get("ORA_DIRECT_API_REFRESH_MARKER") or str(
+        rp.runtime_path("config", ".direct-api-refresh-stamp")
+    )
 
 
 def _refresh_direct_apis_if_stale():
@@ -20397,8 +20405,9 @@ def _refresh_direct_apis_if_stale():
     ``DIRECT_API_STALE_DAYS`` (or missing). Best-effort: each provider
     fails independently (e.g. missing key)."""
     import time, subprocess
+    marker_path = _direct_api_marker_path()
     try:
-        age_days = (time.time() - os.path.getmtime(DIRECT_API_MARKER)) / 86400
+        age_days = (time.time() - os.path.getmtime(marker_path)) / 86400
         if age_days < DIRECT_API_STALE_DAYS:
             return
         print(f"[startup] Direct-API catalog age {age_days:.1f}d — refreshing.")
@@ -20411,9 +20420,11 @@ def _refresh_direct_apis_if_stale():
         r = subprocess.run(
             ["/opt/homebrew/bin/python3", DIRECT_API_REFRESH_SCRIPT],
             capture_output=True, text=True, timeout=120,
+            env=_model_refresh_env(),
         )
         if r.returncode == 0:
-            with open(DIRECT_API_MARKER, "w") as f:
+            os.makedirs(os.path.dirname(marker_path), exist_ok=True)
+            with open(marker_path, "w") as f:
                 f.write(str(time.time()))
             print("[startup] Direct-API catalog refreshed.")
         else:
@@ -20428,8 +20439,9 @@ def _refresh_openrouter_if_stale():
     failures log and proceed — the existing catalog stays in place if the
     refresh fails."""
     import time
+    catalog_path = _openrouter_catalog_path()
     try:
-        mtime = os.path.getmtime(OPENROUTER_CATALOG)
+        mtime = os.path.getmtime(catalog_path)
         age_days = (time.time() - mtime) / 86400
         if age_days < OPENROUTER_STALE_DAYS:
             return
@@ -20444,6 +20456,7 @@ def _refresh_openrouter_if_stale():
         r = subprocess.run(
             ["/opt/homebrew/bin/python3", OPENROUTER_REFRESH_SCRIPT],
             capture_output=True, text=True, timeout=60,
+            env=_model_refresh_env(),
         )
         if r.returncode == 0:
             print("[startup] OpenRouter catalog refreshed.")
@@ -20462,7 +20475,7 @@ def openrouter_catalog_get():
     frontend can render "no openrouter models" rather than 500-erroring.
     """
     try:
-        with open(OPENROUTER_CATALOG) as f:
+        with open(_openrouter_catalog_path()) as f:
             return json.dumps(json.load(f))
     except FileNotFoundError:
         return json.dumps({
@@ -20566,7 +20579,7 @@ def capability_providers_get():
     # names + pricing in the picker. The integration registers handlers
     # for all image/video models; here we just enrich their UI presentation.
     try:
-        with open(OPENROUTER_CATALOG) as _f:
+        with open(_openrouter_catalog_path()) as _f:
             _or_catalog = json.load(_f)
     except Exception:
         _or_catalog = {"by_modality": {}, "models": []}

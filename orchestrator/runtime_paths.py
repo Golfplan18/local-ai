@@ -829,10 +829,16 @@ def runtime_refresh_env() -> dict[str, str]:
         "ORA_MODEL_CATALOG_CHANGES_PATH": str(
             RUNTIME_DATA_DIR / "model-catalog-changes.jsonl"
         ),
+        "ORA_OPENROUTER_CATALOG_PATH": str(
+            RUNTIME_CONFIG_DIR / "openrouter-catalog.json"
+        ),
         "ORA_VENDOR_AUTH_REGISTRY_PATH": str(
             RUNTIME_CONFIG_DIR / "model-registry.vendor-authoritative.json"
         ),
         "ORA_ROUTING_CONFIG_PATH": str(RUNTIME_CONFIG_DIR / "routing-config.json"),
+        "ORA_DIRECT_API_REFRESH_MARKER": str(
+            RUNTIME_CONFIG_DIR / ".direct-api-refresh-stamp"
+        ),
         "ORA_CONFIGURATIONS_DIR": str(RUNTIME_CONFIGURATIONS_DIR),
     }
 

@@ -35,8 +35,9 @@ import urllib.error
 import urllib.request
 from datetime import date
 
-WORKSPACE      = os.path.expanduser("~/ora")
-ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
+WORKSPACE = os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
+SEED_ROUTING_CONFIG = os.path.join(WORKSPACE, "config/routing-config.json")
+ROUTING_CONFIG = os.environ.get("ORA_ROUTING_CONFIG_PATH") or SEED_ROUTING_CONFIG
 
 
 # ── Keychain access ─────────────────────────────────────────────────────────
@@ -370,11 +371,15 @@ def reconcile_provider(routing: dict, name: str, fetched: list[dict],
 
 
 def _load_routing() -> dict:
-    with open(ROUTING_CONFIG) as f:
+    source = ROUTING_CONFIG
+    if not os.path.exists(source) and source != SEED_ROUTING_CONFIG:
+        source = SEED_ROUTING_CONFIG
+    with open(source) as f:
         return json.load(f)
 
 
 def _save_routing(cfg: dict):
+    os.makedirs(os.path.dirname(ROUTING_CONFIG), exist_ok=True)
     with open(ROUTING_CONFIG, "w") as f:
         json.dump(cfg, f, indent=2)
         f.write("\n")

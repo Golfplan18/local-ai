@@ -15,7 +15,9 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = os.path.dirname(os.path.dirname(_HERE))
@@ -188,6 +190,17 @@ class BuildCatalogIntegrationShape(unittest.TestCase):
         self.assertIn("input_modalities", m)
         self.assertIn("accepts_image",    m)
         self.assertTrue(m["accepts_image"])
+
+
+class RuntimeCatalogPath(unittest.TestCase):
+    def test_runtime_override_keeps_refresh_out_of_tracked_config(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target = os.path.join(temp, "openrouter-catalog.json")
+            with mock.patch.dict(
+                os.environ, {"ORA_OPENROUTER_CATALOG_PATH": target}
+            ):
+                module = _load_script_as_module()
+            self.assertEqual(module.CATALOG_PATH, target)
 
 
 if __name__ == "__main__":

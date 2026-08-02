@@ -33,8 +33,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-WORKSPACE      = os.path.expanduser("~/ora")
-CATALOG_PATH   = os.path.join(WORKSPACE, "config/openrouter-catalog.json")
+WORKSPACE      = os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
+CATALOG_PATH   = (
+    os.environ.get("ORA_OPENROUTER_CATALOG_PATH")
+    or os.path.join(WORKSPACE, "config/openrouter-catalog.json")
+)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/models"
 
 # OpenRouter exposes the catalog per output-modality. Specialized
