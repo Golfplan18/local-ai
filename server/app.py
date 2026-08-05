@@ -3010,119 +3010,26 @@ def _process_attachments(attachments: list) -> tuple:
     return text_parts, images
 
 
-TIER2_DIR = os.path.join(WORKSPACE, "modules/tools/tier2/")
-
-# Domain detection: map mode names and keyword patterns to Tier 2 module files.
-# Each entry is (module_filename, mode_matches, keyword_patterns).
-_TIER2_MODULES = [
-    ("wicked-problems.md",
-     {"systems-dynamics", "strategic-interaction", "scenario-planning"},
-     r"\b(wicked|intractable|stakeholder|policy|political|systemic|institution)\b"),
-    ("engineering-technical.md",
-     {"root-cause-analysis", "constraint-mapping", "project-mode", "structured-output"},
-     r"\b(engineer|technical|software|hardware|system|debug|failure|architect|code|infra|deploy|api)\b"),
-    ("political-social-analysis.md",
-     {"cui-bono", "relationship-mapping", "strategic-interaction"},
-     r"\b(politic|government|regulat|legislat|advocacy|institution|social|policy|voter|election)\b"),
-    ("design-analysis.md",
-     {"passion-exploration", "terrain-mapping"},
-     r"\b(design|UX|user experience|interface|visual|product design|brand|layout|prototype)\b"),
-    ("contemplative-spiritual.md",
-     set(),
-     r"\b(meditat|spiritual|contemplat|mindful|buddhis|awareness|consciousness|dharma|practic)\b"),
-    ("problem-definition.md",
-     {"deep-clarification", "dialectical-analysis", "paradigm-suspension",
-      "competing-hypotheses", "steelman-construction", "synthesis",
-      "decision-under-uncertainty"},
-     None),  # Always included for Tier 3 or when no other domain matches
-]
-
-
-def _select_tier2_modules(mode: str, cleaned_prompt: str, tier: int) -> list:
-    """Select relevant Tier 2 domain modules based on mode and prompt content.
-
-    Returns list of (filename, content) tuples for modules to inject.
-    """
-    prompt_lower = cleaned_prompt.lower()
-    selected = []
-    matched_any_domain = False
-
-    for filename, mode_set, pattern in _TIER2_MODULES:
-        if filename == "problem-definition.md":
-            continue  # handled as fallback below
-
-        match = False
-        if mode in mode_set:
-            match = True
-        elif pattern and re.search(pattern, prompt_lower):
-            match = True
-
-        if match:
-            matched_any_domain = True
-            path = os.path.join(TIER2_DIR, filename)
-            try:
-                with open(path) as f:
-                    selected.append((filename, f.read()))
-            except FileNotFoundError:
-                pass
-
-    # problem-definition.md: include for Tier 3 (broad exploration)
-    # or when mode matches, or when no domain-specific module matched
-    pd_modes = {"deep-clarification", "dialectical-analysis", "paradigm-suspension",
-                "competing-hypotheses", "steelman-construction", "synthesis",
-                "decision-under-uncertainty"}
-    if tier >= 3 or mode in pd_modes or not matched_any_domain:
-        path = os.path.join(TIER2_DIR, "problem-definition.md")
-        try:
-            with open(path) as f:
-                selected.append(("problem-definition.md", f.read()))
-        except FileNotFoundError:
-            pass
-
-    return selected
-
-
 def _generate_clarification_questions(step1, config):
     """Use the breadth model to generate clarification questions for Tier 2/3.
 
-    Loads domain-specific Tier 2 question bank modules and injects them
-    into the Breadth model's context so it generates targeted questions
-    rather than generic ones.
+    Uses the cleaned prompt, selected mode, and inferred assumptions directly;
+    retired domain question-bank modules are not injected.
     """
     tier = step1["triage_tier"]
     cleaned = step1["cleaned_prompt"]
     mode = step1["mode"]
-    corrections = step1.get("corrections_log", "")
     inferred = step1.get("inferred_items", "")
 
-    # Select and load relevant Tier 2 modules
-    modules = _select_tier2_modules(mode, cleaned, tier)
-
-    # Build system prompt with domain question banks
-    system_parts = [
+    system_prompt = "\n".join([
         "You generate clarification questions for a user whose prompt needs "
         "clarification before the AI system can provide a high-quality response.",
         "",
-        "You have access to domain-specific question banks below. Use them to "
-        "generate questions that are specific and grounded in the domain, not "
-        "generic. Select the most relevant questions from the banks and adapt "
-        "them to the user's specific prompt. Do not copy questions verbatim — "
-        "tailor them.",
-    ]
-
-    if modules:
-        system_parts.append("")
-        system_parts.append("=" * 60)
-        system_parts.append("DOMAIN QUESTION BANKS")
-        system_parts.append("=" * 60)
-        for filename, content in modules:
-            system_parts.append("")
-            system_parts.append(content)
-
-    system_parts.append("")
-    system_parts.append("Output only the numbered questions, nothing else.")
-
-    system_prompt = "\n".join(system_parts)
+        "Use the user's cleaned prompt, selected analytical mode, and any "
+        "inferred assumptions to generate specific, context-grounded questions.",
+        "",
+        "Output only the numbered questions, nothing else.",
+    ])
 
     if tier == 2:
         instruction = (
@@ -3134,7 +3041,7 @@ def _generate_clarification_questions(step1, config):
         if inferred:
             instruction += f"Inferred items (assumptions made): {inferred}\n"
         instruction += (
-            f"\nUsing the domain question banks above, generate 2-3 targeted "
+            f"\nGenerate 2-3 targeted "
             f"clarification questions that would resolve the ambiguity. Each "
             f"question should be specific and answerable in one sentence. "
             f"Format: one question per line, numbered."
@@ -3149,7 +3056,7 @@ def _generate_clarification_questions(step1, config):
         if inferred:
             instruction += f"Inferred items (assumptions made): {inferred}\n"
         instruction += (
-            f"\nUsing the domain question banks above, generate 3-5 broadening "
+            f"\nGenerate 3-5 broadening "
             f"questions that help the user discover what they're actually trying "
             f"to accomplish. Questions should open up the problem space, not "
             f"narrow it. Format: one question per line, numbered."

@@ -65,11 +65,15 @@ class TestBootRootsFromRuntimePaths(unittest.TestCase):
     def test_derived_constants_live_under_workspace(self):
         import boot
         for name in ("BOOT_MD", "MIND_MD", "ROUTING_CONFIG_JSON", "TOOLS_DIR",
-                     "FRAMEWORKS_DIR", "MODES_DIR", "MODULES_DIR",
-                     "THINKING_TOOLS_MD", "MENTAL_MODELS_DIR",
+                     "FRAMEWORKS_DIR", "MODES_DIR", "THINKING_TOOLS_MD", "MENTAL_MODELS_DIR",
                      "ARCHITECTURE_DIR"):
             self.assertTrue(getattr(boot, name).startswith(boot.WORKSPACE),
                             name)
+
+    def test_thinking_tools_library_is_at_workspace_root(self):
+        import boot
+        self.assertEqual(boot.THINKING_TOOLS_MD,
+                         os.path.join(boot.WORKSPACE, "thinking-tools.md"))
 
     def test_no_hardcoded_user_or_home_paths_in_source(self):
         src = (_ORCH / "boot.py").read_text()

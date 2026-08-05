@@ -260,7 +260,38 @@ Your operating posture shifts across layers. In Layer 1 (Gap Identification), yo
    - IF the question is not answered, THEN add it to the gap inventory as a new gap, phrased as an answerable question.
    - Do not walk questions from later phases (Generate, Evaluate, Select, Implement) — those phases are downstream of this framework's purpose.
 
-3. **Run the Wicked Problems gate** per `modules/tools/tier2/wicked-problems.md`. Score the current problem against the five categories (Definitional Stability, Causal Structure, Solution Characteristics, Stakeholder Dynamics, Intervention Risk). Produce one of three verdicts:
+3. **Run the Wicked Problems gate.** Score the current problem against the five categories (Definitional Stability, Causal Structure, Solution Characteristics, Stakeholder Dynamics, Intervention Risk). Produce one of three verdicts:
+   - **Definitional Stability**
+     1. Can all relevant parties accept one problem statement, or does each stakeholder define a different problem and imply a different solution?
+     2. Has the definition shifted across attempts, or does refining it change which problem is being solved?
+     3. Is the definition inseparable from the proposed solution direction?
+     4. Does additional information clarify the problem or make it more ambiguous?
+     5. Can the possible solution set be enumerated?
+   - **Causal Structure**
+     6. Can cause and effect be identified reliably, or do effects become causes in circular chains?
+     7. Do stakeholders agree on the causes?
+     8. Does the system exhibit emergent behavior that cannot be predicted from individual components?
+     9. Do long delays between action and consequence make intervention learning unreliable?
+     10. Do compensating feedback loops absorb or reverse intended changes?
+   - **Solution Characteristics**
+     11. Is there a clear stopping rule for declaring the problem solved?
+     12. Can solutions be tested before implementation, or is each intervention an irreversible one-shot operation?
+     13. Do proposed solutions create new problems of comparable magnitude?
+     14. Is this an instance of an understood problem class with known methods, or is it materially unique?
+     15. Can the problem be decomposed into independently solvable parts?
+   - **Stakeholder Dynamics**
+     16. Do stakeholders share compatible values on the issue?
+     17. Can a legitimate authority impose a solution, or must it emerge through negotiation among conflicting interests?
+     18. Are the people bearing the problem the same people empowered to address it?
+     19. Does one stakeholder's attempt to solve the problem worsen it for others?
+     20. Do actors benefit from the problem's persistence and have reason to resist resolution?
+   - **Intervention Risk**
+     21. What is the cost of being wrong, and can a failed intervention be reversed?
+     22. Do the consequences fall on real people for whom the planner or advisor is accountable?
+     23. Can the problem be addressed through small reversible experiments, or does it require large irreversible commitments?
+     24. Have past interventions on this or comparable problems produced significant new problems?
+     25. Could confident analysis be mistaken for reliable prediction where prediction is structurally unreliable?
+   - Assess the pattern qualitatively rather than assigning a numeric score: tractable answers across most categories support **Tame**; limited instability or causal uncertainty supports **Messy**; and many intractable answers across the categories support **Wicked**.
    - **Tame**: The problem can be defined, decomposed, and researched with standard methods. All subsequent Ora analytical modes are eligible in Stages 3 and 4.
    - **Messy**: Definitionally unstable or causally ambiguous in places but still researchable in parts. Subsequent stages may invoke the full mode set but must flag instability where it arises.
    - **Wicked**: Many wickedness indicators activated. Subsequent stages are restricted per Appendix B to Paradigm Suspension, Cui Bono, Systems Dynamics, and Strategic Interaction. Additional analytical modes are not eligible for invocation during Stages 3 and 4 of this framework run.
@@ -905,7 +936,7 @@ This framework adds value when a problem has been named but the terrain around i
 
 ## APPENDIX B: ANALYTICAL MODE ELIGIBILITY BY WICKED-PROBLEMS VERDICT
 
-*Used in Layer 1 Step 3 (setting the verdict) and Layer 4 Step 3 (gating the analytical lenses against the eligible set). Stage 3 receives the verdict as context for the DRP's research framing but does not invoke Ora analytical modes — the eligibility constraint is enforced at Stage 4 only. The verdict comes from the Wicked Problems Assessment Checklist at `modules/tools/tier2/wicked-problems.md`.*
+*Used in Layer 1 Step 3 (setting the verdict) and Layer 4 Step 3 (gating the analytical lenses against the eligible set). Stage 3 receives the verdict as context for the DRP's research framing but does not invoke Ora analytical modes — the eligibility constraint is enforced at Stage 4 only. The verdict comes from the five-category checklist in Layer 1 Step 3.*
 
 | Wickedness Verdict | Eligible Ora Analytical Modes |
 |---|---|

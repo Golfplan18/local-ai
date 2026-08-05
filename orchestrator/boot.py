@@ -179,8 +179,7 @@ ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
 TOOLS_DIR = os.path.join(WORKSPACE, "orchestrator/tools/")
 FRAMEWORKS_DIR = os.path.join(WORKSPACE, "frameworks/book/")
 MODES_DIR = os.path.join(WORKSPACE, "modes/")
-MODULES_DIR = os.path.join(WORKSPACE, "modules/")
-THINKING_TOOLS_MD = os.path.join(WORKSPACE, "modules/tools/thinking-tools.md")
+THINKING_TOOLS_MD = os.path.join(WORKSPACE, "thinking-tools.md")
 MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "lenses/")
 
 
