@@ -9,8 +9,8 @@ Covers:
   - caches are stable across repeated calls
   - real cui-bono.md mode file resolves cleanly end-to-end
 
-All tests run offline against the actual files in ``~/ora/modules/`` and
-``~/ora/lenses/``.
+All tests run offline against the actual ``~/ora/thinking-tools.md`` file and
+the files in ``~/ora/lenses/``.
 """
 
 from __future__ import annotations
@@ -213,6 +213,27 @@ class CuiBonoEndToEndTests(unittest.TestCase):
         self.assertIn("Nash Equilibrium", resolved)
         self.assertIn("BATNA", resolved)
         self.assertIn("Schelling", resolved)
+
+    def test_perspectives_inject_into_breadth_only(self):
+        path = os.path.expanduser("~/ora/modes/cui-bono.md")
+        with open(path, "r", encoding="utf-8") as f:
+            mode_text = f.read()
+        context = {
+            "mode_text": mode_text,
+            "mode_name": "cui-bono",
+            "conversation_rag": "",
+            "concept_rag": "",
+            "relationship_rag": "",
+        }
+        breadth = boot.build_system_prompt_for_gear(
+            context, slot="breadth", step="analyst",
+        )
+        depth = boot.build_system_prompt_for_gear(
+            context, slot="depth", step="analyst",
+        )
+        marker = "=== ANALYTICAL PERSPECTIVES — cui-bono ==="
+        self.assertIn(marker, breadth)
+        self.assertNotIn(marker, depth)
 
 
 class UserSelectedLensPromptTests(unittest.TestCase):

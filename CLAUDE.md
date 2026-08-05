@@ -12,7 +12,7 @@ The pairing convention:
 - `~/ora/frameworks/book/<name>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Framework — <Title Case Name>.md` (or `Specification — <Title>.md` for the F-stage specs). Vault has YAML, ora does not.
 - `~/ora/modes/<name>.md` ↔ `/Users/oracle/Documents/vault/Modes/<name>.md`. Both have YAML; preserve.
 - `~/ora/lenses/<name>.md` ↔ `/Users/oracle/Documents/vault/Lenses/<name>.md`. Both have YAML; preserve.
-- `~/ora/modules/tools/.../<name>.md` ↔ `/Users/oracle/Documents/vault/Modules/Tools/.../<name>.md`. Neither has YAML.
+- `~/ora/thinking-tools.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Reference — Thinking Tools Library.md`. The vault file is canonical and has YAML; the runtime mirror carries the body only.
 - **`~/ora/architecture/<name>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Reference — <Title>.md`** (kebab-case ora filename ↔ vault canonical name). Vault has YAML, ora does not. Decision K: this subdirectory holds the 8 pre-routing-pipeline architecture files the orchestrator reads at runtime exclusively. The 8 files are: `territories.md`, `mode-template.md`, `disambiguation-style-guide.md`, `lens-library-specification.md`, `pre-routing-pipeline.md`, `signal-vocabulary-registry.md`, `within-territory-trees.md`, `cross-territory-adjacency.md`. **Exception:** `signal-vocabulary-registry.md` pairs with `Registry — Signal Vocabulary Registry.md` (Registry — prefix, not Reference —) because it functions as a registry, not a reference document. **Note (2026-05-12):** `runtime-configuration.md` was retired — Decision C reversed; runtime fields (gear, expected_runtime, type_filter, context_budget) now live in each mode file's `## DEFAULT GEAR` and `## RAG PROFILE` sections rather than a separate file. The archived runtime-configuration is at `~/ora/Old AI Working Files/runtime-configuration.md.archived-2026-05-12`.
 - **`~/ora/frameworks/territories/<territory-id>.md` ↔ `/Users/oracle/Documents/vault/Projects/Ora/Framework — <Territory Display Name>.md`** (Phase 10 deliverables; 21 self-contained territory frameworks). Vault has YAML, ora does not.
 - A handful of singletons: `~/ora/FORKING.md` ↔ `Guide — Forking Ora.md`; `~/ora/frameworks/framework-registry.md` ↔ `Registry — Framework Registry.md`; `~/ora/frameworks/pff-cff-off-integration-architecture.md` ↔ `Reference — PFF-CFF-OFF Integration Architecture.md`.
@@ -195,7 +195,7 @@ server/static/canvas-serializer.js           — userInputLayer → spatial_repr
 server/static/annotation-parser.js           — annotationLayer (user) → structured instructions
 frameworks/book/                             — Pipeline stage specifications (F-Analysis, F-Evaluate, etc.)
 modes/                                       — Mode files (64 modes + INDEX.md)
-modules/tools/                               — Thinking tools (Tier 1) and question banks (Tier 2)
+thinking-tools.md                            — Runtime mirror of the canonical Thinking Tools Library
 lenses/                     — Tier 3 mental model lenses (240 + INDEX.md); ships with the repo, as modes/ does — Ora's analytical functions need both
 config/model-registry.json                   — Curated runtime registry (OpenRouter + LiteLLM + Arena + AA); written by scripts/sync_model_registry.py
 config/models.json                           — Active local-model registry (machine-specific, gitignored). Source of truth for local-model discovery + vision_capable routing; read by router.py / boot.py / local_model_discovery.py. Distinct from model-registry.json (cloud catalog), NOT superseded by it.
@@ -219,7 +219,7 @@ mind.md                                      — Identity/personality layer
 
 ## Remaining Work
 
-None currently tracked. (The Tier 2 question bank modules previously listed here shipped — all six files exist in `modules/tools/tier2/`.)
+None currently tracked.
 
 ## Completed (recent sessions)
 

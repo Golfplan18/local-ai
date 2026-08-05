@@ -1,6 +1,6 @@
-# Thinking Tools Library
+# Reference — Thinking Tools Library
 
-*Loadable module. Loaded selectively into the Breadth model context window based on triage tier. Tier 1 loads nothing. Tier 2 loads three to four tool definitions plus the relevant Tier 2 module. Tier 3 loads the full relevant set.*
+*Canonical library paired with `~/ora/thinking-tools.md`. At runtime, per-mode `ANALYTICAL PERSPECTIVES` allowlists resolve Tier 1 definitions from this file and inject the selected definitions into the Breadth analyst's prompt only. This library is not selected by triage tier.*
 
 *Source specifications: Wisdom Nexus AI Swarm System Overview, Edward de Bono's Complete Thinking Systems reference.*
 
@@ -8,13 +8,11 @@ This library is the executable specification layer for the problem definition pr
 
 Tools are drawn primarily from Edward de Bono's lateral thinking and DATT/CoRT frameworks. The DATT (Direct Attention Thinking Tools) system is CoRT 1 repackaged for business/adult contexts, focusing on the seven acronym tools. Each tool is an **attention-director** — it focuses thinking in a specific direction using deliberate, artificial operations with mnemonic acronyms.
 
-## Tool Architecture — Three Tiers
+## Tool Architecture
 
 **Tier 1 — Analytical Procedures.** Executable step-by-step processes the system runs on the user's behalf. Full operational definitions below. Load selectively when trigger conditions are met.
 
-**Tier 2 — Domain Question Banks.** Structured question sets organized by domain and activation condition. Generate the right questions at the right moment. Separate documents in `modules/tools/tier2/` that load as complete units when domain signals trigger them.
-
-**Tier 3 — Mental Model Lenses.** Conceptual frameworks stored as atomic vault notes, retrieved via RAG on demand. The Mental Models Library MOC provides the index. Mental models do not load into the context window wholesale.
+**Tier 3 — Mental Model Lenses.** Conceptual frameworks stored as individual lens files and selected through the same per-mode allowlists. Only the selected definitions are injected into the Breadth analyst's prompt.
 
 ---
 
@@ -330,33 +328,9 @@ These sequences are not rigid — the Breadth model uses them as defaults and ad
 
 ---
 
-## Tier 2 Module Library
-
-Tier 2 modules are separate documents in `modules/tools/tier2/`. Each loads as a complete unit when domain signals trigger it.
-
-**Problem Definition Question Bank**
-Trigger: Phase B or Phase C; any session where problem definition work is explicitly requested; triage gate Tier 2 or Tier 3.
-
-**Political and Social Analysis Module**
-Trigger: Domain is political, social, or policy-related; OPV reveals institutional correlation; prompt references governments, organizations, regulatory bodies, or advocacy groups.
-
-**Engineering and Technical Analysis Module**
-Trigger: Domain is technical, engineering, product design, or systems implementation; prompt involves diagnosing a failure, designing a solution, or specifying requirements.
-
-**Design Analysis Module**
-Trigger: Domain involves creative or professional design work; prompt references design problems, user experience, product development, or service design.
-
-**Contemplative and Spiritual Analysis Module**
-Trigger: Domain is spiritual practice, Buddhist philosophy, phenomenological inquiry, or contemplative experience.
-
-**Wicked Problems Assessment Checklist**
-Trigger: Gate-level diagnostic — runs before mode selection whenever domain is political, social, policy, or systems-level; also triggers when initial problem formulation attempts have repeatedly failed to produce a stable definition.
-
----
-
 ## Tier 3 — Mental Models
 
-Mental models are stored as atomic vault notes and retrieved via RAG. Each note carries domain tags and trigger conditions for automatic surfacing. The Mental Models Library MOC provides the navigable index.
+Mental models are stored as individual lens files. Mode allowlists identify which lenses may be loaded for a given analysis, and the runtime injects only those resolved definitions into the Breadth analyst's prompt.
 
 Trigger condition examples:
 - _Inversion_ triggers when a problem has been approached from only one direction for multiple sessions

@@ -25,7 +25,7 @@ Everything the system needs to run on any machine:
 | `server/` | V3 interface (Flask, browser UI, component styles/scripts, and theme packages) |
 | `frameworks/` | Framework library (thinking tools for AI) |
 | `modes/` | Analysis modes (18 ways to approach a problem) |
-| `modules/` | Thinking tools and question banks |
+| `thinking-tools.md` | Runtime mirror of the canonical Thinking Tools Library |
 | `config/` | Runtime configuration templates |
 | `boot/` | System prompt |
 
@@ -76,7 +76,7 @@ This is where your fork becomes yours. Ideas that make the system better for you
 - **Theme changes** — use the V3 Theme Library, or add a fork-bundled package under `server/static/themes/<theme-id>/` with `manifest.json` and `theme.css`; theme operations are exposed through `/api/v3-themes/*`
 - **New tools** — add orchestrator tools in `orchestrator/tools/`
 - **Pipeline changes** — modify `orchestrator/boot.py` to change how queries are processed
-- **New thinking tools** — add question banks in `modules/tools/`
+- **New thinking tools** — extend `Projects/Ora/Reference — Thinking Tools Library.md` in the vault, then propagate its body to `thinking-tools.md`
 
 Every change you make can create drift between the executable installer, the natural-language specifications, and the filesystem that contains your system. That drift is expected. It's the raw material for the next step.
 
