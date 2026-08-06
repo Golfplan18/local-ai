@@ -140,6 +140,8 @@ async function run() {
   record('explicit toolbar action activates Programming', w.OraProgramming.isActive());
   record('Programming panel is visible after explicit activation',
     w.document.querySelector('.programming-panel').hidden === false);
+  record('active Programming panel can paint outside the clipped Inquiry pane',
+    w.document.querySelector('.input-pane').classList.contains('is-programming-active'));
 
   w.document.querySelector('[data-programming-repository]').value = '/tmp/example-repo';
   w.document.querySelector('[data-programming-recover]').click();

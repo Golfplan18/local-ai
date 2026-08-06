@@ -1,6 +1,6 @@
 .programming-panel {
   position: absolute;
-  z-index: 18;
+  z-index: 30;
   left: 12px;
   right: 12px;
   top: calc(100% + 8px);
@@ -12,6 +12,11 @@
   background: var(--background-primary);
   box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
   color: var(--text-normal);
+}
+
+.input-pane.is-programming-active {
+  z-index: 30;
+  overflow: visible;
 }
 
 .programming-panel[hidden] { display: none; }

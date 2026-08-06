@@ -15,6 +15,7 @@
   let body;
   let repositoryInput;
   let button;
+  let inputPane;
 
   const escapeHtml = value => String(value == null ? '' : value)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -27,6 +28,7 @@
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
+    if (inputPane) inputPane.classList.toggle('is-programming-active', active);
   };
 
   const status = (title, detail = '') => {
@@ -238,7 +240,7 @@
   const init = () => {
     if (panel) return;
     button = document.getElementById('inputToolbarProgramming');
-    const inputPane = document.querySelector('.input-pane');
+    inputPane = document.querySelector('.input-pane');
     if (!button || !inputPane) return;
     panel = document.createElement('section');
     panel.className = 'programming-panel';
