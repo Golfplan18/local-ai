@@ -24,6 +24,7 @@ for p in (HERE, WORKTREE_ROOT):
 
 from boot import (
     _PROVIDER_TRANSPORT_ERROR_MARKERS,
+    _VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES,
     _verifier_broken,
     _verifier_passed,
 )
@@ -118,6 +119,32 @@ class TestDispatchWrapperShapesClassifyAsBroken(unittest.TestCase):
         )
         self.assertTrue(_verifier_broken(output))
 
+    def test_msi_text_broker_quarantine_is_broken(self):
+        """The 2026-08-06 regression, verbatim.
+
+        MSI's text broker reuses the dispatch wrapper with its own noun, so the
+        enumerated per-provider prefixes missed it and a broker quarantine
+        registered as a substantive verifier FAIL. Two gear-3 correction cycles
+        then re-revised against transport noise and rewrote an in-voice Diklis
+        Chump parody column into straight third-person wire analysis.
+        """
+        output = (
+            "[Error calling MSI text broker for xiaomi/mimo-v2.5: "
+            "RuntimeError: xiaomi/mimo-v2.5-pro is quarantined until "
+            "14:17:14 UTC]"
+        )
+        self.assertTrue(_verifier_broken(output))
+        self.assertFalse(_verifier_passed(output))
+
+    def test_unknown_future_broker_wrapper_is_broken(self):
+        """The prefix matches the wrapper SHAPE, not an emitter allowlist.
+
+        Enumeration missed OpenRouter in 2026-05 and the MSI broker in 2026-08;
+        a third emitter must not need a third patch.
+        """
+        output = "[Error calling Some Future Broker for m-1: TimeoutError]"
+        self.assertTrue(_verifier_broken(output))
+
 
 class TestCaseInsensitiveMarkerMatch(unittest.TestCase):
     """``_verifier_broken`` lowercases its input — markers must match
@@ -195,8 +222,17 @@ class TestSharedMarkerListWiring(unittest.TestCase):
             "error calling openrouter api",
             "error calling local model",
             "error calling mlx model",
+            "error calling msi text broker",
         ):
             self.assertIn(marker, _PROVIDER_TRANSPORT_ERROR_MARKERS)
+
+    def test_generic_wrapper_prefix_is_the_verifier_line_matcher(self):
+        """The verifier's line-prefix list matches the wrapper shape generically.
+
+        Pinned so a future cleanup cannot quietly go back to enumerating
+        emitters — the failure mode that produced both prior regressions.
+        """
+        self.assertIn("[error calling ", _VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES)
 
 
 if __name__ == "__main__":
