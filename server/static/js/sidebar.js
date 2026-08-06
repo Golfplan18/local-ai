@@ -160,16 +160,9 @@
   const updateWordmarkAttention = () => {
     const logoA = document.getElementById('logo-a');
     if (!logoA) return;
-    const hasAttention = sidebar.dataset.dialogueAttention === 'true'
-      || sidebar.dataset.processAttention === 'true';
+    const hasAttention = sidebar.dataset.dialogueAttention === 'true';
     logoA.classList.toggle('wordmark-attract', hasAttention);
   };
-
-  document.addEventListener('ora:process-attention-changed', (event) => {
-    const detail = (event && event.detail) || {};
-    sidebar.dataset.processAttention = detail.needs_attention ? 'true' : 'false';
-    updateWordmarkAttention();
-  });
 
   const render = (data) => {
     lastSnapshot = data || { pinned: [], pending: [], unread: [], active: [] };

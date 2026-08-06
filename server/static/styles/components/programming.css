@@ -1,0 +1,84 @@
+.programming-panel {
+  position: absolute;
+  z-index: 18;
+  left: 12px;
+  right: 12px;
+  top: calc(100% + 8px);
+  max-height: min(70vh, 620px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
+  color: var(--text-normal);
+}
+
+.programming-panel[hidden] { display: none; }
+
+.programming-panel-header,
+.programming-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.programming-panel-header button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.programming-repository,
+.programming-questions label {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.programming-repository input,
+.programming-questions textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.programming-body { margin-top: 12px; }
+.programming-heading { margin-bottom: 8px; font-weight: 650; }
+.programming-copy, .programming-status p { color: var(--text-muted); font-size: 12px; }
+
+.programming-plan {
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.programming-actions { justify-content: flex-end; margin-top: 10px; }
+.programming-actions button,
+.programming-primary {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.programming-primary { background: var(--interactive-accent); color: var(--text-on-accent); }
+.programming-progress { display: grid; gap: 6px; max-height: 360px; overflow: auto; }
+.programming-progress-row { padding: 7px 8px; border-radius: 6px; background: var(--background-secondary); font-size: 12px; }
+.programming-progress-row p { margin: 5px 0 0; color: var(--text-muted); }

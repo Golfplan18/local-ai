@@ -1,6 +1,6 @@
 {
   "_schema_version": 1,
-  "_note": "Curated boundary for user-facing framework exposure. A markdown file existing in frameworks/book/ is not enough to make it callable through /framework or visible in the shared picker. invocable_frameworks are runnable through the legacy /framework milestone executor. pickable_frameworks may also include normal-pipeline scaffolds. process_definition_frameworks are authenticated Process entry rows and are never made legacy-invocable merely by being pickable.",
+  "_note": "Curated boundary for user-facing framework exposure. A markdown file existing in frameworks/book/ is not enough to make it callable through /framework or visible in the shared picker. Programming has its own explicit entry and is not a framework-picker row.",
   "invocable_frameworks": [
     "api-key-setup.md",
     "conversation-processing.md",
@@ -29,14 +29,10 @@
     "output-formalization.md",
     "periodic-maintenance.md",
     "problem-evolution.md",
-    "programming.md",
     "process-formalization.md",
     "process-inference.md",
     "terrain-mapping.md",
     "video-editing-suggestions.md"
-  ],
-  "process_definition_frameworks": [
-    "programming.md"
   ],
   "aliases": {
     "cff": "corpus-formalization.md",

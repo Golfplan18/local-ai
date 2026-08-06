@@ -2,7 +2,7 @@
 
 *The deepest layer of Ora's documentation: the installed-system source of truth for engineers, architects, and evaluators. Two accepted companion documents — an accessible overview and a how-to guide — derive from this one.*
 
-> **Composite implementation pin.** Chapters 1–17 retain their audited commit `7a5e8f40` line-level pin except where a later currency note says otherwise. Chapter 18 is the verified G1.1 governed-process addendum pinned for runtime behavior to `/Users/oracle/ora-msi-central-routing` commit `5bcba5027dc64dad878cb79a37c845a2de492d1d`, the accepted Gate 3.3 baseline. Gate 3.4 accepted the maintainer reference at documentation/test commit `6824bb03bf8bf9a94c1e87020c40d7007457608a`; no runtime behavior changed between those pins. For governed-process architecture, Chapter 18 and the versioned canonicals it cites supersede conflicting Agent, closed-suite, automatic-supervision, and fail-open gate language in the older chapters. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
+> **Composite implementation pin.** Chapters 1–17 retain their established audited pins except where a later currency note says otherwise. Chapter 18 describes the current standalone Programming implementation and supersedes the removed governed-process runtime, automatic entry router, process automation, triggers, inspectors, and lifecycle surfaces. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
 
 ---
 
@@ -14,9 +14,9 @@ The reframe this whole system rests on is assisted human intelligence. Ora is no
 
 Two distinctions run through the entire architecture and are worth fixing at the outset.
 
-The first is **governed execution versus ordinary generation**. Ordinary generation remains a foreground analytical pipeline. Governed execution adds durable Process Definitions, Process Runs, Artifacts, and event/transition records, with explicit authority, evidence, correction, continuation, and recovery. A model contributes bounded judgment inside declared steps; Ora does not use Agent as a canonical runtime object, lifecycle, authority source, or UI category. Historical Agent terminology elsewhere in the old pin is noncanonical.
+The first is **explicit Programming versus ordinary Inquiry**. Inquiry remains the foreground analytical pipeline and is never intercepted. Programming begins from its dedicated control, inspects a real Git repository, waits for one plan approval, executes on a task branch, and uses a fresh reviewer before committing accepted slices.
 
-The second is an **open versioned capability system with a stable historical analytical suite**. PEF, PIF, PFF, CFF, OFF, and DCA remain important named frameworks, but the registry is not closed: PFF can formalize additional exact Process Definitions and governed Runs can construct, register, and invoke them. The historical analytical suite is:
+The second is an **explicit framework suite**. PEF, PIF, PFF, CFF, OFF, and DCA remain important named frameworks selected for analytical work:
 
 - **PEF** — Problem Evolution Framework
 - **PIF** — Process Inference Framework
@@ -25,7 +25,7 @@ The second is an **open versioned capability system with a stable historical ana
 - **OFF** — Output Formalization Framework
 - **DCA** — Decision Clarity Analysis
 
-Each is defined in its own canonical. New Process Definitions do not expand the primitive kernel; they bind new graphs and contracts to it.
+Each is defined in its own canonical. Frameworks provide instructions and do not create Programming Runs, capability registrations, automatic triggers, or background execution.
 
 ## Why This Document Leads With Reliability
 
@@ -59,7 +59,7 @@ The chapters are grouped into six parts:
 - **Part III — Knowledge, Tools & Media** (chapters 8–11): the vault, capability dispatch, and the media/visual subsystems.
 - **Part IV — Supervision & Governance** (chapters 12–15): oversight, execution review, and the governance apparatus.
 - **Part V — Operate & Extend** (chapters 16–17): running the installed system and extending it without forking core.
-- **Part VI — Governed Processes** (chapter 18): the G1.1 as-built kernel, Gear 3 boundary, management interface, exact package identity, maintainer contracts/runbook, and verified deviations.
+- **Part VI — Standalone Programming** (chapter 18): explicit entry, inspect-first planning, approval, real repository execution, fresh independent review, accepted-slice commits, evidence tools, and Git-native recovery.
 
 Five appendices (A–E) follow the chapters. They are consolidated into this one document rather than split out, so that the source of truth stays in a single place.
 
@@ -1297,102 +1297,37 @@ Every platform-sensitive surface in this subsystem, labeled by evidence. No off-
 
 # Part IV — Supervision & Governance
 
-## 12. Meta-Layer Oversight
+## 12. Meta-Layer Observation and Explicit Project Oversight
 
 ### Problem
 
-Ora runs long analytical projects that unfold over many turns, many days, and many framework invocations. A project is anchored by a Project Evolution Document (PED) — a vault markdown file declaring a Mission Resolution Statement, Excluded Outcomes, Constraints, Milestones, and a Decision Log. Multi-section deliverables are anchored by a corpus template and its instances; multi-framework pipelines by a workflow spec. Nothing in the analytical pipeline itself watches whether the work stays faithful to those anchors.
-
-Without a supervisory layer, four classes of failure accumulate silently, and each is the kind that does not announce itself:
-
-- **Definition drift.** A framework produces output that slowly diverges from the project's Mission or violates an Excluded Outcome. The pipeline emits a deliverable; nothing compares it against the locked definitions the user committed to at project start. The drift is only caught if a human re-reads the PED and the output side by side — which, on a long project, nobody does.
-- **Milestone-claim inflation.** A checkbox flips to complete in a PED. Whether the milestone was actually met is asserted, never verified.
-- **Stale coordination.** A corpus instance goes unpopulated past its cadence; a downstream Output Formalization (OFF) reads sections that were never refreshed; a workflow spec references a corpus template or a PFF/OFF file that has since been moved or deleted. These are dangling-pointer bugs in document space, and like dangling pointers they surface as garbage far from the cause.
-- **Unbounded sinks and homeless housekeeping.** The apparatus itself is append-only: `events.jsonl`, `human-queue.jsonl`, `router.jsonl`, `actions.jsonl`, pipeline traces, `server.log`. They grow without bound. Separately, periodic vault maintenance (orphan cleanup, health audits, daily notes) has no execution home now that the never-installed cron runner is gone.
-
-The meta-layer oversight subsystem is the supervisor that watches for all four. It is the runtime infrastructure beneath the three-layer apparatus described in [[Reference — Meta-Layer Architecture]]: Layer A is [[Framework — Problem Evolution]] (strategic), Layer B is [[Framework — Process Coherence]] (chain coordination, issuing PROCEED / REVISE / ESCALATE verdicts), and Layer C is the policy engine.
-
-One honesty note up front, because it governs how to read the rest of this chapter: at 7a5e8f40 the live Layer-B model-verdict loop is **partial — flag-gated off by default**. The apparatus watches, classifies, bundles context, and logs. It does not, in the installed default configuration, invoke a model to render a verdict or act on one. I will be precise about where that line falls.
+Long-lived projects still need reality-contact signals: a milestone checkbox can change without evidence, a corpus reference can go stale, and a child project's progress may matter to its parent. Those facts justify observation and durable event records. They do not justify an autonomous judgment or transition engine.
 
 ### Design Decision & Tradeoffs
 
-**The decision: an event-driven supervisor, not an inline pipeline check.** Watchers poll file state on an interval and emit typed events onto an in-process bus that also writes a durable JSONL log. A router applies a static routing table and either simulates or invokes Process Coherence, which returns a verdict. Verdict actions are dispatched separately.
+The installed oversight runtime is observational. File events and exact time-caused deadlines feed the existing event bus. `oversight_router.process_event` records an event, suppresses Stealth persistence, prevents fan-out recursion, and may surface a child event to its parent. It never invokes Process Coherence, parses a framework verdict, mutates project state, or dispatches Programming work.
 
-The rejected alternative is the obvious one: put the coherence check *inline* in the analytical pipeline — after each framework run, synchronously call Process Coherence before returning the deliverable. I rejected it for three reasons. First, coupling: an inline check makes every framework execution depend on the oversight model being loaded and responsive; a supervisor that can wedge the thing it supervises is worse than no supervisor. Second, coverage: drift is not only produced by framework runs. A user editing a PED checkbox by hand, a corpus instance going stale by the passage of time, a workflow spec's referent being deleted out from under it — none of these pass through the pipeline, so an inline check never sees them. A file-state watcher sees all of them. Third, the observe-then-act discipline below is only expressible if observation is decoupled from action. The tradeoff I accepted: polling latency (a milestone claim is noticed on the next sweep, not instantly) and the operational surface of a long-running daemon. This is the Unix daemon-plus-log pattern, chosen for the same reason Unix chose it — the observer outlives and is isolated from the observed.
+Process Coherence v5.0 is instead an explicitly invoked project/framework judgment. When a caller chooses it at a boundary configured by Oversight Configuration v3.0, it returns exactly `PROCEED`, `REVISE`, or `ESCALATE`. The caller retains responsibility for any permitted next action. These labels are unrelated to Programming's `CONTINUE`, `FIX`, `DONE`, and `ASK USER` outcomes.
 
-**Live model invocation is default-OFF.** `ORA_OVERSIGHT_LIVE` is unset in the installed configuration, so `process_event` computes `live = False` (`oversight_router.py:112`). The whole apparatus runs as an observer: watchers fire, events flow, context bundles are assembled and validated, and the router records the *would-be* invocation without calling a model. This is deliberate, and it is the single most important fact about the installed system's oversight coverage. The failure mode it prevents is an untrusted autonomous supervisor acting on real projects — issuing REVISE loops or ESCALATE pauses against live work before its verdicts have been validated. The tradeoff is stark and I will not soften it: in the installed default, the A/B/C supervision is observational. No verdict intervenes. The health surface says so out loud (below). The open problem is whether and when to flip the flag; that decision is governed by a working document on the path to autonomous operation, not by anything in this chapter.
-
-**Conversation-as-state, not a persistence layer.** Multi-turn framework elicitation and resolution-chain discussions both need to carry state across turns. The rejected alternative was a session table — a database of in-flight elicitations keyed by conversation. Instead, the conversation transcript *is* the state: each mid-flight assistant turn carries an HTML-comment marker (`<!-- ora-framework: … -->` for elicitation, `<!-- ora-resolution: … -->` for resolution) invisible in rendered markdown but trivially regex-detectable on the next turn. The state is reconstructed each turn by a small-model summarizer reading back over the transcript. The benefit: no schema, no migration, no orphaned-session garbage collection, and the state is human-readable in the very artifact the user is already looking at. The tradeoff: one small-model summarizer call per mid-flight turn, and a hard dependency on marker fidelity — if a marker is stripped or malformed, the flow silently reverts to normal chat. I judged the reversion fail-soft (a dropped elicitation degrades to an ordinary answer, not a crash) and the cost acceptable on local models.
-
-**Cross-project fan-out is asymmetric and observational.** When a child PED declares `parent_nexus`, child events surface on the parent's Decision Log — but only downward, child informing parent, and with no parent-side Process Coherence invocation in v1. The rejected alternative was symmetric bidirectional supervision with the parent actively adjudicating child progress. That is a larger design with recursion and authority questions I chose not to answer yet. The tradeoff: the parent's Decision Log gains visibility into child milestones, but the human still decides whether parent milestones advance. Fan-out records carry an `_oversight_meta: "fan_out"` sentinel (`oversight_relationships.py:76-77`) so the router recognizes and short-circuits them — the recursion guard that prevents a fan-out event from being re-processed as a primary event and fanning out again.
-
-**G1.10 current disposition (2026-07-21): event/deadline runtime.** The interval architecture described in the pinned 7a5e8f40 analysis below is historical. Production `start()` now launches an operating-system file-event lane and a persisted exact-deadline lane. It does not launch the former fast/slow/resources sweep loops, the maintenance scheduler, or the retention sweep. Finalized traces register exact expiry deadlines; daily notes and PED-age reviews use exact time-caused deadlines; corpus diagnostics are explicit campaigns. Legacy lane methods remain callable only through explicit `run_once` compatibility. Runtime health reads actual event/deadline thread liveness, so an idle event listener is not misreported as stale.
+This removes the former `ORA_OVERSIGHT_LIVE` fork, automatic context-to-model route, seven-directive parser, REVISE counter, and verdict-action dispatcher. There is no dormant live mode to enable and no simulated-supervision warning.
 
 ### Implementation
 
-**Entrypoint and current event/deadline daemon.** `start.sh` launches the server with `--oversight`; the daemon singleton starts three threads:
-
-- **File-event lane** (`_event_loop`): `watchfiles` blocks on OS notifications for the vault and Resource inputs, filters `.git`/editor/transient paths, and invokes only event handlers after a write. Exact Resource/Engram writes receive bounded neighborhood processing.
-- **Deadline lane** (`_deadline_loop`): sleeps until the earliest persisted one-shot deadline and wakes only when an earlier contract is inserted. Handler error marks that exact deadline failed; it does not arm a cadence retry.
-- **Watchdog** (`_watchdog`): bounded process supervision checks whether either blocking lane exited and restarts the thread. It grants no content-discovery authority.
-
-**Auto-registration.** `scan_vault_and_register_peds` walks the vault (skipping `Old AI Working Files`, `.obsidian`, `Sessions`) and registers any file with `type: PED` frontmatter (case-insensitive) that is not already pointed at. `scan_vault_and_register_workflows` does the same for files tagged `workflow-spec`, typed `framework` with a `workflow_id`, or named `workflow-spec.md`, walking both the vault and `~/ora/workflows/`. Both are idempotent — only newly-discovered files get a pointer written under `~/ora/data/oversight/<nexus>/` or `<workflow_id>/`.
-
-**The event bus.** `oversight_events.emit` (`oversight_events.py`) normalizes the event dict, stamps a timestamp and — if the thread carries one — a `conversation_id`, appends a JSONL line to `events.jsonl` under a threading lock, then calls each registered handler with exceptions caught so one bad handler cannot break the bus. The router registers itself as the sole handler at daemon start via `install()`, which calls `register_handler(process_event)` (`oversight_router.py:360-363`). There is a stealth-context path: when the server's `_pipeline_stream` marks a thread as serving a stealth-tagged conversation, `emit` sets `stealth: True` and skips the durable write, so stealth conversations leave no on-disk residue while in-process handlers still fire. The module documents the one latent gap honestly: `threading.local` does not propagate to child threads, so an oversight event emitted from a Gear-4 worker thread would not see the stealth flag — no code currently does this, but the comment flags it as a race waiting to happen if that changes.
-
-**The router — the whole safety story.** `process_event` (`oversight_router.py:100-192`) is the fork worth reading first. In order: fan-out audit records are recognized by `is_fan_out_event` and short-circuited to a `fan_out_audit_only` action (recursion guard); `should_route_to_oversight` applies the routing table — `LOG_ONLY_EVENTS` are skipped, standalone events with neither `project_nexus` nor `workflow_id` are skipped, `MilestoneComplete` routes only when `drift_status == "DRIFT_DETECTED"`, and otherwise the event must appear in the `EVENT_TO_PC_MODE` table mapping event type to a Process Coherence mode. Non-routed events are logged and still fan out to a parent if one is declared. Routed events load a context bundle via `oversight_context.load_context`. Then the fork:
-
-- If the bundle failed to load (`not bundle.is_complete`), the action is `context_load_failed` with the load errors recorded.
-- If `not live` (the installed default), the action is `simulated` (`oversight_router.py:158-166`): the bundle is confirmed ready, a note records that live invocation was skipped, and the router returns. No model is called.
-- If live and the Process Coherence framework file is missing, `framework_not_found`.
-- If live, `invoke_process_coherence` serializes the bundle to plain-text framework input (the deliverable truncated to 8000 chars at serialization, `oversight_router.py:306`), runs it through `milestone_executor.execute_framework`, parses a `VERDICT:` line, and hands the verdict to `oversight_actions.apply_verdict`.
-
-Everything from `invoke_process_coherence` onward exists and is unit-tested, but is reached only when `ORA_OVERSIGHT_LIVE=1`. In the installed system it does not run.
-
-**Context bundling.** `oversight_context.py` classifies an event as project-level or workflow-level and loads the corresponding locks: for project events, the PED's Mission / Excluded Outcomes / Constraints, dispatched on the matrix `project_type` (project / operation / passion / incubator), raising `InvalidProjectTypeError` rather than silently falling back on an unrecognized classification; for workflow events, the corpus template's section schema plus the workflow spec's topology. The bundle also carries the deliverable, the claim, a Decision Log excerpt, and a PEF diagnostic-toolkit reference (`pef_toolkit_reference`, `oversight_context.py:90`).
-
-**Verdict actions.** `oversight_actions.apply_verdict` (`oversight_actions.py:87`) dispatches on the verdict label. PROCEED appends a Decision Log entry and resets the REVISE counter for that milestone; on `FrameworkComplete` it records the next framework in the chain, on `CorpusValidated` it flags OFF dispatch, on `ChainPropagationRequired` it records dependent corpora. REVISE increments a per-`(project, milestone)` counter and records a corrective specification — capped at `REVISE_LIMIT = 3` (`oversight_actions.py:42`); the third REVISE force-escalates rather than looping forever, the bounded-retry guard against an infinite correction cycle. ESCALATE appends a Decision Log entry and pushes an entry to the human queue via `oversight_queue.add_entry` (falling back to a direct `human-queue.jsonl` write if the queue module is unavailable). Decision Log writes are lock-protected: `file_lock` (`oversight_actions.py:48-55`) wraps `runtime_paths.locked_file`, a cross-platform advisory lock (`fcntl.flock` on POSIX, `msvcrt.locking` on Windows, `runtime_paths.py:83-134`) on a sidecar `.lock` file, preventing torn writes when concurrent events touch the same PED. Note the drift here against the docs: CLAUDE.md still describes this as an "`fcntl` advisory lock"; the code moved to the cross-platform primitive and removed the top-level `fcntl` import (`oversight_actions.py:25-26`). Trust the code.
-
-**Mechanical runtime and slash commands.** Two mechanical modes bypass the analytical pipeline entirely because they need no model. `corpus_runtime.py` implements the CFF modes `c_instance` (scaffold a fresh corpus instance from a template) and `c_validate` (check section population against the template), emitting `CorpusInstanceCreated` / `CorpusValidated`. The model-driven CFF modes C-Design / C-Modify are **deferred** — the module docstring says so explicitly (`corpus_runtime.py:4-6`); they run through the framework flow, not here. `output_runtime.py` implements the OFF mode `o_render` (corpus instance + bespoke OFF spec → artifact in markdown / HTML / DOCX / PPTX / XLSX); the model-driven OFF modes O-Design / O-Modify / O-Audit are not implemented here (`output_runtime.py:5`) — they run through the gear pipeline via `milestone_executor`, not as mechanical runtime. `slash_commands.py` exposes the mechanical calls to chat — `/instance`, `/validate`, `/render`, plus `/queue`, `/approve`, `/deny` for human-queue management — wired ahead of the framework short-circuit in both `server.py::_pipeline_stream` and `boot.py`.
-
-**Elicitation and resolution.** `framework_elicitation.py` runs multi-turn framework execution as conversation-as-state: `is_continuation` reads the most recent assistant turn for the `ora-framework` marker; `continue_elicitation` makes one small-model summarizer call (sidebar slot) that reads back to the framework start, returns ELICITED / PENDING / ACTION / QUESTION, and either asks the next question (marker re-attached) or produces the final deliverable (marker dropped). The summarizer-failure path is fail-soft: a graceful open question with the marker so the next turn retries. `resolution_chain.py` mirrors this for Paused-queue entries: each turn carries an `ora-resolution` marker with a JSON payload (queue id and current alternative) and ends with a numbered options block (1 approve / 2 deny / optional 3 apply-this-alternative); a `1`/`2`/`3` commits via `redefinition_handler`, anything else continues the discussion.
-
-**Sidebar, queue, health.** The V3 sidebar remains a client-state view whose 12-second HTTP polling is bounded liveness supervision, not maintenance authority. Paused and Operating projections are unchanged. The current health surface reads actual event/deadline thread liveness; retired watcher heartbeat timestamps are ignored while those production lanes are active. The independent MLX worker heartbeat remains bounded process supervision. `telemetry_incomplete` and `simulated_oversight` disclosures remain intact.
+- **Event/deadline daemon.** `oversight_daemon.py` runs the OS file-event lane, persisted exact-deadline lane, and bounded watchdog introduced by G1.10. Time is used only where time is the actual cause; file-caused work runs from its event.
+- **Event bus.** `oversight_events.emit` normalizes and records non-Stealth events, then invokes registered observational handlers without allowing one handler failure to break the bus.
+- **Router.** `oversight_router.py` produces `logged_only`, `fan_out_audit_only`, or `stealth_suppressed`. Fan-out records carry the existing recursion sentinel and cannot fan out again.
+- **Parent visibility.** `oversight_relationships.py` may append one managed child-update derivative to a parent's Decision Log. The parent is informed; no parent-side judgment is invoked.
+- **Durable utilities.** `oversight_actions.py` retains lock-protected managed Decision Log derivatives, reversible privacy/delete support, the existing human queue, and action-log utilities used by active callers. It contains no Process Coherence verdict parser or dispatcher.
+- **Health.** `oversight_health.py` reports actual daemon/thread or telemetry degradation. It no longer reports a configuration-disabled judgment path.
+- **Explicit frameworks.** The canonical behavior of project-level judgment lives in `Framework — Oversight Configuration.md` v3.0 and `Framework — Process Coherence.md` v5.0, not in the event router.
 
 ### Evidence & Verification
 
-**Test suite.** The 14-file oversight suite passes at 7a5e8f40: I ran it and got `326 passed`. This corrects a documentation drift — CLAUDE.md's run-command comment says "293 tests"; 326 is the verified figure at this commit, 293 is stale. Per-file coverage: parsers 44, runtime 26, queue 16, daemon 12 (interval gating, two-lane watchdog stall recovery, generation guards), sandbox 4, workflow-spec sweeper 28 (dedup, dual-gate deregister, tombstone self-heal, episode binding), framework elicitation 31 (marker detection, summarizer parsing, multi-turn, fail-soft), resolution chain 20, maintenance scheduler 20, retention sweeper 16, slash commands 51, multi-mode dispatch 28, cross-project oversight 17, daily_note 13.
-
-**Production liveness.** The 2026-07-04 heartbeat evidence is historical for the pinned implementation. G1.10 replaces it with live event/deadline thread state, persisted event/deadline evidence, and installed-source/cutover receipts. Final live deployment evidence is recorded in the G1.10 closeout package, not inferred from retired heartbeat files.
-
-**What is explicitly not verified.** The live Process Coherence path — `ORA_OVERSIGHT_LIVE=1` — is exercised only by tests with a mocked model. The real model-verdict loop has never run against real projects in production; in the default configuration the router records simulated actions and no live invocations occur. This is the honest boundary of the installed system's oversight coverage: everything up to and including context bundling and simulated logging is live and verified; verdict rendering and verdict-action application are built, unit-tested, and dormant. Separately untested: the Windows `msvcrt` lock path (POSIX `fcntl` is exercised on macOS), path relocation off macOS, and `server.log` in-place truncation off macOS.
+The active tests exercise Stealth suppression, observational routing, fan-out recursion prevention, managed Decision Log derivative preservation/removal, event/deadline liveness, and system-protection boundaries. Runtime behavior—not old routing tables or historical papers—is authoritative.
 
 ### Expert Reading Notes
 
-Read three things first, in this order. **`oversight_router.py::process_event`** for the live/simulated authority fork. **`oversight_daemon.py` plus `runtime_event_dispatcher.py` and `runtime_hygiene.py`** for the production event/deadline topology, idempotent evidence, and rollback contract; the old interval methods are compatibility only. **`oversight_actions.py`** for the bounded REVISE and locked Decision-Log guards.
-
-Highest drift risk, concretely:
-
-- **Test-count and lock-primitive lag in CLAUDE.md.** The run-command comment says 293 tests (actual at 7a5e8f40: 326) and the actions bullet says `fcntl` advisory lock (actual: cross-platform `runtime_paths.locked_file`). Doc lags code on both; trust the code.
-- **Two modules still hardcode roots.** `oversight_context.py:36-37` uses literal `os.path.expanduser("~/ora/")` and `~/Documents/vault/`, and `oversight_daemon.py:40` reads its own `ORA_VAULT_PATH` env var (default `~/Documents/vault/`) rather than `runtime_paths.VAULT` (which keys off `ORA_HOME`/`ORA_VAULT`). The rest of the subsystem flows roots through `runtime_paths`. A relocation via `ORA_HOME`/`ORA_VAULT` will move most of the apparatus but not these two — a real inconsistency to reconcile before claiming clean relocatability, and the most likely source of a "why is oversight reading the wrong vault" bug.
-- **Scope trap.** `scheduler.py` (a config task scheduler) and `job_queue.py` (an async capability-dispatch queue) sometimes appear in this subsystem's file lists. They are not oversight modules — no oversight module imports them. Documenting them here would be a scoping error.
-- **Provisional constants.** The workflow-sweeper deregistration gates (≥3 misses AND ≥10 min, `ORA_WORKFLOW_SWEEPER_MISSING_SPEC_SWEEPS` / `_MIN_SEC`) and the daemon stall thresholds (300s / 7200s) are uncalibrated tuning values, flagged as such and retunable.
-
-On reliability framing, one honest limit: the failure modes each component prevents are named qualitatively above (drift, claim inflation, stale coordination, torn writes, unbounded sinks, lane starvation). There is no instrumented reliability budget — no per-step success rate, no measured mean-time-to-detection. Nothing in the code measures those quantities. If a budget is wanted, it would need instrumentation that does not exist at 7a5e8f40.
-
-### Platform compatibility
-
-Only macOS on Apple Silicon is actually exercised at 7a5e8f40. Everything below labeled anything other than macOS "works" is inference from the code, not an observed run.
-
-- **Data / vault path resolution** (`runtime_paths.py`, `ORA_HOME` / `ORA_VAULT`): macOS = works. Windows-native / WSL / Linux = untested. Paths are built from `expanduser("~")` with `os.path.normcase` and env overrides, designed relocatable, but only run on macOS. Caveat above: `oversight_context.py` and `oversight_daemon.py` bypass `runtime_paths` for the vault root, so relocation is incomplete regardless of platform.
-- **Cross-platform advisory file lock** (`runtime_paths.locked_file`, Decision Log / human-queue writes): macOS = works (POSIX `fcntl.flock`). Linux / WSL = untested but uses the same POSIX `fcntl` path, so expected to behave as on macOS. Windows-native = untested — the `msvcrt.locking` branch exists with a guarded import but has never been run.
-- **Oversight daemon threads** (fast / slow / watchdog): macOS = works. Linux / WSL / Windows-native = untested. Pure Python `threading` + `time` with no OS-specific calls in the loop, so portability is expected, but not observed off-Mac.
-- **Launcher** (`start.sh --oversight` default): macOS = works. WSL / Linux = untested (bash script, expected to run). Windows-native = needs porting — the `.sh` wrapper is POSIX-shaped. The underlying `server.py --oversight` flag (`server.py:14785`) is cross-platform; only the shell wrapper is Mac/POSIX-shaped.
-- **CLI standalone runners** (`python3 orchestrator/*.py`): macOS = works. Windows-native / WSL / Linux = untested. CLAUDE.md hardcodes `/opt/homebrew/bin/python3` (Mac Homebrew); off-Mac the interpreter invocation differs (`py -3` / `python`).
-- **`server.log` in-place truncation** (retention sweeper, `_sweep_server_log`): macOS = works — copy-then-truncate rather than rename, because the Ora.app launcher holds a long-lived `O_APPEND` fd. Linux = untested but the POSIX truncate semantics are expected to hold. Windows-native = needs porting — Windows file-locking semantics on an open, appended fd differ. WSL = untested.
-- **daily_note vault git activity** (`daily_note.py`, `git … core.quotepath=off` subprocess): macOS = works. Windows-native / WSL / Linux = untested. Shells out to `git` (cross-platform invocation) with a stat-scan fallback for non-git vaults, but path handling off-Mac is unexercised.
-- **mlx-worker heartbeat** (health input, `server.py:14816-14825`): macOS Apple Silicon = works (mac-only). Windows-native / WSL / Linux = not applicable — MLX/Metal is Apple-Silicon only. This is a health *input*, so off-Apple-Silicon deployments simply have one fewer heartbeat, not a failure.
-
+Read `oversight_router.py::process_event` for the complete router authority boundary, `oversight_events.py` and `oversight_daemon.py` for event/deadline observation, and `oversight_actions.py` only for its remaining durable utilities. Historical documents that describe automatic Process Coherence invocation, seven directives, Process Runs, or `ORA_OVERSIGHT_LIVE` do not describe the installed system.
 ## 13. Execution-Review Architecture
 
 ### Problem
@@ -1694,7 +1629,7 @@ An install is the one operation that runs before the system it depends on exists
 
 There is a second, more honest problem: Ora has no packaged updater. There is no `.pkg`, no `.msi`, no Sparkle feed, no self-update code anywhere in the tree. "Update" is a `git pull` of the framework library followed by a re-run of the idempotent installer. I state this plainly because CLAUDE.md does not mention the update/recovery subsystem at all and its Commands section shows only `./start.sh` — the recovery surface is under-documented relative to its runtime weight, and pretending an updater exists would be the worse error.
 
-At runtime, three independent things degrade silently. Models and endpoints fail intermittently — a 5xx, a transport error, a local model that will not load — and a router that keeps hammering a broken endpoint just converts one failure into many while burning retry budget. That is **retry-storm-against-a-dead-endpoint**. A pipeline step can produce structurally-wrong output — the cleanup model narrates instead of emitting a cleaned prompt, and the rest of the pipeline runs against the narration — which is **silent semantic degradation**: the user gets a confident wrong answer with no signal. And the oversight daemon can stop beating, or run in a simulated no-op mode, leaving the user believing supervision is active when it is not — **unnoticed-supervision-failure**.
+At runtime, three independent things degrade silently. Models and endpoints fail intermittently — a 5xx, a transport error, a local model that will not load — and a router that keeps hammering a broken endpoint just converts one failure into many while burning retry budget. That is **retry-storm-against-a-dead-endpoint**. A pipeline step can produce structurally-wrong output — the cleanup model narrates instead of emitting a cleaned prompt, and the rest of the pipeline runs against the narration — which is **silent semantic degradation**: the user gets a confident wrong answer with no signal. And the observational daemon can stop beating, leaving event/deadline liveness unreported — **unnoticed-observer-failure**.
 
 Finally, Ora is macOS-Apple-Silicon-first. Unguarded Homebrew-Python shebangs, `os.fork` detach paths, bash-subprocess index regeneration, and an MLX-Metal heartbeat all break on a Windows-native port — and they break *quietly* unless something enumerates them. That is **silent-Mac-assumption-breaks-the-port**.
 
@@ -1724,7 +1659,7 @@ The alternative I rejected is a transactional installer that rolls back every fi
 
 **Per-thread pipeline warnings.** `orchestrator/pipeline_health.py` stores warnings in `threading.local()` (`pipeline_health.py:32`) because each chat request runs on its own Flask worker thread and warnings must not bleed across concurrent turns. A pipeline step calls `record(category, message, **extra)` (`pipeline_health.py:35`); the chat handler calls `collect_and_clear()` (`pipeline_health.py:50`) at turn end and `format_warnings_as_chat_note()` (`pipeline_health.py:62`) to build the `> ⚠️ **Pipeline-execution warning**` banner. The concrete producer is `parse_step1_output` in boot.py (`boot.py:5753`), which records `phase_a_parse_failed` (`boot.py:5806, 5818`) when neither `### CLEANED PROMPT` heading is found in the cleanup model's output — the exact silent-semantic-degradation case the module was added to close (path S3, per its docstring). The drain is wired at `server.py:6143` importing `collect_and_clear`.
 
-**Oversight heartbeat surface.** `orchestrator/oversight_health.py` reads each watcher's `<name>-heartbeat.json` under `data/oversight/` and flags staleness. `HEARTBEAT_INTERVALS` (`oversight_health.py:36-48`) lists `ped_watcher:60`, `corpus_watcher:60`, `workflow_spec_sweeper:300`, `revisit_sweeper:3600`, `retention_sweeper:21600`, `maintenance_scheduler:3600`, and `mlx_worker:30`. `STALE_MULTIPLIER = 2` (`oversight_health.py:50`): a heartbeat older than twice its interval is stale. A subtle correctness fix lives in `heartbeat_path` (`oversight_health.py:53-61`): watcher writers use dash-separated filenames while the interval keys are underscored Python module names, so the reader does `watcher_name.replace("_", "-")` (`oversight_health.py:60`); the in-code comment records that the missing conversion previously made `check_health()` read `None` for every watcher and unconditionally report `daemon_down`. `check_health()` (`oversight_health.py:88`) skips watchers whose heartbeat file is absent (`beat_at is None` → `continue`, `oversight_health.py:114-115`) — a missing file is ambiguous (early startup or never-ran) and is deliberately *not* a warning. It emits `stale` per overdue watcher, one overall `daemon_down` (`oversight_health.py:138`) when nothing has beaten recently, `telemetry_incomplete` (`oversight_health.py:166`), and — gated on `os.environ.get("ORA_OVERSIGHT_LIVE") != "1"` (`oversight_health.py:184`) — a `simulated_oversight` note (`oversight_health.py:187`) telling the operator supervision verdicts will not intervene. `server.py:6128` imports `check_health`/`format_warnings_as_chat_note`; `server.py:14822` starts the MLX worker heartbeat (`mlx_mutex.start_heartbeat(interval_seconds=30.0)`), which is the sole producer of the `mlx_worker` beat and exists only on Apple Silicon.
+**Oversight heartbeat surface.** `orchestrator/oversight_health.py` reads watcher heartbeat state under `data/oversight/` and reports actual staleness, daemon liveness failure, and incomplete tool-event telemetry. Missing legacy heartbeat files remain ambiguous and do not manufacture a warning. The former `simulated_oversight` warning was removed with the automatic Process Coherence route; there is no live-mode flag to enable.
 
 **Diagnostics.** `scripts/ora-test` POSTs a prompt to the running `/chat` server under a *named saved configuration* (`--config NAME`, resolved from `config/configurations/<name>.json`) without touching the active config, streams SSE stages, prints the pipeline-trace path, and joins `cost-summary.json` for an inline cost table. `--no-wait` detaches via `os.fork()` → `os.setsid()` → `os.dup2` of `/dev/null` onto fds 1/2 (`ora-test:109-127`) so the run outlives the CLI — POSIX-only by construction. `scripts/ora-cost-summary` computes per-model and grand-total token cost by joining `usage.jsonl` against `model-registry.json` pricing via `boot.compute_cost_summary` (`boot.py:13254`); `--latest` picks the newest turn dir, `--write` persists `cost-summary.json`. Both scripts hardcode `#!/usr/bin/env /opt/homebrew/bin/python3`. **There is no instrumented reliability budget here** — cost is measured (token counts joined against a pricing table), but there is no success-rate, per-step-failure, or uptime metric anywhere in this subsystem; where a budget would be useful, nothing measures it.
 
@@ -1919,373 +1854,119 @@ The convention assumes POSIX. MSI exercises macOS (development) and Linux (the c
 
 ---
 
-# Part VI — Governed Processes
+# Part VI — Standalone Programming
 
-## 18. G1.1 Governed Process Kernel and Management Interface
+## 18. Explicit Repository Programming
 
-### Scope and implementation pin
+### Problem
 
-This chapter is the as-built G1.1 technical and maintainer reconciliation. It describes `/Users/oracle/ora-msi-central-routing` at commit `5bcba5027dc64dad878cb79a37c845a2de492d1d`, after the accepted Part 1 kernel proof, Part 2 management-interface gates, and Gate 3.3 browser plan workflow. It supersedes conflicting governed-process claims in Chapters 5, 12, and 13; it does not re-audit unrelated subsystems still pinned to `7a5e8f40`, and it does not pre-empt G1.2's separately owned full Gear 1/2/3 pipeline specification.
+A user must be able to ask Ora to change a real repository without depending on Codex or Claude Code, while retaining a clear scope decision, actual execution, independent verification, safe recovery, and an intentional Git finish line.
 
-The shipped contribution is one generic governed-process kernel, not a Programming controller. Its four root object families are Process Definition, Process Run, Artifact, and event/transition record. Plans, authority, artifact scope, evidence, bounded judgments, correction, continuation, recovery, and stop/escalation remain attached contracts. Models perform bounded judgment inside declared nodes. Process Coherence selects only among declared routes; the runtime validates and applies the resulting directive mechanically.
+The former governed-process stack did not supply this simply. It intercepted Inquiry, persisted plans and Runs, projected lifecycle state, and accumulated registries, automation, triggers, inspectors, receipts, and event records around a repository executor. Standalone Programming replaces that stack with the smallest complete loop.
 
-### Architecture and Gear 3 boundary
+### Entry and planning
 
-```mermaid
-flowchart LR
-    U["Five public entry surfaces"] --> R["process_entry_routing"]
-    R -->|ordinary or legacy framework| B["Existing boot.py Gear pipeline"]
-    R -->|construct| I["Management interview"]
-    I --> P["Canonical plan and exact approval"]
-    P --> D["Delegated graph execution"]
-    R -->|exact Process Library invocation| D
-    D --> K["GovernedProcessRuntime"]
-    K --> X["Artifacts / evidence / attempts / checkpoints / receipts"]
-    X --> Q["Independent PASS / FAIL / BROKEN observation"]
-    Q --> C["Process Coherence"]
-    C --> T["Mechanical seven-directive transition"]
-    T --> K
-    K --> V["Attention / Inspector / Library / lifecycle"]
-```
+Programming is entered only through the Programming toolbar action. Ordinary `/chat` and `/chat/multipart` requests continue through Inquiry without programming classification or interception. Programming is not a framework-picker row.
 
-The existing Gear 3 and Gear 4 analytical paths remain in `orchestrator/boot.py`. F-Quality Gate returns a local `PASS`, `FAIL`, or `BROKEN` observation. A governed Run changes state only through `PROCEED`, `ACCEPT`, `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, or `BLOCKED`. `ACCEPT` is final-only and requires a current persisted `PASS` review bound to the exact result Artifact ID and digest. Repository completion additionally requires a successful completed attempt whose evidence and mutation lineage bind the current repository composite identity. Attempt exhaustion, a broken reviewer, or a generic event never releases a result.
+`POST /api/programming/plan` accepts an objective, absolute Git worktree path, question round, and prior answers. `orchestrator/programming.py::inspect_repository()` resolves the repository root and reads:
 
-No Gear 3.5 or coding-specific pipeline exists. Programming is `ora/programming@2.0.1`, a 40-node Process Definition with four entry contracts over the generic kernel. Its vault canonical and runtime body mirror carry the issued digest `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`.
+- current `HEAD`, branch, and porcelain status;
+- applicable `AGENTS.md` and `CLAUDE.md` instructions;
+- tracked implementation shape;
+- likely test files; and
+- visible CI or live automation configuration.
 
-### Contracts, storage, and exact identity
+The configured planner must then successfully read or search actual repository content; the coordinator snapshot and repository status alone do not unlock either questions or a plan. Only after that direct inspection does it decide whether a material choice remains. It may return one to three questions in each of at most two question rounds. If both rounds ask questions, a third planning pass must produce one concise plan using reasonable defaults.
 
-`orchestrator/process_contracts.py` defines `ora.process-contracts/1.0`, `ora.process-graph/1.0`, and `ora.process-package/1.0`. The validators enforce the four object families, graph-node grammar, seven directive/state pairings, final-only acceptance, artifact scope, bounded action grants, reserved-action separation, evidence requirements, correction bounds, continuation/recovery, and typed escalation.
+The returned plan visibly contains outcome, component scope, non-goals, protected work, milestones, completion criteria, checks, authorized effects, and one Git finish line; the coordinator rejects a proposal missing any category. A push, pull request, or merge also names an exact configured remote and its single push URL, while pull request and merge name an explicit base branch. The response carries those authorities plus the inspected root, commit, branch, and dirty state as runtime input, not a persistent plan ledger.
 
-`orchestrator/governed_process_runtime.py` stores each Run under `ORA_PROCESS_RUNS_DIR` or the runtime data default. The definition and current Run are validated JSON; event/transition records are append-only JSONL; Artifacts are independently validated JSON. Creation accepts only initial states. Terminal Runs reject later action, attempt, and artifact mutation except the one explicitly safe deterministic child-return record. Generic `record_event` is observation-only; lifecycle, action, attempt, artifact, review, checkpoint, recovery, invocation, return, infrastructure, and other authoritative families are reserved for validated methods.
+### Approval and repository authority
 
-`orchestrator/process_definition_registry.py` stores exact registered definitions under `ORA_PROCESS_DEFINITIONS_DIR` or `data/process-definitions`. Each version has a registry envelope and an independently stored registration anchor. Normalized-JSON definitions must recompute their issued digest through `process_definition_content_digest()`; the Programming definition separately preserves its accepted complete-canonical-body identity while authenticating stored content. Resolution and listing fail when the definition body, envelope digest, anchor, version, or issued digest is substituted.
+`POST /api/programming/run` requires `approved: true`, the objective, repository path, and exact proposed plan. Before mutation, the coordinator verifies the repository root, `HEAD`, and dirty state against the planning baseline. Dirty paths already present at planning may proceed only when the approved plan names them; other drift returns `ASK USER` before branch creation. On recovery, plan-named uncommitted paths proceed to independent review, but any ambiguous path returns `ASK USER` with all work preserved. Any worktree change appearing between accepted milestones also returns `ASK USER` without being staged or committed.
 
-The Programming package manifest remains embedded in the immutable canonical. It binds package `ora/programming@2.0.1`, the definition reference, entry member, canonical locator, complete body, embedded kernel projection, and the same issued digest. Phase 3.1 does not mint a cosmetic replacement package.
+The coordinator creates `ora/<objective-slug>-<baseline>` and owns all Git effects. The executor receives repository-scoped tools for read, search, command, write, edit, and delete. Paths are resolved under the worktree and `.git` is inaccessible. Planning commands are read-only. Executor commands cannot perform coordinator Git operations, external network commands, destructive utilities, publication, deployment, messaging, or credential work.
 
-### Capability inference, construction, and invocation
+The executor receives the approved plan and current milestone, edits the real worktree, and runs meaningful local checks. Work is divided into coherent reviewable milestones rather than mechanical steps.
 
-`orchestrator/process_capability_discovery.py` queries tools, skills, frameworks, registered Process Definitions, and solution patterns rather than asking the user to inventory inspectable resources. It classifies each operation as inspection or mutation. A controlled probe persists an immutable Run/definition/plan/pre-state/capability/action/selector/recovery/ceiling/stop contract before acting. Attempts, replay, and active stops come from persisted state. Inspection executes through a deny-default boundary that prohibits writes, network use, process signalling/control, and other undeclared host mutation channels. Mutation requires exact pre-state, checkpoint, authority, post-state, receipt, evidence, and runtime-issued execution ordering.
+### Fresh independent review
 
-PIF may operate an inferable procedure only inside its originating governed Run. PFF is required before durable registration, activation, cross-Run invocation, promotion, or definition replacement. PEF is contingent: the Phase 1.7 proof uses it only where a second interim goal genuinely depends on evidence from the first; an ordinary inferable case bypasses it.
+Every review is a new model call. Its context contains only:
 
-The minimal Process Library in `orchestrator/process_library_lifecycle.py` resolves exact approved or active registered definitions with project/universal scope and package/lifecycle metadata. Public Dialogue invocation currently supports a bounded generic shape: a non-external action entry followed by an exact verification boundary. It validates the definition input schema, binds Dialogue, project, objective, request context, exact definition reference, and entry contract to a deterministic Run, captures the exact persisted output bytes, and records result/evidence lineage. Retry and restart return the same Run/result without model re-execution. The result remains pending independent acceptance; invocation cannot manufacture `ACCEPT`.
+- the approved plan;
+- current milestone or `FINAL`;
+- runtime Git baseline;
+- raw task diff; and
+- repository and task-required evidence tools.
 
-### Management interface
+It does not contain the executor transcript, hidden reasoning, a summary, or executor claims. The reviewer independently reads repository files and runs relevant existing or plan checks.
 
-The five entry surfaces are the Inquiry path, the Programming/Build action, the shared framework/process picker, the Process Library, and direct natural-language invocation. `orchestrator/process_entry_routing.py` distinguishes ordinary generation, exact capability invocation, capability construction/modification, and activation. Construction always requires visible project confirmation. Capability names used as documentation subjects, examples, or comparison targets remain ordinary generation; a named capability acting as operator routes to invocation. Inactive, stale, forged, unavailable, and out-of-scope exact references fail closed.
+Reviewer-only tools provide read-only outside and non-text evidence:
 
-`orchestrator/process_management_interview.py` binds one Dialogue to the governing Run and asks only unresolved questions across intended result, affected parties, inputs/outputs, reuse, initiation, authority, exceptions, permissions, evidence, and stopping. Vague objectives and nonanswers do not advance. Answers bind the exact question and idempotency identity; retry after partial persistence returns the recorded answer instead of consuming the next question. Temporary framework calls return to the same governing interview.
+- `web_search` and `web_fetch` inspect the smallest sufficient authoritative outside source;
+- `inspect_image` attaches image bytes directly to the review model; and
+- `inspect_pdf` renders all pages by default, or an explicitly requested page range, in a temporary directory and attaches those page images.
 
-`orchestrator/process_plan_approval.py` produces one `ora.plan-execution-contract/1.0` with Principal and Technical projections. The projections are views of the same digest, not competing plans. `plan:in-planning` and `plan:approved` persist in a separate authenticated Dialogue lifecycle field, leaving the privacy tag unchanged. Approval binds the exact plan and receipt and exports the execution contract to the confirmed project.
+Temporary PDF renders are deleted when inspection returns. A citation or executor description without source inspection is not evidence, and a description of an image or PDF without direct inspection cannot satisfy a non-text criterion.
 
-`orchestrator/process_delegation_attention.py` grants only the approved target selector and reports `target_mutation_authorized` only when the exact current node, operation, external-effect flag, repository locator/identity, and node-local checkpoint make the mutation mechanically executable. Initial execution and bounded correction require the same pre-state, authorization, post-state, receipt, and action ordering. Remote Git, activation, publication, messaging, and other reserved effects are not implied by local reversible target authority.
+The review parser accepts exactly four first-line outcomes:
 
-Pending, Unread, and Automated Processes are authenticated projections, not state stores. The Run Inspector (`orchestrator/process_run_inspector.py` plus `server/static/js/process-run-inspector.js`) provides Overview, Plan, Current State, Decisions, Changes, Evidence, Permissions, Artifacts, and Technical views. Governed human and graph decisions are projected from authoritative records. Repository changes follow the approved locator and mutation lineage; multiple unbound targets fail closed instead of selecting the newest Artifact globally.
-
-Run closeout is an explicit Promote, Preserve, Archive, or Discard disposition. Its idempotency key is a bounded digest of the exact Run, disposition, and promotion identity, so slash-containing and long valid Run IDs remain closable and replay-safe. The Programming-to-Build label gate requires authenticated construct-node completion, runtime-issued registration lineage, and exact later invocation of a non-Programming definition; out-of-band registration plus copied artifacts cannot unlock it, and the user still chooses the label.
-
-### Code and API map
-
-| Surface | As-built responsibility |
+| Outcome | Coordinator action |
 |---|---|
-| `orchestrator/process_contracts.py` | Schemas and machine validation |
-| `orchestrator/governed_process_runtime.py` | Run state, graph advancement, authority, Artifacts, evidence, effects, recovery, call/return |
-| `orchestrator/process_definition_registry.py` | Exact version/content registration, independent anchors, listing/resolution |
-| `orchestrator/process_capability_discovery.py` | Capability queries and controlled probes |
-| `orchestrator/process_entry_routing.py` | Entry classification and exact capability selection |
-| `orchestrator/process_management_interview.py` | Dialogue-bound persistent interview |
-| `orchestrator/process_plan_approval.py` | Canonical plan, projections, approval, export, lifecycle binding |
-| `orchestrator/process_delegation_attention.py` | Delegated repository effects and attention projections |
-| `orchestrator/process_run_inspector.py` | Nine authenticated inspection views |
-| `orchestrator/process_library_lifecycle.py` | Library, lifecycle, label gate, exact public invocation |
-| `server/app.py` | `/chat`, multipart, and governed-process API integration |
-| `server/static/js/process-entry.js` | Programming/Build entry, project confirmation, Process Library |
-| `server/static/js/process-plan-review.js` | Principal/Technical plan review, five authenticated plan actions, later delegation, reload/stale/failure state |
-| `server/static/js/sidebar-oversight.js` | Pending/Unread/Automated attention surfaces |
-| `server/static/js/process-run-inspector.js` | Modal Inspector, authority, lifecycle disposition |
+| `CONTINUE` | Accept and commit this sound slice, then proceed to remaining milestones. |
+| `FIX` | Return one consolidated substantive defect explanation to the executor and re-review the corrected diff. |
+| `DONE` | During final cumulative review, perform the approved finish line. |
+| `ASK USER` | Stop for changed scope or authority, human-only access or decision, unsafe user work, repeated no-progress, or the soft spend boundary. |
 
-The public endpoints are `/api/process-entry/route`, `/api/process-entry/construction-label`, `/api/process-interview/<dialogue>`, `/api/process-plan-context/<dialogue>`, `/api/process-plan/<dialogue>`, `/api/process-delegation/<dialogue>`, `/api/process-attention`, `/api/process-library/entries`, `/api/process-runs/<run>/inspector`, `/api/process-runs/<run>/authority`, and `/api/process-runs/<run>/lifecycle`, plus the governed branches of `/chat` and `/chat/multipart`.
+The reviewer judges only the approved plan. It may reject wrong user-visible behavior, unmet criteria, content or data loss, runtime failure, unauthorized scope, broken atomicity, or lost user work. It may not add tracking, preferred abstractions, speculative safeguards, style work, or unrequested requirements.
 
-### Defaults, authority, and operational limits
+### Commits, correction, and finish line
 
-Programming's graph bounds correction at 12 iterations; the generic runtime default is read through `correction_policy_defaults()` and a definition/Run may set the validated bound. A hard limit stops churn but does not diagnose the failure class or force escalation. Storage roots are configurable through `ORA_PROCESS_RUNS_DIR` and `ORA_PROCESS_DEFINITIONS_DIR`. Project identity is mandatory for construction and public library invocation. No feature flag creates a second runtime; legacy analytical generation continues normally when entry routing selects it.
+After `CONTINUE`, the coordinator applies the exact reviewed patch to a temporary index, creates the accepted-slice commit with `commit-tree`, advances the attached task branch atomically, and refreshes only the committed paths in the real index. Concurrent work remains unstaged and uncommitted. Rejected work remains uncommitted until corrected. At `FINAL`, only `DONE` completes the task. Any final correction is reviewed against the cumulative diff from the original baseline.
 
-Authority is explicit by action and resource selector. Construct, test, register, invoke, activate, local mutation, local Git, remote Git, and external effects are separate. Describing an action never grants it. Destructive or remote effects require their own typed authority and receipt. Repository work preserves pre-existing changes by capturing a content-complete composite identity and refusing ambiguous or fabricated inline substitutes.
+Two consecutive review cycles that reproduce the same substantive failure without a changed tree return `ASK USER`. There is no fixed attempt ceiling. The default soft boundary is 90 minutes.
 
-G1.1 does not ship broad trigger management, autonomous scheduling, a marketplace, analytics, automatic optimization, or unrestricted external-effect execution from public library invocation. Leave-and-return means durable restart-safe state and quiet attention semantics; it does not mean an Agent daemon continues inventing work. Non-macOS behavior for these new surfaces remains unverified in the G1.1 gate evidence.
+Supported finish lines are `local_commits`, `push`, `pull_request`, and `merge`. Before a consequential finish, runtime rechecks the approved remote's single push URL and refuses drift. It pushes only that remote; `gh` is explicitly bound to the repository derived from the approved URL and to the approved PR base. Before PR creation it queries that repository for the task branch, rejects cross-repository results, and reuses one matching open PR. An already merged PR completes a retry only when its head OID equals local `HEAD`; an open or new PR is merged with `--match-head-commit` bound to that same commit. Target mismatches, closed PRs, and ambiguous matches are refused. This makes create/merge retries idempotent without custom state. Newly discovered deployment, publication, messaging, credential, or other external-write consequences return `ASK USER` rather than expanding authority.
 
-### Verification evidence and design deviations
+### State, rollback, and user surface
 
-The owning automated suites are `test_process_contracts.py`, `test_governed_process_runtime.py`, `test_phase_1_5_governed_sources.py`, `test_phase_1_6_programming_definition.py`, `test_phase_1_7_kernel_trials.py`, and `test_phase_2_1_entry_routing.py` through `test_phase_2_8_experience_validation.py`. DOM coverage is in `test-process-entry.js`, `test-process-attention.js`, `test-process-run-inspector.js`, and `test-process-surface-boundaries.js`. The accepted gates independently reproduced the focused and adjacent suites, stored-definition substitution attacks, repository-acceptance attacks, wrong-node effects, Dialogue persistence failures, long/slash Run lifecycle retries, false construction witnesses, and exact public invocation restart.
+Git is the execution state:
 
-The principal deviations from the early design are beneficial constraints: one generic kernel replaced the proposed outer Programming controller; bounded judgment replaced Agent classification; seven directives replaced the five-verdict table; F-Quality observations no longer ship; PEF became contingent; the Inspector landed as a modal; Programming was regenerated as one 2.0.1 canonical plus exact mirror; and Build remained an explicit post-proof label choice. The conceptual/public guide and user guide are accepted, and the remainder of this chapter is the accepted Phase 3.4 maintainer reference. Phase 3.5 supplied the rendered interface and final closeout packet without changing runtime behavior. The full Gear 1/2/3 specification and broad activation/trigger UX remain outside G1.1.
+- the baseline commit proves the starting point;
+- the task branch isolates the work;
+- accepted-slice commits are rollback points;
+- the current diff shows unaccepted correction work; and
+- checks prove current behavior.
 
-### Maintainer object and storage reference
+No Programming Run, artifact, event, receipt, lifecycle, checkpoint, trigger, automation, process-library, or recovery database exists. Resume uses the approved plan, branch, commits, diff, and checks.
 
-The four root object families and their persistence duties are deliberately small. Treat every stored identity as authenticated data, not as an advisory label.
+`server/static/js/programming.js` supplies the minimal browser surface: repository path, planning status, material questions, proposed plan, approval/cancel controls, milestone progress, accepted commit identifiers, reviewer outcomes, genuine user decisions, and completion. The run endpoint streams newline-delimited JSON so the surface updates while the coordinator works. Closing the panel returns to ordinary Inquiry.
 
-| Object | Authoritative content | Persistence and safe-reading rule |
-|---|---|---|
-| Process Definition | exact ID, version, issued digest, graph, attached contracts, input/output and package bindings | Register once through `ProcessDefinitionRegistry`; always resolve the exact triple; never edit a stored version or select “latest” |
-| Process Run | exact definition reference, graph position, state, sequence, attempt, scope, authority and relationships | One storage-keyed directory containing `run.json`, `definition.json`, `records.jsonl`, and `artifacts/`; load through `GovernedProcessRuntime`, which validates and replays records after the materialized sequence |
-| Artifact | locator, role, media/identity scheme, digest, lineage and optional repository composite | Load through the runtime and require the latest authoritative `artifact_recorded` identity to agree; an ID, filename, or inline string alone is not proof |
-| Event/transition record | append-only sequence, type, payload, time and hash-chain predecessor | Authoritative families are emitted only by dedicated validated methods; generic `record_event` accepts observations only |
+The old management interview, Principal/Technical plan projections, Process Library, Trigger Manager, Run Inspector, automation controls, process-attention groups, and automatic entry router are not compatibility surfaces.
 
-`create_run()` accepts only `created`, `awaiting_plan_approval`, or `ready`; lifecycle advancement is persisted as records. `completed`, `blocked`, and `cancelled` are terminal and reject later action, attempt, or Artifact mutation. The sole narrow exception is one deterministic child-return record whose exact identity and acceptance lineage have already been validated. A Run snapshot ahead of its record log, a malformed record sequence, a changed Artifact body, or an unavailable exact definition is corruption, not a cue to guess or repair in place.
+### Model and capability boundaries
 
-The contract schema is `ora.process-contracts/1.0`; the graph schema is `ora.process-graph/1.0`; the package schema is `ora.process-package/1.0`. The root families are joined by nine attached contracts: approved plan, authority, Artifact scope, bounded judgment, evidence, correction loop, continuation, recovery, and stop/escalation. When changing a contract, update its schema validator, contract-set cross-validator, runtime consumer, negative tests, and this reference together.
+Planning, execution, and review use Ora's configured model endpoints. Endpoints whose transport or identity is Codex, Claude Code, or `claude_code` are rejected. A vision-capable configured slot is preferred for review so direct image/PDF inspection remains available; separate model families are preferred when configuration permits but not required.
 
-### Judgment-step configuration
+Programming preserves Ora's ordinary external and multimodal capabilities. Removing the former process stack does not remove `execution_packet.py`, `execution_families.py`, browser/runtime/render/vision support, audio/video processing, PDF handling, or ordinary Inquiry.
 
-A bounded judgment is configuration, not a free-form model role. Its load-bearing fields are `judgment_id`, `node_id`, `verified_circumstances`, `question`, permitted conclusions/directives/actions, authority-grant IDs, Artifact selectors, required-evidence IDs, evaluator boundary, stop conditions, exact return node, and declared escalation request types.
+### Verification
 
-The cross-contract validator enforces the important joins: every grant and evidence ID exists; permitted actions fit the referenced grants and do not overlap reserved actions; selectors stay inside both the grant and Artifact scope; and judgment escalation types are declared by the stop/escalation contract. At runtime the current graph node, evaluator boundary, evidence, authority, and target route are revalidated. Adding a word to a prompt cannot enlarge authority. A new judgment action therefore needs an explicit non-reserved grant and selector, an allowed graph operation, evidence, a declared transition, and adversarial tests showing neighboring authority remains unavailable.
+Focused proofs cover:
 
-Evidence requirements declare the claim, method, producer independence (`same_step`, `independent_step`, or `external`), Artifact selectors, freshness, and whether the item is required. Acceptance is either `all_required` or a declared threshold. Stale evidence follows its declared `invalidate`, `recapture`, or `escalate` policy; it is never silently current.
+- repository inspection before questions, including instructions, tests, Git, and automation;
+- the two-round and three-question limits;
+- one approvable plan;
+- real edits and tests in a disposable Git repository;
+- fresh review without executor claims;
+- task-branch creation and accepted-slice commits;
+- baseline drift returning `ASK USER` before mutation;
+- an unsupported executor completion claim never producing `DONE`;
+- independent outside-source retrieval;
+- direct image bytes reaching the reviewer; and
+- rejection of Codex and Claude Code transports.
 
-### Graph grammar and safe graph changes
+Browser tests prove Programming starts inactive, activates only from its toolbar event, plans only after explicit submission, waits for approval before `/api/programming/run`, displays milestone/review progress, and returns a concise terminal message.
 
-The graph node kinds are `action`, `sequence`, `parallel_branch`, `join`, `decision`, `bounded_loop`, `verification_boundary`, `human_checkpoint`, `process_call`, `process_return`, and `terminal_state`. Validation rejects unknown or extra kind-specific fields, duplicate IDs or route conditions, missing references, mismatched parallel/join branch sets, missing terminal states, and unreachable nodes.
-
-| Kind | Maintainer obligation |
-|---|---|
-| action | Bind operation, next node, authority grants, Artifact access, evidence requirements, and authoritative `external_effect`; node-bound effects cannot fall through a generic action path |
-| sequence / parallel_branch / join | Keep exact destinations and branch/join membership coherent; add traversal proof for all entry contracts |
-| decision | Declare every condition and destination; route only from authenticated decision state |
-| bounded_loop | Declare bound, body, exit, and progress/correction behavior; exhaustion cannot imply acceptance |
-| verification_boundary | Provide routes for all seven directives and keep observation (`PASS`/`FAIL`/`BROKEN`/`INDETERMINATE`) separate from directive |
-| human_checkpoint | Declare authority request type plus approved, denied, and unavailable destinations |
-| process_call / process_return | Bind exact child definition, inputs/outputs, return node and error route; preserve exact child acceptance lineage |
-| terminal_state | Make terminal status agree with the directive; only a final accepted target may complete |
-
-To change a graph, edit the vault canonical first, validate all entrypoint traversals, recompute the canonical content identity, mint a new semantic version when the issued body changes, regenerate the runtime mirror and Registry entry, and add negative reachability tests. Never change a graph while retaining an issued definition digest. Programming `2.0.1` is immutable; a semantic change requires a later version rather than an in-place patch.
-
-### Transition routing and correction
-
-The runtime recognizes seven directives with exact target-state semantics:
-
-| Directive | Target state | Meaning |
-|---|---|---|
-| `PROCEED` | `running` | Follow a declared successful intermediate route |
-| `ACCEPT` | `completed` | Final-only release with a current persisted `PASS` review bound to the exact result |
-| `REVISE` | `running` | Correct within the current approved plan/definition and correction bound |
-| `REPLAN` | `pending` | Return for a new plan; reset the attempt counter |
-| `REDEFINE` | `redefining` | Replace the Process Definition and resume only at a persisted path-legal destination |
-| `ESCALATE` | `waiting_for_authority` | Request a declared human authority type; never generic redefinition |
-| `BLOCKED` | `blocked` | Stop at a blocked terminal with no release |
-
-Failure classification is also mechanical: execution defects route to `REVISE`, plan defects to `REPLAN`, definition defects to `REDEFINE`, authority gaps to `ESCALATE`, and unsafe external state to `BLOCKED`. Infrastructure retry is an event, not a quality verdict. Correction defaults are three attempts, progress evidence required, and a repeated-defect limit of three unless a validated definition/Run supplies another bound. No-progress policy cannot manufacture `REVISE`, and exhaustion never manufactures `ACCEPT`.
-
-### Parent-child continuation and recovery
-
-A parent may invoke a child only while `running` at a `process_call` node, with exact child definition identity, authorized `invoke_process`, validated input bindings, and a parent checkpoint naming the exact return node. The parent becomes `pending`; the child stores parent, invoker, and return relationships. A return is accepted only after the child has a persisted final `ACCEPT`, result-role output Artifacts bound to the child definition, current required `PASS` reviews, and exact Artifact ID/digest acceptance evidence. The runtime records the return once, detects collision, drift, and reuse, resumes the parent at the persisted `process_return` destination, and never replays child mutations.
-
-Recovery begins from a persisted checkpoint. Every post-checkpoint external-effect receipt must still match the digest recorded with that effect. Revalidation evidence is recaptured as declared. Replay policy is one of `never_replay_effects`, `idempotent_only`, or `receipt_guarded`; `resume_run()` itself uses `replay_mutations=False`. If the external world may have changed and proof is absent, return `ESCALATE` or `BLOCKED`. Never “retry” an uncertain mutation merely because local state rolled back.
-
-### Evidence, identity, packages, and catalogs
-
-Identity precedence is: authenticated bytes/state plus their digest and lineage, then exact issued reference; labels and locators are selectors only. Repository results use a content-complete composite identity for the approved repository locator. Final review evidence must name the exact subject Artifact ID and digest, and repository acceptance additionally requires a successful completed attempt bound to the current repository composite. An unrelated inline/hash-chain Artifact cannot authorize repository completion. External effects require the exact pre-action checkpoint, runtime-issued authorization, authenticated post-state, receipt, action record, and node-local ordering.
-
-A Process Package binds an exact definition reference and unique member locators. Member roles are `process_definition`, `instruction`, `script`, `template`, `test`, `schema`, and `resource`; the entry member must be the Process Definition and its digest must match. Changing any issued semantic member or canonical body requires a new package/definition identity.
-
-Do not merge the two catalogs by assumption. `ProcessDefinitionRegistry` is immutable exact ID/version/digest storage for governed execution. The legacy framework-invocability catalog is a named-framework search and ordinary-generation surface. Process Library projects exact registered definitions plus its Programming seed. Semantic search results are not exact governed bindings, and creating a mirror or duplicate catalog entry merely for symmetry is prohibited.
-
-Normalized-JSON definitions authenticate their declared issued digest with `process_definition_content_digest()` at registration, reading, resolution, and listing. Stored entries use `ora.process-definition-registry-entry/1.0`; independent read-only anchors use `ora.process-definition-registration-anchor/1.0`. The accepted Programming definition uses its complete canonical-body digest, preserving `sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927`, while its storage envelope and independent anchor authenticate storage. If body, envelope, anchor, reference, or issued digest disagrees, quarantine the entry and recover from the canonical; do not recompute adjacent metadata to bless the substitution.
-
-### Lifecycle and version binding
-
-Every active Run remains pinned to its exact definition and schema. The management interview uses `ora.management-interview/1.0`; Dialogue has an immutable `ora.dialogue-process-binding/1.0` governing-process binding. The canonical execution plan uses `ora.plan-execution-contract/1.0`. Plan lifecycle is a separate `ora.dialogue-plan-lifecycle/1.0` field with only `plan:in-planning` and `plan:approved`; it never overwrites the Dialogue privacy designation. Approval uses `ora.programming-plan-state/1.0` and binds the exact plan, baseline, decision, decision maker, receipt, and idempotency identity. Process Library and terminal disposition projections use `ora.process-library/1.0` and `ora.process-lifecycle-disposition/1.0`. Missing lifecycle data, recomputation, plan substitution, or receipt substitution fails closed.
-
-Construction, registration, invocation, activation, trigger binding, external effect, promotion, and the Programming-to-Build label are distinct authorities and records. A terminal Run receives exactly one idempotent Promote, Preserve, Archive, or Discard disposition; no generic reopen exists. Archive and Discard do not delete source files. Later work creates a new Run against a retained exact identity.
-
-### Regression obligations and maintainer change protocol
-
-Use the narrowest owning suite plus adjacent seams; a positive path alone is not certification.
-
-| Change | Minimum proof obligation |
-|---|---|
-| Contract/directive/judgment | schema and contract-set positives; every contradictory directive state; reserved/granted overlap; out-of-scope selectors/actions; undeclared escalation |
-| Runtime state/evidence/effect | forged authoritative events; terminal immutability; final-review lineage; current repository attempt; wrong-node and missing-checkpoint/receipt effects; recovery replay attacks |
-| Graph/definition/package | exhaustive entrypoint/directive traversal; prohibited-node unreachability; redefinition resume; body/envelope/anchor substitution; exact package and mirror identity |
-| Controlled probe | persisted contract/pre-state; replay and ceiling; active stop; deny-default inspection; evidence-free/direct-completion and executor-bypass attacks |
-| Dialogue/interview/plan/delegation | real write/reload/restart; nonanswers and duplicate retries; plan/lifecycle/receipt tampering; stale plan; all five browser decisions and later delegation |
-| Inspector/Library/lifecycle | authenticated decisions; approved-target lineage and ambiguity; long/slash Run IDs and replay; false Build witnesses; exact public invocation restart and invalid references |
-| Documentation/source topology | canonical-to-mirror body parity; four mirrored/two direct/one documentation-only topology; Registry versions/semantics; obsolete-current-claim rejection |
-
-Before landing a change: identify the canonical and exact issued identity; capture a clean baseline and storage roots; change the smallest owning source; add an adversarial reproducer for the failure being closed; run compile, owning and adjacent suites, graph/registry/source drift checks, and `git diff --check`; verify canonical/mirror parity; inspect the diff for unrelated or later-phase work; then commit and synchronize each repository. Do not update a Registry identity until the exact body and tests agree.
-
-Representative commands from the repository root are:
-
-```bash
-python3 -m py_compile orchestrator/process_contracts.py orchestrator/governed_process_runtime.py orchestrator/process_definition_registry.py
-python3 -m pytest orchestrator/tests/test_process_contracts.py orchestrator/tests/test_governed_process_runtime.py
-python3 -m pytest orchestrator/tests/test_phase_1_6_programming_definition.py orchestrator/tests/test_phase_1_7_kernel_trials.py
-python3 -m pytest orchestrator/tests/test_phase_2_1_entry_routing.py orchestrator/tests/test_phase_2_8_experience_validation.py
-python3 scripts/verify-canonical-drift.py
-git diff --check
-```
-
-Use current test discovery when suite names move; do not preserve a green count as if it were a contract.
-
-### Migration, compatibility, disablement, and rollback
-
-G1.1 uses v1 contract/graph/package schemas and has no automatic in-place migration tool. Existing Gear 3 text frameworks remain ordinary-generation inputs unless separately formalized and registered; they are not silently converted to Process Definitions. Additive Dialogue fields preserve older envelopes, but governed bindings and approved plan lifecycles are validated when present. There is no feature flag for a second kernel: disable new governed work by stopping governed entry and continuing the legacy ordinary-generation route, not by rewriting active state.
-
-For an upgrade:
-
-1. Stop new governed intake at the deployment boundary; do not terminate active external work by deleting state.
-2. Record the code commit, configuration, `ORA_PROCESS_RUNS_DIR`, `ORA_PROCESS_DEFINITIONS_DIR`, and exact active definition references.
-3. Take recoverable, read-only snapshots of both storage roots and the affected Dialogue envelopes. Inventory registry entries through authenticated listing/resolution and Runs through `load_run()`, `load_records()`, and `load_artifact()`.
-4. Point a staged runtime at cloned roots using the two environment variables. Compile; run owning/adjacent, graph traversal, identity-substitution, source-drift, and mirror-parity checks. Load every active Run and resolve every referenced definition exactly.
-5. Promote only when the staged code reads existing state without rewriting issued digests, schemas, graph positions, or in-flight definition references. Semantic definition changes ship as a new version; existing Runs remain pinned.
-
-Rollback means restoring the prior code together with the untouched pre-upgrade store snapshot. Never partially downgrade a store already rewritten by newer code, never edit a Run to point at an older definition, and never replace the accepted Programming `2.0.1` body. Preserve the newer store separately for diagnosis. If an external effect might have occurred after the snapshot, inspect its receipt and actual external state before choosing recovery; do not replay it. Uncertain state ends in typed authority review or `BLOCKED`, not an automatic retry.
-
-### Maintainer troubleshooting
-
-| Symptom | Inspect | Safe response |
-|---|---|---|
-| Run appears stuck | current state/node, last record sequence, pending human/child relationship, attention projection | satisfy the declared checkpoint/authority or resume through the runtime; never edit `run.json` |
-| Repeated infrastructure failure | infrastructure records, provider/tool health, correction attempt and stop policy | repair infrastructure and retry only the declared idempotent operation; infrastructure failure is not `FAIL` or `ACCEPT` |
-| Repeated Artifact failure | latest Artifact identity, lineage, selector, freshness, review subject digest | recapture from the approved locator; route execution/plan/definition defects through the matching directive |
-| Wrong repository or project | approved project, exact repository locator, baseline composite, current node selector | stop before authority; return for scope change/new plan. Do not substitute an inline Artifact |
-| Dirty-worktree conflict | baseline/current composites and pre-existing change inventory | preserve user changes, narrow the selector or request authority; never clean/reset broadly |
-| Plan or evidence became stale | plan baseline, Dialogue lifecycle, evidence freshness and current Artifact digest | show stale state and require revision/recapture; do not resubmit the old decision |
-| Missing permission or credential | authority grant, reserved-action class, provider credential availability | request the exact authority/credential without logging secrets; use `ESCALATE` or remain pending |
-| Judge/executor disagreement | independent evidence, verified circumstances, permitted conclusions and directive route | preserve both records; let Process Coherence choose only a declared route; inconclusive proof cannot accept |
-| Cannot resume after restart | record/snapshot sequence, exact definition resolution, checkpoint, child/return and Dialogue bindings | restore from the last authenticated checkpoint/snapshot; quarantine tampered state and fail closed |
-| External action partly completed | pre-state/checkpoint, runtime authorization, receipt, post-state, actual external system | reconcile the external state first; never replay without proof; escalate or block if uncertain |
-| Completion evidence inconclusive | required evidence set, independence, freshness, current result/repository identity and completed attempt | recapture independent evidence or remain pending; an unrelated hash-chain/inline Artifact cannot authorize completion |
-| Registry tampering suspected | canonical body, issued digest, storage envelope, independent registration anchor, authenticated listing | quarantine the entry, restore from canonical, and rerun full substitution tests; never bless it by recomputing adjacent metadata |
-
-### Known maintainer limitations
-
-- The contract, graph, and package families are v1; no general state-migration engine or mixed-schema writer exists.
-- G1.1 proof is macOS-only. The controlled-probe sandbox and path behavior are not certified on Windows or Linux.
-- Public Process Library invocation is intentionally limited to the supported non-external entry shape; effectful and complex graphs use dedicated governed paths.
-- The exact Process Definition Registry and legacy framework-invocability catalog remain distinct by design.
-- No cognition-bearing scheduler, broad trigger-management UI, automatic optimization, marketplace, or unrestricted public external-effect executor ships in G1.1.
-- Exact pause/resume/stop controls exist only for G1.18 automated Runs and bind the current persisted state plus live isolated worker where present. Other governed Run families still have no general force-control or reopen API, and no Run has a user override for missing or stale acceptance evidence.
-- There is no kernel feature toggle. Operational disablement stops new governed entry and preserves exact active state.
-- DOM and server behavior plus the Phase 3.5 rendered interface packet are covered. The packet is a macOS/browser visual verification of the shipped surfaces, not a comprehensive cross-platform accessibility certification.
-
-### Phase 3.5 closeout evidence
-
-The consolidated closeout packet is `outputs/g1-1-phase-3-5/closeout-evidence.md`. It binds the accepted candidate disposition; Programming, cross-domain, contingent-PEF/bypass, regression, and public-interface proof paths; the final as-built record and three documentation layers; topology-correct source/runtime synchronization; tracker/Registry reconciliation; exact Programming identity; and the explicit deferred-work list.
-
-Seven 1280×720 JPEG captures in the same directory were rendered from the shipped browser client against the accepted Gate 3.4 baseline `6824bb03bf8bf9a94c1e87020c40d7007457608a`. They show governed Programming entry and project confirmation, both canonical-plan projections, Inspector overview and evidence views, the Inquiry/Findings/Aside/Exhibits workspace, and Process Library resolution of exact `ora/programming@2.0.1`. The deterministic evidence fixture used production persistence, runtime services, HTTP endpoints, and DOM controls; it stopped at `plan-approval`, where mutation and acceptance remained withheld. The temporary Run/Dialogue and a separate degraded-provider chat probe were removed after capture; they are not release state or trial authority.
-
-This evidence does not change any runtime behavior, issued Process Definition/package, or MSI state. It does not claim Windows/Linux visual support, a complete assistive-technology audit, general active-Run pause/reopen controls, broad standing-trigger management, or the full Gear 1/2/3 specification owned by G1.2.
-
-## 19. G1.18 Reusable Process Authoring and Isolated Execution
-
-### Reconciliation with the governed kernel
-
-G1.18 extends Chapter 18; it does not introduce an automation engine beside it. A reusable Process authored in the browser is a strict `ora.process-contracts/1.0` Process Definition, stored by `ProcessDefinitionRegistry`, promoted through `ProcessLibraryLifecycleService`, and executed as a `GovernedProcessRuntime` Run with the same authority, Artifact, evidence, attempt, checkpoint, recovery, and final-review rules as every other governed Run.
-
-Four statements in the older Project Integration Program are superseded for this gate:
-
-| Older G1.18 statement | Accepted G1.1-preserving disposition |
-|---|---|
-| Compile a Process into an executable PFF/Operations Manifest and run it through `milestone_executor.py` | Compile the reviewed blueprint into one registered normalized-JSON Process Definition and execute its graph through `GovernedProcessRuntime`; the no-tools worker is only an action actuator |
-| Put a Trigger inside each Process Definition | G1.18 definitions carry `triggers: false`; Trigger binding and scheduling belong to G1.19 |
-| Put Model Profile and Style selections on the definition | Resolve Project → Process → Step → one-Run Model Profile precedence and the existing output Style into the exact Run execution-context binding; the strict definition root remains unchanged |
-| Build the full Process telemetry surface with execution | Reuse existing Run Inspector projections; G1.20 owns the additional tracking and telemetry UI |
-
-Persona is not a dependency or a placeholder field. G1.18 does not select MindSpec, inject relationship text, create Persona precedence, or alter the existing interaction/output Style and honne/tatemae behavior.
-
-### Authoring, approval, registration, and Library availability
-
-After the persistent management interview reaches `ready_for_plan`, the plan-review surface offers **Author reusable Process**. `ProcessAutomationService` consumes that exact Dialogue/Run/answers binding and either validates a Principal-supplied blueprint or invokes the separate no-tools authoring worker. The blueprint schema permits only deterministic non-effectful action stages plus explicit human checkpoints. Extra roots such as `trigger`, `runtime`, `persona`, or `mindspec`, and operations that imply sending, publication, scheduling, activation, repository/file mutation, or another external effect, fail closed. Input and output schemas use a deliberately bounded JSON Schema subset: recursive object/array structure, exact required/additional-property rules, `enum`/`const`, string length, numeric bounds/`multipleOf`, array length/uniqueness, and object-size constraints are enforced; every other keyword is rejected during authoring rather than silently preserved.
-
-The proposal is an exactly-once reserved authoring record bound to the management Run, answer digest, blueprint digest, complete definition, exact definition reference, worker receipt, and idempotency identity. Concurrent delivery of one identity produces one record. The Principal may request a reason-bound revision or approve the exact proposal ID and digest. Approval creates a child construction Run, resolves its declared human checkpoint, constructs the complete definition Artifact, uses the runtime's authenticated registration bridge, independently reviews the registration receipt, applies final `ACCEPT`, and explicitly promotes that exact capability to the Process Library. Registration and promotion do not activate or schedule it.
-
-### Manual execution and isolation
-
-Promoted G1.18 definitions appear in the Process Library with their exact input schema and `automated_execution_available: true`. The browser renders that schema, requires explicit confirmation of the current Project, and submits the exact definition triple, Project, inputs, and deterministic idempotency identity. The server fixes public authority to `principal:user`; a request cannot nominate a different Principal. Registry tampering, a stale/forged reference, missing promotion, incompatible Project scope, extra input, or an unavailable Model/Style binding stops before a Run begins.
-
-Every action and verification invocation creates a current-node checkpoint and bounded attempt before execution. `process_automation_worker.py` receives one immutable JSON request on standard input in a separate process. It exposes no Ora dispatcher, tool, shell, browser, file-write, messaging, or Process Runtime API. Model-backed steps use only the resolved named Model Profile and the existing output Style prompt. The controller persists file-backed output Artifacts, completes the attempt, and emits a reserved `isolated_process_step_completed` record binding the exact Run/definition/node/operation, attempt, worker request and response digests, execution-context digest, and Artifact ID/digest. An Artifact alone, generic observation, wrong node, changed execution context, or substituted worker record cannot complete the action.
-
-At a human checkpoint the Run becomes `pending`; only its exact Principal can resume and choose an allowed route. A rejected authority attempt changes no state. Action or verification-worker failure completes the attempt with a typed defect, persists a reserved failure record, and pauses at a durable recovery checkpoint. Restart revalidates definition, Project, Model Profile, Style, prior Artifact bytes, verification start/failure lineage, and persisted records before continuing; completed steps are not replayed. The immutable total budget is the number of declared action baselines plus one reserved final-verification baseline plus the approved correction allowance. Runtime admission counts the first attempt for each action or verification segment as its baseline and only later attempts as corrections, so retries cannot consume an unstarted segment's baseline. Generic `begin_attempt()` and `complete_attempt()` reject G1.18 definitions before changing state; only the paired `begin_automation_attempt()` and `complete_automation_attempt()` boundaries may append their current-node-bound attempt records. Reaching either the correction allowance or total ceiling records the pre-attempt checkpoint and routes mechanically to `BLOCKED`; verification admission also persists a typed failure record. No ceiling can leave the Run `running` or retry without limit.
-
-Final verification is another isolated worker invocation. Free-text criteria are not executable and therefore fail closed. Each accepted blueprint criterion must use one supported structured assertion (`field_equals`, `field_prefix`, `field_contains`, deterministic `email_grounding`, or authenticated `no_external_effects`). The worker returns one ID-bound assessment and observation digest per criterion; the controller mechanically recomputes those predicates and rejects a fabricated or contradictory `PASS`. Its evidence Artifact and reserved `isolated_process_verification_completed` record bind the current result ID/digest, evidence ID/digest, declared-criteria digest, complete assessment set, verification-start record, exact request/response, attempt, outcome, node, definition, and execution context. Only an assessment set in which every declared criterion is genuinely satisfied can support the ordinary G1.1 independent final review and `ACCEPT`. Generic `record_event` rejects authoring, isolated-step, and all isolated-verification event families.
-
-### Worked email proof and deliberate limits
-
-The shipped proof definition is `user/email-processing@1.0.0`. It validates one exact email input, classifies it, summarizes it, pauses for Principal approval, and prepares an explicitly **UNSENT DRAFT** before independent verification. Three machine-checkable criteria independently rederive classification/summary from the exact input, check the draft prefix, and authenticate the no-external-effect definition/Run state. The worker has no sending capability, the graph has no send operation or external-effect node, and no outbound receipt or authority is present. The complete proof runs through real subprocesses, survives service restart at both human and verification-failure checkpoints, preserves completed steps across retry, and returns an authenticated result containing classification, summary, and unsent draft.
-
-The implementation surfaces are `orchestrator/process_automation.py`, `orchestrator/process_automation_worker.py`, the existing governed runtime/registry/Library/interview services, `/api/process-authoring/<dialogue>`, `/api/process-automation/runs`, `/api/process-automation/runs/<run>`, and the existing plan-review and Process Library clients. G1.18 itself added no Trigger Manager, scheduler, outbound channel, external-effect executor, Persona, alternate runtime, or telemetry dashboard. G1.20 now projects telemetry and liveness from those same persisted Runs without changing the G1.18 definition or execution contracts.
-
-## 20. G1.20 Process Run Telemetry, Liveness, and Controls
-
-### One Inspector and one Run record
-
-G1.20 extends the nine-view G1.1 Run Inspector; it does not create a telemetry database, alternate Process engine, or scheduling substrate. `ProcessRunInspectorService` derives each snapshot from the exact persisted Process Run, issued definition, event/transition chain, Artifacts, and live isolated-worker owner. The resulting telemetry appears in both **Overview** and **Current State**, and `/api/process-attention` projects a bounded subset into the existing sidebar Process zone. The snapshot digest covers the telemetry along with the rest of the Inspector projection.
-
-This topology keeps telemetry observational. No metric, health label, liveness state, optional model verdict, or browser control can stand in for evidence, approve a checkpoint, grant authority, complete a node, apply `ACCEPT`, or create a Trigger.
-
-### Deterministic layer 1
-
-Layer 1 is always assembled when the Run Inspector is read. It reports:
-
-- persisted Run state, exact current node, start/update instants, elapsed time, and a deterministic remaining-time estimate when completed attempt durations exist;
-- total attempts, retries by segment, and the immutable attempt ceiling;
-- authenticated token/cost usage only when a runtime-authenticated usage receipt exists. A no-tools boundary does not prove that no model ran, so G1.18 currently reports token counts and cost as explicitly unavailable rather than manufacturing zero;
-- Artifact totals and role counts, including how many identities remain current;
-- the latest persisted error, whether later success resolved it, and whether it remains actionable; and
-- liveness and health derived from authenticated worker start/finish records plus the runtime's exact live-process owner.
-
-The estimate is explicitly a mean of completed attempt durations multiplied by remaining executable nodes, not a provider promise. With no completed duration it remains unavailable. A terminal Run reports zero remaining. Historical errors remain visible as history but do not keep health in `action_required` after a later authenticated success resolves the same segment.
-
-### Worker liveness, pause, resume, and stop
-
-The G1.18 isolated worker now persists reserved `process_worker_started` and `process_worker_finished` records binding the exact Run, definition, node, attempt, execution identity, request digest, process boundary, and PID where a subprocess exists. In-process ownership is held atomically with start/finish persistence so the Inspector cannot observe a transient owner without its record or a record without its owner. A start with no finish and no matching live owner is `orphaned_after_restart`; the automation service completes that exact attempt as defective, creates a restart-safe pause checkpoint, and withholds replay. The recovered Inspector state is `recovered_after_restart`.
-
-Only a G1.18 automated Run exposes these force controls. `automation_run_controls()` derives an exact state digest from Run identity, state, node, sequence, update instant, available actions, and live-worker identity. The browser posts that digest plus a bounded deterministic idempotency key to `/api/process-runs/<run>/control`. A stale digest, wrong action, wrong Run state, forged control record, or non-automation Run fails closed before an effect.
-
-**Pause** terminates the exact live worker through the existing managed `stop_process` boundary, records a failed bounded attempt and authenticated control application, and persists a `user_control` checkpoint distinct from `human_handoff` and `failure_recovery`. The runtime authenticates the exact current request/application pair before creating a checkpoint, then commits `checkpoint_created` plus `run_paused` as one atomic event-log batch. A forged, stale, or losing racing Pause therefore leaves the Run, continuation checkpoint, and record chain unchanged. Only an exact authenticated **Resume** control may release the committed checkpoint; the legacy execute/retry path and direct runtime resume fail closed before changing the Run. **Resume** continues the same Run from that checkpoint and revalidates its G1.18 execution context. **Stop** terminates the worker and reaches only the definition's approved blocked terminal through a dedicated Principal-authenticated mechanical route. It preserves records and Artifacts. It is not Archive or Discard. A retry returns the same control identity; if interruption occurs after the request or application record but before its state effect, the persisted Principal decision is reconciled exactly once after restart.
-
-### Opt-in layer 2
-
-Model-based drift/quality/trace evaluation is never automatic on every step. It is offered only at an authenticated human handoff or a persisted output/verification failure. At the runtime boundary, Ora independently selects the exact current eligible source, captures each relevant working/result Artifact once, verifies the captured bytes against its identity, derives the subject digest, and derives the evaluator binding from the Run's exact execution context. `/api/process-runs/<run>/quality-evaluation` supplies those bounded bytes together with the exact inputs, acceptance criteria, operation instructions, source record, and failure trace. Caller-supplied source, subject, node, or model substitutions cannot create a start. The idempotency identity binds that complete subject, the Run/definition/node state, and the Model Profile already bound to the Run. Missing, drifted, non-text, or over-limit material produces an authority-inert `INDETERMINATE` result without invoking the evaluator. Model unavailability persists a failed observation; neither condition changes Run state.
-
-The evaluator must return the closed verdict schema `verdict`, `drift_verdict`, `quality_verdict`, `findings`, and `rationale`. Only the runtime-derived begin operation can persist a start, and only the telemetry completion boundary can persist an outcome; the latter re-derives the still-current source, subject, and evaluator binding before appending. Public generic events, direct authoritative quality records, outcome-without-start records, duplicate outcomes, stale sources, caller substitutions, and response-digest substitutions are rejected without appending. Every projection labels the result `authority_effect: none`: `PASS` is advisory telemetry, not final-review evidence and never authorizes `ACCEPT`.
-
-### Browser and server surfaces
-
-The existing Run Inspector modal renders elapsed/remaining time, attempts/retries, token/cost status, health, worker liveness, last error, optional evaluation history, and eligible controls. The existing sidebar Process cards add health, attempts/retries, and **Worker alive** without turning healthy work into an attention alert. The server surfaces are the existing Inspector endpoint plus `/api/process-runs/<run>/control`, `/api/process-runs/<run>/quality-evaluation`, and the telemetry extension on `/api/process-attention`.
-
-G1.20 adds no Trigger record, schedule, standing activation, Persona/MindSpec binding, outbound channel, new external-effect authority, or generic runtime force-control. Those boundaries preserve G1.19, G1.17, G1.21, and G1.22 ownership respectively.
-
-## 21. G1.19 Trigger Manager
-
-### Separate activation object over one Process engine
-
-`orchestrator/process_triggers.py` adds a Trigger as an immutable, content-digested activation specification beside—not inside—the strict Process Definition. The spec binds one stable Trigger ID, exact promoted G1.18 definition reference, Project, Principal, cause/condition, input-source map, existing Model/Style selections, and (for time only) the Runtime-Principle record. Definition registration continues to mean no activation. `ProcessTriggerService.create()` authenticates exact Process Library availability but leaves the Trigger `draft`; `activate()` requires the exact spec digest and a Principal approval bound to the server-derived activation-request digest. Inbound drafts cannot activate until G1.21 supplies an authenticated channel.
-
-Definitions and independent anchors are stored under `data/process-triggers/`; lifecycle and firing facts form an atomically rewritten append-only digest chain. Every read and listing recomputes the spec digest, independent anchor, sequence, prior-record link, and record digest. Pause, resume, and retirement bind the current state digest, so a concurrent firing or lifecycle decision makes an older browser request stale before mutation. The **Automated Processes** projection now comes only from these authenticated active/paused/retired deployments rather than inferring standing automation from registry or Artifact shape.
-
-### Exactly-once firing and governed Run join
-
-Manual, file-change, framework-completion, and time dispatch first persist `firing_claimed`. Its deterministic identity binds the exact Trigger/spec and source: manual request identity; captured file paths plus content/stat identities; completed source Run, definition, `ACCEPT`, and result; or exact scheduled calendar window. Concurrent/repeated delivery reads the existing claim. The claim also persists validated Process inputs and a bounded deterministic invocation key before execution. Framework-completion edges are checked as one definition graph during creation and activation; direct or multi-Trigger causal cycles are rejected before deployment.
-
-Only the shared `ProcessAutomationService` performs work. `begin_triggered_run()` is unavailable on a generic service: the Trigger Manager installs a ledger authenticator that revalidates the exact claim before adding `trigger_binding` to the ordinary Run input identity. It then uses the existing `begin_run`/`execute`, definition registry, Project/Model/Style resolution, worker, checkpoints, attempts, final review, Inspector, Pause/Resume/Stop, and recovery contracts. A human/failure checkpoint is recorded as a waiting firing, never completion. `synchronize_run()` joins later public Run actions to the firing and emits a framework-completion source only after the exact Run has one authenticated `ACCEPT`. Restart recovery resumes claims interrupted before Run binding through the same idempotent Run identity; it does not replay a completed node or bypass a human/user pause.
-
-File-change activation is an additional consumer of `runtime_event_dispatcher.py`'s existing OS notifications. No polling fallback was added. Each matched real file is captured once with path, SHA-256, size, modification identity, and a bounded UTF-8 excerpt; repeated notification for that same identity is idempotent, while changed content forms a new firing. Framework completion is runtime-derived and refuses running, blocked, wrong-definition, wrong-project, result-less, or non-accepted sources. Milestone check-in can bind `project_snapshot`, a digest-authenticated packet containing the exact Project Matrix content and bounded excerpts from standard Project-bound Dialogues; private and stealth Dialogues are excluded.
-
-### Runtime-Principle disposition for time
-
-Time is permitted only when **passage of time is the declared input** and the spec says, in machine-checked fields, that no file/framework/inbound runtime event can represent it, Ora acts only while running, and no cron/launchd/deferred-sweep fallback exists. This is valid for a declared calendar report or Project milestone check-in because no earlier mutation or completion event represents “the local calendar boundary has arrived.” Cleanup, backlog processing, retention repair, and other work with a real runtime cause fail this justification and must use that event or an explicit campaign.
-
-Schedules store an IANA timezone, local time, daily/weekly calendar rule, start date, grace window, and explicit intermittency policy. Occurrences are recalculated in the named zone on every date, including DST transitions; no fixed UTC offset is carried forward. `run_once` coalesces missed windows into the most recent due firing after Ora returns. `skip` records the missed current window without creating a Run. `ProcessTriggerClock` performs one startup missed-window reconciliation and then blocks on one wake for the next authenticated occurrence. Activation and lifecycle events signal an immediate recalculation; after a due firing it calculates the following one-shot wake. With no active time Trigger it waits indefinitely and performs no periodic scan. It promises no action while the machine or app is off and installs no OS task.
-
-### Public and browser surfaces and held boundaries
-
-The server exposes `GET/POST /api/process-triggers` and `GET/POST /api/process-triggers/<id>` for exact create/read/activate/pause/resume/retire/manual-fire operations. OS events and clock ticks have no public caller-authored endpoint. The sidebar **Trigger Manager** provides immutable draft authoring, exact review, activation, lifecycle controls, manual firing, firing history, and Inspector navigation. Stale and infrastructure failures remain visible and force readback. The existing `/api/process-attention` Automated Processes group reads the authenticated Trigger projection.
-
-G1.19 adds no second Process engine, telemetry database, Persona/MindSpec precedence, outbound message transport, credentials, remote publication, or external-effect authority. Email and Telegram remain inactive contract vocabulary for G1.21. Triggered Processes remain limited to G1.18's promoted non-external automation definitions; G1.22 retains outbound/security authority. G1.17 and the hardware/Windows tranche remain deferred.
-
----
 
 # Appendices
 
@@ -2624,10 +2305,10 @@ G1.19 adds no second Process engine, telemetry database, Persona/MindSpec preced
 - **[unknown]** `config/framework-schemas/video-editing-suggestions.schema.json` — JSON Schema that both suggestion paths validate against (cut/chapter/title_card/transition types).
 
 ### B.12 — Meta-Layer Oversight
-- **[partial]** Live Process Coherence model invocation — _router.py:112 gated on ORA_OVERSIGHT_LIVE (default unset => simulated); flag-OFF => partial not implemented_
+- **[implemented]** Observational oversight event logging and parent fan-out; Process Coherence remains explicit project/framework judgment rather than a router-invoked runtime path.
 - **[deferred]** CFF model-driven modes C-Design / C-Modify — _corpus_runtime.py:5 explicit 'not implemented here'; run via framework flow_
 - **[partial]** OFF model-driven modes O-Design/O-Modify/O-Audit — _run through gear pipeline via milestone_executor, not in output_runtime; mechanical redirect only covers O-Render_
-- **[partial]** `~/ora/orchestrator/oversight_router.py` — Routing-table dispatcher per Meta-Layer Arch §7; EVENT_TO_PC_MODE + LOG_ONLY_EVENTS; live-vs-simulated gate; fan-out rec
+- **[implemented]** `~/ora/orchestrator/oversight_router.py` — observational event logger with Stealth suppression, fan-out recursion guard, and child-to-parent visibility.
 - **[partial]** `~/ora/orchestrator/corpus_runtime.py` — Mechanical CFF: c_instance + c_validate; emits CorpusInstanceCreated/CorpusValidated
 - **[partial]** `~/ora/orchestrator/output_runtime.py` — Mechanical OFF O-Render: corpus+bespoke-OFF -> md/html/docx/pptx/xlsx artifact; emits OFFRendered
 - **[retired compatibility]** `~/ora/orchestrator/scheduler.py` — Migration-evidence surface for `config/scheduled-tasks.json`; all public and private execution paths fail closed under G1.10
@@ -2720,7 +2401,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - **The capability gate.** The always-on enforcement-and-audit boundary at the dispatcher chokepoint: every tool call is classified on risk axes, recorded, and allowed or refused fail-closed, before execution and independent of the user's permission mode.
 - **Framework.** A background-executable procedure specification, invoked by name and run as a sequence of milestones through the gear pipeline — the precise construct the industry markets as an "agent." The framework registry holds many (about two dozen registered user-facing frameworks); the **canonical framework suite** is the closed six that cover the space of specifiable cognitive work — PEF (Problem Evolution), PIF (Process Inference), PFF (Process Formalization), CFF (Corpus Formalization), OFF (Output Formalization), and DCA (Decision Clarity Analysis, formerly the Wicked Problems Framework).
 - **PED (Project Evolution Document).** The vault file that records a project's Mission, Excluded Outcomes, Constraints, Milestones, and Decision Log, and that the oversight apparatus watches for drift.
-- **Process Coherence.** The chain-coordination supervision layer that fires at framework transitions and milestone-completion claims and issues PROCEED / REVISE / ESCALATE verdicts; live model invocation is off by default (`ORA_OVERSIGHT_LIVE`).
+- **Process Coherence.** An explicitly invoked project/framework judgment that returns exactly PROCEED, REVISE, or ESCALATE; it does not fire automatically or participate in Programming.
 - **Execution Packet.** The evidence-first record built at each gear terminal that separates an evidence lane (what was observed) from a judgment lane (what was claimed), so a reviewer grades observed reality rather than a fluent claim.
 - **Evidence Contract.** The task-specific set of checks a given task must pass, produced at planning time and distinct from the repository's evidence catalog (which merely declares what checks exist) — the load-bearing distinction is that a green evidence run means nothing broke that you knew to check, not that the right problem was solved.
 - **MLX.** Apple's array framework for on-device model inference on Apple Silicon (Metal); the local-inference engine on Mac, guarded so non-Apple hardware resolves to Ollama instead.
@@ -2949,10 +2630,10 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 ### E.12 — Meta-Layer Oversight
 - `~/ora/orchestrator/oversight_events.py` — [implemented] In-process event emitter + durable JSONL log at data/oversight/events.jsonl
 - `~/ora/orchestrator/oversight_context.py` — [implemented] Context loader: bundles project-level (PED) + workflow-level (corpus template + workflow spec) locks; classify
-- `~/ora/orchestrator/oversight_router.py` — [partial] Routing-table dispatcher per Meta-Layer Arch §7; EVENT_TO_PC_MODE + LOG_ONLY_EVENTS; live-vs-simulated gate; f
+- `~/ora/orchestrator/oversight_router.py` — [implemented] Observational event logger with Stealth suppression, fan-out recursion guard, and child-to-parent visibility.
 - `~/ora/orchestrator/oversight_actions.py` — [implemented] PROCEED/REVISE/ESCALATE handlers; Decision Log append (cross-platform file lock); human-queue push; REVISE cap
 - `~/ora/orchestrator/oversight_daemon.py` — [implemented] OS-event + exact persisted-deadline runtime with lane-liveness watchdog; former interval methods are explicit compatibility only
-- `~/ora/orchestrator/oversight_health.py` — [implemented] Event/deadline thread-liveness check plus independent MLX heartbeat; also warns when ORA_OVERSIGHT_LIVE unset
+- `~/ora/orchestrator/oversight_health.py` — [implemented] Event/deadline thread-liveness and telemetry-degradation checks plus independent MLX heartbeat.
 - `~/ora/orchestrator/oversight_queue.py` — [implemented] Managed Paused queue: stable deterministic ids, engagement (unseen/seen/discussing), discussion linkage, AI-ge
 - `~/ora/orchestrator/oversight_relationships.py` — [implemented] Cross-project oversight: child->parent Decision Log fan-out via parent_nexus; synthesized Child<Event> audit r
 - `~/ora/orchestrator/ped_parser.py` — [implemented] PED structured extraction: Mission/Excluded Outcomes/Constraints/Milestones/Decision Log
@@ -3056,6 +2737,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 
 ## Changelog
 
+- **2026-08-05** — Replaced the removed governed-process Chapters 18–21 with the current standalone Programming architecture: explicit entry, inspect-first planning, one approval, real repository tools, fresh reviewer calls, direct outside/non-text evidence inspection, accepted-slice commits, and Git-native recovery. The former entry, persistence, automation, trigger, inspector, attention, and lifecycle modules are not compatibility surfaces.
 - **2026-07-24** — Corrected G1.19 after gate review: the firing claim now persists and exclusively supplies the complete prepared invocation and deterministic Run identity; activation is draft-only, lifecycle retries are original-result idempotent, and every new claim atomically reauthenticates active state; the 30-second scan was replaced by startup reconciliation plus lifecycle-recalculated one-shot calendar wakes.
 - **2026-07-24** — Added Chapter 21 for G1.19: immutable separately approved Trigger specs, content/source-bound exactly-once firing, ordinary governed Run invocation/recovery, OS file and accepted-framework events, Project milestone snapshots, named-zone justified app-only calendar operation, Trigger Manager UI/API, and the held G1.17/G1.21/G1.22 boundaries.
 - **2026-07-24** — Closed the remaining G1.20 integrity findings: Pause authenticates before mutation and atomically commits its checkpoint/state pair, so rejected, stale, and racing losers leave no checkpoint; quality starts independently derive the current source, subject, and evaluator binding at the runtime boundary, and direct fabricated start/outcome records are unavailable.

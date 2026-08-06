@@ -110,7 +110,6 @@ def dispatch_paths(paths: set[str]) -> dict:
         "ped_events": 0, "corpus_events": 0,
         "workflow_checked": False, "revisit_checked": False,
         "resources_checked": False, "operational_hook": None, "errors": [],
-        "process_trigger_events": [],
     }
 
     for path in sorted(existing_markdown):
@@ -202,20 +201,6 @@ def dispatch_paths(paths: set[str]) -> dict:
                     f"vault operational hook failed ({result.returncode}): "
                     f"{result.stderr[-1000:]}"
                 )
-    # G1.19: exact OS notifications may activate separately authorized
-    # file-change Triggers.  This is an event consumer, never a polling or
-    # clock fallback, and every firing enters ProcessAutomationService.
-    try:
-        from orchestrator.process_triggers import ProcessTriggerService
-
-        trigger_result = ProcessTriggerService().dispatch_paths(sorted(paths))
-        summary["process_trigger_events"] = trigger_result["fired"]
-        for failure in trigger_result["failures"]:
-            summary["errors"].append(
-                f"process trigger {failure['trigger_id']}: {failure['error']}"
-            )
-    except Exception as exc:
-        summary["errors"].append(f"process trigger dispatcher: {exc}")
     return summary
 
 

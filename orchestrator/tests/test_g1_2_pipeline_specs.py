@@ -72,7 +72,11 @@ class TestG12PipelineSpecifications(unittest.TestCase):
                     "type: framework",
                     "framework/instruction",
                     "date created: 2026-07-19",
-                    "date modified: 2026-07-19",
+                    (
+                        "date modified: 2026-08-05"
+                        if "Gear 3" in canonical_name
+                        else "date modified: 2026-07-19"
+                    ),
                 ):
                     self.assertIn(token, raw)
                 self.assertFalse(mirror.read_text(encoding="utf-8").startswith("---\n"))

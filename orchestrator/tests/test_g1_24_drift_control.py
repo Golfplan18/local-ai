@@ -77,21 +77,15 @@ class TestG124DriftControl(unittest.TestCase):
         self.assertEqual(len(registry), 1)
         self.assertEqual(tracker, registry)
 
-    def test_closeout_suites_do_not_encode_a_transient_gate_status(self):
-        obsolete = (
-            "G1.18’s bounded criterion, recovery, schema, attempt-reservation, "
-            "and generic-API-isolation corrections are implemented and await "
-            "independent re-judgment"
-        )
+    def test_removed_closeout_suites_do_not_survive_as_runtime_contracts(self):
         for name in (
             "test_phase_3_3_user_guidance.py",
             "test_phase_3_5_closeout.py",
         ):
             with self.subTest(name=name):
-                source = (ROOT / "orchestrator" / "tests" / name).read_text(
-                    encoding="utf-8"
+                self.assertFalse(
+                    (ROOT / "orchestrator" / "tests" / name).exists()
                 )
-                self.assertNotIn(obsolete, source)
 
     def test_delivered_full_state_audit_authenticates_all_five_repositories(self):
         report = DCP_REPORT.read_text(encoding="utf-8")

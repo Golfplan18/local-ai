@@ -413,7 +413,6 @@ class G14ConversationManagementTests(unittest.TestCase):
         )
         with (
             mock.patch.object(server, "_log_pending_submission", return_value="submission-1"),
-            mock.patch.object(server, "_decode_process_entry_request", return_value=None),
             mock.patch.object(
                 server,
                 "_invoke_pipeline",

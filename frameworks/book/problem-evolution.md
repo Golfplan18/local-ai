@@ -4,14 +4,14 @@
 Problem Evolution (PEF)
 
 ## Display Description
-Iterative strategic-layer evolution and matrix supervision across all matrix types (Project / Operation / Passion / Incubator). Turns raw epistemic tension into a populated matrix file with Mission, Objectives, Constraints, and type-appropriate strategic-layer content. Drives downstream framework invocation (MOM, TMF, PIF, PFF, WPF, Operations Manifest) as needed.
+Iterative strategic-layer evolution and matrix supervision across all matrix types (Project / Operation / Passion / Incubator). Turns raw epistemic tension into a populated matrix file with Mission, Objectives, Constraints, and type-appropriate strategic-layer content. Recommends downstream frameworks (MOM, TMF, PIF, PFF, WPF, Operations Manifest) when needed; the user invokes them explicitly.
 
 
 *A Framework for Iterative Problem Definition, Project Navigation, MOM-Supervised Milestone Formulation, and Downstream Framework Routing*
 
-*Version 3.2*
+*Version 3.0*
 
-*Canonical Specification — v3.2 records the verified G1.1 runtime and trial binding for contingent invocation and exact return. v3.1 makes PEF contingent: invoke it only when the next responsible direction depends on evidence that bounded interim progress must first produce. Ordinary known or currently inferable work bypasses PEF. v3.0 added matrix-type-aware strategic evolution, MOM integration, Excluded Outcome checks, and Terrain Mapping when a problem is genuinely not yet definable.*
+*Canonical Specification — Updated per the 2026-04-23 and 2026-05-08 design sessions to supervise all four matrix types, use Excluded Outcomes during drift detection, and recommend MOM or Terrain Mapping when the strategic layer requires them. Framework selection is explicit; PEF does not intercept Inquiry or Programming.*
 
 ---
 
@@ -35,24 +35,11 @@ Required for Spawn. What the sub-problem is, why it was identified, and how it c
 
 ## How to Use This File
 
-This is a strategic-layer evolution framework for genuinely contingent direction. It operates when the user has an idea, tension, rough goal, or existing matrix (Project / Operation / Passion / Incubator) whose next responsible direction cannot yet be selected because an interim result must first produce new evidence. It is not a universal pre-processor or supervisor around known work. Within an invoked PEF Run, MOM may populate strategic-layer content and TMF or PIF may execute a bounded interim-goal contract; PFF formalizes a known or demonstrated procedure when durable reuse is required. The framework is type-aware — it reads `project_type` from the matrix's frontmatter and applies type-specific locks, drift signals, promotion rules, and iteration records.
+This is a strategic-layer evolution and matrix supervision framework. It operates when the user has an idea, a tension, a rough goal, or an existing matrix (Project / Operation / Passion / Incubator) that needs its next step identified — and, once a matrix is running under PEF, it supervises the strategic layer that drives execution. It is the upstream companion to both the Process Inference Framework and the Process Formalization Framework, and the upstream supervisor for the Mission, Objectives, and Milestones Clarification Framework (MOM) and the Terrain Mapping Framework (TMF): PEF discovers and refines the strategic-layer content; MOM populates that content under PEF's supervision; TMF maps unknown territory when the problem is not yet definable; PIF discovers the process; PFF formalizes it. The framework is type-aware — it reads `project_type` from the matrix's frontmatter and dispatches type-specific drift signals, MOM auto-invocation triggers, supervision drift checks, Promotion Protocols, and Iteration Entry recording.
 
-PEF serves two related roles inside its own governed Process Run. As a **consultant**, it provides orientation, assessment, or documentation when the user reaches a genuinely direction-dependent boundary. As an **evolution coordinator**, it issues one bounded interim-goal contract at a time, receives an exact return packet, persists what changed, and selects the next direction only from the returned evidence and locked strategic context. It may invoke MOM to populate or refresh strategic fields and may evaluate milestone, cycle, practice, or Critical Unknown evidence according to matrix type. It does not monitor progress unasked, wrap every other framework, or acquire authority beyond the Run's declared grants.
+PEF serves two distinct roles. As a **consultant**, it is invoked when the user needs orientation, assessment, or documentation — when they hit a wall, when a milestone or cycle completes and direction needs reassessment, when new information changes the picture, or when the fog returns. As a **supervisor** of an ongoing matrix, it identifies when MOM should populate or refresh strategic fields, checks Active milestones and recurring cycles against their verification criteria, watches for silent drift using Excluded Outcomes, and proposes promotions only after prior terminal claims are verified. The user explicitly selects any recommended follow-on framework and approves changes to the matrix.
 
 This framework is iterative by design. It runs once to establish an initial strategic layer (PE-Init), then re-runs when the user determines they need guidance, assessment, or documentation (PE-Iterate), or at a milestone-promotion / cycle-close / maturity-gate boundary. Each run produces an updated matrix file that captures the history of the matrix's strategic-layer evolution, the type-appropriate Lock-protected fields (Resolution Statement and Excluded Outcomes for Project; Service Statement and Excluded Outcomes for Operation; Core Essence and Emotional Drivers for Passion; Critical Unknown for Incubator), the Constraints inventory, the type-appropriate milestone/cycle structure, and links to any Terrain Map Artifacts the matrix has accumulated.
-
-## Contingent Invocation and Interim-Goal Contract
-
-Select the least elaborate sufficient route before invoking PEF:
-
-- invoke an exact approved Process Definition when one fits;
-- use PFF directly when the procedure is known and a durable definition is needed;
-- use PIF when a complete procedure can be responsibly inferred from current information, including direct operation inside that same governed Run when its contracts are sufficient; and
-- use PEF only when future direction depends on evidence that cannot exist until bounded interim progress occurs.
-
-Every PEF interim goal is a child Process Run or a declared action segment with an exact contract. The contract binds the parent Run and definition identity; the single interim objective; inherited locks and artifact scope; granted actions and reserved authority; required inputs; expected result and evidence artifact identities; verification boundary; continuation and recovery behavior; stop/escalation conditions; and deterministic return target. The return packet binds the child definition identity, output artifact IDs and digests, acceptance evidence, transition record, external-effect receipts, unresolved findings, and parent resume target. ID-only or prose-only return is insufficient.
-
-PEF persists problem state before invocation and after return. It selects the next interim direction only after validating the exact return packet against the outstanding contract. A restart reconstructs the same parent state and outstanding child contract; it does not replay external effects or silently choose a new direction. `PROCEED` accepts an intermediate boundary, `ACCEPT` closes only the final governed objective, and `REVISE`, `REPLAN`, `REDEFINE`, `ESCALATE`, or `BLOCKED` route the corresponding failure class. Local diagnostic verdicts remain evidence rather than Process Run transitions.
 
 In the Ora system, this framework is invoked within ongoing conversation context. The AI has access to conversation history and vault documents, so the framework can draw on recent work product and prior discussions without requiring everything to be pasted explicitly. In a commercial AI session, paste this entire file and provide your input below the USER INPUT marker at the bottom. State which mode you need, or the AI will determine it from context.
 
@@ -93,15 +80,15 @@ In the Ora system, this framework is invoked within ongoing conversation context
 
 ## PURPOSE
 
-Guide a user from raw epistemic tension through iterative problem definition refinement and project supervision. PEF diagnostically questions the current state of understanding, challenges assumptions, identifies gaps, routes to appropriate thinking tools and frameworks, auto-invokes MOM to populate and refresh the PED's strategic hierarchy (Mission, Excluded Outcomes, Constraints, Objectives, Active/Aspirational Milestones), invokes the Terrain Mapping Framework when MOM determines the problem is not yet definable, supervises Active milestones through Layer 4's drift check against Excluded Outcomes, and executes the Promotion Protocol when an Active milestone completes. The framework produces and maintains a Problem Evolution Document that serves as the project's navigation record, strategic hierarchy, and living history.
+Guide a user from raw epistemic tension through iterative problem definition refinement and project supervision. PEF diagnostically questions the current state of understanding, challenges assumptions, identifies gaps, recommends appropriate thinking tools and frameworks, supervises Active milestones through Layer 4's drift check against Excluded Outcomes, and proposes the Promotion Protocol when an Active milestone completes. The framework produces and maintains a Problem Evolution Document that serves as the project's navigation record, strategic hierarchy, and living history.
 
-This framework is a contingent route, not the pre-processor for PIF or PFF. It turns direction-dependent problems into persisted strategic state and one bounded interim goal at a time, using MOM, TMF, PIF, PFF, or another approved Process Definition only when the current evidence requires that capability. Known procedures and currently inferable complete solutions bypass PEF.
+This framework is the pre-processor for the Process Formalization Framework and the Process Inference Framework, and the supervisor for the Mission, Objectives, and Milestones Clarification Framework (MOM) and the Terrain Mapping Framework (TMF). It turns vague ideas into defined problems — defined enough that MOM can produce a Resolution Statement, TMF can map unknown terrain, PIF can discover a process, or PFF can formalize one. If the problem is not yet ready for any of these, the framework knows to keep iterating.
 
 PEF is bound by the Universal Problem-Definition Lock: it cannot silently change the end state (Resolution Statement for Projects, Service Statement for Operations, Core Essence and Emotional Drivers for Passions, Critical Unknown for Incubators), the Excluded Outcomes (where applicable), or the constraints (Hard, Soft). Changes to Lock-protected fields are explicit user-authorized PE-Iterate decisions recorded in the Decision Log. PEF is bound by the Constructive Escalation (No-Punt) Rule: every escalation carries specific diagnosis plus Redefine / Explore / Abandon advice, with Explore as the default first advice when stuck.
 
-PEF records and respects strategic locks. Process Coherence independently evaluates a declared transition against those locks, the approved plan, exact evidence, and current authority; a mechanical policy dispatcher then applies the supported directive. Neither component invents cognitive direction outside the approved Process Definition, approved plan, or current PEF interim-goal contract.
+PEF is an explicitly invoked strategic framework. It defines and locks the problem definition and reviews milestone evolution when the user selects it. It does not fire automatically, intercept ordinary Inquiry, or supervise standalone Programming execution.
 
-Framework — Oversight Configuration may configure the Run's locks, authority, evidence, correction, continuation, recovery, stopping, and escalation contracts. PE-Init or PE-Iterate may hand off to OS-Setup or OS-Modify when an approved matrix change requires those contracts. Internal runtime events update state synchronously at the mutation boundary; scheduled revisit or drift work is permitted only for conditions that cannot be observed at runtime, never as a substitute for an available hook.
+If a user wants a separate project-oversight configuration, PEF may recommend Framework — Oversight Configuration. That is an explicit follow-on action; PEF creates no scheduled work or background trigger.
 
 ## INPUT CONTRACT
 
@@ -139,7 +126,7 @@ Secondary outputs:
 
 ## EXECUTION TIER
 
-Specification — this document is model-agnostic and environment-agnostic. All layer boundaries are logical. Whether a boundary becomes an actual context-window reset in a multi-stage runtime or remains a conceptual division in a single pass is a rendering decision.
+Specification — this document is model-agnostic and environment-agnostic. All layer boundaries are logical. Whether a boundary becomes an actual context window reset (agent mode) or remains a conceptual division (single-pass) is a rendering decision.
 
 Modes PE-Init, PE-Iterate, and PE-Spawn cover Layers 2-8 (seven processing layers, post-M0). Each currently declares a single milestone; per the Process Formalization Framework Section II §2.3, this single-milestone-for->5-layer-modes design is justified inline at the top of the MILESTONES DELIVERED section as a known follow-up retrofit — multi-milestone decomposition with intermediate drift checkpoints between problem-state elicitation, diagnostic/routing, and PED commit is reserved for a subsequent revision.
 
@@ -162,8 +149,8 @@ PEF is a multi-mode framework with four modes (PE-Init / PE-Iterate / PE-Review 
 #### Milestone 1: Initial Problem Evolution Document
 
 - **Mode:** PE-Init
-- **Endpoint produced:** New Problem Evolution Document containing current problem definition, Mission (Resolution Statement, optional Core Essence / Emotional Drivers), Excluded Outcomes, Constraints (Hard / Soft / Working Assumption), Objectives, Active and Aspirational Milestones with P-Feasibility verdicts for Active milestones, Terrain Maps section (may be empty initially), phase assessment, diagnostic findings, recommended next actions with reasoning, Decision Log, and an iteration entry recording the founding session. Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are populated via auto-invocation of MOM in M-Supervised mode during Layer 2. Format: structured markdown following the PED template in Appendix C.
-- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded; (g) if the approved PEF interim-goal contract requires an Oversight Configuration handoff, the exact OS-Setup/OS-Modify result and OS-Verify readiness evidence are recorded; no such handoff is required merely because work is ongoing.
+- **Endpoint produced:** New Problem Evolution Document containing current problem definition, Mission (Resolution Statement, optional Core Essence / Emotional Drivers), Excluded Outcomes, Constraints (Hard / Soft / Working Assumption), Objectives, Active and Aspirational Milestones with P-Feasibility verdicts for Active milestones, Terrain Maps section (may be empty initially), phase assessment, diagnostic findings, recommended next actions with reasoning, Decision Log, iteration entry recording the founding session, and (for projects involving ongoing work) the project-level Oversight Specification produced via auto-invocation of Framework — Oversight Configuration in OS-Setup mode. Mission, Excluded Outcomes, Constraints, Objectives, and Milestones sections are populated via auto-invocation of MOM in M-Supervised mode during Layer 2. Format: structured markdown following the PED template in Appendix C.
+- **Verification criterion:** (a) all six Evaluation Criteria score 3 or above; (b) a future session loading the PED can understand project history, current problem definition, strategic hierarchy, and next steps without additional context; (c) the document follows the PED template in Appendix C including Mission, Excluded Outcomes, Constraints, Active/Aspirational milestones, and Terrain Maps sections; (d) MOM was invoked and one of the three outcomes is recorded (Outcome 1 produced full strategic hierarchy; Outcome 2 produced terrain-mapping Active milestone with TMF handoff; Outcome 3 produced No-Punt Escalation Report with Redefine/Explore/Abandon advice); (e) at least one recommended next action is specific enough to execute without further interpretation; (f) if Outcome 2 was returned, TMF was invoked in Layer 5 and the Terrain Map Artifact reference (or Escalation Package) is recorded; (g) for projects involving ongoing work (not single-shot), Framework — Oversight Configuration was invoked in OS-Setup mode and the project-level Oversight Specification is recorded in the PED with OS-Verify completed (READY or READY-WITH-WARNINGS verdict).
 - **Layers covered:** 2, 3, 4, 5, 6, 7, 8
 - **Required prior milestones:** M0
 - **Gear:** 4
@@ -270,13 +257,13 @@ You possess:
 - The process awareness of someone who has navigated complex projects — you recognize patterns across domains (a blocked creative project and a stalled construction project share structural similarities)
 - Respect for the user's autonomy — you challenge, propose, and reason, but the user decides
 
-Your operating posture shifts across layers. In Layer 2 (Elicitation), you are primarily a listener and questioner — and, when the PED lacks a populated strategic hierarchy or when drift is detected, the auto-invoker of the Mission, Objectives, and Milestones Clarification Framework. In Layer 3 (Diagnostic), you are an analyst. In Layer 4 (Challenge), you are an intellectual sparring partner who takes positions and defends them, and during supervision you watch the Excluded Outcomes field for silent drift. In Layer 5 (Routing), you are a strategic advisor and, when an Active milestone completes, the executor of the Aspirational-to-Active promotion protocol. Throughout all layers, you are never merely a questionnaire — you are a thinking partner with your own perspective, and you are bound by the Universal Problem-Definition Lock and the Constructive Escalation (No-Punt) Rule stated below.
+Your operating posture shifts across layers. In Layer 2 (Elicitation), you are primarily a listener and questioner and may recommend the Mission, Objectives, and Milestones Clarification Framework when the strategic hierarchy is missing or drifted. In Layer 3 (Diagnostic), you are an analyst. In Layer 4 (Challenge), you are an intellectual sparring partner who watches Excluded Outcomes for silent drift. In Layer 5 (Routing), you are a strategic advisor who proposes the Aspirational-to-Active promotion protocol when an Active milestone completes. Throughout all layers, you are bound by the Universal Problem-Definition Lock and the Constructive Escalation (No-Punt) Rule.
 
 ---
 
 ## UNIVERSAL PROBLEM-DEFINITION LOCK
 
-Two rules a bounded model step cannot violate: **it can never change the end state, and it can never change the constraints.** The first prevents solving the wrong problem; the second prevents not solving the problem at all.
+Two rules an AI agent cannot violate: **it can never change the end state, and it can never change the constraints.** The first prevents solving the wrong problem; the second prevents not solving the problem at all.
 
 Under PEF, the end state for a project is the Mission's Resolution Statement (plus its sibling Excluded Outcomes field); the constraints are the Hard, Soft, and Working Assumption entries in the PED's Constraints section. An Active milestone and its verification criterion are scoped completions *toward* the Resolution Statement — they are not substitutes for it.
 
@@ -287,7 +274,7 @@ Applied to PEF's own behavior:
 - When execution evidence suggests the Resolution Statement or a Constraint is wrong, the only permitted action is to surface the finding to the user and propose an explicit change through PE-Iterate. PEF never silently pivots to a nearby easier problem.
 - A supervisor and worker cannot conspire to solve an easier adjacent problem while declaring success on the original. The Excluded Outcomes field is the explicit mechanism that catches this — see the Silent Non-Solution Substitution failure mode.
 
-The Lock is system-on-itself. It binds Ora's model steps and runtime actions, not the user. The user is the final authority and can modify their own problem definition through an explicit PE-Iterate authority decision.
+The Lock is system-on-itself. It binds Ora's agents, not the user. The user is the final arbiter and can modify their own problem definition at any time through explicit PE-Iterate.
 
 ---
 
@@ -1197,8 +1184,8 @@ The framework is a consultant. You call the consultant when you need them.
 
 | Gap | Recommended Action | Reasoning |
 |-----|-------------------|-----------|
-| Strategic hierarchy (Mission / Constraints / Milestones) absent or thin in PED | MOM in M-Supervised mode (auto-invoked via Layer 2 MOM Invocation Protocol) | MOM owns the Resolution Statement Objectivity Protocol, Constraints classification, and Active/Aspirational milestone split. PEF does not draft these directly. |
-| Strategic hierarchy has drifted since last iteration (definition changed, Excluded Outcome shifted, Working Assumption revisit triggered, Aspirational-to-Active promotion pending) | MOM re-invocation scoped to affected fields (auto-invoked via Layer 2 PE-Iterate step 6) | Field-scoped refresh keeps the PED current without re-running the entire hierarchy. |
+| Strategic hierarchy (Mission / Constraints / Milestones) absent or thin in PED | Recommend MOM in M-Supervised mode | MOM owns the Resolution Statement Objectivity Protocol, Constraints classification, and Active/Aspirational milestone split. The user invokes it explicitly. |
+| Strategic hierarchy has drifted since last iteration (definition changed, Excluded Outcome shifted, Working Assumption revisit triggered, Aspirational-to-Active promotion pending) | Recommend MOM scoped to affected fields | Field-scoped refresh keeps the PED current without re-running the entire hierarchy. |
 | Problem is named but terrain is unmapped — cannot formulate concrete Active milestone | Terrain Mapping Framework via the terrain-mapping Active milestone (MOM Outcome 2 path) | TMF closes knowledge gaps via structured research loops and produces a Terrain Map Artifact. PEF supervises TMF execution and re-invokes MOM when the artifact is returned. |
 | Active milestone verification criterion has passed, but drift to an Excluded Outcome is suspected | Layer 4 supervision drift check (Part A + Part B against Excluded Outcomes) | Silent Non-Solution Substitution is a Type III Error — right-looking answer to the wrong problem. The Excluded Outcomes field is the explicit detector. |
 | Active milestone completed; next Aspirational needs to become Active | Layer 5 Promotion Protocol + MOM re-invocation scoped to Layer 4 (P-Feasibility on the newly-promoted milestone) | Promotion is not automatic — the newly-Active milestone needs a fresh P-Feasibility verdict under current state and constraints. |
@@ -1414,14 +1401,6 @@ When loading the PED into a session:
 - **Load compressed:** Iterations 3-5 as three to five line summaries. Iterations older than 5 as single-line entries.
 - **Load on demand:** Decision Log entries with resolved revisit triggers (retrieve only when a recursive loop activates the relevant topic). Completed sub-project details. Full Terrain Map Artifact body content (reference stays in the Terrain Maps section; the artifact itself loads when the current work needs it).
 - **Never compress:** Mission (Resolution Statement is Lock-protected current-state), Excluded Outcomes (Lock-protected), Constraints (Lock-protected Hard and Soft entries; Working Assumption revisit triggers), Decision Log.
-
----
-
-## G1.1 As-Built Runtime Binding
-
-The accepted G1.1 implementation preserves PEF as a contingent definition, not a universal wrapper. Parent/child invocation and return are persisted by `orchestrator/governed_process_runtime.py` with exact definition, output-artifact, review, receipt, and resume bindings. The Phase 1.7 proof path completed two genuinely dependent interim goals, selecting the second only after the first returned new evidence; the paired ordinary inferable case bypassed PEF. `orchestrator/process_entry_routing.py` and the Process Library do not insert PEF merely because work is multi-step or reusable.
-
-This binding adds no PEF-specific controller, Run type, queue, or scheduled continuation service. A PEF Run uses the same contracts, checkpoints, seven directives, and recovery path as every other governed Run. The runtime tests remain the operational proof; this framework remains the cognitive-process specification.
 
 ---
 

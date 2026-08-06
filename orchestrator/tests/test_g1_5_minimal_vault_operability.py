@@ -22,7 +22,6 @@ if str(ROOT) not in sys.path:
 import boot  # noqa: E402
 import matrix_payload  # noqa: E402
 import operation_matrix  # noqa: E402
-import process_entry_routing  # noqa: E402
 import project_status  # noqa: E402
 from server import app as server  # noqa: E402
 
@@ -225,7 +224,6 @@ class ProjectStatusResolutionTests(unittest.TestCase):
         self.assertEqual("", result["context"])
 
     def test_technical_status_words_do_not_create_project_status_intent(self) -> None:
-        catalog = process_entry_routing.list_entry_definitions(ROOT)
         for message in TECHNICAL_NON_STATUS_REQUESTS:
             with self.subTest(message=message):
                 self.assertEqual([], project_status.requested_projects(message))
@@ -234,18 +232,6 @@ class ProjectStatusResolutionTests(unittest.TestCase):
                 )
                 self.assertFalse(result["matched"])
                 self.assertEqual("", result["context"])
-                route = process_entry_routing.route_process_entry(
-                    {
-                        "source": "inquiry",
-                        "objective": message,
-                        "project_ref": "commons",
-                        "project_confirmed": False,
-                    },
-                    catalog=catalog,
-                    project_visible=lambda _project: True,
-                )
-                self.assertEqual("ordinary_generation", route["intent"])
-                self.assertEqual("ready", route["status"])
 
     def test_duplicate_nexus_fails_closed(self) -> None:
         _write(
@@ -370,10 +356,7 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
             invoke.assert_called_once()
             kwargs = invoke.call_args.kwargs
             self.assertEqual(message, invoke.call_args.args[0])
-            contract = kwargs["extra_context"]["process_entry"]
-            self.assertEqual("ordinary_generation", contract["intent"])
-            self.assertEqual("ready", contract["status"])
-            self.assertEqual("submit_ordinary_generation", contract["next_action"])
+            self.assertIsNone(kwargs["extra_context"])
 
     def test_public_chat_technical_questions_do_not_trigger_status_retrieval(self) -> None:
         original_context_assembly = server.run_step2_context_assembly
@@ -448,10 +431,7 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
                     server,
                     "run_single_pass_with_tools",
                     side_effect=stub_execution,
-                ) as execute, mock.patch(
-                    "conversation_memory.load_governing_process_binding",
-                    return_value=None,
-                ):
+                ) as execute:
                     response = self.client.post("/chat", json={
                         "message": message,
                         "conversation_id": panel_id,
@@ -472,7 +452,12 @@ class AcceptedVaultSourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.vault = Path(
-            os.environ.get("ORA_VAULT_PATH", str(Path.home() / "Documents" / "vault"))
+            os.environ.get(
+                "ORA_VAULT",
+                os.environ.get(
+                    "ORA_VAULT_PATH", str(Path.home() / "Documents" / "vault")
+                ),
+            )
         ).expanduser()
         if not cls.vault.is_dir():
             raise unittest.SkipTest("paired vault is not available")

@@ -1,15 +1,8 @@
-"""Mechanical Process Coherence directive handlers.
+"""Durable utilities for project Decision Log derivatives and oversight queues.
 
-Implements all seven governed Process Run directives.  Process Coherence
-selects a declared route from evidence; this module only records and dispatches
-that accepted route.  Human-queue writes require a typed ``ESCALATE`` authority
-request.  Generic ``REDEFINE`` remains in definition work and never becomes a
-PED redefinition merely because the words are similar.
-
-Includes a small file-lock primitive for PED, corpus, and workflow spec
-write coordination (per §10 O4 — concurrent PED writes).
-
-Author: meta-layer implementation per Reference — Meta-Layer Architecture §9.
+The event bus and router are observational. Project or framework judgment is
+entered explicitly by its caller; this module does not parse or dispatch
+framework verdicts.
 """
 from __future__ import annotations
 
@@ -22,15 +15,8 @@ import stat
 import sys
 import time
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-
-try:
-    from oversight_context import OversightContextBundle
-except ImportError:  # pragma: no cover - package-qualified import context
-    from orchestrator.oversight_context import OversightContextBundle
 
 # Cross-platform file lock (fcntl on POSIX, msvcrt on Windows) — replaces the
 # former top-level `import fcntl`, which crashed the whole oversight system on
@@ -55,7 +41,6 @@ _ACTIONS_LOG_DEFAULT = ACTIONS_LOG_PATH
 _PED_DERIVATIVES_DEFAULT = PED_DERIVATIVES_PATH
 
 DEFAULT_LOCK_TIMEOUT = 30  # seconds, per §10 O4
-REVISE_LIMIT = 3  # per §10 O3
 
 
 def human_queue_path() -> str:
@@ -488,34 +473,6 @@ def _discover_owned_ped_paths(
     return found, failed, errors
 
 
-def purge_conversation_revise_counters(conversation_id: str) -> dict:
-    """Remove revision counters owned by one conversation."""
-    owner_prefix = f"conversation:{_owner_key(conversation_id)}::"
-    path = Path(_revise_counters_path())
-    result = {"counter_entries": 0, "errors": []}
-    if not path.exists() and not path.is_symlink():
-        return result
-    try:
-        with file_lock(str(path)):
-            text, mode = _read_text_no_follow(path)
-            counters = json.loads(text)
-            if not isinstance(counters, dict):
-                raise ValueError("revise counters are not an object")
-            matching = [key for key in counters if key.startswith(owner_prefix)]
-            for key in matching:
-                counters.pop(key, None)
-            if matching:
-                _rp.atomic_write_text(
-                    path,
-                    json.dumps(counters, ensure_ascii=False, indent=2) + "\n",
-                    mode=mode,
-                )
-            result["counter_entries"] = len(matching)
-    except Exception as exc:
-        result["errors"].append(f"revise counters: {exc}")
-    return result
-
-
 def set_conversation_ped_derivatives_private(
     conversation_id: str,
     private: bool,
@@ -693,7 +650,6 @@ def purge_conversation_ped_derivatives(
         "conversation_id": cid,
         "manifest_entries": 0,
         "ped_blocks": 0,
-        "counter_entries": 0,
         "modified_paths": [],
         "failed_paths": [],
         "requires_reindex": [],
@@ -800,395 +756,10 @@ def purge_conversation_ped_derivatives(
                 report["failed_paths"].append(str(path))
                 report["errors"].append(f"PED derivative {path}: {exc}")
 
-    counters = purge_conversation_revise_counters(cid)
-    report["counter_entries"] = counters["counter_entries"]
-    report["errors"].extend(counters["errors"])
     report["requires_reindex"] = sorted(set(report["requires_reindex"]))
     report["modified_paths"] = sorted(set(report["modified_paths"]))
     report["failed_paths"] = sorted(set(report["failed_paths"]))
     return report
-
-
-# ---------- Verdict tracking ----------
-
-REVISE_COUNTERS_PATH = os.path.join(OVERSIGHT_DATA_DIR, "revise-counters.json")
-_REVISE_COUNTERS_DEFAULT = REVISE_COUNTERS_PATH
-
-
-def _revise_counters_path() -> str:
-    if REVISE_COUNTERS_PATH != _REVISE_COUNTERS_DEFAULT:
-        return REVISE_COUNTERS_PATH
-    return _rp.sandboxed_file(REVISE_COUNTERS_PATH)
-
-
-def _load_revise_counters() -> dict:
-    counters_path = _revise_counters_path()
-    if not os.path.isfile(counters_path):
-        return {}
-    try:
-        with open(counters_path) as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def _save_revise_counters(counters: dict, event: dict | None = None):
-    stealth, _conversation_id = _lifecycle_context(event)
-    if stealth:
-        print("[oversight] revise-counter write skipped (Stealth context)", flush=True)
-        return False
-    counters_path = _revise_counters_path()
-    os.makedirs(os.path.dirname(counters_path), exist_ok=True)
-    with file_lock(counters_path):
-        _rp.atomic_write_text(
-            counters_path,
-            json.dumps(counters, ensure_ascii=False, indent=2) + "\n",
-        )
-    return True
-
-
-def _mutate_revise_counters(event: dict, transform) -> dict:
-    """Run one lock-protected revise-counter read/modify/write transaction."""
-    stealth, _conversation_id = _lifecycle_context(event)
-    if stealth:
-        print("[oversight] revise-counter mutation skipped (Stealth context)", flush=True)
-        return {}
-    path = Path(_revise_counters_path())
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with file_lock(str(path)):
-        mode = 0o600
-        if path.exists() or path.is_symlink():
-            text, mode = _read_text_no_follow(path)
-            counters = json.loads(text)
-            if not isinstance(counters, dict):
-                raise ValueError("revise counters are not an object")
-        else:
-            counters = {}
-        before = json.dumps(counters, sort_keys=True, default=str)
-        replacement = transform(dict(counters))
-        if not isinstance(replacement, dict):
-            raise ValueError("revise counter transform did not return an object")
-        after = json.dumps(replacement, sort_keys=True, default=str)
-        if before != after:
-            _rp.atomic_write_text(
-                path,
-                json.dumps(replacement, ensure_ascii=False, indent=2) + "\n",
-                mode=mode,
-            )
-        return replacement
-
-
-def _revise_key(event: dict) -> str:
-    """Per §10 O3, count REVISE verdicts per (milestone_id, project_nexus)."""
-    base = (
-        f"{event.get('project_nexus', '') or event.get('workflow_id', '')}::"
-        f"{event.get('milestone_id') or event.get('section_id') or event.get('milestone_text', '')}"
-    )
-    _stealth, conversation_id = _lifecycle_context(event)
-    if not conversation_id:
-        return base
-    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()
-    return f"conversation:{_owner_key(conversation_id)}::{digest}"
-
-
-# ---------- Main entry point ----------
-
-def apply_verdict(
-    event: dict,
-    bundle: OversightContextBundle,
-    mode: str,
-    verdict: dict,
-):
-    """Apply the verdict-action for the given Process Coherence verdict."""
-    event = dict(event)
-    stealth, conversation_id = _lifecycle_context(event)
-    if conversation_id and not event.get("conversation_id"):
-        event["conversation_id"] = conversation_id
-    verdict = dict(verdict or {})
-    verdict_label = (verdict.get("directive") or verdict.get("verdict") or "UNKNOWN").upper()
-    if verdict_label.startswith("ESCALATE") and "REDEFINITION" in verdict_label:
-        # Backward read for persisted PC output.  This spelling has always
-        # meant a human-approved PED/problem-definition change, never generic
-        # Process Definition work.
-        verdict_label = "ESCALATE"
-        verdict.setdefault("authority_request_type", "ped_redefinition")
-    action_record: dict = {
-        "timestamp": _now_iso(),
-        "event_type": event.get("event_type", ""),
-        "project_nexus": event.get("project_nexus", ""),
-        "workflow_id": event.get("workflow_id", ""),
-        "mode": mode,
-        "verdict": verdict_label,
-        "reasoning": (verdict.get("reasoning") or "")[:500],
-        "conversation_id": event.get("conversation_id", ""),
-    }
-
-    if stealth:
-        action_record["action"] = "stealth_suppressed"
-        return action_record
-
-    if verdict_label == "PROCEED":
-        _apply_proceed(event, bundle, action_record)
-    elif verdict_label == "ACCEPT":
-        _apply_accept(event, bundle, action_record)
-    elif verdict_label == "REVISE":
-        _apply_revise(event, bundle, verdict, action_record)
-    elif verdict_label == "REPLAN":
-        _apply_replan(event, bundle, verdict, action_record)
-    elif verdict_label == "REDEFINE":
-        _apply_redefine(event, bundle, verdict, action_record)
-    elif verdict_label == "ESCALATE":
-        _apply_escalate(event, bundle, verdict, action_record)
-    elif verdict_label == "BLOCKED":
-        _apply_blocked(event, bundle, verdict, action_record)
-    else:
-        action_record["action"] = "unknown_verdict"
-
-    _append_actions_log(action_record)
-    return action_record
-
-
-# ---------- Verdict implementations ----------
-
-def _apply_proceed(event: dict, bundle: OversightContextBundle, action_record: dict):
-    """PROCEED — record Decision Log entry; dispatch downstream where appropriate."""
-    _append_decision_log_entry(event, bundle, "PROCEED", action_record)
-
-    # Reset REVISE counter for this milestone
-    key = _revise_key(event)
-    _mutate_revise_counters(
-        event,
-        lambda counters: {k: v for k, v in counters.items() if k != key},
-    )
-
-    et = event.get("event_type", "")
-    if et == "FrameworkComplete":
-        # If the project's oversight spec has a framework chain, dispatch the next one
-        chain = bundle.framework_chain or []
-        current_idx = _find_framework_in_chain(chain, event.get("framework_id", ""))
-        if current_idx is not None and current_idx + 1 < len(chain):
-            next_framework = chain[current_idx + 1]
-            action_record["next_framework_dispatch"] = (
-                next_framework.get("id") if isinstance(next_framework, dict) else next_framework
-            )
-
-    if et == "CorpusValidated":
-        # Auto-dispatch eligible OFFs
-        action_record["off_dispatch_pending"] = True
-
-    if et == "ChainPropagationRequired":
-        # Dispatch the propagation action per the chain rule
-        action_record["chain_propagation_dispatched"] = event.get("dependent_corpora", [])
-
-    action_record["action"] = "proceed"
-
-
-def _apply_accept(event: dict, bundle: OversightContextBundle, action_record: dict):
-    """ACCEPT — record final acceptance without dispatching more chain work."""
-    _append_decision_log_entry(event, bundle, "ACCEPT", action_record)
-    key = _revise_key(event)
-    _mutate_revise_counters(
-        event,
-        lambda counters: {k: v for k, v in counters.items() if k != key},
-    )
-    action_record["action"] = "accept"
-    action_record["terminal"] = True
-
-
-def _apply_revise(event: dict, bundle: OversightContextBundle, verdict: dict, action_record: dict):
-    """REVISE — record execution correction without diagnosing by count."""
-    key = _revise_key(event)
-    state: dict[str, int] = {"count": 0}
-
-    def increment(counters: dict) -> dict:
-        count = int(counters.get(key, 0)) + 1
-        state["count"] = count
-        if count >= REVISE_LIMIT:
-            counters.pop(key, None)
-        else:
-            counters[key] = count
-        return counters
-
-    _mutate_revise_counters(event, increment)
-
-    _append_decision_log_entry(event, bundle, "REVISE", action_record, extra_text=verdict.get("reasoning", ""))
-    action_record["revise_count"] = state["count"]
-    action_record["corrective_specification"] = verdict.get("reasoning", "")
-    if state["count"] >= REVISE_LIMIT:
-        action_record["action"] = "revision_limit_reached"
-        action_record["requires_failure_classification"] = True
-        action_record["allowed_next_directives"] = [
-            "REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED",
-        ]
-    else:
-        action_record["action"] = "revise"
-
-
-def _apply_replan(
-    event: dict,
-    bundle: OversightContextBundle,
-    verdict: dict,
-    action_record: dict,
-):
-    """REPLAN — return to approved-plan authority; never enter human queue."""
-    _append_decision_log_entry(
-        event, bundle, "REPLAN", action_record,
-        extra_text=verdict.get("reasoning", ""),
-    )
-    action_record["action"] = "replan"
-    action_record["plan_return"] = {
-        "current_plan_id": event.get("plan_id", ""),
-        "resume_target": verdict.get("resume_target", ""),
-    }
-
-
-def _apply_redefine(
-    event: dict,
-    bundle: OversightContextBundle,
-    verdict: dict,
-    action_record: dict,
-):
-    """REDEFINE — return to definition authority without human queuing."""
-    _append_decision_log_entry(
-        event, bundle, "REDEFINE", action_record,
-        extra_text=verdict.get("reasoning", ""),
-    )
-    action_record["action"] = "redefine"
-    action_record["definition_return"] = {
-        "definition_id": event.get("definition_id", ""),
-        "definition_version": event.get("definition_version", ""),
-        "definition_digest": event.get("definition_digest", ""),
-        "resume_target": verdict.get("resume_target", ""),
-    }
-
-
-def _apply_blocked(
-    event: dict,
-    bundle: OversightContextBundle,
-    verdict: dict,
-    action_record: dict,
-):
-    """BLOCKED — persist the absence of an authorized continuation."""
-    _append_decision_log_entry(
-        event, bundle, "BLOCKED", action_record,
-        extra_text=verdict.get("reasoning", ""),
-    )
-    action_record["action"] = "blocked"
-    action_record["blocking_evidence"] = verdict.get("blocking_evidence", [])
-
-
-def _apply_escalate(
-    event: dict,
-    bundle: OversightContextBundle,
-    verdict: dict,
-    action_record: dict,
-):
-    """ESCALATE — surface one explicit reserved-authority request."""
-    authority_request_type = str(
-        verdict.get("authority_request_type")
-        or event.get("authority_request_type")
-        or ""
-    ).strip()
-    if not authority_request_type:
-        action_record["action"] = "invalid_escalation"
-        action_record["error"] = "ESCALATE requires authority_request_type"
-        action_record["queued_for_human_review"] = False
-        return
-    redefinition = authority_request_type == "ped_redefinition"
-    _append_decision_log_entry(
-        event, bundle,
-        "ESCALATE",
-        action_record,
-        extra_text=verdict.get("reasoning", ""),
-    )
-
-    queue_entry = {
-        "queued_at": _now_iso(),
-        "conversation_id": event.get("conversation_id", ""),
-        "event": event,
-        "verdict": verdict,
-        "authority_request_type": authority_request_type,
-        "redefinition": redefinition,
-        "forced_reason": "",
-        "kind": "authority_request",
-        "context_summary": {
-            "project_nexus": event.get("project_nexus", ""),
-            "workflow_id": event.get("workflow_id", ""),
-            "claim": bundle.claim,
-            "load_errors": bundle.load_errors,
-        },
-    }
-    # Route through oversight_queue so the entry gets a stable id and an
-    # AI-generated default name (used by the V3 sidebar Paused panel).
-    # Falls back to a direct write if oversight_queue is unavailable for
-    # any reason — preserves the existing behavior.
-    try:
-        from oversight_queue import add_entry as _add_queue_entry
-        _add_queue_entry(queue_entry)
-    except Exception:
-        _append_human_queue(queue_entry)
-    action_record["action"] = "escalate"
-    action_record["authority_request_type"] = authority_request_type
-    action_record["queued_for_human_review"] = True
-
-
-# ---------- Decision Log appending ----------
-
-def _append_decision_log_entry(
-    event: dict,
-    bundle: OversightContextBundle,
-    verdict_label: str,
-    action_record: dict,
-    extra_text: str = "",
-):
-    """Append a Decision Log entry to the project's PED.
-
-    Section: ## Decision Log. Lock-protected fields (Mission, Excluded
-    Outcomes, Constraints) are NOT modified — only the Decision Log section.
-    Per §10 O5, lock-protected mutations are rejected at the writer level.
-    """
-    stealth, conversation_id = _lifecycle_context(event)
-    if stealth:
-        action_record["decision_log_suppressed"] = "stealth"
-        return
-    if conversation_id and not event.get("conversation_id"):
-        event = {**event, "conversation_id": conversation_id}
-
-    project_nexus = event.get("project_nexus", "")
-    if not project_nexus:
-        return
-
-    from ped_watcher import load_ped_path
-    ped_path = load_ped_path(project_nexus)
-    if not ped_path or not os.path.isfile(ped_path):
-        return
-
-    entry_lines = [
-        f"### {_today_iso()} — Process Coherence Verdict: {verdict_label}",
-        f"- Event type: {event.get('event_type', '')}",
-        f"- Mode: {action_record.get('mode', '')}",
-    ]
-    milestone_ref = (
-        event.get("milestone_text")
-        or event.get("milestone_id")
-        or event.get("section_id")
-        or ""
-    )
-    if milestone_ref:
-        entry_lines.append(f"- Milestone/section: {milestone_ref}")
-    if extra_text:
-        entry_lines.append("- Reasoning:")
-        for line in extra_text.split("\n"):
-            entry_lines.append(f"  > {line}")
-    entry_text = "\n".join(entry_lines) + "\n\n"
-
-    append_managed_decision_log_entry(
-        ped_path,
-        entry_text,
-        event,
-        kind="process_coherence_verdict",
-        action_record=action_record,
-    )
 
 
 def _insert_into_decision_log(content: str, entry_text: str) -> str:
@@ -1263,15 +834,6 @@ def read_human_queue() -> list[dict]:
 
 
 # ---------- Helpers ----------
-
-def _find_framework_in_chain(chain: list, framework_id: str) -> Optional[int]:
-    for i, f in enumerate(chain):
-        if isinstance(f, dict) and f.get("id") == framework_id:
-            return i
-        if f == framework_id:
-            return i
-    return None
-
 
 def _append_actions_log(record: dict):
     # Stealth-context awareness: same pattern as _append_human_queue —

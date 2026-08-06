@@ -39,7 +39,6 @@ class FrameworkInvocabilityError(ValueError):
 class FrameworkInvocabilityRegistry:
     invocable_by_key: dict[str, str]
     pickable_ids: set[str]
-    process_definition_ids: set[str]
     internal_only_ids: set[str]
 
 
@@ -80,11 +79,6 @@ def load_framework_invocability_registry() -> FrameworkInvocabilityRegistry:
         for item in pickable_values
     }
 
-    process_definition_ids = {
-        _normalize_key(item)
-        for item in raw.get("process_definition_frameworks", []) or []
-    }
-
     internal_only_ids = {
         _normalize_key(item)
         for item in raw.get("internal_only_frameworks", []) or []
@@ -94,19 +88,10 @@ def load_framework_invocability_registry() -> FrameworkInvocabilityRegistry:
     for internal_id in internal_only_ids:
         invocable_by_key.pop(internal_id, None)
         pickable_ids.discard(internal_id)
-        process_definition_ids.discard(internal_id)
-
-    if not process_definition_ids.issubset(pickable_ids):
-        missing = sorted(process_definition_ids - pickable_ids)
-        raise FrameworkInvocabilityError(
-            "process-definition picker entries must also be pickable: "
-            + ", ".join(missing)
-        )
 
     return FrameworkInvocabilityRegistry(
         invocable_by_key=invocable_by_key,
         pickable_ids=pickable_ids,
-        process_definition_ids=process_definition_ids,
         internal_only_ids=internal_only_ids,
     )
 
@@ -176,14 +161,6 @@ def is_user_pickable_framework(value: str) -> bool:
     registry = load_framework_invocability_registry()
     key = _normalize_key(value)
     return key in registry.pickable_ids and key not in registry.internal_only_ids
-
-
-def is_process_definition_framework(value: str) -> bool:
-    """Return whether a picker row is an authenticated Process Definition."""
-
-    registry = load_framework_invocability_registry()
-    key = _normalize_key(value)
-    return key in registry.process_definition_ids and key not in registry.internal_only_ids
 
 
 def user_invocable_framework_ids() -> list[str]:

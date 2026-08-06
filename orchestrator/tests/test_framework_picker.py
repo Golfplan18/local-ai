@@ -36,7 +36,7 @@ PIPELINE_INTERNAL_IDS = {
     "phase-a-prompt-cleanup", "supplemental-rag-protocol",
 }
 
-EXPECTED_PICKABLE_COUNT = 18
+EXPECTED_PICKABLE_COUNT = 17
 
 
 class TestParseFrameworkPickerMetadata(unittest.TestCase):
@@ -51,17 +51,8 @@ class TestParseFrameworkPickerMetadata(unittest.TestCase):
         self.assertEqual(meta["category"], "standard")
         self.assertEqual(meta["kind"], "framework")
 
-    def test_programming_is_an_authenticated_process_definition_row(self):
-        meta = parse_framework_picker_metadata("programming")
-        self.assertIsNotNone(meta)
-        self.assertEqual(meta["category"], "process-definition")
-        self.assertEqual(meta["kind"], "process_definition")
-        self.assertEqual(meta["definition_ref"], {
-            "definition_id": "ora/programming",
-            "version": "2.0.1",
-            "digest": "sha256:b79d06b401ca54ec62588ab9cd64393fc049d4cf599298a5b057d93aa4e2a927",
-        })
-        self.assertFalse(meta["activated"])
+    def test_programming_is_not_duplicated_in_the_framework_picker(self):
+        self.assertIsNone(parse_framework_picker_metadata("programming"))
 
     def test_pipeline_internal_returns_none(self):
         # Pipeline-internal frameworks deliberately omit Display Name /

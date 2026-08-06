@@ -36,8 +36,6 @@ if str(ORCH_DIR) not in sys.path:
     sys.path.insert(0, str(ORCH_DIR))
 
 import boot  # noqa: E402
-import governed_process_runtime as gpr  # noqa: E402
-from tests.test_governed_process_runtime import make_definition, make_run  # noqa: E402
 
 DUMMY_EP = {"id": "ep", "name": "ep", "type": "remote"}
 
@@ -186,36 +184,6 @@ def _ctx():
     return {"cleaned_prompt": "Q", "trace_dir": None, "mode_name": "test-mode"}
 
 
-def _bind_run(ctx, runtime, run_id, evaluator=None):
-    if evaluator is None:
-        evaluator = lambda observation: {  # noqa: E731
-            "directive": "ACCEPT",
-            "target_node_id": "accepted",
-            "reason": "independent final evidence supports acceptance",
-            "evaluation_boundary": "independent_quality_review",
-        }
-    ctx["process_run_binding"] = {
-        "runtime": runtime,
-        "run_id": run_id,
-        "segment_id": "text-review",
-        "final_review": {
-            "candidate_artifact_id": "gear3-result",
-            "evidence_artifact_prefix": "gear3-final-review",
-            "evidence_id": "result_verified",
-            "candidate_node_id": "act",
-            "evidence_node_id": "verify",
-            "candidate_action": "produce_artifact",
-            "evidence_action": "record_evidence",
-            "candidate_selector": "scope:declared_outputs",
-            "evidence_selector": "scope:declared_outputs",
-            "reviewer_id": "independent-gear3-reviewer",
-            "satisfied_conditions": ["approved_plan_digest_matches"],
-        },
-        "process_coherence_evaluator": evaluator,
-    }
-    return ctx
-
-
 # ─────────────────────────── Gear 3 behavior ────────────────────────────────
 
 
@@ -229,9 +197,9 @@ class TestGear3QualityGate(unittest.TestCase):
         self.assertEqual(len(gate_prompts), 1)
         prompt = gate_prompts[0]
         self.assertIn("## REVIEW SUBJECT IDENTITY (runtime-issued)", prompt)
-        self.assertIn("Process Run: pipeline-trace:", prompt)
-        self.assertIn("Candidate Artifact: inline-response:", prompt)
-        self.assertRegex(prompt, r"Candidate Artifact: .* sha256:[0-9a-f]{64}")
+        self.assertIn("Pipeline Trace: pipeline-trace:", prompt)
+        self.assertIn("Candidate: inline-response:", prompt)
+        self.assertRegex(prompt, r"Candidate: .* sha256:[0-9a-f]{64}")
 
     def test_pass_ships_without_redo(self):
         h = _Harness(["## QUALITY GATE\nall good\nVERDICT: PASS"])
@@ -269,134 +237,6 @@ class TestGear3QualityGate(unittest.TestCase):
         self.assertFalse(h.saw_qgfix("reviser"))
         self.assertNotIn("QGFIX", result)
         self.assertIn("Deliverable withheld", result)
-
-    def test_bound_process_run_supplies_limit_and_persists_attempts(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
-            definition = make_definition()
-            run = make_run("run-gear3", definition)
-            run["contracts"]["correction_loop"]["max_attempts"] = 12
-            run["contracts"]["correction_loop"]["repeated_defect_limit"] = 12
-            runtime.create_run(definition, run)
-            runtime.start_run("run-gear3", reason="approved Gear 3 plan is ready")
-            ctx = _ctx()
-            _bind_run(ctx, runtime, "run-gear3")
-            h = _Harness(
-                ["VERDICT: PASS"],
-                verifier_outputs=["VERDICT: FAIL", "VERDICT: PASS"],
-            )
-            with _patched(h):
-                boot.run_gear3(ctx, {}, config_name=None)
-
-            persisted = runtime.load_run("run-gear3")
-            self.assertEqual(persisted["contracts"]["correction_loop"]["attempt"], 2)
-            self.assertEqual(persisted["state"], "completed")
-            attempts = [
-                record["event"]["event_type"]
-                for record in runtime.load_records("run-gear3")
-                if record["record_type"] == "event"
-                and record["event"]["event_type"].startswith("attempt_")
-            ]
-            self.assertEqual(attempts, [
-                "attempt_started", "attempt_completed",
-                "attempt_started", "attempt_completed",
-            ])
-
-    def test_high_bound_does_not_force_extra_gear3_attempts(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
-            definition = make_definition()
-            run = make_run("run-gear3-pass", definition)
-            run["contracts"]["correction_loop"]["max_attempts"] = 12
-            runtime.create_run(definition, run)
-            runtime.start_run("run-gear3-pass", reason="approved Gear 3 plan is ready")
-            ctx = _ctx()
-            _bind_run(ctx, runtime, "run-gear3-pass")
-            with _patched(_Harness(["VERDICT: PASS"])):
-                boot.run_gear3(ctx, {}, config_name=None)
-            self.assertEqual(
-                runtime.load_run("run-gear3-pass")["contracts"]["correction_loop"]["attempt"],
-                1,
-            )
-
-    def test_bound_fail_observation_follows_process_coherence_replan_not_redo(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
-            definition = make_definition()
-            run = make_run("run-gear3-replan", definition)
-            runtime.create_run(definition, run)
-            runtime.start_run("run-gear3-replan", reason="approved Gear 3 plan is ready")
-            ctx = _ctx()
-            _bind_run(ctx, runtime, "run-gear3-replan", evaluator=lambda observation: {
-                "failure_class": "plan",
-                "target_node_id": "verify",
-                "reason": "Process Coherence found a plan-level defect",
-                "evaluation_boundary": "independent_quality_review",
-            })
-            h = _Harness(["VERDICT: FAIL"])
-            with _patched(h):
-                result = boot.run_gear3(ctx, {}, config_name=None)
-            self.assertFalse(h.saw_qgfix("reviser"))
-            self.assertIn("Deliverable withheld", result)
-            persisted = runtime.load_run("run-gear3-replan")
-            self.assertEqual(persisted["state"], "pending")
-            self.assertEqual(
-                [
-                    record["transition"]["directive"]
-                    for record in runtime.load_records("run-gear3-replan")
-                    if record["record_type"] == "transition"
-                ],
-                ["REPLAN"],
-            )
-
-    def test_bound_revision_is_reinspected_then_accepts_new_artifact_identity(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            runtime = gpr.GovernedProcessRuntime(temp_dir, now=lambda: "2026-07-16T18:00:00-07:00")
-            definition = make_definition()
-            verification = next(
-                node for node in definition["graph"]["nodes"]
-                if node["node_id"] == "verify"
-            )
-            verification["routes"]["REVISE"] = "verify"
-            run = make_run("run-gear3-reinspect", definition)
-            runtime.create_run(definition, run)
-            runtime.start_run("run-gear3-reinspect", reason="approved Gear 3 plan is ready")
-            ctx = _ctx()
-
-            def evaluate(observation):
-                if observation["observation"] == "PASS":
-                    return {
-                        "directive": "ACCEPT",
-                        "target_node_id": "accepted",
-                        "reason": "corrected identity passed independent reinspection",
-                        "evaluation_boundary": "independent_quality_review",
-                    }
-                return {
-                    "failure_class": "execution",
-                    "target_node_id": "verify",
-                    "reason": "the current artifact has a correctable execution defect",
-                    "evaluation_boundary": "independent_quality_review",
-                }
-
-            _bind_run(ctx, runtime, "run-gear3-reinspect", evaluator=evaluate)
-            h = _Harness(["VERDICT: FAIL", "VERDICT: PASS"])
-            with _patched(h):
-                result = boot.run_gear3(ctx, {}, config_name=None)
-            self.assertIn("QGFIX", result)
-            self.assertEqual(runtime.load_run("run-gear3-reinspect")["state"], "completed")
-            records = runtime.load_records("run-gear3-reinspect")
-            self.assertEqual(
-                [r["transition"]["directive"] for r in records if r["record_type"] == "transition"],
-                ["REVISE", "ACCEPT"],
-            )
-            artifact_events = [
-                r["event"]["details"] for r in records
-                if (r.get("event") or {}).get("event_type") == "artifact_recorded"
-                and r["event"]["details"]["artifact_id"] == "gear3-result"
-            ]
-            self.assertEqual(len(artifact_events), 2)
-            self.assertTrue(artifact_events[-1]["stale_review_invalidated"])
-
 
 class TestGear3VerdictThreadForPacket(unittest.TestCase):
     """The packet label describes the inspected identity and release state."""

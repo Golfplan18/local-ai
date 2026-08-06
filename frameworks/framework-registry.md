@@ -88,31 +88,31 @@ Each framework has one entry with these fields:
 
 ### Problem Evolution
 
-- **Purpose:** Contingent problem evolution — create or advance a Problem Evolution Document only when the next responsible direction genuinely depends on evidence that bounded interim progress must first produce
-- **Problem Class:** Evidence-dependent problem definition, strategic-lock management, and interim-goal routing when a complete procedure is not currently inferable
-- **Input Summary:** PE-Init: unresolved tension plus evidence that direction depends on an interim result. PE-Iterate: exact existing PED, completed interim evidence, and current locks. PE-Review: existing PED for non-mutating status review. PE-Spawn: parent PED plus genuinely distinct evidence-dependent sub-problem.
-- **Output Summary:** New or updated PED with exact problem state, protected Mission/Excluded Outcomes/Constraints, bounded interim-goal contract, evidence-return and resumption conditions, conditional MOM/TMF/DCA routes, Decision Log, and next routing decision; PE-Review status or PE-Spawn child definition where selected
-- **Proven Applications:** v3.2 records the accepted G1.1 proof: one contingent Run completed two genuinely dependent interim goals with exact return/resume, while a currently inferable case bypassed PEF; v3.1 established the conditional routing contract. The contingent route remains evidence-dependent rather than automatic.
-- **Known Limitations:** PEF must not become automatic preprocessing or a universal supervisor; it cannot replace a known procedure, PIF inference, PFF formalization, Process Coherence transition judgment, or user authority over strategic locks
+- **Purpose:** Create, review, or advance a matrix's strategic layer while protecting its locked problem definition and recording explicit user-authorized changes
+- **Problem Class:** Iterative problem definition, matrix supervision, strategic drift review, and next-action recommendation
+- **Input Summary:** PE-Init: unresolved tension or goal. PE-Iterate: existing matrix plus new work or evidence. PE-Review: existing matrix for status review. PE-Spawn: parent matrix plus a distinct sub-problem.
+- **Output Summary:** New or updated matrix with Mission, Constraints, type-appropriate milestones or cycles, Decision Log, and explicit recommendations for any follow-on framework
+- **Proven Applications:** v3.0 established type-aware Project, Operation, Passion, and Incubator supervision with protected strategic fields and explicit promotion decisions
+- **Known Limitations:** PEF is explicitly invoked. It does not intercept Inquiry, trigger itself, automatically invoke another framework, or supervise standalone Programming.
 - **File Location:** frameworks/book/problem-evolution.md (executable); ~/Documents/vault/Projects/Ora/Framework — Problem Evolution.md (canonical)
 - **Provenance:** human-created
 - **Confidence:** medium
-- **Version:** 3.2
-- **Delivers:** Evidence-dependent initial PED and bounded interim-goal contract (PE-Init); evidence-return update and explicit resume/reroute decision (PE-Iterate); non-mutating PED status review (PE-Review); distinct child PED only when a genuine evidence-dependent sub-problem requires it (PE-Spawn)
+- **Version:** 3.0
+- **Delivers:** Initial or updated matrix, non-mutating strategic review, explicit promotion recommendation, or a distinct child matrix
 
 ### Process Formalization
 
-- **Purpose:** Formalize a known or demonstrated reusable procedure as one exact versioned Process Definition over the domain-general graph grammar and the four governed object families
-- **Problem Class:** Process Definition design, conversion, bounded-judgment formalization, multi-stage projection, and contract audit
-- **Input Summary:** F-Design/F-Convert: known procedure or PIF handoff, exact inputs/outputs, graph steps/routes, artifact/evidence/authority requirements, bounded judgments, correction/continuation/recovery, and stop/escalation policy. F-Render: exact approved definition plus explicitly requested projection. F-Audit: exact definition/package for validation.
-- **Output Summary:** One consolidated standalone canonical plus exact Process Definition/package contract; supported graph productions; bounded-judgment records; all seven directives with final-only ACCEPT; optional multi-stage projection only when requested; registry entry and inline audit
-- **Proven Applications:** v2.6 records the accepted generic-kernel and authenticated-registry implementation, including construction, independent verification, registration, exact resolution, and invocation of a content-bound non-programming definition; v2.5 supplied the Programming 2.0.1 derivation contract
-- **Known Limitations:** PFF formalizes but does not approve activation, invent providers or permissions, select cognitive direction, or replace runtime enforcement; unresolved bindings withhold affected operation or acceptance
+- **Purpose:** Design, convert, render, or audit an AI instruction framework, using one consolidated file by default
+- **Problem Class:** Framework design, modernization, explicit optional rendering, and quality audit
+- **Input Summary:** F-Design: task and deliverable requirements. F-Convert/F-Audit: an existing framework. F-Render: an existing framework plus the explicitly requested additional execution variant and rationale.
+- **Output Summary:** One consolidated executable Markdown framework by default; one additional rendering only when explicitly requested; or a bounded audit
+- **Proven Applications:** v2.3 reconciled the single-file default with the full framework anatomy, milestone, recovery, and quality standards
+- **Known Limitations:** PFF specifies instructions; it does not create a persistent runtime, register capabilities, activate automation, or execute standalone Programming.
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Formalization.md (canonical); frameworks/book/process-formalization.md (exact Ora runtime mirror)
 - **Provenance:** human-created
 - **Confidence:** high
-- **Version:** 2.6
-- **Delivers:** Exact new Process Definition and consolidated canonical (F-Design); semantically preserved definition conversion with explicit migration (F-Convert); optional faithful multi-stage projection (F-Render); machine-checkable definition/package/graph/authority/directive audit (F-Audit)
+- **Version:** 2.3
+- **Delivers:** Consolidated new framework (F-Design); consolidated converted framework (F-Convert); one requested additional rendering (F-Render); framework quality audit (F-Audit)
 
 ### Corpus Formalization
 
@@ -144,31 +144,31 @@ Each framework has one entry with these fields:
 
 ### Process Inference
 
-- **Purpose:** Infer a complete transformation path from defined endpoints, query the current capability environment, execute worthwhile controlled probes under the originating governed Run, and either operate the bounded path directly or prepare it for durable PFF formalization
-- **Problem Class:** Capability-query-backed process inference, governed controlled-probe execution, verification-boundary design, trace diagnosis, decomposition, formalization handoff, and feasibility assessment
-- **Input Summary:** All modes: current/desired state, constraints, non-solutions, uncertainty, and mode. P-Infer/P-Formalize query available tools, skills, frameworks, exact approved Process Definitions, and solution patterns; P-Infer additionally consumes the current Run authority, artifact, evidence, correction, recovery, and stop contracts for any probe or direct operation.
-- **Output Summary:** P-Infer: Capability Discovery Record, Viable Process Description, designed/executed/withheld controlled probes with exact evidence/receipts, Process Capability Requirements, Verification-Boundary Map, direct-operation record or PFF handoff. P-Formalize: discovery/capability/boundary records and handoff. Other modes retain their established scoped outputs.
-- **Proven Applications:** v1.5 records the accepted G1.1 implementation of capability queries, deny-default inspection, persisted controlled probes, replay/stop/receipt enforcement, same-Run direct operation, and conditional PEF bypass; v1.4 supplied the Programming 2.0.1 derivation input
-- **Known Limitations:** PIF cannot infer availability or action effects from memory or names; failed/unavailable query sources remain unresolved. Mutation probes are limited to explicitly authorized reversible isolated effects with checkpoint, idempotency, exact evidence, receipt, recovery, and stop conditions. Durable reuse still requires PFF.
+- **Purpose:** Infer a viable transformation path from a defined current state to a testable desired state and prepare it for optional PFF formalization
+- **Problem Class:** Process inference, debugging, decomposition, formalization handoff, and milestone feasibility assessment
+- **Input Summary:** Current and desired state, constraints, resources, known non-solutions, uncertainty, and optional mode
+- **Output Summary:** Viable Process Description, PFF handoff, trace-backed diagnosis, decomposition, or feasibility verdict according to the selected mode
+- **Proven Applications:** v1.0 established the endpoint-to-path method, uncertainty map, probe design, alternative comparison, and PFF handoff
+- **Known Limitations:** PIF describes and evaluates paths; it does not mutate a repository, operate a persistent Run, or automatically route Inquiry or Programming.
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Inference.md (canonical); frameworks/book/process-inference.md (exact Ora runtime mirror)
 - **Provenance:** human-created
 - **Confidence:** high
-- **Version:** 1.5
-- **Delivers:** Queried Capability Discovery Record, governed probe observations, viable direct-operation path or reusable-formalization handoff (P-Infer); trace-backed diagnosis (P-Debug); decomposed subproblems (P-Decompose); PFF-ready exact handoff (P-Formalize); feasibility verdict (P-Feasibility)
+- **Version:** 1.0
+- **Delivers:** Viable process and PFF handoff (P-Infer); diagnosis (P-Debug); decomposed subproblems (P-Decompose); PFF-ready handoff (P-Formalize); feasibility verdict (P-Feasibility)
 
 ### Programming
 
-- **Purpose:** Govern programming planning, approval, action, inspection, correction, replanning, redefining, authority return, recovery, and final acceptance through one versioned Process Definition over Ora's generic kernel
-- **Problem Class:** Evidence-governed programming capability construction and operation with exact artifacts, bounded judgment, explicit authority, seven-directive transitions, and independent completion
-- **Input Summary:** All paths begin from a management-language objective, confirmed project, exact artifact scope, constraints, and available authority. PRG-Execute additionally requires an approved exact plan; PRG-Verify requires an exact result and evaluation basis.
-- **Output Summary:** One canonical plan with Principal and Technical projections; M1 approved plan or M2 accepted result; exact artifacts/evidence/receipts; pause/recovery and non-completion packets; optional versioned capability output with construct, test, register, invoke, and activate authority kept separate
-- **Proven Applications:** v2.0.1 validates as `ora/programming@2.0.1` against `ora.process-contracts/1.0`; exhaustive traversal enforces every entry contract and directive. Phase 1.7 completed the repository and cross-domain trials. Part 2 then exposed Programming through ordinary-language/project-confirmed entry, persistent interview, canonical plan approval, exact delegated mutation, attention, Inspector, Process Library/lifecycle, Build proof gate, and restart-safe later invocation of the non-programming capability.
-- **Known Limitations:** Concrete project, artifact, tool, reviewer, and effect bindings remain Run-specific; activation and broad trigger management are not automatically available; public Process Library invocation currently supports a non-external action entry followed by verification and records evidence pending independent acceptance; PRG-Plan/Verify cannot mutate, PRG-Execute/Verify cannot silently replan, and redefinition requires an exact persisted path-legal resume destination
+- **Purpose:** Natively complete approved repository work through inspect-first planning, real execution, fresh independent review, correction, and Git finish
+- **Problem Class:** Explicit repository programming with bounded authority and direct evidence review
+- **Input Summary:** Explicit Programming activation, natural-language objective, Git worktree path, material answers when needed, and one approved plan
+- **Output Summary:** Reviewer-accepted milestone commits on a task branch, final `DONE` or a genuine `ASK USER` decision, and the approved local/push/PR/merge finish line
+- **Proven Applications:** v3.0 includes real repository execution, clean-context review, accepted-slice commits, independent outside-source inspection, direct non-text inspection, and unsupported-claim rejection proofs
+- **Known Limitations:** Requires a clean separable Git baseline and configured standalone model endpoints. Production, deployment, publication, messaging, credentials, or other external writes require plan authority.
 - **File Location:** frameworks/book/programming.md (operational body mirror); ~/Documents/vault/Projects/Ora/Framework — Programming.md (canonical)
-- **Provenance:** model-assisted derivation from accepted PIF v1.4/PFF v2.5 and the generic kernel; v1.0 retained only as explicit salvage/history
-- **Confidence:** medium
-- **Version:** 2.0.1
-- **Delivers:** Approved canonical plan plus Principal/Technical projections (PRG-Run/PRG-Plan); accepted exact programming result (PRG-Run/PRG-Execute/PRG-Verify); versioned capability definition when authorized; explicit Defect, Replan, Redefinition, Authority Request, Blocked, Pause, or Return packet when completion is withheld
+- **Provenance:** standalone Ora implementation governed by the user-approved Programming plan
+- **Confidence:** high
+- **Version:** 3.0
+- **Delivers:** One approved plan, real repository changes, independent review, accepted-slice commits, and the approved Git finish line
 
 ### Mission, Objectives, and Milestones Clarification
 
@@ -849,17 +849,17 @@ Each framework has one entry with these fields:
 
 ### Oversight Configuration
 
-- **Purpose:** Configure, modify, and verify the locks, authority, artifact scope, evidence, bounded-judgment, correction, continuation, recovery, stopping, escalation, and transition contracts for a selected governed Process Definition and Process Run; it does not create a parallel engine or universal supervision layer
-- **Problem Class:** Governed-process contract configuration and verification
-- **Input Summary:** Mode (OS-Setup / OS-Modify / OS-Verify), target Process Definition or configuration, governing intent and locks, artifact scope, action grants and reserved authority, evidence and identity bindings, correction/continuation/recovery limits, and declared routes
-- **Output Summary:** OS-Setup produces a complete versioned configuration; OS-Modify produces an authorized versioned delta with migration/resume impact; OS-Verify produces READY / READY-WITH-WARNINGS / NOT-READY plus exact source-resolution, authority, evidence, transition, and runtime-hook findings
-- **Proven Applications:** directly registered vault source; v2.1 records the accepted seven directives plus contract, node-bound target-mutation, repository identity/receipt, attention, and lifecycle enforcement from G1.1 Parts 1–2
-- **Known Limitations:** Configuration does not itself authorize actions, evaluate evidence, dispatch transitions, create watchers, or make scheduled maintenance acceptable when a runtime hook exists; unresolved required bindings remain NOT-READY
+- **Purpose:** Configure or audit the smallest explicit project and framework review boundaries a target actually needs
+- **Problem Class:** Project/framework lock and review-boundary configuration
+- **Input Summary:** Exact target, user-selected locked fields, named review boundaries, minimum evidence, permitted continuation, and user-reserved decisions
+- **Output Summary:** One concise configuration in the existing target document, or READY / READY-WITH-WARNINGS / NOT-READY findings for an audit
+- **Proven Applications:** v3.0 removes the superseded Process Definition/Run, authority-ledger, attention, lifecycle, and Programming projection contracts while retaining explicit boundary configuration
+- **Known Limitations:** Does not create a runtime, scheduler, watcher, queue, trigger, lifecycle object, or Programming workflow; if the target needs no configured oversight, it creates nothing
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Oversight Configuration.md (canonical)
 - **Provenance:** human-created
-- **Confidence:** low
-- **Version:** 2.1
-- **Delivers:** Versioned governed-process configuration (OS-Setup); authorized configuration revision with migration impact (OS-Modify); topology-aware readiness verdict with synthetic seven-directive and restart/recovery checks (OS-Verify)
+- **Confidence:** high
+- **Version:** 3.0
+- **Delivers:** Explicit target-specific locks and named review boundaries, or a concise configuration-readiness audit
 
 ### Paradigm and Assumption Examination (T9 territory)
 
@@ -877,17 +877,17 @@ Each framework has one entry with these fields:
 
 ### Process Coherence
 
-- **Purpose:** Independently evaluate a proposed declared transition against the current Process Run, governing intent, exact artifact/evidence identities, locks, authority, and route contracts, then emit exactly one of the seven Process Run directives for mechanical dispatch
-- **Problem Class:** Evidence- and authority-bounded transition evaluation
-- **Input Summary:** Exact Run/definition/plan/node identities; proposed target; artifact and evidence identities; locks and intent; action/authority grants; correction progress; continuation/recovery state; declared routes and stop/escalation contract
-- **Output Summary:** One supported directive — PROCEED, ACCEPT, REVISE, REPLAN, REDEFINE, ESCALATE, or BLOCKED — with failure class, cited evidence, target route, and typed authority request when applicable; PASS / FAIL / BROKEN remain observations only
-- **Proven Applications:** Directly loaded vault source; v4.1 records the accepted seven-directive runtime binding, authoritative-event reservation, exact review/transition enforcement, human and graph decision projection, and path-qualified redefinition/authority return
-- **Known Limitations:** Process Coherence does not invent goals, plans, routes, permissions, or cognitive direction and does not mutate state; the dispatcher alone applies a supported declared route
+- **Purpose:** Evaluate one explicitly configured project or framework boundary against its locked objective, current evidence, and permitted next action
+- **Problem Class:** Bounded project/framework coherence judgment
+- **Input Summary:** Exact target and boundary, locked fields, claimed result, directly inspectable evidence, proposed next action, and authority already granted
+- **Output Summary:** Exactly one local verdict — PROCEED, REVISE, or ESCALATE — with a concise evidence-grounded reason
+- **Proven Applications:** v5.0 removes the superseded governed Process Run, seven-directive, lifecycle, automatic-dispatch, and Programming bindings
+- **Known Limitations:** Explicit invocation only; does not intercept Inquiry, route requests, execute work, mutate state, grant authority, or review standalone Programming
 - **File Location:** ~/Documents/vault/Projects/Ora/Framework — Process Coherence.md (canonical)
 - **Provenance:** human-created
-- **Confidence:** low
-- **Version:** 4.1
-- **Delivers:** Exact transition-support evaluation, failure classification, evidence/authority findings, one canonical directive, and a typed authority request only for ESCALATE
+- **Confidence:** high
+- **Version:** 5.0
+- **Delivers:** One explicit project/framework verdict: PROCEED, REVISE, or ESCALATE
 
 ### Process and System Analysis (T17 territory)
 

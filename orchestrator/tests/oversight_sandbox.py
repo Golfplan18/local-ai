@@ -99,10 +99,6 @@ def redirect_oversight_logs(test_case: unittest.TestCase) -> str:
             oversight_actions, "ACTIONS_LOG_PATH",
             os.path.join(tmpdir, "actions.jsonl"),
         ),
-        mock.patch.object(
-            oversight_actions, "REVISE_COUNTERS_PATH",
-            os.path.join(tmpdir, "revise-counters.json"),
-        ),
         mock.patch.object(oversight_queue, "OVERSIGHT_DATA_DIR", tmpdir),
         mock.patch.object(
             oversight_queue, "HUMAN_QUEUE_PATH",

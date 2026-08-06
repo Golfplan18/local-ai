@@ -363,7 +363,7 @@ class TestRouterFanOut(unittest.TestCase):
             "event_type": "MilestoneClaimed",
             "project_nexus": "child_proj",
             "milestone_text": "Initial draft is complete",
-        }, live=False)
+        })
         with open(self.parent_ped_path) as f:
             content = f.read()
         self.assertIn("Child Project Update: child_proj", content)
@@ -374,7 +374,7 @@ class TestRouterFanOut(unittest.TestCase):
             "event_type": "MilestoneClaimed",
             "project_nexus": "orphan_proj",
             "milestone_text": "Something is done",
-        }, live=False)
+        })
         # Parent PED is unchanged from the seed
         with open(self.parent_ped_path) as f:
             self.assertNotIn("Child Project Update", f.read())
@@ -383,7 +383,7 @@ class TestRouterFanOut(unittest.TestCase):
         # Fire an event for the child; the router fans out; the synthesized
         # ChildMilestoneClaimed audit record lands in events.jsonl. If a
         # consumer re-feeds it back to the router (e.g., the durable replay
-        # path on restart), the router must NOT re-fan or re-invoke PC.
+        # path on restart), the router must not re-fan.
         from oversight_router import process_event
         from oversight_relationships import EVENTS_LOG_PATH, FAN_OUT_META_KEY, FAN_OUT_META_VALUE
 
@@ -391,7 +391,7 @@ class TestRouterFanOut(unittest.TestCase):
             "event_type": "MilestoneClaimed",
             "project_nexus": "child_proj",
             "milestone_text": "Initial draft is complete",
-        }, live=False)
+        })
 
         # Read the synthesized fan-out event from the events log
         with open(EVENTS_LOG_PATH) as f:
@@ -399,7 +399,7 @@ class TestRouterFanOut(unittest.TestCase):
         synthesized = next(e for e in events if e.get(FAN_OUT_META_KEY) == FAN_OUT_META_VALUE)
 
         # Re-feed it
-        action = process_event(synthesized, live=False)
+        action = process_event(synthesized)
         self.assertEqual(action["action"], "fan_out_audit_only")
 
         # Parent PED should have exactly ONE entry (the original fan-out),

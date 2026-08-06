@@ -26,7 +26,6 @@ import oversight_router as router  # noqa: E402
 import redefinition_handler  # noqa: E402
 import resolution_chain  # noqa: E402
 import tool_events  # noqa: E402
-from oversight_context import OversightContextBundle  # noqa: E402
 from ped_parser import parse_ped_file  # noqa: E402
 
 
@@ -52,14 +51,12 @@ class OversightLifecycleTestCase(unittest.TestCase):
         self.ped = self.root / "project.md"
         self.ped.write_text(PED_TEXT, encoding="utf-8")
         self.manifest = self.root / "conversation-ped-derivatives.json"
-        self.counters = self.root / "revise-counters.json"
         self.events_log = self.root / "events.jsonl"
         self.actions_log = self.root / "actions.jsonl"
         self.router_log = self.root / "router.jsonl"
         self.queue_log = self.root / "human-queue.jsonl"
         self.patchers = [
             mock.patch.object(actions, "PED_DERIVATIVES_PATH", str(self.manifest)),
-            mock.patch.object(actions, "REVISE_COUNTERS_PATH", str(self.counters)),
             mock.patch.object(actions, "ACTIONS_LOG_PATH", str(self.actions_log)),
             mock.patch.object(actions, "HUMAN_QUEUE_PATH", str(self.queue_log)),
             mock.patch.object(
@@ -88,15 +85,6 @@ class OversightLifecycleTestCase(unittest.TestCase):
                 module.clear_stealth_context()
                 module.clear_conversation_id_context()
 
-    @staticmethod
-    def bundle(event: dict) -> OversightContextBundle:
-        return OversightContextBundle(
-            event=event,
-            event_class="project-level",
-            project_level_locks={},
-        )
-
-
 class TestStealthOversightSuppression(OversightLifecycleTestCase):
     def test_explicit_stealth_event_skips_bus_log_without_thread_local(self):
         with mock.patch.object(events, "_handlers", []):
@@ -108,29 +96,6 @@ class TestStealthOversightSuppression(OversightLifecycleTestCase):
         self.assertTrue(emitted["stealth"])
         self.assertFalse(self.events_log.exists())
 
-    def test_apply_verdict_suppresses_every_durable_side_effect(self):
-        event = {
-            "event_type": "MilestoneClaimed",
-            "project_nexus": "project",
-            "milestone_text": "Secret milestone",
-            "conversation_id": "stealth-conversation",
-            "stealth": True,
-        }
-        original = self.ped.read_text(encoding="utf-8")
-        with mock.patch("ped_watcher.load_ped_path", return_value=str(self.ped)):
-            result = actions.apply_verdict(
-                event,
-                self.bundle(event),
-                "PC-Milestone",
-                {"verdict": "REVISE", "reasoning": "secret correction"},
-            )
-        self.assertEqual(result["action"], "stealth_suppressed")
-        self.assertEqual(self.ped.read_text(encoding="utf-8"), original)
-        for path in (
-            self.manifest, self.counters, self.actions_log, self.queue_log,
-        ):
-            self.assertFalse(path.exists(), f"Stealth created {path}")
-
     def test_router_suppresses_before_context_model_or_parent_fanout(self):
         event = {
             "event_type": "MilestoneClaimed",
@@ -138,11 +103,9 @@ class TestStealthOversightSuppression(OversightLifecycleTestCase):
             "conversation_id": "stealth-conversation",
             "stealth": True,
         }
-        with mock.patch.object(router, "load_context") as load_context, \
-                mock.patch.object(router, "_maybe_fan_out_to_parent") as fanout:
-            result = router.process_event(event, live=True)
+        with mock.patch.object(router, "_maybe_fan_out_to_parent") as fanout:
+            result = router.process_event(event)
         self.assertEqual(result["action"], "stealth_suppressed")
-        load_context.assert_not_called()
         fanout.assert_not_called()
         self.assertFalse(self.router_log.exists())
 
@@ -290,20 +253,12 @@ class TestManagedPedDerivatives(OversightLifecycleTestCase):
             for entry in parsed.decision_log
         ))
 
-        event = {
-            "conversation_id": "conversation-a",
-            "project_nexus": "project",
-            "milestone_id": "m1",
-        }
-        key = actions._revise_key(event)
-        actions._save_revise_counters({key: 2}, event)
         report = actions.purge_conversation_ped_derivatives(
             "conversation-a", discover_root=self.root,
         )
         after = self.ped.read_text(encoding="utf-8")
         self.assertEqual(report["manifest_entries"], 1)
         self.assertEqual(report["ped_blocks"], 1)
-        self.assertEqual(report["counter_entries"], 1)
         self.assertEqual(report["errors"], [])
         self.assertNotIn("Conversation A text", after)
         self.assertIn("Conversation B text", after)

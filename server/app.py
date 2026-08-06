@@ -8,7 +8,7 @@ Model-calling, tool execution, and pipeline logic live in orchestrator/boot.py.
 This file handles Flask routing, SSE streaming, conversation persistence, and UI APIs.
 """
 
-import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy
+import os, sys, json, re, threading, time, uuid, shutil, io, zipfile, hashlib, copy, queue
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
@@ -5501,9 +5501,7 @@ def frameworks_picker():
     """V3 Phase 2 — list of pickable frameworks for the input-box framework picker.
 
     Returns ``{ frameworks: [ {id, display_name, display_description,
-    category, kind, ...}, ... ] }``. Process Definition rows additionally
-    carry an authenticated exact definition reference and activation state.
-    with one row per framework that declares both ``## Display Name`` and
+    category, kind, ...}, ... ] }`` with one row per framework that declares both ``## Display Name`` and
     ``## Display Description`` sections. Pipeline-internal frameworks (F-* and
     Phase A) are silently excluded — they do not declare these fields.
 
@@ -5514,1444 +5512,114 @@ def frameworks_picker():
     try:
         rows = list_pickable_frameworks()
     except Exception as exc:
-        # Definition-backed picker rows are authenticated on each read. A
-        # missing or drifted canonical must hide the catalog and fail closed,
-        # never silently downgrade Programming into an ordinary framework.
         return _json_response({"frameworks": [], "error": str(exc)}, 503)
     return json.dumps({"frameworks": rows}), 200, {"Content-Type": "application/json"}
 
 
-def _process_entry_catalog(
-    project_ref=None,
-    *,
-    include_archived=False,
-    full=False,
-):
-    library = _process_library_service().list_entries(
-        project_ref=project_ref,
-        include_archived=include_archived,
-    )
-    return library if full else library["entries"]
-
-
-def _process_entry_project_visible(project_ref: str) -> bool:
-    from orchestrator.active_project import canonicalize_project_nexus
-
-    canonical = canonicalize_project_nexus(project_ref)
-    if canonical == "commons":
-        return True
-    try:
-        from orchestrator import project_meta as _pm
-
-        meta = _pm.read_project_meta(canonical)
-    except Exception:
-        return False
-    return bool(meta and meta.get("status") == "active")
-
-
-def _route_process_entry_request(payload):
-    from process_entry_routing import route_process_entry
-
-    return route_process_entry(
-        payload,
-        catalog=_process_entry_catalog(),
-        project_visible=_process_entry_project_visible,
-    )
-
-
-def _process_entry_error_status(exc: Exception) -> int:
-    """Separate malformed user entry from unavailable/integrity failures."""
-
-    from process_entry_routing import ProcessEntryRoutingError
-
-    return 400 if isinstance(exc, ProcessEntryRoutingError) else 503
-
-
-def _management_interview_service():
-    """Construct the Phase 2.2 service at the request boundary."""
-
-    from process_management_interview import ManagementInterviewService
-
-    return ManagementInterviewService(repository_root=WORKSPACE)
-
-
-def _management_interview_error_status(exc: Exception) -> int:
-    from process_management_interview import (
-        ManagementInterviewConflict,
-        ManagementInterviewError,
-        ManagementInterviewIntegrityError,
-    )
-
-    if isinstance(exc, ManagementInterviewIntegrityError):
-        return 503
-    if isinstance(exc, (ManagementInterviewConflict, ManagementInterviewError)):
-        return 409
-    return 503
-
-
-def _process_plan_service():
-    """Construct the Phase 2.3 canonical plan/approval service."""
-
-    from process_plan_approval import ProcessPlanApprovalService
-
-    return ProcessPlanApprovalService(repository_root=WORKSPACE)
-
-
-def _process_delegation_service(plan_service=None):
-    """Construct the Phase 2.4 delegation and attention service."""
-
-    from process_delegation_attention import ProcessDelegationAttentionService
-
-    if plan_service is not None:
-        return ProcessDelegationAttentionService(
-            runtime=plan_service.runtime,
-            plan_service=plan_service,
-            sessions_root=plan_service.sessions_root,
-            repository_root=WORKSPACE,
-        )
-    return ProcessDelegationAttentionService(repository_root=WORKSPACE)
-
-
-def _process_run_inspector_service():
-    """Construct the Phase 2.5 read-only generic Run Inspector."""
-
-    from process_run_inspector import ProcessRunInspectorService
-
-    return ProcessRunInspectorService(repository_root=WORKSPACE)
-
-
-def _process_run_telemetry_service():
-    """Construct the G1.20 authority-inert evaluation service."""
-
-    from process_run_inspector import ProcessRunTelemetryService
-
-    return ProcessRunTelemetryService()
-
-
-def _process_library_service():
-    """Construct the Phase 2.6–2.8 Library and governed-invocation service."""
-
-    from process_entry_routing import load_programming_definition
-    from process_library_lifecycle import ProcessLibraryLifecycleService
-
-    return ProcessLibraryLifecycleService(
-        seed_definitions=[load_programming_definition(WORKSPACE)]
-    )
-
-
-def _process_library_error_status(exc: Exception) -> int:
-    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
-    from process_library_lifecycle import (
-        ProcessLibraryConflict,
-        ProcessLibraryError,
-        ProcessLibraryInputRequired,
-        ProcessLibraryIntegrityError,
-    )
-
-    if isinstance(exc, RunNotFoundError):
-        return 404
-    if isinstance(exc, AuthorityDeniedError):
-        return 403
-    if isinstance(exc, ProcessLibraryInputRequired):
-        return 422
-    if isinstance(exc, ProcessLibraryConflict):
-        return 409
-    if isinstance(exc, ProcessLibraryIntegrityError):
-        return 503
-    if isinstance(exc, ProcessLibraryError):
-        return 400
-    return 503
-
-
-def _process_automation_service(management_service=None):
-    """Construct the G1.18 adapter over the existing generic Process kernel."""
-
-    from process_automation import ProcessAutomationService
-
-    if management_service is not None:
-        return ProcessAutomationService(
-            runtime=management_service.runtime,
-            management_interview=management_service,
-        )
-    return ProcessAutomationService()
-
-
-def _process_automation_error_status(exc: Exception) -> int:
-    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
-    from process_automation import (
-        ProcessAutomationConflict,
-        ProcessAutomationError,
-        ProcessAutomationInputRequired,
-        ProcessAutomationIntegrityError,
-        ProcessAutomationWorkerError,
-    )
-
-    if isinstance(exc, RunNotFoundError):
-        return 404
-    if isinstance(exc, AuthorityDeniedError):
-        return 403
-    # The installed server loads orchestrator modules as top-level modules,
-    # while package-based tests and embedders may hold the same exception
-    # class through ``orchestrator.process_automation``.  Preserve the public
-    # typed status across that import boundary without widening what is caught.
-    exact_type_name = type(exc).__name__
-    if isinstance(exc, ProcessAutomationInputRequired) or exact_type_name == "ProcessAutomationInputRequired":
-        return 422
-    if isinstance(exc, ProcessAutomationConflict) or exact_type_name == "ProcessAutomationConflict":
-        return 409
-    if isinstance(exc, (ProcessAutomationIntegrityError, ProcessAutomationWorkerError)) or exact_type_name in {
-        "ProcessAutomationIntegrityError", "ProcessAutomationWorkerError",
-    }:
-        return 503
-    if isinstance(exc, ProcessAutomationError) or exact_type_name == "ProcessAutomationError":
-        return 400
-    return 503
-
-
-def _process_trigger_service():
-    """Construct G1.19 over the accepted automation/runtime storage."""
-
-    from process_triggers import ProcessTriggerService
-
-    return ProcessTriggerService()
-
-
-def _process_trigger_error_status(exc: Exception) -> int:
-    from process_triggers import (
-        ProcessTriggerConflict,
-        ProcessTriggerError,
-        ProcessTriggerInputRequired,
-        ProcessTriggerIntegrityError,
-    )
-
-    exact_type_name = type(exc).__name__
-    if isinstance(exc, ProcessTriggerInputRequired) or exact_type_name == "ProcessTriggerInputRequired":
-        return 422
-    if isinstance(exc, ProcessTriggerConflict) or exact_type_name == "ProcessTriggerConflict":
-        return 409
-    if isinstance(exc, ProcessTriggerIntegrityError) or exact_type_name == "ProcessTriggerIntegrityError":
-        return 503
-    if isinstance(exc, ProcessTriggerError) or exact_type_name == "ProcessTriggerError":
-        return 400
-    return 503
-
-
-@app.route("/api/process-entry/construction-label", methods=["GET", "POST"])
-def process_entry_construction_label():
-    """Evidence-gated Programming/Build bridge-trial decision.
-
-    Eligibility never changes the label.  Only this explicit user decision
-    may select Build, and it has no effect on the exact Programming definition
-    identity or on Process authority.
-    """
-
-    service = _process_library_service()
-    try:
-        if request.method == "GET":
-            gate = service.get_construction_label_gate()
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                from process_library_lifecycle import ProcessLibraryInputRequired
-
-                raise ProcessLibraryInputRequired(
-                    "construction-label request must be an object"
-                )
-            if set(payload) != {"decision", "decision_by"}:
-                from process_library_lifecycle import ProcessLibraryInputRequired
-
-                raise ProcessLibraryInputRequired(
-                    "construction-label request requires exact decision and decision_by"
-                )
-            gate = service.decide_construction_label(
-                str(payload.get("decision") or ""),
-                decision_by=str(payload.get("decision_by") or ""),
-            )
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_library_error_status(exc),
-        )
-    return _json_response({"ok": True, "gate": gate})
-
-
-def _process_plan_error_status(exc: Exception) -> int:
-    from governed_process_runtime import AuthorityDeniedError
-    from process_delegation_attention import ProcessDelegationError
-    from process_plan_approval import (
-        ProcessPlanError,
-        ProcessPlanConflict,
-        ProcessPlanInputRequired,
-        ProcessPlanIntegrityError,
-    )
-
-    if isinstance(exc, ProcessDelegationError):
-        return _process_delegation_error_status(exc)
-    if isinstance(exc, AuthorityDeniedError):
-        return 403
-    if isinstance(exc, ProcessPlanInputRequired):
-        return 422
-    if isinstance(exc, ProcessPlanConflict):
-        return 409
-    if isinstance(exc, ProcessPlanIntegrityError):
-        return 503
-    if isinstance(exc, ProcessPlanError):
-        return 400
-    return 503
-
-
-def _process_delegation_error_status(exc: Exception) -> int:
-    from governed_process_runtime import AuthorityDeniedError, RunNotFoundError
-    from process_delegation_attention import (
-        ProcessDelegationConflict,
-        ProcessDelegationError,
-        ProcessDelegationInputRequired,
-        ProcessDelegationIntegrityError,
-    )
-
-    if isinstance(exc, AuthorityDeniedError):
-        return 403
-    if isinstance(exc, RunNotFoundError):
-        return 404
-    if isinstance(exc, ProcessDelegationInputRequired):
-        return 422
-    if isinstance(exc, ProcessDelegationConflict):
-        return 409
-    if isinstance(exc, ProcessDelegationIntegrityError):
-        return 503
-    if isinstance(exc, ProcessDelegationError):
-        return 400
-    return 503
-
-
-def _process_run_inspector_error_status(exc: Exception) -> int:
-    from governed_process_runtime import RunNotFoundError
-    from process_run_inspector import (
-        ProcessRunInspectorError,
-        ProcessRunTelemetryConflict,
-        ProcessRunTelemetryInputRequired,
-    )
-
-    # Tests and embedders may load the same implementation through the
-    # ``orchestrator.*`` package while the server uses its historical
-    # top-level imports.  Preserve the typed public contract across that
-    # module alias boundary.
-    exc_name = type(exc).__name__
-    if isinstance(exc, RunNotFoundError) or exc_name == "RunNotFoundError":
-        return 404
-    if (
-        isinstance(exc, ProcessRunTelemetryInputRequired)
-        or exc_name == "ProcessRunTelemetryInputRequired"
-    ):
-        return 422
-    if (
-        isinstance(exc, ProcessRunTelemetryConflict)
-        or exc_name == "ProcessRunTelemetryConflict"
-    ):
-        return 409
-    if isinstance(exc, ProcessRunInspectorError) or exc_name.startswith(
-        "ProcessRunInspector"
-    ):
-        return 503
-    return 503
-
-
-def _browser_process_planning_basis(
-    conversation_id: str, payload: dict, *, plan_service=None
-) -> dict:
-    """Derive a bounded plan basis from management answers and exact scope.
-
-    The browser supplies only the two facts it must make explicit after the
-    interview: the exact target root and exact target items. Everything else
-    is derived from the persisted management contract. The resulting basis
-    still crosses ``process_plan_approval._validate_basis`` and captures the
-    live repository identity before a proposal can be reviewed.
-    """
-
-    from process_plan_approval import ProcessPlanInputRequired
-
-    if plan_service is not None:
-        context = plan_service._context(conversation_id)
-        if context is None:
-            state = None
-        else:
-            binding, run, _definition = context
-            state = plan_service._interview_state(conversation_id, binding, run)
-    else:
-        state = _management_interview_service().get_state(conversation_id)
-    if state is None or state.get("status") != "ready_for_plan":
-        raise ProcessPlanInputRequired(
-            "a complete management interview is required before plan proposal"
-        )
-    target_path = str(payload.get("target_path") or "").strip()
-    supplied_target = Path(target_path)
-    if not target_path or not supplied_target.is_absolute():
-        raise ProcessPlanInputRequired("target_path must be an exact absolute path")
-    if supplied_target.is_symlink():
-        raise ProcessPlanInputRequired("target_path cannot be a symlink")
-    try:
-        target_root = supplied_target.resolve(strict=True)
-    except OSError as exc:
-        raise ProcessPlanInputRequired("target_path is unavailable") from exc
-    if not target_root.is_dir():
-        raise ProcessPlanInputRequired("target_path must identify a directory")
-
-    raw_selectors = payload.get("artifact_selectors")
-    if not isinstance(raw_selectors, list) or not raw_selectors:
-        raise ProcessPlanInputRequired(
-            "artifact_selectors must name at least one exact target item"
-        )
-    if len(raw_selectors) > 100:
-        raise ProcessPlanInputRequired("artifact_selectors exceeds the planning ceiling")
-    selectors = []
-    for raw in raw_selectors:
-        selector = str(raw or "").strip().replace("//", "/")
-        parts = Path(selector).parts
-        if (
-            not selector or len(selector) > 512 or Path(selector).is_absolute()
-            or "\\" in selector or any(part in {"", ".", ".."} for part in parts)
-            or any(character in selector for character in "*?[]\x00")
-            or selector == ".git" or selector.startswith(".git/")
-        ):
-            raise ProcessPlanInputRequired(
-                "artifact_selectors must be exact relative target paths"
-            )
-        if selector not in selectors:
-            selectors.append(selector)
-
-    answers = {
-        dimension: str(fact.get("answer") or "").strip()
-        for dimension, fact in (state.get("answers") or {}).items()
-    }
-    required_answers = {
-        "intended_result", "affected_parties", "inputs_outputs", "reuse",
-        "initiation", "authority", "exceptions", "permissions", "evidence",
-        "stopping",
-    }
-    if set(answers) != required_answers or any(
-        not answers[key] for key in required_answers
-    ):
-        raise ProcessPlanInputRequired(
-            "the persisted management contract is incomplete"
-        )
-
-    # A revised browser proposal must materially carry the exact Principal
-    # request that caused the prior version to reopen. Otherwise a generic
-    # request-changes action could regenerate the same plan while appearing to
-    # honor the requested correction.
-    revision_requirement = ""
-    if plan_service is not None:
-        current_state = plan_service.get_state(conversation_id)
-        requests = (current_state or {}).get("revision_requests") or []
-        if (
-            current_state is not None
-            and current_state.get("status") == "revision_requested"
-            and requests
-        ):
-            latest = requests[-1]
-            revision_requirement = (
-                f"Principal revision requirement ({latest['action']}): "
-                f"{latest['reason']}"
-            )
-
-    instruction_paths = [
-        Path(WORKSPACE) / "frameworks" / "book" / "programming.md",
-    ]
-    instruction_paths.extend(
-        target_root / name for name in ("AGENTS.md", "CLAUDE.md", "README.md")
-    )
-    instructions = []
-    seen_instructions = set()
-    for path in instruction_paths:
-        if path in seen_instructions or path.is_symlink() or not path.is_file():
-            continue
-        seen_instructions.add(path)
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        instructions.append({
-            "source": str(path.resolve(strict=True)),
-            "digest": "sha256:" + digest,
-            "precedence": (
-                "governing Process Definition"
-                if path.name == "programming.md" else "target repository"
-            ),
-            "scope": "the exact approved target and declared items",
-        })
-    if not instructions:
-        raise ProcessPlanInputRequired(
-            "no authenticated planning instructions are available"
-        )
-
-    activation_requested = bool(re.search(
-        r"\b(?:schedule|scheduled|trigger|triggered|automatic|automated|"
-        r"hourly|daily|weekly|monthly|whenever)\b",
-        answers["initiation"],
-        flags=re.IGNORECASE,
-    ))
-    artifact_summary = ", ".join(selectors)
-    return {
-        "target_path": str(target_root),
-        "non_solutions": [
-            "Do not change artifacts outside the exact approved target items.",
-            (
-                "Do not activate, publish, message, deploy, use remote Git, or "
-                "create standing triggers without separate explicit authority."
-            ),
-        ],
-        "scope": selectors,
-        "instructions": instructions,
-        "architecture": [
-            "Preserve the target's existing architecture and authenticated instructions.",
-            "Implement only the management result and exact item scope approved here.",
-        ] + ([revision_requirement] if revision_requirement else []),
-        "dependencies": [
-            "The exact current target identity and declared instruction files.",
-            "Only dependencies already present or separately approved in a revised plan.",
-        ],
-        "implementation_sequence": [
-            {
-                "step_id": "step-implement-approved-result",
-                "description": (
-                    f"Produce {answers['intended_result']} within {artifact_summary}."
-                ),
-                "depends_on": [],
-                "artifacts": selectors,
-                "action": "mutate",
-            },
-            {
-                "step_id": "step-verify-approved-result",
-                "description": (
-                    "Run the approved inspection and evidence checks against the exact "
-                    "post-change target identity."
-                ),
-                "depends_on": ["step-implement-approved-result"],
-                "artifacts": selectors,
-                "action": "test",
-            },
-        ],
-        "expected_transitions": [
-            f"The declared target items produce this result: {answers['intended_result']}",
-            f"Inputs and outputs remain bounded as follows: {answers['inputs_outputs']}",
-        ],
-        "tool_permissions": [answers["permissions"]],
-        "tests": [answers["evidence"]],
-        "risks": [answers["exceptions"], answers["stopping"]],
-        "recovery": [
-            "Persist an exact pre-action checkpoint before any target mutation.",
-            "On failure, stop and recover only through authenticated target evidence and receipts.",
-        ],
-        "completion_criteria": [answers["evidence"]],
-        "replanning_triggers": [
-            "Target identity, declared items, instructions, authority, or architecture changes.",
-            "The approved evidence cannot prove the intended result.",
-        ],
-        "loop_policy": {
-            "max_attempts": 3,
-            "repeated_defect_limit": 2,
-            "progress_required": True,
-            "on_no_progress": "REPLAN",
-        },
-        "execution_handoff": {
-            "requested_actions": ["mutate", "test"],
-            "artifact_selectors": selectors,
-            "stop_conditions": [
-                "target baseline drift",
-                "permission or scope ambiguity",
-                "required evidence unavailable",
-            ],
-        },
-        "activation": {
-            "requested": activation_requested,
-            "mode": (
-                "requested initiation retained for separate activation review"
-                if activation_requested else "manual invocation only"
-            ),
-            "separate_approval_required": True,
-        },
-        "versioning": [
-            "Create a new plan version for every material scope, permission, target, or architecture change."
-        ],
-    }
-
-
-def _apply_process_plan_action(service, conversation_id, payload):
-    """Apply one exact Phase 2.3 action without inferring execution authority."""
-
-    if not isinstance(payload, dict):
-        from process_plan_approval import ProcessPlanInputRequired
-
-        raise ProcessPlanInputRequired("management_plan must be an object")
-    action = str(payload.get("action") or "").strip()
-    if action == "propose":
-        planning_basis = payload.get("planning_basis")
-        if planning_basis is None:
-            planning_basis = _browser_process_planning_basis(
-                conversation_id, payload, plan_service=service
-            )
-        return service.propose(
-            conversation_id,
-            planning_basis,
-            planner_id=str(payload.get("planner_id") or "planner:programming"),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-    if action in {"approve_and_start", "approve_without_start"}:
-        state = service.approve(
-            conversation_id,
-            decision=action,
-            plan_ref=payload.get("plan_ref") or {},
-            baseline_digest=str(payload.get("baseline_digest") or ""),
-            decision_by=str(payload.get("decision_by") or "principal:user"),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-        if action == "approve_and_start" and state.get("status") == "approved":
-            delegation = _process_delegation_service(service).delegate(
-                conversation_id,
-                plan_ref={
-                    field: state["current_plan"][field]
-                    for field in ("plan_id", "version", "digest")
-                },
-                approval_receipt_digest=state["dialogue_lifecycle"][
-                    "approval_receipt_digest"
-                ],
-                requested_by=str(payload.get("decision_by") or "principal:user"),
-                idempotency_key=(
-                    "delegate:" + str(payload.get("idempotency_key") or "")
-                ),
-            )
-            refreshed = service.get_state(conversation_id)
-            if refreshed is None:
-                raise RuntimeError("approved plan disappeared after delegation")
-            return {**refreshed, "delegation": delegation}
-        return state
-    if action == "delegate":
-        state = service.get_state(conversation_id)
-        if state is None or state.get("current_plan") is None:
-            from process_plan_approval import ProcessPlanConflict
-
-            raise ProcessPlanConflict("Dialogue has no approved plan to delegate")
-        delegation = _process_delegation_service(service).delegate(
-            conversation_id,
-            plan_ref=payload.get("plan_ref") or {},
-            approval_receipt_digest=str(
-                payload.get("approval_receipt_digest") or ""
-            ),
-            requested_by=str(payload.get("requested_by") or "principal:user"),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-        refreshed = service.get_state(conversation_id)
-        if refreshed is None:
-            raise RuntimeError("approved plan disappeared after delegation")
-        return {**refreshed, "delegation": delegation}
-    if action in {"request_changes", "change_scope_or_permissions"}:
-        return service.request_revision(
-            conversation_id,
-            action=action,
-            plan_ref=payload.get("plan_ref") or {},
-            reason=str(payload.get("reason") or ""),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-    if action == "stop_and_retain":
-        return service.stop_and_retain(
-            conversation_id,
-            plan_ref=payload.get("plan_ref") or {},
-            decision_by=str(payload.get("decision_by") or "principal:user"),
-            reason=str(payload.get("reason") or ""),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-    from process_plan_approval import ProcessPlanInputRequired
-
-    raise ProcessPlanInputRequired("management_plan action is invalid")
-
-
-def _decode_process_entry_request(raw, objective: str, framework_selected: str = ""):
-    """Recompute a client entry preview at the authoritative server boundary."""
-
-    payload = raw
-    if isinstance(raw, str):
-        if not raw.strip():
-            payload = None
-        else:
-            try:
-                payload = json.loads(raw)
-            except json.JSONDecodeError as exc:
-                from process_entry_routing import ProcessEntryRoutingError
-
-                raise ProcessEntryRoutingError(
-                    f"process_entry_request is invalid JSON: {exc}"
-                ) from exc
-
-    framework_id = (framework_selected or "").strip()
-    if payload is None and framework_id == "programming":
-        from orchestrator.active_project import get_active_project
-
-        definition = next(
-            item for item in _process_entry_catalog()
-            if item.get("definition_ref", {}).get("definition_id") == "ora/programming"
-        )
-        payload = {
-            "source": "shared_picker",
-            "objective": objective,
-            "project_ref": get_active_project(),
-            "project_confirmed": False,
-            "selected_definition_ref": definition["definition_ref"],
-        }
-    elif payload is None and framework_id:
-        from orchestrator.active_project import get_active_project
-
-        payload = {
-            "source": "shared_picker",
-            "objective": objective,
-            "project_ref": get_active_project(),
-            "project_confirmed": False,
-            "selected_framework_id": framework_id,
-        }
-    elif payload is None and objective.strip():
-        # Direct API and natural-language callers cross the same boundary as
-        # the browser Inquiry pane.  Otherwise omitting the optional-looking
-        # client preview would bypass construction's mandatory project gate.
-        from orchestrator.active_project import get_active_project
-
-        payload = {
-            "source": "natural_language",
-            "objective": objective,
-            "project_ref": get_active_project(),
-            "project_confirmed": False,
-        }
-    if payload is None:
-        return None
-    if not isinstance(payload, dict):
-        from process_entry_routing import ProcessEntryRoutingError
-
-        raise ProcessEntryRoutingError("process_entry_request must be an object")
-    if str(payload.get("objective") or "").strip() != objective.strip():
-        from process_entry_routing import ProcessEntryRoutingError
-
-        raise ProcessEntryRoutingError(
-            "process_entry_request objective must match the submitted Inquiry"
-        )
-    if payload.get("source") == "shared_picker":
-        from process_entry_routing import ProcessEntryRoutingError
-
-        selected_definition = payload.get("selected_definition_ref")
-        selected_framework = str(payload.get("selected_framework_id") or "").strip()
-        if selected_definition is not None and framework_id != "programming":
-            raise ProcessEntryRoutingError(
-                "shared-picker Process Definition entry must carry the programming picker selection"
-            )
-        if selected_framework and framework_id != selected_framework:
-            raise ProcessEntryRoutingError(
-                "shared-picker framework entry must match framework_selected"
-            )
-    return _route_process_entry_request(payload)
-
-
-def _decode_process_invocation_inputs(raw):
-    """Decode exact definition inputs without treating the Inquiry as schema data."""
-
-    if raw is None or raw == "":
-        return {}
-    value = raw
-    if isinstance(raw, str):
-        try:
-            value = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            from process_library_lifecycle import ProcessLibraryInputRequired
-
-            raise ProcessLibraryInputRequired(
-                f"process_invocation_inputs is invalid JSON: {exc}"
-            ) from exc
-    if not isinstance(value, dict):
-        from process_library_lifecycle import ProcessLibraryInputRequired
-
-        raise ProcessLibraryInputRequired(
-            "process_invocation_inputs must be an object"
-        )
-    return value
-
-
-def _assert_manual_invocation_output_boundary(user_input, output_destination):
-    """Prevent Dialogue invocation from acquiring undeclared file effects."""
-
-    from process_library_lifecycle import ProcessLibraryConflict
-
-    _clean, _pipeline, output_target, _style = parse_user_command(user_input)
-    if output_target != "screen" or str(output_destination or "").strip():
-        raise ProcessLibraryConflict(
-            "manual Process invocation permits Dialogue output only; file and "
-            "external output require separately governed authority"
-        )
-
-
-def _process_invocation_request_context(*, surface, history, attachments):
-    """Return bounded digests that make one delivery retry deterministic."""
-
-    def digest(value):
-        encoded = json.dumps(
-            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
-        return "sha256:" + hashlib.sha256(encoded).hexdigest()
-
-    return {
-        "surface": str(surface),
-        "history_digest": digest(history if isinstance(history, list) else []),
-        "attachments_digest": digest(attachments),
-    }
-
-
-def _public_process_invocation(state):
-    return {
-        key: copy.deepcopy(value)
-        for key, value in state.items()
-        if key != "response_text"
-    }
-
-
-def _persist_manual_invocation_replay(
-    *, user_input, state, history, panel_id, tag, submission_id,
-    output_destination="",
-):
-    """Restore a saved runtime result to its Dialogue without re-execution."""
-
-    response_text = str(state.get("response_text") or "")
-    if state.get("status") != "result_recorded" or not response_text:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": "manual invocation replay lacks its exact result",
-        }, 500)
-    try:
-        chunk_id = _save_conversation(
-            user_input,
-            response_text,
-            panel_id,
-            len(history) == 0,
-            tag,
-            output_destination=output_destination,
-            trace_ref=None,
-        )
-    except Exception as exc:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": f"manual invocation Dialogue save failed: {exc}",
-        }, 500)
-    if not chunk_id:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": "manual invocation Dialogue save produced no chunk",
-        }, 500)
-    if submission_id:
-        _finalize_pending_submission(submission_id)
-    return _json_response({
-        "status": "ok",
-        "conversation_id": panel_id,
-        "chunk_id": chunk_id,
-        "process_invocation": _public_process_invocation(state),
-        "idempotent_replay": True,
-    })
-
-
-@app.route("/api/process-library/entries", methods=["GET"])
-def process_library_entry_catalog():
-    """Authenticated exact-version Process Library for Phase 2.6."""
-
-    try:
-        raw_project = request.args.get("project_ref")
-        include_archived = request.args.get("include_archived", "").lower() in {
-            "1", "true", "yes", "on",
-        }
-        library = _process_entry_catalog(
-            raw_project,
-            include_archived=include_archived,
-            full=True,
-        )
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc), "definitions": []},
-            _process_library_error_status(exc),
-        )
-    return _json_response({
-        "ok": True,
-        "definitions": library["entries"],
-        "library": library,
-    })
-
-
-@app.route("/api/process-runs/<path:run_id>/lifecycle", methods=["GET", "POST"])
-def process_run_lifecycle(run_id):
-    """Read or apply one exact principal-authorized terminal disposition."""
-
-    service = _process_library_service()
-    try:
-        if request.method == "GET":
-            lifecycle = service.get_run_lifecycle(run_id)
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                from process_library_lifecycle import ProcessLibraryInputRequired
-
-                raise ProcessLibraryInputRequired(
-                    "Run lifecycle request must be an object"
-                )
-            allowed = {
-                # Accepted for compatibility with the pre-correction client,
-                # but intentionally ignored. The runtime owns the exact key.
-                "disposition", "decision_by", "idempotency_key",
-                "promoted_definition_ref", "capability_artifact_id",
-            }
-            unexpected = sorted(set(payload) - allowed)
-            if unexpected:
-                from process_library_lifecycle import ProcessLibraryInputRequired
-
-                raise ProcessLibraryInputRequired(
-                    "unsupported Run lifecycle fields: " + ", ".join(unexpected)
-                )
-            lifecycle = service.close_run(
-                run_id,
-                disposition=str(payload.get("disposition") or ""),
-                decision_by=str(payload.get("decision_by") or "principal:user"),
-                promoted_definition_ref=payload.get("promoted_definition_ref"),
-                capability_artifact_id=(
-                    str(payload["capability_artifact_id"])
-                    if payload.get("capability_artifact_id") is not None else None
-                ),
-            )
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_library_error_status(exc),
-        )
-    return _json_response({"ok": True, "lifecycle": lifecycle})
-
-
-@app.route("/api/process-entry/route", methods=["POST"])
-def process_entry_route():
-    """Preview one authority-neutral four-intent entry routing contract."""
-
+def _programming_payload() -> dict:
     payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        raise ValueError("Programming request must be a JSON object")
+    return payload
+
+
+@app.route("/api/programming/plan", methods=["POST"])
+def programming_plan():
+    """Inspect a real repository and return material questions or one plan."""
+
     try:
-        contract = _route_process_entry_request(payload)
+        from programming import ProgrammingError, plan_programming
     except Exception as exc:
-        return _json_response({"ok": False, "error": str(exc)},
-                              _process_entry_error_status(exc))
-    return _json_response({"ok": True, "entry": contract})
-
-
-@app.route("/api/process-interview/<conversation_id>", methods=["GET"])
-def process_management_interview_state(conversation_id):
-    """Hydrate the persistent interview bound to one Dialogue."""
-
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
+        return _json_response({"ok": False, "error": str(exc)}, 503)
     try:
-        state = _management_interview_service().get_state(conversation_id)
+        payload = _programming_payload()
+        result = plan_programming(
+            objective=str(payload.get("objective") or ""),
+            repository_path=str(payload.get("repository_path") or ""),
+            question_round=int(payload.get("question_round") or 0),
+            answers=payload.get("answers") if isinstance(payload.get("answers"), list) else [],
+        )
+    except (ValueError, ProgrammingError) as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
     except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _management_interview_error_status(exc),
-        )
-    if state is None:
-        return _json_response({"ok": False, "error": "management_interview_not_found"}, 404)
-    return _json_response({"ok": True, "interview": state})
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    return _json_response({"ok": True, **result})
 
 
-@app.route("/api/process-authoring/<conversation_id>", methods=["GET", "POST"])
-def process_automation_authoring(conversation_id):
-    """Author and principal-approve one exact reusable Process Definition."""
+@app.route("/api/programming/run", methods=["POST"])
+def programming_run():
+    """Execute one approved plan and stream milestone/review progress as NDJSON."""
 
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
-    service = _process_automation_service()
     try:
-        if request.method == "GET":
-            state = service.get_authoring(conversation_id)
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                from process_automation import ProcessAutomationInputRequired
-
-                raise ProcessAutomationInputRequired(
-                    "Process authoring request must be an object"
-                )
-            action = str(payload.get("action") or "")
-            if action == "propose":
-                if set(payload) - {"action", "idempotency_key", "blueprint"}:
-                    from process_automation import ProcessAutomationInputRequired
-
-                    raise ProcessAutomationInputRequired(
-                        "propose accepts only action, idempotency_key, and optional blueprint"
-                    )
-                state = service.propose(
-                    conversation_id,
-                    idempotency_key=str(payload.get("idempotency_key") or ""),
-                    blueprint=payload.get("blueprint"),
-                )
-            elif action == "request_revision":
-                if set(payload) != {"action", "proposal_id", "reason"}:
-                    from process_automation import ProcessAutomationInputRequired
-
-                    raise ProcessAutomationInputRequired(
-                        "request_revision requires exact proposal_id and reason"
-                    )
-                state = service.request_revision(
-                    conversation_id,
-                    proposal_id=str(payload.get("proposal_id") or ""),
-                    reason=str(payload.get("reason") or ""),
-                )
-            elif action == "approve_and_register":
-                if set(payload) != {
-                    "action", "proposal_id", "proposal_digest",
-                }:
-                    from process_automation import ProcessAutomationInputRequired
-
-                    raise ProcessAutomationInputRequired(
-                        "approve_and_register requires the exact proposal identity"
-                    )
-                state = service.approve_and_register(
-                    conversation_id,
-                    proposal_id=str(payload.get("proposal_id") or ""),
-                    proposal_digest=str(payload.get("proposal_digest") or ""),
-                    decision_by="principal:user",
-                )
-            else:
-                from process_automation import ProcessAutomationInputRequired
-
-                raise ProcessAutomationInputRequired("unknown Process authoring action")
+        from programming import ProgrammingError, run_approved_programming
     except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_automation_error_status(exc),
-        )
-    return _json_response({"ok": True, "authoring": state})
-
-
-@app.route("/api/process-triggers", methods=["GET", "POST"])
-def process_triggers_collection():
-    """List Trigger deployments or create one immutable draft spec."""
-
+        return _json_response({"ok": False, "error": str(exc)}, 503)
     try:
-        service = _process_trigger_service()
-        if request.method == "GET":
-            result = service.list()
-            status = 200
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict) or set(payload) != {"spec"}:
-                from process_triggers import ProcessTriggerInputRequired
+        payload = _programming_payload()
+        objective = str(payload.get("objective") or "")
+        repository_path = str(payload.get("repository_path") or "")
+        plan = payload.get("plan")
+        approved = payload.get("approved") is True
+        resume_branch = str(payload.get("resume_branch") or "") or None
+        continuation = str(payload.get("continuation") or "")
+        if not objective or not repository_path or not isinstance(plan, dict):
+            raise ProgrammingError("objective, repository_path, and plan are required")
+        if not approved:
+            raise ProgrammingError("one explicit plan approval is required")
+    except (ValueError, ProgrammingError) as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
 
-                raise ProcessTriggerInputRequired(
-                    "Trigger creation requires exactly one spec object"
-                )
-            result = service.create(payload["spec"])
-            status = 201
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)}, _process_trigger_error_status(exc)
-        )
-    return _json_response({"ok": True, "trigger": result} if request.method == "POST" else {"ok": True, **result}, status)
+    @stream_with_context
+    def generate():
+        events = queue.Queue()
+        finished = object()
 
+        def emit(event):
+            events.put(event)
 
-@app.route("/api/process-triggers/<trigger_id>", methods=["GET", "POST"])
-def process_trigger_item(trigger_id):
-    """Read or act on one exact Trigger lifecycle/firing identity."""
-
-    try:
-        service = _process_trigger_service()
-        if request.method == "GET":
-            result = service.get(str(trigger_id))
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                from process_triggers import ProcessTriggerInputRequired
-
-                raise ProcessTriggerInputRequired("Trigger action must be an object")
-            action = str(payload.get("action") or "")
-            if action == "activate" and set(payload) == {
-                "action", "expected_spec_digest", "approval", "idempotency_key",
-            }:
-                result = service.activate(
-                    str(trigger_id),
-                    expected_spec_digest=str(payload["expected_spec_digest"]),
-                    approval=payload["approval"],
-                    idempotency_key=str(payload["idempotency_key"]),
-                )
-            elif action in {"pause", "resume", "retire"} and set(payload) == {
-                "action", "expected_state_digest", "idempotency_key",
-            }:
-                result = service.lifecycle(
-                    str(trigger_id), action=action,
-                    expected_state_digest=str(payload["expected_state_digest"]),
-                    idempotency_key=str(payload["idempotency_key"]),
-                )
-            elif action == "fire" and set(payload) == {"action", "request_id"}:
-                result = service.fire_manual(
-                    str(trigger_id), request_id=str(payload["request_id"]),
-                    requested_by="principal:user",
-                )
-            else:
-                from process_triggers import ProcessTriggerInputRequired
-
-                raise ProcessTriggerInputRequired("Trigger action fields are invalid")
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)}, _process_trigger_error_status(exc)
-        )
-    return _json_response({"ok": True, "trigger": result})
-
-
-@app.route("/api/process-automation/runs", methods=["POST"])
-def process_automation_begin_run():
-    """Begin and advance one exact promoted definition to its next stop."""
-
-    payload = request.get_json(silent=True)
-    try:
-        if not isinstance(payload, dict):
-            from process_automation import ProcessAutomationInputRequired
-
-            raise ProcessAutomationInputRequired("automated Process request must be an object")
-        required = {
-            "definition_ref", "project_ref", "inputs", "idempotency_key",
-        }
-        optional = {
-            "process_profile", "step_profiles",
-            "one_run_profile", "style_profile",
-        }
-        missing = sorted(required - set(payload))
-        extra = sorted(set(payload) - required - optional)
-        if missing or extra:
-            from process_automation import ProcessAutomationInputRequired
-
-            raise ProcessAutomationInputRequired(
-                f"automated Process request fields are invalid; missing={missing}, unsupported={extra}"
-            )
-        service = _process_automation_service()
-        state = service.begin_run(
-            definition_ref=payload["definition_ref"],
-            project_ref=str(payload["project_ref"]),
-            inputs=payload["inputs"],
-            idempotency_key=str(payload["idempotency_key"]),
-            principal_id="principal:user",
-            process_profile=payload.get("process_profile"),
-            step_profiles=payload.get("step_profiles"),
-            one_run_profile=payload.get("one_run_profile"),
-            style_profile=payload.get("style_profile"),
-        )
-        state = service.execute(state["run_id"])
-        if state.get("run_state") == "completed":
-            _process_trigger_service().dispatch_framework_completion(state["run_id"])
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_automation_error_status(exc),
-        )
-    return _json_response({"ok": True, "run": state}, 201)
-
-
-@app.route("/api/process-automation/runs/<path:run_id>", methods=["GET", "POST"])
-def process_automation_run_state(run_id):
-    """Read, resume, or resolve one persisted automated Process Run."""
-
-    service = _process_automation_service()
-    try:
-        if request.method == "GET":
-            state = service.run_state(str(run_id))
-        else:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                from process_automation import ProcessAutomationInputRequired
-
-                raise ProcessAutomationInputRequired("Run action must be an object")
-            action = str(payload.get("action") or "")
-            if action in {"execute", "retry"} and set(payload) == {"action"}:
-                state = service.execute(str(run_id))
-            elif action == "resolve_checkpoint" and set(payload) == {
-                "action", "outcome",
-            }:
-                state = service.resolve_checkpoint(
-                    str(run_id),
-                    outcome=str(payload.get("outcome") or ""),
-                    decision_by="principal:user",
-                )
-            else:
-                from process_automation import ProcessAutomationInputRequired
-
-                raise ProcessAutomationInputRequired("Run action fields are invalid")
-        if request.method == "POST":
-            if state.get("trigger_binding"):
-                _process_trigger_service().synchronize_run(str(run_id))
-            elif state.get("run_state") == "completed":
-                _process_trigger_service().dispatch_framework_completion(str(run_id))
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_automation_error_status(exc),
-        )
-    return _json_response({"ok": True, "run": state})
-
-
-@app.route("/api/process-plan-context/<conversation_id>", methods=["GET"])
-def process_plan_context(conversation_id):
-    """Return the exact browser planning context for a completed interview.
-
-    The project selection is not silently treated as a filesystem grant. A
-    registered project root is a useful suggestion; otherwise the user must
-    confirm an exact target folder in the plan-review surface. Ora's own
-    container project resolves to this checkout because it has no plugin root.
-    """
-
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
-    try:
-        state = _management_interview_service().get_state(conversation_id)
-        if state is None:
-            return _json_response({
-                "ok": False, "error": "management_interview_not_found",
-            }, 404)
-        suggested_target = ""
-        project_ref = str(state.get("project_ref") or "").strip()
-        try:
-            from project_registry import get_project
-
-            project = get_project(project_ref)
-        except Exception:
-            project = None
-        if project is not None:
-            suggested_target = str(Path(project.root).resolve(strict=True))
-        elif project_ref == "ora":
-            suggested_target = str(Path(WORKSPACE).resolve(strict=True))
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _management_interview_error_status(exc),
-        )
-    return _json_response({
-        "ok": True,
-        "planning_context": {
-            "dialogue_ref": conversation_id,
-            "run_id": state["run_id"],
-            "binding_digest": state["binding_digest"],
-            "project_ref": state["project_ref"],
-            "interview_status": state["status"],
-            "suggested_target_path": suggested_target,
-        },
-    })
-
-
-@app.route("/api/process-plan/<conversation_id>", methods=["GET", "POST"])
-def process_plan_state(conversation_id):
-    """Hydrate or act on one exact Dialogue-bound Phase 2.3 plan."""
-
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
-    try:
-        service = _process_plan_service()
-        if request.method == "POST":
-            state = _apply_process_plan_action(
-                service, conversation_id, request.get_json(silent=True)
-            )
-        else:
-            state = service.get_state(conversation_id)
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)}, _process_plan_error_status(exc)
-        )
-    if state is None:
-        return _json_response({"ok": False, "error": "process_plan_not_found"}, 404)
-    return _json_response({"ok": True, "plan": state})
-
-
-@app.route("/api/process-delegation/<conversation_id>", methods=["GET", "POST"])
-def process_delegation_state(conversation_id):
-    """Hydrate or start one exact approved Phase 2.4 delegation."""
-
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"ok": False, "error": "invalid conversation_id"}, 400)
-    try:
-        service = _process_delegation_service()
-        if request.method == "POST":
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict) or payload.get("action") != "delegate":
-                from process_delegation_attention import ProcessDelegationInputRequired
-
-                raise ProcessDelegationInputRequired(
-                    "Phase 2.4 action must be exact delegation"
-                )
-            state = service.delegate(
-                conversation_id,
-                plan_ref=payload.get("plan_ref") or {},
-                approval_receipt_digest=str(
-                    payload.get("approval_receipt_digest") or ""
-                ),
-                requested_by=str(payload.get("requested_by") or "principal:user"),
-                idempotency_key=str(payload.get("idempotency_key") or ""),
-            )
-        else:
-            state = service.get_delegation(conversation_id)
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_delegation_error_status(exc),
-        )
-    if state is None:
-        return _json_response(
-            {"ok": False, "error": "process_delegation_not_found"}, 404
-        )
-    return _json_response({"ok": True, "delegation": state})
-
-
-@app.route("/api/process-attention", methods=["GET"])
-def process_attention_projection():
-    """Return Pending, Automated Processes, and Unread process projections."""
-
-    try:
-        projection = _process_delegation_service().projection()
-        projection["automated_processes"] = (
-            _process_trigger_service().attention_projection()
-        )
-        inspector = _process_run_inspector_service()
-        run_ids = sorted({
-            str(row.get("run_id") or "")
-            for surface in ("pending", "unread")
-            for row in projection.get(surface, [])
-            if row.get("run_id")
-        })
-        telemetry_by_run = {}
-        for exact_run_id in run_ids:
+        def work():
             try:
-                snapshot = inspector.inspect(exact_run_id)
+                result = run_approved_programming(
+                    objective=objective,
+                    repository_path=repository_path,
+                    plan=plan,
+                    approved=True,
+                    progress=emit,
+                    resume_branch=resume_branch,
+                    continuation=continuation,
+                )
+                events.put({"type": "result", **result})
             except Exception as exc:
-                # Projection tests and legacy imported attention rows can
-                # legitimately reference a Run no longer present in this
-                # runtime. Preserve the attention contract while making the
-                # missing telemetry explicit; every other integrity error
-                # remains fail closed for the whole response.
-                if type(exc).__name__ != "RunNotFoundError":
-                    raise
-                telemetry_by_run[exact_run_id] = {
-                    "snapshot_digest": None,
-                    "telemetry": None,
-                    "controls": None,
-                    "status": "run_not_found",
-                }
-                continue
-            telemetry_by_run[exact_run_id] = {
-                "snapshot_digest": snapshot["snapshot_digest"],
-                "telemetry": snapshot["views"]["overview"].get("telemetry"),
-                "controls": snapshot["views"]["overview"].get("controls"),
-            }
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_delegation_error_status(exc),
-        )
-    return _json_response({
-        "ok": True,
-        **projection,
-        "g1_20_telemetry_available": True,
-        "telemetry_by_run": telemetry_by_run,
-    })
+                events.put({"type": "error", "error": str(exc)})
+            finally:
+                events.put(finished)
+
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            event = events.get()
+            if event is finished:
+                break
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+
+    return Response(generate(), mimetype="application/x-ndjson")
 
 
-@app.route("/api/process-runs/<path:run_id>/authority", methods=["POST"])
-def process_run_authority_resolution(run_id):
-    """Resolve one exact focused authority request through the runtime."""
+@app.route("/api/programming/recover", methods=["POST"])
+def programming_recover():
+    """Reconstruct the checked-out approved task from Git after a later session."""
 
     try:
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict):
-            from process_delegation_attention import ProcessDelegationInputRequired
-
-            raise ProcessDelegationInputRequired(
-                "authority resolution request must be an object"
-            )
-        if set(payload) != {"request_id", "outcome", "decision_by"}:
-            from process_delegation_attention import ProcessDelegationInputRequired
-
-            raise ProcessDelegationInputRequired(
-                "authority resolution requires exact request_id, outcome, and decision_by"
-            )
-        resolution = _process_delegation_service().resolve_authority_request(
-            str(run_id),
-            request_id=str(payload.get("request_id") or ""),
-            outcome=str(payload.get("outcome") or ""),
-            decision_by=str(payload.get("decision_by") or ""),
-        )
+        from programming import ProgrammingError, recover_programming
     except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_delegation_error_status(exc),
-        )
-    return _json_response({"ok": True, "authority_resolution": resolution})
-
-
-@app.route("/api/process-runs/<path:run_id>/inspector", methods=["GET"])
-def process_run_inspector(run_id):
-    """Return one authenticated, read-only Phase 2.5 inspector snapshot."""
-
+        return _json_response({"ok": False, "error": str(exc)}, 503)
     try:
-        snapshot = _process_run_inspector_service().inspect(str(run_id))
+        payload = _programming_payload()
+        result = recover_programming(str(payload.get("repository_path") or ""))
+    except (ValueError, ProgrammingError) as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
     except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_run_inspector_error_status(exc),
-        )
-    return _json_response({"ok": True, "inspector": snapshot})
-
-
-@app.route("/api/process-runs/<path:run_id>/control", methods=["POST"])
-def process_run_control(run_id):
-    """Apply one stale-safe Principal pause, resume, or stop decision."""
-
-    try:
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict) or set(payload) != {
-            "action", "control_state_digest", "idempotency_key",
-        }:
-            from process_automation import ProcessAutomationInputRequired
-
-            raise ProcessAutomationInputRequired(
-                "Run control requires exact action, control_state_digest, and idempotency_key"
-            )
-        result = _process_automation_service().control_run(
-            str(run_id),
-            action=str(payload.get("action") or ""),
-            control_state_digest=str(payload.get("control_state_digest") or ""),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-        _process_trigger_service().synchronize_run(str(run_id))
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_automation_error_status(exc),
-        )
-    return _json_response({"ok": True, "control": result})
-
-
-@app.route(
-    "/api/process-runs/<path:run_id>/quality-evaluation",
-    methods=["POST"],
-)
-def process_run_quality_evaluation(run_id):
-    """Run one opt-in model evaluation at an authenticated eligible seam."""
-
-    try:
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict) or set(payload) != {"idempotency_key"}:
-            from process_run_inspector import ProcessRunTelemetryInputRequired
-
-            raise ProcessRunTelemetryInputRequired(
-                "quality evaluation requires an exact idempotency_key"
-            )
-        result = _process_run_telemetry_service().evaluate(
-            str(run_id),
-            idempotency_key=str(payload.get("idempotency_key") or ""),
-        )
-    except Exception as exc:
-        return _json_response(
-            {"ok": False, "error": str(exc)},
-            _process_run_inspector_error_status(exc),
-        )
-    return _json_response({"ok": True, "quality_evaluation": result})
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    return _json_response({"ok": True, **result})
 
 
 @app.route("/api/slash-commands", methods=["GET"])
@@ -9703,31 +8371,6 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     # user effectively saw.
                     final_response = routed
 
-            # Bind the exact bytes that the Dialogue will persist—not the
-            # pre-warning/pre-routing model text—to the governed result
-            # Artifact.  This happens before Dialogue save so a crash between
-            # the two can replay the authenticated result without rerunning
-            # the capability.
-            governed_invocation = (
-                (extra_context or {}).get("governed_process_invocation")
-                if isinstance(extra_context, dict) else None
-            )
-            if isinstance(governed_invocation, dict):
-                try:
-                    process_invocation_state = (
-                        _process_library_service().complete_manual_invocation(
-                            str(governed_invocation["run_id"]),
-                            final_response,
-                        )
-                    )
-                except Exception as exc:
-                    failure_summary = (
-                        "governed Process invocation result persistence failed: "
-                        f"{exc}"
-                    )
-                    final_response = None
-                    print(f"[ERROR] {failure_summary}")
-
             # Sidebar window: record exchange in rolling window
             if (final_response is not None and is_sidebar
                     and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None):
@@ -9946,704 +8589,86 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
         )
 
 
-def _management_interview_response_text(state):
-    question = state.get("current_question")
-    if question:
-        return (
-            f"{question['prompt']}\n\n"
-            f"Why I’m asking: {question['evidence']} "
-            f"{question['consequence']}"
-        )
-    return (
-        "The management interview is complete. The same governed Process Run "
-        "is ready for the planning phase. No plan has been created, and no "
-        "construction, mutation, registration, invocation, or activation "
-        "authority has been granted."
-    )
-
-
-def _persist_management_interview_exchange(
-    *,
-    user_input,
-    state,
-    history,
-    panel_id,
-    tag,
-    submission_id,
-    output_destination="",
-):
-    """Persist a deterministic interview turn through the normal Dialogue path."""
-
-    assistant_text = _management_interview_response_text(state)
-    try:
-        chunk_id = _save_conversation(
-            user_input,
-            assistant_text,
-            panel_id,
-            len(history) == 0,
-            tag,
-            output_destination=output_destination,
-            trace_ref=None,
-        )
-    except Exception as exc:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": f"management interview Dialogue save failed: {exc}",
-        }, 500)
-    if not chunk_id:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": "management interview Dialogue save produced no chunk",
-        }, 500)
-    try:
-        from conversation_memory import save_turn_spatial_state
-
-        save_turn_spatial_state(
-            panel_id,
-            user_input,
-            assistant_text,
-            tag=tag,
-        )
-    except Exception as exc:
-        print(
-            f"[management-interview] Dialogue envelope turn save failed: {exc}",
-            file=sys.stderr,
-            flush=True,
-        )
-    if submission_id:
-        _finalize_pending_submission(submission_id)
-    response_status = (
-        "input_required" if state.get("status") == "input_required" else "ok"
-    )
-    payload = {
-        "status": response_status,
-        "conversation_id": panel_id,
-        "chunk_id": chunk_id,
-        "run_id": state["run_id"],
-        "management_interview": state,
-    }
-    if state.get("input_required") is not None:
-        payload["input_required"] = state["input_required"]
-    return _json_response(payload)
-
-
-def _process_plan_response_text(state):
-    plan = state.get("current_plan") or {}
-    principal = ((plan.get("principal_view") or {}).get("content") or {})
-    status = state.get("status")
-    if status == "awaiting_approval":
-        return (
-            "The canonical plan passed independent review and is waiting for your "
-            "decision.\n\n"
-            f"Outcome: {principal.get('outcome', '')}\n"
-            f"Users: {principal.get('users', '')}\n"
-            f"Risks: {'; '.join(principal.get('risks') or [])}\n"
-            f"Proof: {'; '.join(principal.get('proof') or [])}\n\n"
-            "You may approve and start, approve without starting, request plan "
-            "changes, change scope or permissions, or stop and retain the plan. "
-            "The Technical View remains available in plan details."
-        )
-    if status == "revision_requested":
-        return "Your requested plan change is recorded against the exact version. A revised canonical version is required."
-    if status == "stale":
-        return "The target changed after planning. Approval is withheld until a revised plan binds the current baseline."
-    if status == "approval_pending_commit":
-        return "Your exact approval is recorded. Ora is completing the idempotent plan export and checkpoint commit."
-    if status == "approved":
-        delegation = state.get("delegation") or {}
-        if delegation.get("status") == "delegated":
-            return (
-                "The exact approved plan is delegated and safely checkpointed. "
-                "The live Process Run is now in Pending at execution preflight; "
-                "routine work remains quiet and Ora will return only for a focused "
-                "decision, a blocked condition, or verified completion."
-            )
-        if delegation.get("status") == "withheld":
-            condition = ((delegation.get("observation") or {}).get("payload") or {})
-            return (
-                "Delegation is withheld because the approved target baseline is "
-                f"stale. {condition.get('required_decision', '')}"
-            ).strip()
-        return (
-            "The exact plan is approved and exported as the execution contract. "
-            "Execution has not begun; it is waiting for an explicit start decision."
-        )
-    if status == "retained":
-        return "The reviewed plan was retained and the Run stopped without execution."
-    return "Ora is preparing one canonical plan and its Principal and Technical views."
-
-
-def _persist_process_plan_exchange(
-    *,
-    user_input,
-    state,
-    history,
-    panel_id,
-    tag,
-    submission_id,
-    output_destination="",
-):
-    """Persist the Phase 2.3 plan card through normal Dialogue surfaces."""
-
-    assistant_text = _process_plan_response_text(state)
-    try:
-        chunk_id = _save_conversation(
-            user_input,
-            assistant_text,
-            panel_id,
-            len(history) == 0,
-            tag,
-            output_destination=output_destination,
-            trace_ref=None,
-        )
-    except Exception as exc:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": f"process plan Dialogue save failed: {exc}",
-        }, 500)
-    if not chunk_id:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": "process plan Dialogue save produced no chunk",
-        }, 500)
-    try:
-        from conversation_memory import (
-            get_conversation_tag,
-            load_process_plan_lifecycle,
-            save_turn_spatial_state,
-        )
-
-        privacy_before = get_conversation_tag(panel_id)
-        envelope_path = save_turn_spatial_state(
-            panel_id, user_input, assistant_text, tag=tag
-        )
-        persisted_lifecycle = load_process_plan_lifecycle(panel_id)
-        privacy_after = get_conversation_tag(panel_id)
-        if (
-            envelope_path is None
-            or persisted_lifecycle != state.get("dialogue_lifecycle")
-            or privacy_after != privacy_before
-        ):
-            raise RuntimeError(
-                "Dialogue plan lifecycle or privacy failed durable verification"
-            )
-    except Exception as exc:
-        return _json_response({
-            "status": "errored",
-            "conversation_id": panel_id,
-            "failure_summary": f"process plan Dialogue persistence failed: {exc}",
-        }, 500)
-    if submission_id:
-        _finalize_pending_submission(submission_id)
-    return _json_response({
-        "status": "ok",
-        "conversation_id": panel_id,
-        "chunk_id": chunk_id,
-        "run_id": state["run_id"],
-        "process_plan": state,
-    })
-
-
-def _temporary_framework_result_ref(result):
-    """Reduce a pipeline reply to the exact return facts stored on the Run."""
-
-    if hasattr(result, "get_json"):
-        payload = result.get_json(silent=True) or {}
-    else:
-        body = result[0] if isinstance(result, tuple) else result
-        try:
-            payload = json.loads(body) if isinstance(body, str) else {}
-        except json.JSONDecodeError:
-            payload = {}
-    status = str(payload.get("status") or "errored")
-    return (
-        "ok" if status == "ok" else "errored",
-        {
-            "conversation_id": payload.get("conversation_id"),
-            "chunk_id": payload.get("chunk_id"),
-            "status": status,
-        },
-    )
-
-
 @app.route("/chat", methods=["POST"])
 def chat():
-    data       = request.get_json(force=True)
-    user_input = data.get("message","").strip()
-    history    = data.get("history", [])
-    panel_id   = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
-    is_main    = data.get("is_main_feed", True)
-    tag        = _normalize_tag(data.get("tag", ""))
-    # V3 Phase 1 — alignment-prefilter inputs. ``manual_mode_selection`` is
-    # the user's picked mode from the input-box mode picker (or empty);
-    # ``framework_selected`` is the user's picked framework (or empty); they
-    # are mutually exclusive at the UI layer (V3 Input Handling Q3) but the
-    # server treats them independently and lets ``compare_intent_with_mode``
-    # apply the framework-suppresses-prefilter rule.
-    manual_mode_selection = (data.get("manual_mode_selection") or "").strip()
-    manual_lens_selection = (data.get("manual_lens_selection") or "").strip()
-    framework_selected    = (data.get("framework_selected") or "").strip()
-    process_entry_raw     = data.get("process_entry_request")
-    process_invocation_inputs_raw = data.get("process_invocation_inputs")
-    management_answer_raw = data.get("management_interview_answer")
-    management_plan_raw   = data.get("management_plan")
-    # G1.36 — honne/tatemae input toggle: "internal" | "external" (default).
-    style_audience        = (data.get("style_audience") or "").strip()
-    # Optional per-request target visual kind. When the caller knows exactly
-    # which diagram the turn should produce (the visual-tool campaign threads
-    # the technique's kind; a UI "draw a <kind>" affordance could too), it is
-    # placed first in the visual hook's target list so recovery/synthesis emit
-    # THAT kind instead of the routed mode's default first type — the fix for
-    # multi-kind modes (e.g. decision-under-uncertainty → tornado vs
-    # decision_tree). Lands on context_pkg as ``visual_kind`` via extra_context.
-    manual_visual_type    = (data.get("manual_visual_type") or "").strip()
-    # Obsidian Plugin Design (2026-05-17) — optional per-request override
-    # for the processed chunk's output folder. Validation + fallback live
-    # in ``_resolve_chunk_destination``; the endpoint just propagates.
-    output_destination    = (data.get("output_destination") or "").strip()
-    # Install Chunk 2c — optional per-request named configuration
-    # (e.g. "user-pipeline", "background-default", or a custom-saved name).
-    # When omitted, the legacy execution_context path applies.
-    config_name           = data.get("config_name")
+    """Ordinary Inquiry. Programming uses only the explicit /api/programming routes."""
+
+    data = request.get_json(force=True)
+    user_input = str(data.get("message") or "").strip()
+    history = data.get("history", [])
+    panel_id = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
+    is_main = data.get("is_main_feed", True)
+    tag = _normalize_tag(data.get("tag", ""))
+    manual_mode_selection = str(data.get("manual_mode_selection") or "").strip()
+    manual_lens_selection = str(data.get("manual_lens_selection") or "").strip()
+    framework_selected = str(data.get("framework_selected") or "").strip()
+    style_audience = str(data.get("style_audience") or "").strip()
+    manual_visual_type = str(data.get("manual_visual_type") or "").strip()
+    output_destination = str(data.get("output_destination") or "").strip()
+    config_name = data.get("config_name")
     if isinstance(config_name, str):
         config_name = config_name.strip() or None
     try:
         config_name = _validate_public_model_profile_override(config_name)
     except ValueError as exc:
         return _json_response({"error": str(exc)}, 400)
-    trace_debug_payload = data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
+    trace_debug_payload = (
+        data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
+    )
     if not user_input and not trace_debug_payload:
-        return json.dumps({"error":"empty message"}), 400
+        return _json_response({"error": "empty message"}, 400)
     if not _valid_live_conversation_id(panel_id):
-        return json.dumps({"error": "invalid conversation_id"}), 400
+        return _json_response({"error": "invalid conversation_id"}, 400)
 
-    # V3 Backlog 2A Chunk 1 — capture the submission to disk BEFORE any
-    # other processing. A user input must never be lost. The pending file
-    # is the recoverable record; on successful save it moves to
-    # processed/, on a server crash the next boot surfaces it as an
-    # errored chunk for the user to retry / dismiss.
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
-            return json.dumps({
-                "status": "deleted", "conversation_id": panel_id,
-            }), 410
+            return _json_response({"status": "deleted", "conversation_id": panel_id}, 410)
         if _is_conversation_closed(panel_id):
-            return json.dumps({
-                "status": "closed", "conversation_id": panel_id,
-            }), 409
+            return _json_response({"status": "closed", "conversation_id": panel_id}, 409)
         try:
             _assert_no_casefold_session_collision(panel_id)
         except (ValueError, RuntimeError) as exc:
-            return json.dumps({"error": str(exc)}), 409
+            return _json_response({"error": str(exc)}, 409)
         tag = _effective_conversation_tag(panel_id, tag)
         submission_id = _log_pending_submission({
-            "endpoint":              "/chat",
-            "conversation_id":       panel_id,
-            "panel_id":              panel_id,
-            "is_main_feed":          is_main,
-            "tag":                   tag,
-            "user_input":            user_input,
-            "history":               history,
+            "endpoint": "/chat",
+            "conversation_id": panel_id,
+            "panel_id": panel_id,
+            "is_main_feed": is_main,
+            "tag": tag,
+            "user_input": user_input,
+            "history": history,
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
-            "framework_selected":    framework_selected,
-            "process_entry_request": process_entry_raw,
-            "process_invocation_inputs": process_invocation_inputs_raw,
-            "management_interview_answer": management_answer_raw,
-            "management_plan":          management_plan_raw,
-            "output_destination":    output_destination,
-            "attachments":           data.get("attachments", []),
-            "trace_debug":           trace_debug_payload,
+            "framework_selected": framework_selected,
+            "output_destination": output_destination,
+            "attachments": data.get("attachments", []),
+            "trace_debug": trace_debug_payload,
         })
 
-    interview_service = None
-    plan_service = None
-    active_interview = None
-    active_plan = None
-    try:
-        from conversation_memory import load_governing_process_binding
-
-        if load_governing_process_binding(panel_id) is not None:
-            plan_service = _process_plan_service()
-            active_plan = plan_service.get_state(panel_id)
-            if active_plan is None:
-                interview_service = _management_interview_service()
-                active_interview = interview_service.get_state(panel_id)
-                if (
-                    active_interview is not None
-                    and active_interview.get("status") == "ready_for_plan"
-                ):
-                    # G1.18 is a second, explicitly chosen completion path from
-                    # the same accepted management interview. Once its exact
-                    # construction Run is promoted, the old Programming-plan
-                    # branch must no longer intercept every ordinary Dialogue
-                    # turn. The binding remains intact for audit/restart.
-                    authored = _process_automation_service(
-                        interview_service
-                    ).get_authoring(panel_id)
-                    if authored and authored.get("status") == "available":
-                        active_interview = None
-    except Exception as exc:
-        _delete_pending_submission(submission_id)
-        return _json_response(
-            {"error": str(exc)},
-            _management_interview_error_status(exc),
-        )
-
-    # A terminal Process Run has returned to attention. Its governing
-    # Dialogue must be usable for result or blockage discussion; it is no
-    # longer an active planning/delegation checkpoint that intercepts every
-    # turn. The Run remains immutable and visible through Process attention.
-    if active_plan is not None and active_plan.get("run_state") in {
-        "completed", "blocked",
-    }:
-        active_plan = None
-
-    if active_plan is not None:
-        if management_plan_raw is None:
-            _delete_pending_submission(submission_id)
-            boundary = "awaiting_plan_action"
-            delegation = None
-            if active_plan["status"] == "approved":
-                delegation = _process_delegation_service(
-                    plan_service
-                ).get_delegation(panel_id)
-                boundary = (
-                    "delegated_run_active"
-                    if delegation and delegation.get("status") == "delegated"
-                    else "awaiting_phase_2_4_delegation"
-                )
-            payload = {
-                "error": boundary,
-                "process_plan": active_plan,
-            }
-            if delegation is not None:
-                payload["delegation"] = delegation
-            return _json_response(payload, 409)
-        try:
-            plan_state = _apply_process_plan_action(
-                plan_service, panel_id, management_plan_raw
-            )
-        except Exception as exc:
-            _delete_pending_submission(submission_id)
-            return _json_response(
-                {"error": str(exc)}, _process_plan_error_status(exc)
-            )
-        return _persist_process_plan_exchange(
-            user_input=user_input,
-            state=plan_state,
-            history=history,
-            panel_id=panel_id,
-            tag=tag,
-            submission_id=submission_id,
-            output_destination=output_destination,
-        )
-
-    if active_interview is not None:
-        if management_answer_raw is not None and not isinstance(
-            management_answer_raw, dict
-        ):
-            _delete_pending_submission(submission_id)
-            return _json_response({
-                "error": "management_interview_answer must be an object",
-            }, 400)
-        answer_contract = management_answer_raw or {}
-        if (
-            active_interview["status"] == "interviewing"
-            and management_plan_raw is not None
-        ):
-            _delete_pending_submission(submission_id)
-            return _json_response({
-                "error": "management_interview_incomplete",
-                "management_interview": active_interview,
-            }, 409)
-        if active_interview["status"] != "interviewing":
-            if management_plan_raw is not None:
-                try:
-                    plan_service = plan_service or _process_plan_service()
-                    plan_state = _apply_process_plan_action(
-                        plan_service, panel_id, management_plan_raw
-                    )
-                except Exception as exc:
-                    _delete_pending_submission(submission_id)
-                    return _json_response(
-                        {"error": str(exc)}, _process_plan_error_status(exc)
-                    )
-                return _persist_process_plan_exchange(
-                    user_input=user_input,
-                    state=plan_state,
-                    history=history,
-                    panel_id=panel_id,
-                    tag=tag,
-                    submission_id=submission_id,
-                    output_destination=output_destination,
-                )
-            if not framework_selected:
-                from process_management_interview import ManagementInterviewConflict
-
-                try:
-                    replayed = interview_service.answer(
-                        panel_id,
-                        user_input,
-                        question_id=answer_contract.get("question_id"),
-                        idempotency_key=answer_contract.get("idempotency_key"),
-                    )
-                except ManagementInterviewConflict:
-                    replayed = None
-                except Exception as exc:
-                    _delete_pending_submission(submission_id)
-                    return _json_response(
-                        {"error": str(exc)}, _management_interview_error_status(exc)
-                    )
-                if replayed is not None:
-                    return _persist_management_interview_exchange(
-                        user_input=user_input,
-                        state=replayed,
-                        history=history,
-                        panel_id=panel_id,
-                        tag=tag,
-                        submission_id=submission_id,
-                        output_destination=output_destination,
-                    )
-            _delete_pending_submission(submission_id)
-            return _json_response({
-                "error": "awaiting_phase_2_3_plan",
-                "management_interview": active_interview,
-            }, 409)
-
-        temporary_entry = None
-        if framework_selected and framework_selected != "programming":
-            try:
-                temporary_entry = _decode_process_entry_request(
-                    process_entry_raw, user_input, framework_selected,
-                )
-            except Exception as exc:
-                _delete_pending_submission(submission_id)
-                return _json_response(
-                    {"error": str(exc)}, _process_entry_error_status(exc)
-                )
-        elif not framework_selected and user_input:
-            try:
-                candidate = _decode_process_entry_request(
-                    process_entry_raw, user_input, "",
-                )
-            except Exception:
-                candidate = None
-            if (
-                candidate is not None
-                and candidate.get("intent") == "capability_invocation"
-                and candidate.get("framework_id")
-            ):
-                temporary_entry = candidate
-
-        if temporary_entry is not None:
-            framework_selected = str(temporary_entry["framework_id"])
-            try:
-                call = interview_service.begin_temporary_framework_call(
-                    panel_id, framework_selected, user_input,
-                )
-            except Exception as exc:
-                _delete_pending_submission(submission_id)
-                return _json_response(
-                    {"error": str(exc)}, _management_interview_error_status(exc)
-                )
-            raw_attachments = data.get("attachments", [])
-            text_parts, images = _process_attachments(raw_attachments)
-            if text_parts:
-                user_input = user_input + "\n\n" + "\n\n".join(text_parts)
-            extra_context = {
-                "process_entry": temporary_entry,
-                "governing_process": {
-                    "run_id": active_interview["run_id"],
-                    "definition_ref": active_interview["definition_ref"],
-                    "binding_digest": active_interview["binding_digest"],
-                    "temporary_framework_call_id": call["call_id"],
-                },
-            }
-            if manual_visual_type:
-                extra_context["visual_kind"] = manual_visual_type
-            if trace_debug_payload:
-                extra_context["trace_debug"] = trace_debug_payload
-            result = _invoke_pipeline(
-                user_input, history, panel_id, is_main, images=images,
-                extra_context=extra_context, tag=tag,
-                manual_mode_selection=manual_mode_selection,
-                manual_lens_selection=manual_lens_selection,
-                framework_selected=framework_selected,
-                submission_id=submission_id,
-                output_destination=output_destination,
-                config_name=config_name,
-                style_audience=style_audience,
-            )
-            status, result_ref = _temporary_framework_result_ref(result)
-            try:
-                interview_service.complete_temporary_framework_call(
-                    panel_id,
-                    call["call_id"],
-                    status=status,
-                    result_ref=result_ref,
-                )
-            except Exception as exc:
-                return _json_response(
-                    {"error": str(exc)}, _management_interview_error_status(exc)
-                )
-            return result
-
-        if framework_selected == "programming":
-            _delete_pending_submission(submission_id)
-            return _json_response({
-                "error": "Programming cannot displace its active governing interview",
-                "management_interview": active_interview,
-            }, 409)
-        try:
-            state = interview_service.answer(
-                panel_id,
-                user_input,
-                question_id=answer_contract.get("question_id"),
-                idempotency_key=answer_contract.get("idempotency_key"),
-            )
-        except Exception as exc:
-            _delete_pending_submission(submission_id)
-            return _json_response(
-                {"error": str(exc)}, _management_interview_error_status(exc)
-            )
-        return _persist_management_interview_exchange(
-            user_input=user_input,
-            state=state,
-            history=history,
-            panel_id=panel_id,
-            tag=tag,
-            submission_id=submission_id,
-            output_destination=output_destination,
-        )
-
-    try:
-        process_entry = _decode_process_entry_request(
-            process_entry_raw, user_input, framework_selected,
-        )
-    except Exception as exc:
-        _delete_pending_submission(submission_id)
-        return _json_response({"error": str(exc)},
-                              _process_entry_error_status(exc))
-    if process_entry is not None and process_entry["status"] != "ready":
-        _delete_pending_submission(submission_id)
-        return _json_response({
-            "error": process_entry["status"],
-            "entry": process_entry,
-        }, 409)
-    if (
-        process_entry is not None
-        and process_entry.get("intent") == "capability_construction"
-    ):
-        try:
-            interview_service = interview_service or _management_interview_service()
-            state = interview_service.start_or_resume(
-                panel_id,
-                process_entry,
-                dialogue_tag=tag,
-            )
-        except Exception as exc:
-            _delete_pending_submission(submission_id)
-            return _json_response(
-                {"error": str(exc)}, _management_interview_error_status(exc)
-            )
-        return _persist_management_interview_exchange(
-            user_input=user_input,
-            state=state,
-            history=history,
-            panel_id=panel_id,
-            tag=tag,
-            submission_id=submission_id,
-            output_destination=output_destination,
-        )
-    if (process_entry is not None
-            and process_entry.get("intent") == "capability_invocation"
-            and process_entry.get("framework_id")
-            and not framework_selected):
-        # Direct natural-language invocation resolves one curated legacy
-        # framework at the server boundary, then enters its established
-        # pipeline path exactly as a shared-picker selection would.
-        framework_selected = process_entry["framework_id"]
-
-    # Process attachments: text content inlined, images passed separately
-    raw_attachments = data.get("attachments", [])
-    text_parts, images = _process_attachments(raw_attachments)
+    text_parts, images = _process_attachments(data.get("attachments", []))
     if text_parts:
-        user_input = user_input + "\n\n" + "\n\n".join(text_parts)
-
-    manual_invocation = None
-    if (
-        process_entry is not None
-        and process_entry.get("intent") == "capability_invocation"
-        and process_entry.get("definition_ref") is not None
-        and process_entry.get("framework_id") is None
-    ):
-        try:
-            _assert_manual_invocation_output_boundary(
-                user_input, output_destination
-            )
-            definition_inputs = _decode_process_invocation_inputs(
-                process_invocation_inputs_raw
-            )
-            manual_invocation = _process_library_service().begin_manual_invocation(
-                dialogue_ref=panel_id,
-                project_ref=process_entry["project_ref"],
-                objective=process_entry["objective"],
-                definition_ref=process_entry["definition_ref"],
-                definition_inputs=definition_inputs,
-                entry_contract=process_entry,
-                request_context=_process_invocation_request_context(
-                    surface="chat",
-                    history=history,
-                    attachments=raw_attachments,
-                ),
-            )
-        except Exception as exc:
-            _delete_pending_submission(submission_id)
-            return _json_response(
-                {"error": str(exc)}, _process_library_error_status(exc)
-            )
-        if manual_invocation["status"] == "result_recorded":
-            return _persist_manual_invocation_replay(
-                user_input=user_input,
-                state=manual_invocation,
-                history=history,
-                panel_id=panel_id,
-                tag=tag,
-                submission_id=submission_id,
-                output_destination=output_destination,
-            )
-
-    extra_context = {"visual_kind": manual_visual_type} if manual_visual_type else None
+        user_input += "\n\n" + "\n\n".join(text_parts)
+    extra_context = {}
+    if manual_visual_type:
+        extra_context["visual_kind"] = manual_visual_type
     if trace_debug_payload:
-        extra_context = dict(extra_context or {})
         extra_context["trace_debug"] = trace_debug_payload
-    if process_entry is not None:
-        extra_context = dict(extra_context or {})
-        extra_context["process_entry"] = process_entry
-    if manual_invocation is not None:
-        extra_context = dict(extra_context or {})
-        extra_context["governed_process_invocation"] = (
-            _public_process_invocation(manual_invocation)
-        )
     contributor_context = build_contributor_context(panel_id, target_tag=tag)
     if contributor_context:
-        extra_context = dict(extra_context or {})
         extra_context["contributor_context"] = contributor_context
-    return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
-                             extra_context=extra_context,
-                             tag=tag,
-                             manual_mode_selection=manual_mode_selection,
-                             manual_lens_selection=manual_lens_selection,
-                             framework_selected=framework_selected,
-                             submission_id=submission_id,
-                             output_destination=output_destination,
-                             config_name=config_name,
-                             style_audience=style_audience)
+    return _invoke_pipeline(
+        user_input, history, panel_id, is_main, images=images,
+        extra_context=extra_context or None,
+        tag=tag,
+        manual_mode_selection=manual_mode_selection,
+        manual_lens_selection=manual_lens_selection,
+        framework_selected=framework_selected,
+        submission_id=submission_id,
+        output_destination=output_destination,
+        config_name=config_name,
+        style_audience=style_audience,
+    )
 
 
 # ── WP-3.3: Merged visual + text input (multipart) ───────────────────────────
@@ -10746,8 +8771,6 @@ def chat_multipart():
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
-    process_entry_raw     = form.get("process_entry_request", "")
-    process_invocation_inputs_raw = form.get("process_invocation_inputs", "")
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
@@ -10834,72 +8857,12 @@ def chat_multipart():
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
-            "process_entry_request": process_entry_raw,
-            "process_invocation_inputs": process_invocation_inputs_raw,
             "output_destination":    output_destination,
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
             "exhibits_submission_intent": exhibits_submission_intent,
         })
-
-    try:
-        process_entry = _decode_process_entry_request(
-            process_entry_raw, user_input, framework_selected,
-        )
-    except Exception as exc:
-        _delete_pending_submission(submission_id)
-        return _json_response({"error": str(exc)},
-                              _process_entry_error_status(exc))
-    if process_entry is not None and process_entry["status"] != "ready":
-        _delete_pending_submission(submission_id)
-        return _json_response({
-            "error": process_entry["status"],
-            "entry": process_entry,
-        }, 409)
-    try:
-        from conversation_memory import load_governing_process_binding
-
-        governing_binding = load_governing_process_binding(panel_id)
-        active_plan = None
-        active_interview = None
-        if governing_binding is not None:
-            active_plan = _process_plan_service().get_state(panel_id)
-            if active_plan is None:
-                active_interview = _management_interview_service().get_state(panel_id)
-        if active_plan is not None and active_plan.get("run_state") in {
-            "completed", "blocked",
-        }:
-            active_plan = None
-    except Exception as exc:
-        _delete_pending_submission(submission_id)
-        return _json_response({"error": str(exc)}, 503)
-    if active_plan is not None or active_interview is not None:
-        _delete_pending_submission(submission_id)
-        payload = {
-            "error": "governed_management_requires_json_chat",
-            "required_endpoint": "/chat",
-        }
-        if active_plan is not None:
-            payload["process_plan"] = active_plan
-        if active_interview is not None:
-            payload["management_interview"] = active_interview
-        return _json_response(payload, 409)
-    if (
-        process_entry is not None
-        and process_entry.get("intent") == "capability_construction"
-    ):
-        _delete_pending_submission(submission_id)
-        return _json_response({
-            "error": "governed_management_requires_json_chat",
-            "required_endpoint": "/chat",
-            "entry": process_entry,
-        }, 409)
-    if (process_entry is not None
-            and process_entry.get("intent") == "capability_invocation"
-            and process_entry.get("framework_id")
-            and not framework_selected):
-        framework_selected = process_entry["framework_id"]
 
     # Optional history as JSON string
     history = []
@@ -11023,9 +8986,6 @@ def chat_multipart():
             "authoritative": False,
             "run_effects": [],
         }
-    if process_entry is not None:
-        extra_context["process_entry"] = process_entry
-
     # WP-5.3 — Spatial continuity across turns. Fetch the prior turn's
     # spatial_representation from either the in-memory history arg or
     # conversation.json on disk, and thread it through extra_context. The
@@ -11034,87 +8994,17 @@ def chat_multipart():
     try:
         from conversation_memory import get_prior_spatial_state, get_prior_annotations
         prior_spatial = get_prior_spatial_state(conversation_id, history)
-        governed_entry = (
-            isinstance(process_entry, dict)
-            and process_entry.get("intent") != "ordinary_generation"
-        )
-        if prior_spatial and not governed_entry:
+        if prior_spatial:
             extra_context["prior_spatial_representation"] = prior_spatial
-        elif prior_spatial and governed_entry:
-            # Dialogue continuity is not attachment authority.  A historical
-            # Exhibits canvas remains available in the Dialogue, but its body
-            # does not cross a governed Process boundary until the user sends
-            # the current canvas state with that exact turn.
-            extra_context["prior_exhibits_withheld"] = {
-                "reason": "explicit_current_submission_required",
-                "authoritative": False,
-                "run_effects": [],
-            }
         prior_annots = get_prior_annotations(conversation_id, history)
-        if prior_annots and not governed_entry:
+        if prior_annots:
             extra_context["prior_annotations"] = prior_annots
-        elif prior_annots and governed_entry:
-            extra_context.setdefault("prior_exhibits_withheld", {
-                "reason": "explicit_current_submission_required",
-                "authoritative": False,
-                "run_effects": [],
-            })
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
 
     contributor_context = build_contributor_context(panel_id, target_tag=tag)
     if contributor_context:
         extra_context["contributor_context"] = contributor_context
-
-    manual_invocation = None
-    if (
-        process_entry is not None
-        and process_entry.get("intent") == "capability_invocation"
-        and process_entry.get("definition_ref") is not None
-        and process_entry.get("framework_id") is None
-    ):
-        try:
-            _assert_manual_invocation_output_boundary(
-                user_input, output_destination
-            )
-            manual_invocation = _process_library_service().begin_manual_invocation(
-                dialogue_ref=panel_id,
-                project_ref=process_entry["project_ref"],
-                objective=process_entry["objective"],
-                definition_ref=process_entry["definition_ref"],
-                definition_inputs=_decode_process_invocation_inputs(
-                    process_invocation_inputs_raw
-                ),
-                entry_contract=process_entry,
-                request_context=_process_invocation_request_context(
-                    surface="chat_multipart",
-                    history=history,
-                    attachments={
-                        "exhibits_submission": extra_context.get(
-                            "exhibits_submission"
-                        ),
-                        "image_attached": bool(image_path or canvas_preview_path),
-                    },
-                ),
-            )
-        except Exception as exc:
-            _delete_pending_submission(submission_id)
-            return _json_response(
-                {"error": str(exc)}, _process_library_error_status(exc)
-            )
-        if manual_invocation["status"] == "result_recorded":
-            return _persist_manual_invocation_replay(
-                user_input=user_input,
-                state=manual_invocation,
-                history=history,
-                panel_id=panel_id,
-                tag=tag,
-                submission_id=submission_id,
-                output_destination=output_destination,
-            )
-        extra_context["governed_process_invocation"] = (
-            _public_process_invocation(manual_invocation)
-        )
 
     # Emit a log line so operators can see the merged inputs reached the server.
     annot_count = 0
@@ -15340,28 +13230,12 @@ def _persist_turn_spatial_state_unlocked(
             spatial_rep = extra_context.get("spatial_representation")
             annotations = extra_context.get("annotations")
             vision_extr = extra_context.get("vision_extraction_result")
-        # Bind a NEW conversation to the explicitly confirmed Process Entry
-        # project when present; otherwise preserve the G1.33 active-project
-        # behavior. project_ids is honored on first save only, so existing
-        # Dialogue membership never changes implicitly.
         try:
             from orchestrator.active_project import (
                 get_active_project,
                 resolve_project_ids,
             )
-            _entry = (
-                extra_context.get("process_entry")
-                if isinstance(extra_context, dict)
-                else None
-            )
-            _entry_project = (
-                _entry.get("project_ref")
-                if isinstance(_entry, dict) and _entry.get("status") == "ready"
-                else None
-            )
-            _project_ids = resolve_project_ids(
-                _entry_project if _entry_project is not None else get_active_project()
-            )
+            _project_ids = resolve_project_ids(get_active_project())
         except Exception:
             _project_ids = None
         save_turn_spatial_state(
@@ -21239,13 +19113,6 @@ if __name__ == "__main__":
         sched = get_scheduler()
         sched.start()
 
-    # G1.19 justified calendar Triggers use one recalculated app-owned wake.
-    # This driver has no interval scan, installs no cron/launchd task, and
-    # exists only while Ora runs.
-    from process_triggers import ProcessTriggerClock
-    process_trigger_clock = ProcessTriggerClock()
-    process_trigger_clock.start()
-
     # Start meta-layer oversight daemon if requested
     if args.oversight:
         try:
@@ -21281,7 +19148,6 @@ if __name__ == "__main__":
         print(f"MCP tools: {mcp_count}")
     if args.scheduler:
         print("Scheduler: running")
-    print("Trigger Manager: running (app-only one-shot wakes; no 24/7 availability promise)")
     print("Press Ctrl+C to stop.")
 
     def _shutdown_handler(sig, frame):
@@ -21298,7 +19164,6 @@ if __name__ == "__main__":
             pass
         if args.scheduler:
             sched.stop()
-        process_trigger_clock.stop()
         raise SystemExit(0)
 
     _signal.signal(_signal.SIGINT, _shutdown_handler)

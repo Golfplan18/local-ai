@@ -17,7 +17,6 @@ sys.path.insert(0, str(ORCHESTRATOR))
 from framework_invocability import (  # noqa: E402
     FrameworkInvocabilityError,
     is_internal_only_framework,
-    is_process_definition_framework,
     is_user_invocable_framework,
     is_user_pickable_framework,
     reset_framework_invocability_registry_cache,
@@ -67,14 +66,13 @@ class TestFrameworkInvocability(unittest.TestCase):
         pickable = set(user_pickable_framework_ids())
         self.assertIn("process-formalization", invocable)
         self.assertIn("document-processing", pickable)
-        self.assertIn("programming", pickable)
         self.assertNotIn("document-processing", invocable)
+        self.assertNotIn("programming", pickable)
         self.assertNotIn("programming", invocable)
         self.assertTrue(invocable.issubset(pickable))
 
-    def test_programming_is_pickable_as_a_process_definition_not_legacy_invocable(self):
-        self.assertTrue(is_process_definition_framework("programming"))
-        self.assertTrue(is_user_pickable_framework("programming"))
+    def test_programming_uses_its_explicit_surface_not_framework_invocation(self):
+        self.assertFalse(is_user_pickable_framework("programming"))
         self.assertFalse(is_user_invocable_framework("programming"))
         with self.assertRaises(FrameworkInvocabilityError):
             resolve_user_invocable_framework("programming")

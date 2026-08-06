@@ -401,45 +401,6 @@ class TestOversightContextClassification(unittest.TestCase):
         self.assertEqual(classify_event({"event_type": "Foo"}), "unknown")
 
 
-# ---------- Routing ----------
-
-class TestOversightRouting(unittest.TestCase):
-
-    def test_standalone_event_skipped(self):
-        from oversight_router import should_route_to_oversight
-        self.assertFalse(should_route_to_oversight({
-            "event_type": "FrameworkComplete",
-            # no project_nexus, no workflow_id
-        }))
-
-    def test_project_event_routed(self):
-        from oversight_router import should_route_to_oversight
-        self.assertTrue(should_route_to_oversight({
-            "event_type": "MilestoneClaimed",
-            "project_nexus": "test_project",
-        }))
-
-    def test_milestone_complete_only_routes_on_drift(self):
-        from oversight_router import should_route_to_oversight
-        self.assertFalse(should_route_to_oversight({
-            "event_type": "MilestoneComplete",
-            "project_nexus": "test_project",
-            "drift_status": "IN_SCOPE",
-        }))
-        self.assertTrue(should_route_to_oversight({
-            "event_type": "MilestoneComplete",
-            "project_nexus": "test_project",
-            "drift_status": "DRIFT_DETECTED",
-        }))
-
-    def test_log_only_events_skipped(self):
-        from oversight_router import should_route_to_oversight
-        self.assertFalse(should_route_to_oversight({
-            "event_type": "FrameworkStarted",
-            "project_nexus": "test_project",
-        }))
-
-
 # ---------- Matrix-type-aware lock loading (Process Coherence v3.0) ----------
 #
 # Closes DCP Drift Report 2026-05-10 Finding 1: oversight_context now reads

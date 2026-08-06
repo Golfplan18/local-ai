@@ -233,8 +233,6 @@
 <script src="/static/js/project-modal.js?v=binding-20260701" defer></script>
 <script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
-<script src="/static/js/process-run-inspector.js?v=g1-20-telemetry-controls" defer></script>
-<script src="/static/js/process-trigger-manager.js?v=g1-19-trigger-contract" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
 <script src="/static/js/tooltip.js" defer></script>
@@ -302,8 +300,7 @@
 <script src="/static/js/style-audience-toggle.js?v=g136-20260701" defer></script>
 <script src="/static/js/slash-command-client.js" defer></script>
 <script src="/static/js/framework-picker.js" defer></script>
-<script src="/static/js/process-entry.js?v=g1-18" defer></script>
-<script src="/static/js/process-plan-review.js?v=g1-18" defer></script>
+<script src="/static/js/programming.js" defer></script>
 <script src="/static/js/analysis-picker.js" defer></script>
 <!-- V3 Input Handling Phase 7 — framework setup popup. Driven by the
      submit-flow code in this file's inline script (Phase 7.E) when a
@@ -662,52 +659,15 @@
                   data-super-toggle="processes"
                   aria-expanded="false">
             <span class="sidebar-supergroup-arrow">▸</span>
-            <span class="sidebar-supergroup-label">Processes</span>
+            <span class="sidebar-supergroup-label">Oversight</span>
             <span class="sidebar-supergroup-count" id="sidebarProcessesCount"
                   data-count="0">0</span>
           </button>
           <div class="sidebar-supergroup-body">
-            <div class="sidebar-processes-toolbar">
-              <button class="sidebar-processes-open" id="sidebarProcessLibraryOpen"
-                      type="button">Process Library</button>
-              <button class="sidebar-processes-open" id="sidebarTriggerManagerOpen"
-                      type="button">Trigger Manager</button>
-              <button class="sidebar-processes-open" id="sidebarReviewQueueOpen"
-                      type="button">Open review queue</button>
-            </div>
             <div class="sidebar-groups">
-              <div class="sidebar-group" data-group="process-unread">
-                <div class="sidebar-group-label">
-                  Unread
-                  <span class="sidebar-group-count" id="processAttentionUnreadCount"
-                        data-count="0">0</span>
-                </div>
-                <div class="oversight-list" id="processAttentionUnreadList"
-                     aria-label="Unread Process results and decisions"></div>
-              </div>
-              <div class="sidebar-group" data-group="process-pending">
-                <div class="sidebar-group-label">
-                  Pending
-                  <span class="sidebar-group-count" id="processAttentionPendingCount"
-                        data-count="0">0</span>
-                </div>
-                <div class="oversight-list" id="processAttentionPendingList"
-                     aria-label="Live Process Runs"></div>
-              </div>
-              <div class="sidebar-group" data-group="process-automated">
-                <div class="sidebar-group-label">
-                  Automated Processes
-                  <span class="sidebar-group-count" id="processAttentionAutomatedCount"
-                        data-count="0">0</span>
-                </div>
-                <div class="oversight-list" id="processAttentionAutomatedList"
-                     aria-label="Deployed standing Process Definitions"></div>
-              </div>
-              <!-- Legacy oversight queues remain visible while their callers
-                   migrate; they are not the governed Process projections. -->
               <div class="sidebar-group" data-group="paused">
                 <div class="sidebar-group-label">
-                  Legacy review queue
+                  Review queue
                   <span class="sidebar-group-count" id="sidebarPausedCount"
                         data-count="0">0</span>
                 </div>
@@ -716,7 +676,7 @@
               </div>
               <div class="sidebar-group" data-group="operating">
                 <div class="sidebar-group-label">
-                  Legacy operating
+                  Operating
                   <span class="sidebar-group-count" id="sidebarOperatingCount"
                         data-count="0">0</span>
                 </div>
@@ -1952,42 +1912,13 @@
     }
   };
 
-  const submitToMainPipeline = async (
-    text,
-    processEntryRequest = null,
-    processEntryContract = null
-  ) => {
-    // G1.1 Phase 3.3 — governed construction never enters the ordinary
-    // multipart generation path. The review surface owns the authenticated
-    // management interview and exact plan actions through JSON /chat.
-    if (processEntryContract
-        && processEntryContract.intent === 'capability_construction') {
-      if (!window.OraProcessPlanReview
-          || typeof window.OraProcessPlanReview.begin !== 'function') {
-        renderAssistantTurn('[Governed management review is unavailable.]');
-        return;
-      }
-      await window.OraProcessPlanReview.begin(
-        text,
-        processEntryRequest,
-        processEntryContract,
-        leftInputArea
-      );
-      return;
-    }
+  const submitToMainPipeline = async (text) => {
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', currentConversationId());
     body.append('panel_id',        currentConversationId());
     body.append('is_main_feed',    'true');
     body.append('tag',             currentTag());
-    // G1.1 Phase 2.1 — send the user's entry request, never the client
-    // preview result. The server authenticates the selected definition and
-    // recomputes the routing contract before the pipeline can observe it.
-    if (processEntryRequest) {
-      body.append('process_entry_request', JSON.stringify(processEntryRequest));
-    }
-
     // V3 Input Handling Phase 4 — pass the picker's framework selection
     // through to the pipeline so the framework branch of
     // compare_intent_with_mode resolves correctly. Per design doc Q3
@@ -2266,28 +2197,17 @@
     ].join('\n');
   };
 
-  const submitWithFrameworkCheck = async (
-    text,
-    processEntryRequest = null,
-    processEntryContract = null
-  ) => {
+  const submitWithFrameworkCheck = async (text) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
-    }
-    // Process Definitions have their own governed entry contract. Sending
-    // Programming through the legacy framework gap analyzer would confuse
-    // entry routing with the later management interview and milestone
-    // executor, both outside Phase 2.1.
-    if (fw.kind === 'process_definition') {
-      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
+      return submitToMainPipeline(text);
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text, processEntryRequest, processEntryContract);
+      return submitToMainPipeline(text);
     }
 
     // Iteration loop. Round N: analyze with priorResponses, popup if
@@ -2311,13 +2231,13 @@
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
         return submitToMainPipeline(
-          augmentedPrompt, processEntryRequest, processEntryContract
+          augmentedPrompt
         );
       }
 
       if (!_hasGaps(report)) {
         return submitToMainPipeline(
-          augmentedPrompt, processEntryRequest, processEntryContract
+          augmentedPrompt
         );
       }
 
@@ -2340,7 +2260,7 @@
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
         return submitToMainPipeline(
-          augmentedPrompt + note, processEntryRequest, processEntryContract
+          augmentedPrompt + note
         );
       }
 
@@ -2351,7 +2271,7 @@
 
     // Safety net: after 5 rounds, just submit with whatever we have.
     return submitToMainPipeline(
-      augmentedPrompt, processEntryRequest, processEntryContract
+      augmentedPrompt
     );
   };
 
@@ -2541,15 +2461,6 @@
       return;
     }
     if (!requireMutableInquiry()) return;
-    // A persisted management interview or plan owns this Dialogue until it is
-    // retained or terminal. Reopen the exact state instead of allowing new
-    // Inquiry text to bypass the governed action boundary after reload.
-    if (window.OraProcessPlanReview
-        && typeof window.OraProcessPlanReview.ensureActive === 'function'
-        && await window.OraProcessPlanReview.ensureActive(currentConversationId())) {
-      window.OraProcessPlanReview.open(leftInputArea);
-      return;
-    }
     const leftContent = leftInputArea.value.trim();
     const hasAttachedImages = !!(window.OraInputAttachments
       && typeof window.OraInputAttachments.imageFiles === 'function'
@@ -2581,50 +2492,23 @@
       submitImageGenerationPrompt(leftContent);
       return;
     }
-    // Canvas-only input has no natural-language objective to classify.
-    // Preserve its existing submission path; text-bearing Inquiries always
-    // cross the Phase 2.1 server router before they are cleared or rendered.
+    // Canvas-only input keeps its existing Inquiry path.
     if (!leftContent) {
       leftInputArea.value = '';
       renderUserTurn('[canvas content]');
-      submitWithFrameworkCheck(leftContent, null);
+      submitWithFrameworkCheck(leftContent);
       return;
     }
-    let prepared = null;
-    try {
-      const selectedFramework = (window.OraInputState
-        && typeof window.OraInputState.getFramework === 'function')
-        ? window.OraInputState.getFramework() : null;
-      if (!window.OraProcessEntry
-          || typeof window.OraProcessEntry.prepareInquiry !== 'function') {
-        throw new Error('governed Process entry is unavailable');
-      }
-      prepared = await window.OraProcessEntry.prepareInquiry(leftContent, selectedFramework);
-    } catch (error) {
-      renderAssistantTurn('[Entry routing failed: ' + (error.message || error) + ']');
-      return;
-    }
-    if (!prepared) return;
     leftInputArea.value = '';
     renderUserTurn(leftContent);
-    // V3 Input Handling Phase 7 — route through the framework gap check.
-    // When no framework is selected, the wrapper passes straight through
-    // to submitToMainPipeline; when one is selected, the popup may
-    // intervene before submission.
-    submitWithFrameworkCheck(leftContent, prepared.request, prepared.contract);
+    if (window.OraProgramming && window.OraProgramming.isActive()) {
+      await window.OraProgramming.submit(leftContent, {
+        renderAssistant: renderAssistantTurn,
+      });
+      return;
+    }
+    submitWithFrameworkCheck(leftContent);
   };
-
-  // Programming action and Process Library entries begin outside the Inquiry
-  // textarea, but converge on the same submit boundary once the project and
-  // exact definition requirements are satisfied.
-  document.addEventListener('ora:process-entry:ready', (event) => {
-    const prepared = event.detail;
-    if (!prepared || !prepared.request || !prepared.objective) return;
-    if (!requireMutableInquiry()) return;
-    leftInputArea.value = '';
-    renderUserTurn(prepared.objective);
-    submitToMainPipeline(prepared.objective, prepared.request, prepared.contract);
-  });
 
   // V3 Backlog 7 — pulse the O on submit for visual feedback. The
   // animation removes itself when the class is cleared, so we toggle

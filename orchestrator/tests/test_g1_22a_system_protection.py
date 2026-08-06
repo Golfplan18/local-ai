@@ -75,25 +75,6 @@ class SystemProtectionBase(unittest.TestCase):
 
 
 class TestPolicyFloor(SystemProtectionBase):
-    def test_semantic_external_effects_require_review_independent_of_name(self):
-        for operation in (
-            "sync_record", "create_issue", "reconcile_remote_record",
-        ):
-            decision = protection.classify_governed_action(
-                operation, ["artifact:approved"],
-                effect_type="external_irreversible", scope_kind="external",
-            )
-            self.assertEqual(decision.outcome, "review", operation)
-            self.assertEqual(decision.policy_code, "review-required", operation)
-        self.assertEqual(protection.classify_governed_action(
-            "sync_record", ["artifact:approved"],
-            effect_type="local_reversible", scope_kind="write",
-        ).outcome, "allow")
-        self.assertEqual(protection.classify_governed_action(
-            "publish_record", ["artifact:approved"],
-            effect_type="local_reversible", scope_kind="write",
-        ).policy_code, "inconsistent-effect-metadata")
-
     def test_dedicated_path_builders_reject_traversal_before_review(self):
         from orchestrator import active_configuration, project_registry
 
@@ -101,20 +82,6 @@ class TestPolicyFloor(SystemProtectionBase):
             active_configuration._config_path("../../authority")
         with self.assertRaises(project_registry.ProjectError):
             project_registry._pointer_path("../../authority")
-
-    def test_governed_action_cannot_hide_reserved_authority_in_selector(self):
-        for selector in (
-            "credential:ora/openai-api-key",
-            "dialogue:run-sensitive",
-            "email:recipient@example.com",
-            "telegram:chat/123",
-            "vector-store:conversations",
-        ):
-            decision = protection.classify_governed_action(
-                "ordinary_update", [selector],
-                effect_type="external_effect", scope_kind="exact",
-            )
-            self.assertEqual(decision.outcome, "deny", selector)
 
     def test_whole_roots_raw_drives_and_channels_are_absolute_denials(self):
         roots = protection._critical_roots()
@@ -158,78 +125,6 @@ class TestPolicyFloor(SystemProtectionBase):
             "file_write", selectors=[protection.path_selector(runtime_source)],
             mutability="reversible_write",
         ).outcome, "deny")
-
-    def test_governed_process_floor_reserves_system_and_channel_actions(self):
-        for action in (
-            "delete_everything", "credential_store", "send_message",
-            "telegram_send", "self_modification",
-        ):
-            decision = protection.classify_governed_action(
-                action, ["artifact:approved"], effect_type="external_effect",
-                scope_kind="external",
-            )
-            self.assertEqual(decision.outcome, "deny", action)
-        allowed = protection.classify_governed_action(
-            "execute_approved_programming_step", ["artifact:repo"],
-            effect_type="external_effect", scope_kind="external",
-        )
-        self.assertEqual(allowed.outcome, "allow")
-
-    def test_real_governed_runtime_denial_is_pre_mutation(self):
-        import governed_process_runtime as gpr
-        from tests.test_governed_process_runtime import make_definition, make_run
-
-        runtime_root = self.root / "governed"
-        runtime = gpr.GovernedProcessRuntime(str(runtime_root))
-        definition = make_definition()
-        run = make_run("run-protection-floor", definition)
-        runtime.create_run(definition, run)
-        runtime.start_run(
-            "run-protection-floor", reason="approved test plan is ready",
-        )
-        before_run = runtime.load_run("run-protection-floor")
-        before_records = runtime.load_records("run-protection-floor")
-        with self.assertRaisesRegex(gpr.AuthorityDeniedError, "system protection"):
-            runtime.authorize_action(
-                "run-protection-floor", "telegram_send", ["artifact:message"],
-                effect_type="external_irreversible", scope_kind="external",
-            )
-        self.assertEqual(runtime.load_run("run-protection-floor"), before_run)
-        self.assertEqual(
-            runtime.load_records("run-protection-floor"), before_records,
-        )
-
-    def test_neutral_named_external_effect_cannot_bypass_runtime_floor(self):
-        import governed_process_runtime as gpr
-        from tests.test_governed_process_runtime import make_definition, make_run
-
-        runtime_root = self.root / "governed-neutral"
-        runtime = gpr.GovernedProcessRuntime(str(runtime_root))
-        definition = make_definition()
-        run = make_run("run-semantic-effect-floor", definition)
-        runtime.create_run(definition, run)
-        runtime.start_run(
-            "run-semantic-effect-floor", reason="approved test plan is ready",
-        )
-        for operation in (
-            "sync_record", "create_issue", "reconcile_remote_record",
-        ):
-            before_run = runtime.load_run("run-semantic-effect-floor")
-            before_records = runtime.load_records("run-semantic-effect-floor")
-            with self.assertRaises(gpr.AuthorityDeniedError):
-                runtime.authorize_action(
-                    "run-semantic-effect-floor", operation,
-                    ["artifact:approved"],
-                    effect_type="external_irreversible",
-                    scope_kind="external",
-                )
-            self.assertEqual(
-                runtime.load_run("run-semantic-effect-floor"), before_run,
-            )
-            self.assertEqual(
-                runtime.load_records("run-semantic-effect-floor"),
-                before_records,
-            )
 
     def test_opaque_server_and_slash_actions_have_no_adapter(self):
         logical = {"selector": "project:ora/tool:opaque", "kind": "logical"}
@@ -919,7 +814,12 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
 
     def test_canonical_tracker_program_and_registry_preserve_tranche_boundary(self):
         root = Path(__file__).resolve().parents[2]
-        vault = Path.home() / "Documents" / "vault" / "Projects" / "Ora"
+        vault = Path(
+            os.environ.get(
+                "ORA_VAULT",
+                os.environ.get("ORA_VAULT_PATH", Path.home() / "Documents" / "vault"),
+            )
+        ) / "Projects" / "Ora"
         canonical = (
             vault / "Framework — System Protection and Outbound Security.md"
         ).read_text(encoding="utf-8")
@@ -944,7 +844,7 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             "bounded terminal `env` inspection",
             "present=false",
             "provider registry's declared environment or OS-keyring coordinates",
-            "Governed Process Run",
+            "Standalone Programming",
             "installs no clock, scheduled cleanup, recovery sweep, cron job, or LaunchAgent",
             "Full G1.22 remains open",
             "Telegram and email credentials",
@@ -970,13 +870,12 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             "G1.22A SECURITY CORRECTION SUBMITTED",
             "G1.22A RESIDUAL AUTHORITY CORRECTION SUBMITTED",
             "G1.22A SHELL-WRAPPER CORRECTION SUBMITTED",
-            "G1.22A's shell-wrapper correction is submitted",
             "fc731394128bcad5350c77d87248707274228c4c",
             "7fe125d9fa87e41bcb64be4bdc9db6967c1a9329",
             "independent re-judgment pending",
-            "full G1.22 is not claimed",
+            "full G1.22 can pass",
             "G1.21 remains blocked on G1.17",
-            "Windows raw-drive refusal is statically bounded",
+            "Static Windows refusal is fail-closed",
         ):
             self.assertIn(token, records)
 

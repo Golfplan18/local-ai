@@ -2191,21 +2191,15 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
             "id": str,                    # filename stem (no .md)
             "display_name": str,          # 60-char-limit picker title
             "display_description": str,   # 500-char-limit picker body
-            "category": str,              # "process-definition" | "standard" |
-                                            # "user-created" | "one-off"
-            "kind": str,                  # "process_definition" | "framework"
+            "category": str,              # "standard" | "user-created" | "one-off"
+            "kind": str,                  # "framework"
         }
 
-    Category resolution: authenticated Process Definitions occupy the
-    ``process-definition`` group; other shipped rows remain ``standard``.
-    User-created and one-off categories land when those provenance sources
-    exist. The curated invocability registry—not file presence—is the exposure
-    boundary for both kinds.
+    Shipped rows use the ``standard`` category. User-created and one-off
+    categories land when those provenance sources exist. The curated
+    invocability registry—not file presence—is the exposure boundary.
     """
-    from framework_invocability import (
-        is_process_definition_framework,
-        is_user_pickable_framework,
-    )
+    from framework_invocability import is_user_pickable_framework
 
     if not is_user_pickable_framework(framework_id):
         return None
@@ -2230,19 +2224,6 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
         "category": "standard",
         "kind": "framework",
     }
-    if is_process_definition_framework(framework_id):
-        from process_entry_routing import load_programming_entry
-
-        process_entry = load_programming_entry(WORKSPACE)
-        metadata.update({
-            "category": "process-definition",
-            "kind": "process_definition",
-            "definition_ref": process_entry["definition_ref"],
-            "scope": process_entry["scope"],
-            "status": process_entry["status"],
-            "entrypoints": process_entry["entrypoints"],
-            "activated": process_entry["activated"],
-        })
     return metadata
 
 
@@ -8927,61 +8908,6 @@ def build_system_prompt_for_gear(
             ),
         ))
 
-    # G1.1 Phase 2.1 — the entry router's server-recomputed decision follows
-    # the Inquiry into every pipeline role.  This is intentionally routing
-    # evidence only: Phase 2.1 does not create a Process Run, grant authority,
-    # begin the management interview, invoke a definition, or activate one.
-    # Keeping those limits in the prompt prevents ordinary generation from
-    # silently becoming construction and prevents a classified construction
-    # request from being mistaken for already-authorized implementation.
-    process_entry = context_package.get("process_entry")
-    if isinstance(process_entry, dict):
-        parts.append(_fenced(
-            "GOVERNED PROCESS ENTRY (ROUTING EVIDENCE ONLY)",
-            json.dumps(
-                process_entry,
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-            ),
-            note=(
-                "This server-validated contract classifies the entry route. "
-                "It grants no authority, creates no Process Run, and does not "
-                "prove invocation or activation. Preserve its exact project "
-                "and definition identities; do not infer later-phase approval."
-            ),
-        ))
-
-    # G1.1 Phase 2.8 — unlike the routing contract above, this envelope is
-    # emitted only after the exact Process Definition has been resolved and a
-    # governed Run plus runtime-issued invocation record have been persisted.
-    # It is the production execution instruction for a ready Process Library
-    # invocation; the response is subsequently bound to that same Run before
-    # the Dialogue is saved.
-    governed_invocation = context_package.get("governed_process_invocation")
-    if isinstance(governed_invocation, dict):
-        execution_contract = governed_invocation.get("execution_contract")
-        if not isinstance(execution_contract, dict):
-            raise ValueError(
-                "governed Process invocation lacks its exact execution contract"
-            )
-        parts.append(_fenced(
-            "GOVERNED PROCESS INVOCATION (RUNTIME-AUTHORITATIVE)",
-            json.dumps(
-                execution_contract,
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-            ),
-            note=(
-                "Execute the exact entry-node operation for this persisted Run "
-                "using only its bound inputs and non-external authority. Produce "
-                "the requested result for the declared verification boundary. "
-                "Do not activate, publish, mutate external state, change the "
-                "definition identity, or claim independent acceptance."
-            ),
-        ))
-
     # Baseline criteria injection (2026-05-24): every role-specific step
     # gets the BRIEF + EC and VERIFICATION CRITERIA up front, so the
     # analyst sees what good looks like before writing, the evaluator and
@@ -12155,7 +12081,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     Step 4 — Breadth evaluates (f-evaluate.md + mode evaluator subsections).
     Step 5 — Depth revises (f-revise.md + mode Reviser guidance).
     Step 6 — Breadth verifies (f-verify.md + mode Verifier checks) under the
-             Process Run's configurable correction policy.
+             local Gear 3 correction policy.
     Step 6.5 — Final-output quality gate (f-quality-gate.md): independently
              inspect the current deliverable against the mode's VERIFICATION
              CRITERIA. A supported correction is reinspected before release;
@@ -12525,67 +12451,24 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         framework_name="f-verify.md",
     )
 
-    # Phase 1.4: the attempt ceiling comes from the attached Process Run when
-    # one is bound; otherwise the domain-general runtime defaults apply. A
-    # ceiling is permission, not an instruction to consume every attempt.
-    _binding_requested = bool(context_pkg.get("process_run_binding"))
-    _governed_binding_fault = False
-    try:
-        try:
-            import governed_process_runtime as _gpr
-        except ImportError:  # pragma: no cover
-            from orchestrator import governed_process_runtime as _gpr
-        _process_binding = context_pkg.get("process_run_binding") or {}
-        _bound_runtime = _process_binding.get("runtime")
-        _bound_run_id = _process_binding.get("run_id")
-        if _bound_runtime is not None and _bound_run_id:
-            _bound_run = _bound_runtime.load_run(_bound_run_id)
-            _bound_correction = _bound_run["contracts"]["correction_loop"]
-            _correction_policy = _gpr.correction_policy_defaults({
-                key: _bound_correction[key]
-                for key in _gpr.DEFAULT_CORRECTION_POLICY
-            })
-            _correction_segment = str(
-                _process_binding.get("segment_id") or "gear3-verification"
-            )
-            _bound_runtime.start_segment(_bound_run_id, _correction_segment)
-        else:
-            _bound_runtime = None
-            _bound_run_id = None
-            _correction_segment = "gear3-verification"
-            _correction_policy = _gpr.correction_policy_defaults(
-                context_pkg.get("correction_loop_policy")
-            )
-    except Exception as _policy_error:
-        # A malformed optional binding cannot invent a permissive policy. Use
-        # conservative defaults and mark the bound path unhealthy for release.
-        _bound_runtime = None
-        _bound_run_id = None
-        _correction_segment = "gear3-verification"
-        _correction_policy = {
-            "max_attempts": 3,
-            "progress_evidence_required": True,
-            "repeated_defect_limit": 3,
-            "allowed_directives": ["REVISE", "REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
-            "no_progress_directives": ["REPLAN", "REDEFINE", "ESCALATE", "BLOCKED"],
-        }
-        contingencies_fired.append("gear3-correction-policy-invalid-using-safe-defaults")
-        _record("gear3-correction-policy", False, str(_policy_error)[:200])
-        _governed_binding_fault = _binding_requested
+    # Gear 3 keeps its established local revision policy. Programming owns its
+    # separate executor/reviewer loop.
+    _requested_correction_policy = context_pkg.get("correction_loop_policy") or {}
+    _correction_policy = {
+        "max_attempts": int(_requested_correction_policy.get("max_attempts", 3)),
+        "progress_evidence_required": bool(
+            _requested_correction_policy.get("progress_evidence_required", True)
+        ),
+        "repeated_defect_limit": int(
+            _requested_correction_policy.get("repeated_defect_limit", 3)
+        ),
+    }
 
     max_verify_attempts = int(_correction_policy["max_attempts"])
     prior_candidate_digest: str | None = None
     prior_defect_fingerprint: str | None = None
     repeated_defect_count = 0
     for cycle in range(max_verify_attempts):
-        if _bound_runtime is not None:
-            try:
-                _bound_runtime.begin_attempt(_bound_run_id, _correction_segment)
-            except Exception as _attempt_error:
-                contingencies_fired.append("gear3-governed-attempt-start-refused")
-                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
-                _governed_binding_fault = True
-                break
         verify_user = (
             f"## ORIGINAL QUERY\n\n{cleaned_prompt}\n\n"
             f"## ORIGINAL ANALYSIS\n\n{depth_analysis}\n\n"
@@ -12662,21 +12545,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         progress_evidence = (
             prior_candidate_digest is None or candidate_digest != prior_candidate_digest
         )
-        if _bound_runtime is not None:
-            try:
-                _bound_runtime.complete_attempt(
-                    _bound_run_id,
-                    _correction_segment,
-                    defect_codes=[f"verifier-{verdict_label.lower()}"],
-                    evidence_refs=[],
-                    artifact_digests=[candidate_digest],
-                )
-            except Exception as _attempt_error:
-                contingencies_fired.append("gear3-governed-attempt-completion-refused")
-                _record("gear3-governed-attempt", False, str(_attempt_error)[:200])
-                _governed_binding_fault = True
-                break
-
         _trace_step_g3(f"step6-verifier-cycle-{cycle + 1}", {
             "cycle": cycle + 1,
             "max_attempts": max_verify_attempts,
@@ -12720,13 +12588,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             >= int(_correction_policy["repeated_defect_limit"])
         )
         revision_allowed = not no_progress and not repeated_limit_reached
-        if revision_allowed and _bound_runtime is not None:
-            try:
-                _bound_runtime.validate_correction_directive(_bound_run_id, "REVISE")
-            except Exception as _policy_refusal:
-                revision_allowed = False
-                _record("gear3-governed-correction-policy", False,
-                        str(_policy_refusal)[:200])
         if not revision_allowed:
             reasons = []
             if no_progress:
@@ -12796,33 +12657,27 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     )
     def _run_gear3_final_gate(candidate: str, pass_number: int,
                               prior_findings: str | None = None):
-        nonlocal _governed_binding_fault
         candidate_body = extract_revised_draft_section(candidate) or candidate
         candidate_digest = hashlib.sha256(
             (candidate_body or "").encode("utf-8")).hexdigest()
         mode_digest = hashlib.sha256(
             (context_pkg.get("mode_text") or "").encode("utf-8")).hexdigest()
-        if _bound_runtime is not None:
-            subject_run_id = _bound_run_id
-            subject_artifact_id = _process_binding["final_review"][
-                "candidate_artifact_id"]
-        else:
-            trace_identity = str(trace_dir or f"inline:{candidate_digest}")
-            subject_run_id = f"pipeline-trace:{trace_identity}"
-            subject_artifact_id = f"inline-response:{candidate_digest}"
+        trace_identity = str(trace_dir or f"inline:{candidate_digest}")
+        subject_trace_id = f"pipeline-trace:{trace_identity}"
+        subject_artifact_id = f"inline-response:{candidate_digest}"
         evidence_artifact_id = (
             f"quality-gate:{candidate_digest}:pass-{pass_number}")
         subject_identity = (
             "## REVIEW SUBJECT IDENTITY (runtime-issued)\n"
-            f"- Process Run: {subject_run_id}\n"
-            f"- Process Definition: mode:{context_pkg.get('mode_name') or 'unknown'}"
+            f"- Pipeline Trace: {subject_trace_id}\n"
+            f"- Mode: {context_pkg.get('mode_name') or 'unknown'}"
             f"@runtime sha256:{mode_digest}\n"
-            f"- Candidate Artifact: {subject_artifact_id} "
+            f"- Candidate: {subject_artifact_id} "
             f"sha256:{candidate_digest}\n"
-            f"- Evidence Artifact: {evidence_artifact_id} "
+            f"- Review: {evidence_artifact_id} "
             "(content digest assigned from this returned review)\n"
             "- Review Boundary: final-output-quality-gate\n"
-            "The Candidate Artifact digest binds exactly the `## REVISED DRAFT` "
+            "The Candidate digest binds exactly the `## REVISED DRAFT` "
             "body below; pipeline scaffolding is context, not part of the "
             "released artifact.\n\n"
         )
@@ -12866,81 +12721,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         passed = _verifier_passed(gate_out)
         broken = _verifier_broken(gate_out) or not call_ok
         label = "BROKEN" if broken else ("PASS" if passed else "FAIL")
-        governed_directive = None
-        if _bound_runtime is not None:
-            try:
-                review_binding = _process_binding["final_review"]
-                evaluator = _process_binding["process_coherence_evaluator"]
-                if not callable(evaluator):
-                    raise TypeError("process_coherence_evaluator must be callable")
-                observed = _bound_runtime.record_reviewed_text_candidate(
-                    _bound_run_id,
-                    candidate_text=candidate,
-                    review_text=gate_out,
-                    outcome=label,
-                    candidate_artifact_id=review_binding["candidate_artifact_id"],
-                    evidence_artifact_id=(
-                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
-                    ),
-                    evidence_id=review_binding["evidence_id"],
-                    candidate_node_id=review_binding["candidate_node_id"],
-                    evidence_node_id=review_binding["evidence_node_id"],
-                    candidate_action=review_binding["candidate_action"],
-                    evidence_action=review_binding["evidence_action"],
-                    candidate_selector=review_binding["candidate_selector"],
-                    evidence_selector=review_binding["evidence_selector"],
-                    reviewer_id=review_binding["reviewer_id"],
-                    satisfied_conditions=review_binding.get("satisfied_conditions", []),
-                )
-                decision = evaluator({
-                    "run_id": _bound_run_id,
-                    "segment_id": _correction_segment,
-                    "observation": label,
-                    "gate_call_ok": bool(call_ok),
-                    "pass_number": pass_number,
-                    "candidate_artifact_id": review_binding["candidate_artifact_id"],
-                    "evidence_artifact_id": (
-                        f"{review_binding['evidence_artifact_prefix']}-{pass_number}"
-                    ),
-                    "evidence_ref": observed["evidence_ref"],
-                })
-                if not isinstance(decision, dict):
-                    raise TypeError("Process Coherence evaluation must return a decision mapping")
-                transition_args = {
-                    "target_node_id": decision["target_node_id"],
-                    "reason": decision["reason"],
-                    "evaluation_boundary": decision["evaluation_boundary"],
-                    "authority_request": decision.get("authority_request"),
-                    "evidence_refs": [observed["evidence_ref"]],
-                }
-                if "failure_class" in decision:
-                    if "directive" in decision:
-                        raise ValueError(
-                            "Process Coherence decision must supply failure_class or directive, not both"
-                        )
-                    governed_directive = _gpr.directive_for_failure_class(
-                        decision["failure_class"]
-                    )
-                    _bound_runtime.dispatch_evaluated_failure(
-                        _bound_run_id,
-                        decision["failure_class"],
-                        **transition_args,
-                    )
-                else:
-                    governed_directive = decision["directive"]
-                    _bound_runtime.apply_transition(
-                        _bound_run_id,
-                        governed_directive,
-                        **transition_args,
-                    )
-            except Exception as _governed_review_error:
-                _governed_binding_fault = True
-                contingencies_fired.append("gear3-governed-final-review-refused")
-                _record(
-                    "gear3-governed-final-review",
-                    False,
-                    str(_governed_review_error)[:200],
-                )
         _trace_step_g3(f"step6_5-quality-gate-pass-{pass_number}", {
             "pass": pass_number,
             "system_prompt": gate_system,
@@ -12951,7 +12731,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "broken": broken,
             "call_ok": call_ok,
             "call_reason": call_reason,
-            "governed_directive": governed_directive,
             "candidate_identity": (
                 "sha256:" + candidate_digest
             ),
@@ -12962,20 +12741,16 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             f"# Step 6.5 — Final-output quality gate (Gear 3, pass {pass_number})\n\n"
             f"**Verdict:** {label}\n\n{gate_out}\n"
         ))
-        return (
-            gate_out, call_ok, call_reason, passed, broken, label, gate_user,
-            governed_directive,
-        )
+        return gate_out, call_ok, call_reason, passed, broken, label, gate_user
 
     (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
-     gate_verdict_label, gate_user, governed_directive) = (
+     gate_verdict_label, gate_user) = (
         _run_gear3_final_gate(revised_analysis, 1)
     )
     gate_redo_fired = False
     if (
         not gate_passed
         and not gate_broken
-        and (_bound_runtime is None or governed_directive == "REVISE")
     ):
         # A real execution-level FAIL supplies actionable fixes to the existing
         # reviser path. The resulting candidate is never released until a fresh
@@ -13014,7 +12789,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
         (gate_out, gate_call_ok, gate_call_reason, gate_passed, gate_broken,
-         gate_verdict_label, gate_user, governed_directive) = (
+         gate_verdict_label, gate_user) = (
             _run_gear3_final_gate(revised_analysis, 2, prior_findings=gate_out)
         )
         contingencies_fired.append(
@@ -13027,8 +12802,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
     release_deliverable = bool(
         gate_passed
         and not gate_broken
-        and not _governed_binding_fault
-        and (_bound_runtime is None or governed_directive == "ACCEPT")
     )
     review_status = None
     if gate_redo_fired and release_deliverable:
@@ -13039,10 +12812,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         review_status = "review-unavailable-withheld"
     elif not gate_passed:
         review_status = "failed-after-final-reinspection-withheld"
-    elif _governed_binding_fault:
-        review_status = "governed-runtime-integrity-failure-withheld"
-    elif _bound_runtime is not None and governed_directive != "ACCEPT":
-        review_status = "process-coherence-did-not-accept-withheld"
     context_pkg["execution_review"] = {
         "verdict": gate_verdict_label,
         "scope": "text_review",
@@ -13060,7 +12829,6 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
         "broken": gate_broken,
         "redo_fired": gate_redo_fired,
         "released": release_deliverable,
-        "governed_directive": governed_directive,
         "call_ok": gate_call_ok,
         "call_reason": gate_call_reason,
         "endpoint": gate_endpoint.get("name") if isinstance(gate_endpoint, dict) else str(gate_endpoint),
@@ -13085,7 +12853,7 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
             "## Deliverable withheld\n\n"
             "The current candidate was not released because independent final "
             f"review concluded `{gate_verdict_label}`. The candidate and review "
-            "record remain available for the governed continuation route."
+            "record remain available for a corrected retry."
         )
     elif CLAIM_VERIFICATION_AVAILABLE:
         try:
@@ -15627,7 +15395,11 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
         try:
             from openai import OpenAI
             key = _canonical_provider_key("openai")
-            client = OpenAI(api_key=key)
+            request_timeout = endpoint.get("request_timeout_seconds")
+            client = OpenAI(
+                api_key=key,
+                **({"timeout": float(request_timeout)} if request_timeout else {}),
+            )
             api_messages = messages
             if images:
                 api_messages = _inject_images_into_messages(messages, images, api_format="openai")
@@ -15896,7 +15668,12 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                     f"[Error calling {service} API: No API key found. "
                     f"Add it under Settings → External APIs.]"
                 )
-            client = OpenAI(api_key=key, base_url=base_url)
+            request_timeout = endpoint.get("request_timeout_seconds")
+            client = OpenAI(
+                api_key=key,
+                base_url=base_url,
+                **({"timeout": float(request_timeout)} if request_timeout else {}),
+            )
             api_messages = messages
             if images:
                 api_messages = _inject_images_into_messages(

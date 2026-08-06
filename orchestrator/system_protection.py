@@ -12,8 +12,7 @@ use :mod:`tool_events`' existing Paused -> /approve -> one-shot-token path.
 This layer contributes three things that the generic risk gate cannot infer:
 
 * absolute prohibitions for whole-system and authoritative-state destruction;
-* exact action/selector classification shared by tools, HTTP, slash commands,
-  and governed Process Runs; and
+* exact action/selector classification shared by tools, HTTP, and slash commands;
 * a hash-chained write-ahead/completion receipt in the existing oversight
   ``actions.jsonl`` sink.  If the receipt chain cannot be authenticated or the
   write-ahead record cannot be persisted, the effect is refused.
@@ -411,10 +410,6 @@ def _authority_roots() -> dict[str, str]:
         "runtime framework instructions": _path_key(root / "frameworks"),
         "runtime configuration": _path_key(_rp.CONFIG_DIR),
         "oversight authority state": _path_key(_rp.DATA_DIR / "oversight"),
-        "Process Definition state": _path_key(_rp.DATA_DIR / "process-definitions"),
-        "Process Run state": _path_key(_rp.DATA_DIR / "process-runs"),
-        "Process automation state": _path_key(_rp.DATA_DIR / "process-automation"),
-        "Trigger authority state": _path_key(_rp.DATA_DIR / "process-triggers"),
     }
 
 
@@ -789,77 +784,6 @@ def classify_tool_call(
         egress=str(axes.get("egress") or "external"),
         surface="tool_dispatcher",
         destructive_intent=destructive_intent,
-    )
-
-
-def classify_governed_action(
-    action: str,
-    selectors: Sequence[str],
-    *,
-    effect_type: str,
-    scope_kind: str | None,
-) -> PolicyDecision:
-    """Global floor for Process-Run authority.
-
-    Programming's accepted repository mutation operations already carry exact
-    plan, node, checkpoint, pre/post identity, receipt, and target binding; they
-    remain available. Generic Process contracts cannot grant credential,
-    channel, wholesale destructive, or unnamed self-modification authority.
-    """
-
-    if action in {"execute_approved_programming_step", "correct_programming_defect"}:
-        return PolicyDecision("allow", "accepted Programming mutation contract", action, tuple(selectors), "programming-governed")
-    normalized = str(action or "").strip().lower()
-    exact_selectors = tuple(sorted({str(item) for item in selectors if str(item)}))
-    selector_outcome, selector_reason = _selector_policy(
-        exact_selectors, dedicated_action=False, action=normalized,
-        mutating=effect_type != "observation",
-    )
-    reserved_selector = any(
-        selector.lower().startswith((
-            "credential:", "dialogue:", "channel:", "email:",
-            "telegram:", "agent-mask:", "identity:", "boot:",
-            "vector-store:",
-        ))
-        for selector in exact_selectors
-    )
-    hard_reserved = (
-        reserved_selector
-        or normalized in DEFERRED_CHANNEL_ACTIONS
-        or normalized.startswith(("telegram_", "email_", "channel_"))
-        or bool(_CREDENTIAL_WORDS.search(normalized))
-        or bool(_DESTRUCTIVE_WORDS.search(normalized))
-        or bool(_SELF_MODIFY_WORDS.search(normalized))
-    )
-    if selector_outcome == "deny" or hard_reserved:
-        return PolicyDecision(
-            "deny",
-            selector_reason or "generic Process authority cannot grant system-protected effects",
-            normalized, exact_selectors, "process-system-reserved",
-        )
-    semantic_external = (
-        str(scope_kind or "").strip().lower() == "external"
-        or str(effect_type or "").strip().lower().startswith("external")
-    )
-    if semantic_external:
-        return PolicyDecision(
-            "review",
-            "governed external effect requires exact approved authority, scope, "
-            "checkpoint, and receipt",
-            normalized, exact_selectors, "review-required",
-        )
-    if _OUTBOUND_WORDS.search(normalized):
-        return PolicyDecision(
-            "deny",
-            "outbound operation lacks authoritative external-effect metadata",
-            normalized, exact_selectors, "inconsistent-effect-metadata",
-        )
-    # Controlled probes and other accepted Run machinery already bind exact
-    # grants, selectors, checkpoints, receipts, and node classification. An
-    # unnamed external effect is not automatically an outbound channel.
-    return PolicyDecision(
-        "allow", "governed Run authority remains subject to its exact contracts",
-        normalized, exact_selectors, "process-contract-governed",
     )
 
 
@@ -1315,7 +1239,6 @@ __all__ = [
     "begin_execution",
     "capture_path_identity",
     "classify_action",
-    "classify_governed_action",
     "classify_tool_call",
     "complete_execution",
     "params_digest",
