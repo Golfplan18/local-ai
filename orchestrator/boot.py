@@ -10769,6 +10769,14 @@ _PROVIDER_TRANSPORT_ERROR_MARKERS = (
     "error calling openrouter api",
     "error calling local model",
     "error calling mlx model",
+    # Downstream brokers reuse the same wrapper with their own noun instead of
+    # "<Service> API". MSI's text broker emits
+    # ``"[Error calling MSI text broker for <model>: <e>]"``. Enumerating
+    # emitters here has now failed twice (OpenRouter above, this), so the
+    # verifier's LINE-PREFIX list below matches the wrapper shape generically;
+    # this entry keeps the substring list — which also feeds
+    # ``_UNHEALTHY_PATTERNS`` for the regenerate-on-unhealthy retry — in sync.
+    "error calling msi text broker",
 )
 
 
@@ -10784,15 +10792,21 @@ _VERIFIER_EXPLICIT_BROKEN_LINE_PREFIXES = (
     # Added 2026-05-20 alongside the Chunk A verifier-retry wrapping.
     "[verifier retry error",
     # Dispatch-wrapper substitutions emitted by ``call_api_endpoint`` /
-    # ``call_local_endpoint`` when a provider call raises. Match these as
-    # line prefixes so a real verifier verdict is not defeated by a quoted
-    # code string or prose example containing a generic outage phrase.
-    "[error calling claude api",
-    "[error calling openai api",
-    "[error calling gemini api",
-    "[error calling openrouter api",
-    "[error calling local model",
-    "[error calling mlx model",
+    # ``call_local_endpoint`` — and by downstream brokers reusing the wrapper —
+    # when a call raises. Shape: ``"[Error calling <whatever>: <e>]"``. Matched as
+    # a LINE PREFIX with the opening bracket required, so a real verifier verdict
+    # is never defeated by a quoted code string or a prose example containing the
+    # phrase mid-sentence.
+    #
+    # This was an enumerated per-provider list until 2026-08-06. Enumeration had
+    # already missed OpenRouter once, and it missed MSI's text broker
+    # (``"[Error calling MSI text broker for <model>: ...]"``) — so a broker
+    # quarantine registered as a substantive verifier FAIL. On 2026-08-06 that
+    # sent two gear-3 correction cycles re-revising against transport noise: an
+    # in-voice Diklis Chump parody column was rewritten into straight
+    # third-person wire analysis and published. Matching the wrapper shape rather
+    # than each emitter closes the class instead of the instance.
+    "[error calling ",
 )
 
 _VERIFIER_GENERIC_BROKEN_MARKERS = (
