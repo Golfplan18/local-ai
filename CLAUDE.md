@@ -137,11 +137,11 @@ Project and workflow oversight remains an ordinary Ora subsystem, separate from 
 
 Programming is an explicit repository-work path implemented in `orchestrator/programming.py`, `server/app.py`, and `server/static/js/programming.js`. It does not use Codex or Claude Code transports and does not route ordinary `/chat` or `/chat/multipart` traffic.
 
-The flow is: inspect repository instructions, implementation, tests, Git state, and automation; ask at most two rounds of three material questions; propose one concise plan; wait for `approved: true`; create an `ora/` task branch; execute coherent milestones with real repository tools; send the raw diff to a fresh reviewer; correct `FIX`; commit each accepted slice; require final `DONE`; then perform only the approved local/push/PR/merge finish line.
+The flow is: accept a repository name or path; inspect repository instructions, implementation, tests, Git state, and automation; ask at most two rounds of three material questions; propose one concise plan; wait for `approved: true`; create an `ora/` task branch; execute coherent milestones with real repository tools; send the raw diff to a fresh reviewer; correct `FIX`; commit each accepted slice; require final `DONE`; then perform only the approved local/push/PR/merge finish line.
 
 The reviewer receives no executor transcript or claims. It can independently run repository checks, fetch authoritative outside sources, and directly inspect image bytes or rendered PDF pages. Its first line is exactly `CONTINUE`, `FIX`, `DONE`, or `ASK USER`.
 
-Git is the state and rollback mechanism. Do not add Programming Run, artifact, event, receipt, lifecycle, trigger, automation, process-library, checkpoint, or recovery persistence. If pre-existing work cannot be separated safely, return `ASK USER` before mutation.
+Git is the state and rollback mechanism. Do not add Programming Run, artifact, event, receipt, lifecycle, trigger, automation, process-library, checkpoint, or recovery persistence. Preserve safely separable pre-existing work; return `ASK USER` only when task work and user work cannot be separated safely.
 
 ### Execution Review Subsystem (2026-07)
 

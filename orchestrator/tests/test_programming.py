@@ -108,6 +108,14 @@ class RepositoryCase(unittest.TestCase):
 
 
 class InspectionAndPlanningTests(RepositoryCase):
+    def test_repository_can_be_selected_by_memorable_name(self):
+        with mock.patch.object(programming.Path, "home", return_value=self.repo.parent):
+            self.assertEqual(programming._repository_root(self.repo.name), self.repo.resolve())
+
+    def test_protected_parent_overrides_component_path(self):
+        plan = {"plan": "Component scope: package/app.py. Protected work: package/. Milestones: edit."}
+        self.assertFalse(programming._plan_mentions_path(plan, "package/app.py"))
+
     def test_inspection_precedes_questions_and_includes_git_tests_and_automation(self):
         seen = {}
         git(self.repo, "remote", "add", "origin", "https://example.invalid/source.git")
@@ -681,11 +689,18 @@ class ExecutionAndReviewTests(RepositoryCase):
         self.assertIn("app.py", committed)
         self.assertIn("planned.txt", committed)
 
-    def test_excluded_dirty_path_returns_ask_user_without_absorbing_it(self):
+    def test_separable_unrelated_work_is_preserved_while_task_continues(self):
+        (self.repo / "staged.txt").write_text("base\n", encoding="utf-8")
+        (self.repo / "unstaged.txt").write_text("base\n", encoding="utf-8")
+        git(self.repo, "add", "staged.txt", "unstaged.txt")
+        git(self.repo, "commit", "-m", "add unrelated files")
+        (self.repo / "staged.txt").write_text("user staged\n", encoding="utf-8")
+        git(self.repo, "add", "staged.txt")
+        (self.repo / "unstaged.txt").write_text("user unstaged\n", encoding="utf-8")
         (self.repo / "excluded.txt").write_text("mine\n", encoding="utf-8")
+        (self.repo / "excluded-link").symlink_to("excluded.txt")
         plan = self.plan()
         original_head = git(self.repo, "rev-parse", "HEAD")
-        original_branch = git(self.repo, "branch", "--show-current")
 
         result = programming.run_approved_programming(
             objective="Fix the value",
@@ -693,13 +708,16 @@ class ExecutionAndReviewTests(RepositoryCase):
             plan=plan,
             approved=True,
             endpoints=self.endpoints(),
-            call_model_fn=lambda *_args, **_kwargs: self.fail("model must not run"),
+            call_model_fn=self.value_completion_model,
         )
 
-        self.assertEqual(result["outcome"], "ASK USER")
-        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), original_head)
-        self.assertEqual(git(self.repo, "branch", "--show-current"), original_branch)
+        self.assertEqual(result["outcome"], "DONE")
+        self.assertEqual(git(self.repo, "diff", "--name-only", original_head, "HEAD"), "app.py")
+        self.assertEqual(git(self.repo, "diff", "--cached", "--name-only"), "staged.txt")
+        self.assertEqual(git(self.repo, "diff", "--name-only"), "unstaged.txt")
         self.assertEqual((self.repo / "excluded.txt").read_text(), "mine\n")
+        self.assertEqual((self.repo / "excluded-link").readlink(), Path("excluded.txt"))
+        self.assertIn("?? excluded-link", git(self.repo, "status", "--porcelain=v1"))
         self.assertIn("?? excluded.txt", git(self.repo, "status", "--porcelain=v1"))
 
     def test_dirty_state_drift_after_approval_returns_ask_user(self):

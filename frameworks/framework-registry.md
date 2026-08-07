@@ -160,10 +160,10 @@ Each framework has one entry with these fields:
 
 - **Purpose:** Natively complete approved repository work through inspect-first planning, real execution, fresh independent review, correction, and Git finish
 - **Problem Class:** Explicit repository programming with bounded authority and direct evidence review
-- **Input Summary:** Explicit Programming activation, natural-language objective, Git worktree path, material answers when needed, and one approved plan
+- **Input Summary:** Explicit Programming activation, natural-language objective, Git worktree name or path, material answers when needed, and one approved plan
 - **Output Summary:** Reviewer-accepted milestone commits on a task branch, final `DONE` or a genuine `ASK USER` decision, and the approved local/push/PR/merge finish line
 - **Proven Applications:** v3.0 includes real repository execution, clean-context review, accepted-slice commits, independent outside-source inspection, direct non-text inspection, and unsupported-claim rejection proofs
-- **Known Limitations:** Requires a clean separable Git baseline and configured standalone model endpoints. Production, deployment, publication, messaging, credentials, or other external writes require plan authority.
+- **Known Limitations:** Requires safely separable Git state and configured standalone model endpoints. Production, deployment, publication, messaging, credentials, or other external writes require plan authority.
 - **File Location:** frameworks/book/programming.md (operational body mirror); ~/Documents/vault/Projects/Ora/Framework — Programming.md (canonical)
 - **Provenance:** standalone Ora implementation governed by the user-approved Programming plan
 - **Confidence:** high
