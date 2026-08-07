@@ -92,22 +92,45 @@ def _git(root: Path, *args: str, check: bool = True, timeout: int = 120) -> str:
 
 
 def _repository_root(value: str | os.PathLike[str]) -> Path:
-    supplied = Path(value).expanduser()
-    if supplied.is_symlink():
-        raise ProgrammingError("repository path cannot be a symlink")
-    try:
-        supplied = supplied.resolve(strict=True)
-    except OSError as exc:
-        raise ProgrammingError("repository path is unavailable") from exc
-    if not supplied.is_dir():
-        raise ProgrammingError("repository path must be a directory")
-    discovered = _run(
-        ["git", "rev-parse", "--show-toplevel"], cwd=supplied, check=True
-    ).stdout.strip()
-    root = Path(discovered).resolve(strict=True)
-    if root != supplied:
-        raise ProgrammingError("repository path must be the Git worktree root")
-    return root
+    raw = str(value or "").strip()
+    if not raw:
+        raise ProgrammingError("repository name or path is required")
+
+    def exact_root(candidate: Path) -> Path:
+        if candidate.is_symlink():
+            raise ProgrammingError("repository path cannot be a symlink")
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError as exc:
+            raise ProgrammingError("repository path is unavailable") from exc
+        if not resolved.is_dir():
+            raise ProgrammingError("repository path must be a directory")
+        discovered = _run(
+            ["git", "rev-parse", "--show-toplevel"], cwd=resolved, check=True
+        ).stdout.strip()
+        root = Path(discovered).resolve(strict=True)
+        if root != resolved:
+            raise ProgrammingError("repository path must be the Git worktree root")
+        return root
+
+    supplied = Path(raw).expanduser()
+    if supplied.is_absolute() or len(supplied.parts) != 1 or raw.startswith((".", "~")):
+        return exact_root(supplied)
+
+    home = Path.home()
+    matches = []
+    for candidate in (home / raw, home / "Documents" / raw, home / "sites" / raw):
+        try:
+            root = exact_root(candidate)
+        except ProgrammingError:
+            continue
+        if root not in matches:
+            matches.append(root)
+    if not matches:
+        raise ProgrammingError(f"no Git worktree named {raw!r} was found")
+    if len(matches) > 1:
+        raise ProgrammingError(f"more than one Git worktree is named {raw!r}; enter a path")
+    return matches[0]
 
 
 def _safe_path(root: Path, value: str, *, must_exist: bool = False) -> Path:
@@ -550,6 +573,7 @@ def _tool_result(
     role: str,
     web_fetch_fn: Callable[..., Any] | None,
     web_search_fn: Callable[..., Any] | None,
+    protected_paths: set[str] | None = None,
 ) -> tuple[str, list[dict[str, str]]]:
     if parameters.get("_parse_error"):
         raise ProgrammingError(f"malformed parameters for {name}: {parameters['_parse_error']}")
@@ -583,6 +607,9 @@ def _tool_result(
         if role != "execute":
             raise ProgrammingError(f"{name} is executor-only")
         path = _safe_path(root, str(parameters.get("path") or ""))
+        relative = path.relative_to(root).as_posix()
+        if relative in (protected_paths or set()):
+            raise ProgrammingError(f"{relative} contains protected pre-existing work")
         if path.exists() and path.is_symlink():
             raise ProgrammingError("repository writes cannot follow symlinks")
         if name == "repo_delete":
@@ -713,6 +740,7 @@ def _agent(
     web_search_fn: Callable[..., Any] | None = None,
     terminal_validator: Callable[[str], str | None] | None = None,
     terminal_correction: str = "",
+    protected_paths: set[str] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve(strict=True)
     used_tools: list[str] = []
@@ -802,7 +830,8 @@ def _agent(
             name = call["name"]
             try:
                 result, images = _tool_result(
-                    root, name, call["parameters"], role, web_fetch_fn, web_search_fn
+                    root, name, call["parameters"], role, web_fetch_fn, web_search_fn,
+                    protected_paths,
                 )
                 rendered.append(f"[Tool: {name} | outcome: ok]\n{result}")
                 next_images.extend(images)
@@ -1237,11 +1266,19 @@ def recover_programming(repository_path: str) -> dict[str, Any]:
     }
 
 
-def _raw_diff(root: Path, base: str) -> str:
-    parts = [_git(root, "diff", "--no-ext-diff", "--binary", base, check=False)]
+def _raw_diff(root: Path, base: str, paths: set[str] | None = None) -> str:
+    selected = sorted(paths) if paths is not None else []
+    if paths is not None and not selected:
+        return ""
+    arguments = ["diff", "--no-ext-diff", "--binary", base]
+    if paths is not None:
+        arguments.extend(("--", *selected))
+    parts = [_git(root, *arguments, check=False)]
     untracked = _run(["git", "ls-files", "--others", "--exclude-standard", "-z"],
                      cwd=root).stdout.split("\0")
     for name in (item for item in untracked if item):
+        if paths is not None and name not in paths:
+            continue
         relative = Path(name)
         if relative.is_absolute() or ".." in relative.parts or ".git" in relative.parts:
             raise ProgrammingError("Git returned an unsafe untracked path")
@@ -1255,10 +1292,8 @@ def _raw_diff(root: Path, base: str) -> str:
     return "\n".join(part for part in parts if part)
 
 
-def _tree_fingerprint(root: Path, base: str) -> str:
-    diff = _raw_diff(root, base)
-    status = _git(root, "status", "--porcelain=v1", check=False)
-    return hashlib.sha256((diff + "\n" + status).encode("utf-8")).hexdigest()
+def _tree_fingerprint(root: Path, base: str, paths: set[str] | None = None) -> str:
+    return hashlib.sha256(_raw_diff(root, base, paths).encode("utf-8")).hexdigest()
 
 
 def _dirty_paths(root: Path, base: str) -> list[str]:
@@ -1272,15 +1307,41 @@ def _dirty_paths(root: Path, base: str) -> list[str]:
     return sorted({path for path in (*tracked, *untracked) if path})
 
 
+def _plan_section(plan: dict[str, Any], category_name: str) -> str:
+    text = str(plan.get("plan") or "")
+    categories = sorted(
+        (match.start(), match.end(), name)
+        for name, pattern in _PLAN_REQUIRED_CATEGORIES
+        for match in re.finditer(pattern, text, re.IGNORECASE)
+    )
+    for index, (_start, content_start, name) in enumerate(categories):
+        if name == category_name:
+            content_end = categories[index + 1][0] if index + 1 < len(categories) else len(text)
+            return text[content_start:content_end]
+    return ""
+
+
+def _plan_section_mentions_path(
+    plan: dict[str, Any], category_name: str, path: str,
+) -> bool:
+    section = _plan_section(plan, category_name)
+    relative = Path(path)
+    candidates = [relative, *(parent for parent in relative.parents if parent != Path("."))]
+    return any(
+        re.search(
+            rf"(?<![\w./-]){re.escape(candidate.as_posix())}/?(?![\w/-]|\.\w)",
+            section,
+        )
+        for candidate in candidates
+    )
+
+
 def _plan_mentions_path(plan: dict[str, Any], path: str) -> bool:
-    approved_text = "\n".join((
-        str(plan.get("plan") or ""),
-        *(str(item) for item in plan.get("milestones") or []),
-    ))
-    leading_boundary = r"[\w./-]"
-    return re.search(
-        rf"(?<!{leading_boundary}){re.escape(path)}(?![\w/-]|\.\w)", approved_text
-    ) is not None
+    """Return task ownership with explicit Protected work taking precedence."""
+    return (
+        not _plan_section_mentions_path(plan, "protected work", path)
+        and _plan_section_mentions_path(plan, "component scope", path)
+    )
 
 
 def _commit_subject(milestone: str) -> str:
@@ -1357,8 +1418,10 @@ def _review(
     web_fetch_fn: Callable[..., Any] | None,
     web_search_fn: Callable[..., Any] | None,
     include_worktree: bool = True,
+    task_paths: set[str] | None = None,
 ) -> dict[str, Any]:
     review_parent = _git(root, "rev-parse", "HEAD")
+    task_patch = _raw_diff(root, review_parent, task_paths) if include_worktree else ""
     temporary = tempfile.TemporaryDirectory(prefix="ora-programming-review-")
     review_root = Path(temporary.name) / "repository"
     _run(
@@ -1369,8 +1432,13 @@ def _review(
     )
     _run(["git", "read-tree", review_parent], cwd=review_root, check=True)
     _run(["git", "checkout-index", "-a"], cwd=review_root, check=True)
-    if include_worktree:
-        _copy_working_tree(root, review_root)
+    if task_patch:
+        _run(
+            ["git", "apply", "--binary", "--whitespace=nowarn", "-"],
+            cwd=review_root,
+            input_text=task_patch + "\n",
+            check=True,
+        )
     diff = _raw_diff(review_root, diff_base)
     reviewed_patch = _raw_diff(review_root, review_parent)
     system = f"""You are Ora's clean-context Programming reviewer. This is a fresh model call. You receive no executor transcript, hidden reasoning, summary, or executor claims.
@@ -1597,16 +1665,6 @@ def run_approved_programming(
             }
             emit({"type": "decision", **result})
             return result
-        if any(
-            not _plan_mentions_path(plan, path)
-            for path in _dirty_paths(root, baseline_head)
-        ):
-            result = {
-                "outcome": "ASK USER",
-                "detail": "pre-existing or newly introduced work cannot be separated safely",
-            }
-            emit({"type": "decision", **result})
-            return result
         branch = _task_branch(root, objective, baseline_head, plan)
 
     def ask_for_separation(detail: str) -> dict[str, str]:
@@ -1614,14 +1672,13 @@ def run_approved_programming(
         emit({"type": "decision", **result})
         return result
 
-    recovery_paths = _dirty_paths(root, current_head) if resumed else []
-    if any(
-        not _plan_mentions_path(plan, path)
-        for path in recovery_paths
-    ):
+    initial_dirty = set(_dirty_paths(root, current_head if resumed else baseline_head))
+    task_paths = {path for path in initial_dirty if _plan_mentions_path(plan, path)}
+    protected_paths = initial_dirty - task_paths
+    if resumed and protected_paths:
         return ask_for_separation("some uncommitted task-branch paths cannot be separated safely during recovery")
     approved_recovery_patch = (
-        _raw_diff(root, current_head) if recovery_paths else ""
+        _raw_diff(root, current_head, task_paths) if resumed and task_paths else ""
     )
 
     if endpoints is None:
@@ -1661,14 +1718,14 @@ def run_approved_programming(
     )
     last_failure: tuple[str, str] | None = None
     repeated_failure = 0
-    first_pending_slice = True
-
     for milestone in milestones:
         if _commit_subject(milestone) in accepted_subjects:
             emit({"type": "milestone", "milestone": milestone,
                   "status": "accepted", "resumed": True})
             continue
-        pending_patch = _raw_diff(root, _git(root, "rev-parse", "HEAD"))
+        pending_patch = _raw_diff(
+            root, _git(root, "rev-parse", "HEAD"), task_paths
+        )
         if (
             pending_patch
             and pending_patch != approved_recovery_patch
@@ -1677,8 +1734,6 @@ def run_approved_programming(
             return ask_for_separation("worktree changes appeared between accepted milestones and cannot be separated safely")
         approved_recovery_patch = ""
         slice_base = _git(root, "rev-parse", "HEAD")
-        allowed_paths = set(_dirty_paths(root, slice_base)) if first_pending_slice else set()
-        first_pending_slice = False
         correction = ""
         while True:
             if time.monotonic() - started >= soft_boundary_seconds:
@@ -1691,6 +1746,9 @@ def run_approved_programming(
                 "content": "\n\n".join((
                     "APPROVED PLAN\n" + plan["plan"],
                     "CURRENT MILESTONE\n" + milestone,
+                    (
+                        "PROTECTED PRE-EXISTING PATHS\n" + "\n".join(sorted(protected_paths))
+                    ) if protected_paths else "",
                     ("REVIEW DEFECTS TO CORRECT\n" + correction) if correction else "",
                 )).strip(),
             })
@@ -1700,8 +1758,9 @@ def run_approved_programming(
                 messages=executor_messages,
                 role="execute",
                 call_model_fn=call_model_fn,
+                protected_paths=protected_paths,
             )
-            allowed_paths.update(executed["changed_paths"])
+            task_paths.update(executed["changed_paths"])
             executor_messages.append({"role": "assistant", "content": executed["response"]})
             emit({
                 "type": "progress",
@@ -1710,7 +1769,9 @@ def run_approved_programming(
                 "endpoint": executed["endpoint"],
                 "tools": executed["tools"],
             })
-            unexpected = set(_dirty_paths(root, slice_base)) - allowed_paths
+            unexpected = (
+                set(_dirty_paths(root, slice_base)) - task_paths - protected_paths
+            )
             if unexpected:
                 return ask_for_separation("unattributed worktree paths appeared before review")
             emit({"type": "progress", "message": f"Reviewing {milestone}", "milestone": milestone})
@@ -1724,6 +1785,7 @@ def run_approved_programming(
                 call_model_fn=call_model_fn,
                 web_fetch_fn=web_fetch_fn,
                 web_search_fn=web_search_fn,
+                task_paths=task_paths,
             )
             public_review = {key: value for key, value in review.items() if not key.startswith("_")}
             emit({"type": "review", "milestone": milestone, **public_review})
@@ -1732,20 +1794,22 @@ def run_approved_programming(
             if review["outcome"] == "FIX":
                 if (
                     _git(root, "rev-parse", "HEAD") != review["_parent"]
-                    or _raw_diff(root, review["_parent"]) != review["_patch"]
+                    or _raw_diff(root, review["_parent"], task_paths) != review["_patch"]
                 ):
                     return {
                         "outcome": "ASK USER",
                         "detail": "repository work changed during review and cannot be corrected safely",
                         "branch": branch,
                     }
-                marker = (review["detail"], _tree_fingerprint(root, slice_base))
+                marker = (
+                    review["detail"], _tree_fingerprint(root, slice_base, task_paths)
+                )
                 repeated_failure = repeated_failure + 1 if marker == last_failure else 1
                 last_failure = marker
-                if repeated_failure >= 2:
+                if repeated_failure >= 3:
                     result = {
                         "outcome": "ASK USER",
-                        "detail": "two consecutive reviews reproduced the same failure without progress",
+                        "detail": "three consecutive reviews reproduced the same failure without progress",
                         "branch": branch,
                     }
                     emit({"type": "decision", **result})
@@ -1769,7 +1833,6 @@ def run_approved_programming(
 
     final_base = _git(root, "rev-parse", "HEAD")
     correction = ""
-    final_executor_paths: set[str] = set()
     while True:
         if correction:
             emit({"type": "milestone", "milestone": "FINAL", "status": "correcting"})
@@ -1783,8 +1846,9 @@ def run_approved_programming(
                 messages=executor_messages,
                 role="execute",
                 call_model_fn=call_model_fn,
+                protected_paths=protected_paths,
             )
-            final_executor_paths.update(executed["changed_paths"])
+            task_paths.update(executed["changed_paths"])
             executor_messages.append({"role": "assistant", "content": executed["response"]})
             emit({
                 "type": "progress",
@@ -1793,7 +1857,7 @@ def run_approved_programming(
                 "endpoint": executed["endpoint"],
                 "tools": executed["tools"],
             })
-            if set(_dirty_paths(root, final_base)) - final_executor_paths:
+            if set(_dirty_paths(root, final_base)) - task_paths - protected_paths:
                 return ask_for_separation("unattributed worktree paths appeared before final review")
         review = _review_with_provider_retry(
             root=root,
@@ -1806,6 +1870,7 @@ def run_approved_programming(
             web_fetch_fn=web_fetch_fn,
             web_search_fn=web_search_fn,
             include_worktree=bool(correction),
+            task_paths=task_paths,
         )
         public_review = {key: value for key, value in review.items() if not key.startswith("_")}
         emit({"type": "review", "milestone": "FINAL", **public_review})
@@ -1834,17 +1899,19 @@ def run_approved_programming(
             review = {**review, "outcome": "FIX", "detail": "Final review did not establish completion."}
         if (
             _git(root, "rev-parse", "HEAD") != review["_parent"]
-            or _raw_diff(root, review["_parent"]) != review["_patch"]
+            or _raw_diff(root, review["_parent"], task_paths) != review["_patch"]
         ):
             return {
                 "outcome": "ASK USER",
                 "detail": "repository work changed during review and cannot be corrected safely",
                 "branch": branch,
             }
-        marker = (review["detail"], _tree_fingerprint(root, final_base))
+        marker = (
+            review["detail"], _tree_fingerprint(root, final_base, task_paths)
+        )
         repeated_failure = repeated_failure + 1 if marker == last_failure else 1
         last_failure = marker
-        if repeated_failure >= 2 or time.monotonic() - started >= soft_boundary_seconds:
+        if repeated_failure >= 3 or time.monotonic() - started >= soft_boundary_seconds:
             result = {"outcome": "ASK USER", "detail": "final correction made no further progress", "branch": branch}
             emit({"type": "decision", **result})
             return result

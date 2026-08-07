@@ -1868,7 +1868,7 @@ The former governed-process stack did not supply this simply. It intercepted Inq
 
 Programming is entered only through the Programming toolbar action. Ordinary `/chat` and `/chat/multipart` requests continue through Inquiry without programming classification or interception. Programming is not a framework-picker row.
 
-`POST /api/programming/plan` accepts an objective, absolute Git worktree path, question round, and prior answers. `orchestrator/programming.py::inspect_repository()` resolves the repository root and reads:
+`POST /api/programming/plan` accepts an objective, Git worktree name or path, question round, and prior answers. Exact paths and `~` paths remain valid. A simple name resolves only when exactly one Git root with that name exists directly under the user's home, `~/Documents`, or `~/sites`. `orchestrator/programming.py::inspect_repository()` then reads:
 
 - current `HEAD`, branch, and porcelain status;
 - applicable `AGENTS.md` and `CLAUDE.md` instructions;
@@ -1882,7 +1882,7 @@ The returned plan visibly contains outcome, component scope, non-goals, protecte
 
 ### Approval and repository authority
 
-`POST /api/programming/run` requires `approved: true`, the objective, repository path, and exact proposed plan. Before mutation, the coordinator verifies the repository root, `HEAD`, and dirty state against the planning baseline. Dirty paths already present at planning may proceed only when the approved plan names them; other drift returns `ASK USER` before branch creation. On recovery, plan-named uncommitted paths proceed to independent review, but any ambiguous path returns `ASK USER` with all work preserved. Any worktree change appearing between accepted milestones also returns `ASK USER` without being staged or committed.
+`POST /api/programming/run` requires `approved: true`, the objective, repository path, and exact proposed plan. Before mutation, the coordinator verifies the repository root, `HEAD`, branch, and planned dirty state. A dirty path explicitly named in Component scope is task-owned; other pre-existing staged, unstaged, untracked, or symlink paths are protected from executor writes and excluded from review and accepted commits. Programming continues while those paths remain in place. A newly appearing unattributed path or ambiguous recovery path returns `ASK USER` with all work preserved.
 
 The coordinator creates `ora/<objective-slug>-<baseline>` and owns all Git effects. The executor receives repository-scoped tools for read, search, command, write, edit, and delete. Paths are resolved under the worktree and `.git` is inaccessible. Planning commands are read-only. Executor commands cannot perform coordinator Git operations, external network commands, destructive utilities, publication, deployment, messaging, or credential work.
 
@@ -1915,7 +1915,7 @@ The review parser accepts exactly four first-line outcomes:
 | `CONTINUE` | Accept and commit this sound slice, then proceed to remaining milestones. |
 | `FIX` | Return one consolidated substantive defect explanation to the executor and re-review the corrected diff. |
 | `DONE` | During final cumulative review, perform the approved finish line. |
-| `ASK USER` | Stop for changed scope or authority, human-only access or decision, unsafe user work, repeated no-progress, or the soft spend boundary. |
+| `ASK USER` | Stop for changed scope or authority, an unapproved external effect, human-only access or decision, inseparable user work, three repeated no-progress cycles, or the soft spend boundary. |
 
 The reviewer judges only the approved plan. It may reject wrong user-visible behavior, unmet criteria, content or data loss, runtime failure, unauthorized scope, broken atomicity, or lost user work. It may not add tracking, preferred abstractions, speculative safeguards, style work, or unrequested requirements.
 
@@ -1923,7 +1923,7 @@ The reviewer judges only the approved plan. It may reject wrong user-visible beh
 
 After `CONTINUE`, the coordinator applies the exact reviewed patch to a temporary index, creates the accepted-slice commit with `commit-tree`, advances the attached task branch atomically, and refreshes only the committed paths in the real index. Concurrent work remains unstaged and uncommitted. Rejected work remains uncommitted until corrected. At `FINAL`, only `DONE` completes the task. Any final correction is reviewed against the cumulative diff from the original baseline.
 
-Two consecutive review cycles that reproduce the same substantive failure without a changed tree return `ASK USER`. There is no fixed attempt ceiling. The default soft boundary is 90 minutes.
+Three consecutive review cycles that reproduce the same substantive failure against an unchanged task diff return `ASK USER`. A changed defect list or task diff resets the count. There is no fixed attempt ceiling. The default soft boundary is 90 minutes.
 
 Supported finish lines are `local_commits`, `push`, `pull_request`, and `merge`. Before a consequential finish, runtime rechecks the approved remote's single push URL and refuses drift. It pushes only that remote; `gh` is explicitly bound to the repository derived from the approved URL and to the approved PR base. Before PR creation it queries that repository for the task branch, rejects cross-repository results, and reuses one matching open PR. An already merged PR completes a retry only when its head OID equals local `HEAD`; an open or new PR is merged with `--match-head-commit` bound to that same commit. Target mismatches, closed PRs, and ambiguous matches are refused. This makes create/merge retries idempotent without custom state. Newly discovered deployment, publication, messaging, credential, or other external-write consequences return `ASK USER` rather than expanding authority.
 
@@ -1939,7 +1939,7 @@ Git is the execution state:
 
 No Programming Run, artifact, event, receipt, lifecycle, checkpoint, trigger, automation, process-library, or recovery database exists. Resume uses the approved plan, branch, commits, diff, and checks.
 
-`server/static/js/programming.js` supplies the minimal browser surface: repository path, planning status, material questions, proposed plan, approval/cancel controls, milestone progress, accepted commit identifiers, reviewer outcomes, genuine user decisions, and completion. The run endpoint streams newline-delimited JSON so the surface updates while the coordinator works. Closing the panel returns to ordinary Inquiry.
+`server/static/js/programming.js` supplies the minimal browser surface: repository name or path, planning status, material questions, proposed plan, approval/cancel controls, milestone progress, accepted commit identifiers, reviewer outcomes, genuine user decisions, and completion. The run endpoint streams newline-delimited JSON so the surface updates while the coordinator works. Closing the panel returns to ordinary Inquiry.
 
 The old management interview, Principal/Technical plan projections, Process Library, Trigger Manager, Run Inspector, automation controls, process-attention groups, and automatic entry router are not compatibility surfaces.
 
