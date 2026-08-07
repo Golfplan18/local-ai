@@ -36,6 +36,9 @@ var dom = new jsdom.JSDOM(
 );
 
 var w = dom.window;
+if (w.HTMLDialogElement && !w.HTMLDialogElement.prototype.showModal) {
+  w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+}
 var calls = [];
 var confirmations = [];
 var alerts = [];
@@ -148,6 +151,12 @@ w.fetch = function (url, opts) {
   if (decoded === '/api/conversation/retained') return response(true, envelopes.retained);
   if (decoded === '/api/conversation/stealth') return response(true, envelopes.stealth);
   if (decoded === '/api/conversation/fork-parent') return response(true, envelopes.forkParent);
+  if (decoded === '/api/conversation/privacy-child') {
+    return response(true, {
+      conversation_id: 'privacy-child', tag: 'private', display_name: 'Private fork',
+      messages: envelopes.forkParent.messages,
+    });
+  }
   if (decoded === '/api/conversation/slow-close') return response(true, envelopes.slowClose);
   if (decoded === '/api/conversation/archive-source') return response(true, envelopes.archive);
   if (decoded === '/api/conversation/other-row') {
@@ -178,6 +187,7 @@ w.fetch = function (url, opts) {
   if (/\/close$/.test(decoded)) {
     return response(true, { action: 'close', errors: [] });
   }
+  if (decoded === '/chat') return response(true, { status: 'ok' });
   return Promise.reject(new Error('unexpected fetch: ' + decoded));
 };
 
@@ -215,6 +225,397 @@ function sourceSlice(source, startMarker, endMarker) {
     throw new Error('could not extract index lifecycle source: ' + startMarker);
   }
   return source.slice(start, end);
+}
+
+async function runBootstrapPrivacyTests() {
+  var bootstrapDom = new jsdom.JSDOM(
+    '<!doctype html><html><body><div class="output-pane"></div></body></html>',
+    { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
+  );
+  var bw = bootstrapDom.window;
+  if (bw.HTMLDialogElement && !bw.HTMLDialogElement.prototype.showModal) {
+    bw.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  }
+  var release = null;
+  var fetches = [];
+  var privacyText = null;
+  bw.OraConversation = {
+    submitAfterPrivacy: function (text, submit, options) {
+      privacyText = text;
+      return new Promise(function (resolve) {
+        release = function () {
+          bw.document.body.classList.add('private-mode');
+          Promise.resolve(submit()).then(function () { resolve(true); });
+        };
+      });
+    },
+  };
+  bw.fetch = function (url, opts) {
+    fetches.push({ url: String(url), body: JSON.parse(opts.body || '{}') });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: function () {
+        return Promise.resolve({
+          topic: privacyText, summary: 'Private context', match_count: 1,
+        });
+      },
+    });
+  };
+  var bootstrapContext = bootstrapDom.getInternalVMContext();
+  bootstrapContext.console = console;
+  bootstrapContext.fetch = bw.fetch;
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, '..', 'js', 'v3-bootstrap.js'), 'utf8'),
+    bootstrapContext,
+    { filename: 'v3-bootstrap.js' }
+  );
+  bw.OraBootstrap.open();
+  var input = bw.document.querySelector('.bootstrap-modal-input');
+  input.value = 'My medical diagnosis is private.';
+  bw.document.querySelector('.bootstrap-modal-submit').click();
+  await new Promise(function (resolve) { bw.setTimeout(resolve, 0); });
+  record('bootstrap topic waits at privacy before server POST',
+    privacyText === input.value && fetches.length === 0);
+  release();
+  await new Promise(function (resolve) { bw.setTimeout(resolve, 0); });
+  await new Promise(function (resolve) { bw.setTimeout(resolve, 0); });
+  record('bootstrap posts exactly once with the post-fork Private tag',
+    fetches.length === 1
+      && fetches[0].url === '/api/bootstrap'
+      && fetches[0].body.tag === 'private');
+
+  bw.OraConversation = null;
+  bw.document.body.classList.remove('private-mode');
+  bw.OraBootstrap.open();
+  input.value = 'My password is private.';
+  bw.document.querySelector('.bootstrap-modal-submit').click();
+  await new Promise(function (resolve) { bw.setTimeout(resolve, 0); });
+  record('bootstrap fails closed when privacy controls are unavailable',
+    fetches.length === 1
+      && /Privacy check unavailable/.test(
+        bw.document.querySelector('.bootstrap-modal-status').textContent
+      ));
+}
+
+async function runScratchpadPrivacyTests() {
+  var indexSource = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8'
+  );
+  var scratchDom = new jsdom.JSDOM(
+    '<!doctype html><html><body></body></html>',
+    { url: 'http://localhost/', runScripts: 'outside-only' }
+  );
+  var sw = scratchDom.window;
+  var release = null;
+  var fetches = [];
+  var rendered = [];
+  var activeId = 'scratch-parent';
+  var draftText = null;
+  var rightInputArea = { value: 'My medical diagnosis is private.' };
+  var leftInputArea = { value: 'Existing main Inquiry draft' };
+  sw.OraConversation = {
+    submitAfterPrivacy: function (_text, submit, options) {
+      draftText = options && options.draftText;
+      return new Promise(function (resolve) {
+        release = function () {
+          activeId = 'scratch-private-child';
+          Promise.resolve(submit()).then(function () { resolve(true); });
+        };
+      });
+    },
+  };
+  sw.fetch = function (url, opts) {
+    fetches.push({
+      url: String(url),
+      body: JSON.parse(opts.body || '{}'),
+      activeId: activeId,
+    });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: function () { return Promise.resolve({ answer: 'Private answer' }); },
+    });
+  };
+  var scratchContext = scratchDom.getInternalVMContext();
+  scratchContext.console = console;
+  scratchContext.fetch = sw.fetch;
+  scratchContext.rightInputArea = rightInputArea;
+  scratchContext.leftInputArea = leftInputArea;
+  scratchContext.renderScratchpadEntry = function (cls, text) {
+    rendered.push({ cls: cls, text: text });
+    return { remove: function () {} };
+  };
+  scratchContext.trimScratchpadHistory = function () {};
+  var scratchSource = sourceSlice(
+    indexSource,
+    '  const submitToScratchpad = async',
+    '  const submitInput = async'
+  );
+  vm.runInContext(
+    scratchSource
+      + '\nglobalThis.__submitScratchpadAfterPrivacy = submitScratchpadAfterPrivacy;',
+    scratchContext,
+    { filename: 'index-scratchpad-privacy.js' }
+  );
+
+  var pending = sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
+  await Promise.resolve();
+  record('Aside prompt waits at privacy before server POST',
+    fetches.length === 0 && rightInputArea.value.indexOf('diagnosis') >= 0);
+  release();
+  await pending;
+  record('Aside posts exactly once after the child is selected',
+    fetches.length === 1
+      && fetches[0].url === '/api/scratchpad'
+      && fetches[0].activeId === 'scratch-private-child'
+      && fetches[0].body.prompt === 'My medical diagnosis is private.'
+      && rightInputArea.value === ''
+      && draftText === 'Existing main Inquiry draft');
+
+  rightInputArea.value = 'My password remains private.';
+  sw.OraConversation.submitAfterPrivacy = function () { return Promise.resolve(false); };
+  await sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
+  record('cancelled Aside privacy sends nothing and preserves its input',
+    fetches.length === 1 && rightInputArea.value === 'My password remains private.');
+
+  sw.OraConversation = null;
+  await sw.__submitScratchpadAfterPrivacy(rightInputArea.value);
+  record('Aside fails closed without privacy controls',
+    fetches.length === 1
+      && rendered.some(function (entry) {
+        return /Privacy check unavailable/.test(entry.text);
+      }));
+}
+
+async function runIndexPrivacyEgressTests() {
+  var indexSource = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8'
+  );
+  var privacyDom = new jsdom.JSDOM(
+    '<!doctype html><html><body></body></html>',
+    { url: 'http://localhost/', runScripts: 'outside-only' }
+  );
+  var pw = privacyDom.window;
+  var events = [];
+  var analyzerCalls = 0;
+  var allowPrivacy = true;
+  pw.OraInputState = {
+    getFramework: function () {
+      return { id: 'terrain-mapping', kind: 'framework' };
+    },
+    clearFramework: function () {},
+  };
+  pw.OraFrameworkSetupPopup = {
+    show: function () {
+      return Promise.resolve({
+        action: 'continue',
+        responses: { context: 'My private key is framework-secret.' },
+        on_canvas: {},
+      });
+    },
+  };
+  pw.OraConversation = {
+    submitAfterPrivacy: async function (text, submit, options) {
+      events.push('privacy:' + text);
+      if (!allowPrivacy) return false;
+      events.push('approved-draft:' + String(options && options.draftText || ''));
+      await submit();
+      return true;
+    },
+  };
+  var privacyContext = privacyDom.getInternalVMContext();
+  privacyContext.console = console;
+  privacyContext.renderAssistantTurn = function (message) {
+    events.push('assistant:' + message);
+  };
+  privacyContext.submitToMainPipeline = async function (text) {
+    events.push('submit:' + text);
+    return true;
+  };
+  privacyContext._analyzeFrameworkInputs = async function (request) {
+    analyzerCalls += 1;
+    events.push('analyze:' + request.prompt);
+    return analyzerCalls === 1
+      ? { requirements: [{ name: 'context', status: 'missing' }] }
+      : { requirements: [] };
+  };
+  privacyContext._hasGaps = function (report) {
+    return report.requirements.some(function (item) {
+      return item.status === 'missing' || item.status === 'unclear';
+    });
+  };
+  privacyContext._augmentPromptWithResponses = function (base, responses) {
+    return base + '\n' + responses.context;
+  };
+  privacyContext._runAnywayNote = function () { return ''; };
+  var submitSource = sourceSlice(
+    indexSource,
+    '  const submitWithFrameworkCheck = async',
+    '  let imageGenerateMode = false;'
+  );
+  vm.runInContext(
+    submitSource + '\nglobalThis.__submitWithFrameworkCheck = submitWithFrameworkCheck;',
+    privacyContext,
+    { filename: 'index-framework-privacy.js' }
+  );
+
+  await pw.__submitWithFrameworkCheck('Base prompt', 'Base prompt');
+  var privacyIndex = events.indexOf('privacy:My private key is framework-secret.');
+  var secondAnalyzeIndex = events.findIndex(function (event, index) {
+    return index > privacyIndex && event.indexOf('analyze:') === 0;
+  });
+  var submits = events.filter(function (event) { return event.indexOf('submit:') === 0; });
+  record('framework response is privacy-approved before analyzer and final submission',
+    privacyIndex > events.indexOf('analyze:Base prompt')
+      && secondAnalyzeIndex > privacyIndex
+      && submits.length === 1
+      && /framework-secret/.test(submits[0]));
+  record('framework privacy fork receives the complete augmented draft',
+    events.some(function (event) {
+      return event === 'approved-draft:Base prompt\nMy private key is framework-secret.';
+    }));
+
+  events = [];
+  analyzerCalls = 0;
+  allowPrivacy = false;
+  await pw.__submitWithFrameworkCheck('Base prompt', 'Base prompt');
+  record('cancelled framework-response privacy sends no analyzer or final request',
+    analyzerCalls === 1
+      && events.some(function (event) { return event.indexOf('privacy:') === 0; })
+      && !events.some(function (event) { return event.indexOf('submit:') === 0; }));
+
+  events = [];
+  analyzerCalls = 0;
+  await pw.__submitWithFrameworkCheck('My password is initial-secret.');
+  record('cancelled initial framework privacy sends no analyzer request',
+    analyzerCalls === 0
+      && events[0] === 'privacy:My password is initial-secret.');
+}
+
+async function runSidebarRetryPrivacyTests() {
+  var sidebarSource = fs.readFileSync(
+    path.resolve(__dirname, '..', 'js', 'sidebar.js'), 'utf8'
+  );
+  var retryDom = new jsdom.JSDOM(
+    '<!doctype html><html><body></body></html>',
+    { url: 'http://localhost/', runScripts: 'outside-only' }
+  );
+  var rw = retryDom.window;
+  var activeId = 'other-dialogue';
+  var activeTag = '';
+  var allow = true;
+  var recovered = [
+    'My medical diagnosis is private.',
+    'My account password is second-secret.',
+  ];
+  var privacyCalls = [];
+  var loadCalls = [];
+  var multipartBodies = [];
+  var dismissCalls = [];
+  var refreshCalls = 0;
+  rw.OraConversation = {
+    load: async function (id) {
+      loadCalls.push(id);
+      activeId = id;
+      activeTag = '';
+    },
+    getActiveConversationId: function () { return activeId; },
+    getActiveTag: function () { return activeTag; },
+    submitAfterPrivacy: async function (text, submit, options) {
+      privacyCalls.push({ text: text, draftText: options && options.draftText });
+      if (!allow) return false;
+      activeId = 'retry-private-child';
+      activeTag = 'private';
+      await submit();
+      return true;
+    },
+  };
+  var retryIndex = 0;
+  rw.fetch = function (url, opts) {
+    var target = decodeURIComponent(String(url));
+    if (/\/retry$/.test(target)) {
+      var prompt = recovered[retryIndex++];
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: function () {
+          return Promise.resolve({
+            ok: true,
+            conversation_id: 'errored-parent',
+            last_user_prompt: prompt,
+            tag: '',
+            source: 'interrupted_input',
+          });
+        },
+      });
+    }
+    if (target === '/chat/multipart') {
+      var fields = {};
+      opts.body.forEach(function (value, key) { fields[key] = value; });
+      multipartBodies.push(fields);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: {
+          getReader: function () {
+            return { read: function () { return Promise.resolve({ done: true }); } };
+          },
+        },
+      });
+    }
+    if (/\/dismiss-error$/.test(target)) {
+      dismissCalls.push(target);
+      return Promise.resolve({ ok: true, status: 200 });
+    }
+    throw new Error('unexpected retry fetch: ' + target);
+  };
+  var retryContext = retryDom.getInternalVMContext();
+  retryContext.console = console;
+  retryContext.fetch = rw.fetch;
+  retryContext.alert = function () {};
+  retryContext.fetchList = function () { refreshCalls += 1; };
+  var retrySource = sourceSlice(
+    sidebarSource,
+    '  const onRetryClick = async',
+    '  const onDismissErrorClick = async'
+  );
+  vm.runInContext(
+    retrySource + '\nglobalThis.__onRetryClick = onRetryClick;',
+    retryContext,
+    { filename: 'sidebar-retry-privacy.js' }
+  );
+
+  var row = { conversation_id: 'errored-parent', tag: '', last_status: 'errored' };
+  await rw.__onRetryClick(row);
+  record('retry privacy evaluates the actual recovered prompt and draft',
+    privacyCalls.length === 1
+      && privacyCalls[0].text === recovered[0]
+      && privacyCalls[0].draftText === recovered[0]);
+  record('retry privacy loads the errored Dialogue before gating',
+    loadCalls.length === 1 && loadCalls[0] === 'errored-parent');
+  record('approved retry emits exactly one child-bound multipart POST',
+    multipartBodies.length === 1
+      && multipartBodies[0].message === recovered[0]
+      && multipartBodies[0].conversation_id === 'retry-private-child'
+      && multipartBodies[0].panel_id === 'retry-private-child');
+  record('approved retry preserves multipart metadata and Private tag',
+    multipartBodies[0].is_main_feed === 'true'
+      && multipartBodies[0].tag === 'private');
+  record('child-bound retry dismisses only the original errored row',
+    dismissCalls.length === 1
+      && dismissCalls[0] === '/api/conversation/errored-parent/dismiss-error');
+
+  allow = false;
+  await rw.__onRetryClick(row);
+  record('each retry freshly gates its newly recovered prompt',
+    privacyCalls.length === 2
+      && privacyCalls[1].text === recovered[1]
+      && privacyCalls[1].draftText === recovered[1]);
+  record('cancelled retry emits no duplicate multipart POST or dismissal',
+    multipartBodies.length === 1 && dismissCalls.length === 1);
+  record('retry refresh remains single-pass per attempt', refreshCalls === 2);
+  retryDom.window.close();
 }
 
 async function runIndexLifecycleControlsTests() {
@@ -602,6 +1003,184 @@ async function runIndexLifecycleControlsTests() {
 }
 
 async function run() {
+  w.OraConversation.startFresh({ conversation_id: 'privacy-external', tag: '' });
+  calls = [];
+  var externalSubmits = 0;
+  await w.OraConversation.submitAfterPrivacy(
+    'Draft an email to my doctor about my diagnosis',
+    function () { externalSubmits += 1; }
+  );
+  record('clear external intent suppresses privacy intervention',
+    externalSubmits === 1 && calls.length === 0
+      && !w.document.querySelector('.ora-privacy-intervention'));
+
+  w.OraConversation.startFresh({ conversation_id: 'privacy-zero', tag: '' });
+  calls = [];
+  var zeroSubmits = 0;
+  var zeroPromise = w.OraConversation.submitAfterPrivacy(
+    'My password is hunter2', function () { zeroSubmits += 1; }
+  );
+  await wait(0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
+  var zeroAllowed = await zeroPromise;
+  record('zero-turn sensitive Inquiry retags in place before submission',
+    zeroAllowed && zeroSubmits === 1
+      && w.OraConversation.getActiveConversationId() === 'privacy-zero'
+      && w.OraConversation.getActiveTag() === 'private'
+      && calls.filter(function (call) { return /\/privacy-tag$/.test(call.url); }).length === 1
+      && !calls.some(function (call) { return /\/fork$/.test(call.url); }));
+
+  w.OraConversation.startFresh({ conversation_id: 'privacy-ask', tag: '' });
+  calls = [];
+  var askSubmits = 0;
+  var askPromise = w.OraConversation.submitAfterPrivacy(
+    'I feel lost about my marriage', function () { askSubmits += 1; }
+  );
+  await wait(0);
+  record('ambiguous personal Inquiry waits without posting',
+    !!w.document.querySelector('.ora-privacy-intervention') && calls.length === 0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="standard"]').click();
+  record('explicit Standard choice wins without privacy mutation',
+    (await askPromise) === true && askSubmits === 1 && calls.length === 0);
+
+  await w.OraConversation.load('fork-parent');
+  var privacyInput = w.document.querySelector('.input-pane textarea');
+  privacyInput.value = 'My secret key is abc';
+  w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);
+  calls = [];
+  var forkPromise = w.OraConversation.submitAfterPrivacy(
+    privacyInput.value,
+    function () {
+      return w.fetch('/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversation_id: w.OraConversation.getActiveConversationId(),
+          prompt: privacyInput.value,
+        }),
+      });
+    }
+  );
+  await wait(0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
+  await wait(0);
+  var parentPostsBeforeFork = calls.filter(function (call) {
+    return call.url === '/chat';
+  }).length;
+  forkResolve({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({
+      new_conversation_id: 'privacy-child', tag: 'private',
+    }); },
+  });
+  var forkAllowed = await forkPromise;
+  var finalPosts = calls.filter(function (call) { return call.url === '/chat'; });
+  record('final sensitive submit posts zero times to parent and exactly once to Private child',
+    forkAllowed
+      && parentPostsBeforeFork === 0
+      && finalPosts.length === 1
+      && JSON.parse(finalPosts[0].opts.body).conversation_id === 'privacy-child'
+      && w.OraConversation.getActiveConversationId() === 'privacy-child'
+      && w.OraConversation.getActiveTag() === 'private'
+      && privacyInput.value === 'My secret key is abc'
+      && w.localStorage.getItem('ora-v3-draft-privacy-child') === 'My secret key is abc'
+      && w.localStorage.getItem('ora-v3-draft-fork-parent') === null
+      && calls.filter(function (call) { return /\/fork$/.test(call.url); }).length === 1);
+
+  await w.OraConversation.load('fork-parent');
+  calls = [];
+  var auxiliaryPromise = w.OraConversation.submitChatTurn({
+    message: 'Investigate this trace.',
+    conversation_id: 'fork-parent',
+    panel_id: 'fork-parent',
+    trace_debug: {
+      trace_ref: 'fork-parent/turn-a',
+      symptom: 'My secret key appeared in the wrong output.',
+    },
+  }, { privacyText: 'My secret key appeared in the wrong output.' });
+  await wait(0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
+  await wait(0);
+  var auxiliaryParentPosts = calls.filter(function (call) {
+    return call.url === '/chat';
+  }).length;
+  forkResolve({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({
+      new_conversation_id: 'privacy-child', tag: 'private',
+    }); },
+  });
+  var auxiliaryConversationId = await auxiliaryPromise;
+  var auxiliaryPosts = calls.filter(function (call) { return call.url === '/chat'; });
+  var auxiliaryBody = JSON.parse(auxiliaryPosts[0].opts.body);
+  record('auxiliary user text shares privacy gate and posts exactly once to the child',
+    auxiliaryParentPosts === 0
+      && auxiliaryConversationId === 'privacy-child'
+      && auxiliaryPosts.length === 1
+      && auxiliaryBody.conversation_id === 'privacy-child'
+      && auxiliaryBody.panel_id === 'privacy-child'
+      && /secret key/.test(auxiliaryBody.trace_debug.symptom));
+
+  await w.OraConversation.load('fork-parent');
+  calls = [];
+  var cancelledAuxiliary = w.OraConversation.submitChatTurn({
+    message: 'My password should not leave this Dialogue.',
+    conversation_id: 'fork-parent',
+  }, { privacyText: 'My password should not leave this Dialogue.' });
+  await wait(0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="cancel"]').click();
+  record('cancelled auxiliary privacy sends no parent or child chat post',
+    (await cancelledAuxiliary) === null
+      && !calls.some(function (call) { return call.url === '/chat'; })
+      && !calls.some(function (call) { return /\/fork$/.test(call.url); }));
+
+  calls = [];
+  var internalConversationId = await w.OraConversation.submitChatTurn({
+    message: '2', conversation_id: 'fork-parent', panel_id: 'fork-parent',
+  });
+  record('non-user internal chat command preserves its direct exact-once path',
+    internalConversationId === 'fork-parent'
+      && calls.filter(function (call) { return call.url === '/chat'; }).length === 1
+      && !w.document.querySelector('.ora-privacy-intervention'));
+
+  await w.OraConversation.load('fork-parent');
+  privacyInput.value = 'My private key must survive navigation';
+  w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);
+  calls = [];
+  var racedSubmitCount = 0;
+  var racedFork = w.OraConversation.submitAfterPrivacy(
+    privacyInput.value,
+    function () { racedSubmitCount += 1; }
+  );
+  await wait(0);
+  w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
+  await wait(0);
+  w.OraConversation.startFresh({ conversation_id: 'newer-selection', tag: '' });
+  forkResolve({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({
+      new_conversation_id: 'privacy-race-child', tag: 'private',
+    }); },
+  });
+  var racedAllowed = await racedFork;
+  record('successful privacy fork saves child draft before navigation can clear parent',
+    racedAllowed === false
+      && racedSubmitCount === 0
+      && w.OraConversation.getActiveConversationId() === 'newer-selection'
+      && w.localStorage.getItem('ora-v3-draft-privacy-race-child') ===
+        'My private key must survive navigation'
+      && w.localStorage.getItem('ora-v3-draft-fork-parent') === null);
+
+  await w.OraConversation.load('privacy-child');
+  calls = [];
+  var privateSubmits = 0;
+  record('explicit Private state bypasses the classifier and sends no lifecycle request',
+    (await w.OraConversation.submitAfterPrivacy(
+      'My password is still private', function () { privateSubmits += 1; }
+    )) === true
+      && privateSubmits === 1
+      && calls.length === 0
+      && !w.document.querySelector('.ora-privacy-intervention'));
+
   w.document.body.classList.add('stealth-mode');
   w.OraConversation.startFresh({ conversation_id: 'generic-standard' });
   record('generic New ignores the loaded mode and creates Standard',
@@ -952,6 +1531,10 @@ async function run() {
     replacementId !== 'late' && w.OraConversation.getActiveConversationId() === replacementId,
     w.OraConversation.getActiveConversationId());
 
+  await runIndexPrivacyEgressTests();
+  await runBootstrapPrivacyTests();
+  await runScratchpadPrivacyTests();
+  await runSidebarRetryPrivacyTests();
   await runIndexLifecycleControlsTests();
 
   var passed = results.filter(function (result) { return result.ok; }).length;

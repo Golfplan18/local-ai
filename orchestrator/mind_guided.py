@@ -9,7 +9,7 @@ truth for what a user can configure.
 Design constraint (see the study doc "Working — Ora Guided Values Setup
 (mind.md Authoring) 2026-07-01"): the questions cover ONLY the value
 dimensions that measurably change model outputs when injected as the
-[YOUR VALUES — mind.md] prompt layer — directness, hedging, length,
+[USER CONTEXT — mind.md] adaptation layer — directness, hedging, length,
 disagreement style, uncertainty handling, source discipline, autonomy.
 The MindSpec library's psychometric variables (commitment weights,
 activation profiles, formative context, governance roles) are prompt-

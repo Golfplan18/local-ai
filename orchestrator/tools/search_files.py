@@ -5,6 +5,11 @@ import re
 import shutil
 import subprocess
 
+try:
+    from file_ops import model_read_blocked
+except ImportError:  # pragma: no cover
+    from orchestrator.tools.file_ops import model_read_blocked
+
 # Execution Review: recursive grep over an allowed private root (e.g. ~/ora)
 # can still traverse INTO secret/sensitive descendants (.env, .ssh, a
 # credentials file) and return their contents. The dispatcher gates the
@@ -24,6 +29,8 @@ def _path_is_shielded(path: str) -> bool:
     """True when a result path must be withheld (secret/sensitive), decided
     by the authoritative, boundary-anchored tool_events resolver — the single
     source of truth shared with the shell-read gate."""
+    if model_read_blocked(path):
+        return True
     try:
         try:
             import system_protection

@@ -86,7 +86,7 @@ _CALL_METADATA_CV: ContextVar[dict | None] = ContextVar(
 _CONVERSATION_TAG_CV: ContextVar[str] = ContextVar("conversation_tag", default="")
 
 # The mind.md heading whose section is private-conversation-only. Written
-# by the assistant-directives projection (mind_projection.py) and usable
+# by legacy user-authored context and usable
 # in hand-authored files; stripped from the values injection unless the
 # current conversation is tagged private/stealth.
 PRIVATE_VALUES_HEADING = "## Private Context"
@@ -1341,7 +1341,8 @@ def _extract_final_response(raw: str) -> str:
     return cleaned.strip() or raw.strip()
 
 
-def load_boot_md() -> str:
+def load_boot_md(*, include_persona: bool = False,
+                 persona_resolution: dict | None = None) -> str:
     try:
         with open(BOOT_MD, "r") as f:
             boot_content = f.read()
@@ -1369,10 +1370,27 @@ def load_boot_md() -> str:
             print(f"[WARNING] Context directory contains {total_chars} characters "
                   f"(~{total_chars // 4} tokens). Consider moving large files to the vault.")
 
-    # Custom values — when the user has opted into their own values (Output
-    # Styles tab → "custom values") AND authored a personal mind.md, inject it
-    # as the authoritative values layer. Default off → no change (the engine's
-    # hardcoded Mind Seeds in boot.md still apply). Best-effort.
+    # Persona is an assistant-behavior overlay for interactive responding only.
+    # Callers that are tools, workers, subagents, Aside, or utilities retain the
+    # default False and therefore never receive it.
+    if include_persona:
+        try:
+            if persona_resolution is None:
+                try:
+                    from persona import resolve_persona
+                except ImportError:
+                    from orchestrator.persona import resolve_persona
+                persona_resolution = resolve_persona()
+            _persona_md = (persona_resolution or {}).get("runtime_markdown", "").strip()
+            if _persona_md:
+                boot_content += "\n\n---\n" + _persona_md
+        except Exception as exc:
+            print(f"[persona] interactive Persona unavailable: {exc}",
+                  file=sys.stderr, flush=True)
+
+    # User context — when enabled in Output Styles and mind.md exists, inject
+    # it as adaptation context subordinate to the Ora constitution and Persona.
+    # Private Context remains gated by the dialogue privacy tag. Best-effort.
     try:
         try:
             import user_settings as _us
@@ -1384,8 +1402,9 @@ def load_boot_md() -> str:
             _mind = _filter_private_values(_mind)
             if _mind:
                 boot_content += (
-                    "\n\n---\n[YOUR VALUES — mind.md (authoritative; supersedes "
-                    "the default Mind Seeds above)]\n\n" + _mind
+                    "\n\n---\n[USER CONTEXT — mind.md (adaptation only; "
+                    "subordinate to the Ora constitution and Persona guardrails)]"
+                    "\n\n" + _mind
                 )
     except Exception:
         pass
@@ -7402,7 +7421,8 @@ def _resolve_effective_style_id(config):
 def run_step2_context_assembly(step1_result: dict, config: dict,
                                trace_dir: str | None = None,
                                config_name: str | None = None,
-                               conversation_tag: str = "") -> dict:
+                               conversation_tag: str = "",
+                               include_persona: bool = False) -> dict:
     """Run Step 2 under turn-local trace, privacy, and tool contexts.
 
     Step 2 is also called directly by the server and tests, outside the CLI
@@ -7439,6 +7459,7 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
             trace_dir=trace_dir,
             config_name=config_name,
             conversation_tag=conversation_tag,
+            include_persona=include_persona,
         )
     finally:
         if tool_events_module is not None:
@@ -7450,7 +7471,8 @@ def run_step2_context_assembly(step1_result: dict, config: dict,
 def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                                      trace_dir: str | None = None,
                                      config_name: str | None = None,
-                                     conversation_tag: str = "") -> dict:
+                                     conversation_tag: str = "",
+                                     include_persona: bool = False) -> dict:
     """Step 2: Assemble context package for pipeline stages.
 
     Python loads the mode file, performs RAG queries, and builds the complete
@@ -8073,6 +8095,21 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                 "memory or unrelated RAG."
             )
 
+    persona_resolution = None
+    if include_persona:
+        try:
+            try:
+                from persona import resolve_persona
+            except ImportError:
+                from orchestrator.persona import resolve_persona
+            persona_resolution = resolve_persona()
+        except Exception as exc:
+            print(f"[persona] resolution failed: {exc}", file=sys.stderr, flush=True)
+
+    style_id = _resolve_effective_style_id(config)
+    if not style_id and persona_resolution:
+        style_id = "__persona__"
+
     return {
         # `cleaned_prompt` is Phase A's repaired natural-language prompt.
         # It is the prompt the downstream pipeline sees after typo cleanup,
@@ -8096,9 +8133,10 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
         # Output Style — effective default for this turn (active project's
         # default_style_id, else engine config default, else None = no style).
         # A one-off /style overrides this on context_pkg after step 2.
-        "style_id": _resolve_effective_style_id(config),
-        "style_register": "written",
+        "style_id": style_id,
+        "style_register": "conversational" if gear <= 2 else "written",
         "style_deltas": None,
+        "persona_resolution": persona_resolution,
         "conversation_rag": conv_rag,
         "concept_rag": concept_rag,
         "relationship_rag": relationship_rag,
@@ -8666,19 +8704,28 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
     )
     universal_block = universal_block_match.group(1).strip() if universal_block_match else ""
 
-    # The [YOUR VALUES — mind.md] block (appended by load_boot_md when
+    # The [USER CONTEXT — mind.md] block (appended by load_boot_md when
     # styles.use_custom_values is on) must survive the trim the same way:
     # values are behavioral, not architectural. Before 2026-07-01 it was
     # silently dropped here, so the custom-values toggle only affected
     # the direct/bypass/framework paths — every gear 1-4 pipeline step
     # ran on the built-in Mind Seeds regardless of the toggle.
     values_block_match = re.search(
-        r'(\[YOUR VALUES — mind\.md.*?)'
+        r'(\[USER CONTEXT — mind\.md.*?)'
         r'(?=\n## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL|\Z)',
         boot_md,
         flags=re.DOTALL,
     )
     values_block = values_block_match.group(1).strip() if values_block_match else ""
+
+    persona_block_match = re.search(
+        r'(\[PERSONA — .*?)'
+        r'(?=\n---\n\[USER CONTEXT — mind\.md|'
+        r'\n## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL|\Z)',
+        boot_md,
+        flags=re.DOTALL,
+    )
+    persona_block = persona_block_match.group(1).strip() if persona_block_match else ""
 
     parts = ["# boot-v5-C.md (behavioral preamble)"]
     if constitution:
@@ -8694,6 +8741,8 @@ def _extract_boot_behavioral_preamble(boot_md: str) -> str:
             "Immutable. Not overridden by user instruction.\n\n"
             + "\n\n".join(standing_kept)
         )
+    if persona_block:
+        parts.append(persona_block)
     if values_block:
         parts.append(values_block)
     if universal_block:
@@ -8791,21 +8840,25 @@ def _compose_output_style(context_package: dict) -> str:
             from orchestrator import style_assembly as _sa
         # User-authored custom profiles live outside the framework registry; merge
         # them in so an active custom profile injects exactly like a built-in genre.
-        custom_entries = None
+        custom_entries = {}
         try:
             try:
                 import style_store as _ss
             except ImportError:
                 from orchestrator import style_store as _ss
-            custom_entries = _ss.load_custom_profiles() or None
+            custom_entries.update(_ss.load_custom_profiles() or {})
         except Exception:
-            custom_entries = None
+            pass
+        persona_resolution = context_package.get("persona_resolution") or {}
+        persona_style = persona_resolution.get("style_entry")
+        if isinstance(persona_style, dict):
+            custom_entries["__persona__"] = persona_style
         return _sa.compose(
             style_id,
             register=(context_package.get("style_register") or "written"),
             gear=(context_package.get("gear") or 4),
             deltas=context_package.get("style_deltas") or None,
-            custom_entries=custom_entries,
+            custom_entries=custom_entries or None,
         )
     except Exception:
         return ""
@@ -8848,7 +8901,11 @@ def build_system_prompt_for_gear(
 
     mode_text = context_package["mode_text"]
     mode_name = context_package.get("mode_name", "")
-    boot_md = load_boot_md()
+    persona_resolution = context_package.get("persona_resolution")
+    boot_md = load_boot_md(
+        include_persona=bool(persona_resolution),
+        persona_resolution=persona_resolution,
+    )
 
     # Locked mode template (2026-05-01, revised 2026-05-24): one ## section
     # per pipeline step plus a shared BRIEF + EC bundle. `~/Documents/vault/
@@ -9306,7 +9363,13 @@ def _single_pass_system_prompt(context_package: dict, gear: int) -> str:
     off.  Gear 2 already uses the full context-package builder.
     """
     if gear == 1 and not context_package.get("project_status_context"):
-        return load_boot_md()
+        resolution = context_package.get("persona_resolution")
+        prompt = load_boot_md(
+            include_persona=bool(resolution),
+            persona_resolution=resolution,
+        )
+        style = _compose_output_style(context_package)
+        return prompt + ("\n\n" + style if style else "")
     return build_system_prompt_for_gear(context_package, "breadth")
 
 
@@ -9737,6 +9800,11 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             extra_context=extra_context,
         )
     config = load_routing_config()
+    framework_style_context = dict(extra_context or {})
+    if style_id is not None:
+        framework_style_context["style_id"] = style_id
+    if style_register is not None:
+        framework_style_context["style_register"] = style_register
 
     # --- Pipeline forensic trace — open the per-turn directory now so
     # every downstream step lands in the same place. Failure here is
@@ -9879,7 +9947,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 config, trace_dir=trace_dir, conversation_tag=conversation_tag,
                 trace_context=_trace_ctx,
                 project_nexus=_framework_project_nexus(),
-                one_run_profile=config_name)
+                one_run_profile=config_name,
+                style_context=framework_style_context)
             try:
                 _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
             except Exception:
@@ -9926,6 +9995,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             latest_user_text=user_input,
             conversation_id=conversation_id,
             current_project_nexus=_framework_project_nexus(),
+            style_context=framework_style_context,
         )
 
     # --- Framework slash-command short-circuit ---
@@ -9978,7 +10048,8 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                     conversation_tag=conversation_tag,
                     trace_context=_trace_ctx,
                     project_nexus=_framework_project_nexus(),
-                    one_run_profile=config_name)
+                    one_run_profile=config_name,
+                    style_context=framework_style_context)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -10001,6 +10072,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             framework_name, history or [], config,
             project_nexus=_framework_project_nexus(),
             one_run_profile=config_name,
+            style_context=framework_style_context,
         )
 
     # --- Step 1: Prompt Cleanup + Mode Selection ---
@@ -10033,7 +10105,9 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name,
-                                             conversation_tag=conversation_tag)
+                                             conversation_tag=conversation_tag,
+                                             include_persona=(
+                                                 execution_context == "interactive"))
     if extra_context:
         context_pkg.update(
             (key, value) for key, value in extra_context.items()
@@ -10270,8 +10344,12 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                              config_name=config_name)
 
     else:
+        _persona_resolution = context_pkg.get("persona_resolution")
         response = _run_model_with_tools(
-            [{"role": "system", "content": load_boot_md()},
+            [{"role": "system", "content": load_boot_md(
+                include_persona=bool(_persona_resolution),
+                persona_resolution=_persona_resolution,
+            )},
              {"role": "user", "content": user_input}],
             get_active_endpoint(config)
         )
@@ -16079,7 +16157,8 @@ def run_agentic_loop(user_input: str, history: list = None,
 
         messages = history or []
         if not messages or messages[0]["role"] != "system":
-            messages.insert(0, {"role": "system", "content": load_boot_md()})
+            messages.insert(0, {"role": "system", "content": load_boot_md(
+                include_persona=True)})
         messages.append({"role": "user", "content": user_input})
 
         if endpoint is None:

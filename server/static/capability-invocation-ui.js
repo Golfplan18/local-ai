@@ -108,6 +108,17 @@
   var ASYNC_BADGE_TEXT = 'Sent — will arrive when ready';
   var SYNC_SPINNER_TEXT = 'Working…';
 
+  // User-authored content fields that capability handlers send to a model or
+  // provider. Text controls such as adapter `name` and fixed `system_prompt`
+  // configuration are deliberately outside the dialogue privacy boundary.
+  var PRIVACY_TEXT_INPUTS = {
+    prompt: true,
+    user_prompt: true,
+    rubric: true,
+    genre: true,
+    style: true,
+  };
+
   // ── DOM helpers ──────────────────────────────────────────────────────
 
   function _el(tag, cls, text) {
@@ -713,7 +724,73 @@
 
     // ── Submit / dispatch ─────────────────────────────────────────────
 
-    function submit() {
+    function _privacyPrompt(inputs, approvedText) {
+      var contract = _getContract();
+      var specs = (contract.required_inputs || []).concat(contract.optional_inputs || []);
+      var values = [];
+      for (var i = 0; i < specs.length; i++) {
+        var spec = specs[i];
+        if (spec.type !== 'text' || !PRIVACY_TEXT_INPUTS[spec.name]) continue;
+        var value = inputs && inputs[spec.name];
+        if (typeof value !== 'string' || !value.trim()) continue;
+        value = value.trim();
+        if (typeof approvedText === 'string' && value === approvedText.trim()) continue;
+        values.push(value);
+      }
+      return values.join('\n\n');
+    }
+
+    function _emitDispatch(detail) {
+      var conversation = root && root.OraConversation;
+      if (conversation && typeof conversation.getActiveConversationId === 'function') {
+        detail.conversation_id = conversation.getActiveConversationId();
+      }
+      if (conversation && typeof conversation.getActiveTag === 'function') {
+        detail.tag = conversation.getActiveTag();
+      }
+      _emit(state.hostEl, 'capability-dispatch', detail);
+      if (typeof state.onDispatch === 'function') {
+        try { state.onDispatch(detail); } catch (_e) { /* swallow */ }
+      }
+      return detail;
+    }
+
+    function _dispatchAfterPrivacy(detail, options) {
+      var privacyText = _privacyPrompt(
+        detail.inputs, options && options.privacyApprovedText
+      );
+      if (!privacyText) {
+        return _emitDispatch(detail);
+      }
+      var conversation = root && root.OraConversation;
+      if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+        renderError({
+          code: 'privacy_unavailable',
+          message: 'Dialogue privacy controls are unavailable; prompt was not sent.',
+        });
+        return null;
+      }
+      return Promise.resolve(conversation.submitAfterPrivacy(
+        privacyText,
+        function () { return _emitDispatch(detail); },
+        { draftText: privacyText }
+      )).then(function (submitted) {
+        if (submitted) return detail;
+        state.inFlight = false;
+        _clearStatus();
+        _refreshEnabled();
+        return null;
+      }, function (error) {
+        renderError({
+          code: 'privacy_unavailable',
+          message: 'Privacy check failed; prompt was not sent: '
+            + ((error && error.message) || String(error)),
+        });
+        return null;
+      });
+    }
+
+    function submit(options) {
       if (state.inFlight) return null;
       var missing = _missingRequireds();
       if (missing.length) return null; // disabled-button safety
@@ -740,11 +817,7 @@
         provider_override: inputs.provider_override || null,
       };
 
-      _emit(state.hostEl, 'capability-dispatch', detail);
-      if (typeof state.onDispatch === 'function') {
-        try { state.onDispatch(detail); } catch (_e) { /* swallow */ }
-      }
-      return detail;
+      return _dispatchAfterPrivacy(detail, options || {});
     }
 
     function _collectInputs() {
@@ -889,10 +962,7 @@
               provider_override: state.lastDispatch.inputs.provider_override || null,
               retry: true,
             };
-            _emit(state.hostEl, 'capability-dispatch', detail);
-            if (typeof state.onDispatch === 'function') {
-              try { state.onDispatch(detail); } catch (_e) {}
-            }
+            _dispatchAfterPrivacy(detail, {});
           }
         };
       } else {

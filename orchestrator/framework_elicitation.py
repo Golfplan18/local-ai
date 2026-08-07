@@ -139,6 +139,7 @@ def start_elicitation(
     initial_user_message: str = "",
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    style_context: dict | None = None,
 ) -> str:
     """Begin a fresh interactive framework execution.
 
@@ -175,6 +176,7 @@ def start_elicitation(
         latest_user_text=initial_user_message,
         project_nexus=project_nexus,
         one_run_profile=one_run_profile,
+        style_context=style_context,
     )
 
 
@@ -185,6 +187,7 @@ def continue_elicitation(
     latest_user_text: str = "",
     conversation_id: str | None = None,
     current_project_nexus: str | None = None,
+    style_context: dict | None = None,
 ) -> str:
     """Advance an in-progress framework execution by one turn.
 
@@ -226,6 +229,7 @@ def continue_elicitation(
         conversation_id=conversation_id,
         project_nexus=ctx.project_nexus,
         one_run_profile=ctx.one_run_profile,
+        style_context=style_context,
     )
 
 
@@ -241,6 +245,7 @@ def _run_elicitation_turn(
     conversation_id: str | None = None,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    style_context: dict | None = None,
 ) -> str:
     """One elicitation turn: summarize state, decide next step, emit response."""
     summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
@@ -263,7 +268,8 @@ def _run_elicitation_turn(
                                     latest_user_text, config,
                                     conversation_id=conversation_id,
                                     project_nexus=project_nexus,
-                                    one_run_profile=one_run_profile)
+                                    one_run_profile=one_run_profile,
+                                    style_context=style_context)
 
     # ASK_NEXT path
     question = summary.next_question or (
@@ -293,6 +299,7 @@ def _produce_deliverable(
     conversation_id: str | None = None,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    style_context: dict | None = None,
 ) -> str:
     """Hand control to the existing milestone executor with the elicited facts
     as the user input. The result is rendered with format_execution_result.
@@ -387,6 +394,7 @@ def _produce_deliverable(
         result = execute_framework(
             fw_filename, deliverable_input, config=config,
             project_nexus=project_nexus, config_name=one_run_profile,
+            style_context=style_context,
         )
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"

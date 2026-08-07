@@ -340,7 +340,8 @@
       convId = created.conversation_id;
     }
     if (action === 'deny' && opts.reason) {
-      await sendChatTurn(convId, opts.reason);
+      convId = await sendChatTurn(convId, opts.reason, null, opts.reason);
+      if (!convId) return;
     }
     await sendChatTurn(convId, action === 'approve' ? '1' : '2');
     await refresh();
@@ -379,22 +380,16 @@
     }));
   }
 
-  async function sendChatTurn(conversationId, text, traceDebug) {
+  async function sendChatTurn(conversationId, text, traceDebug, privacyText) {
     const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
     if (traceDebug) body.trace_debug = traceDebug;
-    const response = await fetch('/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      let msg = `Chat request failed (${response.status})`;
-      try {
-        const payload = await response.json();
-        msg = payload.error || payload.message || msg;
-      } catch (_) {}
-      throw new Error(msg);
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.submitChatTurn !== 'function') {
+      throw new Error('Dialogue privacy boundary is unavailable');
     }
+    return conversation.submitChatTurn(
+      body, privacyText ? { privacyText: privacyText } : {}
+    );
   }
 
   function ageOf(isoTimestamp) {

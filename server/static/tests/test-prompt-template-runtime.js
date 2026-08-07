@@ -53,7 +53,14 @@ function eq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 function section(name) { console.log('\n[' + name + ']'); }
 
 // Reset runtime state between sections.
-function freshRuntime(initOpts) {
+function freshRuntime(initOpts, conversation) {
+  global.OraConversation = conversation || {
+    getActiveConversationId: function () { return 'template-dialogue'; },
+    getActiveTag: function () { return ''; },
+    submitAfterPrivacy: function (_text, submit) {
+      return Promise.resolve(submit()).then(function () { return true; });
+    }
+  };
   OraPromptTemplateRuntime.clear();
   OraPromptTemplateRuntime.init(initOpts || {});
 }
@@ -236,6 +243,52 @@ async function runAll() {
       captured && captured.body.gear_preference === 1);
   }
 
+  {
+    var posted = 0;
+    var privacyText = null;
+    var release = null;
+    var activeId = 'template-parent';
+    var fakeFetch = function (_url, opts) {
+      posted += 1;
+      return Promise.resolve({
+        ok: true,
+        body: JSON.parse(opts.body)
+      });
+    };
+    var conversation = {
+      getActiveConversationId: function () { return activeId; },
+      getActiveTag: function () { return activeId === 'template-parent' ? '' : 'private'; },
+      submitAfterPrivacy: function (text, submit) {
+        privacyText = text;
+        return new Promise(function (resolve) {
+          release = function () {
+            activeId = 'template-private-child';
+            Promise.resolve(submit()).then(function () { resolve(true); });
+          };
+        });
+      }
+    };
+    freshRuntime({ fetchFn: fakeFetch }, conversation);
+    OraPromptTemplateRuntime.register({
+      id: 'private-text-template',
+      template: '{{message}}',
+      variables: [{ name: 'message', type: 'text' }],
+      gear_preference: 1
+    });
+    var pending = OraPromptTemplateRuntime.invoke(
+      'private-text-template', { message: 'My medical diagnosis is private.' }
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    ok('text template waits at the conversation privacy boundary before POST',
+      posted === 0 && privacyText === 'My medical diagnosis is private.');
+    release();
+    var routed = await pending;
+    ok('text template posts exactly once after approval to the selected child',
+      routed.success && posted === 1
+        && routed.conversation_id === 'template-private-child');
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   section('text route — multi-positional folds into trailing var');
   // ─────────────────────────────────────────────────────────────────────────
@@ -319,6 +372,48 @@ async function runAll() {
       JSON.stringify(dispatched && dispatched.inputs));
     ok('dispatch carries variable side-channel',
       dispatched && dispatched.inputs.subject === 'a fox in a forest');
+  }
+
+  {
+    var dispatchCount = 0;
+    var dispatchContext = null;
+    var release = null;
+    var activeId = 'capability-parent';
+    var conversation = {
+      getActiveConversationId: function () { return activeId; },
+      submitAfterPrivacy: function (_text, submit) {
+        return new Promise(function (resolve) {
+          release = function () {
+            activeId = 'capability-private-child';
+            Promise.resolve(submit()).then(function () { resolve(true); });
+          };
+        });
+      }
+    };
+    freshRuntime({
+      capabilityDispatch: function (_slot, _inputs, ctx) {
+        dispatchCount += 1;
+        dispatchContext = ctx;
+      }
+    }, conversation);
+    OraPromptTemplateRuntime.register({
+      id: 'private-capability-template',
+      template: '{{message}}',
+      variables: [{ name: 'message', type: 'text' }],
+      capability_route: 'image_generates'
+    });
+    var pending = OraPromptTemplateRuntime.invoke(
+      'private-capability-template', { message: 'My medical image is private.' }
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    ok('capability template waits at the privacy boundary before dispatch',
+      dispatchCount === 0);
+    release();
+    var routed = await pending;
+    ok('capability template dispatches once and binds the selected child',
+      routed.success && dispatchCount === 1
+        && dispatchContext.conversation_id === 'capability-private-child');
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -56,6 +56,16 @@ global.Element = w.Element;
 global.Event = w.Event;
 global.CustomEvent = w.CustomEvent;
 global.requestAnimationFrame = w.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+var activeConversationId = 'capability-dialogue';
+var privacyCalls = [];
+w.OraConversation = {
+  getActiveConversationId: function () { return activeConversationId; },
+  getActiveTag: function () { return ''; },
+  submitAfterPrivacy: function (text, submit) {
+    privacyCalls.push(text);
+    return Promise.resolve(submit()).then(function () { return true; });
+  },
+};
 // jsdom doesn't ship FileReader by default. We don't exercise file
 // inputs in this test, so we leave it undefined.
 
@@ -100,6 +110,17 @@ capabilities.slots._stub_test = {
       fix_path: 'Retry',
     },
   ],
+};
+capabilities.slots._control_test = {
+  name: '_control_test',
+  summary: 'Non-conversation text control fixture.',
+  required_inputs: [
+    { name: 'name', type: 'text', description: 'Configuration display name.' },
+  ],
+  optional_inputs: [],
+  output: { type: 'text', description: 'Stubbed control output.' },
+  execution_pattern: 'sync',
+  common_errors: [],
 };
 
 // ── Test harness ─────────────────────────────────────────────────────────────
@@ -223,6 +244,127 @@ async function testSubmitFiresDispatchEventAndShowsSpinner() {
   var btn = host.querySelector('.ora-cap-runbtn');
   record('button locked while in-flight',
     btn && btn.disabled === true);
+}
+
+async function testPromptDispatchWaitsForPrivacyAndBindsChild() {
+  var host = _resetHost();
+  var dispatched = null;
+  var initialDispatchCount = 0;
+  var release = null;
+  var gateCount = 0;
+  host.addEventListener('capability-dispatch', function (e) {
+    initialDispatchCount += 1;
+    dispatched = e.detail;
+  });
+  w.OraConversation.submitAfterPrivacy = function (text, submit) {
+    gateCount += 1;
+    return new Promise(function (resolve) {
+      release = function () {
+        activeConversationId = 'capability-private-child';
+        Promise.resolve(submit()).then(function () { resolve(true); });
+      };
+    });
+  };
+  var ctl = UI.init({
+    hostEl: host,
+    capabilities: capabilities,
+    slotName: '_stub_test',
+  });
+  var input = host.querySelector('textarea[name="prompt"], input[name="prompt"]');
+  input.value = 'My medical diagnosis is private.';
+  input.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+
+  var pending = ctl.submit();
+  record('capability prompt dispatch waits before provider event',
+    gateCount === 1 && dispatched === null);
+  release();
+  await pending;
+  record('capability prompt dispatches once and binds the selected child',
+    initialDispatchCount === 1
+      && dispatched && dispatched.conversation_id === 'capability-private-child'
+      && dispatched.inputs.prompt === 'My medical diagnosis is private.');
+
+  var dispatchCount = 0;
+  host.addEventListener('capability-dispatch', function () { dispatchCount += 1; });
+  ctl.renderResult({ output: 'done' });
+  w.OraConversation.submitAfterPrivacy = function () { return Promise.resolve(false); };
+  await ctl.submit();
+  await _flushFrames();
+  record('cancelled capability privacy emits no provider event and unlocks form',
+    dispatchCount === 0 && host.querySelector('.ora-cap-runbtn').disabled === false);
+
+  w.OraConversation = null;
+  await ctl.submit();
+  record('missing capability privacy boundary fails closed', dispatchCount === 0);
+
+  var controlHost = _resetHost();
+  var controlDispatch = 0;
+  controlHost.addEventListener('capability-dispatch', function () { controlDispatch += 1; });
+  var control = UI.init({
+    hostEl: controlHost,
+    capabilities: capabilities,
+    slotName: '_control_test',
+  });
+  var nameInput = controlHost.querySelector('input[name="name"], textarea[name="name"]');
+  nameInput.value = 'Local configuration name';
+  nameInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  control.submit();
+  record('non-conversation text control is not privacy-gated', controlDispatch === 1);
+
+  activeConversationId = 'capability-dialogue';
+  privacyCalls = [];
+  w.OraConversation = {
+    getActiveConversationId: function () { return activeConversationId; },
+    getActiveTag: function () { return ''; },
+    submitAfterPrivacy: function (text, submit) {
+      privacyCalls.push(text);
+      return Promise.resolve(submit()).then(function () { return true; });
+    },
+  };
+}
+
+async function testAllProviderTextFieldsWaitForPrivacy() {
+  var host = _resetHost();
+  var dispatched = null;
+  privacyCalls = [];
+  var critique = UI.init({
+    hostEl: host,
+    capabilities: capabilities,
+    slotName: 'image_critique',
+    contextProvider: function () {
+      return { canvasSelection: { id: 'critique-image', kind: 'image' } };
+    },
+  });
+  host.querySelector('[name="rubric"]').value = 'Assess my private family portrait.';
+  host.querySelector('[name="genre"]').value = 'Personal grief memorial.';
+  host.querySelector('[name="rubric"]').dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  host.addEventListener('capability-dispatch', function (event) { dispatched = event.detail; });
+  await critique.submit();
+  record('rubric and genre pass through the capability privacy boundary',
+    privacyCalls[0] === 'Assess my private family portrait.\n\nPersonal grief memorial.'
+      && dispatched
+      && dispatched.inputs.rubric === 'Assess my private family portrait.'
+      && dispatched.inputs.genre === 'Personal grief memorial.');
+
+  host = _resetHost();
+  dispatched = null;
+  privacyCalls = [];
+  var image = UI.init({
+    hostEl: host,
+    capabilities: capabilities,
+    slotName: 'image_generates',
+  });
+  host.querySelector('[name="prompt"]').value = 'Already approved prompt.';
+  host.querySelector('[name="style"]').value = 'Use details from my private diagnosis.';
+  host.querySelector('[name="prompt"]').dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  host.addEventListener('capability-dispatch', function (event) { dispatched = event.detail; });
+  await image.submit({ privacyApprovedText: 'Already approved prompt.' });
+  record('pre-approved prompt does not let provider-bound style bypass privacy',
+    privacyCalls[0] === 'Use details from my private diagnosis.' && dispatched);
 }
 
 async function testErrorUxWithFixPath() {
@@ -566,6 +708,8 @@ async function testDestroyCleansUp() {
     await testButtonDisabledWhenPromptMissing();
     await testButtonEnablesWhenPromptTyped();
     await testSubmitFiresDispatchEventAndShowsSpinner();
+    await testPromptDispatchWaitsForPrivacyAndBindsChild();
+    await testAllProviderTextFieldsWaitForPrivacy();
     await testErrorUxWithFixPath();
     await testRetryFixPath();
     await testAsyncBadge();

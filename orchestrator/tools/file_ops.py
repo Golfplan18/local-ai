@@ -1,5 +1,6 @@
 """File read and write tools with safety validation."""
 
+import fnmatch
 import os
 
 # Roots come from the single cross-platform source (runtime_paths), so a Windows
@@ -18,6 +19,48 @@ DENY_LIST = [".ssh", ".gnupg", ".env", "id_rsa", "id_ed25519", ".netrc",
              "credentials", "secrets", "token", ".aws/credentials"]
 
 ALLOWED_BASES = [WORKSPACE, VAULT, CONVERSATIONS]
+
+
+def model_read_blocked(path: str, *, shell_scope: bool = False,
+                       recursive: bool = False) -> bool:
+    """Return whether a model read could expose the archived self-spec.
+
+    File tools block the exact archive. Shell reads are more conservative:
+    the shell expands globs after profiling, and recursive readers can walk
+    from an ancestor into the archive, so their declared scope is denied too.
+    """
+    resolved = os.path.realpath(os.path.expanduser(path))
+    self_spec = os.path.realpath(os.path.join(str(_rp.ORA_HOME),
+                                              "mindspec", "self-spec.md"))
+    normalized = os.path.normcase(resolved)
+    normalized_self_spec = os.path.normcase(self_spec)
+    if normalized == normalized_self_spec:
+        return True
+    if not shell_scope:
+        return False
+
+    candidates = [normalized_self_spec]
+    if recursive:
+        parent = os.path.dirname(normalized_self_spec)
+        while parent and parent != os.path.dirname(parent):
+            candidates.append(parent)
+            parent = os.path.dirname(parent)
+        if parent:
+            candidates.append(parent)
+    try:
+        try:
+            import system_protection
+        except ImportError:  # pragma: no cover
+            from orchestrator import system_protection
+        patterns = system_protection._brace_expansions(normalized)
+    except Exception:
+        return True
+    if not patterns:
+        return True
+    return any(
+        fnmatch.fnmatchcase(candidate, pattern)
+        for pattern in patterns for candidate in candidates
+    )
 
 
 def _validate_path(path: str) -> tuple[bool, str]:
@@ -58,7 +101,9 @@ def file_read(path: str) -> str:
     allowed, reason = _validate_path(path)
     if not allowed:
         return f"BLOCKED: {reason}"
-    path = os.path.expanduser(path)
+    path = os.path.realpath(os.path.expanduser(path))
+    if model_read_blocked(path):
+        return "BLOCKED: archived MindSpec self-spec is not model-readable"
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()

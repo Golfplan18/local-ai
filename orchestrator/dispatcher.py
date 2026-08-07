@@ -58,7 +58,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "too
 try:
     from web_search import web_search
     from web_fetch import web_fetch
-    from file_ops import file_read, file_write, _validate_path
+    from file_ops import file_read, file_write, _validate_path, model_read_blocked
     from knowledge_search import knowledge_search
     from credential_store import credential_store
     from bash_execute import (execute_command, classify_command,
@@ -628,6 +628,22 @@ def _resolve_call_axes(tool_name: str, entry: dict | None,
             axes["sensitivity"] = tool_events.max_sensitivity(
                 axes.get("sensitivity", "private"),
                 tool_events.resolve_path_sensitivity(_abs_target(_p)))
+        read_scopes = shell_profile.get("authority_scopes", [])
+        if any(
+            model_read_blocked(
+                _abs_target(_read_path),
+                shell_scope=True,
+                recursive=any(
+                    scope.get("path") == _read_path and scope.get("recursive")
+                    for scope in read_scopes
+                ),
+            )
+            for _read_path in shell_profile.get("read_paths", [])
+        ):
+            classification = {
+                "level": "blocked",
+                "reason": "archived MindSpec self-spec is not model-readable",
+            }
         for _wp in shell_profile.get("write_paths", []):
             if tool_events.is_protected_config_path(_abs_target(_wp)):
                 axes["mutability"] = "irreversible"

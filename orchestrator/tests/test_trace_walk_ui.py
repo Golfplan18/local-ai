@@ -73,7 +73,23 @@ class TraceWalkUiTests(unittest.TestCase):
             window.URL.revokeObjectURL = () => {};
             window.HTMLAnchorElement.prototype.click = function () { window.__downloaded = this.download; };
             window.prompt = () => 'looked wrong';
-            window.OraConversation = { getActiveConversationId: () => 'conv-d' };
+            const privacyCalls = [];
+            window.OraConversation = {
+              getActiveConversationId: () => 'conv-d',
+              submitChatTurn: async (body, options) => {
+                privacyCalls.push({ stage: 'privacy', body, options });
+                const response = await window.fetch('/chat', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body),
+                });
+                if (!response.ok) {
+                  const error = await response.json();
+                  throw new Error(error.error || error.message || 'Chat failed');
+                }
+                return body.conversation_id;
+              },
+            };
 
             const pending = [];
             const deferred = () => {
@@ -188,6 +204,8 @@ class TraceWalkUiTests(unittest.TestCase):
               investigate.click();
               const invReq = pending.pop();
               const invBody = JSON.parse(invReq.opts.body);
+              assert.strictEqual(privacyCalls.length, 1);
+              assert.strictEqual(privacyCalls[0].options.privacyText, 'looked wrong');
               assert.strictEqual(invReq.url, '/chat');
               assert.strictEqual(invBody.panel_id, 'conv-d');
               assert.strictEqual(invBody.trace_debug.trace_ref, 'conv-d/turn-d');
@@ -229,9 +247,14 @@ class TraceWalkUiTests(unittest.TestCase):
             window.Response = Response;
             let opened = null;
             let currentTurn = null;
+            const chatSubmissions = [];
             window.OraConversation = {
               getCurrentTurn: () => currentTurn,
               getActiveConversationId: () => 'conv-live',
+              submitChatTurn: (body, options) => {
+                chatSubmissions.push({ body, options });
+                return Promise.resolve(body.conversation_id);
+              },
             };
             window.OraTraceWalk = { open: (opts) => { opened = opts; } };
             window.fetch = (input) => {
@@ -247,6 +270,7 @@ class TraceWalkUiTests(unittest.TestCase):
                   trace_ref: 'conv-paused/turn-paused',
                   trace_step: 'step4-tools',
                   engagement: 'unseen',
+                  discussion_conversation_id: 'conv-paused',
                 }] }), { status: 200 }));
               }
               if (url === '/api/oversight/operating') {
@@ -295,6 +319,18 @@ class TraceWalkUiTests(unittest.TestCase):
               assert(investigate, 'paused entry renders Investigate trace');
               investigate.click();
               await flush();
+              assert.strictEqual(chatSubmissions[0].body.message, 'Investigate this trace.');
+              assert.strictEqual(chatSubmissions[0].options.privacyText, undefined);
+
+              window.prompt = () => 'My bank account details were exposed.';
+              const deny = buttons.find((btn) => btn.textContent === 'Deny');
+              deny.click();
+              await flush();
+              await flush();
+              assert.strictEqual(chatSubmissions[1].body.message, 'My bank account details were exposed.');
+              assert.strictEqual(chatSubmissions[1].options.privacyText, 'My bank account details were exposed.');
+              assert.strictEqual(chatSubmissions[2].body.message, '2');
+              assert.strictEqual(chatSubmissions[2].options.privacyText, undefined);
               process.exit(0);
             })().catch((err) => {
               console.error(err && err.stack || err);

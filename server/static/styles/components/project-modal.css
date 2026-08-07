@@ -3,7 +3,7 @@
    Full-cover modal (same shell shape as the bootstrap "new
    conversation" popup): a dimmed backdrop + a centered card with
    a left tab rail. Edits a project's Overview (name/status/private
-   + inert model/style/persona defaults) and Mission/Objectives/
+   + active model/style/Persona defaults) and Mission/Objectives/
    Milestones (canonical in the vault Operation-Matrix). Theme
    tokens only — light + dark both work.
    ============================================================ */

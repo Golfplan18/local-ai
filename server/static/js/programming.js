@@ -47,12 +47,30 @@
     return result;
   };
 
-  const requestPlan = async () => {
+  const checkPrivacy = async (text, draftText = '', accepted = () => {}) => {
+    const privacyText = String(text || '').trim();
+    if (!privacyText) {
+      accepted();
+      return true;
+    }
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+      status('Privacy check unavailable', 'Programming text was not sent.');
+      return false;
+    }
+    return conversation.submitAfterPrivacy(
+      privacyText, accepted, { draftText: String(draftText || '') }
+    );
+  };
+
+  const requestPlan = async (privacyText = '', draftText = '', pendingAnswers = [], accepted = () => {}) => {
     const repositoryPath = (repositoryInput && repositoryInput.value || '').trim();
     if (!repositoryPath) {
       status('Repository required', 'Choose the Git worktree root before planning.');
-      return;
+      return false;
     }
+    if (!(await checkPrivacy(privacyText, draftText, accepted))) return false;
+    if (pendingAnswers.length) planningAnswers = planningAnswers.concat(pendingAnswers);
     status('Inspecting repository', 'Reading instructions, implementation, tests, Git state, and live automation.');
     try {
       const result = await post('/api/programming/plan', {
@@ -71,6 +89,7 @@
     } catch (error) {
       status('Planning stopped', error.message || error);
     }
+    return true;
   };
 
   const renderQuestions = questions => {
@@ -84,12 +103,13 @@
           </label>`).join('')}
       </div>
       <button type="button" class="programming-primary" data-programming-continue>Continue planning</button>`;
-    body.querySelector('[data-programming-continue]').onclick = () => {
-      planningAnswers = planningAnswers.concat(questions.map((question, index) => ({
+    body.querySelector('[data-programming-continue]').onclick = async () => {
+      const newAnswers = questions.map((question, index) => ({
         question,
         answer: (body.querySelector(`[data-programming-answer="${index}"]`).value || '').trim(),
-      })));
-      requestPlan();
+      }));
+      const privacyText = newAnswers.map((item) => item.answer).filter(Boolean).join('\n');
+      await requestPlan(privacyText, '', newAnswers);
     };
   };
 
@@ -176,6 +196,7 @@
 
   const runApprovedPlan = async (resumeBranch = '', continuation = '') => {
     const repositoryPath = (repositoryInput.value || '').trim();
+    if (!(await checkPrivacy(continuation))) return false;
     body.innerHTML = `
       <div class="programming-heading">Programming in progress</div>
       <div class="programming-progress" data-programming-progress aria-live="polite"></div>`;
@@ -224,17 +245,19 @@
     } catch (error) {
       appendProgress({ type: 'error', error: error.message || String(error) });
     }
+    return true;
   };
 
   const submit = async (text, submissionHooks = {}) => {
     if (!active) return false;
-    objective = String(text || '').trim();
-    hooks = submissionHooks;
-    proposal = null;
-    questionRound = 0;
-    planningAnswers = [];
-    await requestPlan();
-    return true;
+    const candidateObjective = String(text || '').trim();
+    return requestPlan(candidateObjective, candidateObjective, [], () => {
+      objective = candidateObjective;
+      hooks = submissionHooks;
+      proposal = null;
+      questionRound = 0;
+      planningAnswers = [];
+    });
   };
 
   const init = () => {

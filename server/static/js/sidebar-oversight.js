@@ -373,7 +373,8 @@
     // For "deny with a reason," we send the reason as a normal turn first
     // (so it lands in the conversation), then "2".
     if (action === 'deny' && opts.reason) {
-      await sendChatTurn(convId, opts.reason);
+      convId = await sendChatTurn(convId, opts.reason, null, opts.reason);
+      if (!convId) return;
     }
     await sendChatTurn(convId, numericInput);
     await fetchPaused();
@@ -412,26 +413,16 @@
     }));
   };
 
-  const sendChatTurn = async (conversationId, text, traceDebug) => {
-    try {
-      const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
-      if (traceDebug) body.trace_debug = traceDebug;
-      const response = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) {
-        let msg = `Chat request failed (${response.status})`;
-        try {
-          const payload = await response.json();
-          msg = payload.error || payload.message || msg;
-        } catch (_) {}
-        throw new Error(msg);
-      }
-    } catch (e) {
-      throw e;
+  const sendChatTurn = async (conversationId, text, traceDebug, privacyText) => {
+    const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
+    if (traceDebug) body.trace_debug = traceDebug;
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.submitChatTurn !== 'function') {
+      throw new Error('Dialogue privacy boundary is unavailable');
     }
+    return conversation.submitChatTurn(
+      body, privacyText ? { privacyText: privacyText } : {}
+    );
   };
 
   // ── Render: Operating ─────────────────────────────────────────────────

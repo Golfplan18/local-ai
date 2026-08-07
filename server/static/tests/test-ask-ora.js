@@ -86,6 +86,15 @@ function freshHarness(opts) {
   var win = dom.window;
   var doc = win.document;
 
+  // The active V3 surface always provides OraConversation. Most legacy
+  // binding cases auto-approve synchronously; privacy-specific cases below
+  // replace this stub to hold, cancel, or fork before invoking the callback.
+  win.OraConversation = opts.conversation || {
+    submitAfterPrivacy: function (_text, submit) { return submit(); },
+    getActiveConversationId: function () { return 'active-dialogue'; },
+    getActiveTag: function () { return ''; }
+  };
+
   global.window = win;
   global.document = doc;
   global.HTMLElement = win.HTMLElement;
@@ -457,8 +466,143 @@ process.stdout.write('\n--- ask-ora toolbar bindings ---\n');
       var body = JSON.parse(fetchCalls[0].init.body);
       assertEqual('bindings: prose body.message matches user text',
                   body.message, 'tell me a joke about turtles');
+      assertEqual('bindings: prose request is bound to active Dialogue',
+                  body.conversation_id, 'active-dialogue');
     }
     assertNull('bindings: prose path did NOT fire a slot dispatch', dispatchedDetail);
+  } finally { teardown(h); }
+})();
+
+(function caseBindingsClassifiedPromptWaitsForPrivacyApproval() {
+  var h = freshHarness();
+  try {
+    var capabilities = JSON.parse(fs.readFileSync(CAPABILITIES_PATH, 'utf8'));
+    var hostBtn = h.doc.createElement('button');
+    h.doc.body.appendChild(hostBtn);
+    var pendingSubmit = null;
+    var privacyText = null;
+    var draftText = null;
+    var activeId = 'standard-parent';
+    var activeTag = '';
+    var classificationCalls = 0;
+    var dispatched = null;
+    var dispatchConversation = null;
+    var fetchCalls = [];
+    var originalClassify = h.Router.classify;
+    h.Router.classify = function (text) {
+      classificationCalls += 1;
+      return originalClassify(text);
+    };
+    h.win.OraConversation = {
+      submitAfterPrivacy: function (text, submit, options) {
+        privacyText = text;
+        draftText = options && options.draftText;
+        pendingSubmit = submit;
+        return null;
+      },
+      getActiveConversationId: function () { return activeId; },
+      getActiveTag: function () { return activeTag; }
+    };
+    h.win.OraCanvasSerializer = {
+      captureFromPanel: function () {
+        return { _activeSelection: 'canvas-bg-1' };
+      }
+    };
+
+    var registry = {};
+    h.Bindings.attach(registry, {
+      getHostElement: function () { return hostBtn; },
+      getCanvasPanel: function () { return { userInputLayer: {} }; },
+      getCapabilities: function () { return capabilities; },
+      fetchFn: function (url, init) {
+        fetchCalls.push({ url: url, init: init });
+        return Promise.resolve({ ok: true });
+      },
+      onCapabilityDispatch: function (detail) {
+        dispatched = detail;
+        dispatchConversation = activeId;
+      }
+    });
+
+    registry['tool:ask_ora']({}, {}, { currentTarget: hostBtn });
+    h.Prompt._getActive().input.value = 'describe my private medical image';
+    h.Prompt._getActive().submit();
+
+    assertEqual('privacy: Ask Ora passes original text to boundary',
+                privacyText, 'describe my private medical image');
+    assertEqual('privacy: Ask Ora gives fork the complete draft',
+                draftText, privacyText);
+    assertEqual('privacy: no classification derivative before approval',
+                classificationCalls, 0);
+    assertNull('privacy: no capability egress before approval', dispatched);
+    assertEqual('privacy: no prose egress before approval', fetchCalls.length, 0);
+
+    activeId = 'private-child';
+    activeTag = 'private';
+    pendingSubmit();
+    assertEqual('privacy: classification runs once after approval',
+                classificationCalls, 1);
+    assertNotNull('privacy: approved capability dispatch occurs', dispatched);
+    assertEqual('privacy: capability dispatch observes forked child',
+                dispatchConversation, 'private-child');
+    assertEqual('privacy: classified route still emits no prose POST',
+                fetchCalls.length, 0);
+  } finally { teardown(h); }
+})();
+
+(function caseBindingsProseCancelAndFork() {
+  var h = freshHarness();
+  try {
+    var hostBtn = h.doc.createElement('button');
+    h.doc.body.appendChild(hostBtn);
+    var fetchCalls = [];
+    var cancelNext = true;
+    var activeId = 'standard-parent';
+    var activeTag = '';
+    var privacyTexts = [];
+    h.win.OraConversation = {
+      submitAfterPrivacy: function (text, submit) {
+        privacyTexts.push(text);
+        if (cancelNext) {
+          cancelNext = false;
+          return false;
+        }
+        activeId = 'private-child';
+        activeTag = 'private';
+        return submit();
+      },
+      getActiveConversationId: function () { return activeId; },
+      getActiveTag: function () { return activeTag; }
+    };
+    var registry = {};
+    h.Bindings.attach(registry, {
+      getHostElement: function () { return hostBtn; },
+      getCapabilities: function () { return { slots: {} }; },
+      fetchFn: function (url, init) {
+        fetchCalls.push({ url: url, init: init });
+        return Promise.resolve({ ok: true });
+      }
+    });
+
+    registry['tool:ask_ora']({}, {}, { currentTarget: hostBtn });
+    h.Prompt._getActive().input.value = 'my private health question';
+    h.Prompt._getActive().submit();
+    assertEqual('privacy: cancel sends no Ask Ora POST', fetchCalls.length, 0);
+
+    registry['tool:ask_ora']({}, {}, { currentTarget: hostBtn });
+    h.Prompt._getActive().input.value = 'another private health question';
+    h.Prompt._getActive().submit();
+    assertEqual('privacy: forked prose sends exactly one POST', fetchCalls.length, 1);
+    if (fetchCalls.length === 1) {
+      var body = JSON.parse(fetchCalls[0].init.body);
+      assertEqual('privacy: forked prose is child-bound',
+                  body.conversation_id, 'private-child');
+      assertEqual('privacy: forked prose carries Private tag', body.tag, 'private');
+      assertEqual('privacy: approved prose preserves original text',
+                  body.message, 'another private health question');
+    }
+    assertEqual('privacy: each Ask Ora attempt is freshly gated',
+                privacyTexts.length, 2);
   } finally { teardown(h); }
 })();
 
@@ -528,6 +672,12 @@ process.stdout.write('\n--- ask-ora end-to-end via universal toolbar ---\n');
     assertTrue('e2e: OraVisualToolbar registered', !!Toolbar);
 
     var toolbarDef = JSON.parse(fs.readFileSync(UNIVERSAL_TOOLBAR_PATH, 'utf8'));
+    // Ask Ora now appears in pack toolbars rather than the current universal
+    // JSON. Add the same binding to this isolated registry integration fixture.
+    toolbarDef.items.push({
+      id: 'ask-ora', icon: 'message-circle-question', label: 'Ask Ora',
+      binding: 'tool:ask_ora'
+    });
     Toolbar.register(toolbarDef);
     assertTrue('e2e: universal toolbar registered', Toolbar.has('ora-universal'));
 

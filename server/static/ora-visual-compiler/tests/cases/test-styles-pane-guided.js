@@ -4,8 +4,8 @@
  * Exports { label, run(ctx, record) } per the run.js case-file convention.
  *
  * Covers the guided-setup flow added to server/static/styles-pane.js
- * (Settings → Output Styles → personal values):
- *   1. Flipping the personal-values toggle ON with no mind.md opens the
+ * (Settings → Output Styles → user context):
+ *   1. Flipping the user-context toggle ON with no mind.md opens the
  *      choice panel with Guided setup as the first (primary) action.
  *   2. guided-start fetches GET /api/mind/guided and renders step 1 with
  *      the recommended option preselected and a progress indicator.
@@ -101,16 +101,13 @@ module.exports = {
         }
         return jsonResponse(next.body, next.status);
       }
-      if (url === '/api/mind/project' && method === 'POST') {
+      if (url === '/api/personas') return jsonResponse({
+        personas: [{ id: 'ora', display_name: 'Ora' }],
+        selected: { id: 'ora', display_name: 'Ora', source: 'global', warnings: [] },
+      });
+      if (url === '/api/personas/compile' && method === 'POST') {
         projectPosts += 1;
-        mindState = {
-          exists: true, is_guided: true, is_projected: true,
-          is_default_template: false, self_spec_available: true,
-          sections: ['S1', 'S2', 'What to Challenge Me On'],
-          content: '<!-- ora-mind-guided: {} -->\n<!-- ora-mind-projected: {} -->',
-          template_available: true, mtime: '2026-07-01T00:00:00',
-        };
-        return jsonResponse(JSON.parse(JSON.stringify(mindState)));
+        return jsonResponse({ ok: true, id: 'ora-personalized', active: false });
       }
       if (url === '/api/settings' && method === 'POST') {
         settingsPosts.push(JSON.parse(opts.body));
@@ -247,9 +244,8 @@ module.exports = {
       record('409: wizard closes after confirmed write',
              !host2.querySelector('.ora-styles-guided'));
 
-      // 8. Assistant-directives projection: link appears when a self-spec
-      // archive exists; clicking POSTs /api/mind/project and the row
-      // re-renders in the projected state.
+      // 8. Persona compilation: link appears when a self-spec archive exists;
+      // clicking POSTs /api/personas/compile and leaves mind.md unchanged.
       mindState.self_spec_available = true;
       P.destroy();
       const host3 = win.document.createElement('div');
@@ -259,14 +255,14 @@ module.exports = {
       const projLink = host3.querySelector('[data-action="mind-project"]');
       record('project: link offered when self-spec archive exists',
              !!projLink
-             && projLink.textContent === 'derive assistant directives');
+             && projLink.textContent === 'create tailored Persona');
       projLink.click();
       await tick(); await tick(); await tick(); await tick();
-      record('project: click POSTs /api/mind/project once', projectPosts === 1);
+      record('project: click POSTs /api/personas/compile once', projectPosts === 1);
       const projLink2 = host3.querySelector('[data-action="mind-project"]');
-      record('project: row re-renders as re-derive after projection',
+      record('project: link remains available because compilation does not rewrite mind.md',
              !!projLink2
-             && projLink2.textContent === 're-derive assistant directives');
+             && projLink2.textContent === 'create tailored Persona');
 
       P.destroy();
       host.remove(); host2.remove(); host3.remove();

@@ -30,6 +30,7 @@
   var _fictionOpen = false;
   var _convFor = null;           // profile id whose conversational popout is open
   var _mind = null;              // GET /api/mind summary (null until loaded)
+  var _personas = null;          // GET /api/personas choices + resolution
   var _mindEditorOpen = false;   // mind.md view/edit expander state
   var _mindChoiceOpen = false;   // "no mind.md yet" create/interview panel
   var _guided = null;            // guided values wizard state, or null when closed:
@@ -105,19 +106,21 @@
     if (_host) { _host.classList.remove('ora-styles-host-mounted'); _host.innerHTML = ''; _host = null; }
     _data = null; _expanded = new Set(); _editingSlot = null; _openLib = new Set();
     _fictionOpen = false; _convFor = null;
-    _mind = null; _mindEditorOpen = false; _mindChoiceOpen = false; _guided = null;
+    _mind = null; _personas = null; _mindEditorOpen = false; _mindChoiceOpen = false; _guided = null;
   }
   function _reload() {
     var host = _host;
     return Promise.all([
       _get(),
-      // mind.md state drives the personal-values panel; absence of the
+      // mind.md state drives the user-context panel; absence of the
       // endpoint (older server) degrades to the pre-panel behavior.
       fetch('/api/mind').then(_json).catch(function () { return null; }),
+      fetch('/api/personas').then(_json).catch(function () { return null; }),
     ]).then(function (resp) {
       if (_host !== host) return;          // a later mount/destroy superseded us
       _data = resp[0] || { profiles: [], custom: [], library: {}, settings: {} };
       _mind = resp[1];
+      _personas = resp[2];
       _render();
     });
   }
@@ -149,25 +152,33 @@
     var s = (_data && _data.settings) || {};
     var active = _profileById(s.default_id);
     var activeName = active ? active.display_name : 'None';
-    // Switch copy states what the toggle DOES: it swaps the VALUES layer
-    // of the system prompt (mind.md vs the built-in Mind Seeds). It does
-    // not compose voice/style — presets do that (the old copy promised
-    // voice composition that never happened).
+    var selectedPersona = (_personas && _personas.selected) || {};
+    var personaOptions = ((_personas && _personas.personas) || []).map(function (p) {
+      return '<option value="' + _esc(p.id) + '"'
+        + (String(s.persona_id || 'ora') === String(p.id) ? ' selected' : '') + '>'
+        + _esc(p.display_name || p.id) + '</option>';
+    }).join('');
+    var personaWarnings = (selectedPersona.warnings || []).join(' ');
     return ''
       + '<section class="ora-styles-header">'
       +   '<div class="ora-styles-active">'
       +     '<span class="ora-styles-active-label">Active:</span> '
       +     '<strong class="ora-styles-active-name">' + _esc(activeName) + '</strong>'
       +   '</div>'
+      +   '<label class="ora-styles-active">Persona: '
+      +     '<select data-role="persona-select">' + personaOptions + '</select>'
+      +   '</label>'
+      +   '<div class="ora-styles-section-hint">Resolved: '
+      +     _esc((selectedPersona.display_name || 'Ora') + ' · ' + (selectedPersona.source || 'built-in'))
+      +     (personaWarnings ? ' — ' + _esc(personaWarnings) : '') + '</div>'
       +   _switchHTML('use_custom_values', !!s.use_custom_values,
-                      'personal values', '(mind.md)',
-                      'inject your mind.md as the authoritative values layer, '
-                      + 'replacing the built-in defaults')
+                      'user context', '(mind.md)',
+                      'inject mind.md as adaptation context subordinate to the constitution and Persona')
       + '</section>'
       + _mindHTML(!!s.use_custom_values);
   }
 
-  // The personal-values panel under the header. States:
+  // The user-context panel under the header. States:
   //   choice panel — toggle flipped ON with no (or stock) mind.md;
   //   summary card — toggle ON and mind.md exists;
   //   one-line off note — toggle OFF.
@@ -185,10 +196,10 @@
                      : 'No mind.md yet')
         +   '</div>'
         +   '<div class="ora-styles-mind-body">'
-        +     'mind.md is your personal values file — communication '
+        +     'mind.md is your user-context file — communication '
         +     'preferences, intellectual posture, ethical boundaries. '
-        +     'Turning on personal values injects it into every prompt '
-        +     'as the authoritative values layer. How do you want to '
+        +     'Turning on user context injects it into every prompt '
+        +     'for adaptation without overriding Ora’s constitution or Persona. How do you want to '
         +     (stock ? 'make it yours?' : 'create it?')
         +   '</div>'
         +   '<div class="ora-styles-mind-actions">'
@@ -210,8 +221,8 @@
     if (!on) {
       return ''
         + '<p class="ora-styles-mind-off">'
-        +   'Off — the engine’s built-in Mind Seeds apply. Turn on '
-        +   'personal values to inject your own mind.md instead.'
+        +   'Off — mind.md is not used for adaptation. Turn on user context '
+        +   'to include it beneath Ora’s constitution and Persona.'
         + '</p>';
     }
     if (!_mind) return '';  // endpoint unavailable — degrade silently
@@ -219,7 +230,7 @@
       return ''
         + '<section class="ora-styles-mind ora-styles-mind--warn">'
         +   '<div class="ora-styles-mind-body">'
-        +     '⚠ Personal values is ON but no mind.md exists — '
+        +     '⚠ User context is ON but no mind.md exists — '
         +     'the built-in defaults still apply. '
         +     '<button type="button" class="ora-styles-btn" data-action="guided-start">'
         +       'Guided setup (~2 min)</button> '
@@ -238,10 +249,8 @@
     var chips = secs.map(function (name) {
       return '<span class="ora-styles-mind-chip">' + _esc(name) + '</span>';
     }).join('');
-    var rowTip = 'Injected into every prompt as the authoritative values '
-      + 'layer. Style presets set tone and arrangement; mind.md sets '
-      + 'values and posture — precedence: values floor > completeness > '
-      + 'craft > substance > style.';
+    var rowTip = 'Injected as user context for adaptation. It cannot override '
+      + 'the Ora constitution, selected Persona, task, or framework.';
     return ''
       + '<section class="ora-styles-mind ora-styles-mind--compact">'
       +   '<div class="ora-styles-mind-row" title="' + _esc(rowTip) + '">'
@@ -263,17 +272,12 @@
             ? '<button type="button" class="ora-styles-link" '
               + 'data-action="guided-start">re-run guided setup</button>'
             : '')
-      // Assistant-directives projection: offered when a self-spec archive
-      // exists, or when mind.md itself is a raw interview output (neither
-      // guided nor projected nor the stock template).
       +     (_mind.self_spec_available
-             || (!_mind.is_default_template && !_mind.is_guided && !_mind.is_projected)
             ? '<button type="button" class="ora-styles-link" '
-              + 'data-action="mind-project" title="One model call: reads your '
-              + 'MindSpec self-specification and derives directives for the '
-              + 'assistant (what to challenge you on, how to deliver pushback, '
-              + 'your red lines). May take a minute.">'
-              + (_mind.is_projected ? 're-derive assistant directives' : 'derive assistant directives')
+              + 'data-action="mind-project" title="One model call tailors a new '
+              + 'inactive Persona from the archived MindSpec while preserving '
+              + 'the base Persona’s principles. May take a minute.">'
+              + 'create tailored Persona'
               + '</button>'
             : '')
       +     '<button type="button" class="ora-styles-btn ora-styles-btn--ghost" '
@@ -814,7 +818,7 @@
       _saveSettings({ use_custom_values: true })
         .then(function () { return _reload(); })
         .then(function () {
-          _status('Personal values ON — edit mind.md below to make it yours.');
+          _status('User context ON — edit mind.md below to make it yours.');
         })
         .catch(function () { _status('Could not save — try again.'); });
     }
@@ -892,14 +896,14 @@
       }
       if (resp.body && resp.body.error) throw new Error(resp.body.error);
       _guided = null;
-      // Completion flips personal values ON (merge endpoint — same idiom
+      // Completion flips user context ON (merge endpoint — same idiom
       // as create-from-template) and confirms in the summary card.
       return _saveSettings({ use_custom_values: true })
         .then(function () { return _reload(); })
         .then(function () {
           var n = (_mind && _mind.sections || []).length;
           _status('mind.md written (' + n + ' section' + (n === 1 ? '' : 's')
-            + ') and personal values turned ON.');
+            + ') and user context turned ON.');
         });
     }).catch(function (err) {
       _status('Could not write mind.md: '
@@ -910,18 +914,18 @@
   // ── mind.md actions ───────────────────────────────────────────────────────
 
   function _mindProject() {
-    _status('Deriving assistant directives from your self-specification — '
+    _status('Creating an inactive tailored Persona from your self-specification — '
       + 'one model call, this can take a minute…');
-    fetch('/api/mind/project', { method: 'POST' }).then(function (r) {
+    fetch('/api/personas/compile', { method: 'POST' }).then(function (r) {
       return r.json().then(function (body) { return { status: r.status, body: body }; });
     }).then(function (resp) {
       if (resp.body && resp.body.error) throw new Error(resp.body.error);
       return _reload().then(function () {
-        _status('Assistant directives derived and written into mind.md — '
-          + 'the guided-setup sections are preserved above them.');
+        _status('Inactive Persona ' + resp.body.id
+          + ' created. Review and select it when ready; mind.md was not changed.');
       });
     }).catch(function (err) {
-      _status('Projection failed: ' + ((err && err.message) || 'unknown error'));
+      _status('Persona compilation failed: ' + ((err && err.message) || 'unknown error'));
     });
   }
 
@@ -937,7 +941,7 @@
       return _saveSettings({ use_custom_values: true });
     }).then(function () { return _reload(); })
       .then(function () {
-        _status('mind.md created and personal values turned ON — '
+        _status('mind.md created and user context turned ON — '
           + 'edit it below to make it yours.');
       })
       .catch(function (err) {
@@ -950,7 +954,8 @@
     // Same idiom as External APIs' "+ Add new provider": drop the
     // framework command into the chat input for the user to review and
     // send. The MindSpec interview's MSI-Self mode persists its
-    // deliverable to ~/ora/mind.md on completion.
+    // deliverable to the private self-spec archive and compiles an inactive
+    // Persona on completion; it never replaces mind.md.
     var input = document.querySelector('.input-pane textarea');
     if (!input) {
       _status('Could not find the chat input — type '
@@ -964,7 +969,7 @@
     _mindChoiceOpen = false;
     _render();
     _status('Prompt dropped into the chat input — close Settings and press '
-      + 'Enter to start the interview. Turn personal values on afterwards.');
+      + 'Enter to start the interview. The tailored Persona will remain inactive until selected.');
     try { input.focus(); } catch (_) { /* ignore */ }
   }
 
@@ -988,7 +993,12 @@
 
   function _onChange(evt) {
     var el = evt.target;
-    if (el.dataset.toggle === 'use_custom_values') {
+    if (el.dataset.role === 'persona-select') {
+      _status('Saving Persona…');
+      _saveSettings({ persona_id: el.value }).then(function () { return _reload(); })
+        .then(function () { _status('Global Persona selected.'); })
+        .catch(function () { _status('Could not save Persona — try again.'); });
+    } else if (el.dataset.toggle === 'use_custom_values') {
       // State check before the silent save: flipping ON with no mind.md
       // (or one that's still the stock template) opens the create/
       // interview choice panel instead of committing a toggle that
@@ -1002,14 +1012,14 @@
       }
       var flag = { use_custom_values: el.checked };
       var onMsg = _mind && _mind.exists
-        ? 'Personal values ON — mind.md ('
+        ? 'User context ON — mind.md ('
           + ((_mind.sections || []).length) + ' section'
           + (((_mind.sections || []).length) === 1 ? '' : 's')
-          + ') is injected as your values layer.'
-        : 'Personal values ON.';
+          + ') is injected for adaptation.'
+        : 'User context ON.';
       var doneMsg = el.checked
         ? onMsg
-        : 'Personal values OFF — the built-in defaults apply.';
+        : 'User context OFF.';
       _status('Saving…');
       _saveSettings(flag).then(function () { return _reload(); })
         .then(function () { _status(doneMsg); })

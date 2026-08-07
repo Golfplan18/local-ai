@@ -238,15 +238,29 @@
       document.dispatchEvent(new CustomEvent('ora:input-toolbar:image-generate'));
       return true;
     }
-    document.body.dispatchEvent(new CustomEvent('capability-dispatch', {
-      detail: {
-        slot: 'image_generates',
-        inputs: { prompt },
-        execution_pattern: 'sync',
-        source: 'slash-command',
-      },
-      bubbles: true,
-    }));
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+      window.alert('Privacy check unavailable; image prompt was not sent.');
+      return true;
+    }
+    conversation.submitAfterPrivacy(prompt, () => {
+      document.body.dispatchEvent(new CustomEvent('capability-dispatch', {
+        detail: {
+          slot: 'image_generates',
+          inputs: { prompt },
+          execution_pattern: 'sync',
+          source: 'slash-command',
+          conversation_id: typeof conversation.getActiveConversationId === 'function'
+            ? conversation.getActiveConversationId() : null,
+          tag: typeof conversation.getActiveTag === 'function'
+            ? conversation.getActiveTag() : '',
+        },
+        bubbles: true,
+      }));
+    }, { draftText: prompt }).catch((error) => {
+      window.alert('Privacy check failed; image prompt was not sent: '
+        + ((error && error.message) || error));
+    });
     return true;
   };
 

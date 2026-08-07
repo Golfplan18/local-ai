@@ -1,9 +1,9 @@
-"""Slice E: custom-values onboarding — load_boot_md SELECT (gated on the toggle)
-and the MindSpec-interview SAVE gate. The SAVE test patches file_write so it
-never touches the real ~/ora/mind.md."""
+"""mind.md user-context gating and the MindSpec self-mode archive gate."""
 
 import os
 import sys
+import tempfile
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import user_settings              # noqa: E402  (before boot — WORKSPACE shadowing)
@@ -21,7 +21,7 @@ def _set_custom(val):
 def test_select_off_by_default():
     user_settings.get_setting = lambda *a, **k: False
     try:
-        assert "[YOUR VALUES" not in boot.load_boot_md()
+        assert "[USER CONTEXT" not in boot.load_boot_md()
     finally:
         user_settings.get_setting = _orig_get
 
@@ -32,27 +32,43 @@ def test_select_on_injects_mind_md():
         return
     _set_custom(True)
     try:
-        assert "[YOUR VALUES" in boot.load_boot_md()
+        assert "[USER CONTEXT" in boot.load_boot_md()
+        prompt = boot.load_boot_md()
+        assert "subordinate to the Ora constitution" in prompt
+        assert "supersedes the default Mind Seeds" not in prompt
     finally:
         user_settings.get_setting = _orig_get
 
 
 def test_save_gate_self_mode_only():
-    import file_ops as fo   # top-level via TOOLS_DIR (boot put it on sys.path)
-    captured = []
-    orig = fo.file_write
-    fo.file_write = lambda path, content: captured.append((path, content))
-    try:
-        me._maybe_persist_self_mindspec("mindspec-interview", "MSI-Self", "MY VALUES")
-        assert captured, "self interview should be saved"
-        assert captured[-1][0].endswith("mind.md") and captured[-1][1] == "MY VALUES"
-        captured.clear()
-        me._maybe_persist_self_mindspec("mindspec-interview", "MSI-Agent", "X")  # wrong mode
-        me._maybe_persist_self_mindspec("other-framework", "MSI-Self", "X")      # wrong fw
-        me._maybe_persist_self_mindspec("mindspec-interview", "MSI-Self", "")    # empty
-        assert not captured, "must not write for non-self / non-interview / empty output"
-    finally:
-        fo.file_write = orig
+    old_home = me._rp.ORA_HOME
+    with tempfile.TemporaryDirectory() as tmp:
+        me._rp.ORA_HOME = Path(tmp)
+        import persona
+        old_compile = persona.compile_self_spec
+        old_resolve = persona.resolve_persona
+        try:
+            persona.resolve_persona = lambda *a, **k: {"id": "ora"}
+            persona.compile_self_spec = lambda *a, **k: {
+                "ok": True, "id": "ora-personalized", "active": False,
+            }
+            me._maybe_persist_self_mindspec(
+                "mindspec-interview", "MSI-Self", "MY VALUES")
+            archive = Path(tmp) / "mindspec" / "self-spec.md"
+            assert archive.read_text() == "MY VALUES"
+            archive.unlink()
+            me._maybe_persist_self_mindspec(
+                "mindspec-interview", "MSI-Agent", "X")  # wrong mode
+            me._maybe_persist_self_mindspec(
+                "other-framework", "MSI-Self", "X")      # wrong fw
+            me._maybe_persist_self_mindspec(
+                "mindspec-interview", "MSI-Self", "")    # empty
+            assert not archive.exists(), (
+                "must not write for non-self / non-interview / empty output")
+        finally:
+            persona.compile_self_spec = old_compile
+            persona.resolve_persona = old_resolve
+            me._rp.ORA_HOME = old_home
 
 
 if __name__ == "__main__":

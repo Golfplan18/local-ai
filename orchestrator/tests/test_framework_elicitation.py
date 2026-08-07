@@ -315,6 +315,55 @@ class TestContinueElicitation(unittest.TestCase):
         # Final turn drops the marker — signals back to normal chat
         self.assertIsNone(MARKER_PATTERN.search(text))
 
+    def test_produce_deliverable_preserves_current_turn_style_context(self):
+        ctx = ContinuationContext(
+            framework_id="corpus-formalization",
+            mode="C-Design",
+            state="eliciting",
+        )
+        fake_summary = _SummaryState(
+            elicited_bullets=["Workflow: board memos"],
+            pending_bullets=[],
+            action="PRODUCE_DELIVERABLE",
+            next_question="",
+        )
+        from milestone_executor import FrameworkExecutionResult
+        fake_result = FrameworkExecutionResult(
+            framework_name="corpus-formalization",
+            execution_id="exec-style",
+            user_input="elicited",
+            milestones=[],
+            final_output="styled deliverable",
+            success=True,
+            mode="C-Design",
+            mode_reasoning="elicitation",
+        )
+        contexts = {
+            "slash style": {"style_id": "academic"},
+            "slash style off": {"style_id": ""},
+            "project interaction style": {"style_id": "conversational"},
+            "honne audience resolution": {
+                "style_id": "conversational",
+                "style_register": "written",
+                "style_deltas": {"elaboration": 2},
+            },
+        }
+        for label, style_context in contexts.items():
+            with self.subTest(label=label), mock.patch.object(
+                framework_elicitation, "_ask_summarizer",
+                return_value=fake_summary,
+            ), mock.patch(
+                "milestone_executor.execute_framework", return_value=fake_result,
+            ) as execute:
+                text = framework_elicitation.continue_elicitation(
+                    ctx, [], config={}, latest_user_text="finish",
+                    style_context=style_context,
+                )
+            self.assertIn("styled deliverable", text)
+            self.assertIs(
+                execute.call_args.kwargs["style_context"], style_context,
+            )
+
     def test_summarizer_failure_falls_back_gracefully_with_marker(self):
         ctx = ContinuationContext(
             framework_id="corpus-formalization",

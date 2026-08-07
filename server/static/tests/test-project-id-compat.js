@@ -67,6 +67,8 @@ var projectRows = [{
 }];
 var projectRowsByStatus = null;
 var statusPosts = [];
+var projectCreatePosts = [];
+var projectOverviewPosts = [];
 
 function response(payload, ok, status) {
   return Promise.resolve({
@@ -78,6 +80,34 @@ function response(payload, ok, status) {
 
 w.fetch = function (url, opts) {
   var target = String(url);
+  if (target === '/api/model-profiles') {
+    return response({ profiles: [] });
+  }
+  if (target === '/api/styles/registry') {
+    return response({ profiles: [] });
+  }
+  if (target === '/api/personas') {
+    return response({ personas: [
+      { id: 'ora', display_name: 'Ora' },
+      { id: 'tailored', display_name: 'Tailored Ora' },
+    ] });
+  }
+  if (target === '/api/projects/create' && opts && opts.method === 'POST') {
+    projectCreatePosts.push(JSON.parse(opts.body || '{}'));
+    return response({
+      ok: true,
+      project: { nexus: 'persona-project', name: 'Persona Project' },
+      storage_available: true,
+    });
+  }
+  if (target === '/api/projects/persona-project' && opts && opts.method === 'POST') {
+    var overview = JSON.parse(opts.body || '{}');
+    projectOverviewPosts.push(overview);
+    return response({
+      ok: true,
+      project: { nexus: 'persona-project', name: overview.name || 'Persona Project' },
+    });
+  }
   if (target.indexOf('/api/projects/meta?status=') === 0) {
     var status = decodeURIComponent(target.split('=')[1] || 'active');
     if (projectRowsByStatus) return response({ projects: projectRowsByStatus[status] || [] });
@@ -336,6 +366,46 @@ async function run() {
   record('Commons modal never sends canonical sentinel to old path routes',
     !projectPathUrls.some(function (url) { return url.indexOf('/api/projects/commons/') === 0; }),
     JSON.stringify(projectPathUrls));
+
+  await w.OraProjectModal.openCreate();
+  await flush();
+  await flush();
+  var createName = w.document.querySelector('#pmName');
+  var createPrivate = w.document.querySelector('#pmPrivate');
+  var createPersona = w.document.querySelector('#pmPersona');
+  createName.value = 'Persona Project';
+  createPrivate.checked = true;
+  createPersona.value = 'tailored';
+  w.document.querySelector('#pmOverviewSave').click();
+  await flush();
+  await flush();
+  await flush();
+  record('project creation keeps the record endpoint minimal',
+    projectCreatePosts.length === 1 &&
+    JSON.stringify(projectCreatePosts[0]) === JSON.stringify({ name: 'Persona Project' }),
+    JSON.stringify(projectCreatePosts));
+  record('project creation persists visible Persona and Private choices together',
+    projectOverviewPosts.length === 1 &&
+    projectOverviewPosts[0].persona === 'tailored' &&
+    projectOverviewPosts[0].private === true,
+    JSON.stringify(projectOverviewPosts));
+
+  projectRows.push({
+    nexus: 'persona-project', name: 'Persona Project', status: 'active',
+    private: true, persona: 'tailored', unread_count: 0,
+  });
+  await w.OraProjectModal.open('persona-project', 'Persona Project');
+  createPersona.value = 'ora';
+  createPrivate.checked = false;
+  w.document.querySelector('#pmOverviewSave').click();
+  await flush();
+  await flush();
+  record('later Overview edits still persist Persona and Private choices',
+    projectOverviewPosts.length === 2 &&
+    projectOverviewPosts[1].persona === 'ora' &&
+    projectOverviewPosts[1].private === false,
+    JSON.stringify(projectOverviewPosts));
+  await w.OraSidebar.setActiveProject('book', 'Book');
 
   projectRowsByStatus = {
     active: [

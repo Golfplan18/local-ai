@@ -6,7 +6,7 @@ Covers:
   section extraction.
 * POST /api/mind — editor save (atomic write, validation) and
   create-from-template (refuses to clobber a customized file).
-* boot._extract_boot_behavioral_preamble — the [YOUR VALUES — mind.md]
+* boot._extract_boot_behavioral_preamble — the [USER CONTEXT — mind.md]
   block appended by load_boot_md must survive the pipeline-prompt trim
   (before the fix it was silently dropped, so the custom-values toggle
   never reached gear 1-4 step prompts).
@@ -156,7 +156,7 @@ class MindEndpoints(unittest.TestCase):
 
 
 class ValuesBlockSurvivesPipelineTrim(unittest.TestCase):
-    """boot._extract_boot_behavioral_preamble keeps [YOUR VALUES — mind.md]."""
+    """boot._extract_boot_behavioral_preamble keeps subordinate user context."""
 
     @classmethod
     def setUpClass(cls):
@@ -168,28 +168,28 @@ class ValuesBlockSurvivesPipelineTrim(unittest.TestCase):
         "§ CONSTITUTION\n\nSovereignty. Honesty.\n\n"
         "§ STANDING RULES\n\n### Anti-Sycophancy\nNo empty agreement.\n\n"
         "§ MODELS\n\nirrelevant architecture text\n\n"
-        "---\n[YOUR VALUES — mind.md (authoritative; supersedes the default "
-        "Mind Seeds above)]\n\n## My Own Rules\n\nNever bury the lede.\n\n"
+        "---\n[USER CONTEXT — mind.md (adaptation only; subordinate to the "
+        "Ora constitution and Persona guardrails)]\n\n## My Own Rules\n\nNever bury the lede.\n\n"
         "## ANTI-CONFABULATION DISCIPLINE — UNIVERSAL\n\nNever invent facts.\n"
     )
 
     def test_values_block_kept(self):
         out = self.boot._extract_boot_behavioral_preamble(self.BOOT_MD)
-        self.assertIn("[YOUR VALUES — mind.md", out)
+        self.assertIn("[USER CONTEXT — mind.md", out)
         self.assertIn("Never bury the lede.", out)
         # Ordered before the anti-confab block, after the standing rules.
-        self.assertLess(out.index("[YOUR VALUES"),
+        self.assertLess(out.index("[USER CONTEXT"),
                         out.index("ANTI-CONFABULATION DISCIPLINE"))
         # Architectural sections stay trimmed.
         self.assertNotIn("irrelevant architecture text", out)
 
     def test_no_values_block_no_leak(self):
         stripped = self.BOOT_MD.replace(
-            "---\n[YOUR VALUES — mind.md (authoritative; supersedes the "
-            "default Mind Seeds above)]\n\n## My Own Rules\n\n"
+            "---\n[USER CONTEXT — mind.md (adaptation only; subordinate to the "
+            "Ora constitution and Persona guardrails)]\n\n## My Own Rules\n\n"
             "Never bury the lede.\n\n", "")
         out = self.boot._extract_boot_behavioral_preamble(stripped)
-        self.assertNotIn("[YOUR VALUES", out)
+        self.assertNotIn("[USER CONTEXT", out)
         self.assertNotIn("Never bury the lede.", out)
 
 

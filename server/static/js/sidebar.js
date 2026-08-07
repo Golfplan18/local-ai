@@ -803,9 +803,9 @@
   };
 
   // Backlog 11 — retry an errored conversation. Server returns the
-  // last user prompt; we re-submit it through /chat/multipart with the
-  // conversation's id and tag, mirroring what the original submit
-  // would have looked like. The errored flag is cleared on success.
+  // last user prompt; the conversation privacy boundary freshly evaluates
+  // that recovered text before /chat/multipart. A privacy fork rebinds the
+  // retry to the selected child. The errored flag is cleared on success.
   const onRetryClick = async (row) => {
     let prompt = '';
     let tag = row.tag || '';
@@ -826,32 +826,49 @@
       alert('Nothing to retry — no user prompt found in this Dialogue.');
       return;
     }
-    // Re-submit through /chat/multipart. We don't await SSE here;
-    // we just fire and refresh the list when done.
-    const body = new FormData();
-    body.append('message', prompt);
-    body.append('conversation_id', row.conversation_id);
-    body.append('panel_id',        row.conversation_id);
-    body.append('is_main_feed',    'true');
-    body.append('tag',             tag);
+    const lifecycle = window.OraConversation;
+    if (!lifecycle || typeof lifecycle.submitAfterPrivacy !== 'function'
+        || typeof lifecycle.getActiveConversationId !== 'function') {
+      alert('Dialogue privacy controls are unavailable.');
+      return;
+    }
     try {
-      const resp = await fetch('/chat/multipart', { method: 'POST', body });
-      if (resp.ok) {
-        // Drain the SSE so the connection closes cleanly. We don't
-        // surface the response into the output pane here — the user
-        // can click the row to view it.
-        if (resp.body && resp.body.getReader) {
-          const reader = resp.body.getReader();
-          while (true) {
-            const { done } = await reader.read();
-            if (done) break;
-          }
-        }
-        // Clear the errored flag now that the resubmit completed.
-        try {
-          await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/dismiss-error`, { method: 'POST' });
-        } catch (e) {}
+      if (lifecycle.getActiveConversationId() !== row.conversation_id) {
+        await lifecycle.load(row.conversation_id);
       }
+      if (lifecycle.getActiveConversationId() !== row.conversation_id) return;
+
+      await lifecycle.submitAfterPrivacy(prompt, async () => {
+        const targetId = lifecycle.getActiveConversationId();
+        if (!targetId) return;
+        const targetTag = typeof lifecycle.getActiveTag === 'function'
+          ? lifecycle.getActiveTag() : tag;
+        const body = new FormData();
+        body.append('message', prompt);
+        body.append('conversation_id', targetId);
+        body.append('panel_id',        targetId);
+        body.append('is_main_feed',    'true');
+        body.append('tag',             targetTag || tag);
+
+        const resp = await fetch('/chat/multipart', { method: 'POST', body });
+        if (resp.ok) {
+          // Drain the SSE so the connection closes cleanly. We don't
+          // surface the response into the output pane here — the user
+          // can click the row to view it.
+          if (resp.body && resp.body.getReader) {
+            const reader = resp.body.getReader();
+            while (true) {
+              const { done } = await reader.read();
+              if (done) break;
+            }
+          }
+          // Clear the original row's errored flag after its retry succeeds,
+          // even when the retried turn was submitted to a Private child.
+          try {
+            await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/dismiss-error`, { method: 'POST' });
+          } catch (e) {}
+        }
+      }, { draftText: prompt });
     } catch (e) {
       // Leave the errored flag set; user can retry again.
     }

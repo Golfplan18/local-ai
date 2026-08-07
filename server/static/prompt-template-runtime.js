@@ -484,12 +484,34 @@
       is_main_feed: (ctx && ctx.is_main_feed) !== false,
       tag: (ctx && ctx.tag) || ''
     };
-    return Promise.resolve(fetchFn(_state.pipelineEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })).then(function (response) {
-      return { route: 'text', request: body, response: response };
+    var conversation = root && root.OraConversation;
+    if (!conversation || !_isFn(conversation.submitAfterPrivacy)) {
+      return Promise.reject(_RuntimeError('route-failed',
+        'Dialogue privacy controls are unavailable; template was not sent.'));
+    }
+    var response;
+    return Promise.resolve(conversation.submitAfterPrivacy(rendered, function () {
+      if (_isFn(conversation.getActiveConversationId)) {
+        var activeId = conversation.getActiveConversationId();
+        if (activeId) {
+          body.conversation_id = activeId;
+          body.panel_id = activeId;
+        }
+      }
+      if (_isFn(conversation.getActiveTag)) body.tag = conversation.getActiveTag() || '';
+      return Promise.resolve(fetchFn(_state.pipelineEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })).then(function (result) { response = result; });
+    }, { draftText: rendered })).then(function (submitted) {
+      if (!submitted) {
+        throw _RuntimeError('cancelled', 'Template submission was cancelled.');
+      }
+      return {
+        route: 'text', request: body, response: response,
+        conversation_id: body.conversation_id || null
+      };
     });
   }
 
@@ -522,8 +544,31 @@
         }
       }
     }
-    return Promise.resolve(dispatch(slot, inputs, ctx || {})).then(function (response) {
-      return { route: 'capability', slot: slot, inputs: inputs, response: response };
+    var conversation = root && root.OraConversation;
+    if (!conversation || !_isFn(conversation.submitAfterPrivacy)) {
+      return Promise.reject(_RuntimeError('route-failed',
+        'Dialogue privacy controls are unavailable; template was not sent.'));
+    }
+    var dispatchContext = Object.assign({}, ctx || {});
+    var response;
+    return Promise.resolve(conversation.submitAfterPrivacy(rendered, function () {
+      if (_isFn(conversation.getActiveConversationId)) {
+        dispatchContext.conversation_id = conversation.getActiveConversationId();
+      }
+      return Promise.resolve(dispatch(slot, inputs, dispatchContext)).then(
+        function (result) { response = result; }
+      );
+    }, { draftText: rendered })).then(function (submitted) {
+      if (!submitted) {
+        throw _RuntimeError('cancelled', 'Template submission was cancelled.');
+      }
+      return {
+        route: 'capability',
+        slot: slot,
+        inputs: inputs,
+        response: response,
+        conversation_id: dispatchContext.conversation_id || null
+      };
     });
   }
 
@@ -685,7 +730,8 @@
       slot: routed.slot,
       request: routed.request,
       response: routed.response,
-      inputs: routed.inputs
+      inputs: routed.inputs,
+      conversation_id: routed.conversation_id
     };
   }
 

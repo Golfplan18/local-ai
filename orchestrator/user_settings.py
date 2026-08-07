@@ -14,7 +14,7 @@ Sections
 * ``external_apis`` — non-secret provider choices (keys live in keyring)
 * ``interface`` — tooltip/help affordances
 * ``aside`` — dedicated scratchpad model choice
-* ``styles`` — active output-style id + personal-values toggle
+* ``styles`` — active output-style id, Persona id, and user-context toggle
 
 Schema is forward-compatible: unknown keys are preserved on round-trip
 so older clients can't accidentally truncate fields newer servers
@@ -118,6 +118,7 @@ DEFAULTS: dict = {
         # determined by the pipeline path (conversational at gears 1-2, written
         # at gears 3-4), not a stored toggle.
         "default_id": "explainer",
+        "persona_id": "ora",
         "use_custom_values": False,
     },
 }

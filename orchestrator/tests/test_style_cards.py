@@ -38,7 +38,8 @@ class TestStyleCards(unittest.TestCase):
         base["conversational"] = {"demeanor": {"warmth": "cool"}}
         custom = {"mine": base}
 
-        conv_block = sa.compose("mine", gear=2, custom_entries=custom)
+        conv_block = sa.compose(
+            "mine", register="conversational", gear=2, custom_entries=custom)
         assert axes["warmth"]["cool"] in conv_block
         assert axes["warmth"]["warm"] not in conv_block
 

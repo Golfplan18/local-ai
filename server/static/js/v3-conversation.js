@@ -559,20 +559,32 @@
         : (Object.prototype.hasOwnProperty.call(detail, 'tag')
             ? detail.tag
             : parentTag);
+      if (typeof detail.draftMessage === 'string') {
+        // Bind a transferred draft to the durable child identity before any
+        // selection/load work can lose a navigation race.
+        saveDraft(data.new_conversation_id, detail.draftMessage);
+      }
       const navigationUnchanged = (
         loadEpoch === navigationEpoch
         && state.activeConversationId === parentId
         && !pendingLoadId
       );
       if (navigationUnchanged) {
-        document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
-          detail: {
-            conversation_id: data.new_conversation_id,
-            tag: forkTag || '',
-            title: data.new_conversation_id,
-            source: detail.source || 'fork',
-          },
-        }));
+        if (detail.await_selection) {
+          await load(data.new_conversation_id, {
+            draftMessage: typeof detail.draftMessage === 'string'
+              ? detail.draftMessage : null,
+          });
+        } else {
+          document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+            detail: {
+              conversation_id: data.new_conversation_id,
+              tag: forkTag || '',
+              title: data.new_conversation_id,
+              source: detail.source || 'fork',
+            },
+          }));
+        }
       } else {
         console.info(
           `[v3-conversation] fork ${data.new_conversation_id} created without `
@@ -582,8 +594,11 @@
       if (window.OraSidebar && typeof window.OraSidebar.refresh === 'function') {
         window.OraSidebar.refresh();
       }
-      if (navigationUnchanged) focusMainInput();
-      return Object.assign({}, data, { selected: navigationUnchanged });
+      const selected = navigationUnchanged
+        && (!detail.await_selection
+          || state.activeConversationId === data.new_conversation_id);
+      if (selected) focusMainInput();
+      return Object.assign({}, data, { selected });
     } catch (e) {
       alert('Fork failed: ' + (e.message || e));
     }
@@ -1353,6 +1368,167 @@
     draftTimer = timer;
   };
 
+  // ── Turn-head privacy intervention ───────────────────────────────────
+  // Deliberately small and deterministic: no model, score, stored label, or
+  // diagnosis. Explicit Private/Stealth state wins before this is consulted.
+  const classifyPrivacyPrompt = (text) => {
+    const value = String(text || '').trim();
+    if (!value) return 'stay';
+    const clearExternal = (
+      /\b(?:email|letter|memo|message|post|press release|proposal|application)\b/i.test(value)
+      && /\b(?:to|for|send|publish|share with)\b/i.test(value)
+    );
+    if (clearExternal) return 'stay';
+    const highConfidence = /\b(?:password|passcode|recovery code|api key|secret key|private key|seed phrase|social security|ssn|credit card|card number|bank account|routing number)\b/i;
+    if (highConfidence.test(value)) return 'fork';
+    const sensitiveHealth = /\b(?:diagnosed with|my diagnosis|my medical|my therapist|my medication|suicidal|self[- ]harm|sexual assault|domestic abuse)\b/i;
+    if (sensitiveHealth.test(value)) return 'fork';
+    const ambiguousPersonal = /\b(?:my health|my finances|my debt|my salary|my family|my marriage|my relationship|my grief|my trauma|i feel|i'm afraid|i am afraid|i'm ashamed|i am ashamed)\b/i;
+    return ambiguousPersonal.test(value) ? 'ask' : 'stay';
+  };
+
+  const privacyChoice = (kind) => new Promise((resolve) => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'ora-privacy-intervention';
+    dialog.setAttribute('aria-labelledby', 'oraPrivacyInterventionTitle');
+    const isFork = kind === 'fork';
+    dialog.innerHTML = `
+      <form method="dialog">
+        <h2 id="oraPrivacyInterventionTitle">Sensitive Inquiry</h2>
+        <p>${isFork
+          ? 'This Inquiry appears to contain highly sensitive information.'
+          : 'This Inquiry may be personal. Choose its Dialogue privacy before anything is sent.'}</p>
+        <p><strong>Private</strong> excludes this Dialogue from Standard conversational retrieval. Configured AI providers may still process the turn.</p>
+        <div class="project-modal__actions">
+          <button type="button" class="project-modal__btn project-modal__btn--primary" data-choice="private">Use Private</button>
+          ${isFork
+            ? '<button type="button" class="project-modal__btn" data-choice="cancel">Cancel submission</button>'
+            : '<button type="button" class="project-modal__btn" data-choice="standard">Keep Standard</button>'}
+        </div>
+      </form>`;
+    document.body.appendChild(dialog);
+    const finish = (choice) => {
+      try { dialog.close(); } catch (e) {}
+      dialog.remove();
+      resolve(choice);
+    };
+    dialog.querySelectorAll('[data-choice]').forEach((button) => {
+      button.addEventListener('click', () => finish(button.dataset.choice));
+    });
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      finish('cancel');
+    });
+    dialog.showModal();
+  });
+
+  const prepareStandardSubmission = async (text, options = {}) => {
+    if (state.activeTag === 'private' || state.activeTag === 'stealth') return true;
+    if (state.activeTag !== '') return false;
+    const decision = classifyPrivacyPrompt(text);
+    if (decision === 'stay') return true;
+    const choice = await privacyChoice(decision);
+    if (choice === 'standard') return true;
+    if (choice !== 'private') return false;
+
+    const parentId = state.activeConversationId;
+    if (!parentId) return false;
+    if (state.turns.length === 0) {
+      // The existing endpoint creates/retags the minimal envelope in place;
+      // there is no empty Standard parent to leave behind.
+      const changed = await setPrivacyTag('private', parentId);
+      return !!changed && state.activeConversationId === parentId
+        && state.activeTag === 'private';
+    }
+
+    refreshDOMRefs();
+    const draft = typeof options.draftText === 'string'
+      ? options.draftText
+      : (typeof text === 'string' ? text : (leftInput && leftInput.value) || '');
+    cancelDraftTimerFor(parentId);
+    const forked = await forkActive({
+      tag: 'private',
+      source: 'privacy-intervention',
+      await_selection: true,
+      draftMessage: draft,
+    });
+    if (forked && forked.new_conversation_id) {
+      // forkActive saved the draft under the returned child key first. Only
+      // now is it safe to remove the Standard parent's copy.
+      clearDraft(parentId);
+      if (state.activeConversationId === parentId && leftInput) {
+        leftInput.value = '';
+      }
+    }
+    if (forked && forked.selected
+        && state.activeConversationId === forked.new_conversation_id
+        && state.activeTag === 'private') {
+      return true;
+    }
+    // The parent never received a POST. Restore its browser draft if the fork
+    // failed or a newer selection won the navigation race.
+    if (!forked && state.activeConversationId === parentId) {
+      if (leftInput) leftInput.value = draft;
+      saveDraft(parentId, draft);
+    }
+    return false;
+  };
+
+  const submitAfterPrivacy = async (text, submit, options = {}) => {
+    if (!(await prepareStandardSubmission(text, options))) return false;
+    await submit();
+    return true;
+  };
+
+  // One Standard /chat boundary for auxiliary UI surfaces. User-authored
+  // text supplies privacyText; internal commands omit it and retain their
+  // existing direct path. If privacy forks, the POST is rebound to the
+  // selected Private child so the Standard parent receives no user text.
+  const submitChatTurn = async (body, options = {}) => {
+    const requestedId = body.conversation_id || body.panel_id
+      || state.activeConversationId;
+    const privacyText = typeof options.privacyText === 'string'
+      ? options.privacyText.trim()
+      : '';
+    if (privacyText && requestedId !== state.activeConversationId) {
+      await load(requestedId);
+      if (state.activeConversationId !== requestedId) return null;
+    }
+
+    let submittedId = requestedId;
+    const send = async () => {
+      if (privacyText) submittedId = state.activeConversationId;
+      const payload = Object.assign({}, body);
+      if (submittedId) {
+        payload.conversation_id = submittedId;
+        payload.panel_id = submittedId;
+      }
+      if (privacyText) payload.tag = state.activeTag;
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        let message = `Chat request failed (${response.status})`;
+        try {
+          const error = await response.json();
+          message = error.error || error.message || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+    };
+
+    if (privacyText) {
+      const submitted = await submitAfterPrivacy(
+        privacyText, send, { draftText: privacyText }
+      );
+      return submitted ? submittedId : null;
+    }
+    await send();
+    return submittedId;
+  };
+
   // ── Rename UI (Backlog 2C) ─────────────────────────────────────────────
   // Click the display name in the output-pane header to edit it.
   // Enter saves; Esc cancels. Empty save clears the override (UI falls
@@ -1730,6 +1906,8 @@
     saveDraft,
     loadDraft,
     clearDraft,
+    submitAfterPrivacy,
+    submitChatTurn,
     getActiveConversationId: () => state.activeConversationId,
     getActiveTag:            () => state.activeTag,
     isLoading:               () => !!pendingLoadId,

@@ -3038,7 +3038,21 @@ a.ora-settings-apikey-label:hover {
 .ora-styles-switch-sub { font-weight: 400; color: var(--text-muted, #A89F8A); }
 .ora-styles-switch-help { font-size: 11px; color: var(--text-muted, #A89F8A); }
 
-/* ── personal values (mind.md) panel under the header ── */
+/* ── user context (mind.md) panel under the header ── */
+.ora-privacy-intervention {
+  width: min(460px, calc(100vw - 32px));
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: var(--radius-m, 8px);
+  padding: 20px;
+  background: var(--background-primary, #14100A);
+  color: var(--text-normal, #E8E0CC);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+.ora-privacy-intervention::backdrop { background: rgba(0, 0, 0, 0.58); }
+.ora-privacy-intervention h2 { margin: 0 0 12px; font-size: 18px; }
+.ora-privacy-intervention p { line-height: 1.5; color: var(--text-muted, #A89F8A); }
+.ora-privacy-intervention .project-modal__actions { margin-top: 18px; }
+
 .ora-styles-btn {
   background: var(--interactive-normal, #2A2620);
   border: 1px solid var(--background-modifier-border, #3A3022);

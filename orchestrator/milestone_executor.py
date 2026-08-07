@@ -200,53 +200,42 @@ def _authenticated_project_visual_locks(project_nexus: Optional[str]) -> dict | 
 
 
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
-    """Persist a completed self MindSpec interview. Gated to the self mode
-    so agent/character specs never clobber the user's values. Best-effort:
-    never raises.
+    """Archive MSI-Self and compile one inactive Persona.
 
-    Since 2026-07-01 this is a two-file write: the full self-spec (the
-    4000-6000-word portrait) is archived under ORA_HOME/mindspec/self-spec.md,
-    and ORA_HOME/mind.md — the file load_boot_md injects into every prompt
-    when "custom values" is on — gets the assistant-directives PROJECTION
-    (guided-wizard base + second-person directives derived from the
-    portrait via one model call; see mind_projection.py). A portrait
-    describes the user; only directives move assistant behavior. On
-    projection failure, falls back to the pre-projection behavior: the
-    full spec is written to mind.md verbatim."""
+    Returns a user-visible status line. ``mind.md`` is never read or written:
+    it describes the user, while Persona describes Ora's behavior.
+    """
     if framework_name != "mindspec-interview" or mode != "MSI-Self" or not final_output:
-        return
+        return ""
     try:
         import os as _os
-        try:
-            from file_ops import file_write          # TOOLS_DIR on sys.path (boot)
-        except ImportError:
-            try:
-                from tools.file_ops import file_write
-            except ImportError:
-                from orchestrator.tools.file_ops import file_write
         ora = str(_rp.ORA_HOME)
-        file_write(_os.path.join(ora, "mindspec", "self-spec.md"), final_output)
-        mind_path = _os.path.join(ora, "mind.md")
+        archive_path = _os.path.join(ora, "mindspec", "self-spec.md")
+        _os.makedirs(_os.path.dirname(archive_path), exist_ok=True)
+        _rp.atomic_write_text(archive_path, final_output)
         try:
             try:
-                import mind_projection as _mp
+                import persona as _persona
             except ImportError:
-                from orchestrator import mind_projection as _mp
-            directives = _mp.project_self_spec(final_output)
-            if directives:
-                try:
-                    with open(mind_path, encoding="utf-8") as _f:
-                        base = _f.read()
-                except OSError:
-                    base = None
-                file_write(mind_path, _mp.compose_projected_mind_md(
-                    directives, final_output, "mindspec/self-spec.md", base))
-                return
-        except Exception:
-            pass
-        file_write(mind_path, final_output)
-    except Exception:
-        pass
+                from orchestrator import persona as _persona
+            personas_dir = _os.path.join(ora, "personas")
+            selected = _persona.resolve_persona(personas_dir=personas_dir)
+            result = _persona.compile_self_spec(
+                final_output, base_id=selected["id"], personas_dir=personas_dir)
+        except Exception as exc:
+            result = {"ok": False, "error": str(exc)}
+        if not result.get("ok"):
+            return (
+                "MindSpec was archived, but Persona compilation failed: "
+                + str(result.get("error") or "unknown error")
+                + ". mind.md was not changed."
+            )
+        return (
+            f"MindSpec was archived and inactive Persona {result['id']!r} "
+            "was created. Review or select it in Output Styles; mind.md was not changed."
+        )
+    except Exception as exc:
+        return f"MindSpec archive failed: {exc}"
 
 
 def execute_framework(
@@ -259,6 +248,7 @@ def execute_framework(
     trace_dir: Optional[str] = None,
     conversation_tag: str = "",
     trace_context: Optional[dict] = None,
+    style_context: Optional[dict] = None,
 ) -> FrameworkExecutionResult:
     """Execute a framework on the given user input.
 
@@ -289,6 +279,18 @@ def execute_framework(
     """
     # Lazy import of boot.py to avoid circular issues during testing
     from boot import load_routing_config
+
+    persona_resolution = None
+    try:
+        try:
+            from persona import resolve_persona
+        except ImportError:
+            from orchestrator.persona import resolve_persona
+        persona_resolution = resolve_persona(project_nexus=project_nexus)
+    except Exception as exc:
+        print(f"[persona] framework Persona unavailable: {exc}",
+              file=sys.stderr, flush=True)
+        persona_resolution = None
 
     # Lazy import of oversight events — keeps the executor usable
     # standalone when no oversight infrastructure is loaded.
@@ -401,7 +403,9 @@ def execute_framework(
                 selected_mode=selected_mode,
                 project_model_locks=project_visual_locks,
                 conversation_tag=conversation_tag,
-                trace_context=trace_context)
+                trace_context=trace_context,
+                persona_resolution=persona_resolution,
+                style_context=style_context)
             results.append(result)
 
             # ---- Oversight hook: MilestoneComplete ----
@@ -426,7 +430,10 @@ def execute_framework(
 
         # Final output = last milestone's deliverable
         final_output = results[-1].deliverable if results else ""
-        _maybe_persist_self_mindspec(fw.name, selected_mode, final_output)
+        persistence_notice = _maybe_persist_self_mindspec(
+            fw.name, selected_mode, final_output)
+        if persistence_notice:
+            final_output = final_output.rstrip() + "\n\n---\n\n" + persistence_notice
         scratch.mark_complete()
 
         # ---- Oversight hook: FrameworkComplete (success) ----
@@ -527,6 +534,8 @@ def _run_milestone(
     project_model_locks: Optional[dict] = None,
     conversation_tag: str = "",
     trace_context: Optional[dict] = None,
+    persona_resolution: Optional[dict] = None,
+    style_context: Optional[dict] = None,
 ) -> MilestoneResult:
     """Execute a single milestone with retry. Returns a MilestoneResult.
 
@@ -547,7 +556,9 @@ def _run_milestone(
                 config, config_name=config_name, framework_id=framework.name,
                 selected_mode=selected_mode,
                 project_model_locks=project_model_locks,
-                stealth=(conversation_tag == "stealth"))
+                stealth=(conversation_tag == "stealth"),
+                persona_resolution=persona_resolution,
+                style_context=style_context)
             scratch.write_milestone(milestone.id, deliverable)
             if child_trace_dir:
                 try:
@@ -716,6 +727,8 @@ def _run_through_gear_pipeline(
     framework_id: Optional[str] = None,
     selected_mode: Optional[str] = None,
     project_model_locks: Optional[dict] = None,
+    persona_resolution: Optional[dict] = None,
+    style_context: Optional[dict] = None,
 ) -> str:
     """Send the handoff packet through the existing gear pipeline.
 
@@ -730,13 +743,30 @@ def _run_through_gear_pipeline(
     ``config_name`` (install Chunk 3) routes the gear pipeline through a
     named configuration. None defers to the Router's context-derived default.
     """
-    from boot import run_gear3, run_gear4, build_system_prompt_for_gear
+    from boot import (
+        _resolve_effective_style_id,
+        build_system_prompt_for_gear,
+        run_gear3,
+        run_gear4,
+    )
 
     context_pkg = _build_context_pkg(
         handoff_packet, milestone, trace_dir=trace_dir,
         parent_trace_ref=parent_trace_ref, framework_id=framework_id,
         selected_mode=selected_mode,
         project_model_locks=project_model_locks)
+    if persona_resolution:
+        context_pkg["persona_resolution"] = persona_resolution
+    for key in ("style_id", "style_register", "style_deltas"):
+        if isinstance(style_context, dict) and key in style_context:
+            context_pkg[key] = style_context[key]
+    if "style_id" not in context_pkg:
+        context_pkg["style_id"] = (
+            _resolve_effective_style_id(config)
+            or ("__persona__" if persona_resolution else "")
+        )
+    context_pkg.setdefault("style_register", "written")
+    context_pkg.setdefault("style_deltas", None)
 
     if milestone.gear >= 4:
         return run_gear4(context_pkg, config, config_name=config_name)
@@ -912,7 +942,9 @@ def _run_child_attempt(child_trace_dir: Optional[str],
                        framework_id: str,
                        selected_mode: Optional[str],
                        project_model_locks: Optional[dict] = None,
-                       stealth: bool = False) -> str:
+                       stealth: bool = False,
+                       persona_resolution: Optional[dict] = None,
+                       style_context: Optional[dict] = None) -> str:
     trace_token, tool_token = _bind_trace_context(
         child_trace_dir, stealth=stealth, surface="framework")
     try:
@@ -920,7 +952,9 @@ def _run_child_attempt(child_trace_dir: Optional[str],
             handoff_packet, milestone, config, config_name=config_name,
             trace_dir=child_trace_dir, parent_trace_ref=parent_trace_ref,
             framework_id=framework_id, selected_mode=selected_mode,
-            project_model_locks=project_model_locks)
+            project_model_locks=project_model_locks,
+            persona_resolution=persona_resolution,
+            style_context=style_context)
     finally:
         _reset_trace_context(trace_token, tool_token)
 
@@ -1366,7 +1400,8 @@ def run_framework_command(user_input: str, config: dict,
                           conversation_tag: str = "",
                           trace_context: Optional[dict] = None,
                           project_nexus: Optional[str] = None,
-                          one_run_profile: Optional[str] = None) -> str:
+                          one_run_profile: Optional[str] = None,
+                          style_context: Optional[dict] = None) -> str:
     """Top-level: parse a slash command + execute + format. Used by boot.py
     and server.py as the entry point for /framework slash-command invocations.
 
@@ -1413,7 +1448,8 @@ def run_framework_command(user_input: str, config: dict,
                 project_nexus=project_nexus,
                 config_name=effective_one_run_profile, trace_dir=trace_dir,
                 conversation_tag=conversation_tag,
-                trace_context=trace_context)
+                trace_context=trace_context,
+                style_context=style_context)
         finally:
             _reset_trace_context(_parent_trace_token, _parent_tool_token)
     except FileNotFoundError as exc:

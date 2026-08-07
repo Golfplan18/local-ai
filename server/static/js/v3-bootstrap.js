@@ -82,26 +82,36 @@
     modalStatus.textContent = 'Assembling context from prior knowledge and Dialogues...';
 
     try {
-      const resp = await fetch('/api/bootstrap', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ topic, tag: currentTag() }),
-      });
-
-      let data;
-      try {
-        data = await resp.json();
-      } catch (e) {
-        const text = await resp.text();
-        throw new Error(`bootstrap returned non-JSON (${resp.status}): ${text.slice(0, 120)}`);
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+        throw new Error('Privacy check unavailable; topic was not sent.');
       }
+      const submitted = await conversation.submitAfterPrivacy(topic, async () => {
+        const resp = await fetch('/api/bootstrap', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ topic, tag: currentTag() }),
+        });
 
-      if (!resp.ok) {
-        throw new Error(data.error || `bootstrap failed (${resp.status})`);
+        let data;
+        try {
+          data = await resp.json();
+        } catch (e) {
+          const text = await resp.text();
+          throw new Error(`bootstrap returned non-JSON (${resp.status}): ${text.slice(0, 120)}`);
+        }
+
+        if (!resp.ok) {
+          throw new Error(data.error || `bootstrap failed (${resp.status})`);
+        }
+
+        renderBootstrapOutput(data);
+        closeModal();
+      }, { draftText: topic });
+      if (!submitted) {
+        modalStatus.textContent = '';
+        modalSubmit.disabled = false;
       }
-
-      renderBootstrapOutput(data);
-      closeModal();
     } catch (err) {
       modalStatus.textContent = 'Bootstrap failed: ' + (err.message || String(err));
       modalSubmit.disabled    = false;

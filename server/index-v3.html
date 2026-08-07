@@ -28,7 +28,7 @@
 <script src="/static/render-controls.js"></script>
 <script src="/static/models-pane.js"></script>
 <script src="/static/visual-slots-pane.js"></script>
-<script src="/static/styles-pane.js"></script>
+<script src="/static/styles-pane.js?v=persona-20260805"></script>
 <script src="/static/settings-panel.js?v=project-plugins-20260701b"></script>
 <script src="/static/tooltip.js"></script>
 <script>
@@ -230,7 +230,7 @@
 <script src="/static/commands/export-pdf.js"></script>
 
 <script src="/static/js/sidebar.js?v=create-flow-20260630" defer></script>
-<script src="/static/js/project-modal.js?v=binding-20260701" defer></script>
+<script src="/static/js/project-modal.js?v=persona-20260805" defer></script>
 <script src="/static/js/model-profile-selector.js?v=g116-20260722" defer></script>
 <script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
@@ -289,7 +289,7 @@
 <!-- Envelope → visual-pane dispatch (2026-06-11). Must precede
      v3-conversation.js, whose renderTurn calls OraV3VisualDispatch. -->
 <script src="/static/js/v3-visual-dispatch.js" defer></script>
-<script src="/static/js/v3-conversation.js" defer></script>
+<script src="/static/js/v3-conversation.js?v=persona-20260805" defer></script>
 <script src="/static/js/trace-walk.js?v=chunk2-20260712" defer></script>
 <script src="/static/js/export-toolbar.js?v=g134-pandoc-20260701" defer></script>
 <!-- V3 Input Handling Phase 4/analysis picker — input-pane state container,
@@ -1629,6 +1629,14 @@
         return;
       }
       if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      if (action === 'make-standard') {
+        const turnCount = typeof conversation.getTurnCount === 'function'
+          ? conversation.getTurnCount() : 0;
+        const noun = turnCount === 1 ? 'turn' : 'turns';
+        if (!window.confirm(
+          `Make all ${turnCount} ${noun} Standard? The complete Dialogue will become eligible for Standard conversational retrieval.`
+        )) return;
+      }
       conversation.setPrivacyTag(
         action === 'make-private' ? 'private' : '',
         conversationId
@@ -1912,7 +1920,7 @@
     }
   };
 
-  const submitToMainPipeline = async (text) => {
+  const _submitToMainPipeline = async (text) => {
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', currentConversationId());
@@ -2086,6 +2094,25 @@
     refreshSidebarAfterSubmit();
   };
 
+  const submitToMainPipeline = async (
+    text,
+    displayText = text,
+    privacyApprovedText = null
+  ) => {
+    const submit = async () => {
+      leftInputArea.value = '';
+      if (displayText) renderUserTurn(displayText);
+      return _submitToMainPipeline(text);
+    };
+    if (privacyApprovedText === text) return submit();
+    if (!window.OraConversation
+        || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
+      renderAssistantTurn('[Privacy check unavailable; Inquiry was not sent.]');
+      return;
+    }
+    return window.OraConversation.submitAfterPrivacy(text, submit);
+  };
+
   // ─── V3 Input Handling Phase 7 — pre-flight framework input gap check ───
   //
   // When the user submits with a framework selected, we run /api/framework/
@@ -2197,17 +2224,32 @@
     ].join('\n');
   };
 
-  const submitWithFrameworkCheck = async (text) => {
+  const submitWithFrameworkCheck = async (
+    text,
+    privacyApprovedText = null
+  ) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, text, privacyApprovedText);
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text);
+      return submitToMainPipeline(text, text, privacyApprovedText);
+    }
+    if (text && privacyApprovedText !== text) {
+      if (!window.OraConversation
+          || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
+        renderAssistantTurn('[Privacy check unavailable; framework Inquiry was not sent.]');
+        return;
+      }
+      const approved = await window.OraConversation.submitAfterPrivacy(
+        text, async () => {}, { draftText: text }
+      );
+      if (!approved) return;
+      privacyApprovedText = text;
     }
 
     // Iteration loop. Round N: analyze with priorResponses, popup if
@@ -2216,6 +2258,7 @@
     let priorResponses = {};
     let priorOnCanvas  = {};
     let augmentedPrompt = text;
+    let approvedPrompt = privacyApprovedText;
 
     for (let round = 0; round < 5; round += 1) {
       let report;
@@ -2230,15 +2273,11 @@
         // Analyzer down — submit anyway so the user isn't trapped. Phase
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
-        return submitToMainPipeline(
-          augmentedPrompt
-        );
+        return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
       }
 
       if (!_hasGaps(report)) {
-        return submitToMainPipeline(
-          augmentedPrompt
-        );
+        return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
       }
 
       const choice = await window.OraFrameworkSetupPopup.show(report);
@@ -2256,11 +2295,27 @@
         priorOnCanvas[k] = choice.on_canvas[k];
       }
       augmentedPrompt = _augmentPromptWithResponses(text, priorResponses, priorOnCanvas);
+      const responseText = Object.values(choice.responses || {})
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .join('\n');
+      if (responseText) {
+        if (!window.OraConversation
+            || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
+          renderAssistantTurn('[Privacy check unavailable; framework response was not sent.]');
+          return;
+        }
+        const approved = await window.OraConversation.submitAfterPrivacy(
+          responseText, async () => {}, { draftText: augmentedPrompt }
+        );
+        if (!approved) return;
+      }
+      approvedPrompt = augmentedPrompt;
 
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
         return submitToMainPipeline(
-          augmentedPrompt + note
+          augmentedPrompt + note, text, augmentedPrompt + note
         );
       }
 
@@ -2270,9 +2325,7 @@
     }
 
     // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(
-      augmentedPrompt
-    );
+    return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
   };
 
   let imageGenerateMode = false;
@@ -2447,6 +2500,25 @@
     trimScratchpadHistory();
   };
 
+  const submitScratchpadAfterPrivacy = async (prompt) => {
+    const conversation = window.OraConversation;
+    if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+      renderScratchpadEntry(
+        'scratchpad-turn-error',
+        '[Privacy check unavailable; Aside prompt was not sent.]'
+      );
+      return false;
+    }
+    return conversation.submitAfterPrivacy(prompt, async () => {
+      rightInputArea.value = '';
+      await submitToScratchpad(prompt);
+    }, {
+      // The Aside text has no parent-keyed draft of its own. Preserve any
+      // main Inquiry draft when a populated Standard Dialogue is forked.
+      draftText: leftInputArea ? leftInputArea.value : '',
+    });
+  };
+
   const submitInput = async () => {
     const rightContent = rightInputArea.value.trim();
     if (rightContent) {
@@ -2456,8 +2528,7 @@
         rightInputArea.value = '';
         return;
       }
-      rightInputArea.value = '';
-      submitToScratchpad(rightContent);
+      await submitScratchpadAfterPrivacy(rightContent);
       return;
     }
     if (!requireMutableInquiry()) return;
@@ -2485,29 +2556,38 @@
       return;
     }
 
-    if (routeAsImageGeneration) {
-      leftInputArea.value = '';
-      renderUserTurn(leftContent);
-      setImageGenerateMode(false);
-      submitImageGenerationPrompt(leftContent);
-      return;
-    }
-    // Canvas-only input keeps its existing Inquiry path.
+    // Canvas-only input has no natural-language text to classify.
     if (!leftContent) {
       leftInputArea.value = '';
       renderUserTurn('[canvas content]');
       submitWithFrameworkCheck(leftContent);
       return;
     }
-    leftInputArea.value = '';
-    renderUserTurn(leftContent);
-    if (window.OraProgramming && window.OraProgramming.isActive()) {
-      await window.OraProgramming.submit(leftContent, {
-        renderAssistant: renderAssistantTurn,
+    if (routeAsImageGeneration) {
+      if (!window.OraConversation
+          || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
+        renderAssistantTurn('[Privacy check unavailable; Inquiry was not sent.]');
+        return;
+      }
+      await window.OraConversation.submitAfterPrivacy(leftContent, async () => {
+        leftInputArea.value = '';
+        renderUserTurn(leftContent);
+        setImageGenerateMode(false);
+        submitImageGenerationPrompt(leftContent);
       });
       return;
     }
-    submitWithFrameworkCheck(leftContent);
+    if (window.OraProgramming && window.OraProgramming.isActive()) {
+      const started = await window.OraProgramming.submit(leftContent, {
+        renderAssistant: renderAssistantTurn,
+      });
+      if (started) {
+        leftInputArea.value = '';
+        renderUserTurn(leftContent);
+      }
+      return;
+    }
+    return submitWithFrameworkCheck(leftContent);
   };
 
   // V3 Backlog 7 — pulse the O on submit for visual feedback. The

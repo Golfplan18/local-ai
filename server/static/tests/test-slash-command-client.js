@@ -99,6 +99,27 @@ w.document.addEventListener('ora:new-thread-requested', function () {
   newThreadEvents += 1;
 });
 
+var imageDispatches = [];
+var imagePrivacyText = null;
+var releaseImagePrivacy = null;
+var activeConversationId = 'image-parent';
+w.document.body.addEventListener('capability-dispatch', function (event) {
+  imageDispatches.push(event.detail || {});
+});
+w.OraConversation = {
+  getActiveConversationId: function () { return activeConversationId; },
+  getActiveTag: function () { return activeConversationId === 'image-child' ? 'private' : ''; },
+  submitAfterPrivacy: function (text, submit) {
+    imagePrivacyText = text;
+    return new Promise(function (resolve) {
+      releaseImagePrivacy = function () {
+        activeConversationId = 'image-child';
+        Promise.resolve(submit()).then(function () { resolve(true); });
+      };
+    });
+  },
+};
+
 require(path.resolve(__dirname, '..', 'js', 'input-state.js'));
 require(path.resolve(__dirname, '..', 'js', 'slash-command-client.js'));
 
@@ -173,7 +194,28 @@ async function run() {
     w.OraSlashCommands.handleClientCommand('/new') === true && newThreadEvents === 1,
     'events=' + newThreadEvents);
 
-  record('no alerts during successful direct selection', alerts.length === 0, alerts.join('; '));
+  record('/image prompt is handled but waits at privacy before dispatch',
+    w.OraSlashCommands.handleClientCommand('/image My medical scan') === true
+      && imagePrivacyText === 'My medical scan'
+      && imageDispatches.length === 0);
+  releaseImagePrivacy();
+  await flush();
+  record('/image dispatches exactly once to the post-fork child',
+    imageDispatches.length === 1
+      && imageDispatches[0].conversation_id === 'image-child'
+      && imageDispatches[0].tag === 'private'
+      && imageDispatches[0].inputs.prompt === 'My medical scan');
+
+  w.OraConversation = null;
+  record('/image fails closed without privacy controls',
+    w.OraSlashCommands.handleClientCommand('/image My password') === true
+      && imageDispatches.length === 1
+      && alerts.some(function (message) {
+        return /Privacy check unavailable/.test(message);
+      }));
+
+  record('only the expected privacy failure alert was shown',
+    alerts.length === 1, alerts.join('; '));
   record('picker APIs were fetched',
     fetches.indexOf('/api/frameworks/picker') >= 0
       && fetches.indexOf('/api/analyses/picker') >= 0,

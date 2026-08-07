@@ -79,6 +79,7 @@ from boot import (
     list_interactive_endpoints, call_model,
     parse_tool_calls, strip_tool_calls, execute_tool,
     run_step1_cleanup, run_step2_context_assembly, build_system_prompt_for_gear,
+    _single_pass_system_prompt, _compose_output_style, _resolve_effective_style_id,
     run_gear3, run_gear4, _run_model_with_tools, run_single_pass_with_tools,
     run_pipeline, parse_user_command,
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
@@ -1534,11 +1535,11 @@ def settings_post():
     return _json_response({"settings": merged})
 
 
-# ── mind.md (personal values layer) ─────────────────────────────────────────
+# ── mind.md (user context layer) ────────────────────────────────────────────
 #
-# Backs the Output Styles tab's "personal values" toggle. mind.md is the
-# user-authored values file load_boot_md injects as the authoritative
-# values layer when styles.use_custom_values is on. These endpoints give
+# Backs the Output Styles tab's user-context toggle. mind.md is user-authored
+# adaptation context subordinate to the constitution and selected Persona.
+# These endpoints give
 # the toggle a real surface: existence/summary for the state check, a
 # viewer/editor, and a create-from-template flow. The stock template is
 # tracked at mindspec/mind-template.md; a mind.md whose "Default
@@ -1549,9 +1550,8 @@ MIND_TEMPLATE_PATH = os.path.join(WORKSPACE, "mindspec", "mind-template.md")
 SELF_SPEC_PATH = os.path.join(WORKSPACE, "mindspec", "self-spec.md")
 _MIND_DEFAULT_MARKER = "*Default configuration. Customize by running the"
 # Mirror orchestrator/mind_guided.py::MARKER_PREFIX and
-# orchestrator/mind_projection.py::PROJECTED_MARKER_PREFIX (kept as
-# literals so GET /api/mind never depends on those imports; unit tests
-# pin both pairs).
+# Legacy projected-marker literal retained only so guided setup preserves
+# existing user content; new MindSpec runs create Personas instead.
 _MIND_GUIDED_MARKER = "<!-- ora-mind-guided:"
 _MIND_PROJECTED_MARKER = "<!-- ora-mind-projected:"
 _MIND_MAX_BYTES = 128 * 1024
@@ -1639,12 +1639,12 @@ def _mind_guided_mod():
     return _mg
 
 
-def _mind_projection_mod():
+def _persona_mod():
     try:
-        import mind_projection as _mp
+        import persona as _persona
     except ImportError:
-        from orchestrator import mind_projection as _mp
-    return _mp
+        from orchestrator import persona as _persona
+    return _persona
 
 
 @app.route("/api/mind/guided", methods=["GET"])
@@ -1700,18 +1700,14 @@ def mind_guided_post():
                           "result) — pass confirm_overwrite to replace it",
                  "needs_confirm": True},
                 status=409)
-        # Preserve an existing assistant-directives projection across
-        # wizard re-runs: the projected block (marker + directives) sits
-        # after the guided sections and is regenerated only by
-        # /api/mind/project, never by the wizard.
-        try:
-            if current.get("is_projected"):
-                block = _mind_projection_mod().extract_projected_block(
-                    current.get("content", ""))
-                if block:
-                    content = content.rstrip() + "\n\n" + block + "\n"
-        except Exception:
-            pass
+        # Preserve a legacy projected block as user context so rerunning the
+        # wizard cannot silently delete existing material. New MindSpec runs
+        # create Personas and never add such blocks.
+        if current.get("is_projected"):
+            old_content = current.get("content", "")
+            marker_at = old_content.find(_MIND_PROJECTED_MARKER)
+            if marker_at >= 0:
+                content = content.rstrip() + "\n\n" + old_content[marker_at:].strip() + "\n"
         tmp = MIND_MD_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(content)
@@ -1721,55 +1717,52 @@ def mind_guided_post():
         return _json_response({"error": str(e)}, status=500)
 
 
-@app.route("/api/mind/project", methods=["POST"])
-def mind_project_post():
-    """Self-spec → assistant-directives projection (one model call,
-    breadth slot — seconds to minutes depending on the configured model).
-
-    Source resolution: ``mindspec/self-spec.md`` when present (written by
-    every completed MSI-Self interview since 2026-07-01); otherwise the
-    current mind.md when it looks like a raw interview output (exists,
-    customized, carries neither the guided nor the projected marker) —
-    that content is archived to ``mindspec/self-spec.md`` first, covering
-    users whose interview predates the projection. Writes the projected
-    mind.md (guided base + directives) atomically."""
+@app.route("/api/personas", methods=["GET"])
+def personas_get():
+    """Enumerate the Persona directory and report the current resolution."""
     try:
-        mp = _mind_projection_mod()
-        current = _mind_summary()
-        spec_text, source = None, None
-        if os.path.isfile(SELF_SPEC_PATH):
-            with open(SELF_SPEC_PATH, encoding="utf-8") as f:
-                spec_text = f.read()
-            source = "mindspec/self-spec.md"
-        elif (current.get("exists")
-                and not current.get("is_default_template")
-                and not current.get("is_guided")
-                and not current.get("is_projected")):
-            spec_text = current.get("content", "")
-            source = "mindspec/self-spec.md"
-            os.makedirs(os.path.dirname(SELF_SPEC_PATH), exist_ok=True)
-            tmp = SELF_SPEC_PATH + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(spec_text)
-            os.replace(tmp, SELF_SPEC_PATH)
+        persona = _persona_mod()
+        result = persona.list_personas()
+        selected = persona.resolve_persona()
+        result["selected"] = {
+            "id": selected["id"],
+            "display_name": selected["display_name"],
+            "source": selected["source"],
+            "warnings": selected["warnings"],
+        }
+        return _json_response(result)
+    except Exception as exc:
+        return _json_response({"error": str(exc)}, status=500)
+
+
+@app.route("/api/personas/compile", methods=["POST"])
+def personas_compile_post():
+    """Compile the archived MindSpec into one validated inactive Persona."""
+    try:
+        if not os.path.isfile(SELF_SPEC_PATH):
+            return _json_response(
+                {"error": "no self-spec found — run the MindSpec interview "
+                          "first (/framework mindspec-interview)"},
+                status=404)
+        with open(SELF_SPEC_PATH, encoding="utf-8") as handle:
+            spec_text = handle.read()
         if not spec_text or not spec_text.strip():
             return _json_response(
                 {"error": "no self-spec found — run the MindSpec interview "
                           "first (/framework mindspec-interview)"},
                 status=404)
-        directives = mp.project_self_spec(spec_text)
-        if not directives:
-            return _json_response(
-                {"error": "projection produced no usable directives — "
-                          "check the configured breadth model and try again"},
-                status=502)
-        content = mp.compose_projected_mind_md(
-            directives, spec_text, source, current.get("content"))
-        tmp = MIND_MD_PATH + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp, MIND_MD_PATH)
-        return _json_response(_mind_summary())
+        payload = request.get_json(silent=True) or {}
+        persona = _persona_mod()
+        selected = persona.resolve_persona()
+        result = persona.compile_self_spec(
+            spec_text,
+            base_id=payload.get("base_id") or selected["id"],
+            output_id=payload.get("output_id") or None,
+        )
+        if not result.get("ok"):
+            status = 409 if "already exists" in result.get("error", "") else 502
+            return _json_response({"error": result.get("error")}, status=status)
+        return _json_response(result)
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
 
@@ -1855,12 +1848,13 @@ def _style_library():
 
 
 def _styles_settings_block():
-    block = {"default_id": "", "use_custom_values": False}
+    block = {"default_id": "", "persona_id": "ora", "use_custom_values": False}
     try:
         if _HAS_USER_SETTINGS and _user_settings is not None:
             st = (_user_settings.load_settings() or {}).get("styles") or {}
             block = {
                 "default_id": st.get("default_id", ""),
+                "persona_id": st.get("persona_id", "ora"),
                 "use_custom_values": bool(st.get("use_custom_values", False)),
             }
     except Exception:
@@ -3384,7 +3378,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
 
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
                                              config_name=config_name,
-                                             conversation_tag=conversation_tag)
+                                             conversation_tag=conversation_tag,
+                                             include_persona=True)
     # WP-3.3: thread merged-input extras (spatial_representation, image_path,
     # …) into the context package for build_system_prompt_for_gear.
     if extra_context:
@@ -3569,11 +3564,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     endpoint = get_endpoint(config)
 
     if gear <= 2:
-        system_prompt = (
-            load_boot_md()
-            if gear == 1
-            else build_system_prompt_for_gear(context_pkg, "breadth")
-        )
+        system_prompt = _single_pass_system_prompt(context_pkg, gear)
         ep, fast_slot = resolve_single_pass_endpoint(
             config, gear, config_name=config_name)
         if ep is None:
@@ -3635,8 +3626,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                              config_name=config_name)
 
     else:
+        _persona_resolution = context_pkg.get("persona_resolution")
         response = _run_model_with_tools(
-            [{"role": "system", "content": load_boot_md()},
+            [{"role": "system", "content": load_boot_md(
+                include_persona=bool(_persona_resolution),
+                persona_resolution=_persona_resolution,
+            )},
              {"role": "user", "content": user_input}],
             endpoint, images=images
         )
@@ -3932,7 +3927,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     except Exception:
         pass
 
-    # Conversation-tag context for the values layer: mind.md's
+    # Conversation-tag context for mind.md user adaptation: its
     # "## Private Context" section is injected only when this turn's
     # conversation is tagged private/stealth (load_boot_md gates on it;
     # propagates into Gear-4 workers via _submit_with_context). Set every
@@ -4031,7 +4026,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 config, trace_dir=trace_dir, conversation_tag=_conv_tag,
                 trace_context=_trace_ctx,
                 project_nexus=_framework_project_nexus(extra_context),
-                one_run_profile=config_name)
+                one_run_profile=config_name,
+                style_context=extra_context)
             try:
                 _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
             except Exception:
@@ -4156,6 +4152,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 latest_user_text=user_input,
                 conversation_id=panel_id,
                 current_project_nexus=_framework_project_nexus(extra_context),
+                style_context=extra_context,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4274,7 +4271,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     conversation_tag=_conv_tag,
                     trace_context=_trace_ctx,
                     project_nexus=_framework_project_nexus(extra_context),
-                    one_run_profile=config_name)
+                    one_run_profile=config_name,
+                    style_context=extra_context)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -4313,6 +4311,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 framework_name, history or [], config,
                 project_nexus=_framework_project_nexus(extra_context),
                 one_run_profile=config_name,
+                style_context=extra_context,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4537,6 +4536,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         yield from _direct_stream(user_input, history, images=images,
                                   panel_id=panel_id, conversation_tag=conversation_tag,
                                   risk_override=(extra_context or {}).get("risk_override"),
+                                  extra_context=extra_context,
                                   turn_state=turn_state)
         return
 
@@ -4671,7 +4671,8 @@ def _tool_status_label(tool_name, params):
 
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
-                   conversation_tag="", risk_override=None, turn_state=None):
+                   conversation_tag="", risk_override=None, extra_context=None,
+                   turn_state=None):
     """Lifecycle-scoped wrapper for every legacy direct-model invocation.
 
     ``_direct_stream`` is called both from the pipeline fallback and directly
@@ -4710,6 +4711,7 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
             yield from _direct_stream_impl(
                 user_input, history, images=images, panel_id=panel_id,
                 conversation_tag=turn_tag, risk_override=risk_override,
+                extra_context=extra_context,
                 turn_state=turn_state,
             )
     finally:
@@ -4717,9 +4719,35 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
         boot_context.reset_conversation_tag_context(tag_token)
 
 
+def _direct_system_prompt(config, style_context=None):
+    """Assemble the direct/bypass prompt with the resolved Persona style."""
+    try:
+        persona_resolution = _persona_mod().resolve_persona()
+    except Exception as exc:
+        print(f"[persona] direct Persona unavailable: {exc}",
+              file=sys.stderr, flush=True)
+        persona_resolution = None
+    prompt = load_boot_md(
+        include_persona=bool(persona_resolution),
+        persona_resolution=persona_resolution,
+    )
+    style_package = dict(style_context or {})
+    if "style_id" not in style_package:
+        style_package["style_id"] = _resolve_effective_style_id(config)
+        if not style_package["style_id"] and persona_resolution:
+            style_package["style_id"] = "__persona__"
+    style_package.update({
+        "gear": 1,
+        "style_register": "conversational",
+        "persona_resolution": persona_resolution,
+    })
+    style = _compose_output_style(style_package)
+    return prompt + ("\n\n" + style if style else "")
+
+
 def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                         conversation_tag="", risk_override=None,
-                        turn_state=None):
+                        extra_context=None, turn_state=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher.
 
@@ -4772,7 +4800,10 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
     messages = list(history)
     if not messages or messages[0]["role"] != "system":
-        messages.insert(0, {"role": "system", "content": load_boot_md()})
+        messages.insert(0, {
+            "role": "system",
+            "content": _direct_system_prompt(config, extra_context),
+        })
     messages.append({"role": "user", "content": user_input})
 
     # Auto-approve in server mode (permission handled by UI later).
@@ -4961,7 +4992,8 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
 
 def _traced_direct_entry_stream(user_input, history, images=None,
-                                panel_id="main", conversation_tag=""):
+                                panel_id="main", conversation_tag="",
+                                extra_context=None):
     """Trace the real explicit server direct-entry path, fail-open."""
     turn_state = {
         "trace_dir": None, "kind": "direct-entry", "status": None,
@@ -4995,6 +5027,7 @@ def _traced_direct_entry_stream(user_input, history, images=None,
         yield from _direct_stream(
             user_input, history, images=images,
             panel_id=panel_id, conversation_tag=conversation_tag,
+            extra_context=extra_context,
             turn_state=turn_state,
         )
     except BaseException:
@@ -5017,9 +5050,9 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                           conversation_tag=""):
     """Route to pipeline or direct stream based on mode.
 
-    ``extra_context`` (WP-3.3): optional merged-input dict (spatial_representation,
-    image_path) threaded into the pipeline path. Ignored by _direct_stream,
-    which has no pipeline context_pkg to merge into.
+    ``extra_context`` (WP-3.3): optional merged-input dict threaded into the
+    pipeline path. Direct turns consume only its already-resolved style keys;
+    spatial and other pipeline-only context remains unused there.
 
     V3 Input Handling Phase 1 / analysis picker: ``manual_mode_selection`` /
     ``manual_lens_selection`` / ``framework_selected`` are threaded into
@@ -5068,6 +5101,7 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                 yield from _traced_direct_entry_stream(
                     user_input, history, images=images,
                     panel_id=panel_id, conversation_tag=turn_tag,
+                    extra_context=extra_context,
                 )
     finally:
         boot_context.reset_turn_trace_context(trace_token)
@@ -5904,6 +5938,17 @@ def api_projects_update(nexus):
         return _json_response({"ok": False, "error": str(exc)}, 503)
     data = request.get_json(silent=True) or {}
     try:
+        if "persona" in data:
+            requested_persona = data.get("persona")
+            if requested_persona not in (None, ""):
+                if not isinstance(requested_persona, str):
+                    raise ValueError("persona must be a Persona id or empty")
+                available = {
+                    item["id"] for item in _persona_mod().list_personas()["personas"]
+                }
+                if requested_persona.strip() not in available:
+                    raise ValueError(f"unknown or malformed Persona: {requested_persona!r}")
+                data["persona"] = requested_persona.strip()
         if "model_locks" in data:
             return _json_response({
                 "ok": False,

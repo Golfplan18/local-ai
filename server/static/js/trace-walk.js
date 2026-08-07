@@ -295,28 +295,24 @@
     const symptom = window.prompt('What looked wrong? Optional:', '') || '';
     setStatus('Starting trace investigation...');
     try {
-      const response = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: 'Investigate this trace.',
-          panel_id: conv,
-          conversation_id: conv,
-          trace_debug: {
-            trace_ref: state.traceRef,
-            step_hint: state.selectedStep || '',
-            symptom: symptom,
-            source: 'trace-walk',
-          },
-        }),
-      });
-      if (!response.ok) {
-        let msg = `Investigation failed (${response.status})`;
-        try {
-          const body = await response.json();
-          msg = body.error || body.message || msg;
-        } catch (_) {}
-        throw new Error(msg);
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.submitChatTurn !== 'function') {
+        throw new Error('Dialogue privacy boundary is unavailable');
+      }
+      const submitted = await conversation.submitChatTurn({
+        message: 'Investigate this trace.',
+        panel_id: conv,
+        conversation_id: conv,
+        trace_debug: {
+          trace_ref: state.traceRef,
+          step_hint: state.selectedStep || '',
+          symptom: symptom,
+          source: 'trace-walk',
+        },
+      }, symptom ? { privacyText: symptom } : {});
+      if (!submitted) {
+        setStatus('Trace investigation cancelled.');
+        return;
       }
       setStatus('Trace investigation submitted.');
     } catch (e) {

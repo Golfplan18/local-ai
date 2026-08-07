@@ -203,8 +203,8 @@ def compose(style_id, register="written", gear=3, deltas=None, base=None,
     """Top-level: return the injected block for a style at a given gear.
 
     gear <= 2 -> compact demeanor block; gear >= 3 -> full style block.
-    `register` is where situational deltas will be derived once the resolution
-    chain is wired; for now the caller passes `deltas` explicitly.
+    ``register="conversational"`` overlays the profile's conversational
+    demeanor; written work retains the base demeanor.
     `custom_entries` ({id: entry}) are user-authored profiles merged over the
     built-ins, so an active custom profile injects exactly like a genre.
     """
@@ -216,12 +216,9 @@ def compose(style_id, register="written", gear=3, deltas=None, base=None,
     entry = registry[style_id]
     axes, devices = load_demeanor_axes(base)
     if gear <= 2:
-        # Gears 1-2 (quick conversational replies) inject demeanor only, so the
-        # conversational register is nothing more than an optional alternate
-        # demeanor. Overlay it on the written demeanor per-axis; unset axes
-        # inherit written. Gears 3-4 (produced/written output) ignore it.
         conv = entry.get("conversational") or {}
-        if conv.get("demeanor") or conv.get("devices"):
+        if register == "conversational" and (
+                conv.get("demeanor") or conv.get("devices")):
             entry = {**entry,
                      "demeanor": {**(entry.get("demeanor") or {}),
                                   **(conv.get("demeanor") or {})},

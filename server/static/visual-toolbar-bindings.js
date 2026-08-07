@@ -6,7 +6,9 @@
  * visual-panel.js cover. WP-7.1.5 introduces the first such binding:
  *
  *   tool:ask_ora  →  open the Ask Ora prompt panel; on submit:
- *                      • If OraAskOraRouter.classify(text) returns a slot,
+ *                      • After OraConversation's privacy boundary approves
+ *                        the user text, if OraAskOraRouter.classify(text)
+ *                        returns a slot,
  *                        spin up OraCapabilityInvocationUI against that
  *                        slot, prefilled with { ...prefill, prompt: text },
  *                        and submit() it programmatically against a
@@ -155,7 +157,7 @@
       _applyPrefillViaControls(active, prefilled);
     }
 
-    var detail = ctl.submit();
+    var detail = ctl.submit({ privacyApprovedText: text });
     return {
       mode: 'slot',
       slot: classification.slot,
@@ -229,13 +231,22 @@
       return { mode: 'prose', error: err };
     }
     var endpoint = opts.chatEndpoint || DEFAULT_CHAT_ENDPOINT;
+    var conversation = root.OraConversation;
+    var conversationId = conversation
+      && typeof conversation.getActiveConversationId === 'function'
+      ? conversation.getActiveConversationId() : null;
+    var conversationTag = conversation
+      && typeof conversation.getActiveTag === 'function'
+      ? conversation.getActiveTag() : '';
     var body = {
       message: text,
       history: [],
-      panel_id: 'ask-ora',
+      panel_id: conversationId || 'ask-ora',
       is_main_feed: false,
+      tag: conversationTag || '',
       _ask_ora_meta: meta || null
     };
+    if (conversationId) body.conversation_id = conversationId;
     var promise = fetchFn(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -287,13 +298,25 @@
         onSubmit: function (detail) {
           var text = detail && detail.text;
           if (!text) return;
-          var Router = root.OraAskOraRouter;
-          var classification = Router && typeof Router.classify === 'function'
-            ? Router.classify(text) : null;
-          if (classification) {
-            return _dispatchToSlot(opts, classification, text);
+          var conversation = root.OraConversation;
+          if (!conversation || typeof conversation.submitAfterPrivacy !== 'function') {
+            var error = new Error('Dialogue privacy controls are unavailable');
+            if (typeof opts.onProseError === 'function') {
+              try { opts.onProseError(error); } catch (e) {}
+            }
+            return null;
           }
-          return _dispatchToProse(opts, text, { reason: 'no_classification' });
+          return conversation.submitAfterPrivacy(text, function () {
+            // Classify only after approval: classification may derive a
+            // capability prompt containing the original user text.
+            var Router = root.OraAskOraRouter;
+            var classification = Router && typeof Router.classify === 'function'
+              ? Router.classify(text) : null;
+            if (classification) {
+              return _dispatchToSlot(opts, classification, text);
+            }
+            return _dispatchToProse(opts, text, { reason: 'no_classification' });
+          }, { draftText: text });
         }
       });
     };

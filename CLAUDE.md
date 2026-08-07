@@ -214,7 +214,7 @@ config/visual-schemas/                       — 23 JSON Schemas + 44 example en
 config/mode-to-visual.json                   — Per-mode visual defaults + adversarial strictness
 installer/                                   — 20-file structured installer (phase1/, phase2/, manifest)
 boot/boot.md                                 — System prompt loaded at startup
-mind.md                                      — Identity/personality layer
+mind.md                                      — User context and adaptation, subordinate to the Ora constitution and Persona
 ```
 
 ## Development Notes

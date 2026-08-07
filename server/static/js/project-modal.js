@@ -10,7 +10,7 @@
  *   OraProjectModal.close()
  *
  * Tabs:
- *   Overview        — name, status, private + inert model/style/persona slots.
+ *   Overview        — name, status, privacy, model, style, and Persona defaults.
  *   Mission & Goals — MOM read/write against the vault Operation-Matrix (+ AI draft).
  *   Files           — read-only index of the project vault folder → Obsidian / OS file manager.
  *   Conversations   — membership (add/remove), restore closed.
@@ -32,6 +32,7 @@
   let candidateSearchTimer = null;
   let configsCache = null;   // /api/model-profiles names + health
   let stylesCache = null;    // /api/styles/registry profiles
+  let personasCache = null;  // /api/personas choices
   let mode = 'edit';  // 'edit' | 'create'
   let pendingNexus = null;  // a previewed nexus rename awaiting Apply
 
@@ -104,6 +105,7 @@
       ovSave:    modal.querySelector('#pmOverviewSave'),
       ovMsg:     modal.querySelector('#pmOverviewMsg'),
       modelProfile: modal.querySelector('#pmModelProfile'),
+      persona:      modal.querySelector('#pmPersona'),
       outputStyle:  modal.querySelector('#pmOutputStyle'),
       interactionStyle: modal.querySelector('#pmInteractionStyle'),
       advanced:  modal.querySelector('#pmAdvanced'),
@@ -199,8 +201,9 @@
             <div class="project-modal__hint">The default execution profile for this project's runs (a per-run pick still overrides it).</div>
           </div>
           <div class="project-modal__field">
-            <label class="project-modal__label">Persona <span class="project-modal__inert-badge">(coming soon)</span></label>
-            <select class="project-modal__select" disabled><option>—</option></select>
+            <label class="project-modal__label" for="pmPersona">Persona</label>
+            <select class="project-modal__select" id="pmPersona"></select>
+            <div class="project-modal__hint">How Ora relates, frames, and adapts inside this project.</div>
           </div>
         </div>
         <div class="project-modal__row">
@@ -210,9 +213,9 @@
             <div class="project-modal__hint">How this project's deliverables read to the world.</div>
           </div>
           <div class="project-modal__field">
-            <label class="project-modal__label" for="pmInteractionStyle">Interaction style <span class="project-modal__inert-badge">(stored; not yet applied)</span></label>
+            <label class="project-modal__label" for="pmInteractionStyle">Interaction style</label>
             <select class="project-modal__select" id="pmInteractionStyle"></select>
-            <div class="project-modal__hint">How Ora talks to you here (the honne/tatemae split lands with the persona work).</div>
+            <div class="project-modal__hint">How Ora talks to you on internal turns; explicit per-turn style still wins.</div>
           </div>
         </div>
 
@@ -491,11 +494,20 @@
         }));
       } catch (e) { stylesCache = []; }
     }
+    if (personasCache === null) {
+      try {
+        const d = await (await fetch('/api/personas')).json();
+        personasCache = ((d && d.personas) || []).map(p => ({
+          value: p.id, label: p.display_name || p.id,
+        }));
+      } catch (e) { personasCache = []; }
+    }
   }
 
   async function populateDefaults(rec) {
     await _ensureRegistries();
     _fillSelect(els.modelProfile, configsCache, rec.default_model_profile, '— Global default —');
+    _fillSelect(els.persona, personasCache, rec.persona, '— Global Persona —');
     _fillSelect(els.outputStyle, stylesCache, rec.output_style, '— None —');
     _fillSelect(els.interactionStyle, stylesCache, rec.interaction_style, '— None —');
   }
@@ -508,6 +520,7 @@
       status: els.status.value,
       private: !!els.priv.checked,
       default_model_profile: (els.modelProfile && els.modelProfile.value) || '',
+      persona: (els.persona && els.persona.value) || '',
       output_style: (els.outputStyle && els.outputStyle.value) || '',
       interaction_style: (els.interactionStyle && els.interactionStyle.value) || '',
     };
@@ -557,12 +570,17 @@
         name: data.project.name,
         storageAvailable: data.storage_available !== false,
       };
-      // Apply the private flag if the user set it at creation.
-      if (els.priv.checked) {
+      // Persist the creation-time choices that are not part of the minimal
+      // record-creation endpoint. The same metadata endpoint handles edits.
+      const creationPersona = (els.persona && els.persona.value) || '';
+      if (els.priv.checked || creationPersona) {
         try {
           await fetch('/api/projects/' + encodeURIComponent(compatibleProjectPathId(current.nexus)), {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ private: true }),
+            body: JSON.stringify({
+              private: !!els.priv.checked,
+              persona: creationPersona,
+            }),
           });
         } catch (e) {}
       }
