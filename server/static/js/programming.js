@@ -66,7 +66,7 @@
   const requestPlan = async (privacyText = '', draftText = '', pendingAnswers = [], accepted = () => {}) => {
     const repositoryPath = (repositoryInput && repositoryInput.value || '').trim();
     if (!repositoryPath) {
-      status('Repository required', 'Choose the Git worktree root before planning.');
+      status('Repository required', 'Enter a repository name or Git worktree root before planning.');
       return false;
     }
     if (!(await checkPrivacy(privacyText, draftText, accepted))) return false;
@@ -169,7 +169,7 @@
   const recoverApprovedPlan = async () => {
     const repositoryPath = (repositoryInput && repositoryInput.value || '').trim();
     if (!repositoryPath) {
-      status('Repository required', 'Choose the Git worktree root before recovery.');
+      status('Repository required', 'Enter a repository name or Git worktree root before recovery.');
       return;
     }
     status('Recovering approved task', 'Reading the checked-out task branch, commits, and current diff.');
@@ -182,7 +182,7 @@
         <div class="programming-heading">Approved task recovered</div>
         <pre class="programming-plan">${escapeHtml(proposal.plan)}</pre>
         ${accepted ? `<div class="programming-copy">Accepted milestones</div><ul>${accepted}</ul>` : ''}
-        <div class="programming-copy">${recovered.has_uncommitted_changes ? 'Current uncommitted work will be reviewed.' : 'Git worktree is clean.'}</div>
+        <div class="programming-copy">${recovered.has_uncommitted_changes ? 'Current uncommitted work will be checked for safe separation.' : 'Git worktree is clean.'}</div>
         <div class="programming-actions">
           <button type="button" class="programming-primary" data-programming-recover-resume>Resume approved plan</button>
         </div>`;

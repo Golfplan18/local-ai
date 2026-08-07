@@ -19,12 +19,12 @@ Programming is explicitly entered from its toolbar action. It never intercepts o
 Required:
 
 - a natural-language objective;
-- an absolute path to a Git worktree; and
+- a Git worktree name or path; and
 - explicit activation of Programming.
 
 Ora first reads the repository root, current commit and branch, dirty state, applicable instruction files, likely tests, and visible automation. Planning may use additional read-only repository inspection. No repository mutation occurs during planning.
 
-If the request leaves a material choice unresolved, Ora may ask up to three questions in each of at most two rounds. Questions are limited to choices that change product outcome, scope, risk, cost, authority, or external effects. On the second round Ora must choose reasonable defaults and produce the plan.
+If the request leaves a material choice unresolved, Ora may ask up to three questions in each of at most two rounds. Questions are limited to choices that change product outcome, scope, risk, cost, authority, or external effects. After two question rounds, the next planning pass must choose reasonable defaults and produce the plan.
 
 ## Plan Contract
 
@@ -43,7 +43,7 @@ The plan excludes file-by-file micromanagement, fixed step counts, mandatory att
 
 ## Execution Contract
 
-Before editing, Ora verifies that the planned repository root, commit, and dirty state still match. If user work appeared or cannot be separated safely, the outcome is `ASK USER` before branch creation or mutation.
+Before editing, Ora verifies the planned repository root, commit, branch, and dirty state still match. Dirty paths explicitly named in Component scope are task-owned. Other pre-existing dirty paths are protected from executor writes, review diffs, and accepted commits while Programming continues. If task work and user work cannot be separated safely, the outcome is `ASK USER`.
 
 Ora then:
 
@@ -77,13 +77,13 @@ The reviewer begins with exactly one outcome:
 - `CONTINUE` — this slice is sound and approved work remains;
 - `FIX` — substantive defects can be corrected inside the approved plan;
 - `DONE` — the cumulative result satisfies the complete plan; or
-- `ASK USER` — responsible continuation requires changed authority, scope, architecture, a human-only decision, safe separation of user work, or a spend decision.
+- `ASK USER` — responsible continuation requires changed authority, scope, architecture, an unapproved external effect, human-only access, or safe separation of inseparable user work.
 
 `DONE` is valid only during cumulative final review. An executor claim can never produce it.
 
 ## Correction and User Return
 
-There is no fixed correction ceiling. Continue while evidence improves. After two consecutive reviews reproduce substantially the same failure without new evidence or progress, return `ASK USER` with the consolidated blocker.
+There is no fixed correction ceiling. Continue while evidence improves. Three consecutive reviews that reproduce the same substantive failure against an unchanged task diff return `ASK USER` with the consolidated blocker.
 
 The soft spend boundary is 90 minutes. At that point Ora reports progress and asks once whether to continue. Ordinary implementation choices, reversible ambiguity, failing tests, and correctable review findings do not require the user.
 
@@ -97,7 +97,7 @@ No accepted result may remain parked outside the repository, and temporary test 
 
 The browser surface shows only what the user needs to act:
 
-- repository path and current objective;
+- repository name or path and current objective;
 - material questions, when necessary;
 - the one proposed plan and approval control;
 - milestone progress and accepted commits;

@@ -205,14 +205,14 @@ Programming begins only from the **Programming** toolbar action. Ora never class
 ### Plan repository work
 
 1. Open **Programming**.
-2. Enter the absolute path to the Git worktree.
+2. Enter the repository's short name, such as `ora`, `vault`, or `mainstreetindependent`, or enter its Git worktree path.
 3. Describe what should change in ordinary language and submit the Inquiry input.
 4. Wait while Ora inspects repository instructions, implementation, tests, Git state, and visible automation.
 5. Answer only material questions Ora cannot responsibly resolve from inspection. Ora asks no more than three questions per round and no more than two rounds.
 6. Read the one proposed plan. It identifies the outcome, component scope, non-goals, protected work, milestones, checks, authorized effects, and Git finish line.
 7. Choose **Approve and run** only if that complete boundary is right. Cancel leaves the repository unchanged.
 
-Planning is read-only. Ora rechecks the Git baseline before creating a task branch. If pre-existing work appeared or cannot be separated safely, Programming stops and asks instead of stashing, overwriting, or absorbing it.
+Planning is read-only. Ora rechecks the Git baseline before creating a task branch. Safely separable unrelated work is protected and left uncommitted while Programming continues; Ora stops only when task work and user work cannot be separated safely.
 
 ### Follow execution and review
 
@@ -254,10 +254,10 @@ To continue later, return to that repository and branch. Do not look for a Run I
 
 | Symptom | Meaning | What to do |
 |---|---|---|
-| Repository required | No Git worktree path was supplied | Enter the absolute worktree root |
+| Repository required | No repository name or Git worktree path was supplied | Enter a short name or the worktree root |
 | Planning stopped | Inspection or the configured planner failed | Read the visible error, correct repository/model access, and submit again |
 | Baseline changed | Git state differs from the inspected plan baseline | Preserve or finish the unrelated work, then request a new plan |
-| **FIX** repeats without progress | The same substantive defect survived two cycles | Review Ora's consolidated **ASK USER** blocker |
+| **FIX** repeats without progress | The same substantive defect survived three cycles without a changed task diff | Review Ora's consolidated **ASK USER** blocker |
 | Required evidence is unavailable | The reviewer could not directly inspect a source or artifact | Grant only the exact authority/access needed or revise the plan |
 | Programming needs a decision | Ora cannot continue responsibly inside the approved boundary | Decide the specific scope, authority, access, or spend question shown |
 | Work is complete locally | The approved finish line was local commits | Inspect or continue from the task branch; push only when intended |
