@@ -211,25 +211,22 @@ class OperationalIdentityTests(unittest.TestCase):
                 self.assertFalse(module._needs_derive(identities(
                     "Workshop/Paper — Outside Active Roots.md")))
 
-    def test_route_deploy_commands_are_exact_ordered_and_derive_gated(self):
+    def test_route_edits_derive_and_push_without_direct_ssh_deploy(self):
         source = (CURRENT / "macos" / "vault-event-pipeline.py").read_text()
         branch_start = source.index("        if _needs_derive(identities):")
         branch = source[branch_start:source.index(
             '        required.append(("vault_cloud_sync"', branch_start)]
-        blocks = (
-            '            required.append(("deploy_ora_app", [\n'
-            '                "/usr/bin/ssh", "cloud-ora",\n'
-            '                "/home/oracle/work/ora-ai-app/ora-project/scripts/app-deploy.sh",\n'
-            '            ]))',
-            '            required.append(("deploy_ora_org", [\n'
-            '                "/usr/bin/ssh", "cloud-ora",\n'
-            '                "/home/oracle/work/ora-ai-org/ora-project/scripts/org-deploy.sh",\n'
-            '            ]))',
+        self.assertIn(
+            '            required.append(("derive_and_push", [\n'
+            '                str(HERE / "vault-derive-sync.sh"), "--push"]))',
+            branch,
         )
-        for block in blocks:
-            self.assertIn(block, branch)
-        positions = list(map(branch.index, ('derive_and_push', 'deploy_ora_app', 'deploy_ora_org')))
-        self.assertEqual(positions, sorted(positions))
+        for value in (
+            '"/usr/bin/ssh"', "cloud-ora", "deploy_ora_app", "deploy_ora_org",
+            "app-deploy.sh", "org-deploy.sh",
+        ):
+            with self.subTest(value=value):
+                self.assertNotIn(value, source)
 
     def test_vault_event_ids_distinguish_occurrences_and_retry_exactly(self):
         source = CURRENT / "macos" / "vault-event-pipeline.py"

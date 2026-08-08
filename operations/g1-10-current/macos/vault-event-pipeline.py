@@ -151,14 +151,6 @@ def main(argv: list[str]) -> int:
         if _needs_derive(identities):
             required.append(("derive_and_push", [
                 str(HERE / "vault-derive-sync.sh"), "--push"]))
-            required.append(("deploy_ora_app", [
-                "/usr/bin/ssh", "cloud-ora",
-                "/home/oracle/work/ora-ai-app/ora-project/scripts/app-deploy.sh",
-            ]))
-            required.append(("deploy_ora_org", [
-                "/usr/bin/ssh", "cloud-ora",
-                "/home/oracle/work/ora-ai-org/ora-project/scripts/org-deploy.sh",
-            ]))
         required.append(("vault_cloud_sync", [
             "/opt/homebrew/bin/python3", str(HERE / "vault-cloud-sync.py")]))
 
