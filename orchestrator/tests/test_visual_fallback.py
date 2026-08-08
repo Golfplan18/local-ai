@@ -33,6 +33,7 @@ import os
 import sys
 import tempfile
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest import mock
 
@@ -41,6 +42,12 @@ ORCHESTRATOR = HERE.parent
 WORKSPACE = ORCHESTRATOR.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 sys.path.insert(0, str(WORKSPACE / "server"))
+
+# Both module identities of conversation_memory are patched together when a
+# test needs an isolated sessions root: the runtime imports the top-level
+# name, the package imports the dotted one, and they are distinct objects.
+import conversation_memory as runtime_memory  # noqa: E402
+from orchestrator import conversation_memory as package_memory  # noqa: E402
 
 
 class _NoopThread:
@@ -374,6 +381,22 @@ class VisualFallbackSseIntegrationTests(unittest.TestCase):
         from server import app as server  # noqa: WPS433
         self.server = server
         self.client = server.app.test_client()
+        # These tests POST to /chat with panel_id "main", which is the
+        # runtime's fallback conversation id. Without an override the Flask
+        # client writes real conversation records into the user's live
+        # sessions store and then reads that state back — a closed or
+        # pre-existing "main" record makes the request 409 instead of 200.
+        self._sessions_tmp = tempfile.TemporaryDirectory()
+        self._sessions_stack = ExitStack()
+        for module in (runtime_memory, package_memory):
+            self._sessions_stack.enter_context(mock.patch.object(
+                module, "_DEFAULT_SESSIONS_ROOT",
+                Path(self._sessions_tmp.name),
+            ))
+
+    def tearDown(self) -> None:
+        self._sessions_stack.close()
+        self._sessions_tmp.cleanup()
 
     def _run_fake_pipeline(self, ctx_pkg: dict) -> str:
         """Mock run_step1_cleanup + run_step2_context_assembly so
@@ -386,10 +409,10 @@ class VisualFallbackSseIntegrationTests(unittest.TestCase):
             "classification_confidence": "high",
         }
 
-        def fake_run_step1_cleanup(user_input, conv_context, config):
+        def fake_run_step1_cleanup(user_input, conv_context, config, **kwargs):
             return step1_ret
 
-        def fake_run_step2_context_assembly(step1, config):
+        def fake_run_step2_context_assembly(step1, config, **kwargs):
             # Return a context_pkg with the upstream signals set AND the
             # mandatory fields build_system_prompt_for_gear needs.
             pkg = {

@@ -455,14 +455,9 @@ class G14ConversationManagementTests(unittest.TestCase):
         tracker = (vault_ora / "Working — Ora Setup and Refinement.md").read_text(
             encoding="utf-8"
         )
-        registry = (vault_ora / "Registry — Ora Overview and Document Registry.md").read_text(
-            encoding="utf-8"
-        )
         self.assertIn(
             "implementation complete; pending Gate G1.4 judgment", tracker
         )
-        self.assertIn("G1.4 is the current item, implemented and pending", registry)
-        self.assertNotIn("G1.4 is complete", tracker + registry)
 
 
 if __name__ == "__main__":

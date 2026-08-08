@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import tempfile
 import unittest
 import sys
 import json
@@ -10,11 +11,34 @@ from pathlib import Path
 from unittest import mock
 
 WORKSPACE = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(WORKSPACE / 'orchestrator'))
 sys.path.insert(0, str(WORKSPACE / 'server'))
 
+import conversation_memory as runtime_memory
+from orchestrator import conversation_memory as package_memory
 from orchestrator import model_profiles as mp
 from orchestrator import project_meta as pm
 from server import app as server
+
+
+class _NoopThread:
+    """Stub thread that fires no side-effects — mirrors test_visual_fallback.
+
+    ``_persist_turn_spatial_state`` is dispatched on a daemon thread, so a
+    real thread finishes after ``tearDown`` has restored the sessions root
+    and writes the turn into the user's live store instead of the temp one.
+    """
+
+    def __init__(self, *a, **k):
+        pass
+
+    def start(self):
+        pass
+
+    def join(self, *a, **k):
+        pass
+
+    daemon = True
 
 
 class ModelProfileApiTests(unittest.TestCase):
@@ -22,6 +46,26 @@ class ModelProfileApiTests(unittest.TestCase):
     def setUpClass(cls):
         server.app.config.update(TESTING=True)
         cls.client = server.app.test_client()
+
+    def setUp(self):
+        # The /chat cases below drive the Flask client with real conversation
+        # ids. Without an override they write conversation records into the
+        # user's live sessions store and then read that state back, so a
+        # record left closed by an earlier run answers 409 forever after.
+        self._sessions_tmp = tempfile.TemporaryDirectory()
+        self._sessions_stack = ExitStack()
+        for module in (runtime_memory, package_memory):
+            self._sessions_stack.enter_context(mock.patch.object(
+                module, "_DEFAULT_SESSIONS_ROOT",
+                Path(self._sessions_tmp.name),
+            ))
+        self._sessions_stack.enter_context(
+            mock.patch.object(server.threading, "Thread", _NoopThread)
+        )
+
+    def tearDown(self):
+        self._sessions_stack.close()
+        self._sessions_tmp.cleanup()
 
     def test_generic_project_patch_rejects_browser_supplied_locks(self):
         response = self.client.post('/api/projects/example', json={

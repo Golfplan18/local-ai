@@ -14,7 +14,14 @@ if defined ORA_HOME (
 for %%I in ("!WORKSPACE!") do set "WORKSPACE=%%~fI"
 set "ORA_HOME=!WORKSPACE!"
 
-REM Find Python: prefer 'py' launcher (Windows-standard), then 'python'.
+REM Find Python: prefer this checkout's .venv — scripts\install.py creates one
+REM when the host interpreter is PEP 668 externally managed, and it owns the
+REM dependencies. Mirrors run-ora-server.sh on POSIX. Then the 'py' launcher
+REM (Windows-standard), then 'python'.
+if exist "!WORKSPACE!\.venv\Scripts\python.exe" (
+    set PYTHON="!WORKSPACE!\.venv\Scripts\python.exe"
+    goto :have_python
+)
 where py >nul 2>&1
 if %errorlevel%==0 (
     set "PYTHON=py -3"

@@ -433,7 +433,10 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
         log(f"  ✗ {req} not found — cannot install dependencies")
         return False
 
-    venv_python = REPO_ROOT / ".venv" / "bin" / "python3"
+    if os.name == "nt":
+        venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+    else:
+        venv_python = REPO_ROOT / ".venv" / "bin" / "python3"
     target = sys.executable
     cmd = [target, "-m", "pip", "install", "-r", str(req)]
     if dry_run:

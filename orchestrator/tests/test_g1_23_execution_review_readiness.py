@@ -251,7 +251,9 @@ def test_windows_appcontainer_is_opt_in_and_live_proof_remains_separate():
 
 def test_g1_23_records_preserve_submission_and_deferral_boundaries():
     report = (
-        VAULT_ORA / "Working — Execution Review Soft-Launch Check 2026-07-26.md"
+        VAULT_ORA.parent.parent / "Archive" /
+        "Working — Execution Review Soft-Launch Check 2026-07-26.md"
+        ".archived-2026-08-07"
     ).read_text(encoding="utf-8")
     tracker = (VAULT_ORA / "Working — Ora Setup and Refinement.md").read_text(
         encoding="utf-8"
