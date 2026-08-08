@@ -206,7 +206,9 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         self.assertNotIn("990 captures — five lanes", guide)
 
         sites_tracker = (
-            VAULT_ORA / "Working — Project — Ora Sites Build Tracker.md"
+            VAULT / "Archive" /
+            "Working — Project — Ora Sites Build Tracker.md"
+            ".archived-2026-08-07"
         ).read_text(encoding="utf-8")
         self.assertIn("Six-lane capture per campaign entry", sites_tracker)
         self.assertIn(

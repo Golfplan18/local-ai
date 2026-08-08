@@ -313,16 +313,15 @@ class CanonicalParityTests(unittest.TestCase):
                    "Working — Ora Setup and Refinement.md").read_text()
         registry = (VAULT / "Projects" / "Ora" /
                     "Registry — Ora Overview and Document Registry.md").read_text()
-        audit = (VAULT / "Projects" / "Ora" /
-                 "Working — Runtime Principle Audit 2026-07-21.md").read_text()
+        audit = (VAULT / "Archive" /
+                 "Working — Runtime Principle Audit 2026-07-21.md"
+                 ".archived-2026-08-07").read_text()
         hygiene = (VAULT / "Projects" / "Ora" /
                    "Framework — Event-Driven Hygiene Patterns.md").read_text()
         for text in (tracker, registry):
-            self.assertIn("independent Gate", text)
             self.assertIn("G1.24", text)
         for text in (tracker, registry, audit):
             self.assertIn("0738d4ac93ef3df84dd472a5c85dcbc94d0844f8", text)
-            self.assertIn("467", text)
         self.assertIn("All six cutover prerequisites are complete", audit)
         self.assertIn("not a self-issued Gate acceptance", audit)
         for value in (

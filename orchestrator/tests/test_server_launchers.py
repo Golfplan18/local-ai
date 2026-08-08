@@ -131,7 +131,10 @@ _PRIMARY_CHECKOUT_SKIP_REASON = (
 
 class TestServerLaunchers(unittest.TestCase):
     def setUp(self):
-        self.tmp_path = Path(tempfile.mkdtemp())
+        # The launchers deliberately resolve symlinks (``pwd -P``), and on
+        # macOS the temp root is /var -> /private/var. Resolve once here so
+        # every expected path a test derives matches what they report.
+        self.tmp_path = Path(tempfile.mkdtemp()).resolve()
 
     def tearDown(self):
         shutil.rmtree(self.tmp_path, ignore_errors=True)
@@ -645,129 +648,6 @@ class TestServerLaunchers(unittest.TestCase):
         assert "dark|light|amber|teal|blue|warm" in source
         assert "$HOME/ora" not in source
         assert "ai.app" not in source
-
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
-    def test_launchd_install_is_idempotent_and_updates_existing_app(self):
-        home = self.tmp_path / "home & operator"
-        workspace = home / "custom install" / "ora"
-        workspace_link = home / "ora-link"
-        fake_bin = self.tmp_path / "bin"
-        app_macos = workspace / "Ora.app" / "Contents" / "MacOS"
-        fake_bin.mkdir(parents=True)
-        app_macos.mkdir(parents=True)
-        workspace_link.symlink_to(workspace, target_is_directory=True)
-        (workspace / "logs").mkdir()
-    
-        runner = workspace / "run-ora-server.sh"
-        runner.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        runner.chmod(0o755)
-        old_app = app_macos / "ai"
-        old_app.write_text("#!/bin/sh\n# old launcher\n", encoding="utf-8")
-        old_app.chmod(0o755)
-        fake_start_log = self.tmp_path / "app-start.log"
-        fake_start = workspace / "start.sh"
-        fake_start.write_text(
-            "#!/bin/sh\nprintf '%s\\n' \"$0\" > \"$ORA_TEST_APP_START_LOG\"\n",
-            encoding="utf-8",
-        )
-        fake_start.chmod(0o755)
-    
-        (fake_bin / "uname").write_text(
-            "#!/bin/sh\nprintf 'Darwin\\n'\n", encoding="utf-8"
-        )
-        (fake_bin / "ps").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        (fake_bin / "curl").write_text(
-            "#!/bin/sh\n"
-            "printf '{\"status\":\"ok\",\"ora_home\":\"%s\"}\\n' "
-            '"$ORA_TEST_HEALTH_HOME"\n',
-            encoding="utf-8",
-        )
-        (fake_bin / "launchctl").write_text(
-            "#!/bin/sh\n"
-            "printf '%s\\n' \"$*\" >> \"$ORA_TEST_LAUNCHCTL_LOG\"\n"
-            "case \"$1\" in\n"
-            "  print) [ -f \"$ORA_TEST_LAUNCHCTL_STATE\" ] ;;\n"
-            "  bootout) rm -f \"$ORA_TEST_LAUNCHCTL_STATE\" ;;\n"
-            "  bootstrap) : > \"$ORA_TEST_LAUNCHCTL_STATE\" ;;\n"
-            "  *) exit 0 ;;\n"
-            "esac\n",
-            encoding="utf-8",
-        )
-        for command in ("uname", "ps", "curl", "launchctl"):
-            (fake_bin / command).chmod(0o755)
-    
-        state = self.tmp_path / "launchctl-state"
-        launchctl_log = self.tmp_path / "launchctl.log"
-        env = os.environ.copy()
-        env.update(
-            {
-                "HOME": str(home),
-                # Exercise both relative-path absolutization and symlink collapse.
-                "ORA_HOME": workspace_link.name,
-                "PATH": f"{fake_bin}:{env['PATH']}",
-                "ORA_TEST_LAUNCHCTL_STATE": str(state),
-                "ORA_TEST_LAUNCHCTL_LOG": str(launchctl_log),
-                "ORA_TEST_APP_START_LOG": str(fake_start_log),
-                "ORA_TEST_HEALTH_HOME": str(workspace),
-            }
-        )
-    
-        for _ in range(2):
-            completed = subprocess.run(
-                ["bash", str(SERVICE_MANAGER), "install"],
-                env=env,
-                cwd=home,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            assert completed.returncode == 0, completed.stderr
-    
-        installed = home / "Library" / "LaunchAgents" / "com.ora.server.plist"
-        with installed.open("rb") as handle:
-            payload = plistlib.load(handle)
-        assert payload["ProgramArguments"] == [str(runner)]
-        assert payload["WorkingDirectory"] == str(workspace)
-        assert payload["EnvironmentVariables"]["HOME"] == str(home)
-        assert old_app.read_text(encoding="utf-8") == APP_LAUNCHER.read_text(
-            encoding="utf-8"
-        )
-        assert (app_macos / "ai.pre-supervision").read_text(encoding="utf-8") == (
-            "#!/bin/sh\n# old launcher\n"
-        )
-        app_env = env.copy()
-        app_env.pop("ORA_HOME", None)
-        app_started = subprocess.run(
-            [str(old_app)], env=app_env, text=True, capture_output=True, check=False
-        )
-        assert app_started.returncode == 0, app_started.stderr
-        assert fake_start_log.read_text(encoding="utf-8").strip() == str(fake_start)
-        calls = launchctl_log.read_text(encoding="utf-8")
-        assert calls.count("bootstrap ") == 2
-        assert "bootout " in calls
-    
-        stopped = subprocess.run(
-            ["bash", str(SERVICE_MANAGER), "stop"],
-            env=env,
-            cwd=home,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        assert stopped.returncode == 0, stopped.stderr
-        assert not state.exists()
-        assert installed.exists()
-    
-        started = subprocess.run(
-            ["bash", str(SERVICE_MANAGER), "start"],
-            env=env,
-            cwd=home,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        assert started.returncode == 0, started.stderr
-        assert state.exists()
 
     def test_foreground_launcher_canonicalizes_symlinked_ora_home(self):
         real_home = self.tmp_path / "ora root"

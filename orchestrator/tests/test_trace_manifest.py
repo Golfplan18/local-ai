@@ -48,6 +48,7 @@ import live_guard  # noqa: E402,F401  — arm the oversight write quarantine
 # different object than the one the test patched). Set ORA_HOME instead.
 import pipeline_trace  # noqa: E402
 import conversation_memory  # noqa: E402
+from orchestrator import conversation_memory as package_conversation_memory  # noqa: E402
 from orchestrator import runtime_hygiene  # noqa: E402
 
 
@@ -58,6 +59,25 @@ class TraceManifestBase(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = os.path.join(self.tmp.name, "pipeline-traces")
         os.makedirs(self.root)
+        # The trace root alone does not make good on this class's promise.
+        # ``_persist_turn_spatial_state`` runs on a daemon thread, so a turn
+        # dispatched inside ``_production_conversation_memory`` can land
+        # after that helper has restored the root — which is how records for
+        # v5-* conversations accumulated in the user's live sessions store.
+        # This is the backstop for those late writes. It gets its own
+        # tempdir: that same thread can still be writing when teardown runs,
+        # and only this directory may tolerate that, never the trace root.
+        # Both module identities, for the reason the import note above gives.
+        self.sessions_tmp = tempfile.TemporaryDirectory(
+            ignore_cleanup_errors=True,
+        )
+        for module in (conversation_memory, package_conversation_memory):
+            sessions_patcher = mock.patch.object(
+                module, "_DEFAULT_SESSIONS_ROOT", Path(self.sessions_tmp.name),
+            )
+            sessions_patcher.start()
+            self.addCleanup(sessions_patcher.stop)
+        self.addCleanup(self.sessions_tmp.cleanup)
         patcher = mock.patch.object(pipeline_trace, "TRACE_ROOT", self.root)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -3555,9 +3575,15 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
             "type": "api", "service": "openai", "model": "gpt-4o",
             "api_key": "test-only", "enabled": True, "status": "active",
         }
+        # ORA_RAG_SELECTION off: the fit gate makes its own provider call
+        # whenever RAG returns candidates, so leaving it on makes the call
+        # count depend on whether a live embedder answered — 3 in isolation,
+        # 2 whenever another module in the run installed the embedding stub.
+        # This test is about step attribution, not retrieval.
         with self._routing_config([endpoint]), \
              self._fake_openai_transport() as sdk_calls, \
-             mock.patch.dict(os.environ, {"ORA_TOOL_EVENTS": "on"},
+             mock.patch.dict(os.environ, {"ORA_TOOL_EVENTS": "on",
+                                          "ORA_RAG_SELECTION": "0"},
                              clear=False):
             direct = self.boot.run_agentic_loop(
                 "physical direct", use_pipeline=False,
