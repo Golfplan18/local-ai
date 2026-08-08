@@ -83,7 +83,7 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         where="server",
         summary="List human-review queue entries.",
         usage="/queue",
-        mouse_path="Sidebar > Automated Processes",
+        mouse_path="Sidebar > Oversight > Review queue",
         keyboard_viable="Yes",
         notes="Also available as /maintenance queue.",
     ),
@@ -143,7 +143,7 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         where="browser",
         summary="Open the full review queue panel.",
         usage="/review [paused|operating]",
-        mouse_path="Sidebar > Automated Processes > Open review queue",
+        mouse_path="Sidebar > Oversight > Review queue",
         keyboard_viable="Yes",
     ),
     SlashCommandSpec(
