@@ -55,6 +55,13 @@ elif [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV:-}/bin/python" ]]; then
 elif [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV:-}/bin/python3" ]]; then
   # Some minimal environments expose only python3 inside the venv.
   PYTHON="${VIRTUAL_ENV}/bin/python3"
+elif [[ -x "$WORKSPACE/.venv/bin/python3" ]]; then
+  # An unactivated .venv/ in the repo root owns the dependencies whenever the
+  # host Python is PEP 668 externally managed (Homebrew, most distros), which
+  # is what scripts/install.py creates in that case. launchd and a plain
+  # ./start.sh never set VIRTUAL_ENV, so resolve it explicitly here or the
+  # server starts against an interpreter with none of its dependencies.
+  PYTHON="$WORKSPACE/.venv/bin/python3"
 else
   # PATH above already includes Apple Silicon and Intel Homebrew locations,
   # followed by the caller/system path, so one resolution path covers macOS,

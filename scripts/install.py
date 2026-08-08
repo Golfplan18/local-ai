@@ -359,7 +359,7 @@ def _runtime_path_preflight(dry_run: bool) -> bool:
 
 
 def step_preflight(state: dict, dry_run: bool) -> bool:
-    log("Step 1/7: Pre-flight checks")
+    log("Step 1/8: Pre-flight checks")
     ok = _runtime_path_preflight(dry_run)
 
     # Python version
@@ -371,11 +371,12 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
 
     missing_conversion = _missing_document_dependencies()
     if missing_conversion:
-        log("  ✗ Missing document-conversion dependencies: "
+        # Not fatal: step 2 installs everything in requirements.txt. Halting
+        # here is what made the published install path unusable on a clean
+        # machine — the checker reported the gap and then refused to close it.
+        log("  · Document-conversion dependencies not yet present: "
             + ", ".join(missing_conversion))
-        log("    Install with: " + sys.executable + " -m pip install "
-            + " ".join(missing_conversion))
-        ok = False
+        log("    Step 2 will install these from requirements.txt.")
     else:
         log("  ✓ Document conversion dependencies importable")
 
@@ -419,8 +420,77 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
     return ok
 
 
+def step_dependencies(state: dict, dry_run: bool) -> bool:
+    """Install Ora's Python dependencies from requirements.txt.
+
+    Without this the published install path cannot produce a working Ora:
+    server/app.py imports flask, requests, chromadb, keyring, openai and yaml
+    at module scope, and nothing else in the repo installs them.
+    """
+    log("Step 2/8: Python dependencies")
+    req = REPO_ROOT / "requirements.txt"
+    if not req.exists():
+        log(f"  ✗ {req} not found — cannot install dependencies")
+        return False
+
+    venv_python = REPO_ROOT / ".venv" / "bin" / "python3"
+    target = sys.executable
+    cmd = [target, "-m", "pip", "install", "-r", str(req)]
+    if dry_run:
+        log(f"  [dry-run] would run: {' '.join(cmd)}")
+        log("  [dry-run] would fall back to a .venv/ if the interpreter is PEP 668 externally managed")
+        return True
+
+    log(f"  · {' '.join(cmd)}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    if proc.returncode != 0 and "externally-managed-environment" in (proc.stderr or ""):
+        # Homebrew and most distro Pythons are PEP 668 externally managed.
+        # --user is blocked too, and --break-system-packages can damage the
+        # host Python, so create an isolated venv — the same thing
+        # scripts/install-server.sh does on Linux. run-ora-server.sh prefers
+        # this .venv automatically.
+        log("  ⚠ Interpreter is externally managed (PEP 668) — creating an isolated .venv/")
+        if not venv_python.exists():
+            mk = subprocess.run([sys.executable, "-m", "venv", str(REPO_ROOT / ".venv")],
+                                capture_output=True, text=True)
+            if mk.returncode != 0:
+                log("  ✗ Could not create .venv/:")
+                for line in (mk.stderr or "").strip().splitlines()[-4:]:
+                    log(f"      {line}")
+                return False
+        target = str(venv_python)
+        cmd = [target, "-m", "pip", "install", "-r", str(req)]
+        log(f"  · {' '.join(cmd)}")
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    if proc.returncode != 0:
+        log("  ✗ pip install failed:")
+        for line in (proc.stderr or proc.stdout or "").strip().splitlines()[-8:]:
+            log(f"      {line}")
+        log(f"    Retry manually: {' '.join(cmd)}")
+        return False
+
+    # Verify in a fresh interpreter — packages installed into a venv or a user
+    # site dir that did not exist at startup are not importable in-process.
+    probe = "import flask, requests, chromadb, keyring, openai, yaml"
+    check = subprocess.run([target, "-c", probe], capture_output=True, text=True)
+    if check.returncode != 0:
+        log("  ✗ Core imports still failing after install:")
+        tail = (check.stderr or "").strip().splitlines()
+        log(f"      {tail[-1] if tail else 'unknown error'}")
+        return False
+
+    log(f"  ✓ Dependencies installed and core imports verified ({target})")
+    if target != sys.executable:
+        log("    Ora will start against this .venv/ automatically.")
+    state["steps_completed"].append("dependencies")
+    save_state(state)
+    return True
+
+
 def step_select_profile(state: dict, profile: str | None, dry_run: bool) -> bool:
-    log("Step 2/7: Deployment profile selection")
+    log("Step 3/8: Deployment profile selection")
     if profile is None:
         if sys.stdin.isatty():
             print()
@@ -486,7 +556,7 @@ def _open_provider_page(url: str) -> bool:
 
 
 def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
-    log("Step 3/7: Catalog refresh (OpenRouter operational fields)")
+    log("Step 4/8: Catalog refresh (OpenRouter operational fields)")
     log("")
 
     # Artificial Analysis intelligence-index check.
@@ -551,7 +621,7 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
 
     Replaces the prior AA enrichment step.
     """
-    log("Step 4/7: Sync curated model registry (OpenRouter + LiteLLM + Chatbot Arena + empirical probe)")
+    log("Step 5/8: Sync curated model registry (OpenRouter + LiteLLM + Chatbot Arena + empirical probe)")
     if dry_run:
         log("  [dry-run] would run scripts/sync_model_registry.py sync")
         return True
@@ -592,7 +662,7 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
 
 
 def step_autopopulate(state: dict, dry_run: bool) -> bool:
-    log("Step 5/7: Auto-populate user-pipeline configuration (Budget preset)")
+    log("Step 6/8: Auto-populate user-pipeline configuration (Budget preset)")
     if dry_run:
         log("  [dry-run] would run scripts/auto-populate-configuration.py budget user-pipeline")
         return True
@@ -689,7 +759,7 @@ def _openrouter_smoke_call(model_id: str, api_key: str) -> tuple[bool, str, bool
 
 
 def step_smoke_test(state: dict, dry_run: bool) -> bool:
-    log("Step 6/7: Smoke test (Free configuration + optional OpenRouter round-trip)")
+    log("Step 7/8: Smoke test (Free configuration + optional OpenRouter round-trip)")
     if dry_run:
         log("  [dry-run] would auto-populate Free + send one test prompt when an OpenRouter key is available")
         return True
@@ -749,7 +819,7 @@ def step_smoke_test(state: dict, dry_run: bool) -> bool:
 
 
 def step_external_api_walkthrough(state: dict, dry_run: bool) -> bool:
-    log("Step 7/7: Optional External APIs orientation")
+    log("Step 8/8: Optional External APIs orientation")
     log("")
     log("  Ora can run without these keys, and every provider below can be added")
     log("  later in Settings → External APIs. Keys are stored in the system keychain,")
@@ -855,6 +925,7 @@ def main():
     completed = set(state.get("steps_completed", []))
     pipeline = [
         ("preflight",      step_preflight,    (state, args.dry_run)),
+        ("dependencies",   step_dependencies, (state, args.dry_run)),
         ("profile",        step_select_profile, (state, args.profile, args.dry_run)),
         ("catalog",        step_catalog_refresh, (state, args.dry_run)),
         ("registry_sync",  step_model_registry_sync, (state, args.dry_run)),
