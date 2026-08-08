@@ -195,6 +195,22 @@ class OperationalIdentityTests(unittest.TestCase):
         self.assertIn('step.get("exit_status") == 0', source)
         self.assertNotIn("time.sleep", source)
 
+    def test_vault_event_pipeline_derives_for_any_markdown_under_active_roots(self):
+        source = CURRENT / "macos" / "vault-event-pipeline.py"
+        module = load_script(source, "g1_10_vault_route_pipeline")
+        with tempfile.TemporaryDirectory() as temp:
+            vault = Path(temp) / "vault"
+            identities = lambda path: [{"path": str(vault / path), "sha256": "missing"}]
+            with mock.patch.object(module, "VAULT", vault):
+                self.assertTrue(module._needs_derive(identities(
+                    "Projects/Ora/Nested/Any Name.md")))
+                self.assertTrue(module._needs_derive(identities(
+                    "Projects/MSI/Deleted Future Type.md")))
+                self.assertFalse(module._needs_derive(identities(
+                    "Projects/Ora/Not Markdown.yaml")))
+                self.assertFalse(module._needs_derive(identities(
+                    "Workshop/Paper — Outside Active Roots.md")))
+
     def test_vault_event_ids_distinguish_occurrences_and_retry_exactly(self):
         source = CURRENT / "macos" / "vault-event-pipeline.py"
         module = load_script(source, "g1_10_vault_pipeline")

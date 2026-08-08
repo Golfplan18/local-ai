@@ -89,6 +89,17 @@ def _issue_event_id(identities: list[dict]) -> str:
     return "mac-vault-" + hashlib.sha256(body).hexdigest()
 
 
+def _needs_derive(identities: list[dict]) -> bool:
+    """Route-bearing canonicals may have any Markdown filename or depth."""
+    for item in identities:
+        relative = Path(item["path"]).relative_to(VAULT)
+        if (relative.suffix.lower() == ".md" and len(relative.parts) >= 3
+                and relative.parts[0] == "Projects"
+                and relative.parts[1] in {"Ora", "MSI"}):
+            return True
+    return False
+
+
 def _persist(state: dict, record: dict) -> None:
     state["events"][record["event_id"]] = record
     _atomic_json(STATE_FILE, state)
@@ -137,8 +148,7 @@ def main(argv: list[str]) -> int:
 
         required = [("vault_git_sync", [
             "/opt/homebrew/bin/python3", str(HERE / "vault-git-sync.py")])]
-        if any(Path(item["path"]).name.startswith(("Paper — ", "Framework — "))
-               for item in identities):
+        if _needs_derive(identities):
             required.append(("derive_and_push", [
                 str(HERE / "vault-derive-sync.sh"), "--push"]))
         required.append(("vault_cloud_sync", [
