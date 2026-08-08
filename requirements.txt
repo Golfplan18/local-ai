@@ -1,0 +1,50 @@
+# Ora runtime dependencies — canonical declaration.
+#
+# Read by scripts/install.py (all platforms) and scripts/install-server.sh
+# (Linux). Do not duplicate this list in either script; add packages here.
+
+# Web server
+flask
+flask-cors
+
+# HTTP + config
+requests
+pyyaml
+
+# Schema / validation
+jsonschema
+referencing
+pydantic
+
+# Vector store
+chromadb
+
+# Document conversion (Document Processing + Resources watcher)
+python-pptx
+python-docx
+pdfplumber
+openpyxl
+markdownify
+beautifulsoup4
+striprtf
+xlsxwriter
+
+# Model providers
+anthropic
+openai
+google-generativeai
+replicate
+
+# Image handling
+pillow
+
+# Filesystem watching + credential storage
+watchfiles
+keyring
+
+# Local MLX inference — Apple Silicon only
+mlx-lm; sys_platform == "darwin" and platform_machine == "arm64"
+
+# Deliberately NOT here: playwright. Browser automation is opt-in and needs a
+# separate `playwright install` for browser binaries; boot.py imports it lazily
+# so the server runs fine without it.

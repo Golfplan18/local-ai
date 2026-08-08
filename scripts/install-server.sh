@@ -134,38 +134,17 @@ log "Upgrading pip"
 run "python3 -m pip install --quiet --upgrade pip"
 
 log "Installing Python deps (Linux subset — no mlx-lm)"
-# Pinned-low deps that match the orchestrator's actual usage; no version
-# locks because Ora doesn't ship a requirements.txt yet. If a dep breaks
-# at a later version, pin here.
-DEPS=(
-  flask
-  flask-cors
-  requests
-  pyyaml
-  jsonschema
-  referencing
-  pydantic
-  chromadb
-  python-pptx
-  python-docx
-  pdfplumber
-  openpyxl
-  markdownify
-  beautifulsoup4
-  striprtf
-  xlsxwriter
-  anthropic
-  openai
-  google-generativeai
-  watchfiles
-  keyring        # silences "Tool import failed: No module named 'keyring'"
-                 # from boot.py's tool loader; in normal server operation
-                 # API keys come from env (~/.config/ora-server.env), so
-                 # the keyring fallback path in boot.py is unreachable —
-                 # this dep just lets the tool registry import cleanly.
-)
-run "python3 -m pip install --quiet ${DEPS[*]}"
-log "  ✓ Installed ${#DEPS[@]} packages"
+# Dependencies are declared once in requirements.txt at the repo root and
+# shared with scripts/install.py. Add packages there, not here. The mlx-lm
+# entry carries an Apple-Silicon environment marker, so pip correctly skips
+# it on Linux. If a dep breaks at a later version, pin it in requirements.txt.
+# Run from the repo root, same assumption the .venv steps above already make.
+if [[ ! -f requirements.txt ]]; then
+  log "  ✗ requirements.txt not found — run this script from the repo root"
+  exit 1
+fi
+run "python3 -m pip install --quiet -r requirements.txt"
+log "  ✓ Installed dependencies from requirements.txt"
 
 # ─── 3. ollama for embeddings ──────────────────────────────────────────
 log "Step 3/6: ollama (for ChromaDB embeddings)"
