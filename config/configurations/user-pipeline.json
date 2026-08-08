@@ -16,8 +16,8 @@
       "classification": {
         "primary": "gemini/gemini-3.1-flash-lite",
         "fallback": [
-          "local-mlx-qwen3.5-9b-optiq",
-          "local-mlx-qwen3.5-27b-opus",
+          "local-mlx-qwen3.5-9b",
+          "local-mlx-qwen3.6-27b",
           "qwen/qwen3.6-35b-a3b"
         ],
         "vision_substitute": "openai/gpt-5.4-image-2"
@@ -25,7 +25,7 @@
       "rag_planner": {
         "primary": "gemini/gemini-3.1-flash-lite",
         "fallback": [
-          "local-mlx-qwen3.5-27b-opus",
+          "local-mlx-qwen3.6-27b",
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
         ],
@@ -53,8 +53,8 @@
           "primary": "moonshot/kimi-k2.6",
           "fallback": [
             "moonshot/kimi-k2.6",
-            "local-mlx-kimi-dev-72b",
-            "local-mlx-hermes-4-70b",
+            "local-mlx-qwen3.5-122b",
+            "local-mlx-mistral-medium-128b",
             "qwen/qwen3.5-122b-a10b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
@@ -65,7 +65,7 @@
         "depth": {
           "primary": "xiaomi/mimo-v2.5",
           "fallback": [
-            "local-mlx-hermes-4-70b",
+            "local-mlx-mistral-medium-128b",
             "qwen/qwen3.6-plus",
             "moonshot/kimi-k2.6",
             "qwen/qwen3.5-122b-a10b",
@@ -84,8 +84,8 @@
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
           "moonshot/kimi-k2.6",
-          "local-mlx-kimi-dev-72b",
-          "local-mlx-hermes-4-70b",
+          "local-mlx-qwen3.5-122b",
+          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
@@ -95,8 +95,8 @@
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
           "moonshot/kimi-k2.6",
-          "local-mlx-kimi-dev-72b",
-          "local-mlx-hermes-4-70b",
+          "local-mlx-qwen3.5-122b",
+          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
@@ -106,8 +106,8 @@
         "primary": "qwen/qwen3.6-plus",
         "fallback": [
           "moonshot/kimi-k2.6",
-          "local-mlx-kimi-dev-72b",
-          "local-mlx-hermes-4-70b",
+          "local-mlx-qwen3.5-122b",
+          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],

@@ -15813,7 +15813,12 @@ _mlx_cache: dict = {}  # {model_path: (model_obj, tokenizer)}
 def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
     url = endpoint.get("url", "http://localhost:11434")
     engine = endpoint.get("engine", "ollama")
-    model = endpoint.get("model", "")
+    # MLX loads from a filesystem path (``model_path``); Ollama takes a model
+    # name (``model``). Every local endpoint in routing-config.json carries
+    # ``model_path`` only — reading ``model`` alone left MLX with an empty
+    # path, so every local call failed at load regardless of the path's
+    # correctness. Prefer ``model`` so Ollama endpoints are unaffected.
+    model = endpoint.get("model") or endpoint.get("model_path") or ""
 
     # Resolve "auto" engine at runtime based on platform
     if engine == "auto":
@@ -15892,7 +15897,7 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
             raw = mlx_generate(model_obj, tokenizer, prompt=prompt, max_tokens=gen_tokens, verbose=False)
             return _extract_final_response(raw)
         except FileNotFoundError:
-            return f"[MLX model not found: '{model}' — check the model_path on the local endpoint in routing-config.json]"
+            return f"[Error — MLX model not found: '{model}' — check the model_path on the local endpoint in routing-config.json]"
         except Exception as e:
             return f"[Error calling MLX model '{model}': {e}]"
     

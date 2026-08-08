@@ -5,7 +5,7 @@
   "cells": {
     "utility": {
       "step1_cleanup": {
-        "primary": "local-mlx-qwen3.5-27b-opus",
+        "primary": "local-mlx-qwen3.6-27b",
         "fallback": [
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"
@@ -20,7 +20,7 @@
         "vision_substitute": "openrouter:anthropic/claude-opus-4-7"
       },
       "rag_planner": {
-        "primary": "local-mlx-qwen3.5-27b-opus",
+        "primary": "local-mlx-qwen3.6-27b",
         "fallback": [
           "openrouter/free",
           "meta-llama/llama-3.3-70b-instruct:free"

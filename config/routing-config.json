@@ -5,11 +5,11 @@
   "visual_synthesis": {
     "preferred": null,
     "fallback": [],
-    "_note": "Phase 1 (2026-06-07) \u2014 endpoint that synthesizes/repairs an ora-visual envelope from analyst prose when the analytical model didn't emit a valid one (boot._maybe_synthesize_visual). Set 'preferred' to an endpoint name/id from the 'endpoints' block that is reliable at strict JSON (Grok / GPT class). When null or unresolvable, synthesis falls back to the turn's active endpoint. Repair-on-miss: fires only when a mode expects a visual and the turn rendered none; interactive contexts only."
+    "_note": "Phase 1 (2026-06-07) — endpoint that synthesizes/repairs an ora-visual envelope from analyst prose when the analytical model didn't emit a valid one (boot._maybe_synthesize_visual). Set 'preferred' to an endpoint name/id from the 'endpoints' block that is reliable at strict JSON (Grok / GPT class). When null or unresolvable, synthesis falls back to the turn's active endpoint. Repair-on-miss: fires only when a mode expects a visual and the turn rendered none; interactive contexts only."
   },
   "vision_extraction": {
     "enabled": true,
-    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image \u2192 text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
+    "description": "When image input arrives and the downstream analyst is not vision_capable, route the image through a vision-LANGUAGE model that returns text. The 'slot' field names a slot in the 'slots' block whose preferred + fallback chain is reused; that slot must contain multimodal LLMs (text+image → text), NOT image-generation models. The dedicated 'image_extracts' slot is the canonical home: GPT-5 / Claude Opus 4.7 / Gemini 3 Pro / GPT-4o. When the slot's chain produces no vision-input-capable entry, route_for_image_input sets context_pkg['no_vision_available'] = True and the manual-trace UX (WP-4.4) takes over. The earlier preferred_extractor_bucket / fallback_extractor_bucket bucket-fallback path was retired in install Chunk 12 (2026-05-19).",
     "slot": "image_extracts"
   },
   "web_consultation": {
@@ -22,19 +22,19 @@
     "conflict_detection": {
       "enabled": true
     },
-    "description": "Step 2 F-Consult web consultation stream. When enabled, the fast model in the step1_cleanup slot identifies search intents from the user prompt (each intent must articulate a one-line justification \u2014 anti-nitpicking enforced at the model layer, not via a count cap); all intent queries then fire in parallel via ThreadPoolExecutor with per_query_timeout_seconds bounding each one. Retrieved chunks are tier-classified (whitelisted/corroborated/single/excluded) via tools.web_corroboration.TrustedSourcesRegistry against Reference \u2014 Trusted Web Sources, then scored and provenanced for downstream weighting. prompt_sanity.enabled toggles a parallel light factual-sanity check that flags surface-level errors in the user prompt (typos on dates, mis-attributed quotes, named-entity slips); flags are advisory, never blocking. conflict_detection.enabled toggles a fast-model pass that compares each web chunk against the vault concept-RAG and adds [CONFLICT: ...] markers to web chunks whose specific factual claims contradict vault content; substantive disputed positions and contrarian content in the vault pass through untouched (the detector is instructed to flag only specific verifiable facts, NOT enforce mainstream consensus). The four consultation streams (vault concept, conversation, relationship, web) run in parallel \u2014 there is no token debt across pipeline steps because each step receives a fresh window. Optionally, env flag ORA_WEB_EXTRACTION (off by default) escalates thin high-trust snippets to a bounded full-page deep-fetch (web_fetch), chunked and fit-gated and folded into WEB CONTEXT as a DEEP EXTRACTIONS block (Process 14; bounds via ORA_WEB_EXTRACTION_MAX_FETCHES / _MIN_WEIGHT / _THIN_CHARS / _CHANNEL, gate slot ORA_RAG_FIT_GATE_SLOT). See Specification \u2014 F-Consult.md for the design."
+    "description": "Step 2 F-Consult web consultation stream. When enabled, the fast model in the step1_cleanup slot identifies search intents from the user prompt (each intent must articulate a one-line justification — anti-nitpicking enforced at the model layer, not via a count cap); all intent queries then fire in parallel via ThreadPoolExecutor with per_query_timeout_seconds bounding each one. Retrieved chunks are tier-classified (whitelisted/corroborated/single/excluded) via tools.web_corroboration.TrustedSourcesRegistry against Reference — Trusted Web Sources, then scored and provenanced for downstream weighting. prompt_sanity.enabled toggles a parallel light factual-sanity check that flags surface-level errors in the user prompt (typos on dates, mis-attributed quotes, named-entity slips); flags are advisory, never blocking. conflict_detection.enabled toggles a fast-model pass that compares each web chunk against the vault concept-RAG and adds [CONFLICT: ...] markers to web chunks whose specific factual claims contradict vault content; substantive disputed positions and contrarian content in the vault pass through untouched (the detector is instructed to flag only specific verifiable facts, NOT enforce mainstream consensus). The four consultation streams (vault concept, conversation, relationship, web) run in parallel — there is no token debt across pipeline steps because each step receives a fresh window. Optionally, env flag ORA_WEB_EXTRACTION (off by default) escalates thin high-trust snippets to a bounded full-page deep-fetch (web_fetch), chunked and fit-gated and folded into WEB CONTEXT as a DEEP EXTRACTIONS block (Process 14; bounds via ORA_WEB_EXTRACTION_MAX_FETCHES / _MIN_WEIGHT / _THIN_CHARS / _CHANNEL, gate slot ORA_RAG_FIT_GATE_SLOT). See Specification — F-Consult.md for the design."
   },
   "search_cascade_order": [
     "tavily",
     "brave",
     "ddg"
   ],
-  "_search_cascade_order_note": "Provider cascade consulted by orchestrator/tools/web_search.py. tavily = Tavily API (TAVILY_API_KEY env; LLM-friendly result shape, smaller free tier). brave = Brave Search API (BRAVE_API_KEY env; survives MSI production burst that DDG silently rate-limits). exa = Exa neural/semantic search (EXA_API_KEY env; embedding-based retrieval that complements the keyword tiers \u2014 add 'exa' to this list to enable as a cascade tier, OR use the semantic_augment block below to merge Exa results alongside the keyword cascade rather than as a fallback). ddg = DuckDuckGo (no key required; always available as the keyless tail of the cascade). Providers without a configured key are skipped silently. Unknown provider names in this list are dropped with a stderr warning. Default order if this field is absent: tavily \u2192 brave \u2192 ddg. Keys are stored in the macOS keychain under service='ora', username='<provider>-api-key' and exported to env at orchestrator startup by boot.py::_export_search_keys_to_env.",
+  "_search_cascade_order_note": "Provider cascade consulted by orchestrator/tools/web_search.py. tavily = Tavily API (TAVILY_API_KEY env; LLM-friendly result shape, smaller free tier). brave = Brave Search API (BRAVE_API_KEY env; survives MSI production burst that DDG silently rate-limits). exa = Exa neural/semantic search (EXA_API_KEY env; embedding-based retrieval that complements the keyword tiers — add 'exa' to this list to enable as a cascade tier, OR use the semantic_augment block below to merge Exa results alongside the keyword cascade rather than as a fallback). ddg = DuckDuckGo (no key required; always available as the keyless tail of the cascade). Providers without a configured key are skipped silently. Unknown provider names in this list are dropped with a stderr warning. Default order if this field is absent: tavily → brave → ddg. Keys are stored in the macOS keychain under service='ora', username='<provider>-api-key' and exported to env at orchestrator startup by boot.py::_export_search_keys_to_env.",
   "semantic_augment": {
     "enabled": true,
     "provider": "exa"
   },
-  "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) \u2014 so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity). Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
+  "_semantic_augment_note": "When enabled and the named provider's key is present, web_search callers that opt in (semantic_augment=True) run the keyword cascade AND a provider-only semantic search in parallel and merge the two (dedup by URL) — so semantic results SUPPLEMENT keyword results rather than replacing them. Opted-in callers: Step-2 web consultation (web_consultation.py) and the model-facing web_search dispatcher tool. NOT opted in: claim_verification.py (fact-checking wants keyword precision, not semantic similarity). Set enabled=false to turn the feature off without removing the key. No-op when the provider has no key, so clean / no-key installs and forks are unaffected. provider must be a registered provider in web_search.py::_PROVIDERS (currently only 'exa' is a semantic provider).",
   "slots": {
     "image_generates": {
       "preferred": "openrouter:google/gemini-3.1-flash-image",
@@ -106,7 +106,7 @@
     "image_extracts": {
       "interactive": "openrouter:openai/gpt-5",
       "agent": "openrouter:anthropic/claude-opus-4-7",
-      "_note": "Per-pipeline vision-language extraction slot. Read by route_for_image_input when an analyst model is not vision_capable. Each pipeline (interactive / agent) picks one multimodal LLM (text+image -> text); the OTHER pipeline\u2019s pick is used as the automatic backup when the primary is unavailable. Edit via Settings -> Buckets tab -> Image Extracts card (right column). DO NOT put image-GENERATION models here (gpt-image-2, etc.) \u2014 those are tuned for text+image -> image output and don\u2019t reliably emit JSON descriptions, which causes the request to hang. All entries must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
+      "_note": "Per-pipeline vision-language extraction slot. Read by route_for_image_input when an analyst model is not vision_capable. Each pipeline (interactive / agent) picks one multimodal LLM (text+image -> text); the OTHER pipeline’s pick is used as the automatic backup when the primary is unavailable. Edit via Settings -> Buckets tab -> Image Extracts card (right column). DO NOT put image-GENERATION models here (gpt-image-2, etc.) — those are tuned for text+image -> image output and don’t reliably emit JSON descriptions, which causes the request to hang. All entries must be multimodal LLMs whose output is text and whose input includes image. Validate against catalog by_input_modality.image when adding entries."
     },
     "video_generates": {
       "preferred": "openrouter:alibaba/wan-2.6",
@@ -141,90 +141,90 @@
   ],
   "endpoints": [
     {
-      "id": "local-mlx-hermes-4-70b",
+      "id": "local-mlx-mistral-medium-128b",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/hermes-4-70b",
-      "display_name": "Hermes-4-70B (4-bit)",
-      "provider": "nousresearch",
-      "training_family": "llama",
+      "model_path": "/Users/oracle/ora/models/mistral-medium-3.5-128b-4bit",
+      "display_name": "Mistral Medium 3.5 128B (4-bit)",
+      "provider": "mistral",
+      "training_family": "mistral",
       "tier": "local-premium",
       "status": "active",
       "enabled": true,
-      "ram_resident_gb": 36,
-      "ram_overhead_gb": 4,
-      "context_window": 131072,
-      "parameters_b": 70,
+      "ram_resident_gb": 73,
+      "ram_overhead_gb": 7,
+      "context_window": 262144,
+      "parameters_b": 128,
       "capabilities": {
         "tool_access": true,
         "file_system_access": true,
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
-      "id": "local-mlx-kimi-dev-72b",
+      "id": "local-mlx-qwen3.5-122b",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/kimi-dev-72b",
-      "display_name": "Kimi-Dev-72B (4-bit DWQ)",
-      "provider": "moonshot",
+      "model_path": "/Users/oracle/ora/models/qwen3.5-122b-a10b-mxfp4",
+      "display_name": "Qwen3.5-122B-A10B (MXFP4)",
+      "provider": "qwen",
       "training_family": "qwen",
       "tier": "local-premium",
       "status": "active",
       "enabled": true,
-      "ram_resident_gb": 36,
-      "ram_overhead_gb": 5,
-      "context_window": 131072,
-      "parameters_b": 72,
+      "ram_resident_gb": 61,
+      "ram_overhead_gb": 6,
+      "context_window": 262144,
+      "parameters_b": 122,
       "capabilities": {
         "tool_access": true,
         "file_system_access": true,
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
-      "id": "local-mlx-deepseek-r1-70b",
+      "id": "local-mlx-glm-4.6v",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/deepseek-r1-70b",
-      "display_name": "DeepSeek-R1-Distill-Llama-70B (5-bit)",
-      "provider": "deepseek",
-      "training_family": "llama",
+      "model_path": "/Users/oracle/ora/models/glm-4.6v-mxfp4",
+      "display_name": "GLM-4.6V (MXFP4)",
+      "provider": "zhipu",
+      "training_family": "glm",
       "tier": "local-premium",
       "status": "inactive",
       "enabled": false,
-      "ram_resident_gb": 41,
-      "ram_overhead_gb": 5,
-      "context_window": 32768,
-      "parameters_b": 70,
+      "ram_resident_gb": 55,
+      "ram_overhead_gb": 6,
+      "context_window": 131072,
+      "parameters_b": 106,
       "capabilities": {
         "tool_access": true,
         "file_system_access": true,
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
-      "id": "local-mlx-qwen3.5-27b-opus",
+      "id": "local-mlx-qwen3.6-27b",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.5-27b-opus-distilled",
-      "display_name": "Qwen3.5-27B-Claude-Opus-Distilled (4-bit)",
+      "model_path": "/Users/oracle/ora/models/qwen3.6-27b-4bit",
+      "display_name": "Qwen3.6-27B (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
       "tier": "local-mid",
       "status": "active",
       "enabled": true,
-      "ram_resident_gb": 12,
+      "ram_resident_gb": 15,
       "ram_overhead_gb": 2,
       "context_window": 262144,
       "parameters_b": 27,
@@ -234,23 +234,23 @@
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
-      "id": "local-mlx-qwen3.5-9b-optiq",
+      "id": "local-mlx-qwen3.5-9b",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.5-9b-optiq-4bit",
-      "display_name": "Qwen3.5-9B-OptiQ (4-bit)",
+      "model_path": "/Users/oracle/ora/models/qwen3.5-9b-mlx-4bit",
+      "display_name": "Qwen3.5-9B (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
       "tier": "local-fast",
       "status": "active",
       "enabled": true,
-      "ram_resident_gb": 5,
+      "ram_resident_gb": 6,
       "ram_overhead_gb": 1,
-      "context_window": 131072,
+      "context_window": 262144,
       "parameters_b": 9,
       "capabilities": {
         "tool_access": true,
@@ -258,23 +258,23 @@
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
-      "id": "local-mlx-qwen3.5-4b",
+      "id": "local-mlx-qwen3.5-4b-abliterated",
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.5-4b-mlx-4bit",
-      "display_name": "Qwen3.5-4B-MLX (4-bit)",
+      "model_path": "/Users/oracle/ora/models/huihui-qwen3.5-4b-claude-opus-abliterated-4bit",
+      "display_name": "Qwen3.5-4B Claude-Opus Abliterated (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
       "tier": "local-fast",
       "status": "active",
       "enabled": true,
-      "ram_resident_gb": 2,
+      "ram_resident_gb": 3,
       "ram_overhead_gb": 1,
-      "context_window": 32768,
+      "context_window": 262144,
       "parameters_b": 4,
       "capabilities": {
         "tool_access": true,
@@ -282,7 +282,7 @@
         "web_access": false,
         "retrieval_approach": "agentic"
       },
-      "vision_capable": false
+      "vision_capable": true
     },
     {
       "id": "claude-browser",
@@ -424,7 +424,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_note": "Disabled 2026-05-28 \u2014 user is on Claude subscription, not API. Re-enable by flipping status to active."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-haiku",
@@ -446,7 +446,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_note": "Disabled 2026-05-28 \u2014 user is on Claude subscription, not API. Re-enable by flipping status to active."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-opus",
@@ -468,7 +468,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_note": "Disabled 2026-05-28 \u2014 user is on Claude subscription, not API. Re-enable by flipping status to active."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-sonnet-4-5",
@@ -489,7 +489,7 @@
         "retrieval_approach": "pre-assembled"
       },
       "vision_capable": true,
-      "_disabled_note": "Disabled 2026-05-28 \u2014 user is on Claude subscription, not API. Re-enable by flipping status to active."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "anthropic-api-sonnet-3-5",
@@ -846,7 +846,7 @@
       },
       "vision_capable": true,
       "_auto_discovered": true,
-      "_disabled_note": "Disabled 2026-05-28 \u2014 user is on Claude subscription, not API. Re-enable by flipping status to active."
+      "_disabled_note": "Disabled 2026-05-28 — user is on Claude subscription, not API. Re-enable by flipping status to active."
     },
     {
       "id": "openai-api-o1",
@@ -14026,16 +14026,16 @@
   ],
   "buckets": {
     "local-premium": [
-      "local-mlx-kimi-dev-72b",
-      "local-mlx-hermes-4-70b"
+      "local-mlx-qwen3.5-122b",
+      "local-mlx-mistral-medium-128b"
     ],
     "local-mid": [
-      "local-mlx-qwen3.5-27b-opus",
+      "local-mlx-qwen3.6-27b",
       ""
     ],
     "local-fast": [
-      "local-mlx-qwen3.5-4b",
-      "local-mlx-qwen3.5-9b-optiq"
+      "local-mlx-qwen3.5-4b-abliterated",
+      "local-mlx-qwen3.5-9b"
     ],
     "premium": [
       "qwen/qwen3.6-plus",
@@ -14047,7 +14047,7 @@
     ],
     "fast": [
       "qwen/qwen3.6-35b-a3b",
-      "local-mlx-qwen3.5-27b-opus"
+      "local-mlx-qwen3.6-27b"
     ],
     "free": [
       "openrouter/free",
@@ -14074,14 +14074,14 @@
     "enabled": true
   },
   "slot_assignments": {
-    "sidebar": "local-mlx-qwen3.5-27b-opus",
-    "step1_cleanup": "local-mlx-qwen3.5-27b-opus",
-    "classification": "local-mlx-qwen3.5-4b",
-    "breadth": "local-mlx-hermes-4-70b",
-    "depth": "local-mlx-kimi-dev-72b",
-    "evaluator": "local-mlx-kimi-dev-72b",
-    "consolidator": "local-mlx-hermes-4-70b",
-    "rag_planner": "local-mlx-qwen3.5-27b-opus"
+    "sidebar": "local-mlx-qwen3.6-27b",
+    "step1_cleanup": "local-mlx-qwen3.6-27b",
+    "classification": "local-mlx-qwen3.5-4b-abliterated",
+    "breadth": "local-mlx-mistral-medium-128b",
+    "depth": "local-mlx-qwen3.5-122b",
+    "evaluator": "local-mlx-qwen3.5-122b",
+    "consolidator": "local-mlx-mistral-medium-128b",
+    "rag_planner": "local-mlx-qwen3.6-27b"
   },
   "gear4_overrides": {
     "depth": {
@@ -14093,7 +14093,7 @@
       "endpoint": "gemini-api"
     }
   },
-  "default_endpoint": "local-mlx-hermes-4-70b",
+  "default_endpoint": "local-mlx-mistral-medium-128b",
   "operational_context": {
     "interactive": [
       "local",
@@ -14106,10 +14106,10 @@
       "local"
     ]
   },
-  "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive \u2192 user-pipeline; agent/autonomous \u2192 background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
+  "_pipelines_retired": "Pipelines block removed in install Chunk 2d (2026-05-18). Replaced by config/configurations/<name>.json files. Router auto-derives config_name from context (interactive → user-pipeline; agent/autonomous → background-default) via DEFAULT_CONFIG_FOR_CONTEXT.",
   "_schema_notes": {
-    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 \u2014 blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
-    "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only \u2014 when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
+    "vision_capable_source_of_truth": "config/models.json is canonical. routing-config.json::endpoints[].vision_capable is a duplicate kept for backward compatibility; Router.vision_capable_for_endpoint() reads models.json first. Field removal from endpoints[] is queued as a follow-on task to install Chunk 12 — blocked on expanding models.json to per-variant entries since most routing-config endpoint ids (e.g. anthropic-api-opus-3) are not present in models.json today.",
+    "vision_extraction_bucket_fallback_retired": "vision_extraction.preferred_extractor_bucket and .fallback_extractor_bucket were retired in install Chunk 12 (2026-05-19). route_for_image_input is slot-only — when the configured slot's chain produces no vision-input-capable entry, context_pkg['no_vision_available'] = True and WP-4.4 takes over.",
     "pipelines_block_retired": "See _pipelines_retired marker. Removed in install Chunk 2d (2026-05-18). All slot resolution flows through config/configurations/<name>.json via Router auto-derivation from context.",
     "canonical_identifier_form": "TARGET: <provider>:<model_id> for cloud, bare id for local. CURRENT: mixed (some endpoints already use the prefix form, others use bare slugs). Migration to canonical form scheduled for Chunk 12.",
     "v1_compat_fields_carried": "slot_assignments, gear4_overrides, default_endpoint, operational_context were added 2026-05-19 (install Chunk 12 step 4) so that load_endpoints() and its 10+ downstream callers in boot.py, compaction.py, scheduler.py, model_dispatch.py, milestone_executor.py, framework_input_gap.py, batch_processor.py, subagent.py can read this file in place of the legacy endpoints.json. The fields are seeded verbatim from endpoints.json. Step 5 repoints load_endpoints() at routing-config.json; step 7 deletes endpoints.json."
