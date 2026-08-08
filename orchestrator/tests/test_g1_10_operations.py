@@ -211,6 +211,26 @@ class OperationalIdentityTests(unittest.TestCase):
                 self.assertFalse(module._needs_derive(identities(
                     "Workshop/Paper — Outside Active Roots.md")))
 
+    def test_route_deploy_commands_are_exact_ordered_and_derive_gated(self):
+        source = (CURRENT / "macos" / "vault-event-pipeline.py").read_text()
+        branch_start = source.index("        if _needs_derive(identities):")
+        branch = source[branch_start:source.index(
+            '        required.append(("vault_cloud_sync"', branch_start)]
+        blocks = (
+            '            required.append(("deploy_ora_app", [\n'
+            '                "/usr/bin/ssh", "cloud-ora",\n'
+            '                "/home/oracle/work/ora-ai-app/ora-project/scripts/app-deploy.sh",\n'
+            '            ]))',
+            '            required.append(("deploy_ora_org", [\n'
+            '                "/usr/bin/ssh", "cloud-ora",\n'
+            '                "/home/oracle/work/ora-ai-org/ora-project/scripts/org-deploy.sh",\n'
+            '            ]))',
+        )
+        for block in blocks:
+            self.assertIn(block, branch)
+        positions = list(map(branch.index, ('derive_and_push', 'deploy_ora_app', 'deploy_ora_org')))
+        self.assertEqual(positions, sorted(positions))
+
     def test_vault_event_ids_distinguish_occurrences_and_retry_exactly(self):
         source = CURRENT / "macos" / "vault-event-pipeline.py"
         module = load_script(source, "g1_10_vault_pipeline")
