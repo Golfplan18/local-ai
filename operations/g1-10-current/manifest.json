@@ -23,7 +23,7 @@
     "operations/g1-10-current/macos/install-macos-cutover.sh": "7ee9d995eb1e2ea0f3e6357f2c31c2a704b91cd7d7bb2d89b6dc6d049b46e74d",
     "operations/g1-10-current/macos/rollback-macos-cutover.sh": "bbabfdd1519cb8360469899eb4aac06c1276a3bd752b4a84a0d3d9f750ea0e61",
     "operations/g1-10-current/macos/vault-cloud-sync.py": "af3d2f260f31d9605dad1d5eb0df4957cf1b800f2a47a730287259da32158a89",
-    "operations/g1-10-current/macos/vault-derive-sync.sh": "96ffdb14aa1a1d6b8e4ee194312aca2e2e7b82e8d0545f9926726c27eb2c2d0a",
+    "operations/g1-10-current/macos/vault-derive-sync.sh": "0e0cd90b316e093ca87f3f3e487a354301ca399eff375682b9f57f49937b238c",
     "operations/g1-10-current/macos/vault-event-pipeline.py": "ac01fd2dbd89b5feb5d5c0a347d9005a2155c78700dfd6990215cc8df262ceb7",
     "operations/g1-10-current/macos/vault-git-sync.py": "946f3b9f2dabe1662a059993702438a0213a62b647a3bff04844386f6ca55a64"
   }
