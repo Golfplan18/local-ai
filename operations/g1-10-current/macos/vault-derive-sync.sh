@@ -104,7 +104,7 @@ sync_repo() {
 }
 
 sync_failed=0
-sync_repo "ora" "$ORA_WT" src/content/modes src/content/lenses src/content/visual-outputs src/content/papers src/content/analytical-frameworks src/content/functional-frameworks public/papers || sync_failed=1
+sync_repo "ora" "$ORA_WT" src/content/modes src/content/lenses src/content/visual-outputs src/content/papers src/content/analytical-frameworks src/content/functional-frameworks public/papers public/downloads || sync_failed=1
 sync_repo "msi" "$MSI_WT" src/content/mode-explainers src/content/lens-explainers src/content/papers src/content/methodology-docs src/content/propaganda-docs src/content/mind-papers src/content/voice-frameworks src/content/mindspecs src/content/dossiers public/papers public/downloads || sync_failed=1
 sync_repo "org" "$ORG_WT" src/content/frameworks-canonical || sync_failed=1
 if [[ "$sync_failed" != "0" ]]; then
