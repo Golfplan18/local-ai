@@ -145,6 +145,38 @@ An A/B on **300 identical notes** with an identical prompt:
 - **Haiku is better at extraction** — 63.6% source retention vs 54.2%, half the
   fabrication rate. Its literalism is an asset for triage and specifics.
 
+**Local models were tested for Stage 5 and rejected.** Do not repeat this
+experiment; the findings are unambiguous.
+
+Qwen3.5-122B-A10B (mxfp4, 61 GB) with `enable_thinking=False`, lean prompt:
+2.9 s/unit (~2.1 days for the corpus), 20/20 JSON parse, 20/20 Instance lines.
+Format and speed are fine. It fails on the only thing that matters:
+
+- **It paraphrases instead of raising the level.** Local title: *"Narrative
+  themes emerge through character choices that embody universal dilemmas rather
+  than exposition"* — still a fiction-craft claim. Opus on a sibling unit: *"The
+  choice architecture of an environment, not its description, determines what
+  the people inside it do"* — transfers to workplace design, urban planning,
+  product design. That gap IS the migration.
+- **Body bullets copy member titles verbatim.** Enumeration, not consolidation.
+- **It names no concepts** under the lean prompt (0 of 20), and invents
+  canonical-sounding ones under the long prompt ("Choice Causality Design").
+
+Two configuration traps found while testing, which apply to ANY local use:
+
+1. `boot.call_local_endpoint` passes no `enable_thinking`, and the Qwen chat
+   template defaults it on. The model emitted 26,756 characters of "Thinking
+   Process:" and never reached the JSON. Pass
+   `apply_chat_template(..., enable_thinking=False)`.
+2. No local endpoint in `routing-config.json` declares `max_tokens`, and
+   `boot.call_local_endpoint` defaults to `999_999_999`. MLX treats that as a
+   hard stop, so generation ends only on a spontaneous EOS. One unit ran 20+
+   minutes. Set it explicitly.
+
+Local IS suitable for Stage 10 edge typing (constrained classification from a
+13-term vocabulary) and for re-running Stage 3 shards (triage + verbatim
+extraction, where literalism is an asset).
+
 So: **Haiku sorts and extracts (Stage 3, 10); Opus writes (Stage 5, 9).** Do not
 move Stage 5 to a cheaper tier to save tokens — Stage 5 is the only irreplaceable
 judgement in the pipeline, and the ~30M figure already makes it affordable.
