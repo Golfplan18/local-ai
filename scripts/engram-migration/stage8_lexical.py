@@ -20,8 +20,10 @@ similarity below 0.75 and the median sat at 0.653. Two examples:
 
 Embeddings cannot see through the subject-matter costume. Generalization removes
 the costume, which is why this pass runs AFTER Stage 5 and not before. It needs
-no embedder and no API: generalized titles are lexically uniform by construction,
-which is the whole point of having generalized them.
+no embedder and no API.
+
+What generalization actually makes uniform is the note's CONCEPT NAME, not its
+wording -- see signal 2 below, where that assumption was tested and failed.
 
 Two signals, deliberately ordered:
 
