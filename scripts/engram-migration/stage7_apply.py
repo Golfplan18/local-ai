@@ -37,6 +37,9 @@ from datetime import date
 from pathlib import Path
 
 ARCHIVE_SUBDIR = "Engram Over-extraction 2026-08"
+# Absorbed members are moved here rather than deleted, so a merged note can
+# always be audited against the sources it claims to summarise.
+ABSORBED_SUBDIR = "Engram Absorbed Sources 2026-08"
 
 _SLUG_STRIP = re.compile(r"[^a-z0-9\s\-]+")
 _SLUG_WS = re.compile(r"[\s\-]+")
@@ -116,7 +119,12 @@ def build_note(rec: dict, members: list[dict], engrams: Path) -> tuple[str, str]
             lines.append(f"  - {yaml_escape(s)}")
     if platforms:
         lines.append(f"source_platforms: {yaml_escape(','.join(sorted(set(platforms))))}")
-    lines.append(f"migration: permanent-note-2026-08")
+    lines.append("migration: permanent-note-2026-08")
+    # Which model wrote this note. A later quality pass can then target
+    # exactly the population written by a given model instead of
+    # re-auditing the whole corpus.
+    if rec.get("written_by"):
+        lines.append(f"written_by: {yaml_escape(rec['written_by'])}")
     lines.append("---")
     lines.append("")
     lines.append(f"# {rec['new_title']}")
@@ -145,6 +153,7 @@ def main() -> int:
     engrams = vault / "Engrams"
     resources = vault / "Resources"
     archive = vault / "Archive" / ARCHIVE_SUBDIR
+    absorbed = vault / "Archive" / ABSORBED_SUBDIR
 
     # HARD-violation gate
     rp = M / "repair.json"
@@ -196,6 +205,7 @@ def main() -> int:
         engrams.mkdir(parents=True, exist_ok=True)
         resources.mkdir(parents=True, exist_ok=True)
         archive.mkdir(parents=True, exist_ok=True)
+        absorbed.mkdir(parents=True, exist_ok=True)
 
     for uid, members in members_of.items():
         verdict = (s5.get(uid) or {}).get("verdict") or v3.get(uid) or ""
@@ -222,7 +232,21 @@ def main() -> int:
                 for m in present:
                     f = engrams / m["file"]
                     if f != dest:
-                        f.unlink()
+                        # ARCHIVE the absorbed member, never delete it.
+                        #
+                        # The judgement defects in this pipeline are not
+                        # mechanically detectable: an invented canonical term, a
+                        # paraphrase that failed to raise the level, a silently
+                        # dropped facet, a platitude. All of them are structurally
+                        # perfect. The ONLY way to find them later is to re-read a
+                        # merged note against the sources it claims to summarise --
+                        # which is impossible if those sources were deleted.
+                        #
+                        # Keeping them turns a questionable writing pass into a
+                        # first draft: absorbed_from plus these files let a later
+                        # pass audit and rewrite any note. Cost is ~500 MB of
+                        # markdown, against permanently unverifiable output.
+                        shutil.move(str(f), str(absorbed / m["file"]))
             stats["notes_written"] += 1
             stats["members_absorbed"] += len(present)
 
