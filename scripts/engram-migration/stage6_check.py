@@ -26,7 +26,15 @@ Rules, each traced to a defect measured during the trials:
       to fewer than min(N, 2) mechanism bullets. Members are facets, not
       duplicates; a dropped facet dies when the members are deleted.
 
-  R5  structural: non-empty title and body for KEEP, Instance line present.
+  R5  structural: non-empty title and body for KEEP, Instance line present, and
+      at least one mechanism bullet (a note carrying only an Instance line has no
+      claim in it).
+
+  R6  Stage 3's extracted specifics themselves appear in the source. Measured:
+      8.2% of Haiku's specifics are not verbatim in the member text, so
+      validating the Instance line against that list alone would bless drift
+      that entered a stage earlier. Soft, because much of it is benign case or
+      hyphen normalisation -- but it is the only view of that error.
 
 Exit code is non-zero if any HARD rule (R2, R5) fails, since those are silent
 corruption rather than style. Writes repair.json listing every failure for the
@@ -60,19 +68,50 @@ Instance Each Every Both Any All Some Most Many Few Such Once Only Even Still"""
 
 
 def proper_nouns(text: str) -> set[str]:
+    """Mid-sentence capitalised tokens, LOWERCASED.
+
+    Returned lowercased so cross-text comparison is case-insensitive. Comparing
+    case-sensitively produced a 9.7% false fabrication rate: the writer rendered
+    the source's "cultural accessibility" as "Cultural Accessibility", and
+    "Cultural" then looked like an entity absent from the source. Nothing was
+    invented -- only capitalised. Case is not evidence of fabrication.
+    """
     lower = {w.lower() for w in re.findall(r"\b[a-z][a-z\-']{2,}\b", text)}
     out = set()
     for unit in re.split(r"(?:^|[\.\!\?\n]|^\s*-\s*)\s*", text):
         for tok in re.findall(r"\S+", unit)[1:]:
             m = re.match(r"([A-Z][a-zA-Z][a-zA-Z\-']{2,})", tok)
             if m and m.group(1) not in BENIGN and m.group(1).lower() not in lower:
-                out.add(m.group(1))
+                out.add(m.group(1).lower())
     return out
 
 
+def vocabulary(text: str) -> set[str]:
+    """Every alphabetic token, lowercased. The exclusion set for R2/R6: if the
+    source contains a word in any case, a later stage using it is not inventing
+    anything."""
+    return {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z\-']{1,}", text or "")}
+
+
 def numbers(text: str) -> set[str]:
-    return set(re.findall(r"\b\d[\d,\./]*%?\b", text)) | set(
-        re.findall(r"[$£€]\d[\d,\.]*[KMB]?\b", text))
+    """Numeric tokens, with hyphenated dates kept whole.
+
+    Splitting on hyphens turned "2026-04-29" into {2026, 04, 29}, and a source
+    that wrote the date differently then registered "04" and "29" as novel
+    figures. Match the full date first and remove it before scanning for bare
+    numbers.
+    """
+    out: set[str] = set()
+    rest = text
+    for m in re.finditer(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b", text):
+        out.add(m.group(0))
+    rest = re.sub(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b", " ", text)
+    out |= set(re.findall(r"\b\d[\d,\.]*%?\b", rest))
+    out |= set(re.findall(r"[$£€]\d[\d,\.]*[KMB]?\b", rest))
+    # A bare 1-2 digit number is an enumerator far more often than a fact
+    # ("Stage 6", "Chapter 4", bullet indices); it is not a specific worth
+    # gating a HARD failure on.
+    return {n for n in out if not re.fullmatch(r"\d{1,2}", n)}
 
 
 def instance_line(body: str) -> str:
@@ -113,12 +152,32 @@ def check(rec: dict, unit: dict) -> list[str]:
     if not inst:
         bad.append("HARD:R5_no_instance_line")
     else:
+        # Validate against the ORIGINAL member text where we have it, not only
+        # against Stage 3's specifics list. Measured: 8.2% of Haiku's extracted
+        # specifics do not appear verbatim in the source, so checking the
+        # Instance line against that list alone would bless drift that entered
+        # one stage earlier. source_text is the union of member titles+bodies.
         allowed = " ".join(unit.get("specifics") or [])
-        novel_n = numbers(inst) - numbers(allowed)
-        novel_p = proper_nouns(inst) - proper_nouns(allowed)
+        ground = unit.get("source_text") or ""
+        # Compare candidate entities against the source's WHOLE VOCABULARY, not
+        # against entities extracted from it. proper_nouns() only returns
+        # capitalised tokens, so a source that wrote "cultural accessibility" or
+        # "chapter 4" in lowercase contributed nothing to the comparison set and
+        # the writer's "Cultural Accessibility" looked invented. A word the
+        # source contains in any case is not a fabrication.
+        source_vocab = vocabulary(allowed) | vocabulary(ground)
+        source_nums = numbers(allowed) | numbers(ground)
+        novel_p = {w for w in proper_nouns(inst) if w not in source_vocab}
+        novel_n = numbers(inst) - source_nums
         # "none recorded in source" is the sanctioned empty form
         if "none recorded in source" not in inst.lower() and (novel_n or novel_p):
             bad.append("HARD:R2_fabricated_specific")
+        if ground:
+            gv, gn = vocabulary(ground), numbers(ground)
+            drift_p = {w for w in proper_nouns(allowed) if w not in gv}
+            drift_n = numbers(allowed) - gn
+            if drift_n or drift_p:
+                bad.append("R6_specifics_drift")
 
     tb = []
     if YEAR.search(title): tb.append("year")
@@ -159,13 +218,19 @@ def main() -> int:
         for r in recs:
             if r.get("unit_id"):
                 units[r["unit_id"]] = r
-    # member titles come from the shards
+    # member titles AND full source text come from the shards. The source text is
+    # the ground truth for R2/R6: it is the only thing in this pipeline that was
+    # not written by a model.
     titles: dict[str, list[str]] = {}
+    ground: dict[str, str] = {}
     for p in sorted((M / "shards").glob("shard_*.json")):
         for u in json.loads(p.read_text()):
             titles[u["unit_id"]] = [m["title"] for m in u["members"]]
+            ground[u["unit_id"]] = " ".join(
+                (m.get("title") or "") + " " + (m.get("body") or "") for m in u["members"])
     for uid, u in units.items():
         u["member_titles"] = titles.get(uid, [])
+        u["source_text"] = ground.get(uid, "")
 
     out = sorted((M / "stage5").glob("result_*.json"))
     if not out:

@@ -25,7 +25,16 @@ no embedder and no API.
 What generalization actually makes uniform is the note's CONCEPT NAME, not its
 wording -- see signal 2 below, where that assumption was tested and failed.
 
-Two signals, deliberately ordered:
+Three signals, deliberately ordered:
+
+  0. SPLIT-CLUSTER SIBLINGS — sub-units Stage 2 carved out of one oversized
+     embedding cluster ("u000004.07", "u000004.09"). They came from ONE cluster
+     and were separated only to bound the work per model call, so they are merge
+     candidates by construction and neither signal below finds them: the
+     204-member setting-design cluster yielded sub-unit notes named "choice
+     architecture", "reciprocal determinism", and "objective correlative" --
+     three different canonical terms, invisible to both a shared-concept match
+     and title overlap.
 
   1. SHARED STANDARD CONCEPT — two notes Stage 5 independently labelled with the
      same canonical term (both "moral hazard", both "operant extinction") are the
@@ -71,10 +80,20 @@ def content_words(s: str) -> set[str]:
             if w not in STOP and len(w) > 3}
 
 
+# Reuse the normaliser from stage8b rather than keeping a weaker copy here. The
+# local version stripped punctuation to nothing ("divide-and-conquer" ->
+# "divideandconquer") and did no plural folding, so "costly signal" and "costly
+# signaling" -- 1 + 14 notes -- would not have grouped.
 def norm_concept(s: str) -> str:
-    s = re.sub(r"\(.*?\)", "", s or "").strip().lower()
-    s = re.sub(r"[^a-z0-9 ]", "", s)
-    return re.sub(r"\s+", " ", s).strip()
+    from importlib.util import spec_from_file_location, module_from_spec
+    global _AUDIT
+    try:
+        _AUDIT
+    except NameError:
+        spec = spec_from_file_location("_s8b", str(Path(__file__).with_name("stage8b_concept_audit.py")))
+        _AUDIT = module_from_spec(spec)
+        spec.loader.exec_module(_AUDIT)
+    return _AUDIT.norm(s)
 
 
 def main() -> int:
@@ -104,6 +123,31 @@ def main() -> int:
     print(f"[stage8] generalized notes: {len(ids):,}")
 
     pairs: dict[tuple[str, str], str] = {}
+
+    # Signal 0 — SPLIT-CLUSTER SIBLINGS, the highest-precision signal here.
+    # Stage 2 split clusters above 12 members into sub-units sharing a parent
+    # ("u000004.07", "u000004.09"), so these notes came from ONE embedding
+    # cluster and were separated only to bound the work per model call. They are
+    # merge candidates by construction.
+    #
+    # Neither later signal reliably finds them: the 204-member setting-design
+    # cluster produced sub-unit notes named "choice architecture", "reciprocal
+    # determinism", and "objective correlative" -- three different canonical
+    # terms for closely related material, invisible to a shared-concept match and
+    # to title overlap. Without this signal the split silently becomes permanent
+    # fragmentation, which is the exact defect the migration exists to remove.
+    by_parent: dict[str, list[str]] = collections.defaultdict(list)
+    for uid in ids:
+        if "." in uid:
+            by_parent[uid.split(".")[0]].append(uid)
+    sib_groups = {p: v for p, v in by_parent.items() if len(v) > 1}
+    for p, group in sib_groups.items():
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                a, b = group[i], group[j]
+                pairs[(a, b) if a < b else (b, a)] = f"split-sibling:{p}"
+    print(f"[stage8] split-cluster parents with >1 surviving sub-unit: "
+          f"{len(sib_groups):,} covering {sum(len(v) for v in sib_groups.values()):,} notes")
 
     # Signal 1 — shared canonical concept name
     by_concept: dict[str, list[str]] = collections.defaultdict(list)
@@ -144,8 +188,9 @@ def main() -> int:
                 if u and len(toks[a] & toks[b]) / len(u) >= args.jaccard:
                     pairs[key] = "title-overlap"
     print(f"[stage8] candidate pairs: {len(pairs):,} "
-          f"({sum(1 for v in pairs.values() if v.startswith('concept:')):,} by shared concept, "
-          f"{sum(1 for v in pairs.values() if v == 'title-overlap'):,} by title overlap)")
+          f"({sum(1 for v in pairs.values() if v.startswith('split-sibling')):,} split siblings, "
+          f"{sum(1 for v in pairs.values() if v.startswith('concept:')):,} shared concept, "
+          f"{sum(1 for v in pairs.values() if v == 'title-overlap'):,} title overlap)")
 
     # Group pairs into candidate sets (leader-style, non-transitive: a runaway
     # transitive component here would hand Stage 9 an unreviewable blob, the same
@@ -167,13 +212,18 @@ def main() -> int:
                 g.append(nb)
         if len(g) > 1:
             for s in range(0, len(g), args.max_group):
-                groups.append(g[s:s + args.max_group])
+                chunk = g[s:s + args.max_group]
+                # A tail chunk can hold a single member; that is not a group and
+                # indexing g[1] on it raised IndexError.
+                if len(chunk) > 1:
+                    groups.append(chunk)
 
     out = []
     for k, g in enumerate(groups):
         out.append({
             "group_id": f"g{k:06d}",
-            "reason": pairs.get((g[0], g[1]) if g[0] < g[1] else (g[1], g[0]), "mixed"),
+            "reason": pairs.get((g[0], g[1]) if g[0] < g[1] else (g[1], g[0]), "mixed")
+                      if len(g) > 1 else "single",
             "members": [{"unit_id": u,
                          "title": notes[u]["new_title"],
                          "standard_concept": notes[u].get("standard_concept", ""),

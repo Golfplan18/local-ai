@@ -34,6 +34,14 @@ def main() -> int:
     ap.add_argument("--units-per-shard", type=int, default=DEFAULT_SHARD_UNITS)
     ap.add_argument("--limit", type=int, default=0, help="pilot: cap total units")
     ap.add_argument("--out-name", default="stage5_shards")
+    ap.add_argument("--with-bodies", action="store_true",
+                    help="include member bodies. Excluded by default on the "
+                         "argument that titles carry the claims and bodies were "
+                         "written under the broken named-actors rule, so they are "
+                         "the most instance-polluted text in the corpus and may "
+                         "anchor the writer toward the instance rather than away "
+                         "from it. That is a hypothesis, not a measurement — use "
+                         "this flag to A/B it.")
     args = ap.parse_args()
     M = Path(args.migration)
 
@@ -74,13 +82,24 @@ def main() -> int:
     if args.limit:
         keeps = keeps[:args.limit]
 
-    units = [{
-        "unit_id": u,
-        "size": sizes.get(u, 1),
-        "member_files": tri[u].get("member_files") or [],
-        "member_titles": titles[u],
-        "specifics": tri[u].get("specifics") or [],
-    } for u in keeps]
+    bodies: dict[str, list[str]] = {}
+    if args.with_bodies:
+        for p in sorted((M / "shards").glob("shard_*.json")):
+            for u in json.loads(p.read_text()):
+                bodies[u["unit_id"]] = [m.get("body", "") for m in u["members"]]
+
+    units = []
+    for u in keeps:
+        rec = {
+            "unit_id": u,
+            "size": sizes.get(u, 1),
+            "member_files": tri[u].get("member_files") or [],
+            "member_titles": titles[u],
+            "specifics": tri[u].get("specifics") or [],
+        }
+        if args.with_bodies:
+            rec["member_bodies"] = bodies.get(u, [])
+        units.append(rec)
 
     out = M / args.out_name
     out.mkdir(parents=True, exist_ok=True)
