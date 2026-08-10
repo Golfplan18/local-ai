@@ -53,10 +53,22 @@ DRIFT_RATIO = 0.86
 def _stem(w: str) -> str:
     """Light suffix fold so 'costly signal'/'costly signaling' and
     'barrier'/'barriers' land on the same key. Deliberately shallow —
-    over-stemming would collapse genuinely different concepts."""
-    for suf, rep in (("ies", "y"), ("ing", ""), ("es", ""), ("s", "")):
-        if len(w) > 4 and w.endswith(suf):
-            return w[: -len(suf)] + rep
+    over-stemming would collapse genuinely different concepts.
+
+    The plural rules follow English rather than raw string suffixes. Stripping a
+    trailing "es" unconditionally turned "preferences" into "preferenc", which
+    never matched "preference"; -es is only dropped after s/x/z/ch/sh.
+    """
+    if len(w) <= 4:
+        return w
+    if w.endswith("ies"):
+        return w[:-3] + "y"
+    if w.endswith("ing"):
+        return w[:-3]
+    if w.endswith(("ses", "xes", "zes", "ches", "shes")):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith("ss"):
+        return w[:-1]
     return w
 
 
