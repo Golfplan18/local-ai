@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import struct
 import tempfile
 import threading
 import time
@@ -10,6 +11,15 @@ from pathlib import Path
 from unittest import mock
 
 from orchestrator.tools import chroma_source_rebuild as rebuild
+
+
+def _shift_float32_ulps(value: float, steps: int) -> float:
+    bits = struct.unpack(">I", struct.pack(">f", float(value)))[0]
+    if bits & 0x80000000:
+        bits -= steps
+    else:
+        bits += steps
+    return struct.unpack(">f", struct.pack(">I", bits))[0]
 
 
 def _cleaned_pair(
@@ -209,13 +219,16 @@ class _MSIComposer:
 class _PromotionCollection:
     def __init__(
         self, name, metadata, rows=None, *,
-        fail_upsert=False, corrupt_embeddings=False,
+        fail_upsert=False, corrupt_documents=False, corrupt_embeddings=False,
+        embedding_ulp_drift=0,
     ):
         self.name = name
         self.metadata = dict(metadata)
         self.rows = dict(rows or {})
         self.fail_upsert = fail_upsert
+        self.corrupt_documents = corrupt_documents
         self.corrupt_embeddings = corrupt_embeddings
+        self.embedding_ulp_drift = embedding_ulp_drift
 
     def count(self):
         return len(self.rows)
@@ -228,6 +241,8 @@ class _PromotionCollection:
         result = {"ids": selected}
         if "documents" in include:
             result["documents"] = [self.rows[row_id][0] for row_id in selected]
+            if self.corrupt_documents and result["documents"]:
+                result["documents"][0] += "\ncorrupted"
         if "metadatas" in include:
             result["metadatas"] = [self.rows[row_id][1] for row_id in selected]
         if "embeddings" in include:
@@ -235,6 +250,11 @@ class _PromotionCollection:
             if self.corrupt_embeddings and result["embeddings"]:
                 result["embeddings"][0] = list(result["embeddings"][0])
                 result["embeddings"][0][0] += 0.25
+            elif self.embedding_ulp_drift and result["embeddings"]:
+                result["embeddings"][0] = list(result["embeddings"][0])
+                result["embeddings"][0][0] = _shift_float32_ulps(
+                    result["embeddings"][0][0], self.embedding_ulp_drift,
+                )
         return result
 
     def upsert(self, *, ids, documents, metadatas, embeddings):
@@ -280,11 +300,15 @@ class _PromotionCollection:
 class _PromotionClient:
     def __init__(
         self, collections, *,
-        fail_created_upsert=False, corrupt_created_embeddings=False,
+        fail_created_upsert=False, corrupt_created_documents=False,
+        corrupt_created_embeddings=False,
+        created_embedding_ulp_drift=0,
     ):
         self.collections = {collection.name: collection for collection in collections}
         self.fail_created_upsert = fail_created_upsert
+        self.corrupt_created_documents = corrupt_created_documents
         self.corrupt_created_embeddings = corrupt_created_embeddings
+        self.created_embedding_ulp_drift = created_embedding_ulp_drift
         self.created = []
         self.deleted = []
 
@@ -300,7 +324,9 @@ class _PromotionClient:
         collection = _PromotionCollection(
             name, metadata,
             fail_upsert=self.fail_created_upsert,
+            corrupt_documents=self.corrupt_created_documents,
             corrupt_embeddings=self.corrupt_created_embeddings,
+            embedding_ulp_drift=self.created_embedding_ulp_drift,
         )
         self.collections[name] = collection
         self.created.append(name)
@@ -309,6 +335,58 @@ class _PromotionClient:
     def delete_collection(self, *, name):
         self.deleted.append(name)
         del self.collections[name]
+
+
+class CopiedEmbeddingComparisonTests(unittest.TestCase):
+    profile = {"dimension": 3}
+
+    @staticmethod
+    def _collection(vector):
+        return _PromotionCollection(
+            "conversations", {}, {"row": ("document", {}, vector)},
+        )
+
+    def test_nonfinite_and_dimension_mismatch_fail_closed(self):
+        source = self._collection([1.0, 0.0, 0.0])
+        with self.assertRaisesRegex(rebuild.RebuildError, "dimension"):
+            rebuild._compare_copied_embeddings(
+                source, self._collection([1.0, 0.0]), self.profile, 1,
+            )
+        with self.assertRaisesRegex(rebuild.RebuildError, "non-finite"):
+            rebuild._compare_copied_embeddings(
+                source, self._collection([float("nan"), 0.0, 0.0]),
+                self.profile, 1,
+            )
+
+    def test_signed_zero_and_cross_zero_adjacent_values_are_canonical(self):
+        minimum_subnormal = struct.unpack(">f", struct.pack(">I", 1))[0]
+        source = self._collection([-0.0, -minimum_subnormal, 0.0])
+        target = self._collection([0.0, -0.0, minimum_subnormal])
+
+        report = rebuild._compare_copied_embeddings(
+            source, target, self.profile, 1,
+        )
+
+        self.assertEqual(report["drifted_rows"], 1)
+        self.assertEqual(report["drifted_components"], 2)
+        self.assertEqual(report["max_float32_ulp"], 1)
+
+    def test_misaligned_embedding_batch_fails_closed(self):
+        source = self._collection([1.0, 0.0, 0.0])
+        target = self._collection([1.0, 0.0, 0.0])
+        original_get = target.get
+
+        def misaligned_get(*, ids=None, include=None):
+            result = original_get(ids=ids, include=include)
+            if include and "embeddings" in include:
+                result["embeddings"] = []
+            return result
+
+        with mock.patch.object(target, "get", side_effect=misaligned_get):
+            with self.assertRaisesRegex(rebuild.RebuildError, "misaligned"):
+                rebuild._compare_copied_embeddings(
+                    source, target, self.profile, 1,
+                )
 
 
 class ConversationSourceRebuildTests(unittest.TestCase):
@@ -1153,13 +1231,56 @@ class ConversationPromotionTests(unittest.TestCase):
             "conversations_old",
         )
 
-    def test_finite_target_vector_corruption_blocks_flip_and_cleans_target(self):
+    def test_target_document_corruption_blocks_flip_and_cleans_target(self):
         before = self.config_path.read_text(encoding="utf-8")
-        self.active_client.corrupt_created_embeddings = True
+        self.active_client.corrupt_created_documents = True
+
         with self.assertRaisesRegex(
             rebuild.RebuildError, "count/hash/profile/privacy differs",
         ):
             rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_finite_target_vector_corruption_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.corrupt_created_embeddings = True
+        with self.assertRaisesRegex(
+            rebuild.RebuildError, "one float32 ULP",
+        ):
+            rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_one_float32_ulp_copy_drift_is_accepted_and_reported(self):
+        self.active_client.created_embedding_ulp_drift = 1
+
+        report = rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(
+            self._read_config()["collections"]["conversations"],
+            "conversations_new",
+        )
+        self.assertEqual(report["copy_validation"]["rows"], 2)
+        self.assertEqual(report["copy_validation"]["components"], 6)
+        self.assertGreater(report["copy_validation"]["drifted_rows"], 0)
+        self.assertGreater(report["copy_validation"]["drifted_components"], 0)
+        self.assertEqual(report["copy_validation"]["max_float32_ulp"], 1)
+        self.assertGreater(report["copy_validation"]["max_absolute_delta"], 0)
+        self.assertEqual(self.active_client.deleted, [])
+
+    def test_two_float32_ulp_copy_drift_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.created_embedding_ulp_drift = 2
+
+        with self.assertRaisesRegex(rebuild.RebuildError, "one float32 ULP"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+
         self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
         self.assertNotIn("conversations_new", self.active_client.collections)
         self.assertIn("conversations_old", self.active_client.collections)
@@ -1188,6 +1309,14 @@ class ConversationPromotionTests(unittest.TestCase):
         self.assertEqual(self.active_client.deleted, [])
         self.assertEqual(report["validation"]["count"], 2)
         self.assertEqual(len(report["validation"]["embedding_sha256"]), 64)
+        self.assertEqual(report["copy_validation"], {
+            "rows": 2,
+            "components": 6,
+            "drifted_rows": 0,
+            "drifted_components": 0,
+            "max_float32_ulp": 0,
+            "max_absolute_delta": 0.0,
+        })
         self.assertEqual(
             report["validation"]["privacy_counts"],
             {"": 1, "private": 1, "stealth": 0},

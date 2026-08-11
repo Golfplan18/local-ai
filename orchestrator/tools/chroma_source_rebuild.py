@@ -29,6 +29,7 @@ import math
 import os
 import re
 import stat
+import struct
 import subprocess
 from collections import defaultdict, deque
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -1597,6 +1598,113 @@ def _collection_ids(collection: Any) -> list[str]:
     return sorted(ids)
 
 
+def _float32_ordered_key(value: float) -> int:
+    """Map a finite float32 value to its monotonic IEEE-754 integer key."""
+    try:
+        bits = struct.unpack(">I", struct.pack(">f", value))[0]
+    except (OverflowError, struct.error) as exc:
+        raise RebuildError("conversation embedding is outside float32 range") from exc
+    magnitude = bits & 0x7FFFFFFF
+    if magnitude == 0:
+        return 0x80000000
+    if bits & 0x80000000:
+        return 0x80000000 - magnitude
+    return 0x80000000 + magnitude
+
+
+def _compare_copied_embeddings(
+    source: Any,
+    target: Any,
+    profile: dict[str, Any],
+    batch_size: int,
+) -> dict[str, int | float]:
+    """Validate one Chroma copy without requiring impossible bitwise identity.
+
+    A cosine collection normalizes supplied vectors when it persists its HNSW
+    index. Reading a vector and upserting it into another cosine collection can
+    therefore move a component by one float32 ULP even though no new embedding
+    was computed. Everything except that single-copy serialization boundary
+    remains exact; two ULPs or any malformed vector fail closed.
+    """
+    if batch_size < 1:
+        raise RebuildError("embedding comparison requires a positive batch")
+    source_ids, target_ids = _collection_ids(source), _collection_ids(target)
+    if source_ids != target_ids:
+        raise RebuildError("copied conversation embedding ids differ")
+    dimension = int(profile["dimension"])
+    drifted_rows = 0
+    drifted_components = 0
+    maximum_ulps = 0
+    maximum_absolute_delta = 0.0
+    for start in range(0, len(source_ids), batch_size):
+        requested = source_ids[start:start + batch_size]
+        batches: list[dict[str, list[float]]] = []
+        for collection in (source, target):
+            result = collection.get(ids=requested, include=["embeddings"])
+            ids = result.get("ids") if isinstance(result, dict) else None
+            embeddings = result.get("embeddings") if isinstance(result, dict) else None
+            ids = ids.tolist() if hasattr(ids, "tolist") else ids
+            embeddings = (
+                embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
+            )
+            if (
+                not isinstance(ids, list) or not isinstance(embeddings, list)
+                or len(ids) != len(requested) or len(embeddings) != len(requested)
+            ):
+                raise RebuildError("copied conversation embeddings are misaligned")
+            rows = dict(zip(ids, embeddings))
+            if len(rows) != len(requested) or set(rows) != set(requested):
+                raise RebuildError("copied conversation embedding ids are incorrect")
+            normalized: dict[str, list[float]] = {}
+            for row_id in requested:
+                vector = rows[row_id]
+                vector = vector.tolist() if hasattr(vector, "tolist") else vector
+                if not isinstance(vector, list) or len(vector) != dimension:
+                    raise RebuildError("copied conversation embedding dimension differs")
+                try:
+                    converted = [float(value) for value in vector]
+                except (TypeError, ValueError) as exc:
+                    raise RebuildError(
+                        "copied conversation embedding is non-numeric"
+                    ) from exc
+                if not all(math.isfinite(value) for value in converted):
+                    raise RebuildError("copied conversation embedding is non-finite")
+                normalized[row_id] = converted
+            batches.append(normalized)
+        source_rows, target_rows = batches
+        for row_id in requested:
+            row_drifted = False
+            for source_value, target_value in zip(
+                source_rows[row_id], target_rows[row_id],
+            ):
+                distance = abs(
+                    _float32_ordered_key(source_value)
+                    - _float32_ordered_key(target_value)
+                )
+                if distance > 1:
+                    raise RebuildError(
+                        "copied conversation embedding exceeds one float32 ULP"
+                    )
+                if distance:
+                    row_drifted = True
+                    drifted_components += 1
+                    maximum_ulps = max(maximum_ulps, distance)
+                    maximum_absolute_delta = max(
+                        maximum_absolute_delta,
+                        abs(source_value - target_value),
+                    )
+            if row_drifted:
+                drifted_rows += 1
+    return {
+        "rows": len(source_ids),
+        "components": len(source_ids) * dimension,
+        "drifted_rows": drifted_rows,
+        "drifted_components": drifted_components,
+        "max_float32_ulp": maximum_ulps,
+        "max_absolute_delta": maximum_absolute_delta,
+    }
+
+
 def _audit(
     collection: Any, profile: dict[str, Any], batch_size: int, copy_to: Any | None = None,
 ) -> tuple[dict[str, Any], dict[str, tuple[str, list[float]]]]:
@@ -1817,8 +1925,22 @@ def promote_conversation_replay(
                     source, replay_profile, batch_size, copy_to=target,
                 )
                 target_audit, samples = _audit(target, replay_profile, batch_size)
-                if source_audit["count"] != evidence["count"] or target_audit != source_audit:
+                source_exact = {
+                    key: value for key, value in source_audit.items()
+                    if key != "embedding_sha256"
+                }
+                target_exact = {
+                    key: value for key, value in target_audit.items()
+                    if key != "embedding_sha256"
+                }
+                if (
+                    source_audit["count"] != evidence["count"]
+                    or target_exact != source_exact
+                ):
                     raise RebuildError("promoted collection count/hash/profile/privacy differs")
+                copy_validation = _compare_copied_embeddings(
+                    source, target, replay_profile, batch_size,
+                )
                 smoke = _privacy_smoke(target, samples)
                 _require_stopped(home, probe)
                 latest, latest_profile, _ = _config_state(
@@ -1853,6 +1975,7 @@ def promote_conversation_replay(
         "previous_physical_collection": expected_current_physical,
         "active_physical_collection": target_physical_collection,
         "replay_fingerprint": evidence["fingerprint"], "validation": source_audit,
+        "copy_validation": copy_validation,
         "query_smoke": smoke, "collection_history": history,
         "rollback": {
             "expected_current_physical": target_physical_collection,
