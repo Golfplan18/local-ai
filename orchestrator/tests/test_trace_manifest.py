@@ -1135,7 +1135,9 @@ class TestPhysicalModelCallConfig(TraceManifestBase):
         records = self._model_config_records(d)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["provider_attempt"], "mlx")
-        self.assertEqual(records[0]["effective_max_tokens"], 32_000)
+        # Unknown local endpoints fail small: the 32,768-token fallback
+        # window reserves one quarter for completion.
+        self.assertEqual(records[0]["effective_max_tokens"], 8_192)
 
     def test_unsupported_local_engine_records_no_physical_attempt(self):
         d = self.start("unsupported-local")
@@ -3177,15 +3179,44 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
         context = self._context(
             trace_dir, 3, prompt="gear3 feature request"
         )
+        # Supplemental RAG may promote only a complete unit that the first
+        # physical call actually deferred.  Two large global units force the
+        # lower-ranked evidence unit into that deferred pool; the model's gap
+        # query then promotes it ahead of the initially selected filler.
+        context["optional_context_units"] = [
+            {
+                "lane": "global",
+                "unit_id": "initial-filler",
+                "provenance_id": "initial-filler",
+                "source_id": "global-rag",
+                "content": "Initially preferred background. " + ("x" * 90_000),
+                "relevance": 1.0,
+                "recency": 1.0,
+                "order": 0,
+            },
+            {
+                "lane": "global",
+                "unit_id": "supplement-evidence",
+                "provenance_id": "supplement-evidence",
+                "source_id": "global-rag",
+                "content": (
+                    "SUPPLEMENT_EVIDENCE_SECRET trace evidence source. "
+                    + ("y" * 90_000)
+                ),
+                "relevance": 0.0,
+                "recency": 0.0,
+                "order": 1,
+            },
+        ]
         self.emit_supplement = True
         self.emit_flagged_claim = True
         search_result = [{
             "title": "Claim source", "url": "https://example.test/claim",
             "snippet": "The source records the event in 2024.",
         }]
-        with mock.patch.object(self.boot, "call_model", side_effect=self._provider), \
-             mock.patch.object(self.boot, "assemble_ranked_context",
-                               return_value="SUPPLEMENT_EVIDENCE_SECRET"), \
+        with mock.patch.object(
+                 self.boot, "call_api_endpoint", side_effect=self._provider,
+             ), \
              mock.patch.object(claim_verification, "web_search_structured",
                                return_value=search_result):
             output = self.boot.run_gear3(
@@ -3376,13 +3407,17 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
         self.S._session_data.pop(conv, None)
         self.S._closed_conversations.discard(conv)
         self.S._deleted_conversations.discard(conv)
+        model_call = mock.Mock(return_value="server-file-response-secret")
+        # Some adjacent suites deliberately replace ``sys.modules['boot']``.
+        # Patch both the current module and the globals owned by the boot
+        # functions that server.py captured at import time.
+        server_boot_globals = self.S.run_pipeline.__globals__
         with self._production_conversation_memory(), \
              mock.patch.object(self.S, "CONVERSATIONS_DIR", str(processed)), \
              mock.patch.object(self.S, "CONVERSATIONS_RAW", str(raw)), \
-             mock.patch.object(self.S, "call_model",
-                               return_value="server-file-response-secret"), \
-             mock.patch.object(self.boot, "call_model",
-                               return_value="server-file-response-secret"), \
+             mock.patch.object(self.S, "call_model", model_call), \
+             mock.patch.object(self.boot, "call_model", model_call), \
+             mock.patch.dict(server_boot_globals, {"call_model": model_call}), \
              mock.patch.object(self.S, "_nomic_embed", return_value=[0.0]), \
              mock.patch.object(chromadb, "PersistentClient", return_value=object()), \
              mock.patch.object(embedding, "get_or_create_collection",
@@ -3574,6 +3609,7 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
             "name": "v5-physical-endpoint",
             "type": "api", "service": "openai", "model": "gpt-4o",
             "api_key": "test-only", "enabled": True, "status": "active",
+            "context_window": 128_000, "max_tokens": 8_192,
         }
         # ORA_RAG_SELECTION off: the fit gate makes its own provider call
         # whenever RAG returns candidates, so leaving it on makes the call

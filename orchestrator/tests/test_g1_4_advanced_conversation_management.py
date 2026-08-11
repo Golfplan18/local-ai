@@ -1017,8 +1017,8 @@ class G14ConversationManagementTests(unittest.TestCase):
             "Start a Dialogue without duplicating prior work",
             "Nothing is created at this point",
             "unsent draft",
-            "one parent and many contributors",
-            "Private material cannot contribute into a Standard Dialogue",
+            "one parent and any number of explicit contributors",
+            "Privacy is cumulative: Standard may use Standard sources",
             "Archived Dialogues and atomic notes remain read-only",
         ):
             self.assertIn(token, guide_body)

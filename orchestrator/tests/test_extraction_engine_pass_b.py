@@ -146,6 +146,11 @@ Short delays preserve the connection between an action and its consequence.
         self.assertEqual(result.candidates[0].generation_mode, "model")
 
     def test_dialogue_history_is_bounded_once_per_pass_endpoint(self):
+        # Some adjacent suites deliberately reload the top-level ``boot``
+        # module during collection. Resolve the same live module that
+        # ExtractionEngine imports at call time so this test does not bind a
+        # stale ContextVar registry.
+        active_boot = sys.modules.get("boot", boot_module)
         history = []
         for index in range(30):
             history.extend([
@@ -184,7 +189,7 @@ Short delays preserve the connection between an action and its consequence.
         calls = []
 
         def call_fn(messages, endpoint):
-            physical, _stats = boot_module.prepare_messages_with_continuity(
+            physical, _stats = active_boot.prepare_messages_with_continuity(
                 messages, endpoint,
             )
             calls.append((dict(endpoint), physical))
@@ -198,7 +203,7 @@ Short delays preserve the connection between an action and its consequence.
             {"role": "user", "content": "AMBIENT-POISON-USER"},
             {"role": "assistant", "content": "AMBIENT-POISON-ASSISTANT"},
         ]
-        token = boot_module.set_dialogue_history_context(ambient)
+        token = active_boot.set_dialogue_history_context(ambient)
         try:
             with contextlib.redirect_stderr(io.StringIO()):
                 engine.extract(
@@ -208,7 +213,7 @@ Short delays preserve the connection between an action and its consequence.
                     history_messages=history,
                 )
         finally:
-            boot_module.reset_dialogue_history_context(token)
+            active_boot.reset_dialogue_history_context(token)
 
         self.assertEqual([endpoint["slot"] for endpoint, _ in calls],
                          ["sidebar", "depth"])
@@ -219,13 +224,13 @@ Short delays preserve the connection between an action and its consequence.
             self.assertNotIn("RAW-TRANSCRIPT-POISON", rendered)
             safe_capacity = (
                 endpoint["context_window"]
-                - boot_module._endpoint_output_reserve(
+                - active_boot._endpoint_output_reserve(
                     endpoint, endpoint["context_window"],
                 )
                 - 128
             )
             self.assertLessEqual(
-                boot_module.estimate_message_tokens(messages, endpoint),
+                active_boot.estimate_message_tokens(messages, endpoint),
                 safe_capacity,
             )
             selected = set()
