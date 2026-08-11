@@ -5,10 +5,8 @@ engine applies tag filters before any provenance or decay weighting:
 
     archived   → excluded entirely from default retrieval.
     incubating → included with explicit `[incubating]` flag in output.
-    private    → mode-conditioned at retrieval time. When the active
-                 conversation is NOT in private mode, chunks tagged
-                 `private` are excluded. When it IS in private mode,
-                 all chunks are visible.
+    private    → visible to Private and Stealth callers only.
+    stealth    → visible to Stealth callers only.
 
 `type_filter` (Phase 4 mode-file rule) restricts retrieval to chunks
 whose `type` is in the supplied list. The active mode's filter lives
@@ -17,13 +15,12 @@ in its `## RAG PROFILE → ### type_filter` subsection.
 Transitional dispatch:
 
     - knowledge collection: uses Phase 5.2 boolean extracts
-      (`tag_archived`, `tag_incubating`, `tag_private`).
-    - conversations collection: still uses the V3 legacy `tag` string
-      field (`tag == "private"`) until Phase 5.8 migrates the writer.
+      (`tag_archived`, `tag_incubating`, `tag_private`, `tag_stealth`).
+    - conversations collection: uses the conversation `tag` string field.
 
-`include_private=True` (or the `include:private` query modifier) is
-how the caller signals "the active conversation IS in private mode" —
-the private filter is suppressed and all chunks become visible.
+`include_private=True` (or the legacy `include:private` query modifier) maps
+to Private visibility; it never grants access to Stealth chunks. New callers
+should pass the explicit `privacy_tag` lattice value.
 """
 
 from __future__ import annotations
@@ -158,6 +155,7 @@ def _build_where_clause(
     include_private: bool,
     include_archived: bool,
     exclude_tags: Optional[list[str]] = None,
+    privacy_tag: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     """Compose a ChromaDB where-clause for the supplied filters.
 
@@ -176,11 +174,20 @@ def _build_where_clause(
     if type_filter:
         clauses.append({"type": {"$in": list(type_filter)}})
 
+    privacy = (
+        privacy_tag
+        if privacy_tag in ("", "private", "stealth")
+        else ("private" if include_private else "")
+    )
+
     if collection == "knowledge":
         if not include_archived:
-            clauses.append({"tag_archived": False})
-        if not include_private:
-            clauses.append({"tag_private": False})
+            clauses.append({"tag_archived": {"$ne": True}})
+        if privacy == "":
+            clauses.append({"tag_private": {"$ne": True}})
+            clauses.append({"tag_stealth": {"$ne": True}})
+        elif privacy == "private":
+            clauses.append({"tag_stealth": {"$ne": True}})
         # Mode-conditioned tag exclusions (e.g. `msi-news`). Uses
         # `$ne True` rather than `== False` so that documents indexed
         # before the tag was added to knowledge_index._FILTERABLE_TAGS
@@ -190,11 +197,17 @@ def _build_where_clause(
         for _tag in (exclude_tags or []):
             clauses.append({f"tag_{_tag}": {"$ne": True}})
     elif collection == "conversations":
-        # Legacy V3: stealth/private encoded in a single `tag` string
-        # field. Archived isn't represented in the conversations
-        # collection (V3 doesn't emit it). Phase 5.8 will normalize.
-        if not include_private:
-            clauses.append({"tag": {"$ne": "private"}})
+        # Conversation privacy is denormalized as one tag string. Standard
+        # sees Standard only; Private additionally sees Private; Stealth may
+        # see all three. Separate ``$ne`` clauses keep this compatible with
+        # Chroma versions that do not implement ``$nin``.
+        if privacy == "":
+            clauses.extend((
+                {"tag": {"$ne": "private"}},
+                {"tag": {"$ne": "stealth"}},
+            ))
+        elif privacy == "private":
+            clauses.append({"tag": {"$ne": "stealth"}})
 
     if not clauses:
         return None
@@ -326,19 +339,56 @@ def _metadata_passes_filters(
     include_private: bool,
     include_archived: bool,
     exclude_tags: Optional[list[str]] = None,
+    privacy_tag: Optional[str] = None,
 ) -> bool:
+    raw_tags = meta.get("tags")
+    if isinstance(raw_tags, (list, tuple, set)):
+        tags = {
+            str(value).strip().casefold() for value in raw_tags
+            if str(value).strip()
+        }
+    elif isinstance(raw_tags, str):
+        # Legacy Chroma rows may carry the canonical list as JSON or as a
+        # comma-delimited scalar.  Controlled tag values are word-like, so
+        # tokenising preserves hyphenated tags without trusting one encoding.
+        tags = set(re.findall(r"[a-z0-9][a-z0-9_-]*", raw_tags.casefold()))
+    else:
+        tags = set()
+    stored_tag = str(meta.get("tag") or "").strip().casefold()
+    if stored_tag:
+        tags.add(stored_tag)
+    privacy = (
+        privacy_tag
+        if privacy_tag in ("", "private", "stealth")
+        else ("private" if include_private else "")
+    )
     if type_filter and meta.get("type") not in set(type_filter):
         return False
     if collection == "knowledge":
-        if not include_archived and bool(meta.get("tag_archived", False)):
+        if not include_archived and (
+            bool(meta.get("tag_archived", False)) or "archived" in tags
+        ):
             return False
-        if not include_private and bool(meta.get("tag_private", False)):
+        if privacy == "" and (
+            bool(meta.get("tag_private", False)) or "private" in tags
+        ):
+            return False
+        if privacy != "stealth" and (
+            bool(meta.get("tag_stealth", False)) or "stealth" in tags
+        ):
             return False
         for tag in exclude_tags or []:
-            if bool(meta.get(f"tag_{tag}", False)):
+            if bool(meta.get(f"tag_{tag}", False)) or tag.casefold() in tags:
                 return False
     elif collection == "conversations":
-        if not include_private and meta.get("tag") == "private":
+        archived = bool(meta.get("tag_archived", False)) or "archived" in tags
+        private = bool(meta.get("tag_private", False)) or "private" in tags
+        stealth = bool(meta.get("tag_stealth", False)) or "stealth" in tags
+        if not include_archived and archived:
+            return False
+        if privacy == "" and (private or stealth):
+            return False
+        if privacy == "private" and stealth:
             return False
     return True
 
@@ -401,7 +451,7 @@ def _collection_metadata_segment(cur: sqlite3.Cursor, collection_name: str) -> s
     return str(row[0]) if row else None
 
 
-def _dedupe_ids(ids: list[str], limit: int) -> list[str]:
+def _dedupe_ids(ids: list[str], limit: Optional[int] = None) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for raw in ids:
@@ -410,7 +460,7 @@ def _dedupe_ids(ids: list[str], limit: int) -> list[str]:
             continue
         seen.add(cid)
         out.append(cid)
-        if len(out) >= limit:
+        if limit is not None and len(out) >= limit:
             break
     return out
 
@@ -421,7 +471,7 @@ def _fts_match_query(terms: list[str]) -> str:
         for part in re.findall(r"[a-z0-9]+", term.lower()):
             if len(part) >= 3 and part not in _STOPWORDS:
                 clean.append(f'"{part}"')
-    return " OR ".join(_dedupe_ids(clean, 16))
+    return " OR ".join(_dedupe_ids(clean))
 
 
 def _metadata_like_patterns(query: str, terms: list[str]) -> list[str]:
@@ -435,19 +485,26 @@ def _metadata_like_patterns(query: str, terms: list[str]) -> list[str]:
         seen.add(part)
         ordered.append(part)
     ordered.sort(key=lambda t: (-len(t), t))
-    return [f"%{part}%" for part in ordered[:24]]
+    return [f"%{part}%" for part in ordered]
 
 
-def _sqlite_candidate_ids(collection_name: str, query: str, terms: list[str], *, limit: int) -> list[str]:
-    """Use Chroma's SQLite metadata and FTS tables for bounded lexical recall.
+def _sqlite_candidate_ids(
+    collection_name: str,
+    query: str,
+    terms: list[str],
+    *,
+    limit: Optional[int],
+) -> list[str]:
+    """Use Chroma's SQLite metadata and FTS tables for lexical recall.
 
     This intentionally avoids Chroma's collection-wide `where_document`
     contains scan. The output is only a candidate set; the normal filters,
     floor, fit gate, provenance ranking, and reranker still decide whether
-    any candidate is allowed into context.
+    any candidate is allowed into context. ``limit=None`` is genuinely
+    uncapped: no per-term SQL ceiling may starve an assistant-only match.
     """
     db_path = _sqlite_path()
-    if not os.path.exists(db_path) or limit <= 0:
+    if not os.path.exists(db_path) or (limit is not None and limit <= 0):
         return []
 
     ids: list[str] = []
@@ -464,13 +521,16 @@ def _sqlite_candidate_ids(collection_name: str, query: str, terms: list[str], *,
         patterns = _metadata_like_patterns(query, terms)
         if patterns:
             key_placeholders = ",".join("?" for _ in _LEXICAL_METADATA_KEYS)
-            per_term_limit = max(
-                12,
-                min(80, max(1, _LEXICAL_SQL_CANDIDATES // max(1, len(patterns)))),
+            per_term_limit = (
+                None if limit is None else max(
+                    12,
+                    min(80, max(
+                        1, _LEXICAL_SQL_CANDIDATES // max(1, len(patterns)),
+                    )),
+                )
             )
             for pattern in patterns:
-                rows = cur.execute(
-                    f"""
+                sql = f"""
                     SELECT DISTINCT e.embedding_id
                     FROM embeddings e
                     JOIN embedding_metadata m ON m.id = e.id
@@ -478,41 +538,41 @@ def _sqlite_candidate_ids(collection_name: str, query: str, terms: list[str], *,
                       AND m.key IN ({key_placeholders})
                       AND m.string_value IS NOT NULL
                       AND lower(m.string_value) LIKE ?
-                    LIMIT ?
-                    """,
-                    (
-                        segment_id,
-                        *_LEXICAL_METADATA_KEYS,
-                        pattern,
-                        per_term_limit,
-                    ),
-                ).fetchall()
+                """
+                params: list[Any] = [
+                    segment_id, *_LEXICAL_METADATA_KEYS, pattern,
+                ]
+                if per_term_limit is not None:
+                    sql += " LIMIT ?"
+                    params.append(per_term_limit)
+                rows = cur.execute(sql, params).fetchall()
                 ids.extend(str(row[0]) for row in rows)
 
         fts_terms = [term.strip('"') for term in _fts_match_query(terms).split(" OR ") if term]
         if fts_terms:
-            per_term_limit = max(
-                12,
-                min(80, max(1, _LEXICAL_SQL_BODY_CANDIDATES // max(1, len(fts_terms)))),
+            per_term_limit = (
+                None if limit is None else max(
+                    12,
+                    min(80, max(
+                        1, _LEXICAL_SQL_BODY_CANDIDATES // max(1, len(fts_terms)),
+                    )),
+                )
             )
             for term in fts_terms:
-                if len(ids) >= limit * 3:
+                if limit is not None and len(ids) >= limit * 3:
                     break
-                rows = cur.execute(
+                sql = """
+                    SELECT e.embedding_id
+                    FROM embedding_fulltext_search
+                    JOIN embeddings e ON e.id = embedding_fulltext_search.rowid
+                    WHERE e.segment_id = ?
+                      AND embedding_fulltext_search MATCH ?
                 """
-                SELECT e.embedding_id
-                FROM embedding_fulltext_search
-                JOIN embeddings e ON e.id = embedding_fulltext_search.rowid
-                WHERE e.segment_id = ?
-                  AND embedding_fulltext_search MATCH ?
-                LIMIT ?
-                """,
-                    (
-                        segment_id,
-                        f'"{term}"',
-                        per_term_limit,
-                    ),
-                ).fetchall()
+                params = [segment_id, f'"{term}"']
+                if per_term_limit is not None:
+                    sql += " LIMIT ?"
+                    params.append(per_term_limit)
+                rows = cur.execute(sql, params).fetchall()
                 ids.extend(str(row[0]) for row in rows)
     except sqlite3.Error:
         return _dedupe_ids(ids, limit)
@@ -540,12 +600,13 @@ def _payloads_by_id(collection_obj: Any, ids: list[str]) -> dict[str, tuple[str,
 def lexical_search_raw(
     query: str,
     collection: str = "knowledge",
-    n_results: int = 10,
+    n_results: Optional[int] = 10,
     *,
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
+    privacy_tag: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Return exact/title/source/body lexical rescue candidates.
 
@@ -554,7 +615,7 @@ def lexical_search_raw(
     SQLite metadata/full-text indexes, then hand the small candidate set back
     to the normal ranking pipeline.
     """
-    if not query or n_results <= 0:
+    if not query or (n_results is not None and n_results <= 0):
         return []
 
     try:
@@ -565,6 +626,7 @@ def lexical_search_raw(
         count = col.count()
         if count == 0:
             return []
+        effective_n = count if n_results is None else min(n_results, count)
 
         scores: dict[str, float] = {}
         terms = _query_terms(query)
@@ -572,7 +634,9 @@ def lexical_search_raw(
             getattr(col, "name", None) or collection,
             query,
             terms,
-            limit=max(n_results * 12, min(_LEXICAL_SQL_CANDIDATES, 120)),
+            limit=(None if n_results is None else max(
+                effective_n * 12, min(_LEXICAL_SQL_CANDIDATES, 120)
+            )),
         )
         payloads = _payloads_by_id(col, candidate_ids)
 
@@ -585,6 +649,7 @@ def lexical_search_raw(
                 include_private=include_private,
                 include_archived=include_archived,
                 exclude_tags=exclude_tags,
+                privacy_tag=privacy_tag,
             ):
                 continue
             metadata_score = _lexical_score(query, _metadata_text(meta), metadata_match=True)
@@ -595,7 +660,9 @@ def lexical_search_raw(
 
         if not scores:
             return []
-        ordered = sorted(scores, key=lambda cid: scores[cid], reverse=True)[:n_results]
+        ordered = sorted(scores, key=lambda cid: scores[cid], reverse=True)
+        if n_results is not None:
+            ordered = ordered[:effective_n]
         return _fetch_chunks_by_id(col, ordered, scores)
     except Exception as exc:
         import sys
@@ -656,13 +723,14 @@ def _merge_raw_chunks(
 def knowledge_search_hybrid_raw(
     query: str,
     collection: str = "knowledge",
-    n_results: int = 5,
+    n_results: Optional[int] = 5,
     *,
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
     lexical_n_results: Optional[int] = None,
+    privacy_tag: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     semantic = knowledge_search_raw(
         query=query,
@@ -672,13 +740,14 @@ def knowledge_search_hybrid_raw(
         include_private=include_private,
         include_archived=include_archived,
         exclude_tags=exclude_tags,
+        privacy_tag=privacy_tag,
     )
     if os.environ.get("ORA_RAG_HYBRID_RETRIEVAL", "1").strip().lower() in {"0", "false", "no", "off"}:
         for chunk in semantic:
             chunk.setdefault("retrieval_source", "semantic")
             chunk.setdefault("semantic_similarity", float(chunk.get("similarity", 0.0)))
         return semantic
-    if lexical_n_results is None:
+    if lexical_n_results is None and n_results is not None:
         try:
             lexical_n_results = int(os.environ.get("ORA_RAG_LEXICAL_N", str(n_results)))
         except ValueError:
@@ -686,11 +755,15 @@ def knowledge_search_hybrid_raw(
     lexical = lexical_search_raw(
         query=query,
         collection=collection,
-        n_results=max(0, int(lexical_n_results or 0)),
+        n_results=(
+            None if n_results is None and lexical_n_results is None
+            else max(0, int(lexical_n_results or 0))
+        ),
         type_filter=type_filter,
         include_private=include_private,
         include_archived=include_archived,
         exclude_tags=exclude_tags,
+        privacy_tag=privacy_tag,
     )
     return _merge_raw_chunks(semantic, lexical)
 
@@ -725,12 +798,13 @@ def _format_result_line(rank: int, doc: str, meta: dict[str, Any]) -> list[str]:
 def knowledge_search(
     query: str,
     collection: str = "knowledge",
-    n_results: int = 5,
+    n_results: Optional[int] = 5,
     *,
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
+    privacy_tag: Optional[str] = None,
 ) -> str:
     """Query a ChromaDB collection with schema-aware tag filters.
 
@@ -741,9 +815,8 @@ def knowledge_search(
         n_results: maximum number of results to return.
         type_filter: list of Schema §4 type values to restrict to (e.g.
             ["engram", "resource", "incubator"]). When None, no type filter.
-        include_private: when True, suppress the private-tag filter so
-            the caller's active conversation can see private content.
-            Schema §6.5 retrieval-time mode-conditioned semantics.
+        include_private: legacy signal for Private visibility. Stealth remains
+            excluded; explicit callers should pass ``privacy_tag``.
         include_archived: when True, include archived chunks. Default
             False — archived is the canonical "intentionally retired"
             signal and stays out of default retrieval.
@@ -773,11 +846,12 @@ def knowledge_search(
             include_private=include_private,
             include_archived=include_archived,
             exclude_tags=exclude_tags,
+            privacy_tag=privacy_tag,
         )
 
         query_kwargs: dict[str, Any] = {
             "query_texts": [query],
-            "n_results": min(n_results, count),
+            "n_results": count if n_results is None else min(n_results, count),
         }
         if where is not None:
             query_kwargs["where"] = where
@@ -786,7 +860,18 @@ def knowledge_search(
         output: list[str] = []
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]
-        for i, (doc, meta) in enumerate(zip(docs, metas), 1):
+        filtered = [
+            (doc, meta or {}) for doc, meta in zip(docs, metas)
+            if _metadata_passes_filters(
+                meta or {}, collection=collection,
+                type_filter=type_filter,
+                include_private=include_private,
+                include_archived=include_archived,
+                exclude_tags=exclude_tags,
+                privacy_tag=privacy_tag,
+            )
+        ]
+        for i, (doc, meta) in enumerate(filtered, 1):
             output.extend(_format_result_line(i, doc, meta))
         return "\n".join(output) if output else "No results found."
     except Exception as e:
@@ -796,12 +881,13 @@ def knowledge_search(
 def knowledge_search_raw(
     query: str,
     collection: str = "knowledge",
-    n_results: int = 5,
+    n_results: Optional[int] = 5,
     *,
     type_filter: Optional[list[str]] = None,
     include_private: bool = False,
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
+    privacy_tag: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Like `knowledge_search` but returns raw chunk dicts instead of a
     formatted string. Used by the Phase 5.6 ranker.
@@ -836,11 +922,12 @@ def knowledge_search_raw(
             include_private=include_private,
             include_archived=include_archived,
             exclude_tags=exclude_tags,
+            privacy_tag=privacy_tag,
         )
 
         query_kwargs: dict[str, Any] = {
             "query_texts": [query],
-            "n_results": min(n_results, count),
+            "n_results": count if n_results is None else min(n_results, count),
         }
         if where is not None:
             query_kwargs["where"] = where
@@ -853,6 +940,15 @@ def knowledge_search_raw(
 
         chunks = []
         for i, (cid, doc, meta, dist) in enumerate(zip(ids, docs, metas, dists)):
+            if not _metadata_passes_filters(
+                meta or {}, collection=collection,
+                type_filter=type_filter,
+                include_private=include_private,
+                include_archived=include_archived,
+                exclude_tags=exclude_tags,
+                privacy_tag=privacy_tag,
+            ):
+                continue
             chunks.append({
                 "id":         cid,
                 "document":   doc,

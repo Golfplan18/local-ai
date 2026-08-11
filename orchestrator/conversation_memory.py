@@ -154,7 +154,6 @@ TURN_SPATIAL_FIELDS: tuple[str, ...] = (
 CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
 CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
-MAX_CONTRIBUTORS = 20
 
 
 def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str, str]]:
@@ -173,11 +172,6 @@ def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str
         if strict:
             raise ValueError("contributors must be a list")
         return []
-    if len(value) > MAX_CONTRIBUTORS:
-        if strict:
-            raise ValueError(f"contributors exceeds the {MAX_CONTRIBUTORS}-item limit")
-        value = value[:MAX_CONTRIBUTORS]
-
     normalized: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for item in value:
@@ -462,11 +456,26 @@ def _read_history_envelope(
     return None
 
 
+def read_conversation_history_envelope(
+    conversation_id: str,
+    *,
+    sessions_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Read one live/closed/retained Dialogue envelope without mutation."""
+    try:
+        validated = validate_conversation_id(conversation_id)
+    except ValueError:
+        return None
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    return _read_history_envelope(validated, root)
+
+
 def resolve_effective_conversation_history(
     conversation_id: str,
     *,
     sessions_root: Path | None = None,
     diagnostics: list[str] | None = None,
+    lineage_sink: set[str] | list[str] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Return ordered server-authoritative history for one Dialogue.
 
@@ -500,6 +509,14 @@ def resolve_effective_conversation_history(
         if diagnostics is not None:
             diagnostics.append(message)
 
+    def record_lineage(owner_id: str) -> None:
+        if lineage_sink is None:
+            return
+        if isinstance(lineage_sink, set):
+            lineage_sink.add(owner_id)
+        elif owner_id not in lineage_sink:
+            lineage_sink.append(owner_id)
+
     def local_messages(
         envelope: dict[str, Any],
         owner_id: str,
@@ -511,6 +528,8 @@ def resolve_effective_conversation_history(
             return [], False
         result: list[dict[str, Any]] = []
         valid = True
+        turn_index = 0
+        pending_user = False
         for index, raw in enumerate(raw_messages):
             if not isinstance(raw, dict):
                 note(f"{owner_id}: message {index} is not an object")
@@ -525,12 +544,21 @@ def resolve_effective_conversation_history(
                 valid = False
                 continue
             snapshot = copy.deepcopy(raw)
+            if role == "user":
+                turn_index += 1
+                pending_user = True
+            elif role == "assistant" and not pending_user:
+                turn_index += 1
             snapshot["_ora_history_owner"] = owner_id
+            snapshot["_ora_history_message_index"] = index
+            snapshot["_ora_history_turn_index"] = turn_index
             snapshot["_ora_ancestry_depth"] = ancestry_depth
             snapshot["_ora_history_segment"] = (
                 "local" if ancestry_depth == 0 else "ancestry"
             )
             result.append(snapshot)
+            if role == "assistant":
+                pending_user = False
         return result, valid
 
     def visit(
@@ -555,6 +583,12 @@ def resolve_effective_conversation_history(
             note(f"{current_id}: envelope identity mismatch")
             return [], 0, False
 
+        # Record every successfully authenticated envelope, including a
+        # cutoff-zero parent whose messages do not appear in the effective
+        # transcript.  Callers use this source-wide lineage to exclude global
+        # Conversation RAG and to enforce privacy across contributor ancestry.
+        record_lineage(current_id)
+
         local, local_valid = local_messages(
             envelope, current_id, ancestry_depth,
         )
@@ -572,6 +606,11 @@ def resolve_effective_conversation_history(
         except ValueError:
             note(f"{current_id}: invalid parent_conversation_id")
             return local, len(local), False
+        # A syntactically valid parent identity is exclusion-relevant even if
+        # its retained envelope has gone missing.  Recording the edge before
+        # the read prevents a stale global-RAG row for that parent from
+        # bypassing the immutable fork boundary.
+        record_lineage(parent_id)
 
         raw_cutoff = envelope.get("fork_point_message_count")
         cutoff = _normalize_fork_point_message_count(raw_cutoff)

@@ -37,7 +37,11 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
 from orchestrator import runtime_paths as rp
-from orchestrator.conversation_chunk import build_chroma_metadata
+from orchestrator.conversation_chunk import (
+    build_chroma_metadata,
+    build_embedding_orientation,
+    build_retrieval_document,
+)
 from orchestrator.historical.chain_detector import derive_session_id
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
@@ -137,7 +141,7 @@ class ConversationReplayPlan:
         for record in sorted(self.records, key=lambda item: item.row_id):
             digest.update(record.row_id.encode("utf-8"))
             digest.update(b"\0")
-            digest.update(record.payload_fingerprint().encode("ascii"))
+            digest.update(record.source_fingerprint().encode("ascii"))
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -641,9 +645,12 @@ def _historical_records(
         topics = _topics_from_pair(pair)
         topic_primary = topics[0] if topics else ""
         document_voice = _user_voice_only(pair)
-        document = (
-            f"{context}\n\n{document_voice}" if document_voice else context
+        embedding_text = build_embedding_orientation(
+            context, document_voice or pair.cleaned_user_input,
         )[:MAX_EMBED_CHARS]
+        document = build_retrieval_document(
+            context, pair.cleaned_user_input, pair.cleaned_ai_response,
+        )
         row_id = f"session-{session_id}-pair-{pair.source_pair_num:03d}"
         metadata = build_chroma_metadata(
             user_input=pair.cleaned_user_input,
@@ -671,14 +678,18 @@ def _historical_records(
         metadata["source_path"] = source_chat
         metadata["total_turns"] = final_turn
         metadata["is_last_turn"] = pair.source_pair_num == final_turn
+        metadata["embedding_text_sha256"] = hashlib.sha256(
+            embedding_text.encode("utf-8")
+        ).hexdigest()
         record = ReplayRecord(
             row_id=row_id,
             document=document,
             metadata=metadata,
             source_path=pair.file_path,
             source_kind="historical_cleaned_pair",
+            embedding_text=embedding_text,
         )
-        fingerprint = record.payload_fingerprint()
+        fingerprint = record.source_fingerprint()
         prior = fingerprints.get(row_id)
         if prior is not None and prior != fingerprint:
             plan.errors.append(
@@ -1008,15 +1019,22 @@ def _live_records(
                 metadata["conversation_title"] = (
                     title or f"Conversation {conversation_id}"
                 )
-                document = (
-                    f"{chunk.context}\n\n{chunk.user_input}"
+                embedding_text = build_embedding_orientation(
+                    chunk.context, chunk.user_input,
                 )[:MAX_EMBED_CHARS]
+                document = build_retrieval_document(
+                    chunk.context, chunk.user_input, chunk.ai_response,
+                )
+                metadata["embedding_text_sha256"] = hashlib.sha256(
+                    embedding_text.encode("utf-8")
+                ).hexdigest()
                 record = ReplayRecord(
                     row_id=row_id,
                     document=document,
                     metadata=metadata,
                     source_path=str(path),
                     source_kind="live_chunk",
+                    embedding_text=embedding_text,
                 )
                 pending.append((chunk, record, total_hint))
         except Exception as exc:
@@ -1042,6 +1060,7 @@ def _live_records(
                 metadata=metadata,
                 source_path=record.source_path,
                 source_kind=record.source_kind,
+                embedding_text=record.embedding_text,
             )
             finalized_records.append(finalized)
 
@@ -1056,7 +1075,7 @@ def _live_records(
     for base_id, candidates in by_base_id.items():
         by_payload: dict[str, ReplayRecord] = {}
         for candidate in candidates:
-            by_payload.setdefault(candidate.payload_fingerprint(), candidate)
+            by_payload.setdefault(candidate.source_fingerprint(), candidate)
         unique = list(by_payload.values())
         if len(unique) == 1:
             normalized.append(unique[0])
@@ -1073,10 +1092,11 @@ def _live_records(
                 metadata=metadata,
                 source_path=candidate.source_path,
                 source_kind=candidate.source_kind,
+                embedding_text=candidate.embedding_text,
             ))
 
     fingerprints: dict[str, str] = {
-        record.row_id: record.payload_fingerprint() for record in normalized
+        record.row_id: record.source_fingerprint() for record in normalized
     }
     records = normalized if materialize else []
     plan.live_files = len(fingerprints)
@@ -1090,7 +1110,7 @@ def _deduplicate(records: Iterable[ReplayRecord], plan: ConversationReplayPlan) 
         if prior is None:
             by_id[record.row_id] = record
             continue
-        if prior.payload_fingerprint() != record.payload_fingerprint():
+        if prior.source_fingerprint() != record.source_fingerprint():
             plan.errors.append(
                 f"row id {record.row_id!r} maps to conflicting sources "
                 f"{prior.source_path!r} and {record.source_path!r}"
@@ -1225,6 +1245,7 @@ def execute_conversation_replay(
     resume: bool = False,
     client_factory: Callable[[str], Any] | None = None,
     collection_factory: Callable[[Any, dict[str, Any]], Any] | None = None,
+    embedder: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> dict[str, Any]:
     """Embed/upsert a validated plan into an explicit inactive Chroma root."""
     plan.require_valid()
@@ -1296,10 +1317,32 @@ def execute_conversation_replay(
                     f"target unexpectedly already contains {record.row_id!r}"
                 )
         if missing:
+            if any(not record.embedding_text for record in missing):
+                raise RebuildError(
+                    "conversation replay record lacks explicit embedding orientation"
+                )
+            if embedder is None:
+                from orchestrator.embedding import embed_texts
+                active_embedder = embed_texts
+            else:
+                active_embedder = embedder
+            vectors = active_embedder([
+                record.embedding_text for record in missing
+            ])
+            if len(vectors) != len(missing):
+                raise RebuildError(
+                    "conversation embedder returned the wrong vector count"
+                )
+            dimension = int(profile["dimension"])
+            if any(len(vector) != dimension for vector in vectors):
+                raise RebuildError(
+                    "conversation embedder returned the wrong vector dimension"
+                )
             collection.upsert(
                 ids=[record.row_id for record in missing],
                 documents=[record.document for record in missing],
                 metadatas=[record.metadata for record in missing],
+                embeddings=vectors,
             )
         _atomic_json(checkpoint, {
             "schema_version": 1,

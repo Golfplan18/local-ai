@@ -7,7 +7,9 @@ or model files.
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import threading
 import time
 import types
@@ -223,6 +225,20 @@ class TestDialogueContinuityCallPaths(unittest.TestCase):
             {"role": "system", "content": "current-system"},
             {"role": "user", "content": "current-user"},
         ]
+        self.context_pkg = {
+            "optional_context_units": [{
+                "lane": "contributor",
+                "unit_id": "contributor-marker-unit",
+                "source_id": "selected-source-0",
+                "explicit_index": 0,
+                "content": "contributor-reference-marker",
+            }],
+            "context_source_inventory": {"sources": [{
+                "source_id": "selected-source-0",
+                "explicit_index": 0,
+                "status": "available",
+            }]},
+        }
 
     def _assert_one_continuity_lane(self, messages):
         contents = [message.get("content") for message in messages]
@@ -232,6 +248,14 @@ class TestDialogueContinuityCallPaths(unittest.TestCase):
             contents.index("continuity-user-marker"),
             contents.index("current-user"),
         )
+
+    def _assert_one_optional_lane(self, messages):
+        references = [
+            message.get("content", "") for message in messages
+            if "OPTIONAL REFERENCE DATA" in message.get("content", "")
+        ]
+        self.assertEqual(len(references), 1)
+        self.assertEqual(references[0].count("contributor-reference-marker"), 1)
 
     def test_gear1_and_gear2_single_pass_calls_receive_continuity(self):
         for gear in (1, 2):
@@ -249,9 +273,11 @@ class TestDialogueContinuityCallPaths(unittest.TestCase):
                     slot="fast" if gear == 2 else "primary",
                     gear=gear, config_name=None,
                     history=self.history,
+                    context_pkg=self.context_pkg,
                 )
                 self.assertEqual(result, "ok")
                 self._assert_one_continuity_lane(captured[0])
+                self._assert_one_optional_lane(captured[0])
 
     def test_gear3_wrapper_carries_continuity_to_physical_calls(self):
         captured = []
@@ -269,9 +295,12 @@ class TestDialogueContinuityCallPaths(unittest.TestCase):
             boot, "call_api_endpoint", side_effect=transport,
         ):
             self.assertEqual(
-                boot.run_gear3({}, {}, history=self.history), "gear3-ok",
+                boot.run_gear3(
+                    dict(self.context_pkg), {}, history=self.history,
+                ), "gear3-ok",
             )
         self._assert_one_continuity_lane(captured[0])
+        self._assert_one_optional_lane(captured[0])
 
     def test_gear4_worker_inherits_continuity_context(self):
         from concurrent.futures import ThreadPoolExecutor
@@ -297,9 +326,65 @@ class TestDialogueContinuityCallPaths(unittest.TestCase):
             boot, "call_api_endpoint", side_effect=transport,
         ):
             self.assertEqual(
-                boot.run_gear4({}, {}, history=self.history), "gear4-ok",
+                boot.run_gear4(
+                    dict(self.context_pkg), {}, history=self.history,
+                ), "gear4-ok",
             )
         self._assert_one_continuity_lane(captured[0])
+        self._assert_one_optional_lane(captured[0])
+
+    def test_physical_call_trace_records_non_sensitive_context_coverage(self):
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(
+            boot.pipeline_trace, "TRACE_ROOT", str(Path(temp_dir) / "traces"),
+        ):
+            trace_dir = boot.pipeline_trace.start_trace(
+                "coverage-test", raw_input="current-user",
+            )
+            self.assertIsNotNone(trace_dir)
+            trace_token = boot.set_turn_trace_context(trace_dir)
+            stage_tokens = boot.set_model_stage_context(
+                "gear2-single-pass", slot="fast", gear=2,
+                config_name="test-config",
+            )
+            optional_token = boot.set_optional_context_context(
+                self.context_pkg["optional_context_units"],
+                self.context_pkg["context_source_inventory"],
+            )
+            try:
+                boot.prepare_messages_with_continuity(
+                    list(self.current), self.endpoint, history=self.history,
+                )
+                boot._record_physical_model_call_config(
+                    self.endpoint, max_tokens=1_000,
+                    attempt_index=1, provider_attempt="hermetic-test",
+                )
+            finally:
+                boot.reset_optional_context_context(optional_token)
+                boot.reset_model_stage_context(stage_tokens)
+                boot.reset_turn_trace_context(trace_token)
+
+            records = [
+                json.loads(line) for line in (
+                    Path(trace_dir) / "model-call-config.jsonl"
+                ).read_text(encoding="utf-8").splitlines()
+            ]
+        self.assertEqual(len(records), 1)
+        coverage = records[0]["context_coverage"]
+        self.assertEqual(records[0]["step"], "gear2-single-pass")
+        self.assertGreater(coverage["budget"]["used_tokens"], 0)
+        self.assertEqual(
+            coverage["budget"]["capacity_tokens"],
+            self.endpoint["context_window"]
+            - boot._endpoint_output_reserve(
+                self.endpoint, self.endpoint["context_window"],
+            )
+            - 128,
+        )
+        self.assertEqual(coverage["lanes"]["history"]["selected_units"], 1)
+        self.assertEqual(coverage["lanes"]["contributor"]["selected_units"], 1)
+        self.assertEqual(coverage["source_counts"], {"represented": 1})
+        self.assertEqual(coverage["deferred_unit_count"], 0)
+        self.assertNotIn("title", json.dumps(coverage).casefold())
 
 
 class TestDialogueTokenAccounting(unittest.TestCase):

@@ -195,6 +195,25 @@ def build_chunk_markdown(
     )
 
 
+def build_retrieval_document(
+    context_header: str,
+    user_input: str,
+    ai_response: str,
+) -> str:
+    """Complete per-turn Chroma document; both speakers are retrievable."""
+    return (
+        f"## Context\n\n{context_header}\n\n"
+        f"## Exchange\n\n"
+        f"**User:**\n\n{user_input}\n\n"
+        f"**Assistant:**\n\n{ai_response}"
+    )
+
+
+def build_embedding_orientation(context_header: str, user_input: str) -> str:
+    """Query-facing orientation kept separate from the complete document."""
+    return f"{context_header}\n\n{user_input}"
+
+
 def attach_chunk_ownership(
     markdown: str, *, conversation_id: str, chunk_id: str,
 ) -> str:
@@ -426,4 +445,6 @@ __all__ = [
     "append_chunk_manifest",
     "build_chroma_metadata",
     "mechanical_chunk_metadata",
+    "build_retrieval_document",
+    "build_embedding_orientation",
 ]

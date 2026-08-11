@@ -715,8 +715,12 @@ def _sink_record(
     raw similarity plus, when present, the fit-gate's verdict and reason."""
     meta = chunk.get("metadata") or {}
     return {
+        "chunk_id": chunk.get("id"),
         "rank": rank,
         "source": _chunk_source(chunk),
+        "conversation_id": meta.get("conversation_id"),
+        "turn_index": meta.get("turn_index") or meta.get("pair_num"),
+        "tag": meta.get("tag"),
         "type": meta.get("type"),
         "similarity": float(chunk.get("similarity", 0.0)),
         "weight": weight,
@@ -1020,30 +1024,32 @@ def format_context_with_provenance(
 RAG_MAX_CHARS = 232_000
 
 
-def assemble_ranked_context(
+def retrieve_ranked_chunks(
     query: str,
     *,
     collection: str = "knowledge",
     type_filter: Optional[list[str]] = None,
     mode_text: Optional[str] = None,
-    n_results: int = 10,
+    n_results: Optional[int] = 10,
     include_private: bool = False,
     include_archived: bool = False,
-    max_chars: Optional[int] = None,
     candidate_sink: Optional[list[dict[str, Any]]] = None,
     similarity_floor: Optional[float] = None,
     fit_gate: Optional[Callable[[list, str], list]] = None,
     dedup: bool = False,
-) -> str:
-    """End-to-end Phase 5.6 ranker: query → rank → format.
+    privacy_tag: Optional[str] = None,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
+) -> list[dict[str, Any]]:
+    """Return complete ranked semantic units before prompt formatting.
 
     When `mode_text` is provided and `type_filter` is None, extracts
     the type_filter from the mode file's `## RAG PROFILE → ###
     type_filter` subsection (Phase 4 mode-file contract).
 
-    ``max_chars`` defaults to ``RAG_MAX_CHARS`` (the hard cap that
-    every modern endpoint converges to). Pass ``max_chars=`` to
-    override for a specific call.
+    ``n_results=None`` asks the bound collection for every matching record.
+    That uncapped form is used by the physical-call capacity packer, which is
+    the only component allowed to decide how many complete units fit.
     """
     if type_filter is None and mode_text:
         type_filter = _knowledge_search._extract_mode_type_filter(mode_text)
@@ -1073,9 +1079,6 @@ def assemble_ranked_context(
         type_filter = None
         exclude_tags = None
 
-    if max_chars is None:
-        max_chars = RAG_MAX_CHARS
-
     chunks = _knowledge_search.knowledge_search_hybrid_raw(
         query=query,
         collection=collection,
@@ -1084,7 +1087,45 @@ def assemble_ranked_context(
         include_private=include_private,
         include_archived=include_archived,
         exclude_tags=exclude_tags,
+        privacy_tag=privacy_tag,
     )
+    excluded_conversations = {
+        str(value).strip().casefold() for value in (excluded_conversation_ids or [])
+        if str(value).strip()
+    }
+    canonical_paths: set[str] = set()
+    for value in excluded_paths or []:
+        try:
+            canonical_paths.add(
+                os.path.realpath(os.path.abspath(str(value))).casefold()
+            )
+        except (OSError, ValueError):
+            continue
+    if excluded_conversations or canonical_paths:
+        filtered: list[dict[str, Any]] = []
+        for chunk in chunks:
+            metadata = (
+                chunk.get("metadata")
+                if isinstance(chunk.get("metadata"), dict) else {}
+            )
+            conversation_id = str(
+                metadata.get("conversation_id") or ""
+            ).strip().casefold()
+            source_path = metadata.get("path")
+            try:
+                canonical_path = (
+                    os.path.realpath(os.path.abspath(str(source_path))).casefold()
+                    if source_path else ""
+                )
+            except (OSError, ValueError):
+                canonical_path = ""
+            if (
+                conversation_id in excluded_conversations
+                or canonical_path in canonical_paths
+            ):
+                continue
+            filtered.append(chunk)
+        chunks = filtered
     chunks = [_clean_chunk(c) for c in chunks]
     # Fit-gate (Process 13): mark each candidate keep/drop against the query's
     # intent BEFORE the provenance ranker. Injected by the caller (boot.py) so
@@ -1102,4 +1143,44 @@ def assemble_ranked_context(
     if RERANKER_AVAILABLE and ranked:
         ranked, _rerank_trace = _reranker.rerank_chunks(query, ranked)
         _annotate_sink_with_rerank(candidate_sink, ranked)
+    return ranked
+
+
+def assemble_ranked_context(
+    query: str,
+    *,
+    collection: str = "knowledge",
+    type_filter: Optional[list[str]] = None,
+    mode_text: Optional[str] = None,
+    n_results: Optional[int] = 10,
+    include_private: bool = False,
+    include_archived: bool = False,
+    max_chars: Optional[int] = None,
+    candidate_sink: Optional[list[dict[str, Any]]] = None,
+    similarity_floor: Optional[float] = None,
+    fit_gate: Optional[Callable[[list, str], list]] = None,
+    dedup: bool = False,
+    privacy_tag: Optional[str] = None,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
+) -> str:
+    """End-to-end Phase 5.6 ranker: query → rank → format."""
+    if max_chars is None:
+        max_chars = RAG_MAX_CHARS
+    ranked = retrieve_ranked_chunks(
+        query,
+        collection=collection,
+        type_filter=type_filter,
+        mode_text=mode_text,
+        n_results=n_results,
+        include_private=include_private,
+        include_archived=include_archived,
+        candidate_sink=candidate_sink,
+        similarity_floor=similarity_floor,
+        fit_gate=fit_gate,
+        dedup=dedup,
+        privacy_tag=privacy_tag,
+        excluded_conversation_ids=excluded_conversation_ids,
+        excluded_paths=excluded_paths,
+    )
     return format_context_with_provenance(ranked, max_chars=max_chars)

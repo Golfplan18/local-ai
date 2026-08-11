@@ -608,6 +608,38 @@ def append_jsonl(trace_dir: str | None,
               file=sys.stderr)
 
 
+def _public_context_coverage(value: Any) -> dict[str, Any]:
+    """Strip private unit/source identities from persisted coverage."""
+    if not isinstance(value, dict):
+        return {}
+
+    def numeric_counts(raw: Any) -> dict[str, int | float]:
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            str(key): item for key, item in raw.items()
+            if isinstance(item, (int, float)) and not isinstance(item, bool)
+        }
+
+    lanes = {
+        str(lane): numeric_counts(counts)
+        for lane, counts in (value.get("lanes") or {}).items()
+        if isinstance(counts, dict)
+    } if isinstance(value.get("lanes"), dict) else {}
+    public: dict[str, Any] = {
+        "budget": numeric_counts(value.get("budget")),
+        "lanes": lanes,
+        "source_counts": numeric_counts(value.get("source_counts")),
+    }
+    for key in (
+        "physical_calls", "deferred_unit_count", "deduplicated_unit_count",
+    ):
+        item = value.get(key)
+        if isinstance(item, int) and not isinstance(item, bool):
+            public[key] = item
+    return public
+
+
 def record_model_call_config(trace_dir: str | None,
                              endpoint: dict | None,
                              call_meta: dict[str, Any] | None = None) -> None:
@@ -637,6 +669,9 @@ def record_model_call_config(trace_dir: str | None,
         "attempt_index": call_meta.get("attempt_index"),
         "provider_attempt": call_meta.get("provider_attempt"),
         "effective_max_tokens": call_meta.get("effective_max_tokens"),
+        "context_coverage": _public_context_coverage(
+            call_meta.get("context_coverage")
+        ),
         "endpoint_id": endpoint.get("id") or endpoint.get("name"),
         "endpoint_name": endpoint.get("name"),
         "endpoint_type": endpoint.get("type"),
@@ -744,7 +779,11 @@ def record_supplemental_request(trace_dir: str | None,
                                 query_terms: str,
                                 why_it_matters: str,
                                 supplement_result: str | None,
-                                resolved: bool) -> None:
+                                resolved: bool,
+                                *,
+                                selected_unit_ids: list[str] | None = None,
+                                deferred_unit_count: int | None = None,
+                                stop_reason: str | None = None) -> None:
     """Log a SUPPLEMENTAL RAG REQUEST emitted by a pipeline step.
 
     Captures the gap the model surfaced, what the orchestrator did with
@@ -761,6 +800,9 @@ def record_supplemental_request(trace_dir: str | None,
             len(supplement_result) if supplement_result else 0
         ),
         "resolved": resolved,
+        "selected_unit_count": len(selected_unit_ids or []),
+        "deferred_unit_count": deferred_unit_count,
+        "stop_reason": stop_reason,
     })
 
 

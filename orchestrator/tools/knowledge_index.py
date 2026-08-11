@@ -32,6 +32,7 @@ ChromaDB metadata schema (Phase 5.2):
         tag_archived   — bool (extracted from tags for fast where-filter)
         tag_incubating — bool
         tag_private    — bool
+        tag_stealth    — bool
 
     Standard-property fields (present when YAML carries them):
         subtype                — atomic-only per Schema §7
@@ -109,7 +110,9 @@ CHUNK_THRESHOLD_CHARS = HCP_MAX_CHUNK_TOKENS * 4  # provisional — chunking tri
 
 # Tag values that need fast where-filterable boolean extracts.
 # Schema §6.5 — these three tags drive the RAG retrieval filters.
-_FILTERABLE_TAGS = ("archived", "incubating", "private", "msi-news")
+_FILTERABLE_TAGS = (
+    "archived", "incubating", "private", "stealth", "msi-news",
+)
 
 # Properties retired per Schema §9 — drop from metadata if a legacy
 # file still carries them.

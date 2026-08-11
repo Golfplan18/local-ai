@@ -194,9 +194,18 @@ class TestSaveConversationLockstep(unittest.TestCase):
             lambda u, a, d, p, m, n: ("Stub context header.", ["topic-x", "topic-y"])
         )
 
-        # Stub the embedder so we don't hit Ollama.
+        # Stub the embedder so tests never hit a provider. Conversation
+        # indexing now requires the explicit orientation vector; allowing
+        # Chroma to embed the full retrieval document would dilute the query.
+        from orchestrator.embedding import EMBEDDING_DIM
         self._original_embed = server._nomic_embed
-        server._nomic_embed = lambda text: None  # let chroma use default
+        self.embedding_inputs = []
+
+        def fake_embed(text):
+            self.embedding_inputs.append(text)
+            return [0.0] * EMBEDDING_DIM
+
+        server._nomic_embed = fake_embed
 
         # Reset session state.
         self._original_sess = server._session_data
@@ -230,8 +239,9 @@ class TestSaveConversationLockstep(unittest.TestCase):
 
     def _read_chroma_meta(self, conversation_id):
         import chromadb
+        from orchestrator.embedding import get_collection
         client = chromadb.PersistentClient(path=self.chroma_dir)
-        col = client.get_collection("conversations")
+        col = get_collection(client, "conversations")
         return col.get(where={"conversation_id": conversation_id})
 
     def test_chunk_yaml_has_schema12_keys_only(self):
@@ -305,6 +315,17 @@ class TestSaveConversationLockstep(unittest.TestCase):
         self.assertIn("tag_archived", meta)
         self.assertIn("tag_incubating", meta)
         self.assertIn("tag_private", meta)
+
+    def test_retrieval_document_contains_answer_but_embedding_orientation_does_not(self):
+        self._save("Unique user question", "Unique assistant answer")
+        result = self._read_chroma_meta("conv-test-001")
+        self.assertIn("**User:**\n\nUnique user question", result["documents"][0])
+        self.assertIn(
+            "**Assistant:**\n\nUnique assistant answer", result["documents"][0],
+        )
+        self.assertEqual(len(self.embedding_inputs), 1)
+        self.assertIn("Unique user question", self.embedding_inputs[0])
+        self.assertNotIn("Unique assistant answer", self.embedding_inputs[0])
 
     def test_chromadb_first_turn_marked_correctly(self):
         self._save("Turn 1", "Response 1")

@@ -103,7 +103,7 @@ class _FakeCollection:
         self.rows = {}
         self.fail_once = fail_once
 
-    def upsert(self, *, ids, documents, metadatas):
+    def upsert(self, *, ids, documents, metadatas, embeddings=None):
         if self.fail_once:
             self.fail_once = False
             raise RuntimeError("synthetic interruption")
@@ -256,7 +256,10 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(row.metadata["chunk_path"], durable_pair)
         self.assertEqual(row.metadata["obsidian_path"], durable_pair)
         self.assertEqual(row.metadata["source"], "pair.md")
-        self.assertEqual(row.document, f"{context}\n\nQuestion")
+        self.assertIn(context, row.document)
+        self.assertIn("**User:**\n\nQuestion", row.document)
+        self.assertIn("**Assistant:**\n\nAnswer", row.document)
+        self.assertEqual(row.embedding_text, f"{context}\n\nQuestion")
 
     def test_chain_and_private_metadata_are_preserved(self):
         source = "~/Documents/raw/private.md"
@@ -321,7 +324,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertTrue(all(row.metadata["tag"] == "private" for row in plan.records))
         self.assertTrue(all(row.metadata["tag_private"] for row in plan.records))
 
-    def test_live_marker_uses_exact_ownership_and_excludes_assistant_from_document(self):
+    def test_live_marker_uses_exact_ownership_and_complete_retrieval_document(self):
         context = (
             "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
             "Turn 2 of an ongoing conversation."
@@ -347,8 +350,10 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(row.row_id, "session-abc-pair-002")
         self.assertEqual(row.metadata["conversation_id"], "conv-1")
         self.assertEqual(row.metadata["turn_index"], 2)
-        self.assertEqual(row.document, f"{context}\n\nQuestion")
-        self.assertNotIn("Answer", row.document)
+        self.assertIn(context, row.document)
+        self.assertIn("**User:**\n\nQuestion", row.document)
+        self.assertIn("**Assistant:**\n\nAnswer", row.document)
+        self.assertEqual(row.embedding_text, f"{context}\n\nQuestion")
 
     def test_latest_matching_manifest_owner_replays_unmarked_legacy_chunk(self):
         context = (
@@ -496,6 +501,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         target = self.root / "fresh-chroma"
@@ -512,6 +518,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 target_chromadb_path=target,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
             second = rebuild.execute_conversation_replay(
                 plan,
@@ -519,6 +526,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 resume=True,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
         self.assertEqual(first["target_count"], 1)
         self.assertEqual(second["target_count"], 1)
@@ -531,6 +539,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         target = self.root / "fresh-chroma"
@@ -547,6 +556,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 target_chromadb_path=target,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
             collection.rows[record.row_id] = (
                 "corrupted document",
@@ -562,6 +572,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                     resume=True,
                     client_factory=lambda _path: object(),
                     collection_factory=lambda _client, _profile: collection,
+                    embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
                 )
 
     def test_final_conversation_validation_rejects_payload_corruption(self):
@@ -571,6 +582,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         collection = _FinalReadCorruptingCollection()
@@ -590,6 +602,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                     target_chromadb_path=self.root / "fresh-chroma",
                     client_factory=lambda _path: object(),
                     collection_factory=lambda _client, _profile: collection,
+                    embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
                 )
 
     def test_dry_run_never_opens_chroma_or_embedder(self):
