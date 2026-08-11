@@ -6867,7 +6867,7 @@ except Exception as _e:  # pragma: no cover
 @app.route("/api/document/stream")
 def document_stream():
     """SSE stream for document processing events."""
-    def generate_unlocked():
+    def generate():
         q = _stdlib_queue.Queue()
         with _document_subscribers_lock:
             _document_subscribers.append(q)
@@ -10719,9 +10719,9 @@ def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
             history = resolve_effective_conversation_history(
                 ref, diagnostics=diagnostics, lineage_sink=lineage,
             )
-            if history is None or diagnostics:
+            if history is None or (diagnostics and not history):
                 return False
-            for owner in lineage or {ref}:
+            for owner in _resolved_history_owners(history, ref):
                 envelope = read_conversation_history_envelope(owner)
                 if not isinstance(envelope, dict):
                     return False
@@ -10739,8 +10739,13 @@ def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
         archive = _browser_archive_envelope(ref)
         if archive is None:
             return False
-        source_tag = _browser_strictest_privacy_tag(archive)
-        return _contributor_privacy_allows(source_tag, target_tag)
+        try:
+            _resolve_archive_contributor(
+                ref, archive, target_tag=target_tag,
+            )
+            return True
+        except (OSError, ValueError):
+            return False
     source_tag = row.get("tag") if row.get("tag") in _VALID_CONVERSATION_TAGS else ""
     return _contributor_privacy_allows(source_tag, target_tag)
 
@@ -11165,11 +11170,11 @@ def _browser_memory_envelope(conversation_id: str) -> dict | None:
 
 
 def _contributor_privacy_allows(source_tag: str, target_tag: str) -> bool:
-    if source_tag == "stealth":
-        return target_tag == "stealth"
-    if source_tag == "private":
-        return target_tag in {"private", "stealth"}
-    return True
+    try:
+        from conversation_memory import conversation_privacy_allows
+    except ImportError:
+        from orchestrator.conversation_memory import conversation_privacy_allows
+    return conversation_privacy_allows(source_tag, target_tag)
 
 
 def _atomic_contributor_privacy_allows(tags, target_tag: str) -> bool:
@@ -11185,6 +11190,96 @@ def _atomic_contributor_privacy_allows(tags, target_tag: str) -> bool:
 
 class _ContributorWithheld(ValueError):
     pass
+
+
+def _resolve_archive_contributor(
+    ref: str,
+    archive: dict,
+    *,
+    target_tag: str,
+    lineage_sink: set[str] | None = None,
+) -> tuple[list[dict], set[str]]:
+    """Return contributor-safe archive messages and their proven lineage.
+
+    A retained fork envelope is the only authority for its ancestry cutoff.
+    If that ancestry is missing, malformed, cyclic, or privacy-incompatible,
+    the archive remains browsable but cannot be injected as a contributor.
+    Legacy/non-fork archives retain their existing chunk reconstruction path.
+    """
+    source_id = str(archive.get("source_conversation_id") or "").strip()
+    if not source_id:
+        source_id = _browser_decode_source_id("archive", ref) or ""
+    if not source_id:
+        raise _ContributorWithheld("archived Dialogue identity is unavailable")
+
+    lineage = lineage_sink if lineage_sink is not None else set()
+    lineage.add(source_id)
+    try:
+        from conversation_memory import (
+            read_conversation_history_envelope,
+            resolve_effective_conversation_history,
+        )
+    except ImportError:
+        from orchestrator.conversation_memory import (
+            read_conversation_history_envelope,
+            resolve_effective_conversation_history,
+        )
+
+    retained = read_conversation_history_envelope(source_id)
+    if not isinstance(retained, dict):
+        raise _ContributorWithheld(
+            "archived Dialogue ancestry cannot be proven without its retained envelope"
+        )
+    stored_id = retained.get("conversation_id")
+    if (not isinstance(stored_id, str)
+            or stored_id.strip().casefold() != source_id.casefold()
+            or not isinstance(retained.get("messages"), list)):
+        raise _ContributorWithheld(
+            "archived Dialogue retained envelope is unreadable"
+        )
+    is_retained_fork = bool(
+        (
+            retained.get("parent_conversation_id") is not None
+            or retained.get("fork_point_message_count") is not None
+            or retained.get("forked_at") is not None
+        )
+    )
+    if is_retained_fork:
+        diagnostics: list[str] = []
+        history = resolve_effective_conversation_history(
+            source_id, diagnostics=diagnostics, lineage_sink=lineage,
+        )
+        if history is None or diagnostics:
+            raise _ContributorWithheld(
+                "archived fork ancestry cannot be proven"
+            )
+        for owner in lineage:
+            ancestor = read_conversation_history_envelope(owner)
+            owner_tag = (
+                ancestor.get("tag")
+                if isinstance(ancestor, dict)
+                and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
+                else ""
+            )
+            if (ancestor is None
+                    or not _contributor_privacy_allows(owner_tag, target_tag)):
+                raise _ContributorWithheld(
+                    "archived fork ancestry crosses a stricter privacy boundary"
+                )
+        return history, lineage
+
+    source_tag = (
+        archive.get("tag")
+        if archive.get("tag") in _VALID_CONVERSATION_TAGS else ""
+    )
+    if not _contributor_privacy_allows(source_tag, target_tag):
+        raise _ContributorWithheld(
+            "archived Dialogue is outside the target privacy boundary"
+        )
+    messages = archive.get("messages")
+    if not isinstance(messages, list):
+        raise _ContributorWithheld("archived Dialogue transcript is unavailable")
+    return messages, lineage
 
 
 def _dialogue_turn_units(
@@ -11262,6 +11357,17 @@ def _dialogue_turn_units(
             "content": "Creation description: " + description,
         })
     return units
+
+
+def _resolved_history_owners(messages: list, fallback: str) -> set[str]:
+    """Return only Dialogue identities still present in resolved history."""
+    owners = {
+        str(message.get("_ora_history_owner") or "").strip()
+        for message in messages
+        if isinstance(message, dict)
+        and str(message.get("_ora_history_owner") or "").strip()
+    }
+    return owners or {fallback}
 
 
 def _indexed_atomic_contributor_units(
@@ -11372,48 +11478,66 @@ def build_contributor_bundle(
                 ref, diagnostics=diagnostics, lineage_sink=lineage,
             )
             source = read_conversation_history_envelope(ref)
-            if source is not None and history is not None and not diagnostics:
-                permitted = True
-                for owner in lineage:
-                    ancestor = read_conversation_history_envelope(owner)
-                    owner_tag = (
-                        ancestor.get("tag")
-                        if isinstance(ancestor, dict)
-                        and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
-                        else ""
-                    )
-                    if ancestor is None or not _contributor_privacy_allows(owner_tag, target_tag):
-                        permitted = False
-                        break
-                if permitted:
-                    units = _dialogue_turn_units(
-                        history,
-                        source_id=ref,
-                        explicit_index=index,
-                        description=_clean_conversation_browser_text(
-                            source.get("description") or "",
-                        ),
-                    )
-                    row["status"] = "available" if units else "missing"
-                else:
+            if source is not None and history is not None:
+                if diagnostics and not history:
                     row["status"] = "withheld"
-            else:
-                archive = _browser_archive_envelope(ref)
-                if archive is not None:
-                    source_tag = archive.get("tag") if archive.get("tag") in _VALID_CONVERSATION_TAGS else ""
-                    source_identity = str(archive.get("source_conversation_id") or ref)
-                    lineage.add(source_identity)
-                    if _contributor_privacy_allows(source_tag, target_tag):
+                else:
+                    permitted = True
+                    for owner in _resolved_history_owners(history, ref):
+                        ancestor = read_conversation_history_envelope(owner)
+                        owner_tag = (
+                            ancestor.get("tag")
+                            if isinstance(ancestor, dict)
+                            and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
+                            else ""
+                        )
+                        if ancestor is None or not _contributor_privacy_allows(owner_tag, target_tag):
+                            permitted = False
+                            break
+                    if permitted:
                         units = _dialogue_turn_units(
-                            archive.get("messages") or [],
-                            source_id=source_identity,
+                            history,
+                            source_id=ref,
                             explicit_index=index,
+                            description=_clean_conversation_browser_text(
+                                source.get("description") or "",
+                            ),
                         )
                         row["status"] = "available" if units else "missing"
                     else:
                         row["status"] = "withheld"
+            else:
+                archive = _browser_archive_envelope(ref)
+                if archive is not None:
+                    source_identity = str(archive.get("source_conversation_id") or ref)
+                    lineage.add(source_identity)
+                    try:
+                        archive_messages, _archive_lineage = (
+                            _resolve_archive_contributor(
+                                ref, archive, target_tag=target_tag,
+                                lineage_sink=lineage,
+                            )
+                        )
+                        units = _dialogue_turn_units(
+                            archive_messages,
+                            source_id=source_identity,
+                            explicit_index=index,
+                        )
+                        row["status"] = "available" if units else "missing"
+                    except _ContributorWithheld:
+                        row["status"] = "withheld"
             excluded_conversations.update(lineage)
         else:
+            # Inventory the declared identity before availability/privacy
+            # validation. A contributor that later becomes missing, archived,
+            # or withheld must still be excluded from ordinary knowledge RAG;
+            # otherwise its stale indexed rows can re-enter as a duplicate.
+            try:
+                excluded_paths.add(os.path.realpath(os.path.abspath(
+                    os.path.expanduser(contributor["path"])
+                )))
+            except (OSError, ValueError):
+                pass
             try:
                 path = _validated_atomic_contributor_path(
                     contributor["path"], target_tag=target_tag,
@@ -11874,11 +11998,19 @@ def _resolve_reviewed_contributors(
             resolved = resolve_effective_conversation_history(
                 ref, diagnostics=diagnostics, lineage_sink=lineage,
             )
-            if resolved is None or diagnostics:
+            if resolved is None or (diagnostics and not resolved):
                 raise ValueError("Dialogue contributor ancestry is unavailable")
+            visible_owners = _resolved_history_owners(resolved, ref)
         else:
-            lineage.add(str(source.get("source_conversation_id") or ref))
-        for owner in lineage or {ref}:
+            try:
+                _resolve_archive_contributor(
+                    ref, source, target_tag=target_tag,
+                    lineage_sink=lineage,
+                )
+            except _ContributorWithheld as exc:
+                raise ValueError(str(exc)) from exc
+            visible_owners = lineage or {ref}
+        for owner in visible_owners:
             ancestor = (
                 read_conversation_history_envelope(owner)
                 if not source.get("archived_source") else source
@@ -13137,20 +13269,58 @@ def _clear_conversation_runtime_state(conversation_id: str) -> dict:
     return {"cleared": counts, "errors": errors}
 
 
+def _assert_stealth_permanent_delete(conversation_id: str) -> None:
+    """Refuse permanent deletion unless Stealth is authoritative."""
+    from orchestrator.conversation_memory import (
+        _DEFAULT_SESSIONS_ROOT,
+        _conversation_path,
+        read_conversation_history_envelope,
+    )
+
+    envelope = read_conversation_history_envelope(conversation_id)
+    if isinstance(envelope, dict):
+        if envelope.get("tag") != "stealth":
+            raise PermissionError(
+                "Delete Forever is available only for Stealth Dialogues; "
+                "Standard and Private Dialogues use Close"
+            )
+        return
+
+    live_path = _conversation_path(conversation_id, _DEFAULT_SESSIONS_ROOT)
+    archived_path = _conversation_path(
+        conversation_id, _DEFAULT_SESSIONS_ROOT / "archived",
+    )
+    if (live_path.exists() or live_path.is_symlink()
+            or archived_path.exists() or archived_path.is_symlink()):
+        raise PermissionError(
+            "Delete Forever requires a readable authoritative Stealth envelope"
+        )
+
+    with _conversation_lifecycle_guard:
+        creation_tag = _conversation_creation_tags.get(
+            _conversation_storage_identity(conversation_id)
+        )
+    if creation_tag != "stealth":
+        raise PermissionError(
+            "Delete Forever is available only for Stealth Dialogues; "
+            "Standard and Private Dialogues use Close"
+        )
+
+
 def _delete_conversation_runtime(conversation_id: str) -> dict:
-    """Tombstone, quiesce, purge, and clear one conversation atomically."""
+    """Tombstone, quiesce, purge, and clear one Stealth conversation."""
     if not _valid_existing_conversation_id(conversation_id):
         raise ValueError("invalid conversation_id")
-    # Mark before waiting: an active turn may still compute, but every late
-    # save sees this tombstone and the purge waits for that turn's lock.
-    with _conversation_lifecycle_guard:
-        _deleted_conversations.add(_conversation_storage_identity(conversation_id))
-
     lifecycle_lock = _conversation_lifecycle_lock(conversation_id)
-    # First drain any request/runtime writer that was already inside the
-    # barrier when the tombstone landed. No later request can enter and write.
+    # Inspect the authoritative envelope under the same barrier as writers,
+    # then install the tombstone before releasing it. A request waiting behind
+    # this block observes the tombstone and cannot create new residue.
     with lifecycle_lock:
-        pass
+        _assert_stealth_permanent_delete(conversation_id)
+        with _conversation_lifecycle_guard:
+            _deleted_conversations.add(
+                _conversation_storage_identity(conversation_id)
+            )
 
     # Worker shutdown may join a thread whose completion callback briefly
     # consults the server lifecycle state. Do not hold the server lock while
@@ -13252,6 +13422,8 @@ def _conversation_protection_state(conversation_id: str) -> dict:
 def _protected_delete_conversation_runtime(conversation_id: str) -> dict:
     """Delete one exact Dialogue only after Paused one-shot approval."""
     from orchestrator import system_protection as _sp
+    with _conversation_lifecycle_lock(conversation_id):
+        _assert_stealth_permanent_delete(conversation_id)
     pre_state = _conversation_protection_state(conversation_id)
     protection = _sp.authorize_server_action(
         "dialogue_delete",
@@ -13405,7 +13577,7 @@ def conversation_close(conversation_id):
 
 @app.route("/api/conversation/<conversation_id>/delete-forever", methods=["POST"])
 def conversation_delete_forever(conversation_id):
-    """Permanently delete all Ora-managed conversation stores.
+    """Permanently delete one Stealth Dialogue's Ora-managed stores.
 
     Explicit flat vault exports and their sidecars remain user-owned.
     """
@@ -13417,6 +13589,8 @@ def conversation_delete_forever(conversation_id):
         return cross_site
     try:
         result = _protected_delete_conversation_runtime(conversation_id)
+    except PermissionError as exc:
+        return _json_response({"error": str(exc)}, status=409)
     except Exception as exc:
         try:
             from orchestrator import system_protection as _sp
@@ -15321,6 +15495,29 @@ def pipeline_update():
 
 # ── clarification API ────────────────────────────────────────────────────────
 
+def _refresh_clarification_dialogue_context(
+    panel_id: str,
+    pending: dict,
+    target_tag: str,
+) -> tuple[list[dict], dict | None]:
+    """Rebuild mutable Dialogue context at the resume lifecycle seam.
+
+    The caller holds the conversation lifecycle lock.  Paused Step-1/config
+    state remains tied to the original prompt, while history and explicit
+    contributors are re-read because either may have changed during the pause.
+    """
+    history, _history_state = _authoritative_dialogue_history(
+        panel_id, pending.get("history"),
+    )
+    extra_context = dict(pending.get("extra_context") or {})
+    extra_context.pop("contributor_bundle", None)
+    contributor_bundle = build_contributor_bundle(
+        panel_id, target_tag=target_tag,
+    )
+    if contributor_bundle.get("sources"):
+        extra_context["contributor_bundle"] = contributor_bundle
+    return history, extra_context or None
+
 @app.route("/api/clarification", methods=["POST"])
 def clarification_respond():
     """Resume a paused pipeline with the user's clarification answers.
@@ -15337,17 +15534,19 @@ def clarification_respond():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate_unlocked():
+    def generate_unlocked(_resume_tag):
         step1 = pending["step1"]
         config = pending["config"]
-        history = pending["history"]
         user_input = pending["user_input"]
 
         # Open a fresh per-resume trace, honouring stealth tag.
         _resume_trace_dir = None
         _resume_trace_ref = None
-        _resume_tag = _effective_conversation_tag(
-            panel_id, pending.get("conversation_tag") or "")
+        history, refreshed_extra_context = (
+            _refresh_clarification_dialogue_context(
+                panel_id, pending, _resume_tag,
+            )
+        )
         try:
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
             if _pta_r:
@@ -15382,7 +15581,7 @@ def clarification_respond():
         try:
             for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
                                                   images=pending.get("images"),
-                                                  extra_context=pending.get("extra_context"),
+                                                  extra_context=refreshed_extra_context,
                                                   trace_dir=_resume_trace_dir,
                                                   conversation_tag=_resume_tag,
                                                   turn_state=turn_state):
@@ -15432,7 +15631,7 @@ def clarification_respond():
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
-                          pending.get("extra_context"), _resume_tag),
+                          refreshed_extra_context, _resume_tag),
                     kwargs={"trace_ref": _resume_trace_ref},
                     daemon=True,
                 ).start()
@@ -15453,14 +15652,15 @@ def clarification_respond():
         yield _sse("done")
 
     def generate():
-        with _conversation_turn_context(
-            panel_id, pending.get("conversation_tag") or "",
-        ):
-            with _conversation_lifecycle_lock(panel_id):
-                if _is_conversation_deleted(panel_id):
-                    yield _sse("error", text="Conversation was permanently deleted.")
-                    return
-                yield from generate_unlocked()
+        with _conversation_lifecycle_lock(panel_id):
+            if _is_conversation_deleted(panel_id):
+                yield _sse("error", text="Conversation was permanently deleted.")
+                return
+            resolved_tag = _effective_conversation_tag(
+                panel_id, pending.get("conversation_tag") or "",
+            )
+            with _conversation_turn_context(panel_id, resolved_tag):
+                yield from generate_unlocked(resolved_tag)
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",
@@ -15477,17 +15677,19 @@ def clarification_skip():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate_unlocked():
+    def generate_unlocked(_skip_tag):
         step1 = pending["step1"]
         config = pending["config"]
-        history = pending["history"]
         user_input = pending["user_input"]
 
         # Open a fresh per-skip trace, honouring stealth tag.
         _skip_trace_dir = None
         _skip_trace_ref = None
-        _skip_tag = _effective_conversation_tag(
-            panel_id, pending.get("conversation_tag") or "")
+        history, refreshed_extra_context = (
+            _refresh_clarification_dialogue_context(
+                panel_id, pending, _skip_tag,
+            )
+        )
         try:
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
             if _pta_s:
@@ -15518,7 +15720,7 @@ def clarification_skip():
         try:
             for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
                                                   images=pending.get("images"),
-                                                  extra_context=pending.get("extra_context"),
+                                                  extra_context=refreshed_extra_context,
                                                   trace_dir=_skip_trace_dir,
                                                   conversation_tag=_skip_tag,
                                                   turn_state=turn_state):
@@ -15564,7 +15766,7 @@ def clarification_skip():
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
-                          pending.get("extra_context"), _skip_tag),
+                          refreshed_extra_context, _skip_tag),
                     kwargs={"trace_ref": _skip_trace_ref},
                     daemon=True,
                 ).start()
@@ -15573,14 +15775,15 @@ def clarification_skip():
         yield _sse("done")
 
     def generate():
-        with _conversation_turn_context(
-            panel_id, pending.get("conversation_tag") or "",
-        ):
-            with _conversation_lifecycle_lock(panel_id):
-                if _is_conversation_deleted(panel_id):
-                    yield _sse("error", text="Conversation was permanently deleted.")
-                    return
-                yield from generate_unlocked()
+        with _conversation_lifecycle_lock(panel_id):
+            if _is_conversation_deleted(panel_id):
+                yield _sse("error", text="Conversation was permanently deleted.")
+                return
+            resolved_tag = _effective_conversation_tag(
+                panel_id, pending.get("conversation_tag") or "",
+            )
+            with _conversation_turn_context(panel_id, resolved_tag):
+                yield from generate_unlocked(resolved_tag)
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",

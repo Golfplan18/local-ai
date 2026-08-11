@@ -731,6 +731,8 @@ def knowledge_search_hybrid_raw(
     exclude_tags: Optional[list[str]] = None,
     lexical_n_results: Optional[int] = None,
     privacy_tag: Optional[str] = None,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
 ) -> list[dict[str, Any]]:
     semantic = knowledge_search_raw(
         query=query,
@@ -741,6 +743,8 @@ def knowledge_search_hybrid_raw(
         include_archived=include_archived,
         exclude_tags=exclude_tags,
         privacy_tag=privacy_tag,
+        excluded_conversation_ids=excluded_conversation_ids,
+        excluded_paths=excluded_paths,
     )
     if os.environ.get("ORA_RAG_HYBRID_RETRIEVAL", "1").strip().lower() in {"0", "false", "no", "off"}:
         for chunk in semantic:
@@ -765,12 +769,63 @@ def knowledge_search_hybrid_raw(
         exclude_tags=exclude_tags,
         privacy_tag=privacy_tag,
     )
-    return _merge_raw_chunks(semantic, lexical)
+    return _filter_excluded_chunks(
+        _merge_raw_chunks(semantic, lexical),
+        excluded_conversation_ids=excluded_conversation_ids,
+        excluded_paths=excluded_paths,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Output formatting
 # ---------------------------------------------------------------------------
+
+
+def _filter_excluded_chunks(
+    chunks: list[dict[str, Any]],
+    *,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
+) -> list[dict[str, Any]]:
+    """Remove complete records owned by explicitly inventoried sources."""
+    excluded_conversations = {
+        str(value).strip().casefold()
+        for value in (excluded_conversation_ids or [])
+        if str(value).strip()
+    }
+    canonical_paths: set[str] = set()
+    for value in excluded_paths or []:
+        try:
+            canonical_paths.add(
+                os.path.realpath(os.path.abspath(str(value))).casefold()
+            )
+        except (OSError, ValueError):
+            continue
+    if not excluded_conversations and not canonical_paths:
+        return chunks
+
+    filtered: list[dict[str, Any]] = []
+    for chunk in chunks:
+        metadata = (
+            chunk.get("metadata")
+            if isinstance(chunk.get("metadata"), dict) else {}
+        )
+        conversation_id = str(
+            metadata.get("conversation_id") or ""
+        ).strip().casefold()
+        source_path = metadata.get("path")
+        try:
+            canonical_path = (
+                os.path.realpath(os.path.abspath(str(source_path))).casefold()
+                if source_path else ""
+            )
+        except (OSError, ValueError):
+            canonical_path = ""
+        if (conversation_id in excluded_conversations
+                or (canonical_path and canonical_path in canonical_paths)):
+            continue
+        filtered.append(chunk)
+    return filtered
 
 
 def _format_result_line(rank: int, doc: str, meta: dict[str, Any]) -> list[str]:
@@ -805,6 +860,8 @@ def knowledge_search(
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
     privacy_tag: Optional[str] = None,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
 ) -> str:
     """Query a ChromaDB collection with schema-aware tag filters.
 
@@ -860,8 +917,9 @@ def knowledge_search(
         output: list[str] = []
         docs = (results.get("documents") or [[]])[0]
         metas = (results.get("metadatas") or [[]])[0]
-        filtered = [
-            (doc, meta or {}) for doc, meta in zip(docs, metas)
+        filtered = _filter_excluded_chunks([
+            {"document": doc, "metadata": meta or {}}
+            for doc, meta in zip(docs, metas)
             if _metadata_passes_filters(
                 meta or {}, collection=collection,
                 type_filter=type_filter,
@@ -870,9 +928,12 @@ def knowledge_search(
                 exclude_tags=exclude_tags,
                 privacy_tag=privacy_tag,
             )
-        ]
-        for i, (doc, meta) in enumerate(filtered, 1):
-            output.extend(_format_result_line(i, doc, meta))
+        ], excluded_conversation_ids=excluded_conversation_ids,
+           excluded_paths=excluded_paths)
+        for i, chunk in enumerate(filtered, 1):
+            output.extend(_format_result_line(
+                i, chunk["document"], chunk["metadata"],
+            ))
         return "\n".join(output) if output else "No results found."
     except Exception as e:
         return f"Knowledge search error: {str(e)}"
@@ -888,6 +949,8 @@ def knowledge_search_raw(
     include_archived: bool = False,
     exclude_tags: Optional[list[str]] = None,
     privacy_tag: Optional[str] = None,
+    excluded_conversation_ids: Optional[list[str] | set[str]] = None,
+    excluded_paths: Optional[list[str] | set[str]] = None,
 ) -> list[dict[str, Any]]:
     """Like `knowledge_search` but returns raw chunk dicts instead of a
     formatted string. Used by the Phase 5.6 ranker.
@@ -956,7 +1019,11 @@ def knowledge_search_raw(
                 "distance":   float(dist) if dist is not None else 1.0,
                 "similarity": 1.0 - float(dist) if dist is not None else 0.0,
             })
-        return chunks
+        return _filter_excluded_chunks(
+            chunks,
+            excluded_conversation_ids=excluded_conversation_ids,
+            excluded_paths=excluded_paths,
+        )
     except Exception as exc:
         # Previously this swallowed every error into an empty result with no
         # signal — a transient ChromaDB write-lock during indexing, or an

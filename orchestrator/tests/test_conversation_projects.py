@@ -439,6 +439,49 @@ class EffectiveDialogueHistoryTests(unittest.TestCase):
         )
         self.assertEqual(self._contents(history), ["root-u0", "root-a0"])
 
+    def test_post_fork_retags_drop_only_the_incompatible_ancestor_branch(self):
+        self._turn("parent-retagged", 0)
+        cm.fork_conversation(
+            "parent-retagged", "child-after-parent-retag",
+            sessions_root=self.root,
+        )
+        self._turn("child-after-parent-retag", 0)
+        cm.set_conversation_tag(
+            "parent-retagged", "private", sessions_root=self.root,
+        )
+        diagnostics = []
+        lineage = set()
+        history = cm.resolve_effective_conversation_history(
+            "child-after-parent-retag", sessions_root=self.root,
+            diagnostics=diagnostics, lineage_sink=lineage,
+        )
+        self.assertEqual(self._contents(history), [
+            "child-after-parent-retag-u0", "child-after-parent-retag-a0",
+        ])
+        self.assertEqual(lineage, {
+            "parent-retagged", "child-after-parent-retag",
+        })
+        self.assertTrue(any("privacy" in item for item in diagnostics))
+
+        self._turn("parent-before-child-retag", 0)
+        cm.fork_conversation(
+            "parent-before-child-retag", "child-retagged",
+            creation_tag="private", sessions_root=self.root,
+        )
+        self._turn("child-retagged", 0)
+        cm.set_conversation_tag(
+            "parent-before-child-retag", "private", sessions_root=self.root,
+        )
+        cm.set_conversation_tag(
+            "child-retagged", "", sessions_root=self.root,
+        )
+        history = cm.resolve_effective_conversation_history(
+            "child-retagged", sessions_root=self.root,
+        )
+        self.assertEqual(self._contents(history), [
+            "child-retagged-u0", "child-retagged-a0",
+        ])
+
     def test_orphan_malformed_cutoff_and_cycle_drop_unsafe_ancestry_read_only(self):
         def write(conversation_id, body):
             path = self.root / conversation_id / "conversation.json"

@@ -579,6 +579,64 @@ class TestStep1ConfigThreading(unittest.TestCase):
         self.assertIn("## COVERAGE GAP", text)
         self.assertNotIn("## SUPPLEMENTAL RAG REQUEST", text)
 
+    def test_supplement_repeat_identity_is_the_normalized_gap_only(self):
+        units, inventory, required, endpoint = self._supplement_fixture()
+        responses = [
+            (
+                "## SUPPLEMENTAL RAG REQUEST\n"
+                "gap_statement: Need missing evidence\n"
+                "query_terms: beta\n"
+                "why_it_matters: It resolves the current claim"
+            ),
+            (
+                "## SUPPLEMENTAL RAG REQUEST\n"
+                "gap_statement:   NEED   MISSING EVIDENCE  \n"
+                "query_terms: gamma\n"
+                "why_it_matters: A revised search might help"
+            ),
+        ]
+        calls = []
+
+        def physical(messages, _endpoint, _step_name, **_kwargs):
+            prepared, stats = boot.prepare_messages_with_continuity(
+                messages, endpoint, history=[],
+            )
+            calls.append((prepared, stats))
+            return responses[len(calls) - 1], True, "ok"
+
+        token = boot.set_optional_context_context(units, inventory)
+        try:
+            with mock.patch.object(boot, "_call_with_retry", side_effect=physical):
+                text, ok, _reason = boot._call_with_supplement(
+                    required, endpoint, "analyst", context_pkg={},
+                )
+        finally:
+            boot.reset_optional_context_context(token)
+
+        self.assertTrue(ok)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("## COVERAGE GAP", text)
+        second_call = "\n".join(message["content"] for message in calls[1][0])
+        self.assertIn("BETA COMPLETE UNIT", second_call)
+        self.assertNotIn("GAMMA COMPLETE UNIT", second_call)
+
+    def test_supplement_control_block_is_active_only_at_the_absolute_top(self):
+        block = (
+            "## SUPPLEMENTAL RAG REQUEST\n"
+            "gap_statement: Need beta evidence\n"
+            "query_terms: beta\n"
+            "why_it_matters: It resolves the current claim"
+        )
+        parsed = boot._parse_supplemental_request(" \n\t" + block)
+        self.assertEqual(parsed["gap_statement"], "Need beta evidence")
+        for inert in (
+            "Answer first.\n\n" + block,
+            "> " + block,
+            "Quoted example:\n\n> " + block,
+        ):
+            with self.subTest(inert=inert[:20]):
+                self.assertIsNone(boot._parse_supplemental_request(inert))
+
     def test_request_only_verifier_and_reviser_promote_before_health_verdict(self):
         units, inventory, required, endpoint = self._supplement_fixture()
         request = (
@@ -748,6 +806,7 @@ class TestStep1ConfigThreading(unittest.TestCase):
 
     def test_step2_threads_standard_private_and_stealth_to_primary_knowledge(self):
         calls = []
+        conversation_calls = []
 
         class FakeEngine:
             def __init__(self, _config):
@@ -765,6 +824,10 @@ class TestStep1ConfigThreading(unittest.TestCase):
             calls.append(kwargs)
             return ""
 
+        def conversation(**kwargs):
+            conversation_calls.append(kwargs)
+            return []
+
         step1 = {
             "mode": "test", "raw_prompt": "privacy matrix query",
             "cleaned_prompt": "privacy matrix query", "triage_tier": 1,
@@ -773,7 +836,7 @@ class TestStep1ConfigThreading(unittest.TestCase):
             boot, "load_mode", return_value="## DEFAULT GEAR\n\nGear 2",
         ), mock.patch.object(boot, "RAG_ENGINE_AVAILABLE", True), \
              mock.patch.object(boot, "WEB_CONSULTATION_AVAILABLE", False), \
-             mock.patch.object(boot, "retrieve_ranked_chunks", return_value=[]), \
+             mock.patch.object(boot, "retrieve_ranked_chunks", side_effect=conversation), \
              mock.patch.object(boot, "assemble_ranked_context", side_effect=concept), \
              mock.patch.object(boot, "RAGEngine", FakeEngine), \
              mock.patch.object(boot, "_load_profile_config", return_value=None):
@@ -783,12 +846,25 @@ class TestStep1ConfigThreading(unittest.TestCase):
             ):
                 boot.run_step2_context_assembly(
                     step1, {}, conversation_tag=raw_tag,
+                    retrieval_exclusions={
+                        "conversation_ids": ["selected-dialogue"],
+                        "paths": ["/vault/Atomic — Selected.md"],
+                    },
                 )
                 self.assertEqual(calls[-1]["privacy_tag"], expected)
                 self.assertEqual(
                     calls[-1]["include_private"],
                     expected in {"private", "stealth"},
                 )
+                for call in (conversation_calls[-1], calls[-1]):
+                    self.assertEqual(
+                        call["excluded_conversation_ids"],
+                        ["selected-dialogue"],
+                    )
+                    self.assertEqual(
+                        call["excluded_paths"],
+                        ["/vault/Atomic — Selected.md"],
+                    )
 
     def test_step2_legacy_stealth_uses_prefix_and_explicit_privacy(self):
         concept_calls = []
@@ -816,11 +892,22 @@ class TestStep1ConfigThreading(unittest.TestCase):
              mock.patch.object(boot, "_load_profile_config", return_value=None):
             boot.run_step2_context_assembly(
                 step1, {}, conversation_tag="stealth",
+                retrieval_exclusions={
+                    "conversation_ids": ["selected-dialogue"],
+                    "paths": ["/vault/Atomic — Selected.md"],
+                },
             )
         self.assertTrue(conversation_calls[0][0][0].startswith("include:private "))
         self.assertEqual(conversation_calls[0][1]["privacy_tag"], "stealth")
         self.assertTrue(concept_calls[0][0][0].startswith("include:private "))
         self.assertEqual(concept_calls[0][1]["privacy_tag"], "stealth")
+        for _args, kwargs in (conversation_calls[0], concept_calls[0]):
+            self.assertEqual(
+                kwargs["excluded_conversation_ids"], ["selected-dialogue"],
+            )
+            self.assertEqual(
+                kwargs["excluded_paths"], ["/vault/Atomic — Selected.md"],
+            )
 
     def test_structured_conversation_units_feed_utilization_and_fconsult_once(self):
         engine_calls = {"relationship_inputs": None, "assembly": None}

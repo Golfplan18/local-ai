@@ -417,6 +417,34 @@ class TestHybridLexicalRetrieval(unittest.TestCase):
         )
         self.assertIn("lexical", target.get("retrieval_source", ""))
 
+    def test_declared_atomic_path_cannot_reenter_semantic_or_lexical_results(self):
+        excluded = "/vault/Book — Disingenuous Bullshitters Book Report.md"
+        semantic = knowledge_search.knowledge_search_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            excluded_paths=[excluded],
+        )
+        hybrid = knowledge_search.knowledge_search_hybrid_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            lexical_n_results=5,
+            excluded_paths=[excluded],
+        )
+        formatted = knowledge_search.knowledge_search(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            excluded_paths=[excluded],
+        )
+        for chunks in (semantic, hybrid):
+            self.assertNotIn(
+                excluded,
+                {chunk["metadata"].get("path") for chunk in chunks},
+            )
+        self.assertNotIn("Disingenuous Bullshitters", formatted)
+
 
 # ---------------------------------------------------------------------------
 # End-to-end behavior on conversations collection (transitional)
@@ -447,9 +475,12 @@ class TestConversationsLegacyFilter(unittest.TestCase):
                 "Stealth conversation, transient.",
             ],
             metadatas=[
-                {"source": "conv_normal.md",  "tag": ""},
-                {"source": "conv_private.md", "tag": "private"},
-                {"source": "conv_stealth.md", "tag": "stealth"},
+                {"source": "conv_normal.md", "conversation_id": "normal",
+                 "tag": ""},
+                {"source": "conv_private.md", "conversation_id": "private",
+                 "tag": "private"},
+                {"source": "conv_stealth.md", "conversation_id": "stealth",
+                 "tag": "stealth"},
             ],
         )
 
@@ -481,6 +512,21 @@ class TestConversationsLegacyFilter(unittest.TestCase):
         self.assertIn("conv_normal.md", result)
         self.assertIn("conv_private.md", result)
         self.assertIn("conv_stealth.md", result)
+
+    def test_explicit_dialogue_identity_is_excluded_from_raw_and_formatted_results(self):
+        raw = knowledge_search.knowledge_search_raw(
+            "pipelines", collection="conversations", n_results=10,
+            excluded_conversation_ids=["NORMAL"],
+        )
+        formatted = knowledge_search.knowledge_search(
+            "pipelines", collection="conversations", n_results=10,
+            excluded_conversation_ids=["normal"],
+        )
+        self.assertNotIn(
+            "normal",
+            {chunk["metadata"].get("conversation_id") for chunk in raw},
+        )
+        self.assertNotIn("conv_normal.md", formatted)
 
 
 class TestLegacyAndConflictingPrivacyMetadata(unittest.TestCase):

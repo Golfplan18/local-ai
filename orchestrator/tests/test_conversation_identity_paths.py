@@ -1471,6 +1471,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
     def test_timeline_factory_finishes_before_delete_purge(self):
         server = self.server
         from orchestrator import conversation_closeout as closeout
+        from orchestrator import conversation_memory as memory
 
         factory_started = threading.Event()
         release_factory = threading.Event()
@@ -1495,9 +1496,17 @@ class TestServerCanonicalStorage(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as td:
             home = Path(td)
-            (home / "sessions" / "timeline-barrier").mkdir(parents=True)
+            session_dir = home / "sessions" / "timeline-barrier"
+            session_dir.mkdir(parents=True)
+            (session_dir / "conversation.json").write_text(json.dumps({
+                "conversation_id": "timeline-barrier",
+                "tag": "stealth",
+                "messages": [],
+            }), encoding="utf-8")
             with (
                 mock.patch.object(server.rp, "ORA_HOME", home),
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
+                                  home / "sessions"),
                 mock.patch.object(server, "_HAS_TIMELINE", True),
                 mock.patch.object(server, "_get_timeline",
                                   return_value=BlockingTimeline()),
@@ -1536,6 +1545,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
     def test_preview_factory_finishes_before_delete_purge(self):
         server = self.server
         from orchestrator import conversation_closeout as closeout
+        from orchestrator import conversation_memory as memory
 
         factory_started = threading.Event()
         release_factory = threading.Event()
@@ -1559,9 +1569,17 @@ class TestServerCanonicalStorage(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as td:
             home = Path(td)
-            (home / "sessions" / "preview-barrier").mkdir(parents=True)
+            session_dir = home / "sessions" / "preview-barrier"
+            session_dir.mkdir(parents=True)
+            (session_dir / "conversation.json").write_text(json.dumps({
+                "conversation_id": "preview-barrier",
+                "tag": "stealth",
+                "messages": [],
+            }), encoding="utf-8")
             with (
                 mock.patch.object(server.rp, "ORA_HOME", home),
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
+                                  home / "sessions"),
                 mock.patch.object(server, "_HAS_PREVIEW", True),
                 mock.patch.object(server, "_preview_proxy_state",
                                   side_effect=blocking_state),
@@ -1600,6 +1618,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
     def test_waveform_cache_render_finishes_before_delete_purge(self):
         server = self.server
         from orchestrator import conversation_closeout as closeout
+        from orchestrator import conversation_memory as memory
 
         render_started = threading.Event()
         release_render = threading.Event()
@@ -1611,6 +1630,11 @@ class TestServerCanonicalStorage(unittest.TestCase):
             session_dir = home / "sessions" / "waveform-barrier"
             thumbnails = session_dir / "thumbnails"
             session_dir.mkdir(parents=True)
+            (session_dir / "conversation.json").write_text(json.dumps({
+                "conversation_id": "waveform-barrier",
+                "tag": "stealth",
+                "messages": [],
+            }), encoding="utf-8")
             source = home / "source.wav"
             source.write_bytes(b"audio")
             cache_path = thumbnails / "entry.waveform.png"
@@ -1653,6 +1677,8 @@ class TestServerCanonicalStorage(unittest.TestCase):
             with (
                 mock.patch.dict(sys.modules, {"waveform": waveform_module}),
                 mock.patch.object(server.rp, "ORA_HOME", home),
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
+                                  home / "sessions"),
                 mock.patch.object(server, "_HAS_MEDIA_LIBRARY", True),
                 mock.patch.object(server, "_get_media_library",
                                   return_value=library),

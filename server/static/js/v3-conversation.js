@@ -333,6 +333,20 @@
       && state.turns.length > 0
   );
 
+  const privacyAllowsFork = (sourceTag, targetTag) => {
+    if (!['', 'private', 'stealth'].includes(sourceTag)
+        || !['', 'private', 'stealth'].includes(targetTag)) return false;
+    if (sourceTag === 'stealth') return targetTag === 'stealth';
+    if (sourceTag === 'private') {
+      return targetTag === 'private' || targetTag === 'stealth';
+    }
+    return true;
+  };
+
+  const canForkAs = (targetTag) => (
+    canForkActive() && privacyAllowsFork(state.activeTag, targetTag)
+  );
+
   const emitCurrentTurnChanged = (turn) => {
     document.dispatchEvent(new CustomEvent('ora:current-turn-changed', {
       detail: {
@@ -540,6 +554,13 @@
     if (!canForkActive()) {
       alert('A Dialogue needs at least one turn before it can be forked.');
       return;
+    }
+    const requestedTag = Object.prototype.hasOwnProperty.call(detail, 'tag')
+      ? detail.tag
+      : parentTag;
+    if (!privacyAllowsFork(parentTag, requestedTag)) {
+      alert('A fork cannot make parent content visible at a weaker privacy boundary.');
+      return null;
     }
     try {
       const forkBody = {
@@ -2035,6 +2056,7 @@
       || lifecycleRequestActive(state.activeConversationId)
     ),
     canFork:                 canForkActive,
+    canForkAs,
     getTurnCount:            () => state.turns.length,
     getCurrentTurn:          () => state.turns[state.currentTurnIndex] || null,
   };

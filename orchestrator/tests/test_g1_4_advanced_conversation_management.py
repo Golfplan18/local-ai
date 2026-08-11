@@ -794,12 +794,159 @@ class G14ConversationManagementTests(unittest.TestCase):
             {"source-dialogue", "source-child"},
         )
 
-    def test_stricter_dialogue_ancestor_is_withheld_at_every_selection_seam(self):
+    def test_archived_fork_uses_retained_ancestry_or_is_withheld(self):
+        runtime_memory.fork_conversation(
+            "source-dialogue", "archived-child",
+            fork_point_turn_index=0,
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "archived-child", "Archived child question", "Archived child answer",
+            sessions_root=self.sessions,
+        )
+        archive_ref = server._browser_encode_source_id(
+            "archive", "archived-child",
+        )
+        archive_chunks = [{
+            "_row_id": 1,
+            "conversation_id": "archived-child",
+            "pair_num": 1,
+            "tag": "",
+            "text": (
+                "---\ntype: chat\ntags: []\n---\n"
+                "## Exchange\n\n**User:**\n\nSTALE ARCHIVE COPY\n\n"
+                "**Assistant:**\n\nMust not replace retained ancestry\n"
+            ),
+        }]
+        runtime_memory.create_conversation_envelope(
+            "archive-fork-target",
+            title="Archive fork target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Archived child",
+            }],
+            sessions_root=self.sessions,
+        )
+
+        with (
+            mock.patch.object(
+                server, "_browser_archive_chunk_metadata",
+                return_value=archive_chunks,
+            ),
+            mock.patch.object(
+                server, "_browser_read_chunk_text",
+                side_effect=lambda metadata: metadata["text"],
+            ),
+        ):
+            available = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            content = "\n".join(unit["content"] for unit in available["units"])
+            self.assertEqual(available["sources"][0]["status"], "available")
+            self.assertIn("The receipt arrived late", content)
+            self.assertIn("Archived child answer", content)
+            self.assertNotIn("STALE ARCHIVE COPY", content)
+
+            runtime_memory.set_conversation_tag(
+                "source-dialogue", "private", sessions_root=self.sessions,
+            )
+            incompatible = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            self.assertEqual(
+                incompatible["sources"][0]["status"], "withheld",
+            )
+            self.assertEqual(incompatible["units"], [])
+
+            runtime_memory.set_conversation_tag(
+                "source-dialogue", "", sessions_root=self.sessions,
+            )
+            (self.sessions / "source-dialogue").rename(
+                self.sessions / "unavailable-parent",
+            )
+            orphaned = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            self.assertEqual(orphaned["sources"][0]["status"], "withheld")
+            self.assertEqual(orphaned["units"], [])
+
+            (self.sessions / "unavailable-parent").rename(
+                self.sessions / "source-dialogue",
+            )
+            parent = runtime_memory.load_conversation_json(
+                "source-dialogue", sessions_root=self.sessions,
+            )
+            detached = runtime_memory.detach_direct_fork_children(
+                "source-dialogue", parent_messages=parent["messages"],
+                sessions_root=self.sessions,
+            )
+            self.assertIn("archived-child", detached["children_detached"])
+            detached_bundle = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            detached_content = "\n".join(
+                unit["content"] for unit in detached_bundle["units"]
+            )
+            self.assertEqual(
+                detached_bundle["sources"][0]["status"], "available",
+            )
+            self.assertIn("Archived child answer", detached_content)
+            self.assertNotIn("The receipt arrived late", detached_content)
+            self.assertNotIn("STALE ARCHIVE COPY", detached_content)
+
+    def test_all_declared_atomic_paths_remain_excluded_after_validation(self):
+        missing = self.vault / "Atomic — Missing.md"
+        archived = self.vault / "Atomic — Archived.md"
+        archived.write_text(
+            "---\ntype: engram\ntags: [atomic, archived]\n---\nArchived fact.",
+            encoding="utf-8",
+        )
+        runtime_memory.create_conversation_envelope(
+            "atomic-inventory-target",
+            title="Atomic inventory target",
+            description=DESCRIPTION,
+            contributors=[
+                {"kind": "atomic_note", "path": str(self.atomic),
+                 "title": "Available"},
+                {"kind": "atomic_note", "path": str(missing),
+                 "title": "Missing"},
+                {"kind": "atomic_note", "path": str(archived),
+                 "title": "Withheld"},
+            ],
+            sessions_root=self.sessions,
+        )
+        indexed_unit = {
+            "lane": "contributor",
+            "unit_id": "knowledge:available",
+            "provenance_id": "knowledge:available",
+            "source_id": "selected-source-0",
+            "explicit_index": 0,
+            "order": 0,
+            "content": "Available atomic fact.",
+        }
+        with mock.patch.object(
+            server, "_indexed_atomic_contributor_units",
+            return_value=[indexed_unit],
+        ):
+            bundle = server.build_contributor_bundle(
+                "atomic-inventory-target", target_tag="",
+            )
+
+        self.assertEqual(
+            [source["status"] for source in bundle["sources"]],
+            ["available", "missing", "withheld"],
+        )
+        self.assertEqual(
+            set(bundle["exclude_paths"]),
+            {os.path.realpath(str(path)) for path in (self.atomic, missing, archived)},
+        )
+
+    def test_incompatible_live_ancestor_is_dropped_but_local_child_remains_usable(self):
         runtime_memory.create_conversation_envelope(
             "private-parent",
             title="Private parent",
             description=DESCRIPTION,
-            tag="private",
             sessions_root=self.sessions,
         )
         runtime_memory.save_turn_spatial_state(
@@ -807,13 +954,20 @@ class G14ConversationManagementTests(unittest.TestCase):
             sessions_root=self.sessions,
         )
         runtime_memory.fork_conversation(
-            "private-parent", "standard-child", creation_tag="",
+            "private-parent", "standard-child",
             sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "standard-child", "Public child premise", "Public child conclusion",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.set_conversation_tag(
+            "private-parent", "private", sessions_root=self.sessions,
         )
         row = self._source_row(
             conversation_id="standard-child", title="Standard child", tag="",
         )
-        self.assertFalse(server._browser_creation_row_allowed(row, ""))
+        self.assertTrue(server._browser_creation_row_allowed(row, ""))
         self.assertTrue(server._browser_creation_row_allowed(row, "private"))
 
         review = {"candidates": {
@@ -822,10 +976,10 @@ class G14ConversationManagementTests(unittest.TestCase):
                 "title": "Standard child",
             },
         }}
-        with self.assertRaises(ValueError):
-            server._resolve_reviewed_contributors(
-                review, ["standard-child"], target_tag="",
-            )
+        reviewed = server._resolve_reviewed_contributors(
+            review, ["standard-child"], target_tag="",
+        )
+        self.assertEqual(reviewed[0]["ref"], "standard-child")
 
         runtime_memory.create_conversation_envelope(
             "standard-target",
@@ -840,8 +994,10 @@ class G14ConversationManagementTests(unittest.TestCase):
         bundle = server.build_contributor_bundle(
             "standard-target", target_tag="",
         )
-        self.assertEqual(bundle["sources"][0]["status"], "withheld")
-        self.assertEqual(bundle["units"], [])
+        self.assertEqual(bundle["sources"][0]["status"], "available")
+        content = "\n".join(unit["content"] for unit in bundle["units"])
+        self.assertIn("Public child conclusion", content)
+        self.assertNotIn("Private premise", content)
         self.assertEqual(
             set(bundle["exclude_conversation_ids"]),
             {"private-parent", "standard-child"},
@@ -850,6 +1006,12 @@ class G14ConversationManagementTests(unittest.TestCase):
     def test_archive_mixed_privacy_uses_strictest_at_candidate_review_and_runtime(self):
         source_id = "archive-mixed-privacy-source"
         archive_ref = server._browser_encode_source_id("archive", source_id)
+        runtime_memory.create_conversation_envelope(
+            source_id,
+            title="Retained archive authority",
+            description=DESCRIPTION,
+            sessions_root=self.sessions,
+        )
         chunks = [
             {
                 "_row_id": 1, "conversation_id": source_id,
@@ -938,6 +1100,63 @@ class G14ConversationManagementTests(unittest.TestCase):
                 "PRIVATE ARCHIVE CONTENT",
                 "\n".join(unit["content"] for unit in private_bundle["units"]),
             )
+
+    def test_unretained_archive_contributor_is_withheld_when_ancestry_is_unprovable(self):
+        source_id = "unretained-archive-source"
+        archive_ref = server._browser_encode_source_id("archive", source_id)
+        chunk = {
+            "_row_id": 1,
+            "conversation_id": source_id,
+            "pair_num": 1,
+            "tag": "",
+            "text": (
+                "---\ntype: chat\ntags: []\n---\n"
+                "## Exchange\n\n**User:**\n\nUnproven history\n\n"
+                "**Assistant:**\n\nMust be withheld\n"
+            ),
+        }
+        runtime_memory.create_conversation_envelope(
+            "unretained-archive-target",
+            title="Unretained archive target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Unretained archive",
+            }],
+            sessions_root=self.sessions,
+        )
+        row = self._source_row(
+            conversation_id=archive_ref,
+            source_conversation_id=source_id,
+            source_kind="archive",
+            result_type="archive_conversation",
+        )
+        review = {"candidates": {
+            archive_ref: {
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Unretained archive",
+            },
+        }}
+        with (
+            mock.patch.object(
+                server, "_browser_archive_chunk_metadata", return_value=[chunk],
+            ),
+            mock.patch.object(
+                server, "_browser_read_chunk_text",
+                side_effect=lambda metadata: metadata["text"],
+            ),
+        ):
+            self.assertFalse(server._browser_creation_row_allowed(row, ""))
+            with self.assertRaises(ValueError):
+                server._resolve_reviewed_contributors(
+                    review, [archive_ref], target_tag="",
+                )
+            bundle = server.build_contributor_bundle(
+                "unretained-archive-target", target_tag="",
+            )
+
+        self.assertEqual(bundle["sources"][0]["status"], "withheld")
+        self.assertEqual(bundle["units"], [])
 
     def test_atomic_privacy_matrix_applies_at_candidate_validation_and_runtime(self):
         matrix = {

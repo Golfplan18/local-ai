@@ -156,6 +156,23 @@ MUTABLE_PRIVACY_TAGS: tuple[str, ...] = ("", "private")
 CONTRIBUTOR_KINDS: tuple[str, ...] = ("conversation", "atomic_note")
 
 
+def conversation_privacy_allows(source_tag: str, target_tag: str) -> bool:
+    """Return whether ``target_tag`` may inherit content from ``source_tag``.
+
+    Standard content may flow into any Dialogue, Private content only into
+    Private or Stealth, and Stealth content only into Stealth.  Invalid tags
+    fail closed; callers that intentionally support legacy malformed tags must
+    normalize them before asking this question.
+    """
+    if source_tag not in CONVERSATION_TAGS or target_tag not in CONVERSATION_TAGS:
+        return False
+    if source_tag == "stealth":
+        return target_tag == "stealth"
+    if source_tag == "private":
+        return target_tag in {"private", "stealth"}
+    return True
+
+
 def normalize_contributors(value: Any, *, strict: bool = False) -> list[dict[str, str]]:
     """Return the canonical additive contributor-reference shape.
 
@@ -623,6 +640,29 @@ def resolve_effective_conversation_history(
             ancestry_depth + 1,
             stack + (identity,),
         )
+        current_tag = (
+            envelope.get("tag")
+            if envelope.get("tag") in CONVERSATION_TAGS else ""
+        )
+        parent_envelope = _read_history_envelope(parent_id, root)
+        parent_tag = (
+            parent_envelope.get("tag")
+            if isinstance(parent_envelope, dict)
+            and parent_envelope.get("tag") in CONVERSATION_TAGS
+            else ""
+        )
+        if (isinstance(parent_envelope, dict)
+                and not conversation_privacy_allows(parent_tag, current_tag)):
+            # A later Standard/Private retag can make an originally valid fork
+            # edge incompatible.  The parent branch is no longer readable,
+            # but the current Dialogue's own local turns remain authoritative.
+            # ``visit`` already inventoried the discarded lineage so global
+            # Conversation RAG cannot silently re-admit it.
+            note(
+                f"{current_id}: parent {parent_id} privacy {parent_tag!r} "
+                f"is incompatible with child privacy {current_tag!r}"
+            )
+            return local, len(local), local_valid
         if not parent_valid:
             # An incomplete or cyclic branch is not a truthful ordered prefix.
             # Keep only this node's local record and propagate invalidity so a
@@ -1567,6 +1607,10 @@ def fork_conversation(
     if not isinstance(parent_tag, str) or parent_tag not in CONVERSATION_TAGS:
         parent_tag = ""
     child_tag = creation_tag if creation_tag in CONVERSATION_TAGS else parent_tag
+    if not conversation_privacy_allows(parent_tag, child_tag):
+        raise ValueError(
+            "fork privacy cannot make parent content visible at a weaker boundary"
+        )
     # The fetch route and browser display the direct parent's local transcript.
     # Keep the API's zero-based displayed-turn index and the durable cutoff in
     # that same local coordinate system.  Recursive resolution carries the
@@ -1962,6 +2006,7 @@ __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
     "MUTABLE_PRIVACY_TAGS",
+    "conversation_privacy_allows",
     "validate_conversation_id",
     "normalize_contributors",
     "create_conversation_envelope",

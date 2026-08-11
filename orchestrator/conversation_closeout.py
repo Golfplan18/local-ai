@@ -53,6 +53,7 @@ from .conversation_memory import (
     detach_direct_fork_children,
     get_conversation_tag,
     load_conversation_json,
+    read_conversation_history_envelope,
     set_conversation_closed,
 )
 
@@ -2008,22 +2009,63 @@ def delete_conversation_forever(
     chromadb_path: Path | None = None,
     vault_sessions: Path | None = None,
 ) -> dict[str, Any]:
-    """Delete all Ora-managed copies of a conversation, regardless of tag.
+    """Delete all Ora-managed copies of a Stealth conversation.
 
     Explicit flat vault exports and their sidecars are deliberately retained.
     The operation is idempotent and best-effort: one failed layer never blocks
-    the remaining layers, and every failure is both logged and returned.
+    the remaining layers, and every failure is both logged and returned.  A
+    retained Standard or Private Dialogue must be closed, never purged.
     """
     cid = _validate_conversation_id(conversation_id)
-    original_tag = get_conversation_tag(cid, sessions_root=sessions_root)
-    result = _purge_stealth(
-        cid,
-        sessions_root=sessions_root,
-        conversations_dir=conversations_dir,
-        conversations_raw=conversations_raw,
-        chromadb_path=chromadb_path,
-        vault_sessions=vault_sessions,
-    )
+    sroot = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    with _rp.conversation_lifecycle_lock(cid):
+        envelope = read_conversation_history_envelope(
+            cid, sessions_root=sroot,
+        )
+        if envelope is None:
+            # Legacy session-directory symlinks are deliberately unlinked by
+            # the purge without following or deleting their targets.  Read the
+            # pointed envelope only to prove this exact Dialogue is Stealth.
+            for container in (sroot, sroot / "archived"):
+                candidate = _safe_child(container, cid) / "conversation.json"
+                if not candidate.parent.is_symlink():
+                    continue
+                try:
+                    pointed = json.loads(candidate.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if (isinstance(pointed, dict)
+                        and isinstance(pointed.get("messages"), list)
+                        and _same_conversation(pointed.get("conversation_id"), cid)):
+                    envelope = pointed
+                    break
+        if envelope is None:
+            # Missing state is an idempotent retry.  Existing unreadable state
+            # is not: without its authoritative tag, Stealth cannot be proven.
+            live_path = _safe_child(sroot, cid) / "conversation.json"
+            retained_path = _safe_child(sroot / "archived", cid) / "conversation.json"
+            if live_path.exists() or live_path.is_symlink() or (
+                retained_path.exists() or retained_path.is_symlink()
+            ):
+                raise PermissionError(
+                    "Delete Forever requires a readable Stealth Dialogue"
+                )
+            original_tag = ""
+        else:
+            original_tag = envelope.get("tag", "")
+            if original_tag != "stealth":
+                raise PermissionError(
+                    "Delete Forever is available only for Stealth Dialogues; "
+                    "use Close for Standard or Private Dialogues"
+                )
+        result = _purge_stealth_unlocked(
+            cid,
+            sessions_root=sroot,
+            conversations_dir=conversations_dir,
+            conversations_raw=conversations_raw,
+            chromadb_path=chromadb_path,
+            vault_sessions=vault_sessions,
+        )
     result["tag"] = original_tag
     result["action"] = "delete_forever"
     result["retained"] = {

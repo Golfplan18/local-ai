@@ -799,8 +799,29 @@ async function runIndexLifecycleControlsTests() {
   vm.runInContext(modeLifecycle, modeContext, { filename: 'index-mode-lifecycle.js' });
 
   var stealthButton = mw.document.getElementById('modeBtnStealth');
-  stealthButton.click();
+  var privateButton = mw.document.getElementById('modeBtnPrivate');
+  privateButton.click();
   var menu = mw.document.getElementById('oraModeDropdown');
+  var incompatibleFork = menu.querySelector('[data-action="fork"]');
+  record('Stealth parent disables the weaker Private fork action',
+    incompatibleFork.disabled
+      && incompatibleFork.getAttribute('aria-disabled') === 'true'
+      && /privacy/.test(incompatibleFork.title));
+  incompatibleFork.click();
+  record('disabled weaker fork action emits no lifecycle request',
+    deleteCalls.length === 0 && exitCalls.length === 0);
+  privateButton.click();
+
+  activeTag = 'private';
+  stealthButton.click();
+  var strongerFork = menu.querySelector('[data-action="fork"]');
+  record('Private parent keeps the stronger Stealth fork action enabled',
+    !strongerFork.disabled
+      && strongerFork.getAttribute('aria-disabled') !== 'true');
+  stealthButton.click();
+  activeTag = 'stealth';
+
+  stealthButton.click();
   var stealthActions = Array.from(menu.querySelectorAll('[data-action]')).map(function (item) {
     return item.textContent;
   });
@@ -1323,6 +1344,19 @@ async function run() {
       && privateSubmits === 1
       && calls.length === 0
       && !w.document.querySelector('.ora-privacy-intervention'));
+
+  await w.OraConversation.load('stealth');
+  calls = [];
+  alerts = [];
+  var invalidForkResult = await w.OraConversation.forkActive({
+    tag: 'private', source: 'privacy-lattice-test',
+  });
+  record('programmatic Stealth-to-Private fork is blocked before fetch',
+    invalidForkResult === null
+      && !w.OraConversation.canForkAs('private')
+      && w.OraConversation.canForkAs('stealth')
+      && calls.filter(function (call) { return /\/fork$/.test(call.url); }).length === 0
+      && alerts.some(function (message) { return /weaker privacy/.test(message); }));
 
   await w.OraConversation.load('fork-parent');
   w.OraConversation.showTurn(0);

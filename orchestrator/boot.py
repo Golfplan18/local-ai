@@ -8918,6 +8918,10 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                 "conversations",
                 n_results=None,
                 privacy_tag=retrieval_privacy_tag,
+                excluded_conversation_ids=(
+                    (retrieval_exclusions or {}).get("conversation_ids") or []
+                ),
+                excluded_paths=(retrieval_exclusions or {}).get("paths") or [],
             )
             conv_rag_path = "legacy_knowledge_search_raw"
         except Exception as e:
@@ -8963,6 +8967,12 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                     dedup=_sel_dedup,
                     include_private=include_private_rag,
                     privacy_tag=retrieval_privacy_tag,
+                    excluded_conversation_ids=(
+                        (retrieval_exclusions or {}).get("conversation_ids") or []
+                    ),
+                    excluded_paths=(
+                        (retrieval_exclusions or {}).get("paths") or []
+                    ),
                 )
                 concept_rag_path = "rag_engine.assemble_ranked_context"
             except Exception as e:
@@ -8977,6 +8987,12 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
                 concept_rag = knowledge_search(
                     legacy_rag_query, "knowledge", 5,
                     privacy_tag=retrieval_privacy_tag,
+                    excluded_conversation_ids=(
+                        (retrieval_exclusions or {}).get("conversation_ids") or []
+                    ),
+                    excluded_paths=(
+                        (retrieval_exclusions or {}).get("paths") or []
+                    ),
                 )
                 concept_rag_path = "legacy_knowledge_search"
             except Exception as e:
@@ -12897,11 +12913,11 @@ _SUPPLEMENT_ENABLED_STEPS = frozenset({
 })
 
 _SUPPLEMENT_REQUEST_PATTERN = re.compile(
-    r'^##\s*SUPPLEMENTAL\s+RAG\s+REQUEST\s*\n'
+    r'\A\s*##\s*SUPPLEMENTAL\s+RAG\s+REQUEST\s*\n'
     r'gap_statement:\s*(?P<gap>[^\n]+)\n'
     r'query_terms:\s*(?P<terms>[^\n]+)\n'
     r'why_it_matters:\s*(?P<why>[^\n]+)',
-    re.MULTILINE | re.IGNORECASE,
+    re.IGNORECASE,
 )
 
 
@@ -12909,11 +12925,10 @@ def _parse_supplemental_request(text: str) -> dict | None:
     """Detect and parse a SUPPLEMENTAL RAG REQUEST block in a model output.
 
     Returns ``{"gap_statement", "query_terms", "why_it_matters"}`` when a
-    well-formed block is present; ``None`` otherwise. The block must
-    appear with all three fields in order, per the protocol spec. Tolerant
-    of leading whitespace and case in the heading; strict about field
-    names so partial / malformed requests are rejected rather than
-    silently mis-fetched.
+    well-formed block is present; ``None`` otherwise. The block must be the
+    first substantive content and carry all three fields in order. Tolerant
+    of leading whitespace and case in the heading; strict about field names
+    so quoted, mid-answer, partial, or malformed requests remain inert.
     """
     if not text or "SUPPLEMENTAL" not in text.upper():
         return None
@@ -12929,9 +12944,8 @@ def _parse_supplemental_request(text: str) -> dict | None:
 
 def _supplement_gap_key(request: dict) -> str:
     """Normalize a model-declared gap for repeat detection."""
-    return "\n".join(
-        " ".join(str(request.get(field) or "").casefold().split())
-        for field in ("gap_statement", "query_terms")
+    return " ".join(
+        str(request.get("gap_statement") or "").casefold().split()
     )
 
 
