@@ -1135,7 +1135,7 @@ class TestPhysicalModelCallConfig(TraceManifestBase):
         records = self._model_config_records(d)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["provider_attempt"], "mlx")
-        self.assertEqual(records[0]["effective_max_tokens"], 999_999_999)
+        self.assertEqual(records[0]["effective_max_tokens"], 32_000)
 
     def test_unsupported_local_engine_records_no_physical_attempt(self):
         d = self.start("unsupported-local")

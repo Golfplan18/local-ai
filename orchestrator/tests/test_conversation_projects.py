@@ -174,6 +174,32 @@ class ProjectMembershipTests(unittest.TestCase):
                 self.assertIsNotNone(mutate(cid))
                 self.assertEqual(json.loads(path.read_text())["project_ids"], ["book"])
 
+    def test_errored_envelope_can_preserve_exact_unacknowledged_retry_input(self):
+        cm.save_turn_spatial_state(
+            "retry-envelope", "prior user", "prior assistant",
+            sessions_root=self.root,
+        )
+
+        path = cm.mark_conversation_errored(
+            "retry-envelope",
+            "conversation envelope persistence failed",
+            sessions_root=self.root,
+            timestamp="2026-08-10T12:00:00",
+            interrupted_input="exact unacknowledged prompt",
+            interrupted_submission_id="pending-exact",
+        )
+
+        self.assertIsNotNone(path)
+        envelope = self._read("retry-envelope")
+        self.assertEqual(envelope["last_status"], "errored")
+        self.assertEqual(
+            envelope["interrupted_input"], "exact unacknowledged prompt",
+        )
+        self.assertEqual(
+            envelope["interrupted_submission_id"], "pending-exact",
+        )
+        self.assertEqual(envelope["interrupted_at"], "2026-08-10T12:00:00")
+
     def test_cross_module_heal_cannot_erase_concurrent_turn(self):
         orchestrator_dir = str(pathlib.Path(_REPO) / "orchestrator")
         if orchestrator_dir not in sys.path:
@@ -322,6 +348,155 @@ class ProjectMembershipTests(unittest.TestCase):
         parent_path.write_text(json.dumps(parent), encoding="utf-8")
         cm.fork_conversation("parent-mixed", "child-mixed", sessions_root=self.root)
         self.assertEqual(self._read("child-mixed")["project_ids"], ["book"])
+
+
+class EffectiveDialogueHistoryTests(unittest.TestCase):
+    """Fork ancestry is resolved read-only from immutable message cutoffs."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _turn(self, conversation_id, index):
+        cm.save_turn_spatial_state(
+            conversation_id,
+            f"{conversation_id}-u{index}",
+            f"{conversation_id}-a{index}",
+            sessions_root=self.root,
+        )
+
+    @staticmethod
+    def _contents(history):
+        return [message["content"] for message in history]
+
+    def test_child_stops_at_cutoff_and_never_copies_parent_messages(self):
+        for index in range(3):
+            self._turn("root", index)
+        cm.fork_conversation(
+            "root", "child", fork_point_turn_index=1,
+            sessions_root=self.root,
+        )
+        self._turn("child", 0)
+        self._turn("root", 3)  # Later parent activity must not leak.
+        cm.set_conversation_closed("root", True, sessions_root=self.root)
+
+        history = cm.resolve_effective_conversation_history(
+            "child", sessions_root=self.root,
+        )
+        self.assertEqual(self._contents(history), [
+            "root-u0", "root-a0", "root-u1", "root-a1",
+            "child-u0", "child-a0",
+        ])
+        child_on_disk = json.loads(
+            (self.root / "child" / "conversation.json").read_text()
+        )
+        self.assertEqual(
+            self._contents(child_on_disk["messages"]),
+            ["child-u0", "child-a0"],
+        )
+
+    def test_nested_fork_uses_child_local_display_index_without_leaks(self):
+        for index in range(3):
+            self._turn("root", index)
+        cm.fork_conversation(
+            "root", "child", fork_point_turn_index=1,
+            sessions_root=self.root,
+        )
+        self._turn("child", 0)
+        grandchild = cm.fork_conversation(
+            "child", "grandchild", fork_point_turn_index=0,
+            sessions_root=self.root,
+        )
+        # The child UI displays one local turn, so index 0 persists a two-
+        # message local cutoff rather than indexing into effective ancestry.
+        self.assertEqual(grandchild["fork_point_message_count"], 2)
+        self._turn("grandchild", 0)
+        self._turn("child", 1)
+        self._turn("root", 3)
+
+        history = cm.resolve_effective_conversation_history(
+            "grandchild", sessions_root=self.root,
+        )
+        self.assertEqual(self._contents(history), [
+            "root-u0", "root-a0", "root-u1", "root-a1",
+            "child-u0", "child-a0",
+            "grandchild-u0", "grandchild-a0",
+        ])
+
+    def test_archived_closed_parent_remains_readable(self):
+        self._turn("root", 0)
+        cm.fork_conversation("root", "child", sessions_root=self.root)
+        cm.set_conversation_closed("root", True, sessions_root=self.root)
+        archive = self.root / "archived"
+        archive.mkdir()
+        (self.root / "root").rename(archive / "root")
+
+        history = cm.resolve_effective_conversation_history(
+            "child", sessions_root=self.root,
+        )
+        self.assertEqual(self._contents(history), ["root-u0", "root-a0"])
+
+    def test_orphan_malformed_cutoff_and_cycle_drop_unsafe_ancestry_read_only(self):
+        def write(conversation_id, body):
+            path = self.root / conversation_id / "conversation.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(body), encoding="utf-8")
+            return path
+
+        local = [
+            {"role": "user", "content": "local-u"},
+            {"role": "assistant", "content": "local-a"},
+        ]
+        orphan = write("orphan", {
+            "conversation_id": "orphan", "messages": local,
+            "parent_conversation_id": "missing",
+            "fork_point_message_count": 0,
+        })
+        malformed = write("malformed", {
+            "conversation_id": "malformed", "messages": local,
+            "parent_conversation_id": "missing",
+            "fork_point_message_count": "two",
+        })
+        cycle_a = write("cycle-a", {
+            "conversation_id": "cycle-a", "messages": local,
+            "parent_conversation_id": "cycle-b",
+            "fork_point_message_count": 2,
+        })
+        cycle_b = write("cycle-b", {
+            "conversation_id": "cycle-b", "messages": [
+                {"role": "user", "content": "other-u"},
+                {"role": "assistant", "content": "other-a"},
+            ],
+            "parent_conversation_id": "cycle-a",
+            "fork_point_message_count": 2,
+        })
+        cycle_b_before = cycle_b.read_bytes()
+
+        for conversation_id, path, expected_diagnostic in (
+            ("orphan", orphan, "missing or unreadable"),
+            ("malformed", malformed, "malformed fork_point"),
+            ("cycle-a", cycle_a, "cycle detected"),
+        ):
+            before = path.read_bytes()
+            diagnostics = []
+            history = cm.resolve_effective_conversation_history(
+                conversation_id,
+                sessions_root=self.root,
+                diagnostics=diagnostics,
+            )
+            self.assertEqual(
+                self._contents(history), ["local-u", "local-a"],
+                conversation_id,
+            )
+            self.assertTrue(
+                any(expected_diagnostic in item for item in diagnostics),
+                diagnostics,
+            )
+            self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(cycle_b.read_bytes(), cycle_b_before)
 
 
 class MasterMatrixPathTests(unittest.TestCase):

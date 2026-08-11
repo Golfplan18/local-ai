@@ -75,6 +75,103 @@ class TestStep1ConfigThreading(unittest.TestCase):
         self.assertEqual(result["operational_notation"], prompt)
         self.assertTrue(result["phase_a_transport_failed"])
 
+    def test_phase_a_receives_full_recent_history_without_fixed_count_or_char_caps(self):
+        captured = []
+        history = []
+        for index in range(5):
+            history.extend([
+                {
+                    "role": "user",
+                    "content": f"history-user-{index}:" + (str(index) * 700),
+                },
+                {
+                    "role": "assistant",
+                    "content": f"history-assistant-{index}:" + (str(index) * 700),
+                },
+            ])
+
+        def phase_a(messages, _endpoint, images=None):
+            captured.append(messages)
+            return (
+                "### CLEANED PROMPT (Natural Language)\n"
+                "Analyse this policy.\n"
+                "### CLEANED PROMPT (Operational Notation)\n"
+                "analyse_policy()\n"
+                "### CORRECTIONS LOG\nNone\n"
+                "### INFERRED ITEMS\nNone"
+            )
+
+        endpoint = {
+            "id": "phase-a-test", "type": "api",
+            "context_window": 100_000, "max_tokens": 1_000,
+        }
+        with mock.patch.object(
+                boot, "get_slot_endpoint", return_value=endpoint), \
+             mock.patch.object(boot, "call_model", side_effect=phase_a), \
+             mock.patch.object(boot, "pre_phase_a_bypass_check",
+                               return_value=None):
+            boot.run_step1_cleanup(
+                "Analyse this policy.", "browser context must be ignored", {},
+                conversation_history=history,
+            )
+
+        phase_a_user = captured[0][-1]["content"]
+        self.assertIn("history-user-0:" + ("0" * 700), phase_a_user)
+        self.assertIn("history-assistant-4:" + ("4" * 700), phase_a_user)
+        self.assertNotIn("browser context must be ignored", phase_a_user)
+
+    def test_history_packer_respects_safe_capacity_and_whole_turn_priority(self):
+        required = [
+            {"role": "system", "content": "required-system"},
+            {"role": "user", "content": "required-current-input"},
+        ]
+
+        def pair(prefix, segment, depth):
+            return [
+                {
+                    "role": "user", "content": prefix + "-u-" + ("x" * 200),
+                    "_ora_history_segment": segment,
+                    "_ora_ancestry_depth": depth,
+                },
+                {
+                    "role": "assistant", "content": prefix + "-a-" + ("y" * 200),
+                    "_ora_history_segment": segment,
+                    "_ora_ancestry_depth": depth,
+                },
+            ]
+
+        history = (
+            pair("ancestor-old", "ancestry", 2)
+            + pair("ancestor-near", "ancestry", 1)
+            + pair("local-old", "local", 0)
+            + pair("local-new", "local", 0)
+        )
+        unit_tokens = boot.estimate_message_tokens(history[-2:])
+        required_tokens = boot.estimate_message_tokens(required)
+        endpoint = {
+            "context_window": 100 + 128 + required_tokens + (2 * unit_tokens),
+            "max_tokens": 100,
+        }
+
+        packed, stats = boot.pack_conversation_history(
+            history, endpoint, required,
+        )
+
+        self.assertEqual(
+            [message["content"].split("-")[0] for message in packed],
+            ["local", "local", "local", "local"],
+        )
+        self.assertEqual(
+            [message["role"] for message in packed],
+            ["user", "assistant", "user", "assistant"],
+        )
+        self.assertEqual(stats["history_selected_units"], 2)
+        self.assertLessEqual(
+            stats["estimated_call_input_tokens"],
+            stats["safe_input_capacity"],
+        )
+        self.assertLessEqual(stats["history_allowance"], 200_000)
+
     def test_synthesis_endpoint_honors_config_name(self):
         # Visual repair-on-miss synthesis must resolve from the named
         # configuration (fast → small), never the active configuration —

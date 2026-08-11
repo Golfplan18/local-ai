@@ -226,8 +226,12 @@ def build_pass_a_prompt(markdown_text: str, input_type: str,
     ]
 
 
-def build_pass_b_prompt(signals: list[Signal], source_sections: dict[str, str],
-                        source_file: str = "") -> list[dict]:
+def build_pass_b_prompt(
+    signals: list[Signal],
+    source_sections: dict[str, str],
+    source_file: str = "",
+    source_transcript: str | None = None,
+) -> list[dict]:
     """
     Build the Pass B (note generation) prompt.
 
@@ -235,6 +239,9 @@ def build_pass_b_prompt(signals: list[Signal], source_sections: dict[str, str],
         signals: List of Signal objects from Pass A (excluding skipped signals).
         source_sections: Map of signal_id → relevant source text section.
         source_file: Original filename for provenance.
+        source_transcript: Optional Dialogue transcript already packed as
+            whole turns. When present, it is serialized once after the signal
+            catalog instead of duplicating excerpts under every signal.
     """
     # Build schema reference
     schema_text = "## Subtype Body Schemas\n\n"
@@ -262,6 +269,14 @@ def build_pass_b_prompt(signals: list[Signal], source_sections: dict[str, str],
                 "<<<UNTRUSTED_SOURCE_END>>>\n"
             )
         signal_text += "\n"
+
+    if source_transcript is not None:
+        signal_text += (
+            "## Dialogue Source\n\n"
+            "<<<UNTRUSTED_SOURCE_START dialogue_transcript>>>\n"
+            f"{source_transcript}\n"
+            "<<<UNTRUSTED_SOURCE_END>>>\n"
+        )
 
     system = f"""You are a knowledge note generator for a vault-based PKM system.
 
@@ -1233,8 +1248,24 @@ class ExtractionEngine:
             except ImportError:
                 return None
 
+    def _resolved_endpoint(
+        self,
+        slot: str,
+        max_tokens: int | None = None,
+    ) -> dict | None:
+        """Resolve the exact endpoint shape used for one extraction call."""
+        endpoint = self._get_endpoint(slot)
+        if not endpoint:
+            return None
+        if max_tokens is not None:
+            endpoint = dict(endpoint)
+            endpoint["max_tokens"] = max_tokens
+        return endpoint
+
     def _call_model(self, messages: list, slot: str = "sidebar",
-                    max_tokens: int | None = None) -> str | None:
+                    max_tokens: int | None = None,
+                    endpoint: dict | None = None,
+                    dialogue_history_packed: bool = False) -> str | None:
         """Call a model via the configured call function.
 
         Args:
@@ -1244,13 +1275,64 @@ class ExtractionEngine:
         """
         if not self.call_fn:
             return None
-        endpoint = self._get_endpoint(slot)
+        if endpoint is None:
+            endpoint = self._resolved_endpoint(slot, max_tokens)
         if not endpoint:
             return None
-        if max_tokens:
-            endpoint = dict(endpoint)  # copy so we don't mutate the original
-            endpoint["max_tokens"] = max_tokens
-        return self.call_fn(messages, endpoint)
+        if not dialogue_history_packed:
+            return self.call_fn(messages, endpoint)
+
+        # This extraction call owns its one serialized, capacity-bounded
+        # transcript lane. A synchronous caller may already have boot's
+        # physical-call ContextVar populated; clear it for this call so
+        # ``call_model`` cannot append the full Dialogue a second time.
+        try:
+            from boot import (
+                reset_dialogue_history_context,
+                set_dialogue_history_context,
+            )
+        except ImportError:
+            from orchestrator.boot import (
+                reset_dialogue_history_context,
+                set_dialogue_history_context,
+            )
+        token = set_dialogue_history_context([])
+        try:
+            return self.call_fn(messages, endpoint)
+        finally:
+            reset_dialogue_history_context(token)
+
+    @staticmethod
+    def _pack_dialogue_transcript(
+        history_messages: list[dict],
+        endpoint: dict | None,
+        required_messages: list[dict],
+    ) -> tuple[str, dict]:
+        """Pack Dialogue history as indivisible turns for one endpoint."""
+        try:
+            from boot import pack_conversation_history
+        except ImportError:
+            from orchestrator.boot import pack_conversation_history
+
+        serialized = []
+        for message in history_messages:
+            if not isinstance(message, dict):
+                continue
+            role = message.get("role")
+            content = message.get("content")
+            if role not in {"user", "assistant"} or not isinstance(content, str):
+                continue
+            item = dict(message)
+            item["role"] = role
+            item["content"] = f"**{role.title()}:**\n\n{content}"
+            serialized.append(item)
+
+        packed, stats = pack_conversation_history(
+            serialized,
+            endpoint,
+            required_messages,
+        )
+        return "\n\n".join(message["content"] for message in packed), stats
 
     @staticmethod
     def _chunk_transcript(text: str, max_chars: int) -> list[str]:
@@ -1303,8 +1385,13 @@ class ExtractionEngine:
 
         return chunks if chunks else [text]
 
-    def extract(self, markdown_text: str, input_type_result: dict,
-                source_file: str = "") -> ExtractionResult:
+    def extract(
+        self,
+        markdown_text: str,
+        input_type_result: dict,
+        source_file: str = "",
+        history_messages: list[dict] | None = None,
+    ) -> ExtractionResult:
         """
         Run the full three-pass extraction pipeline.
 
@@ -1312,6 +1399,9 @@ class ExtractionEngine:
             markdown_text: The converted markdown text to process.
             input_type_result: Output from detect_input_type().
             source_file: Original filename for provenance.
+            history_messages: Authoritative Dialogue history. When supplied,
+                each model pass packs these same whole turns against its own
+                resolved endpoint instead of serializing ``markdown_text``.
 
         Returns:
             ExtractionResult with signals, candidates, and screened notes.
@@ -1321,9 +1411,23 @@ class ExtractionEngine:
         # --- Pass A: Signal Identification ---
         # Compact numbered-list Pass A remains reliable on the sidebar slot.
         # 8192 tokens gives reasoning models room for the complete signal map.
-        pass_a_messages = build_pass_a_prompt(markdown_text, input_type, source_file)
+        pass_a_endpoint = self._resolved_endpoint("sidebar", 8192)
+        pass_a_source = markdown_text
+        if history_messages is not None:
+            pass_a_source, _pass_a_budget = self._pack_dialogue_transcript(
+                history_messages,
+                pass_a_endpoint,
+                build_pass_a_prompt("", input_type, source_file),
+            )
+        pass_a_messages = build_pass_a_prompt(
+            pass_a_source, input_type, source_file,
+        )
         pass_a_response = self._call_model(pass_a_messages, slot="sidebar",
-                                            max_tokens=8192)
+                                            max_tokens=8192,
+                                            endpoint=pass_a_endpoint,
+                                            dialogue_history_packed=(
+                                                history_messages is not None
+                                            ))
 
         if not pass_a_response:
             return ExtractionResult(
@@ -1356,14 +1460,32 @@ class ExtractionEngine:
             )
 
         # --- Pass B: Note Generation ---
-        source_sections = extract_sections_for_signals(markdown_text, active_signals)
+        pass_b_endpoint = self._resolved_endpoint("depth")
+        pass_b_source = markdown_text
+        if history_messages is not None:
+            pass_b_source, _pass_b_budget = self._pack_dialogue_transcript(
+                history_messages,
+                pass_b_endpoint,
+                build_pass_b_prompt(
+                    active_signals,
+                    {},
+                    source_file,
+                    source_transcript="",
+                ),
+            )
+        source_sections = extract_sections_for_signals(
+            pass_b_source, active_signals,
+        )
         for signal in active_signals:
             signal.source_text = source_sections.get(signal.id, "")
 
         pass_b_messages = build_pass_b_prompt(
             active_signals,
-            source_sections,
+            {} if history_messages is not None else source_sections,
             source_file,
+            source_transcript=(
+                pass_b_source if history_messages is not None else None
+            ),
         )
         pass_b_response = None
         pass_b_issue = ""
@@ -1371,7 +1493,12 @@ class ExtractionEngine:
         try:
             # The primary analysis slot is the canonical Pass-B route. Model
             # identity remains entirely configuration-owned.
-            pass_b_response = self._call_model(pass_b_messages, slot="depth")
+            pass_b_response = self._call_model(
+                pass_b_messages,
+                slot="depth",
+                endpoint=pass_b_endpoint,
+                dialogue_history_packed=(history_messages is not None),
+            )
         except Exception as exc:
             pass_b_issue = f"model call raised {type(exc).__name__}: {exc}"
 

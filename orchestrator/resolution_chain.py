@@ -635,7 +635,12 @@ def _generate_discussion_turn(
       3. Always end with the options block.
     """
     try:
-        from boot import call_model, get_slot_endpoint, get_active_endpoint
+        from boot import (
+            call_model,
+            get_slot_endpoint,
+            get_active_endpoint,
+            pack_conversation_history,
+        )
     except Exception:
         return _fallback_response(ctx, "Unable to load model — keep discussing.")
 
@@ -645,27 +650,20 @@ def _generate_discussion_turn(
     if endpoint is None:
         return _fallback_response(ctx, "No model endpoint available.")
 
-    conv_text = _format_conversation_for_prompt(history, user_text)
-
-    prompt = (
-        "You are mediating a discussion between the user and an oversight system "
-        "to resolve a paused decision. Engage substantively with what the user "
-        "asks; explain context as needed; help them reach a defined endpoint.\n\n"
-        "Output format — strict. Your response has TWO parts:\n"
-        "  PART 1: a free-form discussion response (markdown, multi-paragraph "
-        "ok). Address the user's most recent message.\n"
-        "  PART 2: a structured tail in this exact format:\n\n"
-        "ALTERNATIVE:\n"
-        "<the proposed alternative resolution as a complete, concrete text "
-        "the user could approve verbatim. Multi-paragraph ok. Write \"(none)\" "
-        "if no substantive alternative has emerged from the discussion yet.>\n\n"
-        "Do NOT include the numbered options list — that is rendered "
-        "separately. Do NOT add prose after the ALTERNATIVE block.\n\n"
-        "===\n"
-        "CONVERSATION SO FAR:\n"
-        f"{conv_text}\n\n"
-        f"USER'S LATEST MESSAGE:\n{user_text}\n"
+    serialized_history = _serialized_resolution_messages(history, "")
+    required_prompt = _build_discussion_prompt("", user_text)
+    packed_history, _history_budget = pack_conversation_history(
+        serialized_history,
+        endpoint,
+        [
+            {"role": "system", "content": "You are a careful discussion mediator."},
+            {"role": "user", "content": required_prompt},
+        ],
     )
+    conv_text = "\n\n".join(
+        message["content"] for message in packed_history
+    )
+    prompt = _build_discussion_prompt(conv_text, user_text)
     messages = [
         {"role": "system", "content": "You are a careful discussion mediator."},
         {"role": "user", "content": prompt},
@@ -684,6 +682,33 @@ def _generate_discussion_turn(
         discussion=discussion,
         queue_id=ctx.queue_id,
         alternative=alternative,
+    )
+
+
+def _build_discussion_prompt(
+    conversation_text: str,
+    latest_user_text: str = "",
+) -> str:
+    """Build the fixed mediator contract around one packed transcript."""
+    return (
+        "You are mediating a discussion between the user and an oversight system "
+        "to resolve a paused decision. Engage substantively with what the user "
+        "asks; explain context as needed; help them reach a defined endpoint.\n\n"
+        "Output format — strict. Your response has TWO parts:\n"
+        "  PART 1: a free-form discussion response (markdown, multi-paragraph "
+        "ok). Address the user's most recent message.\n"
+        "  PART 2: a structured tail in this exact format:\n\n"
+        "ALTERNATIVE:\n"
+        "<the proposed alternative resolution as a complete, concrete text "
+        "the user could approve verbatim. Multi-paragraph ok. Write \"(none)\" "
+        "if no substantive alternative has emerged from the discussion yet.>\n\n"
+        "Do NOT include the numbered options list — that is rendered "
+        "separately. Do NOT add prose after the ALTERNATIVE block.\n\n"
+        "===\n"
+        "PRIOR CONVERSATION:\n"
+        f"{conversation_text or '(no prior resolution discussion yet)'}\n\n"
+        "CURRENT USER REPLY (required):\n"
+        f"USER: {latest_user_text or '(none supplied)'}\n"
     )
 
 
@@ -725,11 +750,12 @@ def _fallback_response(ctx: ContinuationContext, note: str) -> str:
     )
 
 
-def _format_conversation_for_prompt(history: list, latest_user_text: str) -> str:
-    """Render history for the discussion-mediator prompt. Strips markers
-    from prior assistant turns so the model doesn't see its own scaffolding."""
-    lines = []
+def _resolution_messages(history: list, latest_user_text: str) -> list[dict]:
+    """Return resolution content with only marker/options scaffolding removed."""
+    messages = []
     for msg in history:
+        if not isinstance(msg, dict):
+            continue
         role = msg.get("role")
         if role not in ("user", "assistant"):
             continue
@@ -745,10 +771,40 @@ def _format_conversation_for_prompt(history: list, latest_user_text: str) -> str
         content = content.strip()
         if not content:
             continue
-        if len(content) > 1500:
-            content = content[:1500] + "…"
-        lines.append(f"{role.upper()}: {content}")
-    return "\n\n".join(lines)
+        cleaned = dict(msg)
+        cleaned["role"] = role
+        cleaned["content"] = content
+        messages.append(cleaned)
+    if latest_user_text:
+        messages.append({
+            "role": "user",
+            "content": latest_user_text,
+            "_ora_history_segment": "local",
+        })
+    return messages
+
+
+def _serialized_resolution_messages(
+    history: list,
+    latest_user_text: str,
+) -> list[dict]:
+    """Prepare role-labelled messages for whole-unit capacity packing."""
+    serialized = []
+    for message in _resolution_messages(history, latest_user_text):
+        item = dict(message)
+        item["content"] = f"{item['role'].upper()}: {item['content']}"
+        serialized.append(item)
+    return serialized
+
+
+def _format_conversation_for_prompt(history: list, latest_user_text: str) -> str:
+    """Format the complete eligible resolution discussion without fixed caps."""
+    return "\n\n".join(
+        message["content"]
+        for message in _serialized_resolution_messages(
+            history, latest_user_text,
+        )
+    )
 
 
 # ---------- post-resolution ----------

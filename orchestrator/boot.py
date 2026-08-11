@@ -85,6 +85,19 @@ _CALL_METADATA_CV: ContextVar[dict | None] = ContextVar(
 # worker threads via ``_submit_with_context``.
 _CONVERSATION_TAG_CV: ContextVar[str] = ContextVar("conversation_tag", default="")
 
+# One server-authoritative Dialogue transcript per executing turn.  The raw
+# snapshots stay in this ContextVar while each physical model call packs the
+# largest whole-turn subset that fits that endpoint's actual window.  Gear 4
+# workers inherit it through ``_submit_with_context``.
+_DIALOGUE_HISTORY_CV: ContextVar[tuple[dict, ...]] = ContextVar(
+    "dialogue_history", default=(),
+)
+
+# User-selected ceiling for historical input.  It is a maximum, never a fill
+# target; the endpoint window and the current call's required payload normally
+# make the actual allowance smaller.
+DIALOGUE_HISTORY_USER_CEILING = 200_000
+
 # The mind.md heading whose section is private-conversation-only. Written
 # by legacy user-authored context and usable
 # in hand-authored files; stripped from the values injection unless the
@@ -107,6 +120,424 @@ def reset_conversation_tag_context(token) -> None:
         _CONVERSATION_TAG_CV.reset(token)
     except Exception:
         pass
+
+
+def set_dialogue_history_context(history: list | None):
+    """Bind authoritative history for downstream physical model calls."""
+    snapshots = tuple(
+        dict(message) for message in (history or [])
+        if isinstance(message, dict)
+    )
+    return _DIALOGUE_HISTORY_CV.set(snapshots)
+
+
+def reset_dialogue_history_context(token) -> None:
+    """Restore a token returned by :func:`set_dialogue_history_context`."""
+    if token is None:
+        return
+    try:
+        _DIALOGUE_HISTORY_CV.reset(token)
+    except Exception:
+        pass
+
+
+def _token_text(value) -> str:
+    """Return a stable string for conservative token estimation."""
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        return str(value or "")
+
+
+def _endpoint_tokenizer(endpoint: dict | None):
+    """Return the already-supported MLX tokenizer when it is available.
+
+    MLX keeps the model and tokenizer together in ``_mlx_cache``.  Reusing it
+    gives the packer the exact model chat template without loading another
+    model, adding a dependency, or inventing a tokenizer service.  The first
+    MLX call loads that cache before packing (see ``call_local_endpoint``).
+    API endpoints deliberately fall back to the byte bound below because Ora
+    has no authoritative tokenizer for an arbitrary remote serving model.
+    """
+    if not isinstance(endpoint, dict):
+        return None
+    model = endpoint.get("model") or endpoint.get("model_path")
+    if not isinstance(model, str) or not model:
+        return None
+    cached = globals().get("_mlx_cache", {}).get(model)
+    if isinstance(cached, tuple) and len(cached) >= 2:
+        return cached[1]
+    return None
+
+
+def _token_id_count(value) -> int | None:
+    """Normalize tokenizer return shapes to one input-token count."""
+    if isinstance(value, dict):
+        value = value.get("input_ids")
+    if isinstance(value, (str, bytes, bytearray)):
+        # A tokenizer that ignored ``tokenize=True`` returned rendered text,
+        # not token ids. Counting characters here would recreate an unsafe
+        # estimate under an "exact" label; fall through to encode/byte bound.
+        return None
+    if value is None:
+        return None
+    if hasattr(value, "shape"):
+        try:
+            shape = tuple(int(part) for part in value.shape)
+            if shape:
+                return shape[-1]
+        except Exception:
+            pass
+    try:
+        if (
+            isinstance(value, (list, tuple))
+            and value
+            and isinstance(value[0], (list, tuple))
+        ):
+            value = value[0]
+        count = len(value)
+    except Exception:
+        return None
+    return count if count > 0 else None
+
+
+def _exact_chat_token_count(
+    messages: list | tuple,
+    endpoint: dict | None,
+) -> int | None:
+    """Count the exact rendered chat tokens for a cached local tokenizer."""
+    tokenizer = _endpoint_tokenizer(endpoint)
+    if tokenizer is None:
+        return None
+    clean = [
+        {
+            "role": str(message.get("role") or "user"),
+            "content": _token_text(message.get("content", "")),
+        }
+        for message in (messages or [])
+        if isinstance(message, dict)
+    ]
+    if not clean:
+        return 0
+    apply_template = getattr(tokenizer, "apply_chat_template", None)
+    if callable(apply_template):
+        try:
+            rendered = apply_template(
+                clean, tokenize=True, add_generation_prompt=True,
+                enable_thinking=False,
+            )
+        except TypeError:
+            try:
+                rendered = apply_template(
+                    clean, tokenize=True, add_generation_prompt=True,
+                )
+            except Exception:
+                rendered = None
+        except Exception:
+            rendered = None
+        count = _token_id_count(rendered)
+        if count is not None:
+            return count
+
+    encode = getattr(tokenizer, "encode", None)
+    if callable(encode):
+        rendered = "".join(
+            f"<|{message['role']}|>\n{message['content']}\n"
+            for message in clean
+        ) + "<|assistant|>\n"
+        try:
+            return _token_id_count(encode(rendered))
+        except Exception:
+            return None
+    return None
+
+
+def _utf8_chat_token_upper_bound(messages: list | tuple) -> int:
+    """Conservative token bound when no exact model tokenizer exists.
+
+    A tokenizer cannot emit more ordinary text tokens than the UTF-8 bytes it
+    consumes.  Role/template tokens are not present in message content, so the
+    explicit per-message and generation-primer allowances cover that framing.
+    Unlike the prior len/4 estimate, adversarial Unicode cannot exceed this
+    bound merely because one code point expands to several bytes/tokens.
+    """
+    total = 8  # assistant generation primer and conversation delimiters
+    for message in messages or []:
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role") or "user")
+        content = _token_text(message.get("content", ""))
+        total += len(role.encode("utf-8", "replace"))
+        total += len(content.encode("utf-8", "replace"))
+        total += 8  # role markers, separators, and message boundary
+    return total
+
+
+def estimate_message_tokens(
+    messages: list | tuple,
+    endpoint: dict | None = None,
+) -> int:
+    """Safe chat-input token count for packing and capacity assertions."""
+    exact = _exact_chat_token_count(messages, endpoint)
+    if exact is not None:
+        return exact
+    return _utf8_chat_token_upper_bound(messages)
+
+
+def _estimated_image_input_tokens(images: list | None) -> int:
+    """Reserve conservatively for image payloads when no provider count exists.
+
+    Vision tokenization varies by endpoint and resolution.  Inline images in
+    Ora carry base64, so treating every decoded byte as one token is safely
+    pessimistic for current providers.  Unknown image descriptors reserve 8k
+    apiece rather than pretending they are free.
+    """
+    total = 0
+    for image in images or []:
+        if not isinstance(image, dict):
+            total += 8_192
+            continue
+        encoded = image.get("base64")
+        if isinstance(encoded, str) and encoded:
+            decoded_bytes = (len(encoded.rstrip("=")) * 3 + 3) // 4
+            total += max(1_024, decoded_bytes)
+        else:
+            total += 8_192
+    return total
+
+
+def _history_turn_units(
+    history: list | tuple,
+    endpoint: dict | None = None,
+) -> list[dict]:
+    """Group history into indivisible user/assistant turns.
+
+    A normal unit is one user message plus its following assistant message.
+    Standalone assistants (welcome/seed turns) and interrupted user turns are
+    indivisible one-message units.  System messages from stored/legacy history
+    are excluded; the current call's system prompt remains authoritative.
+    """
+    units: list[dict] = []
+    pending: list[dict] = []
+    pending_start = 0
+
+    def finish() -> None:
+        nonlocal pending
+        if not pending:
+            return
+        segment = (
+            "local"
+            if any(m.get("_ora_history_segment") == "local" for m in pending)
+            else "ancestry"
+            if any(m.get("_ora_history_segment") == "ancestry" for m in pending)
+            else "legacy"
+        )
+        depth_values = [
+            m.get("_ora_ancestry_depth") for m in pending
+            if isinstance(m.get("_ora_ancestry_depth"), int)
+        ]
+        clean = [
+            {"role": m["role"], "content": m["content"]}
+            for m in pending
+        ]
+        units.append({
+            "messages": clean,
+            "tokens": estimate_message_tokens(clean, endpoint),
+            "start": pending_start,
+            "segment": segment,
+            "depth": min(depth_values) if depth_values else 0,
+        })
+        pending = []
+
+    for index, raw in enumerate(history or []):
+        if not isinstance(raw, dict):
+            continue
+        role = raw.get("role")
+        content = raw.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            continue
+        message = dict(raw)
+        if role == "user":
+            finish()
+            pending = [message]
+            pending_start = index
+        elif pending and pending[0].get("role") == "user":
+            pending.append(message)
+            finish()
+        else:
+            finish()
+            pending = [message]
+            pending_start = index
+            finish()
+    finish()
+    return units
+
+
+def _endpoint_context_window(endpoint: dict | None) -> int:
+    """Return a credible endpoint window; unknown endpoints fail small."""
+    endpoint = endpoint or {}
+    for key in ("context_window", "context_length", "max_context_length"):
+        value = endpoint.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+    return 32_768
+
+
+def _endpoint_initial_output_tokens(
+    endpoint: dict | None,
+    context_window: int,
+) -> int:
+    """Resolve the completion allowance one first transport call requests."""
+    endpoint = endpoint or {}
+    explicit = next(
+        (
+            endpoint.get(key)
+            for key in ("max_tokens", "max_output_tokens", "output_token_limit")
+            if isinstance(endpoint.get(key), int)
+            and not isinstance(endpoint.get(key), bool)
+            and endpoint.get(key) > 0
+        ),
+        None,
+    )
+    if not isinstance(explicit, int) or isinstance(explicit, bool) or explicit <= 0:
+        try:
+            explicit = _model_max_output_tokens(endpoint)
+        except Exception:
+            explicit = None
+    if not isinstance(explicit, int) or explicit <= 0:
+        explicit = 32_000
+    return min(explicit, context_window)
+
+
+def _endpoint_output_reserve(endpoint: dict | None, context_window: int) -> int:
+    """Reserve the largest completion budget the transport can request."""
+    endpoint = endpoint or {}
+    explicit = _endpoint_initial_output_tokens(endpoint, context_window)
+    # API transport retries one truncation with a doubled completion cap.
+    # Pack against the largest request it can actually issue, not only the
+    # first attempt.  Local transports do not use that retry helper.
+    if (
+        endpoint.get("type") == "api"
+        and not endpoint.get("_disable_truncation_retry")
+    ):
+        explicit *= 2
+    return min(explicit, context_window)
+
+
+def pack_conversation_history(
+    history: list | tuple | None,
+    endpoint: dict | None,
+    required_messages: list,
+    *,
+    user_ceiling: int = DIALOGUE_HISTORY_USER_CEILING,
+    additional_required_tokens: int = 0,
+) -> tuple[list[dict], dict]:
+    """Fit whole historical turns around one required model-call payload.
+
+    Required system/mode/tool/current-input messages always win.  Existing
+    durable reference lanes already embedded in the system prompt therefore
+    also win truthfully, without inventing a separate decisions store.  The
+    remaining allowance is the minimum of the 200k user ceiling and the
+    endpoint window after required input, output reserve, chat overhead, and a
+    small estimator-safety margin.  Current/local Dialogue units are selected
+    newest-first, then immutable ancestry nearest the fork, then legacy/older
+    units; selected units are emitted in original chronological order.
+    """
+    window = _endpoint_context_window(endpoint)
+    reserve = _endpoint_output_reserve(endpoint, window)
+    required_message_tokens = estimate_message_tokens(
+        required_messages, endpoint,
+    )
+    extra_tokens = (
+        additional_required_tokens
+        if isinstance(additional_required_tokens, int)
+        and not isinstance(additional_required_tokens, bool)
+        and additional_required_tokens > 0
+        else 0
+    )
+    required_tokens = required_message_tokens + extra_tokens
+    # Exact local chat templates and the UTF-8 fallback both include framing.
+    # Keep a small fixed reserve for provider-side wrappers Ora cannot see.
+    safety_margin = 128
+    safe_input_capacity = max(0, window - reserve - safety_margin)
+    ceiling = (
+        user_ceiling
+        if isinstance(user_ceiling, int) and not isinstance(user_ceiling, bool)
+        and user_ceiling >= 0
+        else DIALOGUE_HISTORY_USER_CEILING
+    )
+    allowance = max(0, min(ceiling, safe_input_capacity - required_tokens))
+
+    units = _history_turn_units(history or [], endpoint)
+    # Current Dialogue-local continuity first; immutable ancestry next, with
+    # the closest ancestor before deeper/older ancestors; unannotated legacy
+    # API history last.  Within each tier newest units are attempted first.
+    segment_rank = {"local": 0, "ancestry": 1, "legacy": 2}
+    candidates = sorted(
+        units,
+        key=lambda unit: (
+            segment_rank.get(unit["segment"], 2),
+            unit["depth"] if unit["segment"] == "ancestry" else 0,
+            -unit["start"],
+        ),
+    )
+    selected: list[dict] = []
+    selected_tokens = 0
+    for unit in candidates:
+        unit_tokens = unit["tokens"]
+        if selected_tokens + unit_tokens <= allowance:
+            selected.append(unit)
+            selected_tokens += unit_tokens
+
+    selected.sort(key=lambda unit: unit["start"])
+    packed = [
+        message
+        for unit in selected
+        for message in unit["messages"]
+    ]
+    return packed, {
+        "context_window": window,
+        "output_reserve": reserve,
+        "safety_margin": safety_margin,
+        "safe_input_capacity": safe_input_capacity,
+        "required_message_tokens": required_message_tokens,
+        "additional_required_tokens": extra_tokens,
+        "required_input_tokens": required_tokens,
+        "history_user_ceiling": ceiling,
+        "history_allowance": allowance,
+        "history_available_units": len(units),
+        "history_selected_units": len(selected),
+        "history_selected_messages": len(packed),
+        "history_selected_tokens": selected_tokens,
+        "estimated_call_input_tokens": required_tokens + selected_tokens,
+        "token_counting": (
+            "exact_chat_template"
+            if _endpoint_tokenizer(endpoint) is not None
+            else "utf8_byte_upper_bound"
+        ),
+    }
+
+
+def prepare_messages_with_continuity(
+    messages: list,
+    endpoint: dict | None,
+    history: list | tuple | None = None,
+    *,
+    additional_required_tokens: int = 0,
+) -> tuple[list[dict], dict]:
+    """Insert one bounded Dialogue-history lane into a physical model call."""
+    source = _DIALOGUE_HISTORY_CV.get() if history is None else history
+    base = [dict(message) for message in (messages or [])]
+    packed, stats = pack_conversation_history(
+        source, endpoint, base,
+        additional_required_tokens=additional_required_tokens,
+    )
+    insert_at = 0
+    while insert_at < len(base) and base[insert_at].get("role") == "system":
+        insert_at += 1
+    return base[:insert_at] + packed + base[insert_at:], stats
 
 
 def set_turn_trace_context(trace_dir: str | None):
@@ -6244,7 +6675,8 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                       trace_dir: str | None = None,
                       history_truncation_stats: dict | None = None,
                       image_attached: bool = False,
-                      config_name: str | None = None) -> dict:
+                      config_name: str | None = None,
+                      conversation_history: list | None = None) -> dict:
     """Step 1: Two-pass prompt processing.
 
     Pass 1 (Phase A): Prompt cleanup only — no mode selection.
@@ -6386,11 +6818,73 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
 AMBIGUITY_MODE: {ambiguity_mode}
 """
 
+    endpoint = get_slot_endpoint(config, "step1_cleanup", config_name=config_name)
+
+    # Server-authoritative callers pass structured history so the same
+    # whole-turn, endpoint-aware packer used by Direct and Gears 1-4 can fit
+    # Phase A.  Legacy callers may still provide the pre-rendered context
+    # string; that compatibility lane is used only when structured history is
+    # absent, so the transcript is never duplicated.
+    if conversation_history is not None:
+        current_for_budget = raw_prompt
+        if image_attached:
+            current_for_budget = (
+                "[Note: one image attachment is present alongside this prompt. "
+                "Do not write directives that exclude image input.]\n\n"
+                + current_for_budget
+            )
+        serialized_history = []
+        for message in conversation_history:
+            if not isinstance(message, dict):
+                continue
+            role = message.get("role")
+            content = message.get("content")
+            if role not in {"user", "assistant"} or not isinstance(content, str):
+                continue
+            serialized = dict(message)
+            serialized["content"] = f"{role.upper()}: {content}"
+            serialized_history.append(serialized)
+        required_user = (
+            "[Dialogue continuity — ordered prior turns]\n\n"
+            "[Current prompt]\n" + current_for_budget
+        )
+        packed_history, pack_stats = pack_conversation_history(
+            serialized_history,
+            endpoint,
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": required_user},
+            ],
+        )
+        conversation_context = "\n".join(
+            message["content"] for message in packed_history
+        )
+        total_units = len(_history_turn_units(serialized_history, endpoint))
+        history_truncation_stats = {
+            **_summarize_history_truncation(conversation_history),
+            **pack_stats,
+            "messages_in_window": len(packed_history),
+            "messages_outside_window": max(
+                0, len([
+                    message for message in conversation_history
+                    if isinstance(message, dict)
+                    and message.get("role") != "system"
+                ]) - len(packed_history),
+            ),
+            "history_units_outside_capacity": max(
+                0, total_units - pack_stats["history_selected_units"],
+            ),
+            "any_truncation": (
+                pack_stats["history_selected_units"] < total_units
+            ),
+        }
+
     # Build user message with conversation context if available
     user_msg = raw_prompt
     if conversation_context:
         user_msg = (
-            f"[Recent conversation context]\n{conversation_context}\n\n"
+            f"[Dialogue continuity — ordered prior turns]\n"
+            f"{conversation_context}\n\n"
             f"[Current prompt]\n{raw_prompt}"
         )
 
@@ -6406,7 +6900,6 @@ AMBIGUITY_MODE: {ambiguity_mode}
             "Do not write directives that exclude image input.]\n\n" + user_msg
         )
 
-    endpoint = get_slot_endpoint(config, "step1_cleanup", config_name=config_name)
     if endpoint is None:
         # No step1_cleanup model — pass through uncleaned
         result = {
@@ -10080,27 +10573,17 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     # branches below refine the kind (risk_hold / error) and
     # finalize_manifest refines "chat" to chat-gear<N> once gear is known.
     turn_state["kind"] = "chat"
-    # Build conversation context from recent history. Truncation stats are
-    # captured for the trace so context-loss is visible when it matters.
+    # Structured history is packed inside Phase A against its selected
+    # endpoint.  Do not also render a second transcript string here.
     conv_context = ""
-    if history:
-        # Pass the full conversation history to Phase A — no window cap,
-        # no per-message truncation. Modern context windows (200K-1M tokens)
-        # easily absorb every prior turn, and the previous 6-message ×
-        # 500-char cap was throwing away signal the cleanup step actually
-        # needed. The truncation summarizer below still computes stats but
-        # they will be zero unless the history is genuinely missing.
-        recent = [m for m in history if m["role"] != "system"]
-        conv_context = "\n".join(
-            f"{m['role'].upper()}: {m['content']}" for m in recent
-        )
     history_trunc = _summarize_history_truncation(history)
 
     step1 = run_step1_cleanup(user_input, conv_context, config,
                               ambiguity_mode=ambiguity_mode,
                               trace_dir=trace_dir,
                               history_truncation_stats=history_trunc,
-                              config_name=config_name)
+                              config_name=config_name,
+                              conversation_history=history)
 
     # --- Step 2: Context Package Assembly ---
     context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
@@ -10295,9 +10778,6 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             return terminal_value
 
         messages = [{"role": "system", "content": system_prompt}]
-        # Include relevant history
-        if history:
-            messages.extend([m for m in history if m["role"] != "system"])
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
 
         # Run agentic loop for tool support
@@ -10307,6 +10787,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
             gear=gear,
             config_name=config_name,
             step_name="step3-direct-response",
+            history=history,
         )
         if trace_dir and PIPELINE_TRACE_AVAILABLE:
             try:
@@ -10525,7 +11006,8 @@ def run_single_pass_with_tools(messages: list, endpoint: dict, *,
                                slot: str, gear: int,
                                config_name: str | None,
                                images: list | None = None,
-                               step_name: str | None = None) -> str:
+                               step_name: str | None = None,
+                               history: list | None = None) -> str:
     """Run a Gear-1/2 call under an authenticated cell identity.
 
     The browser path previously invoked ``_run_model_with_tools`` without
@@ -10548,10 +11030,12 @@ def run_single_pass_with_tools(messages: list, endpoint: dict, *,
         "gear": gear,
         "config_name": config_name,
     })
+    history_token = set_dialogue_history_context(history)
     try:
         return _run_model_with_tools(
             messages, endpoint, images=images, step_name=step_name)
     finally:
+        reset_dialogue_history_context(history_token)
         _CALL_METADATA_CV.reset(meta_token)
         _CURRENT_STEP_CV.reset(step_token)
 
@@ -12165,8 +12649,22 @@ def _run_unflagged_claim_scan(
             result.get("per_claim_evidence") or [])
 
 
-def run_gear3(context_pkg: dict, config: dict, history: list = None, images: list = None,
-              config_name: str | None = None) -> str:
+def run_gear3(context_pkg: dict, config: dict, history: list = None,
+              images: list = None, config_name: str | None = None) -> str:
+    """Run Gear 3 with one bounded authoritative continuity lane."""
+    token = set_dialogue_history_context(history)
+    try:
+        return _run_gear3_impl(
+            context_pkg, config, history=history, images=images,
+            config_name=config_name,
+        )
+    finally:
+        reset_dialogue_history_context(token)
+
+
+def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
+                    images: list = None,
+                    config_name: str | None = None) -> str:
     """Gear 3: Sequential adversarial review via Phase-5 cascade dispatch.
 
     Step 3 — Depth analyses (mode DEPTH MODEL INSTRUCTIONS via step='analyst').
@@ -13010,6 +13508,21 @@ def _strip_consolidator_preamble(text: str) -> str:
 def run_gear4(context_pkg: dict, config: dict, history: list = None,
               images: list = None, execution_context: str = "interactive",
               config_name: str | None = None) -> str:
+    """Run Gear 4 with continuity propagated into every worker call."""
+    token = set_dialogue_history_context(history)
+    try:
+        return _run_gear4_impl(
+            context_pkg, config, history=history, images=images,
+            execution_context=execution_context, config_name=config_name,
+        )
+    finally:
+        reset_dialogue_history_context(token)
+
+
+def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
+                    images: list = None,
+                    execution_context: str = "interactive",
+                    config_name: str | None = None) -> str:
     """Gear 4: Parallel adversarial cascade with per-step reliability layer.
 
     Pipeline (code-step → user-facing role):
@@ -14572,6 +15085,15 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
         from orchestrator import endpoint_health
 
     etype = endpoint.get("type", "")
+    # API calls have no repository-owned exact tokenizer, so pack here with
+    # the conservative UTF-8 bound. Local calls pack inside their transport:
+    # MLX does so after loading its real tokenizer under the model mutex;
+    # Ollama uses the same fallback immediately before request assembly.
+    if etype == "api":
+        messages, _continuity_budget = prepare_messages_with_continuity(
+            messages, endpoint,
+            additional_required_tokens=_estimated_image_input_tokens(images),
+        )
     endpoint_id = endpoint.get("id") or endpoint.get("name") or f"unknown-{etype}"
     _call_started = time.time()
 
@@ -15069,14 +15591,19 @@ def _call_api_with_truncation_retry(make_call, label: str, endpoint: dict) -> st
     failure from analytical failure — the symptom that drove the
     three-cycle verifier loop on the 2026-05-22 smoke test.
     """
-    initial = int(
+    context_window = _endpoint_context_window(endpoint)
+    initial = min(int(
         endpoint.get("max_tokens")
         or _model_max_output_tokens(endpoint)
         or _DEFAULT_API_MAX_TOKENS
-    )
-    retry_cap = initial * 2
+    ), context_window)
+    retry_cap = min(initial * 2, context_window)
     disable_retry = bool(endpoint.get("_disable_truncation_retry"))
-    attempts = (initial,) if disable_retry else (initial, retry_cap)
+    attempts = (
+        (initial,)
+        if disable_retry or retry_cap == initial
+        else (initial, retry_cap)
+    )
     text = ""
     corrected_cap: int | None = None
     for attempt_index, attempt in enumerate(attempts, start=1):
@@ -15831,6 +16358,10 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
     if engine == "ollama":
         try:
             import urllib.request
+            messages, _continuity_budget = prepare_messages_with_continuity(
+                messages, endpoint,
+                additional_required_tokens=_estimated_image_input_tokens(images),
+            )
             ollama_messages = list(messages)
             if images:
                 # Ollama supports images via "images" field on the user message
@@ -15866,6 +16397,12 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
             else:
                 model_obj, tokenizer = load(model)
                 _mlx_cache[model] = (model_obj, tokenizer)
+            # The tokenizer is now present in _mlx_cache, so this first call
+            # receives the same exact chat-template accounting as warm calls.
+            messages, _continuity_budget = prepare_messages_with_continuity(
+                messages, endpoint,
+                additional_required_tokens=_estimated_image_input_tokens(images),
+            )
             # Use chat template if available, otherwise build manually
             if hasattr(tokenizer, "apply_chat_template"):
                 conv = [m for m in messages if m["role"] != "system"]
@@ -15881,13 +16418,12 @@ def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> 
                     elif m["role"] == "assistant": parts.append(f"<|assistant|>\n{m['content']}")
                 parts.append("<|assistant|>")
                 prompt = "\n".join(parts)
-            # MLX uses max_tokens as a hard stop on generation. We pass an
-            # effectively-infinite value so the model only stops at its
-            # natural EOS — modern instruction-tuned models emit EOS
-            # reliably; runaway generation is not a real failure mode on
-            # the local stack. The previous 4096 cap was truncating
-            # long-form output for no benefit.
-            gen_tokens = endpoint.get("max_tokens", 999_999_999)
+            # Use the exact allowance reserved by continuity packing. An
+            # effectively-infinite generation request made the advertised
+            # context safety fictional even when the model normally hit EOS.
+            gen_tokens = _endpoint_initial_output_tokens(
+                endpoint, _endpoint_context_window(endpoint),
+            )
             _record_physical_model_call_config(
                 endpoint,
                 max_tokens=gen_tokens,

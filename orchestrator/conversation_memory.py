@@ -434,6 +434,178 @@ def load_conversation_json(
     )
 
 
+def _read_history_envelope(
+    conversation_id: str,
+    root: Path,
+) -> dict[str, Any] | None:
+    """Read one live or retained envelope without healing or rewriting it.
+
+    Effective-history resolution is a read path, including for malformed
+    ancestry.  It therefore deliberately bypasses
+    :func:`_read_normalized_envelope`, whose compatibility heal can rewrite
+    unrelated metadata.  Closed conversations remain under ``sessions/``;
+    the optional ``sessions/archived/`` lookup keeps a retained closed parent
+    readable after the retention sweeper moves it.
+    """
+    for container in (root, root / "archived"):
+        try:
+            path = _conversation_path(conversation_id, container)
+        except (OSError, ValueError):
+            continue
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return data if isinstance(data, dict) else None
+    return None
+
+
+def resolve_effective_conversation_history(
+    conversation_id: str,
+    *,
+    sessions_root: Path | None = None,
+    diagnostics: list[str] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Return ordered server-authoritative history for one Dialogue.
+
+    Each ancestry edge contributes only the immutable prefix of its direct
+    parent's local ``messages`` named by the child's
+    ``fork_point_message_count``.  The parent's already-clipped ancestry and
+    the child's local messages surround that prefix.  Resolution is
+    recursive, so a nested fork applies every local cutoff in order and a
+    later append to any ancestor cannot leak past an existing boundary.
+
+    The function never writes.  Missing/unreadable target envelopes return
+    ``None`` so a legacy caller can distinguish "no server history" from a
+    real zero-turn Dialogue.  A cycle, orphan, malformed cutoff, or malformed
+    ancestor discards that unsafe ancestry branch while preserving the target
+    Dialogue's valid local messages.  Optional ``diagnostics`` receives terse
+    reasons for observability and tests.
+
+    Returned message snapshots preserve ordinary turn metadata for spatial
+    continuity and carry private ``_ora_*`` routing hints used only by the
+    capacity packer.  They are never persisted or sent to a provider.
+    """
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    try:
+        target_id = validate_conversation_id(conversation_id)
+    except ValueError:
+        if diagnostics is not None:
+            diagnostics.append("invalid conversation_id")
+        return None
+
+    def note(message: str) -> None:
+        if diagnostics is not None:
+            diagnostics.append(message)
+
+    def local_messages(
+        envelope: dict[str, Any],
+        owner_id: str,
+        ancestry_depth: int,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        raw_messages = envelope.get("messages")
+        if not isinstance(raw_messages, list):
+            note(f"{owner_id}: messages is not a list")
+            return [], False
+        result: list[dict[str, Any]] = []
+        valid = True
+        for index, raw in enumerate(raw_messages):
+            if not isinstance(raw, dict):
+                note(f"{owner_id}: message {index} is not an object")
+                valid = False
+                continue
+            role = raw.get("role")
+            content = raw.get("content")
+            if role not in {"user", "assistant", "system"} or not isinstance(
+                content, str
+            ):
+                note(f"{owner_id}: message {index} has malformed role/content")
+                valid = False
+                continue
+            snapshot = copy.deepcopy(raw)
+            snapshot["_ora_history_owner"] = owner_id
+            snapshot["_ora_ancestry_depth"] = ancestry_depth
+            snapshot["_ora_history_segment"] = (
+                "local" if ancestry_depth == 0 else "ancestry"
+            )
+            result.append(snapshot)
+        return result, valid
+
+    def visit(
+        current_id: str,
+        ancestry_depth: int,
+        stack: tuple[str, ...],
+    ) -> tuple[list[dict[str, Any]], int, bool]:
+        identity = current_id.casefold()
+        if identity in stack:
+            note(f"{current_id}: ancestry cycle detected")
+            return [], 0, False
+
+        envelope = _read_history_envelope(current_id, root)
+        if envelope is None:
+            note(f"{current_id}: envelope missing or unreadable")
+            return [], 0, False
+        stored_id = envelope.get("conversation_id")
+        if (stored_id is not None and (
+            not isinstance(stored_id, str)
+            or stored_id.strip().casefold() != identity
+        )):
+            note(f"{current_id}: envelope identity mismatch")
+            return [], 0, False
+
+        local, local_valid = local_messages(
+            envelope, current_id, ancestry_depth,
+        )
+        parent_raw = envelope.get("parent_conversation_id")
+        if parent_raw is None:
+            if envelope.get("fork_point_message_count") is not None:
+                note(f"{current_id}: cutoff present without parent")
+                return local, len(local), False
+            return local, len(local), local_valid
+        if not isinstance(parent_raw, str) or not parent_raw.strip():
+            note(f"{current_id}: malformed parent_conversation_id")
+            return local, len(local), False
+        try:
+            parent_id = validate_conversation_id(parent_raw)
+        except ValueError:
+            note(f"{current_id}: invalid parent_conversation_id")
+            return local, len(local), False
+
+        raw_cutoff = envelope.get("fork_point_message_count")
+        cutoff = _normalize_fork_point_message_count(raw_cutoff)
+        if cutoff is None:
+            note(f"{current_id}: malformed fork_point_message_count")
+            return local, len(local), False
+
+        parent_history, parent_local_count, parent_valid = visit(
+            parent_id,
+            ancestry_depth + 1,
+            stack + (identity,),
+        )
+        if not parent_valid:
+            # An incomplete or cyclic branch is not a truthful ordered prefix.
+            # Keep only this node's local record and propagate invalidity so a
+            # descendant cannot accidentally re-admit part of the bad branch.
+            return local, len(local), False
+        if cutoff > parent_local_count:
+            note(
+                f"{current_id}: fork_point_message_count {cutoff} exceeds "
+                f"parent local message length {parent_local_count}"
+            )
+            return local, len(local), False
+        parent_ancestry_count = len(parent_history) - parent_local_count
+        return (
+            parent_history[:parent_ancestry_count + cutoff] + local,
+            len(local),
+            local_valid,
+        )
+
+    history, _, _ = visit(target_id, 0, ())
+    return history
+
+
 def ensure_conversation_envelope(
     conversation_id: str,
     *,
@@ -1356,6 +1528,10 @@ def fork_conversation(
     if not isinstance(parent_tag, str) or parent_tag not in CONVERSATION_TAGS:
         parent_tag = ""
     child_tag = creation_tag if creation_tag in CONVERSATION_TAGS else parent_tag
+    # The fetch route and browser display the direct parent's local transcript.
+    # Keep the API's zero-based displayed-turn index and the durable cutoff in
+    # that same local coordinate system.  Recursive resolution carries the
+    # parent's already-clipped ancestry ahead of this local prefix.
     parent_messages = parent.get("messages") or []
     if not isinstance(parent_messages, list):
         parent_messages = []
@@ -1555,13 +1731,17 @@ def mark_conversation_errored(
     *,
     sessions_root: Path | None = None,
     timestamp: str | None = None,
+    interrupted_input: str | None = None,
+    interrupted_submission_id: str | None = None,
 ) -> Path | None:
     """Mark a conversation's most recent run as errored on its envelope.
 
     Backlog item 11. The pipeline writes a separate error chunk file
     when a run fails (Backlog 2D), but the V3 sidebar list is driven
     off conversation.json envelopes — so we mirror the error state on
-    the envelope: ``last_status: "errored"`` + ``last_error_summary``.
+    the envelope: ``last_status: "errored"`` + ``last_error_summary``. When
+    the authoritative append failed, ``interrupted_input`` also preserves the
+    exact unacknowledged prompt for the existing retry path.
 
     The list endpoint then groups conversations with that status into
     an Errored group, and the sidebar UI surfaces retry + dismiss
@@ -1575,9 +1755,15 @@ def mark_conversation_errored(
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
 
     def mutate(data: dict[str, Any]) -> None:
+        errored_at = timestamp or _dt.now().isoformat(timespec="seconds")
         data["last_status"] = "errored"
         data["last_error_summary"] = summary or ""
-        data["last_errored_at"] = timestamp or _dt.now().isoformat(timespec="seconds")
+        data["last_errored_at"] = errored_at
+        if interrupted_input is not None:
+            data["interrupted_input"] = interrupted_input
+            data["interrupted_at"] = errored_at
+            if interrupted_submission_id:
+                data["interrupted_submission_id"] = interrupted_submission_id
 
     return _mutate_conversation_envelope(conversation_id, root, mutate)
 
@@ -1743,6 +1929,7 @@ __all__ = [
     "WELCOME_CONVERSATION_ID",
     "WELCOME_PLACEHOLDER_BODY",
     "load_conversation_json",
+    "resolve_effective_conversation_history",
     "ensure_conversation_envelope",
     "save_turn_spatial_state",
     "get_prior_spatial_state",

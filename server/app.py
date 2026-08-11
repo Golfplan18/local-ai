@@ -3588,8 +3588,6 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             yield _sse("error", text=terminal_value)
             return
         messages = [{"role": "system", "content": system_prompt}]
-        if history:
-            messages.extend([m for m in history if m["role"] != "system"])
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
         response = run_single_pass_with_tools(
             messages, ep,
@@ -3598,6 +3596,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             config_name=config_name,
             images=images,
             step_name="step3-direct-response",
+            history=history,
         )
         if trace_dir:
             try:
@@ -4327,15 +4326,15 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     turn_state["kind"] = "chat"
     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
 
+    # Phase A receives structured authoritative history and packs it once
+    # against its own endpoint.  Keep the legacy rendered lane empty here so
+    # the transcript is neither duplicated nor assembled twice in memory.
     conv_context = ""
-    if history:
-        recent = [m for m in history[-6:] if m["role"] != "system"]
-        conv_context = "\n".join(f"{m['role'].upper()}: {m['content'][:500]}" for m in recent)
 
     # History-truncation stats — see boot._summarize_history_truncation.
     try:
         from boot import _summarize_history_truncation as _shx
-        _hist_trunc = _shx(history, window=6, per_message_char_cap=500)
+        _hist_trunc = _shx(history)
     except Exception:
         _hist_trunc = None
 
@@ -4353,7 +4352,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                               trace_dir=trace_dir,
                               history_truncation_stats=_hist_trunc,
                               image_attached=image_attached,
-                              config_name=config_name)
+                              config_name=config_name,
+                              conversation_history=history)
     tier = step1["triage_tier"]
 
     # Manual mode-pick override. When the caller explicitly named a mode
@@ -4798,13 +4798,17 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         yield _sse("error", text=terminal_value)
         return
 
-    messages = list(history)
-    if not messages or messages[0]["role"] != "system":
-        messages.insert(0, {
+    # Keep the current call payload separate from Dialogue continuity.  The
+    # latter is packed once, against this endpoint's real remaining capacity,
+    # immediately before each physical call below.  This also prevents a
+    # client-supplied system message from replacing Ora's Direct prompt.
+    messages = [
+        {
             "role": "system",
             "content": _direct_system_prompt(config, extra_context),
-        })
-    messages.append({"role": "user", "content": user_input})
+        },
+        {"role": "user", "content": user_input},
+    ]
 
     # Auto-approve in server mode (permission handled by UI later).
     # Execution Review Phase 1: auto-approve now only covers the legacy
@@ -4884,9 +4888,19 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
     response = ""
     for iteration in range(MAX_ITERATIONS):
+        call_images = images if iteration == 0 else None
+        boot_context = _boot_context_api()
+        call_messages, _continuity_budget = (
+            boot_context.prepare_messages_with_continuity(
+                messages, endpoint, history=history,
+                additional_required_tokens=(
+                    boot_context._estimated_image_input_tokens(call_images)
+                ),
+            )
+        )
         # Pass images only on the first call (they accompany the user's original message)
         response = _call_direct_stage(
-            messages, endpoint, images=images if iteration == 0 else None,
+            call_messages, endpoint, images=call_images,
         )
         tool_calls = parse_tool_calls(response)
 
@@ -8215,6 +8229,126 @@ def _validate_public_model_profile_override(config_name):
     return name
 
 
+def _normalize_explicit_history(history) -> list[dict]:
+    """Return the truthful subset accepted from a legacy/API caller."""
+    if not isinstance(history, list):
+        return []
+    normalized = []
+    for message in history:
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        content = message.get("content")
+        if role not in {"user", "assistant", "system"}:
+            continue
+        if not isinstance(content, str):
+            continue
+        normalized.append({"role": role, "content": content})
+    return normalized
+
+
+def _authoritative_dialogue_history(
+        conversation_id: str, supplied_history=None) -> tuple[list[dict], dict]:
+    """Resolve one request's ordered history and local turn metadata.
+
+    An existing Dialogue envelope always wins, including an honestly empty
+    child whose visible history consists only of fork ancestry.  Explicit
+    history remains available solely for callers whose id has no envelope;
+    this preserves the legacy/API contract without letting an ordinary V3
+    browser replace or duplicate the server transcript.  An existing but
+    unreadable envelope fails closed to empty history instead of trusting the
+    request.  This function is read-only.
+    """
+    explicit = _normalize_explicit_history(supplied_history)
+    try:
+        from orchestrator.conversation_memory import (
+            _DEFAULT_SESSIONS_ROOT,
+            _conversation_path,
+            _read_history_envelope,
+            resolve_effective_conversation_history,
+        )
+
+        root = _DEFAULT_SESSIONS_ROOT
+        live_path = _conversation_path(conversation_id, root)
+        archived_path = _conversation_path(
+            conversation_id, root / "archived",
+        )
+        envelope_exists = live_path.exists() or archived_path.exists()
+        envelope = _read_history_envelope(conversation_id, root)
+        if envelope_exists:
+            effective = resolve_effective_conversation_history(
+                conversation_id, sessions_root=root,
+            )
+            history = effective if isinstance(effective, list) else []
+            local_raw = (
+                envelope.get("messages")
+                if isinstance(envelope, dict) else []
+            )
+            if not isinstance(local_raw, list):
+                local_raw = []
+            local_messages = [
+                message for message in local_raw
+                if isinstance(message, dict)
+                and message.get("role") in {"user", "assistant", "system"}
+                and isinstance(message.get("content"), str)
+            ]
+            first_user_input = next(
+                (
+                    message["content"] for message in local_messages
+                    if message.get("role") == "user"
+                ),
+                "",
+            )
+            return history, {
+                "source": (
+                    "conversation_json" if envelope is not None
+                    else "unreadable_conversation_json"
+                ),
+                "envelope_exists": True,
+                "local_message_count": len(local_messages),
+                # Every persisted normal turn has exactly one user message;
+                # assistant-only welcome/seed entries do not advance raw/RAG
+                # pair numbering.
+                "local_turn_count": sum(
+                    1 for message in local_messages
+                    if message.get("role") == "user"
+                ),
+                "first_user_input": first_user_input,
+            }
+    except Exception as exc:
+        # Invalid ids are rejected at the HTTP boundary.  A read-path failure
+        # for a valid id must not mutate state or silently accept browser
+        # transcript authority.  The returned state deliberately treats an
+        # uninspectable storage root as if an envelope existed.
+        print(
+            f"[dialogue-history] authoritative read failed for "
+            f"{conversation_id}: {exc}", file=sys.stderr, flush=True,
+        )
+        return [], {
+            "source": "history_read_failure",
+            "envelope_exists": True,
+            "local_message_count": 0,
+            "local_turn_count": 0,
+            "first_user_input": "",
+        }
+
+    return explicit, {
+        "source": "legacy_explicit" if explicit else "new_conversation",
+        "envelope_exists": False,
+        "local_message_count": len(explicit),
+        "local_turn_count": sum(
+            1 for message in explicit if message.get("role") == "user"
+        ),
+        "first_user_input": next(
+            (
+                message["content"] for message in explicit
+                if message.get("role") == "user"
+            ),
+            "",
+        ),
+    }
+
+
 def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                                manual_mode_selection="", manual_lens_selection="",
                                framework_selected="", submission_id="", output_destination="",
@@ -8241,10 +8375,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     back later. The 12-second reconciliation scan in the browser catches
     any submissions whose connection dropped.
 
-    Side-effects (spatial state persistence, end-of-session pipeline)
-    that don't gate the reply continue to fire in daemon threads as
-    before. The save runs synchronously so the chunk_id is known
-    before we reply; the prior pipeline-wide lock is gone (mlx_mutex
+    The conversation.json append is synchronous because it is the next turn's
+    history authority; the end-of-session pipeline remains a daemon-thread
+    side effect. The chunk save also runs synchronously so the chunk_id is
+    known before we reply; the prior pipeline-wide lock is gone (mlx_mutex
     inside call_model handles the MLX SIGSEGV constraint).
 
     WP-3.3: ``extra_context`` is merged into the pipeline's context_pkg
@@ -8275,13 +8409,32 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     extra_context = _apply_style_audience(extra_context, style_audience)
     extra_context = _apply_project_model_locks(extra_context)
 
-    # Sidebar window integration: use rolling window for sidebar panels
+    # Sidebar window integration: use rolling window for sidebar panels.
+    # Every ordinary Dialogue request instead reconstructs immutable/current
+    # continuity from conversation.json under the lifecycle lock; the browser
+    # is neither required nor trusted to post its transcript.
     is_sidebar = panel_id.startswith("sidebar")
     if is_sidebar and SIDEBAR_WINDOW_AVAILABLE:
         sidebar_win = get_sidebar_window(panel_id)
         history = sidebar_win.get_history()  # Override with rolling window
+        history_state = {
+            "source": "sidebar_window",
+            "envelope_exists": False,
+            "local_message_count": len(history),
+            "local_turn_count": sum(
+                1 for message in history
+                if isinstance(message, dict) and message.get("role") == "user"
+            ),
+            "first_user_input": next((
+                message.get("content", "") for message in history
+                if isinstance(message, dict) and message.get("role") == "user"
+            ), ""),
+        }
     else:
         sidebar_win = None
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, history,
+        )
 
     # Mark the conversation as Pending for the duration of the run so the
     # sidebar list endpoint can group it correctly. Cleared in finally.
@@ -8292,6 +8445,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     active_gear    = None
     last_stage     = None
     chunk_id       = None
+    envelope_persisted = False
     failure_summary = None
     cfg            = None
     ep             = None
@@ -8421,7 +8575,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None):
                 sidebar_win.add_exchange(clean_input, final_response)
 
-            is_new_session = len(history) == 0
+            # Effective history can be non-empty for a true empty-child fork.
+            # Session/raw numbering is local to the child, while a restarted
+            # ordinary Dialogue resumes from its own persisted turn count.
+            is_new_session = history_state["local_message_count"] == 0
 
             # Initialize session data only while the lifecycle lock is held.
             # A Delete Forever tombstone may be set while the model is still
@@ -8431,15 +8588,20 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     _session_data[panel_id] = {
                         "raw_path": "",  # populated by _save_conversation
                         "session_id": uuid.uuid4().hex,
-                        "pair_count": 0,
+                        "pair_count": history_state["local_turn_count"],
                         "model": (ep.get("name", "unknown") if ep else "unknown"),
                         "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "first_user_input": (
+                            history_state["first_user_input"] or clean_input
+                        ),
+                        "prior_topic": None,
+                        "thread_counter": 0,
                     }
 
-            # V3 Backlog 2A Chunk 2 — synchronous save inside the lock
-            # so the chunk_id is known before we reply. The submission
-            # log finalizer + orphan-marker clear run inline; spatial
-            # state and end-of-session pipeline still fire async.
+            # The user-visible chunk and authoritative conversation envelope
+            # are one acknowledged save boundary. Both complete synchronously
+            # under the lifecycle lock before the pending submission can move
+            # to processed or the HTTP response can report success.
             if final_response is not None:
                 try:
                     chunk_id = _save_conversation(
@@ -8450,20 +8612,51 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
-                if chunk_id:
-                    # This is the first boundary at which every user-visible
-                    # transform, optional file route, and conversation persistence
-                    # has succeeded. The stream wrapper finalized earlier, so the
-                    # terminal recorder also refreshes only the manifest inventory.
-                    _record_http_terminal(
-                        final_response, route="server-conversation-save",
-                        persisted=True,
-                    )
 
-            # Clear orphan-recovery markers if this conversation was
-            # previously interrupted. A successful save means we caught
-            # up; the Errored row should clear.
-            if chunk_id:
+            # WP-5.3 — append this turn before releasing the lifecycle lock.
+            # ``conversation.json`` is the next turn's history authority. A
+            # path return acknowledges success; if a wrapper raises after a
+            # completed write, verify the expected new tail once on disk.
+            if chunk_id and not _is_conversation_deleted(panel_id):
+                persist_issue = ""
+                try:
+                    envelope_persisted = bool(
+                        _persist_turn_spatial_state_unlocked(
+                            panel_id, clean_input, final_response,
+                            extra_context, tag, trace_ref=trace_ref,
+                        )
+                    )
+                except Exception as e:
+                    persist_issue = f"{type(e).__name__}: {e}"
+                    print(
+                        "[WARNING] conversation envelope persist raised: "
+                        f"{persist_issue}"
+                    )
+                if not envelope_persisted:
+                    envelope_persisted = _turn_envelope_acknowledged(
+                        panel_id,
+                        history_state["local_message_count"],
+                        clean_input,
+                        final_response,
+                    )
+                if not envelope_persisted:
+                    failure_summary = "conversation envelope persistence failed"
+                    if persist_issue:
+                        failure_summary += f": {persist_issue}"
+
+            if envelope_persisted:
+                # This is the first boundary at which the complete turn is
+                # durable in both user-visible and history-authoritative stores.
+                _record_http_terminal(
+                    final_response, route="server-conversation-save",
+                    persisted=True,
+                )
+
+            # Clear recovery markers only after the replacement turn reaches
+            # the authoritative envelope. If this was a retry of a previously
+            # unacknowledged submission, retire that older pending record too
+            # so restart recovery cannot surface the same prompt again.
+            if envelope_persisted:
                 try:
                     from conversation_memory import (
                         load_conversation_json,
@@ -8474,6 +8667,9 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     data = load_conversation_json(panel_id)
                     if data and (data.get("interrupted_input")
                                   or data.get("interrupted_at")):
+                        recovered_submission_id = data.get(
+                            "interrupted_submission_id"
+                        )
                         data.pop("interrupted_input", None)
                         data.pop("interrupted_at", None)
                         data.pop("interrupted_submission_id", None)
@@ -8486,20 +8682,15 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                             ),
                         )
                         clear_conversation_error(panel_id)
+                        if isinstance(recovered_submission_id, str):
+                            _finalize_pending_submission(
+                                recovered_submission_id
+                            )
                 except Exception as e:
                     print(f"[WARNING] orphan-marker clear failed: {e}")
 
-            # WP-5.3 — append this turn to conversation.json so the next
-            # turn can retrieve prior spatial state. Async (best-effort).
-            if chunk_id and not _is_conversation_deleted(panel_id):
-                threading.Thread(
-                    target=_persist_turn_spatial_state,
-                    args=(panel_id, clean_input, final_response, extra_context, tag),
-                    kwargs={"trace_ref": trace_ref},
-                    daemon=True,
-                ).start()
-
-            if chunk_id and is_main and not _is_conversation_deleted(panel_id):
+            if (chunk_id and envelope_persisted and is_main
+                    and not _is_conversation_deleted(panel_id)):
                 recent = list(history[-4:]) + [
                     {"role": "user",      "content": clean_input},
                     {"role": "assistant", "content": final_response},
@@ -8514,7 +8705,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 }
 
             # Runtime pipeline: fire async end-of-session processing
-            if (chunk_id and RUNTIME_PIPELINE_AVAILABLE and not is_sidebar
+            if (chunk_id and envelope_persisted and RUNTIME_PIPELINE_AVAILABLE
+                    and not is_sidebar
                     and tag != "stealth"
                     and not _is_conversation_deleted(panel_id)):
                 threading.Thread(
@@ -8541,11 +8733,11 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # On a successful save, finalize the submission log (move pending →
     # processed). On a failure, leave the pending file in place — the
     # next boot will surface it as an orphan errored chunk.
-    if chunk_id and submission_id:
+    if chunk_id and envelope_persisted and submission_id:
         _finalize_pending_submission(submission_id)
 
     # ── Build the plain-HTTP reply ──────────────────────────────────────
-    if final_response is not None and chunk_id:
+    if final_response is not None and chunk_id and envelope_persisted:
         payload = {
             "status":          "ok",
             "conversation_id": panel_id,
@@ -8572,7 +8764,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
         summary = "pipeline produced no response (no stages observed; check endpoint config)"
     try:
         from conversation_memory import mark_conversation_errored
-        mark_conversation_errored(panel_id, summary)
+        mark_conversation_errored(
+            panel_id,
+            summary,
+            interrupted_input=(
+                clean_input if chunk_id and not envelope_persisted else None
+            ),
+            interrupted_submission_id=(
+                submission_id if chunk_id and not envelope_persisted else None
+            ),
+        )
     except Exception as e:
         print(f"[WARNING] mark_conversation_errored failed: {e}")
 
@@ -8640,7 +8841,8 @@ def chat():
 
     data = request.get_json(force=True)
     user_input = str(data.get("message") or "").strip()
-    history = data.get("history", [])
+    supplied_history = data.get("history", [])
+    history = []
     panel_id = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
     is_main = data.get("is_main_feed", True)
     tag = _normalize_tag(data.get("tag", ""))
@@ -8675,6 +8877,9 @@ def chat():
         except (ValueError, RuntimeError) as exc:
             return _json_response({"error": str(exc)}, 409)
         tag = _effective_conversation_tag(panel_id, tag)
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, supplied_history,
+        )
         submission_id = _log_pending_submission({
             "endpoint": "/chat",
             "conversation_id": panel_id,
@@ -8682,7 +8887,11 @@ def chat():
             "is_main_feed": is_main,
             "tag": tag,
             "user_input": user_input,
-            "history": history,
+            # Preserve what the caller actually submitted for request-audit
+            # fidelity.  Pipeline authority is the separately resolved
+            # ``history`` variable above.
+            "history": supplied_history,
+            "history_source": history_state["source"],
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected": framework_selected,
@@ -8829,6 +9038,19 @@ def chat_multipart():
     exhibits_submission_intent = (
         form.get("exhibits_submission_intent") or ""
     ).strip()
+    # Capture raw optional values once.  History is parsed as a legacy/API
+    # fallback only; an existing conversation.json remains authoritative.
+    spatial_raw = form.get("spatial_representation", "")
+    annotations_raw = form.get("annotations", "")
+    history_raw_str = form.get("history", "")
+    supplied_history = []
+    if history_raw_str:
+        try:
+            supplied_history = json.loads(history_raw_str)
+            if not isinstance(supplied_history, list):
+                supplied_history = []
+        except Exception:
+            supplied_history = []
 
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -8870,6 +9092,9 @@ def chat_multipart():
         except (ValueError, RuntimeError) as exc:
             return json.dumps({"error": str(exc)}), 409
         tag = _effective_conversation_tag(panel_id, tag)
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, supplied_history,
+        )
 
         # Optional image upload — saved FIRST so the submission log can record
         # the path. Image binaries live separately on disk; the pending file
@@ -8887,10 +9112,6 @@ def chat_multipart():
                 conversation_id, canvas_preview_data_url,
             )
 
-        # Capture raw values before parsing so malformed input is recoverable.
-        spatial_raw     = form.get("spatial_representation", "")
-        annotations_raw = form.get("annotations", "")
-        history_raw_str = form.get("history", "")
         submission_id = _log_pending_submission({
             "endpoint":              "/chat/multipart",
             "conversation_id":       conversation_id,
@@ -8899,6 +9120,7 @@ def chat_multipart():
             "tag":                   tag,
             "user_input":            user_input,
             "history_raw":           history_raw_str,
+            "history_source":        history_state["source"],
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
@@ -8908,16 +9130,6 @@ def chat_multipart():
             "image_path":            image_path,
             "exhibits_submission_intent": exhibits_submission_intent,
         })
-
-    # Optional history as JSON string
-    history = []
-    if history_raw_str:
-        try:
-            history = json.loads(history_raw_str)
-            if not isinstance(history, list):
-                history = []
-        except Exception:
-            history = []
 
     # Optional spatial_representation (JSON string) — validate before proceeding.
     spatial_rep = None
@@ -13281,10 +13493,11 @@ def _persist_turn_spatial_state_unlocked(
     ``extra_context`` is None or missing a given field, that slot stores
     as ``None`` — forward-compat safe, backward-compat safe.
 
-    Runs on a background thread; exceptions never propagate back to the
-    caller. This is a side-channel relative to the existing raw .md log +
-    ChromaDB indexing — the conversation.json is specifically the source
-    of truth for visual state continuity.
+    Normal chat completion calls this synchronously under the lifecycle lock;
+    a few legacy resume paths still use the locked background wrapper below.
+    Returns the durable path only when the authoritative append succeeds;
+    exceptions are logged and become a false acknowledgement. conversation.json
+    is the source of truth for both visual state and Dialogue continuity.
     """
     try:
         from orchestrator.conversation_memory import save_turn_spatial_state
@@ -13303,7 +13516,7 @@ def _persist_turn_spatial_state_unlocked(
             _project_ids = resolve_project_ids(get_active_project())
         except Exception:
             _project_ids = None
-        save_turn_spatial_state(
+        return save_turn_spatial_state(
             conversation_id=panel_id,
             user_input=user_input,
             ai_response=ai_response,
@@ -13317,6 +13530,31 @@ def _persist_turn_spatial_state_unlocked(
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
+        return None
+
+
+def _turn_envelope_acknowledged(
+        panel_id, expected_message_count, user_input, ai_response):
+    """Confirm a turn reached the envelope if a writer lost its return value."""
+    try:
+        from orchestrator.conversation_memory import load_conversation_json
+        data = load_conversation_json(panel_id)
+    except Exception:
+        return False
+    messages = data.get("messages") if isinstance(data, dict) else None
+    if not isinstance(messages, list) or not isinstance(expected_message_count, int):
+        return False
+    if len(messages) != expected_message_count + 2:
+        return False
+    user_message, assistant_message = messages[-2:]
+    return (
+        isinstance(user_message, dict)
+        and user_message.get("role") == "user"
+        and user_message.get("content") == user_input
+        and isinstance(assistant_message, dict)
+        and assistant_message.get("role") == "assistant"
+        and assistant_message.get("content") == ai_response
+    )
 
 
 def _persist_turn_spatial_state(panel_id, user_input, ai_response,
@@ -13324,9 +13562,9 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response,
     """Persist envelope state only while the conversation remains live."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
-            return
+            return None
         effective_tag = _effective_conversation_tag(panel_id, tag)
-        _persist_turn_spatial_state_unlocked(
+        return _persist_turn_spatial_state_unlocked(
             panel_id, user_input, ai_response, extra_context, effective_tag,
             trace_ref=trace_ref,
         )
@@ -13351,7 +13589,11 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
         bridge = _bridge_state.get(panel_id, {})
 
         # Build full conversation history including the current exchange
-        conv_history = list(history or [])
+        conv_history = [
+            dict(message)
+            for message in (history or [])
+            if isinstance(message, dict)
+        ]
         conv_history.append({"role": "user", "content": user_input})
         conv_history.append({"role": "assistant", "content": ai_response})
 

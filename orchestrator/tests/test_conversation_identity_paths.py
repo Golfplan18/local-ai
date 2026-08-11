@@ -764,6 +764,313 @@ class TestServerCanonicalStorage(unittest.TestCase):
             oversight_events.clear_conversation_id_context()
             oversight_events.clear_stealth_context()
 
+    def test_direct_path_receives_one_bounded_continuity_lane(self):
+        server = self.server
+        captured = []
+        endpoint = {
+            "type": "api", "id": "direct-continuity",
+            "context_window": 100_000, "max_tokens": 1_000,
+        }
+        history = [
+            {"role": "user", "content": "direct-history-user"},
+            {"role": "assistant", "content": "direct-history-assistant"},
+        ]
+
+        def model_call(messages, _endpoint, images=None):
+            captured.append(messages)
+            return "direct response"
+
+        with (
+            mock.patch.object(server, "load_config", return_value={}),
+            mock.patch.object(server, "get_endpoint", return_value=endpoint),
+            mock.patch.object(server, "_direct_system_prompt",
+                              return_value="direct system"),
+            mock.patch.object(server, "call_model", side_effect=model_call),
+        ):
+            frames = list(server._direct_stream_impl(
+                "direct current input", history, panel_id="direct-history",
+            ))
+
+        self.assertTrue(frames)
+        contents = [message["content"] for message in captured[0]]
+        self.assertEqual(contents.count("direct-history-user"), 1)
+        self.assertEqual(contents.count("direct-history-assistant"), 1)
+        self.assertEqual(contents[-1], "direct current input")
+
+    def test_chat_and_multipart_turn25_ignore_browser_history(self):
+        server = self.server
+        from orchestrator import conversation_memory as memory
+
+        captured = []
+
+        def invoke(user_input, history, panel_id, *_args, **_kwargs):
+            captured.append((panel_id, [dict(message) for message in history]))
+            return json.dumps({"status": "ok", "conversation_id": panel_id})
+
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            for index in range(24):
+                memory.save_turn_spatial_state(
+                    "turn25", f"user-{index}", f"assistant-{index}",
+                    sessions_root=sessions,
+                )
+            expected = [
+                content
+                for index in range(24)
+                for content in (f"user-{index}", f"assistant-{index}")
+            ]
+            spoof = [
+                {"role": "user", "content": "browser-spoof-user"},
+                {"role": "assistant", "content": "browser-spoof-assistant"},
+            ]
+            with (
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(server, "_assert_no_casefold_session_collision",
+                                  return_value=None),
+                mock.patch.object(server, "_effective_conversation_tag",
+                                  return_value=""),
+                mock.patch.object(server, "_log_pending_submission",
+                                  return_value="pending-id"),
+                mock.patch.object(server, "build_contributor_context",
+                                  return_value=""),
+                mock.patch.object(server, "_invoke_pipeline", side_effect=invoke),
+            ):
+                client = server.app.test_client()
+                json_response = client.post("/chat", json={
+                    "message": "turn 25 json",
+                    "conversation_id": "turn25",
+                    "history": spoof,
+                })
+                multipart_response = client.post(
+                    "/chat/multipart",
+                    data={
+                        "message": "turn 25 multipart",
+                        "conversation_id": "turn25",
+                        "history": json.dumps(spoof),
+                    },
+                    content_type="multipart/form-data",
+                )
+
+        self.assertEqual(json_response.status_code, 200)
+        self.assertEqual(multipart_response.status_code, 200)
+        self.assertEqual(len(captured), 2)
+        for panel_id, history in captured:
+            self.assertEqual(panel_id, "turn25")
+            self.assertEqual(
+                [message["content"] for message in history], expected,
+            )
+            self.assertNotIn(
+                "browser-spoof-user",
+                [message["content"] for message in history],
+            )
+
+    def test_explicit_legacy_history_is_used_only_without_an_envelope(self):
+        server = self.server
+        from orchestrator import conversation_memory as memory
+
+        supplied = [
+            {"role": "user", "content": "legacy user"},
+            {"role": "assistant", "content": "legacy assistant"},
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            with mock.patch.object(
+                memory, "_DEFAULT_SESSIONS_ROOT", sessions,
+            ):
+                history, state = server._authoritative_dialogue_history(
+                    "legacy-api", supplied,
+                )
+                self.assertEqual(history, supplied)
+                self.assertEqual(state["source"], "legacy_explicit")
+
+                memory.create_conversation_envelope(
+                    "v3-empty",
+                    title="Empty Dialogue",
+                    description="A valid empty Dialogue created for this test.",
+                    sessions_root=sessions,
+                )
+                history, state = server._authoritative_dialogue_history(
+                    "v3-empty", supplied,
+                )
+                self.assertEqual(history, [])
+                self.assertEqual(state["source"], "conversation_json")
+
+    def _invoke_with_envelope_persistence(self, persist_effect):
+        server = self.server
+        import conversation_memory as server_memory
+
+        def response_stream(*_args, **_kwargs):
+            yield server._sse("response", text="durable answer")
+
+        state = {
+            "source": "new_conversation",
+            "envelope_exists": False,
+            "local_message_count": 0,
+            "local_turn_count": 0,
+            "first_user_input": "",
+        }
+        persist = mock.Mock()
+        if isinstance(persist_effect, BaseException):
+            persist.side_effect = persist_effect
+        else:
+            persist.return_value = persist_effect
+        finalize = mock.Mock()
+        mark_errored = mock.Mock()
+        acknowledged = mock.Mock(return_value=False)
+        server._session_data.pop("envelope-ack-test", None)
+        with (
+            mock.patch.object(server, "_authoritative_dialogue_history",
+                              return_value=([], state)),
+            mock.patch.object(server, "load_config", return_value={}),
+            mock.patch.object(server, "get_endpoint", return_value={
+                "name": "test", "type": "api",
+                "context_window": 100_000, "max_tokens": 1_000,
+            }),
+            mock.patch.object(server, "agentic_loop_stream",
+                              side_effect=response_stream),
+            mock.patch.object(server, "_save_conversation",
+                              return_value="chunk-ack-test"),
+            mock.patch.object(server, "_persist_turn_spatial_state_unlocked",
+                              persist),
+            mock.patch.object(server, "_turn_envelope_acknowledged",
+                              acknowledged),
+            mock.patch.object(server, "_finalize_pending_submission", finalize),
+            mock.patch.object(server_memory, "mark_conversation_errored",
+                              mark_errored),
+            mock.patch.object(server, "RUNTIME_PIPELINE_AVAILABLE", False),
+        ):
+            reply = server._invoke_pipeline_unlocked(
+                "unacknowledged prompt", [], "envelope-ack-test", False,
+                submission_id="pending-ack-test",
+            )
+        return json.loads(reply), persist, acknowledged, finalize, mark_errored
+
+    def test_none_envelope_persistence_keeps_submission_pending_and_errors(self):
+        payload, persist, acknowledged, finalize, mark_errored = (
+            self._invoke_with_envelope_persistence(None)
+        )
+
+        self.assertEqual(payload["status"], "errored")
+        self.assertEqual(payload["chunk_id"], "chunk-ack-test")
+        self.assertEqual(
+            payload["failure_summary"],
+            "conversation envelope persistence failed",
+        )
+        persist.assert_called_once()
+        acknowledged.assert_called_once()
+        finalize.assert_not_called()
+        self.assertEqual(
+            mark_errored.call_args.kwargs["interrupted_input"],
+            "unacknowledged prompt",
+        )
+        self.assertEqual(
+            mark_errored.call_args.kwargs["interrupted_submission_id"],
+            "pending-ack-test",
+        )
+
+    def test_raising_envelope_persistence_keeps_submission_pending_and_errors(self):
+        payload, _persist, acknowledged, finalize, mark_errored = (
+            self._invoke_with_envelope_persistence(
+                RuntimeError("envelope writer exploded")
+            )
+        )
+
+        self.assertEqual(payload["status"], "errored")
+        self.assertIn("RuntimeError: envelope writer exploded",
+                      payload["failure_summary"])
+        acknowledged.assert_called_once()
+        finalize.assert_not_called()
+        mark_errored.assert_called_once()
+
+    def test_successful_envelope_persistence_is_required_for_ok_and_finalize(self):
+        payload, _persist, acknowledged, finalize, mark_errored = (
+            self._invoke_with_envelope_persistence(Path("/tmp/envelope.json"))
+        )
+
+        self.assertEqual(payload, {
+            "status": "ok",
+            "conversation_id": "envelope-ack-test",
+            "chunk_id": "chunk-ack-test",
+        })
+        acknowledged.assert_not_called()
+        finalize.assert_called_once_with("pending-ack-test")
+        mark_errored.assert_not_called()
+
+    def test_turn_metadata_resumes_at_25_and_empty_child_starts_locally(self):
+        server = self.server
+        from orchestrator import conversation_memory as memory
+
+        def response_stream(*_args, **_kwargs):
+            yield server._sse("response", text="answer")
+
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            for index in range(24):
+                memory.save_turn_spatial_state(
+                    "existing", f"user-{index}", f"assistant-{index}",
+                    sessions_root=sessions,
+                )
+            memory.save_turn_spatial_state(
+                "parent", "parent-user", "parent-assistant",
+                sessions_root=sessions,
+            )
+            memory.fork_conversation(
+                "parent", "empty-child", sessions_root=sessions,
+            )
+
+            observations = {}
+
+            def save(_user, _answer, panel_id, is_new_session, *_args, **_kwargs):
+                session = server._session_data[panel_id]
+                observations[panel_id] = {
+                    "is_new_session": is_new_session,
+                    "prior_pair_count": session["pair_count"],
+                }
+                session["pair_count"] += 1
+                observations[panel_id]["saved_pair_count"] = session["pair_count"]
+                return f"session-test-pair-{session['pair_count']:03d}"
+
+            server._session_data.pop("existing", None)
+            server._session_data.pop("empty-child", None)
+            persist = mock.Mock()
+            with (
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(server, "load_config", return_value={}),
+                mock.patch.object(server, "get_endpoint", return_value={
+                    "name": "test", "type": "api",
+                    "context_window": 100_000, "max_tokens": 1_000,
+                }),
+                mock.patch.object(server, "agentic_loop_stream",
+                                  side_effect=response_stream),
+                mock.patch.object(server, "_save_conversation",
+                                  side_effect=save),
+                mock.patch.object(server, "_persist_turn_spatial_state_unlocked",
+                                  persist),
+                mock.patch.object(server, "RUNTIME_PIPELINE_AVAILABLE", False),
+            ):
+                existing_reply = server._invoke_pipeline_unlocked(
+                    "turn 25", [], "existing", True,
+                )
+                child_reply = server._invoke_pipeline_unlocked(
+                    "child turn 1", [], "empty-child", True,
+                )
+
+        self.assertEqual(observations["existing"], {
+            "is_new_session": False,
+            "prior_pair_count": 24,
+            "saved_pair_count": 25,
+        })
+        self.assertEqual(observations["empty-child"], {
+            "is_new_session": True,
+            "prior_pair_count": 0,
+            "saved_pair_count": 1,
+        })
+        self.assertEqual(json.loads(existing_reply)["chunk_id"],
+                         "session-test-pair-025")
+        self.assertEqual(json.loads(child_reply)["chunk_id"],
+                         "session-test-pair-001")
+        self.assertEqual(persist.call_count, 2)
+
     def test_new_identity_rejects_legacy_case_twin_and_session_symlink(self):
         server = self.server
         from orchestrator import conversation_memory as memory

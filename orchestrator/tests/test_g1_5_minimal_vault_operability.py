@@ -470,7 +470,7 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
                     side_effect=stub_execution,
                 ) as execute, mock.patch.object(
                     server,
-                    "_persist_turn_spatial_state",
+                    "_persist_turn_spatial_state_unlocked",
                     side_effect=persist_to_test_sessions,
                 ):
                     response = self.client.post("/chat", json={

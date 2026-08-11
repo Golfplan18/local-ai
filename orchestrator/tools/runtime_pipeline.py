@@ -391,7 +391,10 @@ class RuntimePipeline:
             engine = ExtractionEngine(call_fn=self.call_fn, config=self.config)
             source_file = data.conversation_id or data.session_id
             extraction = engine.extract(
-                transcript, type_result, source_file=source_file,
+                transcript,
+                type_result,
+                source_file=source_file,
+                history_messages=(data.conversation_history or None),
             )
 
             if not extraction.screened:

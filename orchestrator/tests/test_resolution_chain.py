@@ -144,6 +144,142 @@ class TestSplitResponse(unittest.TestCase):
         self.assertIn("Just discussion", discussion)
 
 
+class TestDiscussionHistoryPacking(unittest.TestCase):
+
+    def test_long_discussion_is_whole_turn_bounded_for_sidebar_endpoint(self):
+        import boot
+        from resolution_chain import (
+            ContinuationContext,
+            _generate_discussion_turn,
+        )
+
+        history = []
+        for index in range(12):
+            history.extend([
+                {
+                    "role": "user",
+                    "content": (
+                        f"RC-U{index:02d}-START " + ("u" * 1800)
+                        + f" RC-U{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                },
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"RC-A{index:02d}-START " + ("a" * 1800)
+                        + f" RC-A{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                },
+            ])
+        endpoint = {
+            "id": "resolution-bounded", "type": "api",
+            "context_window": 22_000, "max_tokens": 2_000,
+            "_disable_truncation_retry": True,
+        }
+        captured = []
+
+        def mediator(messages, _endpoint, images=None):
+            captured.append(messages)
+            return "The discussion remains bounded.\n\nALTERNATIVE:\n(none)"
+
+        with (
+            mock.patch.object(boot, "get_slot_endpoint", return_value=endpoint),
+            mock.patch.object(boot, "get_active_endpoint", return_value=None),
+            mock.patch.object(boot, "call_model", side_effect=mediator),
+        ):
+            response = _generate_discussion_turn(
+                ContinuationContext(queue_id="queue-bounded",
+                                    last_alternative=""),
+                history,
+                "RC-LATEST-CURRENT",
+                {},
+            )
+
+        self.assertIn("discussion remains bounded", response)
+        messages = captured[0]
+        rendered = "\n".join(message["content"] for message in messages)
+        safe_capacity = (
+            endpoint["context_window"]
+            - boot._endpoint_output_reserve(
+                endpoint, endpoint["context_window"],
+            )
+            - 128
+        )
+        self.assertLessEqual(
+            boot.estimate_message_tokens(messages, endpoint), safe_capacity,
+        )
+        self.assertEqual(rendered.count("RC-LATEST-CURRENT"), 1)
+        selected = 0
+        for index in range(12):
+            user_present = f"RC-U{index:02d}-START" in rendered
+            assistant_present = f"RC-A{index:02d}-START" in rendered
+            self.assertEqual(user_present, assistant_present)
+            if user_present:
+                selected += 1
+                self.assertIn(f"RC-U{index:02d}-END", rendered)
+                self.assertIn(f"RC-A{index:02d}-END", rendered)
+                self.assertEqual(
+                    rendered.count(f"RC-U{index:02d}-START"), 1,
+                )
+        self.assertGreater(selected, 0)
+        self.assertLess(selected, 12)
+
+    def test_current_reply_remains_required_when_history_allowance_is_zero(self):
+        import boot
+        from resolution_chain import (
+            ContinuationContext,
+            _build_discussion_prompt,
+            _generate_discussion_turn,
+        )
+
+        latest = "RC-TIGHT-CURRENT " + ("question " * 30)
+        endpoint = {
+            "id": "resolution-tight", "type": "api",
+            "max_tokens": 1_000, "_disable_truncation_retry": True,
+        }
+        required_messages = [
+            {"role": "system",
+             "content": "You are a careful discussion mediator."},
+            {"role": "user", "content": _build_discussion_prompt("", latest)},
+        ]
+        endpoint["context_window"] = (
+            boot.estimate_message_tokens(required_messages, endpoint)
+            + endpoint["max_tokens"]
+            + 128
+        )
+        captured = []
+
+        with (
+            mock.patch.object(boot, "get_slot_endpoint", return_value=endpoint),
+            mock.patch.object(boot, "get_active_endpoint", return_value=None),
+            mock.patch.object(
+                boot,
+                "call_model",
+                side_effect=lambda messages, _endpoint, images=None: (
+                    captured.append(messages)
+                    or "The current question is addressed.\n\nALTERNATIVE:\n(none)"
+                ),
+            ),
+        ):
+            response = _generate_discussion_turn(
+                ContinuationContext(queue_id="queue-tight", last_alternative=""),
+                [{"role": "user", "content": "RC-OPTIONAL-OLD-HISTORY"}],
+                latest,
+                {},
+            )
+
+        self.assertIn("current question is addressed", response)
+        rendered = "\n".join(message["content"] for message in captured[0])
+        self.assertEqual(rendered.count("RC-TIGHT-CURRENT"), 1)
+        self.assertNotIn("RC-OPTIONAL-OLD-HISTORY", rendered)
+        self.assertLessEqual(
+            boot.estimate_message_tokens(captured[0], endpoint),
+            endpoint["context_window"] - endpoint["max_tokens"] - 128,
+        )
+
+
 # ---------- start_resolution ----------
 
 class TestStartResolution(unittest.TestCase):

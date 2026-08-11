@@ -1369,6 +1369,31 @@ class Router:
         elif ep["type"] == "api":
             v1["service"] = ep.get("service", "")
             v1["model"] = ep.get("model_id", "")
+            # Capacity metadata is part of the resolved endpoint, not a local-
+            # only concern. Dropping it made every production API route look
+            # like a 32k endpoint to the Dialogue packer; its real completion
+            # reserve then consumed that fallback window and continuity fell
+            # to zero. ``max_tokens`` is the existing v1 transport field;
+            # catalogue-shaped aliases are retained and normalized into it.
+            v1["context_window"] = (
+                ep.get("context_window")
+                or ep.get("context_length")
+                or ep.get("max_context_length")
+                or 0
+            )
+            output_cap = (
+                ep.get("max_tokens")
+                or ep.get("max_output_tokens")
+                or ep.get("output_token_limit")
+            )
+            if isinstance(output_cap, int) and not isinstance(output_cap, bool) \
+                    and output_cap > 0:
+                v1["max_tokens"] = output_cap
+            for key in ("max_output_tokens", "output_token_limit"):
+                value = ep.get(key)
+                if isinstance(value, int) and not isinstance(value, bool) \
+                        and value > 0:
+                    v1[key] = value
             v1["tool_access"] = ep.get("capabilities", {}).get("tool_access", False)
             v1["web_access"] = ep.get("capabilities", {}).get("web_access", False)
             v1["retrieval_approach"] = ep.get("capabilities", {}).get("retrieval_approach", "pre-assembled")
