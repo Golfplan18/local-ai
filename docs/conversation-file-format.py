@@ -34,7 +34,10 @@ Three storage surfaces, in order of authority:
      :class:`ChunkBodyOk`, :class:`ChunkBodyErrored`.
 
   3. **ChromaDB ``conversations`` collection** (denormalized cache for
-     embedding-based RAG). See :class:`ChromaDBChunkMetadata`.
+     retrieval). The stored document is the complete contextual header +
+     user prompt + assistant response; the separately supplied embedding is
+     bounded to contextual header + user prompt. See
+     :class:`ChromaDBChunkMetadata`.
 
 The conversation envelope is the source of truth. Both the chunk file and
 the ChromaDB row can be rebuilt from the envelope plus the raw session log
@@ -68,10 +71,10 @@ from pydantic import BaseModel, Field
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
-# Conversation-level mode (V3 Phase 1.1). Set at conversation creation,
-# immutable for the life of the conversation. Stealth conversations purge
-# on close. Private conversations retain-and-flag. Standard ("") is the
-# default and behaves like classic Ora.
+# Conversation-level privacy mode. Stealth is creation-only. Standard and
+# Private may be changed through the authoritative lifecycle endpoint. Close
+# retains Standard/Private by setting ``closed: true``; Stealth exposes
+# Delete Forever, which purges Ora-managed state.
 ConversationTag = Literal["", "stealth", "private"]
 VALID_CONVERSATION_TAGS: tuple[str, ...] = ("", "stealth", "private")
 
@@ -234,7 +237,7 @@ class ChunkBodyOk(BaseModel):
         description="The user's prompt verbatim."
     )
     ai_response: str = Field(
-        description="The assistant's response verbatim."
+        description="Assistant response verbatim; stored for retrieval but excluded from vector orientation."
     )
 
 
@@ -318,13 +321,30 @@ class Turn(BaseModel):
     )
 
 
+class ConversationContributor(BaseModel):
+    """Ordered Dialogue reference; ``title`` is display-only."""
+    kind: Literal["conversation"] = "conversation"
+    ref: str  # Live id or ``archive:`` id.
+    title: str = ""  # Never trusted to locate content.
+
+
+class AtomicNoteContributor(BaseModel):
+    """Ordered reference to one indexed atomic note."""
+    kind: Literal["atomic_note"] = "atomic_note"
+    path: str
+    title: str = ""
+
+ContributorRef = ConversationContributor | AtomicNoteContributor
 class ConversationEnvelope(BaseModel):
     """Shape of ``~/ora/sessions/{conversation_id}/conversation.json``.
 
-    Source of truth for everything the V3 sidebar / output pane needs to
-    know about a conversation. Chunk files and ChromaDB metadata are
-    denormalized caches that can be rebuilt from this envelope plus the
-    raw session log fragment.
+    Source of truth for Dialogue identity, lifecycle, ancestry, contributors,
+    and local turns. Chunk files and ChromaDB metadata are denormalized
+    retrieval/audit caches.
+
+    ``messages`` is local-only. Effective history recursively adds only each
+    direct parent's immutable local prefix, so later ancestor turns cannot
+    leak into an existing fork.
     """
 
     # ── Identity ───────────────────────────────────────────────────────────
@@ -352,12 +372,12 @@ class ConversationEnvelope(BaseModel):
     tag: ConversationTag = Field(
         default="",
         description=(
-            "Conversation-level mode. Set at creation, immutable for the "
-            "life of the conversation. Drives close-out dispatch "
-            "(empty → retain, ``stealth`` → full purge, ``private`` → "
-            "retain-and-flag) and default RAG filtering "
-            '(``tag != "private"`` is added to cross-conversation '
-            "queries)."
+            "Conversation-level privacy mode. Stealth is creation-only; "
+            "Standard and Private can be changed by the authoritative "
+            "lifecycle endpoint. Standard context may use Standard sources; "
+            "Private may use Standard + Private; Stealth may use all three. "
+            "Close retains Standard/Private, while Stealth Delete Forever "
+            "purges Ora-managed state."
         )
     )
 
@@ -371,6 +391,14 @@ class ConversationEnvelope(BaseModel):
             "backfills on next write but does not overwrite."
         )
     )
+    closed: bool = Field(
+        default=False,
+        description=(
+            "Retained hidden state for Standard/Private. ``true`` hides the "
+            "Dialogue from the sidebar but keeps it restorable in Manage; "
+            "Stealth Delete Forever purges instead."
+        ),
+    )
 
     # ── Fork ancestry (V3 Backlog 2C) ──────────────────────────────────────
 
@@ -379,9 +407,8 @@ class ConversationEnvelope(BaseModel):
         description=(
             "For forks: the parent's ``conversation_id``. ``None`` for "
             "root conversations. Pipeline reconstruction walks this "
-            "chain recursively. Non-stealth ancestors are always "
-            "available; orphan handling for purged stealth ancestors "
-            "is intentional (see Backlog item 5)."
+            "chain recursively. When a Stealth parent is deleted, direct "
+            "children are detached and this field is cleared."
         )
     )
     fork_point_message_count: Optional[int] = Field(
@@ -389,8 +416,9 @@ class ConversationEnvelope(BaseModel):
         ge=0,
         description=(
             "For forks: immutable length of the parent ``messages`` prefix "
-            "visible when the fork was created. The child stores no copied "
-            "parent messages; later parent turns are beyond this boundary."
+            "visible when the fork was created, in the direct parent's local "
+            "coordinate system. The child stores no copied parent messages; "
+            "later parent turns are beyond this boundary."
         ),
     )
     fork_point_chunk_id: Optional[str] = Field(
@@ -487,14 +515,26 @@ class ConversationEnvelope(BaseModel):
         )
     )
 
+    description: str = Field(
+        default="",
+        description="Bounded user-authored creation/discovery description; never inferred as a decision summary.",
+    )
+    contributors: list[ContributorRef] = Field(
+        default_factory=list,
+        description=(
+            "Ordered, deduplicated, uncapped explicit references. Conversation "
+            "refs resolve recursively and cutoff-safely; atomic refs use indexed "
+            "HCP chunks. Missing, withheld, and deferred refs stay inventoried."
+        ),
+    )
+
     # ── Messages ───────────────────────────────────────────────────────────
 
     messages: list[Turn] = Field(
         default_factory=list,
         description=(
-            "Ordered list of user / assistant turns. ``save_turn_"
-            "spatial_state`` appends a user turn followed by an "
-            "assistant turn per call."
+            "Local user/assistant turns only. A fork starts ``messages=[]``; "
+            "its first new exchange is local turn 1. Parent prefixes are not copied."
         )
     )
 
@@ -506,10 +546,10 @@ class ChromaDBChunkMetadata(BaseModel):
     """Metadata fields written to the ChromaDB ``conversations`` collection
     for each chunk_id.
 
-    The collection's row id is the chunk_id. The document text is the
-    embedding-input string (``context_header + "\\n\\n" + user_input``).
-    Metadata fields below are denormalized from the chunk YAML and the
-    conversation envelope so RAG queries can filter without joining.
+    The row id is the chunk_id. The stored document is the full
+    ``context_header + user_input + ai_response`` record; its vector is
+    supplied separately from bounded ``context_header + user_input`` text.
+    Metadata is denormalized so RAG queries can filter without joining.
 
     ChromaDB metadata constraints:
 
@@ -553,24 +593,23 @@ class ChromaDBChunkMetadata(BaseModel):
     )
     tag: ConversationTag = Field(
         description=(
-            "Denormalized from the conversation envelope. Default RAG "
-            'queries add ``tag != "private"`` to exclude private '
-            "content from cross-conversation retrieval."
+            "Denormalized from the envelope. Eligibility is cumulative: "
+            "Standard may use Standard, Private may use Standard + Private, "
+            "and Stealth may use all three, subject to ancestry/archive rules."
         )
     )
     conversation_id: str = Field(
         description=(
             "Links the chunk back to the V3 conversation directory. "
-            "Used by close-out dispatch to identify everything to "
-            "purge for stealth-tagged conversations (chunks, "
-            "envelope, raw log fragments, vault artifacts)."
+            "Used by protected Stealth Delete Forever to identify "
+            "Ora-managed chunks, envelope, raw fragments, indexes, and traces."
         )
     )
     raw_path: str = Field(
         description=(
             "Absolute path to the raw session log fragment. Used by "
-            "close-out dispatch to remove the raw log entry on stealth "
-            "purge."
+            "protected Stealth Delete Forever to remove the Ora-managed "
+            "raw entry."
         )
     )
 
@@ -587,9 +626,23 @@ needed — all defaults are sound):
 * Conversation envelopes written before V3 Phase 1.1 lack ``tag``.
   Readers default to ``""`` (standard mode). ``conversation_memory.py``
   backfills ``tag``, ``created``, ``parent_conversation_id``,
-  ``fork_point_message_count``, and ``fork_point_chunk_id`` to defaults on
-  the next write but does NOT
-  overwrite existing values.
+  ``fork_point_message_count``, ``fork_point_chunk_id``, ``closed``,
+  ``description``, and ``contributors`` to safe defaults on the next write
+  but does NOT overwrite existing values.
+
+* Current forks start with ``messages=[]`` and keep only local turns. A legacy
+  copied prefix is stripped on parent purge only when it exactly matches the
+  parent's full current messages; ambiguous content is preserved. The child
+  is detached and its remaining messages become its local transcript.
+
+* ``fork_point_chunk_id`` and ``forked_at`` are compatibility fields. New
+  effective-history reconstruction uses the direct parent plus immutable
+  ``fork_point_message_count``.
+
+* Standard/Private Close sets reversible ``closed: true``. Exit Stealth only
+  navigates to the latest readable direct parent (even Stealth), or a fresh
+  Standard Dialogue. Stealth Delete Forever is protected purge; explicit
+  exports and provider, Git, backup, or other external copies remain outside.
 
 * Turns written before WP-5.3 lack ``spatial_representation``,
   ``annotations``, and ``vision_extraction_result``. Readers default
@@ -611,6 +664,9 @@ __all__ = [
     "ChunkBodyOk",
     "ChunkBodyErrored",
     "Turn",
+    "ConversationContributor",
+    "AtomicNoteContributor",
+    "ContributorRef",
     "ConversationEnvelope",
     "ChromaDBChunkMetadata",
     "BACKCOMPAT_NOTES",

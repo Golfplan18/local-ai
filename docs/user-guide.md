@@ -18,16 +18,29 @@
 4. Review the surfaced set. For each item you may:
    - **Add contributor** — include that source as read-only reference material in the new Dialogue without making it an ancestor.
    - **Continue** — return to an existing live Dialogue.
-   - **Fork** — create a child of an existing live Dialogue, preserving its parent lineage.
+   - **Fork** — create a true child branch of an existing live Dialogue.
 5. If you still want a new Dialogue, select any contributors, confirm that you reviewed the suggestions, and choose **Create Dialogue**. Editing the description invalidates the prior review and requires another search.
 
 The confirmation asks Ora to issue a server-side creation contract bound to the exact title, description, selected contributors, privacy target, and active project you reviewed. Changing any of those inputs invalidates that confirmation. The new Dialogue is persisted only after the final Create action; concurrent delivery or a network retry returns the same Dialogue instead of creating another one.
 
 Its description then appears in Inquiry as an **unsent draft**; review or edit it before submitting the first turn. Continue and Fork use the same rule, carrying the description as an unsent draft rather than sending it automatically.
 
-A Dialogue may have one parent and many contributors. A parent represents fork ancestry and carries conversational history. Contributors are explicit Dialogue or atomic-note references that Ora resolves into bounded, read-only reference context on each turn. Private material cannot contribute into a Standard Dialogue, and Stealth material cannot cross out of Stealth.
+A Dialogue may have one parent and any number of explicit contributors. Ora preserves contributor order, removes duplicates, and resolves each reference on every turn. A Dialogue contributor brings only its recursively cutoff-safe history. An atomic-note contributor brings indexed whole-content chunks. Missing, privacy-withheld, and budget-deferred references remain accounted for; they are not silently dropped.
+
+Fork ancestry and contributors do different jobs. A new fork stores the direct parent and the parent's immutable local-message count at the fork point, but starts with `messages=[]`; its first new exchange is local turn 1. When you return, Ora recursively reconstructs only the permitted prefix at every ancestry edge. Later ancestor turns never leak into the child, and forking never changes the parent. The older `fork_point_chunk_id` field is compatibility metadata, not the current history boundary.
+
+Every processing path receives server-authoritative history, including Phase A cleanup, Direct, G1–G4, and special consumers. Ora packs complete turn and note units into the selected endpoint's safe request size. The Dialogue maximum is 200,000 tokens, but the effective budget can be smaller after required payload, output, retry, image, provider, and safety allowances. Recent local context and the fork frontier come first, followed by eligible contributors, older history, and lower-priority global retrieval. Ora does not cut a turn in half or infer a durable “accepted decision” from model prose; the raw exchanges remain authoritative.
+
+Privacy is cumulative: Standard may use Standard sources, Private may use Standard and Private, and Stealth may use all three. An explicitly selected archived Dialogue remains eligible as a read-only contributor when its entire required ancestry is permitted. Archived atomic notes and archived rows from global retrieval are excluded. Global retrieval also excludes the current Dialogue and all of its ancestors, contributors, and contributor ancestors so the same source cannot re-enter through a background path.
 
 Use **Library** when you want the same search outside creation. A Library result can be opened, used to seed a new contributor review, continued when it is a live Dialogue, or forked when it is a live Dialogue. Archived Dialogues and atomic notes remain read-only, so Continue and Fork are unavailable for those rows.
+
+Use the lifecycle controls literally:
+
+- The ordinary sidebar shows the current project's non-Stealth Dialogues and only the active Stealth Dialogue. Closed Dialogues live in **Manage**.
+- **Close** on Standard or Private sets a retained hidden state. Restore it from Manage; its transcript and descendants remain available.
+- **Exit Stealth** is navigation only. Ora returns to the latest readable direct parent, even if that parent is Stealth, or opens a fresh Standard Dialogue when no readable parent exists. It does not close or delete anything.
+- **Delete Forever** is the protected Stealth purge, even when descendants exist. Children detach and keep only their local turns. Ora strips a legacy copied-parent prefix only when an exact match proves what was copied; ambiguous content is preserved. Explicit exports and copies held by providers, Git, backups, or other external systems remain outside Ora's managed purge boundary.
 
 ---
 
@@ -348,7 +361,7 @@ If **Trace** is disabled or absent, the turn has no trace reference. Common caus
 ## Where your things live
 
 - **Vault** — `~/Documents/vault/`. Put files here that you want Ora to search: notes, documents, project files.
-- **Dialogues** — `~/Documents/conversations/`. Session logs of your Dialogues, saved automatically.
+- **Dialogues** — `~/Documents/conversations/`. Raw session logs are saved automatically here. Lifecycle envelopes and retrieval caches are Ora-managed companions; use the interface rather than editing any of them by hand.
 - **System prompt** — `~/ora/boot/boot.md`. Ora reads this as its operating instructions.
 - **Your values/voice** — `~/ora/mind.md`. Customizable from **Settings → Output Styles**, or via `/framework mindspec-interview`.
 - **Model configuration** — `~/ora/config/routing-config.json` (routing and slots) and `~/ora/config/model-registry.json` (model inventory). Edit these through the Models pane, not by hand.
@@ -394,7 +407,7 @@ For a script that is broken at the source level, `docs/install-manual.md` reprod
 | `<tool_call>` tags in the response | You're connected to a commercial AI directly, not to Ora's local server | Use the exact local URL Ora reports, not claude.ai / ChatGPT |
 | Health passes, but Ora cannot read `~/Documents` | macOS privacy controls denied the supervised process access | Inspect `logs/ora-server.stderr.log`. In **System Settings → Privacy & Security**, grant the selected Python/Ora process **Files & Folders** access or **Full Disk Access**, then restart the service |
 | Garbled output from a local model | The chat template needs a re-check | Switch models, or re-run the model setup |
-| Output repeats itself | The Dialogue has grown too long | Start a new Dialogue |
+| Output repeats itself | Repetition alone does not prove the Dialogue is too long; it may be a model, prompt, or coverage problem | Retry once, then inspect the Trace and numeric context coverage. Fork or start a new Dialogue only when you actually want a new branch or scope |
 | Free model unavailable or rate-limited | Expected on the Free configuration | Add OpenRouter credits or a direct provider key |
 
 If a command in this guide fails on Windows or Linux, that is consistent with the platform status: macOS is the tested target. Check the platform label on the step before assuming a defect.
@@ -415,26 +428,3 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 - (For why Ora runs two models instead of one, and why it makes AI reliable, see [[Reference — Ora Accessible Overview]].)
 - (For how any of this works under the hood — the pipeline, the vault, the model routing, the platform matrix — see [[Reference — Ora Technical Documentation]].)
 - (For the full install matrix and recovery detail, see `~/ora/docs/install-guide.md`, `install-recovery.md`, and `install-manual.md`.)
-
----
-
-## Changelog
-
-- **2026-08-05** — Replaced the removed governed-process, automation, trigger, and inspector journeys with the explicit standalone Programming path. Programming now inspects a Git repository, proposes one plan, waits for approval, executes on a task branch, uses fresh independent review, commits accepted slices, and finishes only at the approved Git boundary.
-- **2026-07-24** — Corrected G1.19 guidance after gate review: one firing claim now supplies the complete invocation and one Run; Pause is reauthenticated at the claim boundary with retry-idempotent lifecycle controls; time uses startup reconciliation plus recalculated one-shot wakes rather than interval polling.
-- **2026-07-24** — Added G1.19 Trigger Manager guidance: immutable drafts and exact activation review, manual/file/framework/time causes, Project milestone snapshots, source-bound exactly-once Run creation, pause/resume/retire semantics, restart recovery, explicit app intermittency, and the G1.21 inbound-channel boundary.
-- **2026-07-24** — Corrected the remaining G1.20 boundaries: rejected/stale Pause requests leave the Run untouched, accepted checkpoint-plus-pause state commits atomically, and quality starts derive their exact current source, subject, and Model Profile binding inside the runtime rather than trusting caller fields.
-- **2026-07-24** — Corrected G1.20 guidance: a user Pause survives retry and restart until exact Resume; no-tools workers no longer imply zero token/cost usage; and optional quality evaluation receives authenticated reviewable material or returns `INDETERMINATE` without a model call.
-- **2026-07-24** — Added G1.20 user guidance for deterministic telemetry, sidebar health/attempt/liveness summaries, exact automated-Run pause/resume/stop controls, restart reconciliation, and authority-inert opt-in quality evaluation only at handoff/output-failure seams.
-- **2026-07-24** — Clarified G1.18’s corrected fail-closed behavior: the admitted input/output schema constraints are enforced before or during the Run, verification checks every structured criterion, verifier outages pause at restart-safe checkpoints, action and final-verification baselines are reserved separately from correction retries, and either ceiling blocks rather than leaving work running.
-- **2026-07-23** — Added the G1.18 reusable-Process journey: definition review/revision/approval, exact registration and promotion, schema-driven inputs, explicit Project confirmation, no-tools manual execution, human checkpoint and restart/retry behavior, and the unsent-email boundary. Persona, Trigger scheduling, channels, and external effects remain unavailable here.
-- **2026-07-20** — G1.4: documented the shipped description-rich Dialogue creation review, combined prior-Dialogue/atomic-note discovery, server-issued exactly-once creation contract, contributor versus parent lineage, Continue/Fork alternatives, unsent-draft behavior, privacy boundaries, and the same actions in Library. The vault remains canonical and the runtime guide body is synchronized from it.
-- **2026-07-19** — G1.1 Phase 3.3 Gate correction: documented the shipped browser management surface, exact target/scope preparation, Principal/Technical tabs, five authenticated plan decisions, explicit later **Start approved plan** delegation, restart reconstruction, stale-plan handling, and visible failures. The correction adds only the browser-to-existing-governed-contract integration required by Gate 3.3; it does not enter Phase 3.4.
-- **2026-07-19** — G1.1 Phase 3.3: added task-indexed governed-process guidance for entry, project/artifact scope, management interview, canonical plan approval, leave-and-return, attention and decisions, evidence, technical inspection/external edits, Process Library invocation, activation/standing-automation limits, pause/stop/discussion/recovery, terminal artifact lifecycle, and user troubleshooting. Recorded the one-time `86a888bc` runtime-to-vault reconciliation provenance and restored vault-canonical body parity. No runtime behavior changed during that one-time documentation reconciliation; the later Gate 3.3 browser correction is recorded separately above.
-- **2026-07-12** — macOS operation now follows the consolidated supervision contract: `ora-launchd.sh install` is the recommended setup, `start.sh` and `stop.sh` delegate when supervision is installed, every operational step uses the exact reported port in the 5000–5010 range, and troubleshooting covers launchd logs plus the Documents/TCC permission caveat. The repository mirror remains body-identical.
-- **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (both unassigned and project-assigned Dialogues appear there); Commons saves now land at the vault root; and V3 uses one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
-- **2026-07-11** — Interface strings caught up to the nomenclature (ora PR #211): the running UI now shows these names, so the earlier "interface may still show older labels" caveat was removed. Still terminology-only; content remains pinned to `7a5e8f40`.
-- **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this guide — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
-- **2026-07-11** — Code-level rename landed (ora PR #218, commit `062b67a7`, well after this document's `7a5e8f40` pin): the default project's internal nexus id is now `commons`, with the legacy id `general` still recognized everywhere, permanently — not a one-time migration. This guide names no internal ids, so no body text changed. A currency note only; this document's pinned content is not re-audited against `062b67a7`.
-- **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Inquiry pane (text input), Findings pane (text output), Exhibits pane (visual canvas), Aside (side-model chat panes), Library (browse modal). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
-- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).

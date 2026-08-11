@@ -2,8 +2,6 @@
 
 *A reader-facing explanation of what Ora is and why it exists. It derives entirely from [[Reference — Ora Technical Documentation]] and introduces no new claims — where you want the mechanism in full, that document has it. This one is for the door you walk through first: why any of this matters.*
 
-> This overview describes the installed system as of the technical documentation's pinned commit `7a5e8f40`. Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
-
 ---
 
 ## What Ora is
@@ -58,11 +56,21 @@ A gear is just how much of the machinery a question gets. A quick lookup runs in
 
 ## Memory that survives you leaving
 
-Come back to a project after two weeks and you will have forgotten half of what you decided. The model will have forgotten everything — it always does.
+Come back to a project after two weeks and you will have forgotten half the discussion. The model has forgotten all of it: each request is still a new call.
 
-Except it won't, here. You sit down, ask a question, and Ora already knows your project, your earlier conclusions, where you left off, and what is still open. It feels like the system remembers you.
+Ora makes continuity a server responsibility. It keeps each Dialogue's raw user-and-assistant exchanges, reconstructs the history the current branch is actually allowed to see, and supplies that history to every processing path — from prompt cleanup and a direct answer through the higher analytical gears. The exchanges remain authoritative. Ora does not invent a separate store of “accepted decisions,” and it does not turn a model's guess about what you agreed to into memory.
 
-It doesn't, exactly — and the difference is the whole trick. Ora keeps a **vault**: your notes, documents, and refined conclusions, held as durable files on your own machine. When you ask something, Ora pulls the relevant pieces back into view before the models start working. It even weighs them — a conclusion you confirmed and refined counts for more than a passing remark in an old Dialogue. So the model isn't remembering. It is being handed exactly the right briefing, every time, assembled fresh. Picture a brilliant consultant with no memory at all, but a perfect set of briefing notes waiting on the desk each morning. That is the effect, and it is why a long project holds together across weeks instead of dissolving between sessions.
+Forking a Dialogue creates a real branch. The child starts with no copied messages and its own turn numbering; when Ora reads it, the server reconstructs only the parent prefix that existed at the fork point. Later turns in the parent cannot leak into the child, and the parent is unchanged.
+
+You can also name **contributors**: other Dialogues or indexed atomic notes that should inform the work. Their order is preserved, duplicates are removed, and there is no arbitrary contributor-count cap. A contributed Dialogue brings only the recursively permitted part of its own ancestry; a contributed note brings its indexed whole-content chunks. Missing, privacy-withheld, or budget-deferred references stay accounted for instead of disappearing silently.
+
+Ora then packs complete conversational turns and note chunks into the model's safe request size. The Dialogue maximum is 200,000 tokens, but the usable amount can be smaller once the selected endpoint's required payload, output allowance, retries, images, provider rules, and safety reserve are counted. Recent local context and the fork frontier come first, then eligible contributors, older history, and finally lower-priority background retrieval. Nothing is cut in the middle of a turn merely to make it fit.
+
+Background retrieval can find related conversation exchanges and notes that were not named explicitly. Privacy travels with the material: Standard work may use Standard sources, Private may also use Private sources, and Stealth may use all three. An explicitly named archived Dialogue remains eligible as a read-only contributor when its entire required ancestry passes that privacy test. Archived atomic notes and archived rows from global retrieval are excluded. The current Dialogue, its ancestors, contributors, and their ancestors are excluded from global retrieval so the same source does not return through two paths.
+
+Dialogue lifecycle is equally literal. **Close** on Standard or Private hides the Dialogue from the ordinary sidebar while retaining it for restoration in Manage. The sidebar shows the current project's non-Stealth Dialogues plus only the active Stealth Dialogue. **Exit Stealth** merely navigates to the latest readable direct parent — even a Stealth parent — or opens a fresh Standard Dialogue; it closes or deletes nothing. **Delete Forever** is the protected Stealth purge. Descendants survive as detached branches with their own local turns, while explicit exports and copies already held by a provider, Git, or backups remain outside Ora's managed purge boundary.
+
+So the model is not remembering. It is receiving a fresh, bounded, privacy-aware briefing whose provenance remains in the raw exchanges and source notes.
 
 ---
 
@@ -121,13 +129,3 @@ In short: Ora is a working demonstration that reliability is a system problem, n
 ---
 
 *Companion documents: [[Reference — Ora Technical Documentation]] (the full mechanism, for engineers and evaluators) and [[Guide — Using Ora]] (how to install, run, and operate it).*
-
----
-
-## Changelog
-
-- **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (it includes both empty-membership and explicitly project-assigned material); its canonical runtime sentinel is `commons`, while legacy `general` remains accepted. Commons saves now land at the vault root, and the live V3 interface is one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
-- **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this overview — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
-- **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Exhibits pane (visual canvas). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
-- **2026-07-11** — Code-level rename landed (ora PR #218, commit `062b67a7`, well after this document's `7a5e8f40` pin): the default project's internal nexus id is now `commons`, with the legacy id `general` still recognized everywhere, permanently — not a one-time migration. This overview names no internal ids, so no body text changed. A currency note only; this document's pinned content is not re-audited against `062b67a7`.
-- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).
