@@ -8872,9 +8872,17 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
                 "conversation_id": panel_id,
             }), 409
         effective_tag = _effective_conversation_tag(panel_id, tag)
+        effective_context = dict(extra_context or {})
+        effective_context.pop("contributor_bundle", None)
+        contributor_bundle = build_contributor_bundle(
+            panel_id, target_tag=effective_tag,
+        )
+        if contributor_bundle.get("sources"):
+            effective_context["contributor_bundle"] = contributor_bundle
         return _invoke_pipeline_unlocked(
             user_input, history, panel_id, is_main,
-            images=images, extra_context=extra_context, tag=effective_tag,
+            images=images, extra_context=effective_context or None,
+            tag=effective_tag,
             manual_mode_selection=manual_mode_selection,
             manual_lens_selection=manual_lens_selection,
             framework_selected=framework_selected,
@@ -8958,9 +8966,6 @@ def chat():
         extra_context["visual_kind"] = manual_visual_type
     if trace_debug_payload:
         extra_context["trace_debug"] = trace_debug_payload
-    contributor_bundle = build_contributor_bundle(panel_id, target_tag=tag)
-    if contributor_bundle.get("sources"):
-        extra_context["contributor_bundle"] = contributor_bundle
     return _invoke_pipeline(
         user_input, history, panel_id, is_main, images=images,
         extra_context=extra_context or None,
@@ -9308,10 +9313,6 @@ def chat_multipart():
             extra_context["prior_annotations"] = prior_annots
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
-
-    contributor_bundle = build_contributor_bundle(panel_id, target_tag=tag)
-    if contributor_bundle.get("sources"):
-        extra_context["contributor_bundle"] = contributor_bundle
 
     # Emit a log line so operators can see the merged inputs reached the server.
     annot_count = 0

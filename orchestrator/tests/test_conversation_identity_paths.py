@@ -777,7 +777,12 @@ class TestServerCanonicalStorage(unittest.TestCase):
         ]
 
         def model_call(messages, _endpoint, images=None):
-            captured.append(messages)
+            physical, _stats = (
+                server._boot_context_api().prepare_messages_with_continuity(
+                    messages, _endpoint,
+                )
+            )
+            captured.append(physical)
             return "direct response"
 
         with (
@@ -787,7 +792,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
                               return_value="direct system"),
             mock.patch.object(server, "call_model", side_effect=model_call),
         ):
-            frames = list(server._direct_stream_impl(
+            frames = list(server._direct_stream(
                 "direct current input", history, panel_id="direct-history",
             ))
 
@@ -1698,7 +1703,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
         }
         with (
             mock.patch.object(server, "_cross_site_mutation_response", return_value=None),
-            mock.patch.object(server, "_delete_conversation_runtime",
+            mock.patch.object(server, "_protected_delete_conversation_runtime",
                               return_value=expected) as delete,
         ):
             response = server.app.test_client().post(

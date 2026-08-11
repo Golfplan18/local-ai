@@ -92,6 +92,36 @@ class G14ConversationManagementTests(unittest.TestCase):
         row.update(overrides)
         return row
 
+    def _private_contributor_target(self, target_id):
+        source_id = f"{target_id}-private-source"
+        secret = f"PRIVATE-CONTRIBUTOR-TEXT-{target_id}"
+        runtime_memory.create_conversation_envelope(
+            source_id,
+            title="Private contributor",
+            description="Private source for the lifecycle interleaving test.",
+            tag="private",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            source_id,
+            secret,
+            "Private contributor response.",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.create_conversation_envelope(
+            target_id,
+            title="Private target",
+            description="Target whose privacy changes before execution.",
+            tag="private",
+            contributors=[{
+                "kind": "conversation",
+                "ref": source_id,
+                "title": "Private contributor",
+            }],
+            sessions_root=self.sessions,
+        )
+        return secret
+
     def _discover(self, rows=None):
         rows = rows if rows is not None else [self._source_row()]
         with (
@@ -457,7 +487,7 @@ class G14ConversationManagementTests(unittest.TestCase):
             mock.patch.object(server, "_log_pending_submission", return_value="submission-1"),
             mock.patch.object(
                 server,
-                "_invoke_pipeline",
+                "_invoke_pipeline_unlocked",
                 return_value=server._json_response({"ok": True}),
             ) as invoke,
         ):
@@ -473,6 +503,79 @@ class G14ConversationManagementTests(unittest.TestCase):
         self.assertTrue(any(
             "timing exception" in unit["content"] for unit in bundle["units"]
         ))
+
+    def _assert_private_contributor_rechecked_after_standard_transition(
+        self, route_kind,
+    ):
+        target_id = f"{route_kind}-privacy-race"
+        secret = self._private_contributor_target(target_id)
+        real_invoke = server._invoke_pipeline
+
+        def transition_then_invoke(*args, **kwargs):
+            with server._conversation_lifecycle_lock(target_id):
+                self.assertEqual(
+                    runtime_memory.get_conversation_tag(
+                        target_id, sessions_root=self.sessions,
+                    ),
+                    "private",
+                )
+                runtime_memory.set_conversation_tag(
+                    target_id, "", sessions_root=self.sessions,
+                )
+            return real_invoke(*args, **kwargs)
+
+        with (
+            mock.patch.object(
+                server, "_log_pending_submission",
+                return_value=f"submission-{route_kind}",
+            ),
+            mock.patch.object(
+                server, "_invoke_pipeline", side_effect=transition_then_invoke,
+            ),
+            mock.patch.object(
+                server, "_invoke_pipeline_unlocked",
+                return_value=server._json_response({"ok": True}),
+            ) as invoke,
+        ):
+            if route_kind == "json":
+                response = self.client.post("/chat", json={
+                    "message": "Run after the privacy transition.",
+                    "conversation_id": target_id,
+                    "panel_id": target_id,
+                    "history": [],
+                    "tag": "private",
+                })
+            else:
+                response = self.client.post(
+                    "/chat/multipart",
+                    data={
+                        "message": "Run after the privacy transition.",
+                        "conversation_id": target_id,
+                        "panel_id": target_id,
+                        "history": "[]",
+                        "tag": "private",
+                    },
+                    content_type="multipart/form-data",
+                )
+
+        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        self.assertEqual(invoke.call_args.kwargs["tag"], "")
+        context = invoke.call_args.kwargs["extra_context"]
+        self.assertNotIn(secret, json.dumps(context, sort_keys=True))
+        self.assertEqual(
+            context["contributor_bundle"]["sources"][0]["status"],
+            "withheld",
+        )
+
+    def test_json_private_contributor_is_rechecked_after_standard_transition(self):
+        self._assert_private_contributor_rechecked_after_standard_transition(
+            "json",
+        )
+
+    def test_multipart_private_contributor_is_rechecked_after_standard_transition(self):
+        self._assert_private_contributor_rechecked_after_standard_transition(
+            "multipart",
+        )
 
     def test_direct_wrapper_binds_the_same_structured_contributor_units(self):
         observed = {}
