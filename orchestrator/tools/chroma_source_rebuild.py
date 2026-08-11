@@ -29,6 +29,7 @@ import math
 import os
 import re
 import stat
+import subprocess
 from collections import defaultdict, deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -1376,6 +1377,520 @@ def execute_conversation_replay(
 
 
 # ---------------------------------------------------------------------------
+# Validated conversation promotion / rollback
+# ---------------------------------------------------------------------------
+
+
+_PROMOTION_TAGS = ("", "private", "stealth")
+_SHA256_RE = re.compile(r"\A[0-9a-f]{64}\Z")
+
+
+def _strict_json(path: Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise RebuildError(f"{label} is missing or unsafe: {path}")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RebuildError(f"{label} is invalid JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise RebuildError(f"{label} must be a JSON object: {path}")
+    return value
+
+
+def _replay_evidence(inactive: Path, active: Path) -> dict[str, Any]:
+    if (
+        inactive.is_symlink() or not inactive.is_dir()
+        or active.is_symlink() or not active.is_dir()
+    ):
+        raise RebuildError("active/inactive Chroma root is missing or unsafe")
+    inactive_real, active_real = map(
+        Path, (os.path.realpath(inactive), os.path.realpath(active)),
+    )
+    if (
+        inactive_real == active_real
+        or inactive_real in active_real.parents
+        or active_real in inactive_real.parents
+    ):
+        raise RebuildError("active and inactive Chroma roots must be disjoint")
+    report = _strict_json(
+        inactive / "conversation-replay-report.json", "conversation replay report",
+    )
+    checkpoint = _strict_json(
+        inactive / "conversation-replay-checkpoint.json", "conversation replay checkpoint",
+    )
+    profile, plan = report.get("profile"), report.get("plan")
+    if (
+        report.get("status") != "complete"
+        or not isinstance(profile, dict) or checkpoint.get("profile") != profile
+        or not isinstance(plan, dict)
+        or Path(os.path.realpath(str(report.get("target_chromadb_path") or "")))
+        != inactive_real
+    ):
+        raise RebuildError("conversation replay evidence is inconsistent")
+    try:
+        counts = (
+            int(report["target_count"]), int(plan["records"]),
+            int(checkpoint["records"]), int(checkpoint["next_index"]),
+        )
+        normalized = {
+            "provider": profile["provider"], "model": profile["model"],
+            "dimension": int(profile["dimension"]),
+            "physical_collection": profile["physical_collection"],
+        }
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RebuildError("conversation replay evidence is incomplete") from exc
+    fingerprint = plan.get("fingerprint")
+    if (
+        len(set(counts)) != 1 or counts[0] < 1
+        or checkpoint.get("plan_fingerprint") != fingerprint
+        or not isinstance(fingerprint, str) or not _SHA256_RE.fullmatch(fingerprint)
+        or any(not isinstance(normalized[key], str) or not normalized[key]
+               for key in ("provider", "model", "physical_collection"))
+        or normalized["dimension"] < 1
+    ):
+        raise RebuildError("conversation replay evidence does not agree")
+    return {"profile": normalized, "count": counts[0], "fingerprint": fingerprint}
+
+
+def _config_state(
+    path: Path, expected: str,
+) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
+    from orchestrator import retrieval_config
+
+    config = _strict_json(path, "Chroma config")
+    collections, histories = config.get("collections"), config.get("collection_history")
+    if not isinstance(collections, dict) or collections.get("conversations") != expected:
+        found = collections.get("conversations") if isinstance(collections, dict) else None
+        raise RebuildError(f"conversation mapping guard expected {expected!r}, found {found!r}")
+    if histories is None:
+        histories = {}
+    if not isinstance(config.get("embedder"), dict) or not isinstance(histories, dict):
+        raise RebuildError("Chroma config embedder/history is invalid")
+    active = retrieval_config.active_embedding_profile(config)
+    profile = {
+        "provider": active.get("provider"), "model": active.get("model"),
+        "dimension": int(active.get("dimensions") or 0), "profile_id": active.get("id"),
+    }
+    if (
+        not profile["provider"] or not profile["model"] or profile["dimension"] < 1
+        or profile["profile_id"] != f"{profile['provider']}:{profile['model']}"
+    ):
+        raise RebuildError("Chroma config embedding profile is inconsistent")
+    history = histories.get("conversations") or []
+    history = [history] if isinstance(history, str) else history
+    if not isinstance(history, list) or any(
+        not isinstance(name, str) or not name for name in history
+    ):
+        raise RebuildError("conversation collection history is invalid")
+    return config, profile, list(dict.fromkeys(history))
+
+
+def _profile_key(profile: dict[str, Any]) -> tuple[str, str, int]:
+    return profile["provider"], profile["model"], int(profile["dimension"])
+
+
+def _flip_mapping(path: Path, config: dict[str, Any], expected: str, target: str) -> list[str]:
+    if config["collections"].get("conversations") != expected:
+        raise RebuildError("conversation mapping changed before atomic flip")
+    histories = config.get("collection_history") or {}
+    history = histories.get("conversations") or []
+    history = [history] if isinstance(history, str) else history
+    config["collections"] = {**config["collections"], "conversations": target}
+    new_history = [expected, *(name for name in history if name not in {expected, target})]
+    config["collection_history"] = {**histories, "conversations": new_history}
+    rp.atomic_write_text(
+        path, json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        mode=stat.S_IMODE(path.lstat().st_mode),
+    )
+    return new_history
+
+
+def _ora_server_pids(ora_home: str | Path, ps_output: str | None = None) -> list[int]:
+    target = str(Path(os.path.realpath(ora_home)) / "server" / "app.py")
+    if ps_output is None:
+        try:
+            process = subprocess.run(
+                ["ps", "-axww", "-o", "pid=,command="], check=False,
+                capture_output=True, text=True, timeout=5,
+            )
+        except Exception as exc:
+            raise RebuildError("could not verify that Ora is stopped") from exc
+        if process.returncode:
+            raise RebuildError("could not verify that Ora is stopped")
+        ps_output = process.stdout
+    python = re.compile(r"\A[Pp]ython(?:[0-9]+(?:\.[0-9]+)*)?(?:\s+-\S+)*\Z")
+    pids: list[int] = []
+    for line in ps_output.splitlines():
+        match = re.match(r"\s*(\d+)\s+(.+)\Z", line)
+        if not match:
+            continue
+        command = match.group(2)
+        position = command.find(target)
+        if position < 0:
+            continue
+        before = command[:position].rstrip().rsplit("/", 1)[-1]
+        after = command[position + len(target):]
+        if python.fullmatch(before) and (not after or after.startswith(" ")):
+            pids.append(int(match.group(1)))
+    return pids
+
+
+def _require_stopped(home: Path, probe: Callable[[str | Path], list[int]]) -> None:
+    pids = probe(home)
+    if pids:
+        raise RebuildError(
+            f"Ora is active for ORA_HOME {home} (PID(s): {', '.join(map(str, pids))})"
+        )
+
+
+def _collection_names(client: Any) -> set[str]:
+    return {
+        name for item in client.list_collections()
+        if (name := (item if isinstance(item, str) else getattr(item, "name", "")))
+    }
+
+
+def _collection_profile(collection: Any, profile: dict[str, Any]) -> dict[str, Any]:
+    metadata = getattr(collection, "metadata", None)
+    try:
+        dimension = int(metadata.get("ora:embedding_dimension"))
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise RebuildError("conversation collection profile metadata is invalid") from exc
+    if (
+        metadata.get("ora:logical_collection") != "conversations"
+        or metadata.get("ora:embedding_profile")
+        != f"{profile['provider']}:{profile['model']}"
+        or dimension != int(profile["dimension"])
+    ):
+        raise RebuildError("conversation collection embedding profile does not match")
+    return metadata
+
+
+def _collection_ids(collection: Any) -> list[str]:
+    result = collection.get(include=[])
+    ids = result.get("ids") if isinstance(result, dict) else None
+    ids = ids.tolist() if hasattr(ids, "tolist") else ids
+    if (
+        not isinstance(ids, list) or any(not isinstance(value, str) for value in ids)
+        or len(ids) != len(set(ids)) or int(collection.count()) != len(ids)
+    ):
+        raise RebuildError("conversation collection count/id coverage is invalid")
+    return sorted(ids)
+
+
+def _audit(
+    collection: Any, profile: dict[str, Any], batch_size: int, copy_to: Any | None = None,
+) -> tuple[dict[str, Any], dict[str, tuple[str, list[float]]]]:
+    _collection_profile(collection, profile)
+    all_ids = _collection_ids(collection)
+    digests = {
+        key: hashlib.sha256()
+        for key in ("ids", "documents", "metadatas", "embeddings")
+    }
+    privacy, samples = {tag: 0 for tag in _PROMOTION_TAGS}, {}
+    for start in range(0, len(all_ids), batch_size):
+        requested = all_ids[start:start + batch_size]
+        result = collection.get(
+            ids=requested, include=["documents", "metadatas", "embeddings"],
+        )
+        values: dict[str, list[Any]] = {}
+        for key in ("ids", "documents", "metadatas", "embeddings"):
+            value = result.get(key) if isinstance(result, dict) else None
+            value = value.tolist() if hasattr(value, "tolist") else value
+            if not isinstance(value, list) or len(value) != len(requested):
+                raise RebuildError("conversation collection returned a misaligned batch")
+            values[key] = value
+        rows = dict(zip(values["ids"], zip(
+            values["documents"], values["metadatas"], values["embeddings"],
+        )))
+        if len(rows) != len(requested) or set(rows) != set(requested):
+            raise RebuildError("conversation collection returned incorrect batch ids")
+        documents, metadatas, embeddings = [], [], []
+        for row_id in requested:
+            document, metadata, vector = rows[row_id]
+            vector = vector.tolist() if hasattr(vector, "tolist") else vector
+            try:
+                vector = [float(value) for value in vector]
+            except (TypeError, ValueError) as exc:
+                raise RebuildError(f"invalid embedding for {row_id!r}") from exc
+            if (
+                not isinstance(document, str) or not isinstance(metadata, dict)
+                or len(vector) != int(profile["dimension"])
+                or not all(math.isfinite(value) for value in vector)
+            ):
+                raise RebuildError(f"invalid conversation payload/vector for {row_id!r}")
+            tag, orientation_hash = metadata.get("tag"), metadata.get(
+                "embedding_text_sha256"
+            )
+            if tag not in _PROMOTION_TAGS:
+                raise RebuildError(f"invalid privacy tag for {row_id!r}")
+            if not isinstance(orientation_hash, str) or not _SHA256_RE.fullmatch(
+                orientation_hash
+            ):
+                raise RebuildError(f"missing orientation hash for {row_id!r}")
+            if not all(part in document for part in (
+                "## Context", "## Exchange", "**User:**", "**Assistant:**",
+            )):
+                raise RebuildError(f"full conversation exchange is absent for {row_id!r}")
+            payloads = {
+                "ids": row_id, "documents": [row_id, document],
+                "metadatas": [row_id, metadata],
+                "embeddings": [row_id, [value.hex() for value in vector]],
+            }
+            for key, payload in payloads.items():
+                digests[key].update(json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                ).encode("utf-8") + b"\n")
+            privacy[tag] += 1
+            samples.setdefault(tag, (row_id, vector))
+            documents.append(document); metadatas.append(metadata); embeddings.append(vector)
+        if copy_to is not None:
+            copy_to.upsert(
+                ids=requested, documents=documents,
+                metadatas=metadatas, embeddings=embeddings,
+            )
+    return ({
+        "count": len(all_ids), "id_sha256": digests["ids"].hexdigest(),
+        "document_sha256": digests["documents"].hexdigest(),
+        "metadata_sha256": digests["metadatas"].hexdigest(),
+        "embedding_sha256": digests["embeddings"].hexdigest(),
+        "dimension": int(profile["dimension"]),
+        "profile": f"{profile['provider']}:{profile['model']}",
+        "privacy_counts": privacy,
+    }, samples)
+
+
+def _privacy_smoke(
+    collection: Any, samples: dict[str, tuple[str, list[float]]],
+) -> dict[str, int]:
+    checks = (
+        ("standard", "", {"$and": [
+            {"tag": {"$ne": "private"}}, {"tag": {"$ne": "stealth"}},
+        ]}, {""}),
+        ("private", "private", {"tag": {"$ne": "stealth"}}, {"", "private"}),
+        ("stealth", "stealth", None, set(_PROMOTION_TAGS)),
+    )
+    counts: dict[str, int] = {}
+    for label, tag, where, allowed in checks:
+        if tag not in samples:
+            raise RebuildError(f"conversation replay has no {label} query sample")
+        kwargs = {
+            "query_embeddings": [samples[tag][1]], "n_results": 5,
+            "include": ["documents", "metadatas"],
+        }
+        if where is not None:
+            kwargs["where"] = where
+        result = collection.query(**kwargs)
+        try:
+            ids, docs, metas = result["ids"][0], result["documents"][0], result["metadatas"][0]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RebuildError(f"{label} query smoke returned invalid rows") from exc
+        if (
+            not ids or not (len(ids) == len(docs) == len(metas))
+            or any(not isinstance(meta, dict) or meta.get("tag") not in allowed for meta in metas)
+        ):
+            raise RebuildError(f"{label} query smoke violated its privacy filter")
+        read = collection.get(ids=ids, include=["documents", "metadatas"])
+        stored = dict(zip(
+            read.get("ids") or [], zip(read.get("documents") or [], read.get("metadatas") or []),
+        ))
+        if any(stored.get(row_id) != payload for row_id, payload in zip(ids, zip(docs, metas))):
+            raise RebuildError(f"{label} query/read smoke payload mismatch")
+        counts[label] = len(ids)
+    return counts
+
+
+def _embedding_function(_profile: dict[str, Any]) -> Any:
+    from orchestrator.embedding import get_embedding_function
+    return get_embedding_function()
+
+
+def _chroma_client(path: str) -> Any:
+    import chromadb
+    return chromadb.PersistentClient(path=path)
+
+
+def promote_conversation_replay(
+    *,
+    inactive_chromadb_path: str | Path,
+    target_physical_collection: str,
+    expected_current_physical: str,
+    batch_size: int = 128,
+    lock_timeout: float = rp.DEFAULT_LOCK_TIMEOUT,
+    active_chromadb_path: str | Path | None = None,
+    config_path: str | Path | None = None,
+    ora_home: str | Path | None = None,
+    client_factory: Callable[[str], Any] | None = None,
+    embedding_function_factory: Callable[[dict[str, Any]], Any] | None = None,
+    ora_active_probe: Callable[[str | Path], list[int]] | None = None,
+) -> dict[str, Any]:
+    if (
+        batch_size < 1 or not target_physical_collection or not expected_current_physical
+        or target_physical_collection == expected_current_physical
+    ):
+        raise RebuildError("promotion requires a positive batch and distinct physical names")
+    inactive, active = _absolute(inactive_chromadb_path), _absolute(
+        active_chromadb_path or rp.chromadb_dir()
+    )
+    home = _absolute(ora_home or rp.WORKSPACE)
+    if config_path is None:
+        from orchestrator import retrieval_config
+        config_path = retrieval_config.CHROMADB_CONFIG_PATH
+    config_path = _absolute(config_path)
+    evidence = _replay_evidence(inactive, active)
+    replay_profile, source_name = evidence["profile"], evidence["profile"]["physical_collection"]
+    client_for, ef_for = client_factory or _chroma_client, (
+        embedding_function_factory or _embedding_function
+    )
+    probe = ora_active_probe or _ora_server_pids
+    try:
+        with rp.locked_file(config_path, timeout=lock_timeout):
+            _require_stopped(home, probe)
+            _state, profile, history = _config_state(config_path, expected_current_physical)
+            if _profile_key(profile) != _profile_key(replay_profile):
+                raise RebuildError("replay and active embedding profiles differ")
+            if target_physical_collection in history:
+                raise RebuildError("promotion target is already in collection history")
+            source_client, active_client = client_for(str(inactive)), client_for(str(active))
+            source_names, active_names = (
+                _collection_names(source_client), _collection_names(active_client),
+            )
+            if (
+                source_name not in source_names
+                or expected_current_physical not in active_names
+                or target_physical_collection in active_names
+            ):
+                raise RebuildError("source/current missing or promotion target is not fresh")
+            embedding_function = ef_for(profile)
+            source = source_client.get_collection(
+                name=source_name, embedding_function=embedding_function,
+            )
+            target = active_client.create_collection(
+                name=target_physical_collection,
+                metadata=dict(_collection_profile(source, replay_profile)),
+                embedding_function=embedding_function,
+            )
+            try:
+                source_audit, _ = _audit(
+                    source, replay_profile, batch_size, copy_to=target,
+                )
+                target_audit, samples = _audit(target, replay_profile, batch_size)
+                if source_audit["count"] != evidence["count"] or target_audit != source_audit:
+                    raise RebuildError("promoted collection count/hash/profile/privacy differs")
+                smoke = _privacy_smoke(target, samples)
+                _require_stopped(home, probe)
+                latest, latest_profile, _ = _config_state(
+                    config_path, expected_current_physical,
+                )
+                if _profile_key(latest_profile) != _profile_key(profile):
+                    raise RebuildError("embedding profile changed during promotion")
+                history = _flip_mapping(
+                    config_path, latest, expected_current_physical,
+                    target_physical_collection,
+                )
+            except BaseException:
+                try:
+                    mapped = _strict_json(
+                        config_path, "Chroma config",
+                    ).get("collections", {}).get("conversations")
+                except Exception:
+                    mapped = None
+                if mapped == expected_current_physical:
+                    try:
+                        active_client.delete_collection(name=target_physical_collection)
+                    except Exception as cleanup_error:
+                        raise RebuildError(
+                            "promotion failed and its fresh target could not be removed"
+                        ) from cleanup_error
+                raise
+    except TimeoutError as exc:
+        raise RebuildError("timed out acquiring the Chroma cutover lock") from exc
+    return {
+        "status": "promoted", "active_chromadb_path": str(active),
+        "source_physical_collection": source_name,
+        "previous_physical_collection": expected_current_physical,
+        "active_physical_collection": target_physical_collection,
+        "replay_fingerprint": evidence["fingerprint"], "validation": source_audit,
+        "query_smoke": smoke, "collection_history": history,
+        "rollback": {
+            "expected_current_physical": target_physical_collection,
+            "restore_physical_collection": expected_current_physical,
+        },
+    }
+
+
+def rollback_conversation_mapping(
+    *,
+    restore_physical_collection: str,
+    expected_current_physical: str,
+    lock_timeout: float = rp.DEFAULT_LOCK_TIMEOUT,
+    active_chromadb_path: str | Path | None = None,
+    config_path: str | Path | None = None,
+    ora_home: str | Path | None = None,
+    client_factory: Callable[[str], Any] | None = None,
+    embedding_function_factory: Callable[[dict[str, Any]], Any] | None = None,
+    ora_active_probe: Callable[[str | Path], list[int]] | None = None,
+) -> dict[str, Any]:
+    if (
+        not restore_physical_collection or not expected_current_physical
+        or restore_physical_collection == expected_current_physical
+    ):
+        raise RebuildError("rollback requires distinct non-empty physical names")
+    active, home = _absolute(active_chromadb_path or rp.chromadb_dir()), _absolute(
+        ora_home or rp.WORKSPACE
+    )
+    if active.is_symlink() or not active.is_dir():
+        raise RebuildError(f"active Chroma root is missing or unsafe: {active}")
+    if config_path is None:
+        from orchestrator import retrieval_config
+        config_path = retrieval_config.CHROMADB_CONFIG_PATH
+    config_path = _absolute(config_path)
+    client_for, ef_for = client_factory or _chroma_client, (
+        embedding_function_factory or _embedding_function
+    )
+    probe = ora_active_probe or _ora_server_pids
+    try:
+        with rp.locked_file(config_path, timeout=lock_timeout):
+            _require_stopped(home, probe)
+            _state, profile, history = _config_state(config_path, expected_current_physical)
+            client = client_for(str(active))
+            names = _collection_names(client)
+            if (
+                restore_physical_collection not in history
+                or expected_current_physical not in names
+                or restore_physical_collection not in names
+            ):
+                raise RebuildError("rollback collection is not retained or present")
+            restore = client.get_collection(
+                name=restore_physical_collection, embedding_function=ef_for(profile),
+            )
+            _collection_profile(restore, profile)
+            restored_count = len(_collection_ids(restore))
+            if not restored_count:
+                raise RebuildError("rollback conversation collection is empty")
+            _require_stopped(home, probe)
+            latest, latest_profile, latest_history = _config_state(
+                config_path, expected_current_physical,
+            )
+            if (
+                _profile_key(latest_profile) != _profile_key(profile)
+                or restore_physical_collection not in latest_history
+            ):
+                raise RebuildError("rollback guard changed during validation")
+            history = _flip_mapping(
+                config_path, latest, expected_current_physical, restore_physical_collection,
+            )
+    except TimeoutError as exc:
+        raise RebuildError("timed out acquiring the Chroma cutover lock") from exc
+    return {
+        "status": "rolled_back", "active_chromadb_path": str(active),
+        "previous_physical_collection": expected_current_physical,
+        "active_physical_collection": restore_physical_collection,
+        "target_count": restored_count, "collection_history": history,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Source-derived knowledge and dedicated MSI news collections
 # ---------------------------------------------------------------------------
 
@@ -2580,6 +3095,17 @@ def execute_source_replay(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="phase", required=True)
+
+    promote = subparsers.add_parser("promote-conversations")
+    promote.add_argument("--inactive-chromadb-path", required=True)
+    promote.add_argument("--target-physical-collection", required=True)
+    promote.add_argument("--expected-current-physical", required=True)
+    promote.add_argument("--batch-size", type=int, default=128)
+
+    rollback = subparsers.add_parser("rollback-conversations")
+    rollback.add_argument("--restore-physical-collection", required=True)
+    rollback.add_argument("--expected-current-physical", required=True)
+
     conversations = subparsers.add_parser("conversations")
     conversations.add_argument(
         "--historical-archive", default=str(rp.historical_archive_dir())
@@ -2647,7 +3173,19 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.phase == "conversations":
+    if args.phase == "promote-conversations":
+        report = promote_conversation_replay(
+            inactive_chromadb_path=args.inactive_chromadb_path,
+            target_physical_collection=args.target_physical_collection,
+            expected_current_physical=args.expected_current_physical,
+            batch_size=args.batch_size,
+        )
+    elif args.phase == "rollback-conversations":
+        report = rollback_conversation_mapping(
+            restore_physical_collection=args.restore_physical_collection,
+            expected_current_physical=args.expected_current_physical,
+        )
+    elif args.phase == "conversations":
         plan = build_conversation_replay_plan(
             historical_archive=args.historical_archive,
             conversations_root=args.conversations_root,

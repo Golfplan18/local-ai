@@ -204,6 +204,111 @@ class _MSIComposer:
         return Path(filepath).stem
 
 
+class _PromotionCollection:
+    def __init__(
+        self, name, metadata, rows=None, *,
+        fail_upsert=False, corrupt_embeddings=False,
+    ):
+        self.name = name
+        self.metadata = dict(metadata)
+        self.rows = dict(rows or {})
+        self.fail_upsert = fail_upsert
+        self.corrupt_embeddings = corrupt_embeddings
+
+    def count(self):
+        return len(self.rows)
+
+    def get(self, *, ids=None, include=None):
+        selected = list(self.rows) if ids is None else [
+            row_id for row_id in ids if row_id in self.rows
+        ]
+        include = include or []
+        result = {"ids": selected}
+        if "documents" in include:
+            result["documents"] = [self.rows[row_id][0] for row_id in selected]
+        if "metadatas" in include:
+            result["metadatas"] = [self.rows[row_id][1] for row_id in selected]
+        if "embeddings" in include:
+            result["embeddings"] = [self.rows[row_id][2] for row_id in selected]
+            if self.corrupt_embeddings and result["embeddings"]:
+                result["embeddings"][0] = list(result["embeddings"][0])
+                result["embeddings"][0][0] += 0.25
+        return result
+
+    def upsert(self, *, ids, documents, metadatas, embeddings):
+        if self.fail_upsert:
+            raise RuntimeError("synthetic copy failure")
+        for row_id, document, metadata, vector in zip(
+            ids, documents, metadatas, embeddings,
+        ):
+            self.rows[row_id] = (document, metadata, list(vector))
+
+    @staticmethod
+    def _matches(metadata, where):
+        if where is None:
+            return True
+        if "$and" in where:
+            return all(
+                _PromotionCollection._matches(metadata, clause)
+                for clause in where["$and"]
+            )
+        key, condition = next(iter(where.items()))
+        if "$ne" in condition:
+            return metadata.get(key) != condition["$ne"]
+        raise AssertionError(f"unsupported fake where clause: {where}")
+
+    def query(self, *, query_embeddings, n_results, include, where=None):
+        query = query_embeddings[0]
+        candidates = [
+            (sum((left - right) ** 2 for left, right in zip(query, vector)), row_id)
+            for row_id, (_document, metadata, vector) in self.rows.items()
+            if self._matches(metadata, where)
+        ]
+        selected = [row_id for _distance, row_id in sorted(candidates)[:n_results]]
+        result = {"ids": [selected]}
+        if "documents" in include:
+            result["documents"] = [[self.rows[row_id][0] for row_id in selected]]
+        if "metadatas" in include:
+            result["metadatas"] = [[self.rows[row_id][1] for row_id in selected]]
+        if "distances" in include:
+            result["distances"] = [[distance for distance, _row_id in sorted(candidates)[:n_results]]]
+        return result
+
+
+class _PromotionClient:
+    def __init__(
+        self, collections, *,
+        fail_created_upsert=False, corrupt_created_embeddings=False,
+    ):
+        self.collections = {collection.name: collection for collection in collections}
+        self.fail_created_upsert = fail_created_upsert
+        self.corrupt_created_embeddings = corrupt_created_embeddings
+        self.created = []
+        self.deleted = []
+
+    def list_collections(self):
+        return list(self.collections.values())
+
+    def get_collection(self, *, name, embedding_function):
+        return self.collections[name]
+
+    def create_collection(self, *, name, metadata, embedding_function):
+        if name in self.collections:
+            raise AssertionError("test attempted to overwrite a collection")
+        collection = _PromotionCollection(
+            name, metadata,
+            fail_upsert=self.fail_created_upsert,
+            corrupt_embeddings=self.corrupt_created_embeddings,
+        )
+        self.collections[name] = collection
+        self.created.append(name)
+        return collection
+
+    def delete_collection(self, *, name):
+        self.deleted.append(name)
+        del self.collections[name]
+
+
 class ConversationSourceRebuildTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -660,6 +765,254 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             ])
         self.assertEqual(result, 0)
         execute.assert_not_called()
+
+
+class ConversationPromotionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.inactive = self.root / "inactive"
+        self.active = self.root / "active"
+        self.home = self.root / "ora-home"
+        self.config_path = self.home / "config" / "chromadb.json"
+        for path in (self.inactive, self.active, self.config_path.parent):
+            path.mkdir(parents=True)
+        self.profile = {
+            "provider": "openrouter",
+            "model": "qwen/test-embedding",
+            "dimension": 3,
+            "physical_collection": "conversations_source",
+        }
+        collection_metadata = {
+            "hnsw:space": "cosine",
+            "ora:logical_collection": "conversations",
+            "ora:embedding_profile": "openrouter:qwen/test-embedding",
+            "ora:embedding_dimension": 3,
+        }
+
+        def row(row_id, tag, vector):
+            document = (
+                f"## Context\n\nContext {row_id}\n\n## Exchange\n\n"
+                f"**User:**\n\nQuestion {row_id}\n\n"
+                f"**Assistant:**\n\nAnswer {row_id}"
+            )
+            metadata = {
+                "tag": tag,
+                "conversation_id": f"conversation-{row_id}",
+                "embedding_text_sha256": hashlib.sha256(
+                    f"orientation-{row_id}".encode()
+                ).hexdigest(),
+            }
+            return document, metadata, vector
+
+        self.source_rows = {
+            "row-standard": row("standard", "", [1.0, 0.0, 0.0]),
+            "row-private": row("private", "private", [0.0, 1.0, 0.0]),
+            "row-stealth": row("stealth", "stealth", [0.0, 0.0, 1.0]),
+        }
+        source = _PromotionCollection(
+            "conversations_source", collection_metadata, self.source_rows,
+        )
+        old = _PromotionCollection(
+            "conversations_old", collection_metadata,
+            {"old-row": row("old", "", [0.5, 0.5, 0.0])},
+        )
+        older = _PromotionCollection(
+            "conversations_older", collection_metadata,
+            {"older-row": row("older", "", [0.5, 0.0, 0.5])},
+        )
+        self.inactive_client = _PromotionClient([source])
+        self.active_client = _PromotionClient([old, older])
+        self.clients = {
+            str(self.inactive.absolute()): self.inactive_client,
+            str(self.active.absolute()): self.active_client,
+        }
+        self.config = {
+            "_schema_version": 1,
+            "embedder": {
+                "profile_id": "openrouter:qwen/test-embedding",
+                "provider": "openrouter",
+                "model": "qwen/test-embedding",
+                "dim": 3,
+                "base_url": "https://example.invalid/v1",
+            },
+            "reranker": {"provider": "none", "model": ""},
+            "collections": {
+                "knowledge": "knowledge_active",
+                "conversations": "conversations_old",
+                "atomics": "atomics_active",
+            },
+            "unrelated": {"must": "survive"},
+        }
+        self._write_config(self.config)
+        fingerprint = "a" * 64
+        report = {
+            "status": "complete",
+            "target_chromadb_path": str(self.inactive.absolute()),
+            "profile": self.profile,
+            "plan": {"records": 3, "fingerprint": fingerprint},
+            "target_count": 3,
+        }
+        checkpoint = {
+            "profile": self.profile,
+            "plan_fingerprint": fingerprint,
+            "records": 3,
+            "next_index": 3,
+        }
+        (self.inactive / "conversation-replay-report.json").write_text(
+            json.dumps(report), encoding="utf-8",
+        )
+        (self.inactive / "conversation-replay-checkpoint.json").write_text(
+            json.dumps(checkpoint), encoding="utf-8",
+        )
+        self.embedding_function = mock.Mock(
+            side_effect=AssertionError("promotion called an embedding provider")
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def _write_config(self, value):
+        self.config_path.write_text(json.dumps(value, indent=2), encoding="utf-8")
+
+    def _read_config(self):
+        return json.loads(self.config_path.read_text(encoding="utf-8"))
+
+    def _kwargs(self, **overrides):
+        values = {
+            "inactive_chromadb_path": self.inactive,
+            "active_chromadb_path": self.active,
+            "config_path": self.config_path,
+            "ora_home": self.home,
+            "target_physical_collection": "conversations_new",
+            "expected_current_physical": "conversations_old",
+            "batch_size": 2,
+            "client_factory": lambda path: self.clients[path],
+            "embedding_function_factory": lambda _profile: self.embedding_function,
+            "ora_active_probe": lambda _home: [],
+        }
+        values.update(overrides)
+        return values
+
+    def test_promotion_and_rollback_refuse_same_home_active_process(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        process = mock.Mock(
+            returncode=0,
+            stdout=(
+                f" 4242 /opt/homebrew/bin/python3 -u "
+                f"{self.home.resolve()}/server/app.py\n"
+                f" 4243 /opt/homebrew/bin/python3 "
+                f"{self.home.resolve()}/server/app.py.backup\n"
+            ),
+        )
+        with mock.patch.object(rebuild.subprocess, "run", return_value=process):
+            with self.assertRaisesRegex(rebuild.RebuildError, "Ora is active"):
+                rebuild.promote_conversation_replay(**self._kwargs(
+                    ora_active_probe=None,
+                ))
+            with self.assertRaisesRegex(rebuild.RebuildError, "Ora is active"):
+                rebuild.rollback_conversation_mapping(
+                    restore_physical_collection="conversations_older",
+                    expected_current_physical="conversations_old",
+                    active_chromadb_path=self.active,
+                    config_path=self.config_path,
+                    ora_home=self.home,
+                    client_factory=lambda path: self.clients[path],
+                    embedding_function_factory=lambda _profile: self.embedding_function,
+                )
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertEqual(self.active_client.created, [])
+        self.assertEqual(self.active_client.deleted, [])
+
+    def test_copy_failure_leaves_mapping_untouched_and_old_collection_retained(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.fail_created_upsert = True
+        with self.assertRaisesRegex(RuntimeError, "synthetic copy failure"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+        self.assertEqual(
+            self._read_config()["collections"]["conversations"],
+            "conversations_old",
+        )
+
+    def test_finite_target_vector_corruption_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.corrupt_created_embeddings = True
+        with self.assertRaisesRegex(
+            rebuild.RebuildError, "count/hash/profile/privacy differs",
+        ):
+            rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_promotion_copies_exact_vectors_then_atomically_flips_mapping(self):
+        before = self._read_config()
+        probe_calls = []
+        report = rebuild.promote_conversation_replay(**self._kwargs(
+            ora_active_probe=lambda home: probe_calls.append(home) or [],
+        ))
+        after = self._read_config()
+        self.assertEqual(after["collections"]["conversations"], "conversations_new")
+        self.assertEqual(
+            after["collection_history"]["conversations"],
+            ["conversations_old"],
+        )
+        self.assertEqual(after["collections"]["knowledge"], before["collections"]["knowledge"])
+        self.assertEqual(after["embedder"], before["embedder"])
+        self.assertEqual(after["unrelated"], before["unrelated"])
+        self.assertEqual(
+            self.active_client.collections["conversations_new"].rows,
+            self.source_rows,
+        )
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, [])
+        self.assertEqual(report["validation"]["count"], 3)
+        self.assertEqual(len(report["validation"]["embedding_sha256"]), 64)
+        self.assertEqual(
+            report["validation"]["privacy_counts"],
+            {"": 1, "private": 1, "stealth": 1},
+        )
+        self.assertEqual(set(report["query_smoke"]), {"standard", "private", "stealth"})
+        self.assertEqual(len(probe_calls), 2)
+        self.embedding_function.assert_not_called()
+        self.assertTrue(Path(str(self.config_path) + ".lock").exists())
+
+    def test_rollback_requires_expected_current_and_only_flips_mapping(self):
+        rebuild.promote_conversation_replay(**self._kwargs())
+        before = self.config_path.read_text(encoding="utf-8")
+        created = list(self.active_client.created)
+        common = {
+            "restore_physical_collection": "conversations_old",
+            "active_chromadb_path": self.active,
+            "config_path": self.config_path,
+            "ora_home": self.home,
+            "client_factory": lambda path: self.clients[path],
+            "embedding_function_factory": lambda _profile: self.embedding_function,
+            "ora_active_probe": lambda _home: [],
+        }
+        with self.assertRaisesRegex(rebuild.RebuildError, "mapping guard"):
+            rebuild.rollback_conversation_mapping(
+                expected_current_physical="wrong-current", **common,
+            )
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        result = rebuild.rollback_conversation_mapping(
+            expected_current_physical="conversations_new", **common,
+        )
+        after = self._read_config()
+        self.assertEqual(after["collections"]["conversations"], "conversations_old")
+        self.assertEqual(
+            after["collection_history"]["conversations"],
+            ["conversations_new"],
+        )
+        self.assertEqual(self.active_client.created, created)
+        self.assertEqual(self.active_client.deleted, [])
+        self.assertEqual(result["target_count"], 1)
+        self.assertIn("conversations_new", self.active_client.collections)
 
 
 class DerivedCorpusSourceRebuildTests(unittest.TestCase):
