@@ -49,7 +49,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import runtime_paths as _rp
-from .conversation_memory import get_conversation_tag, set_conversation_closed
+from .conversation_memory import (
+    detach_direct_fork_children,
+    get_conversation_tag,
+    load_conversation_json,
+    set_conversation_closed,
+)
 
 
 # Purge-target roots flow from runtime_paths (ORA_HOME / ORA_VAULT /
@@ -2141,6 +2146,16 @@ def _purge_stealth_unlocked(
     chroma = Path(chromadb_path) if chromadb_path else _DEFAULT_CHROMADB_PATH
     vroot = Path(vault_sessions) if vault_sessions else _DEFAULT_VAULT_SESSIONS
 
+    parent_envelope = load_conversation_json(
+        conversation_id, sessions_root=sroot,
+    )
+    parent_messages = (
+        parent_envelope.get("messages")
+        if isinstance(parent_envelope, dict)
+        and isinstance(parent_envelope.get("messages"), list)
+        else None
+    )
+
     errors: list[str] = []
     deleted: dict[str, Any] = {
         "session_dir": False,
@@ -2810,6 +2825,23 @@ def _purge_stealth_unlocked(
     except Exception as exc:
         deleted["legacy_dispatch_session_logs"] = []
         _record_error(errors, "legacy dispatcher logs", exc)
+
+    # --- Final layer: direct fork detachment -------------------------------
+    # The parent envelope has now been purged. Current children contain only
+    # local turns; legacy copied-history children are scrubbed only when the
+    # deleted parent's complete transcript is an exact prefix.
+    try:
+        fork_children = detach_direct_fork_children(
+            conversation_id,
+            parent_messages=parent_messages,
+            sessions_root=sroot,
+        )
+        deleted["fork_children"] = fork_children
+        for error in fork_children.get("errors") or []:
+            _record_error(errors, "fork child detachment", error)
+    except Exception as exc:
+        deleted["fork_children"] = {}
+        _record_error(errors, "fork child detachment", exc)
 
     return {
         "conversation_id": conversation_id,

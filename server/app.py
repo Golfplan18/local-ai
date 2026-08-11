@@ -11993,8 +11993,10 @@ def conversations_mark_read(conversation_id):
 def conversations_fork(conversation_id):
     """V3 spec §4.2 / §5.2 — fork a conversation.
 
-    The child inherits the parent's tag + message history, with
-    ``parent_conversation_id`` pointing at the parent (Backlog 2C).
+    The child inherits the parent's tag but owns a fresh local transcript.
+    Its immutable ``fork_point_message_count`` marks the exact parent message
+    prefix visible at the requested displayed turn (or the latest prefix when
+    no turn is supplied).
     Used by the Stealth and Private dropdowns' Fork option, and may
     also serve general-mode forks.
 
@@ -12002,9 +12004,10 @@ def conversations_fork(conversation_id):
         {
           "new_id": "<override>",            # caller-supplied id; default is
                                              # parent_id + "-fork-<ts>"
+          "fork_point_turn_index": <int>,     # zero-based displayed turn;
+                                             # omitted means latest
           "fork_point_chunk_id": "<id>"      # parent's chunk_id at the
-                                             # fork point (Backlog 2C). Used
-                                             # by pipeline ancestry walks.
+                                             # fork point (legacy compatibility)
         }
 
     Response: 200 with the new envelope, or 404 if parent is missing.
@@ -12035,7 +12038,17 @@ def conversations_fork(conversation_id):
         creation_tag = raw_tag.strip().lower()
 
     fork_point_chunk_id = None
+    fork_point_turn_index = None
     if isinstance(body, dict):
+        if "fork_point_turn_index" in body:
+            raw_turn_index = body.get("fork_point_turn_index")
+            if (isinstance(raw_turn_index, bool)
+                    or not isinstance(raw_turn_index, int)
+                    or raw_turn_index < 0):
+                return json.dumps({
+                    "error": "fork_point_turn_index must be a non-negative integer",
+                }), 400
+            fork_point_turn_index = raw_turn_index
         raw = body.get("fork_point_chunk_id")
         if isinstance(raw, str) and raw.strip():
             fork_point_chunk_id = raw.strip()
@@ -12071,11 +12084,15 @@ def conversations_fork(conversation_id):
                     "error": "could not verify fork destination",
                     "detail": str(exc),
                 }), 500
-            new_envelope = fork_conversation(
-                parent_id, requested_id,
-                fork_point_chunk_id=fork_point_chunk_id,
-                creation_tag=creation_tag,
-            )
+            try:
+                new_envelope = fork_conversation(
+                    parent_id, requested_id,
+                    fork_point_turn_index=fork_point_turn_index,
+                    fork_point_chunk_id=fork_point_chunk_id,
+                    creation_tag=creation_tag,
+                )
+            except ValueError as exc:
+                return json.dumps({"error": str(exc)}), 400
     if new_envelope is None:
         return json.dumps({
             "error":           "parent Dialogue not found or unreadable",
@@ -12087,9 +12104,12 @@ def conversations_fork(conversation_id):
         "new_conversation_id":      new_envelope["conversation_id"],
         "tag":                      new_envelope.get("tag", ""),
         "parent_conversation_id":   new_envelope.get("parent_conversation_id"),
+        "fork_point_message_count": new_envelope.get("fork_point_message_count"),
         "fork_point_chunk_id":      new_envelope.get("fork_point_chunk_id"),
         "created":                  new_envelope.get("created"),
         "forked_at":                new_envelope.get("forked_at"),
+        "inherited_message_count":  new_envelope.get("fork_point_message_count", 0),
+        "local_message_count":      len(new_envelope.get("messages") or []),
         "message_count":            len(new_envelope.get("messages") or []),
     })
 

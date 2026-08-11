@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -20,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import boot  # noqa: E402
+from orchestrator import conversation_memory  # noqa: E402
 import matrix_payload  # noqa: E402
 import operation_matrix  # noqa: E402
 import project_status  # noqa: E402
@@ -360,6 +362,9 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
 
     def test_public_chat_technical_questions_do_not_trigger_status_retrieval(self) -> None:
         original_context_assembly = server.run_step2_context_assembly
+        test_sessions_context = tempfile.TemporaryDirectory()
+        self.addCleanup(test_sessions_context.cleanup)
+        test_sessions = Path(test_sessions_context.name) / "sessions"
 
         def stub_step1(user_input, *_args, **_kwargs):
             return {
@@ -403,7 +408,39 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
                 events.append("model-execution-stubbed")
                 return "G1.5 execution stub"
 
-            panel_id = f"g1-5-public-negative-{index}"
+            persistence_finished = threading.Event()
+
+            def persist_to_test_sessions(
+                panel_id, user_input, ai_response, extra_context, tag="",
+                trace_ref=None,
+            ):
+                try:
+                    extra_context = (
+                        extra_context if isinstance(extra_context, dict) else {}
+                    )
+                    conversation_memory.save_turn_spatial_state(
+                        panel_id,
+                        user_input,
+                        ai_response,
+                        spatial_representation=extra_context.get(
+                            "spatial_representation"
+                        ),
+                        annotations=extra_context.get("annotations"),
+                        vision_extraction_result=extra_context.get(
+                            "vision_extraction_result"
+                        ),
+                        tag=tag,
+                        trace_ref=trace_ref,
+                        sessions_root=test_sessions,
+                    )
+                finally:
+                    persistence_finished.set()
+
+            panel_id = (
+                f"g1-5-public-negative-{Path(test_sessions_context.name).name}-{index}"
+            )
+            live_session = conversation_memory._DEFAULT_SESSIONS_ROOT / panel_id
+            self.assertFalse(live_session.exists())
             try:
                 with self.subTest(message=message), mock.patch.object(
                     server,
@@ -431,7 +468,11 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
                     server,
                     "run_single_pass_with_tools",
                     side_effect=stub_execution,
-                ) as execute:
+                ) as execute, mock.patch.object(
+                    server,
+                    "_persist_turn_spatial_state",
+                    side_effect=persist_to_test_sessions,
+                ):
                     response = self.client.post("/chat", json={
                         "message": message,
                         "conversation_id": panel_id,
@@ -440,6 +481,14 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
             finally:
                 server._session_data.pop(panel_id, None)
             self.assertEqual(200, response.status_code)
+            self.assertTrue(persistence_finished.wait(timeout=2))
+            self.assertTrue(
+                (test_sessions / panel_id / "conversation.json").is_file()
+            )
+            self.assertFalse(
+                live_session.exists(),
+                "the test must never create a module-default live session",
+            )
             execute.assert_called_once()
             self.assertEqual(1, len(contexts))
             self.assertEqual("", contexts[0]["project_status_context"])

@@ -293,6 +293,7 @@ def _create_conversation_envelope(
         "tag": "",
         "created": now_iso,
         "parent_conversation_id": None,
+        "fork_point_message_count": None,
         "fork_point_chunk_id": None,
         "is_welcome": False,
         "project_ids": [],

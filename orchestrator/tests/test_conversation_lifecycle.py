@@ -225,11 +225,18 @@ class TestConversationMemoryLifecycle(unittest.TestCase):
             root = Path(td)
             parent_path = _write_envelope(
                 root, "parent", tag="private", display_name="Research",
-                messages=[{"role": "user", "content": "source"}],
+                messages=[
+                    {"role": "user", "content": "source one"},
+                    {"role": "assistant", "content": "answer one"},
+                    {"role": "user", "content": "source two"},
+                    {"role": "assistant", "content": "answer two"},
+                ],
             )
+            parent_before = parent_path.read_bytes()
 
             child = memory.fork_conversation(
                 "parent", "child-stealth", creation_tag="stealth",
+                fork_point_turn_index=0,
                 fork_point_chunk_id="parent-002", sessions_root=root,
                 timestamp="2026-07-12T10:00:00",
             )
@@ -237,17 +244,100 @@ class TestConversationMemoryLifecycle(unittest.TestCase):
             assert child is not None
             self.assertEqual(child["tag"], "stealth")
             self.assertEqual(child["parent_conversation_id"], "parent")
+            self.assertEqual(child["fork_point_message_count"], 2)
             self.assertEqual(child["fork_point_chunk_id"], "parent-002")
             self.assertEqual(child["display_name"], "Research (fork)")
-            child["messages"][0]["content"] = "changed only in memory"
+            self.assertEqual(child["messages"], [])
             parent = json.loads(parent_path.read_text(encoding="utf-8"))
             self.assertEqual(parent["tag"], "private")
-            self.assertEqual(parent["messages"][0]["content"], "source")
+            self.assertEqual(parent["messages"][0]["content"], "source one")
+            self.assertEqual(parent_path.read_bytes(), parent_before)
 
             inherited = memory.fork_conversation(
                 "parent", "child-inherited", sessions_root=root,
             )
             self.assertEqual(inherited["tag"], "private")
+            self.assertEqual(inherited["fork_point_message_count"], 4)
+            self.assertEqual(inherited["messages"], [])
+
+            memory.save_turn_spatial_state(
+                "parent", "later parent", "later answer", sessions_root=root,
+            )
+            persisted_child = memory.load_conversation_json(
+                "child-inherited", sessions_root=root,
+            )
+            self.assertEqual(persisted_child["fork_point_message_count"], 4)
+            self.assertEqual(persisted_child["messages"], [])
+            summaries = {
+                row["conversation_id"]: row
+                for row in memory.iter_conversations(sessions_root=root)
+            }
+            self.assertEqual(summaries["child-inherited"]["inherited_message_count"], 4)
+            self.assertEqual(summaries["child-inherited"]["local_message_count"], 0)
+
+    def test_fork_rejects_invalid_displayed_turn_without_creating_child(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_envelope(
+                root, "parent",
+                messages=[
+                    {"role": "user", "content": "source"},
+                    {"role": "assistant", "content": "answer"},
+                ],
+            )
+            for index in (-1, 1, True, "0"):
+                with self.subTest(index=index), self.assertRaises(ValueError):
+                    memory.fork_conversation(
+                        "parent", f"child-{index}",
+                        fork_point_turn_index=index,
+                        sessions_root=root,
+                    )
+            self.assertEqual(
+                sorted(path.name for path in root.iterdir()),
+                ["parent"],
+            )
+
+    def test_legacy_envelope_backfills_cutoff_on_next_write(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            path = _write_envelope(root, "legacy")
+            self.assertNotIn(
+                "fork_point_message_count",
+                json.loads(path.read_text(encoding="utf-8")),
+            )
+            memory.save_turn_spatial_state(
+                "legacy", "user", "answer", sessions_root=root,
+            )
+            self.assertIsNone(
+                json.loads(path.read_text(encoding="utf-8"))[
+                    "fork_point_message_count"
+                ]
+            )
+
+    def test_standard_and_private_close_are_retained_and_reversible(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for tag in ("", "private"):
+                with self.subTest(tag=tag):
+                    cid = "standard" if not tag else "private"
+                    path = _write_envelope(
+                        root, cid, tag=tag,
+                        messages=[{"role": "user", "content": "keep me"}],
+                    )
+                    with mock.patch.object(
+                        closeout, "_finalize_conversation_chunks",
+                        return_value={"errors": [], "chunks_updated": 0},
+                    ):
+                        result = closeout.close_conversation(
+                            cid, sessions_root=root,
+                        )
+                    self.assertEqual(result["action"], "close")
+                    self.assertTrue(path.exists())
+                    self.assertTrue(json.loads(path.read_text())["closed"])
+                    memory.set_conversation_closed(cid, False, sessions_root=root)
+                    restored = json.loads(path.read_text())
+                    self.assertNotIn("closed", restored)
+                    self.assertEqual(restored["messages"][0]["content"], "keep me")
 
 
 class TestConversationMetadataPropagation(unittest.TestCase):
@@ -1504,6 +1594,112 @@ class TestDeleteConversationForever(unittest.TestCase):
             self.assertTrue(explicit_figure.exists())
             self.assertTrue((explicit_sidecars / "figure.png").exists())
 
+    def test_delete_detaches_direct_children_without_copying_or_guessing(self):
+        with tempfile.TemporaryDirectory() as td:
+            roots = self._roots(Path(td))
+            parent_messages = [
+                {"role": "user", "content": "parent prompt"},
+                {"role": "assistant", "content": "parent answer"},
+            ]
+            _write_envelope(
+                roots["sessions"], "parent", tag="stealth",
+                messages=parent_messages,
+            )
+
+            memory.fork_conversation(
+                "parent", "current-child", sessions_root=roots["sessions"],
+                fork_point_chunk_id="legacy-readable-pointer",
+            )
+            memory.save_turn_spatial_state(
+                "current-child", "local prompt", "local answer",
+                sessions_root=roots["sessions"],
+            )
+
+            legacy_exact = {
+                "conversation_id": "legacy-exact",
+                "tag": "",
+                "parent_conversation_id": "parent",
+                "fork_point_chunk_id": "old-chunk",
+                "messages": parent_messages + [
+                    {"role": "user", "content": "legacy local"},
+                    {"role": "assistant", "content": "legacy answer"},
+                ],
+                "project_ids": [],
+            }
+            legacy_ambiguous = {
+                "conversation_id": "legacy-ambiguous",
+                "tag": "",
+                "parent_conversation_id": "parent",
+                "fork_point_chunk_id": "old-other-chunk",
+                "messages": [
+                    {"role": "user", "content": "not the parent prefix"},
+                    {"role": "assistant", "content": "must remain"},
+                ],
+                "project_ids": [],
+            }
+            for envelope in (legacy_exact, legacy_ambiguous):
+                path = (
+                    roots["sessions"] / envelope["conversation_id"]
+                    / "conversation.json"
+                )
+                path.parent.mkdir()
+                path.write_text(json.dumps(envelope), encoding="utf-8")
+            grandchild_path = _write_envelope(
+                roots["sessions"], "grandchild",
+                messages=[{"role": "user", "content": "grandchild local"}],
+            )
+            grandchild = json.loads(grandchild_path.read_text())
+            grandchild.update({
+                "parent_conversation_id": "current-child",
+                "fork_point_message_count": 2,
+                "fork_point_chunk_id": None,
+            })
+            grandchild_path.write_text(json.dumps(grandchild), encoding="utf-8")
+
+            result = self._run_delete("parent", roots)
+
+            self.assertFalse((roots["sessions"] / "parent").exists())
+            current = memory.load_conversation_json(
+                "current-child", sessions_root=roots["sessions"],
+            )
+            self.assertIsNone(current["parent_conversation_id"])
+            self.assertIsNone(current["fork_point_message_count"])
+            self.assertIsNone(current["fork_point_chunk_id"])
+            self.assertEqual(
+                [message["content"] for message in current["messages"]],
+                ["local prompt", "local answer"],
+            )
+
+            exact = memory.load_conversation_json(
+                "legacy-exact", sessions_root=roots["sessions"],
+            )
+            self.assertEqual(
+                [message["content"] for message in exact["messages"]],
+                ["legacy local", "legacy answer"],
+            )
+            ambiguous = memory.load_conversation_json(
+                "legacy-ambiguous", sessions_root=roots["sessions"],
+            )
+            self.assertEqual(ambiguous["messages"], legacy_ambiguous["messages"])
+            self.assertIsNone(ambiguous["parent_conversation_id"])
+            self.assertIn("legacy-ambiguous", " ".join(result["errors"]))
+            self.assertIn("preserved", " ".join(result["errors"]))
+
+            untouched_grandchild = json.loads(grandchild_path.read_text())
+            self.assertEqual(
+                untouched_grandchild["parent_conversation_id"], "current-child",
+            )
+            detachment = result["deleted"]["fork_children"]
+            self.assertCountEqual(
+                detachment["children_detached"],
+                ["current-child", "legacy-exact", "legacy-ambiguous"],
+            )
+            self.assertEqual(detachment["legacy_prefix_messages_removed"], 2)
+            self.assertEqual(
+                detachment["ambiguous_children_preserved"],
+                ["legacy-ambiguous"],
+            )
+
     def test_collection_not_found_is_idempotent_but_other_failures_are_loud(self):
         from chromadb.errors import NotFoundError
 
@@ -2053,6 +2249,53 @@ class TestServerLifecycleWiring(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("creation-only", response.get_data(as_text=True))
+
+    def test_fork_endpoint_resolves_displayed_turn_and_reports_counts(self):
+        import conversation_memory as legacy_import_memory
+
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            _write_envelope(
+                sessions, "api-parent",
+                messages=[
+                    {"role": "user", "content": "first"},
+                    {"role": "assistant", "content": "first answer"},
+                    {"role": "user", "content": "second"},
+                    {"role": "assistant", "content": "second answer"},
+                ],
+            )
+            with (
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(
+                    legacy_import_memory, "_DEFAULT_SESSIONS_ROOT", sessions,
+                ),
+            ):
+                response = self.server.app.test_client().post(
+                    "/api/conversation/api-parent/fork",
+                    json={
+                        "new_id": "api-child",
+                        "fork_point_turn_index": 0,
+                    },
+                )
+                invalid = self.server.app.test_client().post(
+                    "/api/conversation/api-parent/fork",
+                    json={
+                        "new_id": "invalid-child",
+                        "fork_point_turn_index": 2,
+                    },
+                )
+
+            self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+            payload = json.loads(response.get_data(as_text=True))
+            self.assertEqual(payload["fork_point_message_count"], 2)
+            self.assertEqual(payload["inherited_message_count"], 2)
+            self.assertEqual(payload["local_message_count"], 0)
+            child = json.loads(
+                (sessions / "api-child" / "conversation.json").read_text()
+            )
+            self.assertEqual(child["messages"], [])
+            self.assertEqual(invalid.status_code, 400)
+            self.assertFalse((sessions / "invalid-child").exists())
 
     def test_deleted_tombstone_refuses_late_save(self):
         self.server._deleted_conversations.add("gone")

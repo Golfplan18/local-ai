@@ -238,6 +238,17 @@ def normalize_project_ids(project_ids: Any) -> list[str]:
     return cleaned
 
 
+def _normalize_fork_point_message_count(value: Any) -> int | None:
+    """Return a valid immutable parent-prefix length or ``None``.
+
+    ``bool`` is excluded even though it subclasses ``int``: accepting it
+    would turn malformed JSON into a plausible ancestry boundary.
+    """
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Conversation JSON I/O
 # ---------------------------------------------------------------------------
@@ -318,6 +329,9 @@ def _read_normalized_envelope(
     normalized = normalize_project_ids(data.get("project_ids"))
     needs_heal = "project_ids" in data and data.get("project_ids") != normalized
     data["project_ids"] = normalized
+    data["fork_point_message_count"] = _normalize_fork_point_message_count(
+        data.get("fork_point_message_count")
+    )
     # Contributors are an additive v0 field. Sanitise the outward snapshot but
     # do not churn every pre-G1.4 envelope merely to add an empty list.
     data["contributors"] = normalize_contributors(data.get("contributors"))
@@ -344,6 +358,11 @@ def _read_normalized_envelope(
                     and current.get("project_ids") != current_normalized
                 )
                 current["project_ids"] = current_normalized
+                current["fork_point_message_count"] = (
+                    _normalize_fork_point_message_count(
+                        current.get("fork_point_message_count")
+                    )
+                )
                 current["contributors"] = normalize_contributors(
                     current.get("contributors")
                 )
@@ -379,6 +398,11 @@ def _mutate_conversation_envelope(
                 if not isinstance(data, dict):
                     return None
                 data["project_ids"] = normalize_project_ids(data.get("project_ids"))
+                data["fork_point_message_count"] = (
+                    _normalize_fork_point_message_count(
+                        data.get("fork_point_message_count")
+                    )
+                )
                 data["contributors"] = normalize_contributors(
                     data.get("contributors")
                 )
@@ -447,6 +471,7 @@ def ensure_conversation_envelope(
         "tag": envelope_tag,
         "created": _dt.now().isoformat(timespec="seconds"),
         "parent_conversation_id": None,
+        "fork_point_message_count": None,
         "fork_point_chunk_id": None,
         "project_ids": normalize_project_ids(project_ids),
         "contributors": [],
@@ -538,6 +563,7 @@ def create_conversation_envelope(
         "tag": tag,
         "created": created,
         "parent_conversation_id": None,
+        "fork_point_message_count": None,
         "fork_point_chunk_id": None,
         "project_ids": normalize_project_ids(project_ids),
         "contributors": clean_contributors,
@@ -700,6 +726,7 @@ def _do_write(
             "tag":                     envelope_tag,
             "created":                 timestamp or _dt.now().isoformat(timespec="seconds"),
             "parent_conversation_id":  None,
+            "fork_point_message_count": None,
             "fork_point_chunk_id":     None,
             "project_ids":             normalize_project_ids(project_ids),
             "contributors":            [],
@@ -716,6 +743,11 @@ def _do_write(
             existing["created"] = timestamp or _dt.now().isoformat(timespec="seconds")
         if "parent_conversation_id" not in existing:
             existing["parent_conversation_id"] = None
+        existing["fork_point_message_count"] = (
+            _normalize_fork_point_message_count(
+                existing.get("fork_point_message_count")
+            )
+        )
         if "fork_point_chunk_id" not in existing:
             existing["fork_point_chunk_id"] = None
         # Preserve real memberships, but lazily heal legacy/default sentinels
@@ -1038,11 +1070,19 @@ def iter_conversations(
         # group at the top of the sidebar (independent of the WELCOME
         # auto-pin via is_welcome).
         user_pinned = bool(data.get("pinned"))
+        local_message_count = len(messages) if isinstance(messages, list) else 0
+        inherited_message_count = (
+            _normalize_fork_point_message_count(
+                data.get("fork_point_message_count")
+            ) or 0
+        )
         summaries.append({
             "conversation_id": entry.name,
             "tag": tag,
             "title": title,
-            "message_count": len(messages) if isinstance(messages, list) else 0,
+            "message_count": local_message_count,
+            "local_message_count": local_message_count,
+            "inherited_message_count": inherited_message_count,
             "last_activity_at": _last_activity_at(messages),
             "last_read_at": last_read,
             "is_welcome": is_welcome,
@@ -1053,6 +1093,9 @@ def iter_conversations(
             "parent_conversation_id": (
                 data.get("parent_conversation_id")
                 if isinstance(data.get("parent_conversation_id"), str) else None
+            ),
+            "fork_point_message_count": _normalize_fork_point_message_count(
+                data.get("fork_point_message_count")
             ),
             "fork_point_chunk_id": (
                 data.get("fork_point_chunk_id")
@@ -1191,6 +1234,7 @@ def ensure_welcome_thread(
         "tag":                     "",
         "created":                 now_iso,
         "parent_conversation_id":  None,
+        "fork_point_message_count": None,
         "fork_point_chunk_id":     None,
         "is_welcome":              True,
         "project_ids":             [],
@@ -1223,16 +1267,56 @@ def ensure_welcome_thread(
             return False
 
 
+def _fork_point_message_count_for_turn(
+    messages: list[Any],
+    turn_index: int | None,
+) -> int:
+    """Resolve a displayed turn to an exact raw-message prefix length.
+
+    The grouping mirrors the browser's Dialogue renderer: a user message waits
+    for an assistant, a second user closes the prior user-only turn, and a
+    standalone assistant is its own turn. The stored count is the durable
+    boundary; later parent appends cannot move it.
+    """
+    if turn_index is None:
+        return len(messages)
+    if isinstance(turn_index, bool) or not isinstance(turn_index, int):
+        raise ValueError("fork_point_turn_index must be an integer")
+    if turn_index < 0:
+        raise ValueError("fork_point_turn_index is out of range")
+
+    turn_boundaries: list[int] = []
+    pending_user_index: int | None = None
+    for message_index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        if role == "user":
+            if pending_user_index is not None:
+                turn_boundaries.append(message_index)
+            pending_user_index = message_index
+        elif role == "assistant":
+            turn_boundaries.append(message_index + 1)
+            pending_user_index = None
+    if pending_user_index is not None:
+        turn_boundaries.append(pending_user_index + 1)
+
+    if turn_index >= len(turn_boundaries):
+        raise ValueError("fork_point_turn_index is out of range")
+    return turn_boundaries[turn_index]
+
+
 def fork_conversation(
     parent_id: str,
     new_id: str,
     *,
+    fork_point_turn_index: int | None = None,
     fork_point_chunk_id: str | None = None,
     creation_tag: str | None = None,
     sessions_root: Path | None = None,
     timestamp: str | None = None,
 ) -> dict | None:
-    """Create a child conversation with copied history and a creation tag.
+    """Create a child-local conversation with an immutable ancestry boundary.
 
     V3 spec §4.2 / §5.2 (fork from default) and §4.3 / §5.3 (fork from
     mode). The child conversation:
@@ -1242,17 +1326,16 @@ def fork_conversation(
       * inherits the parent's ``tag`` unless ``creation_tag`` explicitly
         selects a valid mode. This is a new envelope, so a Stealth override is
         allowed without making Stealth mutable on the parent.
-      * gets ``parent_conversation_id`` pointing at the parent (V3
-        Backlog 2C field name; this is the unambiguous fork-ancestry key
-        used by pipeline reconstruction in conversation_closeout)
-      * gets ``fork_point_chunk_id`` — the parent's chunk_id where this
-        fork was created. None if not supplied. Uses chunk_id rather than
-        turn number because pair_num resets within a session, so chunk_id
-        is the only unambiguous global pointer.
+      * gets ``fork_point_message_count``, the exact parent-message prefix
+        visible at the fork. A requested ``fork_point_turn_index`` is resolved
+        against the browser's displayed turns; when omitted, the boundary is
+        the parent's latest message.
+      * retains the legacy ``parent_conversation_id`` and
+        ``fork_point_chunk_id`` fields for older readers.
       * gets ``created`` (the fork creation time) and a legacy
         ``forked_at`` mirror for any older callers
-      * carries forward a deep copy of the parent's ``messages[]`` so the
-        child has full conversational context from the fork point
+      * starts with an empty local ``messages[]``. Ancestry can be reconstructed
+        read-only through the immutable cutoff rather than copied into the child.
 
     Returns the new envelope dict on success, or None if the parent is
     missing / unreadable.
@@ -1262,6 +1345,8 @@ def fork_conversation(
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    parent_id = validate_conversation_id(parent_id)
+    new_id = validate_conversation_id(new_id)
     parent = load_conversation_json(parent_id, sessions_root=root)
     if parent is None:
         return None
@@ -1274,6 +1359,9 @@ def fork_conversation(
     parent_messages = parent.get("messages") or []
     if not isinstance(parent_messages, list):
         parent_messages = []
+    boundary_message_count = _fork_point_message_count_for_turn(
+        parent_messages, fork_point_turn_index,
+    )
     # Inherit display name with a "(fork)" suffix so the user sees a
     # distinct row but can rename it.
     parent_display = parent.get("display_name") or ""
@@ -1294,6 +1382,7 @@ def fork_conversation(
         "tag":                     child_tag,
         "created":                 forked_at,
         "parent_conversation_id":  parent_id,
+        "fork_point_message_count": boundary_message_count,
         "fork_point_chunk_id":     fork_point_chunk_id,
         "forked_at":               forked_at,
         "project_ids":             list(parent_projects),
@@ -1302,7 +1391,7 @@ def fork_conversation(
             if isinstance(parent.get("description"), str) else ""
         ),
         "contributors":            copy.deepcopy(parent_contributors),
-        "messages":                copy.deepcopy(parent_messages),
+        "messages":                [],
     }
 
     try:
@@ -1325,6 +1414,139 @@ def fork_conversation(
         except (OSError, TimeoutError, ValueError):
             return None
     return child
+
+
+def detach_direct_fork_children(
+    parent_id: str,
+    *,
+    parent_messages: list[Any] | None,
+    sessions_root: Path | None = None,
+) -> dict[str, Any]:
+    """Detach direct children before a parent transcript becomes unavailable.
+
+    Current forks contain only local messages, so detachment clears their
+    ancestry fields without touching ``messages``. Legacy forks copied the
+    parent's transcript. That prefix is removed only when the child's messages
+    begin with the parent's complete current message list; every less-certain
+    legacy shape is preserved and reported.
+    """
+    parent_id = validate_conversation_id(parent_id)
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    parent_snapshot = (
+        copy.deepcopy(parent_messages)
+        if isinstance(parent_messages, list) else None
+    )
+    result: dict[str, Any] = {
+        "children_detached": [],
+        "legacy_prefix_messages_removed": 0,
+        "ambiguous_children_preserved": [],
+        "errors": [],
+    }
+    try:
+        if root.is_symlink() or not root.is_dir():
+            return result
+    except OSError as exc:
+        result["errors"].append(f"sessions root {root}: {exc}")
+        return result
+
+    containers = [root]
+    archive_root = root / "archived"
+    try:
+        if (archive_root.exists() and not archive_root.is_symlink()
+                and archive_root.is_dir()):
+            containers.append(archive_root)
+    except OSError as exc:
+        result["errors"].append(f"sessions archive {archive_root}: {exc}")
+
+    for container in containers:
+        try:
+            entries = list(container.iterdir())
+        except OSError as exc:
+            result["errors"].append(f"sessions scan {container}: {exc}")
+            continue
+        for session_dir in entries:
+            if container == root and session_dir.name == "archived":
+                continue
+            try:
+                if session_dir.is_symlink() or not session_dir.is_dir():
+                    continue
+                path = session_dir / "conversation.json"
+                if path.is_symlink() or not path.is_file():
+                    continue
+                initial = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if (not isinstance(initial, dict)
+                    or not isinstance(initial.get("parent_conversation_id"), str)
+                    or initial["parent_conversation_id"].strip().casefold()
+                    != parent_id.casefold()):
+                continue
+
+            child_id = session_dir.name
+            with _conversation_write_lock(child_id):
+                try:
+                    with _rp.locked_file(path):
+                        current = json.loads(path.read_text(encoding="utf-8"))
+                        if (not isinstance(current, dict)
+                                or not isinstance(
+                                    current.get("parent_conversation_id"), str,
+                                )
+                                or current["parent_conversation_id"].strip().casefold()
+                                != parent_id.casefold()):
+                            continue
+
+                        raw_cutoff = current.get("fork_point_message_count")
+                        cutoff = _normalize_fork_point_message_count(raw_cutoff)
+                        messages = current.get("messages")
+                        removed = 0
+                        ambiguous = False
+
+                        if raw_cutoff is not None and cutoff is None:
+                            ambiguous = bool(messages)
+                            result["errors"].append(
+                                f"child {child_id}: invalid fork_point_message_count; "
+                                "messages preserved"
+                            )
+                        elif cutoff is None and isinstance(messages, list) and messages:
+                            if (parent_snapshot is not None
+                                    and parent_snapshot
+                                    and len(messages) >= len(parent_snapshot)
+                                    and messages[:len(parent_snapshot)] == parent_snapshot):
+                                removed = len(parent_snapshot)
+                                current["messages"] = messages[removed:]
+                            elif parent_snapshot:
+                                ambiguous = True
+                                result["errors"].append(
+                                    f"child {child_id}: legacy messages do not contain "
+                                    "the deleted parent's exact full prefix; preserved"
+                                )
+                            elif parent_snapshot is None:
+                                ambiguous = True
+                                result["errors"].append(
+                                    f"child {child_id}: deleted parent messages are "
+                                    "unavailable; legacy messages preserved"
+                                )
+                        elif not isinstance(messages, list):
+                            ambiguous = True
+                            result["errors"].append(
+                                f"child {child_id}: messages is not a list; preserved"
+                            )
+
+                        current["parent_conversation_id"] = None
+                        current["fork_point_message_count"] = None
+                        current["fork_point_chunk_id"] = None
+                        if not _atomic_write_envelope(path, current):
+                            result["errors"].append(
+                                f"child {child_id}: envelope rewrite failed"
+                            )
+                            continue
+                        result["children_detached"].append(child_id)
+                        result["legacy_prefix_messages_removed"] += removed
+                        if ambiguous:
+                            result["ambiguous_children_preserved"].append(child_id)
+                except (OSError, TimeoutError, json.JSONDecodeError) as exc:
+                    result["errors"].append(f"child {child_id}: {exc}")
+    return result
 
 
 def mark_conversation_errored(
@@ -1533,6 +1755,7 @@ __all__ = [
     "mark_conversation_errored",
     "clear_conversation_error",
     "fork_conversation",
+    "detach_direct_fork_children",
     "ensure_welcome_thread",
     "set_display_name",
     "set_conversation_pinned",

@@ -384,13 +384,21 @@ class ConversationEnvelope(BaseModel):
             "is intentional (see Backlog item 5)."
         )
     )
+    fork_point_message_count: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "For forks: immutable length of the parent ``messages`` prefix "
+            "visible when the fork was created. The child stores no copied "
+            "parent messages; later parent turns are beyond this boundary."
+        ),
+    )
     fork_point_chunk_id: Optional[str] = Field(
         default=None,
         description=(
-            "For forks: the parent's ``chunk_id`` at the fork point. "
-            "Uses ``chunk_id`` rather than turn number because "
-            "``pair_num`` resets within a session, so ``chunk_id`` is "
-            "the only unambiguous global pointer inside a conversation."
+            "Legacy fork pointer retained for older readers. New ancestry "
+            "uses ``fork_point_message_count`` because envelope messages do "
+            "not carry chunk IDs."
         )
     )
     forked_at: Optional[str] = Field(
@@ -578,8 +586,9 @@ needed — all defaults are sound):
 
 * Conversation envelopes written before V3 Phase 1.1 lack ``tag``.
   Readers default to ``""`` (standard mode). ``conversation_memory.py``
-  backfills ``tag``, ``created``, ``parent_conversation_id``, and
-  ``fork_point_chunk_id`` to defaults on the next write but does NOT
+  backfills ``tag``, ``created``, ``parent_conversation_id``,
+  ``fork_point_message_count``, and ``fork_point_chunk_id`` to defaults on
+  the next write but does NOT
   overwrite existing values.
 
 * Turns written before WP-5.3 lack ``spatial_representation``,
