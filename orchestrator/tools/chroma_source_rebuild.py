@@ -563,6 +563,7 @@ def _historical_records(
     paths = sorted(archive_root.glob("*.md"), key=lambda item: item.name)
     session_numbers: dict[str, list[int]] = defaultdict(list)
     session_privacy: dict[str, set[str]] = defaultdict(set)
+    stealth_sessions: set[str] = set()
     first_user_inputs: dict[str, tuple[int, str]] = {}
     valid_paths: list[Path] = []
     for path in paths:
@@ -577,7 +578,7 @@ def _historical_records(
                 raise ValueError("source_timestamp is missing or invalid")
             lowered_tags = {tag.casefold() for tag in pair.tags}
             if "stealth" in lowered_tags:
-                raise ValueError("cleaned pair contains stealth data")
+                stealth_sessions.add(pair.source_chat)
             valid_paths.append(path)
             session_numbers[pair.source_chat].append(pair.source_pair_num)
             session_privacy[pair.source_chat].add(
@@ -590,7 +591,6 @@ def _historical_records(
                 )
         except Exception as exc:
             plan.errors.append(f"cleaned pair {path}: {exc}")
-    plan.historical_files = len(valid_paths)
 
     try:
         session_to_chain, chain_labels = _load_chain_index(
@@ -600,13 +600,15 @@ def _historical_records(
         plan.errors.append(str(exc))
         session_to_chain, chain_labels = {}, {}
 
-    plan.historical_sessions = len(session_numbers)
+    plan.historical_sessions = len(session_numbers.keys() - stealth_sessions)
     records: list[ReplayRecord] = []
     fingerprints: dict[str, str] = {}
     signatures: set[str] = set()
     invalid_sessions: set[str] = set()
     session_tags: dict[str, str] = {}
     for source_chat, values in session_numbers.items():
+        if source_chat in stealth_sessions:
+            continue
         numbers = sorted(values)
         if len(numbers) != len(set(numbers)):
             plan.errors.append(
@@ -633,8 +635,17 @@ def _historical_records(
             plan.errors.append(f"cleaned pair changed before replay {path}: {exc}")
             continue
         source_chat = pair.source_chat
+        context = _compose_context_header(pair)
+        signature = _source_signature(
+            context, pair.cleaned_user_input, pair.cleaned_ai_response
+        )
+        if source_chat in stealth_sessions:
+            plan.ignored_files.append(str(path))
+            signatures.add(signature)
+            continue
         if source_chat in invalid_sessions:
             continue
+        plan.historical_files += 1
         tag = session_tags[source_chat]
         session_id = derive_session_id(source_chat)
         conversation_id = historical_conversation_id(source_chat)
@@ -642,7 +653,6 @@ def _historical_records(
         chain_label = chain_labels.get(chain_id, "")
         first_user_input = first_user_inputs[source_chat][1]
         final_turn = max(session_numbers[source_chat])
-        context = _compose_context_header(pair)
         topics = _topics_from_pair(pair)
         topic_primary = topics[0] if topics else ""
         document_voice = _user_voice_only(pair)
@@ -700,9 +710,7 @@ def _historical_records(
         fingerprints[row_id] = fingerprint
         if materialize:
             records.append(record)
-        signatures.add(_source_signature(
-            context, pair.cleaned_user_input, pair.cleaned_ai_response
-        ))
+        signatures.add(signature)
     return records, signatures, fingerprints
 
 
@@ -898,6 +906,7 @@ def _live_records(
     materialize: bool,
 ) -> tuple[list[ReplayRecord], dict[str, str]]:
     pending: list[tuple[_Chunk, ReplayRecord, int | None]] = []
+    stealth_conversations: set[str] = set()
     for path in sorted(conversations_root.glob("*.md"), key=lambda item: item.name):
         try:
             text = _read_text_snapshot(path, conversations_root, label="conversation chunk")
@@ -918,9 +927,6 @@ def _live_records(
             signature = _source_signature(
                 chunk.context, chunk.user_input, chunk.ai_response
             )
-            if signature in historical_signatures:
-                plan.derived_historical_files += 1
-                continue
             parsed_id, model_id, turn_index, total_hint, parsed_title = (
                 _context_identity(chunk.context)
             )
@@ -928,37 +934,13 @@ def _live_records(
             owners = _manifest_owner_for_chunk(
                 chunk, candidates, parsed_id, plan
             )
-            if not owners:
-                # A canonical-looking file is not sufficient authority for
-                # deletion/privacy metadata. Only latest manifest-owned rows
-                # are replayed; unmanifested legacy/test residue is reported
-                # as ignored rather than guessed into the new corpus.
-                plan.ignored_files.append(str(path))
-                continue
+            owner_privacy: list[tuple[_ManifestOwner, dict[str, Any], str]] = []
             for owner in owners:
                 conversation_id = owner.conversation_id
                 if not _SAFE_ID_RE.fullmatch(conversation_id):
                     raise ValueError(
                         f"invalid manifest conversation_id {conversation_id!r}"
                     )
-                row_id = owner.chunk_id
-                owner_turn_index = turn_index
-                session_match = _SESSION_ID_RE.fullmatch(row_id)
-                if session_match:
-                    session_id = session_match.group("session")
-                    owner_turn_index = owner_turn_index or int(
-                        session_match.group("turn")
-                    )
-                else:
-                    session_id = hashlib.sha256(
-                        conversation_id.encode("utf-8")
-                    ).hexdigest()[:16]
-                if owner_turn_index < 1:
-                    filename_pair = _FILENAME_PAIR_RE.search(path.name)
-                    owner_turn_index = (
-                        int(filename_pair.group("turn")) if filename_pair else 1
-                    )
-
                 envelope: dict[str, Any] = {}
                 if sessions_root is not None:
                     envelope = _envelope(
@@ -979,6 +961,38 @@ def _live_records(
                     else "private" if "private" in privacy_sources
                     else ""
                 )
+                if tag == "stealth":
+                    stealth_conversations.add(conversation_id)
+                owner_privacy.append((owner, envelope, tag))
+            if signature in historical_signatures:
+                plan.derived_historical_files += 1
+                continue
+            if not owners:
+                # A canonical-looking file is not sufficient authority for
+                # deletion/privacy metadata. Only latest manifest-owned rows
+                # are replayed; unmanifested legacy/test residue is reported
+                # as ignored rather than guessed into the new corpus.
+                plan.ignored_files.append(str(path))
+                continue
+            for owner, envelope, tag in owner_privacy:
+                conversation_id = owner.conversation_id
+                row_id = owner.chunk_id
+                owner_turn_index = turn_index
+                session_match = _SESSION_ID_RE.fullmatch(row_id)
+                if session_match:
+                    session_id = session_match.group("session")
+                    owner_turn_index = owner_turn_index or int(
+                        session_match.group("turn")
+                    )
+                else:
+                    session_id = hashlib.sha256(
+                        conversation_id.encode("utf-8")
+                    ).hexdigest()[:16]
+                if owner_turn_index < 1:
+                    filename_pair = _FILENAME_PAIR_RE.search(path.name)
+                    owner_turn_index = (
+                        int(filename_pair.group("turn")) if filename_pair else 1
+                    )
                 raw_path = owner.raw_path
                 if raw_path:
                     raw_candidate = _absolute(raw_path)
@@ -1047,7 +1061,12 @@ def _live_records(
     for item in pending:
         grouped[str(item[1].metadata["conversation_id"])].append(item)
     finalized_records: list[ReplayRecord] = []
-    for items in grouped.values():
+    for conversation_id, items in grouped.items():
+        if conversation_id in stealth_conversations:
+            for _chunk, record, _hint in items:
+                if record.source_path not in plan.ignored_files:
+                    plan.ignored_files.append(record.source_path)
+            continue
         final_turn = max(
             max(int(item[1].metadata["turn_index"]), int(item[2] or 0))
             for item in items
@@ -1381,7 +1400,7 @@ def execute_conversation_replay(
 # ---------------------------------------------------------------------------
 
 
-_PROMOTION_TAGS = ("", "private", "stealth")
+_PROMOTION_TAGS = ("", "private")
 _SHA256_RE = re.compile(r"\A[0-9a-f]{64}\Z")
 
 
@@ -1587,7 +1606,7 @@ def _audit(
         key: hashlib.sha256()
         for key in ("ids", "documents", "metadatas", "embeddings")
     }
-    privacy, samples = {tag: 0 for tag in _PROMOTION_TAGS}, {}
+    privacy, samples = {"": 0, "private": 0, "stealth": 0}, {}
     for start in range(0, len(all_ids), batch_size):
         requested = all_ids[start:start + batch_size]
         result = collection.get(

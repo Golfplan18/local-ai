@@ -7750,11 +7750,11 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
        (YAML frontmatter + contextual header + exchange body, one file per pair)
        Filename: YYYY-MM-DD_HH-MM_session-[id]_pair-[NNN]_[topic-slug].md
 
-    3. Index the processed chunk into the ChromaDB "conversations" collection
-       through the machine-specific embedding profile in config/chromadb.json
-       (tracked fresh-install fallback: Ollama BGE-M3 at 1,024 dimensions;
-       embedding input = header + user prompt only, per the Conversation
-       Processing Pipeline spec)
+    3. For Standard and Private only, index the processed chunk into the
+       ChromaDB "conversations" collection through the machine-specific
+       embedding profile in config/chromadb.json (tracked fresh-install
+       fallback: Ollama BGE-M3 at 1,024 dimensions; embedding input = header +
+       user prompt only, per the Conversation Processing Pipeline spec)
 
     V3 Phase 1.2: ``tag`` (one of CONVERSATION_TAGS — empty / stealth /
     private) is denormalized into the chunk's ChromaDB metadata under the
@@ -7960,6 +7960,12 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
     )
     with open(chunk_path, "w", encoding="utf-8") as f:
         f.write(chunk_content)
+
+    # Stealth exchanges remain authoritative for direct Dialogue continuity
+    # and protected deletion, but never enter persisted/global Conversation
+    # RAG or its embedding-provider path.
+    if tag == "stealth":
+        return chunk_id
 
     # ── Step 3: Index into ChromaDB conversations collection ─────────────────
     # Phase 5.8: ~22-field metadata schema per Conv RAG §2.

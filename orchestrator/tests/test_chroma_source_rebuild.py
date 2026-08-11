@@ -19,7 +19,9 @@ def _cleaned_pair(
     user: str = "Question",
     assistant: str = "Answer",
     private: bool = False,
+    stealth: bool = False,
 ) -> str:
+    tag = "stealth" if stealth else "private" if private else ""
     return f"""---
 nexus:
 type: cleaned-pair
@@ -34,7 +36,7 @@ prior_pair:
 next_pair:
 processing_model: test
 processed_at: 2026-07-12T00:00:00
-tags: [{"private" if private else ""}]
+tags: [{tag}]
 ---
 
 ## Context
@@ -386,6 +388,67 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(metadata["chain_id"], "chain-1")
         self.assertEqual(metadata["chain_label"], "Example chain")
 
+    def test_historical_stealth_pair_is_ignored_without_source_mutation(self):
+        source = self.archive / "stealth-pair.md"
+        content = _cleaned_pair(stealth=True)
+        source.write_text(content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.historical_files, 0)
+        self.assertIn(str(source), plan.ignored_files)
+        self.assertEqual(source.read_text(encoding="utf-8"), content)
+
+    def test_mixed_stealth_session_excludes_all_pairs_and_derived_copy(self):
+        source_chat = "~/Documents/raw/mixed.md"
+        standard = self.archive / "pair-1.md"
+        stealth = self.archive / "pair-2.md"
+        standard_content = _cleaned_pair(
+            source=source_chat,
+            pair=1,
+            user="Standard sibling",
+            assistant="Standard answer",
+        )
+        stealth_content = _cleaned_pair(
+            source=source_chat,
+            pair=2,
+            user="Stealth sibling",
+            assistant="Stealth answer",
+            stealth=True,
+        )
+        standard.write_text(standard_content, encoding="utf-8")
+        stealth.write_text(stealth_content, encoding="utf-8")
+        context = (
+            "Conversation 'Example' on chatgpt, dated 2025-01-02, "
+            "comprising 1 prompt+response pair(s).\n\n"
+            "Pair 1 of 1. Topic keywords for this pair: question."
+        )
+        (self.conversations / "2025-01-02_03-04_question.md").write_text(
+            _chunk(
+                context=context,
+                user="Standard sibling",
+                assistant="Standard answer",
+            ),
+            encoding="utf-8",
+        )
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.historical_files, 0)
+        self.assertEqual(plan.historical_sessions, 0)
+        self.assertEqual(plan.derived_historical_files, 1)
+        self.assertEqual(plan.live_files, 0)
+        self.assertCountEqual(
+            plan.ignored_files,
+            [str(standard), str(stealth)],
+        )
+        self.assertEqual(standard.read_text(encoding="utf-8"), standard_content)
+        self.assertEqual(stealth.read_text(encoding="utf-8"), stealth_content)
+
     def test_historical_empty_user_voice_reuses_exact_context_orientation(self):
         (self.archive / "pair.md").write_text(
             _cleaned_pair(user="Pasted source material"), encoding="utf-8"
@@ -564,7 +627,140 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(plan.records[0].metadata["conversation_id"], "conv-2")
         self.assertEqual(plan.shadowed_manifest_entries, 1)
 
-    def test_stealth_source_is_planned_with_truthful_privacy_metadata(self):
+    def test_manifest_owned_stealth_source_is_excluded_without_mutation(self):
+        context = (
+            "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
+            "Turn 1 of an ongoing conversation."
+        )
+        path = self.conversations / "2026-07-12_12-30_q.md"
+        path.write_text(_chunk(context=context), encoding="utf-8")
+        manifest_content = json.dumps({
+            "conversation_id": "conv-1",
+            "chunk_id": "session-x-pair-001",
+            "chunk_path": str(path),
+            "raw_path": "",
+            "tag": "stealth",
+        }) + "\n"
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+        chunk_content = path.read_text(encoding="utf-8")
+
+        plan = self._plan()
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertIn(str(path), plan.ignored_files)
+        self.assertEqual(path.read_text(encoding="utf-8"), chunk_content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_mixed_live_stealth_session_excludes_every_owned_turn(self):
+        paths = [
+            self.conversations / "2026-07-12_12-30_standard.md",
+            self.conversations / "2026-07-12_12-31_stealth.md",
+        ]
+        contents = []
+        manifest_records = []
+        for turn, (path, tag) in enumerate(zip(paths, ("", "stealth")), 1):
+            context = (
+                "Local AI session on 2026-07-12, panel 'conv-1', "
+                f"model model-x. Turn {turn} of an ongoing conversation."
+            )
+            content = _chunk(
+                context=context,
+                user=f"Question {turn}",
+                assistant=f"Answer {turn}",
+            )
+            path.write_text(content, encoding="utf-8")
+            contents.append(content)
+            manifest_records.append({
+                "conversation_id": "conv-1",
+                "chunk_id": f"session-x-pair-{turn:03d}",
+                "chunk_path": str(path),
+                "raw_path": "",
+                "tag": tag,
+            })
+        manifest_content = "".join(
+            json.dumps(record) + "\n" for record in manifest_records
+        )
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertCountEqual(plan.ignored_files, [str(path) for path in paths])
+        for path, content in zip(paths, contents):
+            self.assertEqual(path.read_text(encoding="utf-8"), content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_shadowed_stealth_turn_excludes_standard_live_sibling(self):
+        historical = self.archive / "historical-pair.md"
+        historical_content = _cleaned_pair(
+            source="~/Documents/raw/unrelated.md",
+        )
+        historical.write_text(historical_content, encoding="utf-8")
+        standard = self.conversations / "2026-07-12_12-30_standard.md"
+        standard_content = _chunk(
+            context=(
+                "Local AI session on 2026-07-12, panel 'conv-1', "
+                "model model-x. Turn 1 of an ongoing conversation."
+            ),
+            user="Standard sibling",
+            assistant="Standard answer",
+        )
+        standard.write_text(standard_content, encoding="utf-8")
+        stealth = self.conversations / "2026-07-12_12-31_stealth.md"
+        historical_context = (
+            "Conversation 'Example' on chatgpt, dated 2025-01-02, "
+            "comprising 1 prompt+response pair(s).\n\n"
+            "Pair 1 of 1. Topic keywords for this pair: question."
+        )
+        stealth_content = _chunk(context=historical_context)
+        stealth.write_text(stealth_content, encoding="utf-8")
+        manifest_records = [
+            {
+                "conversation_id": "conv-1",
+                "chunk_id": "session-x-pair-001",
+                "chunk_path": str(standard),
+                "raw_path": "",
+                "tag": "",
+            },
+            {
+                "conversation_id": "conv-1",
+                "chunk_id": "session-x-pair-002",
+                "chunk_path": str(stealth),
+                "raw_path": "",
+                "tag": "stealth",
+            },
+        ]
+        manifest_content = "".join(
+            json.dumps(record) + "\n" for record in manifest_records
+        )
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(len(plan.records), 1)
+        self.assertNotEqual(
+            plan.records[0].metadata["conversation_id"], "conv-1",
+        )
+        self.assertEqual(plan.historical_files, 1)
+        self.assertEqual(plan.live_files, 0)
+        self.assertEqual(plan.derived_historical_files, 1)
+        self.assertEqual(plan.ignored_files, [str(standard)])
+        self.assertEqual(historical.read_text(encoding="utf-8"), historical_content)
+        self.assertEqual(standard.read_text(encoding="utf-8"), standard_content)
+        self.assertEqual(stealth.read_text(encoding="utf-8"), stealth_content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_stealth_envelope_excludes_live_source_with_stale_manifest_tag(self):
         context = (
             "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
             "Turn 1 of an ongoing conversation."
@@ -576,31 +772,27 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             "chunk_id": "session-x-pair-001",
             "chunk_path": str(path),
             "raw_path": "",
-            "tag": "stealth",
+            "tag": "",
         }) + "\n", encoding="utf-8")
+        envelope_path = self.sessions / "conv-1" / "conversation.json"
+        envelope_path.parent.mkdir()
+        envelope_content = json.dumps({
+            "conversation_id": "conv-1",
+            "tag": "stealth",
+            "messages": [
+                {"role": "user", "content": "Direct continuity source"},
+            ],
+        })
+        envelope_path.write_text(envelope_content, encoding="utf-8")
 
         plan = self._plan()
+
         plan.require_valid()
-        self.assertEqual(len(plan.records), 1)
-        self.assertEqual(plan.records[0].metadata["tag"], "stealth")
-        collection = _FakeCollection()
-        profile = {
-            "provider": "test",
-            "model": "test-model",
-            "dimension": 3,
-            "physical_collection": "conversations_test",
-        }
-        with mock.patch.object(rebuild, "_profile", return_value=profile):
-            report = rebuild.execute_conversation_replay(
-                plan,
-                target_chromadb_path=self.root / "inactive-chroma",
-                client_factory=lambda _path: object(),
-                collection_factory=lambda _client, _profile: collection,
-                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
-            )
-        self.assertEqual(report["target_count"], 1)
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertIn(str(path), plan.ignored_files)
         self.assertEqual(
-            collection.rows["session-x-pair-001"][1]["tag"], "stealth",
+            envelope_path.read_text(encoding="utf-8"), envelope_content,
         )
 
     def test_non_chat_recovery_and_continuity_artifacts_are_ignored(self):
@@ -805,10 +997,14 @@ class ConversationPromotionTests(unittest.TestCase):
             }
             return document, metadata, vector
 
-        self.source_rows = {
+        self.available_source_rows = {
             "row-standard": row("standard", "", [1.0, 0.0, 0.0]),
             "row-private": row("private", "private", [0.0, 1.0, 0.0]),
             "row-stealth": row("stealth", "stealth", [0.0, 0.0, 1.0]),
+        }
+        self.source_rows = {
+            row_id: self.available_source_rows[row_id]
+            for row_id in ("row-standard", "row-private")
         }
         source = _PromotionCollection(
             "conversations_source", collection_metadata, self.source_rows,
@@ -850,14 +1046,14 @@ class ConversationPromotionTests(unittest.TestCase):
             "status": "complete",
             "target_chromadb_path": str(self.inactive.absolute()),
             "profile": self.profile,
-            "plan": {"records": 3, "fingerprint": fingerprint},
-            "target_count": 3,
+            "plan": {"records": 2, "fingerprint": fingerprint},
+            "target_count": 2,
         }
         checkpoint = {
             "profile": self.profile,
             "plan_fingerprint": fingerprint,
-            "records": 3,
-            "next_index": 3,
+            "records": 2,
+            "next_index": 2,
         }
         (self.inactive / "conversation-replay-report.json").write_text(
             json.dumps(report), encoding="utf-8",
@@ -880,7 +1076,7 @@ class ConversationPromotionTests(unittest.TestCase):
 
     def _use_source_rows(self, *row_ids):
         self.source_rows = {
-            row_id: self.source_rows[row_id] for row_id in row_ids
+            row_id: self.available_source_rows[row_id] for row_id in row_ids
         }
         self.inactive_client.collections["conversations_source"].rows = dict(
             self.source_rows
@@ -990,11 +1186,11 @@ class ConversationPromotionTests(unittest.TestCase):
         )
         self.assertIn("conversations_old", self.active_client.collections)
         self.assertEqual(self.active_client.deleted, [])
-        self.assertEqual(report["validation"]["count"], 3)
+        self.assertEqual(report["validation"]["count"], 2)
         self.assertEqual(len(report["validation"]["embedding_sha256"]), 64)
         self.assertEqual(
             report["validation"]["privacy_counts"],
-            {"": 1, "private": 1, "stealth": 1},
+            {"": 1, "private": 1, "stealth": 0},
         )
         self.assertEqual(set(report["query_smoke"]), {"standard", "private", "stealth"})
         self.assertEqual(len(probe_calls), 2)
@@ -1016,21 +1212,21 @@ class ConversationPromotionTests(unittest.TestCase):
             self.source_rows,
         )
 
-    def test_promotion_accepts_a_corpus_with_only_stealth_rows(self):
+    def test_promotion_rejects_a_corpus_with_stealth_rows(self):
         self._use_source_rows("row-stealth")
-        report = rebuild.promote_conversation_replay(**self._kwargs())
-        self.assertEqual(
-            report["validation"]["privacy_counts"],
-            {"": 0, "private": 0, "stealth": 1},
+        before = self.config_path.read_text(encoding="utf-8")
+
+        with self.assertRaisesRegex(rebuild.RebuildError, "invalid privacy tag"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn(
+            "conversations_new", self.active_client.collections,
         )
         self.assertEqual(
-            report["query_smoke"],
-            {"standard": 0, "private": 0, "stealth": 1},
+            self.active_client.deleted, ["conversations_new"],
         )
-        self.assertEqual(
-            self.active_client.collections["conversations_new"].rows,
-            self.source_rows,
-        )
+        self.embedding_function.assert_not_called()
 
     def test_rollback_requires_expected_current_and_only_flips_mapping(self):
         rebuild.promote_conversation_replay(**self._kwargs())
