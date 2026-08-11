@@ -1663,19 +1663,21 @@ def _audit(
 def _privacy_smoke(
     collection: Any, samples: dict[str, tuple[str, list[float]]],
 ) -> dict[str, int]:
+    try:
+        query_vector = next(iter(samples.values()))[1]
+    except StopIteration as exc:
+        raise RebuildError("conversation replay has no audited query vector") from exc
     checks = (
-        ("standard", "", {"$and": [
+        ("standard", {"$and": [
             {"tag": {"$ne": "private"}}, {"tag": {"$ne": "stealth"}},
         ]}, {""}),
-        ("private", "private", {"tag": {"$ne": "stealth"}}, {"", "private"}),
-        ("stealth", "stealth", None, set(_PROMOTION_TAGS)),
+        ("private", {"tag": {"$ne": "stealth"}}, {"", "private"}),
+        ("stealth", None, set(_PROMOTION_TAGS)),
     )
     counts: dict[str, int] = {}
-    for label, tag, where, allowed in checks:
-        if tag not in samples:
-            raise RebuildError(f"conversation replay has no {label} query sample")
+    for label, where, allowed in checks:
         kwargs = {
-            "query_embeddings": [samples[tag][1]], "n_results": 5,
+            "query_embeddings": [query_vector], "n_results": 5,
             "include": ["documents", "metadatas"],
         }
         if where is not None:
@@ -1686,16 +1688,37 @@ def _privacy_smoke(
         except (KeyError, IndexError, TypeError) as exc:
             raise RebuildError(f"{label} query smoke returned invalid rows") from exc
         if (
-            not ids or not (len(ids) == len(docs) == len(metas))
-            or any(not isinstance(meta, dict) or meta.get("tag") not in allowed for meta in metas)
+            not all(isinstance(values, list) for values in (ids, docs, metas))
+            or not (len(ids) == len(docs) == len(metas))
+            or any(not isinstance(row_id, str) for row_id in ids)
+            or len(ids) != len(set(ids))
+        ):
+            raise RebuildError(f"{label} query smoke returned invalid rows")
+        if any(
+            not isinstance(meta, dict) or meta.get("tag") not in allowed
+            for meta in metas
         ):
             raise RebuildError(f"{label} query smoke violated its privacy filter")
-        read = collection.get(ids=ids, include=["documents", "metadatas"])
-        stored = dict(zip(
-            read.get("ids") or [], zip(read.get("documents") or [], read.get("metadatas") or []),
-        ))
-        if any(stored.get(row_id) != payload for row_id, payload in zip(ids, zip(docs, metas))):
-            raise RebuildError(f"{label} query/read smoke payload mismatch")
+        if ids:
+            read = collection.get(ids=ids, include=["documents", "metadatas"])
+            read_values = []
+            for key in ("ids", "documents", "metadatas"):
+                value = read.get(key) if isinstance(read, dict) else None
+                value = value.tolist() if hasattr(value, "tolist") else value
+                read_values.append(value)
+            read_ids, read_docs, read_metas = read_values
+            if (
+                not all(isinstance(values, list) for values in read_values)
+                or not (len(read_ids) == len(read_docs) == len(read_metas) == len(ids))
+                or any(not isinstance(row_id, str) for row_id in read_ids)
+                or len(read_ids) != len(set(read_ids))
+                or set(read_ids) != set(ids)
+            ):
+                raise RebuildError(f"{label} query/read smoke payload mismatch")
+            queried = dict(zip(ids, zip(docs, metas)))
+            stored = dict(zip(read_ids, zip(read_docs, read_metas)))
+            if stored != queried:
+                raise RebuildError(f"{label} query/read smoke payload mismatch")
         counts[label] = len(ids)
     return counts
 

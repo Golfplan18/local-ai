@@ -878,6 +878,25 @@ class ConversationPromotionTests(unittest.TestCase):
     def _read_config(self):
         return json.loads(self.config_path.read_text(encoding="utf-8"))
 
+    def _use_source_rows(self, *row_ids):
+        self.source_rows = {
+            row_id: self.source_rows[row_id] for row_id in row_ids
+        }
+        self.inactive_client.collections["conversations_source"].rows = dict(
+            self.source_rows
+        )
+        count = len(self.source_rows)
+        report_path = self.inactive / "conversation-replay-report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["target_count"] = count
+        report["plan"]["records"] = count
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        checkpoint_path = self.inactive / "conversation-replay-checkpoint.json"
+        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        checkpoint["records"] = count
+        checkpoint["next_index"] = count
+        checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+
     def _kwargs(self, **overrides):
         values = {
             "inactive_chromadb_path": self.inactive,
@@ -981,6 +1000,37 @@ class ConversationPromotionTests(unittest.TestCase):
         self.assertEqual(len(probe_calls), 2)
         self.embedding_function.assert_not_called()
         self.assertTrue(Path(str(self.config_path) + ".lock").exists())
+
+    def test_promotion_accepts_a_corpus_without_stealth_rows(self):
+        self._use_source_rows("row-standard", "row-private")
+        report = rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(
+            report["validation"]["privacy_counts"],
+            {"": 1, "private": 1, "stealth": 0},
+        )
+        self.assertGreater(report["query_smoke"]["standard"], 0)
+        self.assertGreater(report["query_smoke"]["private"], 0)
+        self.assertGreater(report["query_smoke"]["stealth"], 0)
+        self.assertEqual(
+            self.active_client.collections["conversations_new"].rows,
+            self.source_rows,
+        )
+
+    def test_promotion_accepts_a_corpus_with_only_stealth_rows(self):
+        self._use_source_rows("row-stealth")
+        report = rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(
+            report["validation"]["privacy_counts"],
+            {"": 0, "private": 0, "stealth": 1},
+        )
+        self.assertEqual(
+            report["query_smoke"],
+            {"standard": 0, "private": 0, "stealth": 1},
+        )
+        self.assertEqual(
+            self.active_client.collections["conversations_new"].rows,
+            self.source_rows,
+        )
 
     def test_rollback_requires_expected_current_and_only_flips_mapping(self):
         rebuild.promote_conversation_replay(**self._kwargs())
