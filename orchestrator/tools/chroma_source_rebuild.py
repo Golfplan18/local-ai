@@ -645,8 +645,9 @@ def _historical_records(
         topics = _topics_from_pair(pair)
         topic_primary = topics[0] if topics else ""
         document_voice = _user_voice_only(pair)
-        embedding_text = build_embedding_orientation(
-            context, document_voice or pair.cleaned_user_input,
+        embedding_text = (
+            build_embedding_orientation(context, document_voice)
+            if document_voice else context
         )[:MAX_EMBED_CHARS]
         document = build_retrieval_document(
             context, pair.cleaned_user_input, pair.cleaned_ai_response,
@@ -967,16 +968,16 @@ def _live_records(
                     owner.tag,
                     *(item.casefold() for item in chunk.tags),
                 }
-                if "stealth" in privacy_sources:
-                    raise ValueError(
-                        "refusing to persist a stealth conversation chunk"
-                    )
-                invalid_tags = privacy_sources - {"", "private"}
+                invalid_tags = privacy_sources - {"", "private", "stealth"}
                 if invalid_tags:
                     raise ValueError(
                         f"invalid conversation tags {sorted(invalid_tags)!r}"
                     )
-                tag = "private" if "private" in privacy_sources else ""
+                tag = (
+                    "stealth" if "stealth" in privacy_sources
+                    else "private" if "private" in privacy_sources
+                    else ""
+                )
                 raw_path = owner.raw_path
                 if raw_path:
                     raw_candidate = _absolute(raw_path)
@@ -1363,9 +1364,6 @@ def execute_conversation_replay(
             records[index:index + 1000],
             context="final conversation validation",
         )
-    if any(record.metadata.get("tag") == "stealth" for record in records):
-        raise RebuildError("validated target plan unexpectedly contains stealth metadata")
-
     report = {
         "status": "complete",
         "target_chromadb_path": str(target),

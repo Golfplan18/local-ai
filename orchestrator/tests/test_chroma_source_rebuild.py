@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import threading
@@ -280,6 +281,25 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(metadata["chain_id"], "chain-1")
         self.assertEqual(metadata["chain_label"], "Example chain")
 
+    def test_historical_empty_user_voice_reuses_exact_context_orientation(self):
+        (self.archive / "pair.md").write_text(
+            _cleaned_pair(user="Pasted source material"), encoding="utf-8"
+        )
+        with mock.patch.object(rebuild, "_user_voice_only", return_value=""):
+            plan = self._plan()
+
+        plan.require_valid()
+        row = plan.records[0]
+        context = row.document.split(
+            "## Context\n\n", 1,
+        )[1].split("\n\n## Exchange", 1)[0]
+        self.assertEqual(row.embedding_text, context)
+        self.assertNotIn("Pasted source material", row.embedding_text)
+        self.assertEqual(
+            row.metadata["embedding_text_sha256"],
+            hashlib.sha256(context.encode("utf-8")).hexdigest(),
+        )
+
     def test_filtered_pair_gaps_preserve_turn_numbers_and_finalize_at_maximum(self):
         source = "~/Documents/raw/filtered.md"
         (self.archive / "pair-2.md").write_text(
@@ -439,7 +459,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(plan.records[0].metadata["conversation_id"], "conv-2")
         self.assertEqual(plan.shadowed_manifest_entries, 1)
 
-    def test_stealth_source_is_never_planned(self):
+    def test_stealth_source_is_planned_with_truthful_privacy_metadata(self):
         context = (
             "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
             "Turn 1 of an ongoing conversation."
@@ -455,9 +475,28 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         }) + "\n", encoding="utf-8")
 
         plan = self._plan()
-        self.assertFalse(any(row.metadata.get("tag") == "stealth" for row in plan.records))
-        with self.assertRaises(rebuild.RebuildError):
-            plan.require_valid()
+        plan.require_valid()
+        self.assertEqual(len(plan.records), 1)
+        self.assertEqual(plan.records[0].metadata["tag"], "stealth")
+        collection = _FakeCollection()
+        profile = {
+            "provider": "test",
+            "model": "test-model",
+            "dimension": 3,
+            "physical_collection": "conversations_test",
+        }
+        with mock.patch.object(rebuild, "_profile", return_value=profile):
+            report = rebuild.execute_conversation_replay(
+                plan,
+                target_chromadb_path=self.root / "inactive-chroma",
+                client_factory=lambda _path: object(),
+                collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
+            )
+        self.assertEqual(report["target_count"], 1)
+        self.assertEqual(
+            collection.rows["session-x-pair-001"][1]["tag"], "stealth",
+        )
 
     def test_non_chat_recovery_and_continuity_artifacts_are_ignored(self):
         (self.conversations / "recovered.md").write_text(
