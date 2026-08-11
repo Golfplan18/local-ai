@@ -1547,6 +1547,7 @@
         : { action: 'make-private', label: 'Make current Private' });
     }
     if (mode === 'stealth' && activeId && !readOnly && activeTag === 'stealth') {
+      items.push({ action: 'exit-stealth', label: 'Exit Stealth' });
       items.push({ action: 'delete-forever', label: 'Delete Forever', danger: true });
     }
 
@@ -1651,6 +1652,16 @@
       }
       if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
       conversation.deleteForever(conversationId, { source: 'mode-dropdown' });
+      return;
+    }
+    if (action === 'exit-stealth') {
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.exitStealth !== 'function') {
+        window.alert('Exit Stealth is unavailable.');
+        return;
+      }
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      conversation.exitStealth(conversationId);
       return;
     }
   };

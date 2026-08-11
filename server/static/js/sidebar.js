@@ -164,8 +164,27 @@
     logoA.classList.toggle('wordmark-attract', hasAttention);
   };
 
+  const filterDialogueSnapshot = (snapshot) => {
+    const data = snapshot || {};
+    const visible = (row) => {
+      if (!row) return false;
+      if (row.tag === 'stealth') return row.conversation_id === activeConvId;
+      if (activeProjectId === 'commons') return true;
+      return Array.isArray(row.project_ids)
+        && row.project_ids.indexOf(activeProjectId) !== -1;
+    };
+    const filtered = Object.assign({}, data);
+    ['pinned', 'errored', 'pending', 'unread', 'active'].forEach((group) => {
+      filtered[group] = Array.isArray(data[group])
+        ? data[group].filter(visible)
+        : [];
+    });
+    return filtered;
+  };
+
   const render = (data) => {
-    lastSnapshot = data || { pinned: [], pending: [], unread: [], active: [] };
+    data = filterDialogueSnapshot(data);
+    lastSnapshot = data;
 
     // Counts on collapsed dashboard. The pinned group (e.g. WELCOME) is
     // always-present orientation content, not a count the user needs to
@@ -282,7 +301,7 @@
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'sidebar-row-close';
-      const closeLabel = row.tag === 'stealth' ? 'Delete Dialogue forever' : 'Close Dialogue';
+      const closeLabel = row.tag === 'stealth' ? 'Delete Forever' : 'Close';
       close.setAttribute('aria-label', closeLabel);
       close.title = closeLabel;
       close.textContent = '×';
@@ -406,7 +425,10 @@
 
   const fetchList = async () => {
     try {
-      const r = await fetch('/api/conversations?project_id=' + encodeURIComponent(compatibleProjectId(activeProjectId)));
+      // Fetch the active universe, then apply the project rule locally. A
+      // server-scoped response cannot include the currently displayed
+      // Stealth Dialogue after the user switches to a different project.
+      const r = await fetch('/api/conversations?project_id=');
       if (!r.ok) return;
       const data = await r.json();
       render(data);
@@ -1791,6 +1813,15 @@
   if (forkThreadCmd) forkThreadCmd.addEventListener('click', onForkThread);
   if (browseCmd) browseCmd.addEventListener('click', openBrowser);
 
+  document.addEventListener('ora:conversation-selected', (e) => {
+    const id = e && e.detail && e.detail.conversation_id;
+    if (!id) return;
+    activeConvId = id;
+    [...sidebar.querySelectorAll('.sidebar-row')].forEach((el) => {
+      el.classList.toggle('is-active', el.dataset.conversationId === activeConvId);
+    });
+  });
+
   document.addEventListener('ora:fresh-conversation-started', (e) => {
     const id = e.detail && e.detail.conversation_id;
     activeConvId = id || null;
@@ -1833,6 +1864,11 @@
   document.addEventListener('ora:conversation-tag-changed', (e) => {
     const detail = (e && e.detail) || {};
     if (!detail.conversation_id) return;
+    const lifecycle = window.OraConversation;
+    if (lifecycle && typeof lifecycle.getActiveConversationId === 'function'
+        && lifecycle.getActiveConversationId() === detail.conversation_id) {
+      activeConvId = detail.conversation_id;
+    }
     const rowEl = Array.from(sidebar.querySelectorAll('.sidebar-row'))
       .find((candidate) => candidate.dataset.conversationId === detail.conversation_id);
     if (rowEl) {
@@ -1842,7 +1878,7 @@
       if (prefix) prefix.textContent = prefixForTag(tag);
       const close = rowEl.querySelector('.sidebar-row-close');
       if (close) {
-        const label = tag === 'stealth' ? 'Delete Dialogue forever' : 'Close Dialogue';
+        const label = tag === 'stealth' ? 'Delete Forever' : 'Close';
         close.setAttribute('aria-label', label);
         close.title = label;
       }

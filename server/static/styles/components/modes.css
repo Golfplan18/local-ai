@@ -27,7 +27,6 @@ body.private-mode .spine-button[data-mode-button="private"]:hover {
   color: var(--ora-mode-private-button-icon);
 }
 body.private-mode .bridge-mode-label {
-  display: block;
   color: var(--ora-mode-private-label);
 }
 
@@ -44,10 +43,12 @@ body.stealth-mode .spine-button[data-mode-button="stealth"]:hover {
   color: var(--ora-mode-stealth-button-icon);
 }
 body.stealth-mode .bridge-mode-label {
-  display: block;
   color: var(--ora-mode-stealth-label);
 }
 
+/* The R-glyph brackets are the single runtime mode label. Bridge labels stay
+   hidden to avoid rendering the same Private/Stealth word on top of them;
+   the retained bridge nodes are used only by Appearance preview mode. */
 
 /* V3 Phase 6.2 — bootstrap topic-prompt modal.
    Same shell shape as the mutual-exclusivity modal so they read as a

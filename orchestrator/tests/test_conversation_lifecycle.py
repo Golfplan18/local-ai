@@ -1354,6 +1354,173 @@ class TestDeleteConversationForever(unittest.TestCase):
                 if baked_root.startswith(sandbox):
                     sys.modules.pop(name, None)
 
+    def test_empty_legacy_approval_store_allows_explicit_stealth_delete_retry(self):
+        repo = Path(__file__).resolve().parents[2]
+        server_dir = str(repo / "server")
+        if server_dir not in sys.path:
+            sys.path.insert(0, server_dir)
+        from server import app as server  # type: ignore
+        import oversight_queue
+        import tool_events
+        from orchestrator import system_protection
+
+        def path_state(path: Path):
+            try:
+                value = os.lstat(path)
+            except FileNotFoundError:
+                return None
+            return (
+                value.st_mode, value.st_dev, value.st_ino,
+                value.st_size, value.st_mtime_ns,
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            roots = self._roots(base)
+            conversation_id = f"legacy-empty-{base.name.lower()}"
+            sibling_id = f"sibling-{base.name.lower()}"
+            _write_envelope(
+                roots["sessions"], conversation_id, tag="stealth",
+                messages=[{"role": "user", "content": "purge only this"}],
+            )
+            _write_envelope(
+                roots["sessions"], sibling_id, tag="stealth",
+                messages=[{"role": "user", "content": "must survive"}],
+            )
+
+            approval_path = roots["data"] / "execution-approvals.json"
+            approval_path.write_text(
+                json.dumps({"tokens": [], "standing": []}), encoding="utf-8",
+            )
+            queue_path = roots["data"] / "oversight" / "human-queue.jsonl"
+            actions_path = roots["data"] / "oversight" / "actions.jsonl"
+            event_path = roots["data"] / "tool-events.jsonl"
+
+            live_approval = Path(tool_events._APPROVALS_BAKED)
+            live_key = Path(str(live_approval) + ".auth.key")
+            live_session = closeout._DEFAULT_SESSIONS_ROOT / conversation_id
+            live_before = {
+                live_approval: path_state(live_approval),
+                live_key: path_state(live_key),
+                live_session: path_state(live_session),
+            }
+            self.assertIsNone(live_before[live_session])
+
+            purged: list[str] = []
+
+            def purge_exact(value: str):
+                self.assertEqual(value, conversation_id)
+                purged.append(value)
+                result = self._run_delete(
+                    value, roots, collection=_FakeCollection([]),
+                )
+                server._deleted_conversations.add(
+                    server._conversation_storage_identity(value),
+                )
+                return result
+
+            server._conversation_creation_tags[
+                server._conversation_storage_identity(conversation_id)
+            ] = "stealth"
+            tool_events._queued_hashes.clear()
+            turn_token = tool_events.set_turn_context(
+                conversation_id=conversation_id,
+                surface="server_api", stealth=False,
+            )
+            try:
+                with (
+                    mock.patch.dict(
+                        os.environ, {"ORA_OVERSIGHT_SANDBOX": str(roots["data"])},
+                    ),
+                    mock.patch.object(
+                        tool_events, "APPROVALS_PATH", str(approval_path),
+                    ),
+                    mock.patch.object(
+                        tool_events, "GLOBAL_SINK_DEFAULT", str(event_path),
+                    ),
+                    mock.patch.object(
+                        oversight_queue, "HUMAN_QUEUE_PATH", str(queue_path),
+                    ),
+                    mock.patch.object(
+                        system_protection, "_actions_path",
+                        return_value=str(actions_path),
+                    ),
+                    mock.patch.object(
+                        server, "_delete_conversation_runtime",
+                        side_effect=purge_exact,
+                    ) as delete_runtime,
+                ):
+                    client = server.app.test_client()
+                    first = client.post(
+                        f"/api/conversation/{conversation_id}/delete-forever",
+                    )
+                    first_payload = json.loads(first.get_data(as_text=True))
+                    self.assertEqual(first.status_code, 409, first_payload)
+                    self.assertEqual(
+                        first_payload["status"],
+                        "awaiting_system_protection_approval",
+                    )
+                    self.assertTrue(first_payload["retry_required"])
+                    delete_runtime.assert_not_called()
+                    self.assertTrue(
+                        (roots["sessions"] / conversation_id).is_dir(),
+                    )
+
+                    migrated = tool_events._load_approvals()
+                    self.assertEqual(migrated["schema_version"], 2)
+                    self.assertEqual(migrated["tokens"], [])
+                    self.assertEqual(migrated["standing"], [])
+                    self.assertEqual(len(migrated["pending"]), 1)
+                    entry = oversight_queue.find_paused_by_id(
+                        first_payload["queue_id"],
+                    )
+                    self.assertIsNotNone(entry)
+                    approved = tool_events.resolve_gate_entry(
+                        entry.to_dict(), approve=True,
+                    )
+                    self.assertIn("One-shot token", approved)
+
+                    after_approval = tool_events._load_approvals()
+                    self.assertEqual(len(after_approval["tokens"]), 1)
+                    self.assertFalse(after_approval["tokens"][0]["used"])
+
+                    retry = client.post(
+                        f"/api/conversation/{conversation_id}/delete-forever",
+                    )
+                    retry_payload = json.loads(retry.get_data(as_text=True))
+                    self.assertEqual(retry.status_code, 200, retry_payload)
+                    self.assertEqual(retry_payload["conversation_id"], conversation_id)
+                    self.assertEqual(retry_payload["tag"], "stealth")
+                    self.assertEqual(retry_payload["action"], "delete_forever")
+                    self.assertTrue(retry_payload["deleted"]["session_dir"])
+                    self.assertEqual(retry_payload["deleted"]["task_tokens"], 1)
+                    self.assertEqual(retry_payload["errors"], [])
+                    self.assertEqual(purged, [conversation_id])
+                    self.assertFalse(
+                        (roots["sessions"] / conversation_id).exists(),
+                    )
+                    self.assertTrue((roots["sessions"] / sibling_id).is_dir())
+
+                    post_purge_store = tool_events._load_approvals()
+                    self.assertEqual(post_purge_store["tokens"], [])
+                    self.assertTrue(all(
+                        item.get("consumed")
+                        for item in post_purge_store["pending"]
+                    ))
+            finally:
+                tool_events.reset_turn_context(turn_token)
+                tool_events._queued_hashes.clear()
+                server._conversation_creation_tags.pop(
+                    server._conversation_storage_identity(conversation_id), None,
+                )
+                server._deleted_conversations.discard(
+                    server._conversation_storage_identity(conversation_id),
+                )
+
+            self.assertEqual(
+                {path: path_state(path) for path in live_before}, live_before,
+            )
+
     def test_delete_removes_ora_managed_layers_but_retains_flat_exports(self):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
@@ -1900,13 +2067,19 @@ class TestDeleteConversationForever(unittest.TestCase):
             approvals = roots["data"] / "dynamic" / "execution-approvals.json"
             approvals.parent.mkdir()
             standing = {"scope": "project:ora", "granted_via": "test"}
-            approvals.write_text(json.dumps({
-                "tokens": [
-                    {"token": "drop", "conversation_id": target},
-                    {"token": "keep", "conversation_id": "other"},
-                ],
-                "standing_allows": [standing],
-            }), encoding="utf-8")
+            with mock.patch.object(
+                tool_events, "APPROVALS_PATH", str(approvals),
+            ):
+                def seed_signed_store():
+                    data = tool_events._empty_approvals()
+                    data["tokens"] = [
+                        {"token": "drop", "conversation_id": target},
+                        {"token": "keep", "conversation_id": "other"},
+                    ]
+                    data["standing"] = [standing]
+                    tool_events._save_approvals(data)
+
+                tool_events._with_approvals_lock(seed_signed_store)
 
             archive = roots["data"] / "archive" / "tool-events-locked.jsonl.gz"
             with gzip.open(archive, "wt", encoding="utf-8") as stream:
@@ -1941,10 +2114,13 @@ class TestDeleteConversationForever(unittest.TestCase):
                 mock.patch.object(
                     runtime_paths, "locked_file", side_effect=record_lock,
                 ),
+                mock.patch.object(
+                    tool_events._rp, "locked_file", side_effect=record_lock,
+                ),
             ):
                 result = self._run_delete(target, roots)
 
-            resolve_approvals.assert_called_once_with()
+            self.assertGreaterEqual(resolve_approvals.call_count, 1)
             self.assertIn(approvals, locked_paths)
             self.assertIn(archive, locked_paths)
             archive_parents = [
@@ -1953,11 +2129,14 @@ class TestDeleteConversationForever(unittest.TestCase):
             self.assertEqual(len(archive_parents), 1)
             self.assertIn(roots["data"] / "tool-events.jsonl",
                           archive_parents[0])
-            approval_data = json.loads(approvals.read_text(encoding="utf-8"))
+            with mock.patch.object(
+                tool_events, "APPROVALS_PATH", str(approvals),
+            ):
+                approval_data = tool_events._load_approvals()
             self.assertEqual(approval_data["tokens"], [
                 {"token": "keep", "conversation_id": "other"},
             ])
-            self.assertEqual(approval_data["standing_allows"], [standing])
+            self.assertEqual(approval_data["standing"], [standing])
             self.assertEqual(result["deleted"]["task_tokens"], 1)
             with gzip.open(archive, "rt", encoding="utf-8") as stream:
                 self.assertEqual(

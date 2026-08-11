@@ -41,6 +41,7 @@ import json
 import os
 import re
 import secrets
+import stat
 import sys
 import threading
 import time
@@ -911,20 +912,82 @@ def _queue_authority_digest(record_dict: dict) -> str:
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
-def _load_approvals() -> dict:
-    path = _approvals_path()
-    if not os.path.exists(path):
-        return _empty_approvals()
-    if os.path.islink(path):
-        raise RuntimeError("approval store is a symlink")
+def _read_approval_store(path: str) -> dict | None:
+    """Read one regular approval-store file without following a symlink."""
+
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
+        before = os.lstat(path)
+    except FileNotFoundError:
+        return None
     except Exception as exc:
         raise RuntimeError(f"approval store is unreadable: {exc}") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise RuntimeError("approval store is a symlink")
+    if not stat.S_ISREG(before.st_mode):
+        raise RuntimeError("approval store is not a regular file")
+
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = None
+    try:
+        fd = os.open(path, flags)
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError("approval store is not a regular file")
+        if not os.path.samestat(before, opened):
+            raise RuntimeError("approval store changed while being opened")
+
+        def unique_object(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError(f"duplicate approval-store field {key!r}")
+                value[key] = item
+            return value
+
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            fd = None
+            return json.load(stream, object_pairs_hook=unique_object)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"approval store is unreadable: {exc}") from exc
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+def _is_authority_empty_legacy_approvals(data: dict) -> bool:
+    """True only for the known pre-v2 store with no authority to preserve."""
+
+    keys = set(data)
+    if keys not in (
+        {"tokens", "standing"},
+        {"tokens", "standing", "pending"},
+    ):
+        return False
+    return (
+        data.get("tokens") == []
+        and data.get("standing") == []
+        and data.get("pending", []) == []
+    )
+
+
+def _load_approvals_locked() -> dict:
+    """Load/validate the store while the caller holds its exclusive lock."""
+
+    path = _approvals_path()
+    data = _read_approval_store(path)
+    if data is None:
+        return _empty_approvals()
     if not isinstance(data, dict):
         raise RuntimeError("approval store must be an object")
     if data.get("schema_version") != APPROVAL_STORE_SCHEMA_VERSION:
+        if _is_authority_empty_legacy_approvals(data):
+            upgraded = _empty_approvals()
+            _save_approvals(upgraded)
+            return upgraded
         raise RuntimeError("approval store is unsigned or has an unsupported schema")
     claimed_mac = data.get("store_mac")
     if not isinstance(claimed_mac, str) or not hmac.compare_digest(
@@ -957,6 +1020,12 @@ def _with_approvals_lock(fn):
         return fn()
 
 
+def _load_approvals() -> dict:
+    """Load approval state under the same lock used by every mutation."""
+
+    return _with_approvals_lock(_load_approvals_locked)
+
+
 def _register_pending_approval(action: str, args_hash: str,
                                conversation_id: str | None,
                                principal_id: str,
@@ -971,7 +1040,7 @@ def _register_pending_approval(action: str, args_hash: str,
     nonce = secrets.token_hex(24)
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         data.setdefault("pending", []).append({
             "nonce": nonce,
             "action": action,
@@ -994,7 +1063,7 @@ def _bind_pending_queue(nonce: str, queue_id: str,
     bound = [False]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         for item in data.get("pending", []):
             if item.get("nonce") == nonce and not item.get("consumed"):
                 item["queue_id"] = queue_id
@@ -1011,7 +1080,7 @@ def _bind_pending_queue(nonce: str, queue_id: str,
 
 def _discard_pending_approval(nonce: str) -> None:
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         before = len(data.get("pending", []))
         data["pending"] = [
             item for item in data.get("pending", [])
@@ -1038,7 +1107,7 @@ def _consume_pending_approval(
     consumed = [None]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         for item in data.get("pending", []):
             if item.get("consumed"):
                 continue
@@ -1073,7 +1142,7 @@ def _grant_approval_authorized(action: str, args_hash: str,
     token_id = secrets.token_hex(24)
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         data["tokens"].append({
             "id": token_id, "action": action, "args_hash": args_hash,
             "conversation_id": conversation_id,
@@ -1116,7 +1185,7 @@ def grant_standing_allow(scope: str, granted_via: str = "queue") -> str:
     allow_id = secrets.token_hex(24)
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         data.setdefault("standing", []).append({
             "id": allow_id, "scope": scope, "granted_at": _now_iso(),
             "granted_via": granted_via, "revoked": False,
@@ -1136,7 +1205,7 @@ def revoke_standing_allow(scope: str) -> bool:
     revoked = [False]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         for entry in data.get("standing", []):
             if entry.get("scope") == scope and not entry.get("revoked"):
                 entry["revoked"] = True
@@ -1164,7 +1233,7 @@ def consume_token_by_fingerprint(action: str, args_hash: str) -> str | None:
     consumed = [None]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         now = time.time()
         for entry in data.get("tokens", []):
             if entry.get("used") or entry.get("action") != action:
@@ -1195,7 +1264,7 @@ def remove_unused_tokens(action: str, args_hash: str) -> int:
     removed = [0]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         kept = []
         for t in data.get("tokens", []):
             if (not t.get("used") and t.get("action") == action
@@ -1219,7 +1288,7 @@ def check_and_consume_approval(action: str, args_hash: str,
     consumed = [None]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         now = time.time()
         changed = False
         for entry in data.get("tokens", []):
@@ -1275,7 +1344,7 @@ def bind_consumed_approval(approval_id: str, action: str, args_hash: str,
     bound = [None]
 
     def _do():
-        data = _load_approvals()
+        data = _load_approvals_locked()
         for entry in data.get("tokens", []):
             if entry.get("id") != approval_id:
                 continue

@@ -2633,33 +2633,28 @@ def _purge_stealth_unlocked(
     # token in data/execution-approvals.json carrying the conversation_id.
     # Scrub any token bound to the purged conversation so the stealth
     # zero-residue promise covers the approval store too (condition 9).
+    deleted["task_tokens"] = 0
     try:
-        import json as _json_tok
         from . import tool_events as _te_tok
-        # Use the writer's call-time path resolver (env/sandbox/monkeypatch
-        # aware), then share its sidecar lock for the full read-modify-replace
-        # cycle so a concurrent grant/consume cannot be lost.
-        _appr = Path(_te_tok._approvals_path())
-        deleted["task_tokens"] = 0
-        with _rp.locked_file(_appr):
-            if _appr.exists():
-                if _appr.is_symlink() or not _appr.is_file():
-                    raise ValueError(f"refusing non-regular approvals store {_appr}")
-                data = _json_tok.loads(_appr.read_text(encoding="utf-8"))
-                if not isinstance(data, dict):
-                    raise ValueError("approvals store is not an object")
-                toks = data.get("tokens", [])
-                if not isinstance(toks, list):
-                    raise ValueError("approvals tokens is not a list")
-                kept_toks = [t for t in toks
-                             if not _record_matches(t, conversation_id)]
-                dropped = len(toks) - len(kept_toks)
-                if dropped:
-                    data["tokens"] = kept_toks
-                    _atomic_write_text(
-                        _appr, _json_tok.dumps(data, ensure_ascii=False) + "\n",
-                    )
-                    deleted["task_tokens"] = dropped
+
+        def drop_conversation_tokens() -> int:
+            data = _te_tok._load_approvals_locked()
+            tokens = data.get("tokens", [])
+            kept = [
+                token for token in tokens
+                if not _record_matches(token, conversation_id)
+            ]
+            dropped = len(tokens) - len(kept)
+            if dropped:
+                data["tokens"] = kept
+                # Re-sign through the approval authority's existing atomic
+                # writer; a raw rewrite would invalidate the v2 store MAC.
+                _te_tok._save_approvals(data)
+            return dropped
+
+        deleted["task_tokens"] = _te_tok._with_approvals_lock(
+            drop_conversation_tokens,
+        )
     except Exception as e:
         _record_error(errors, "task_tokens purge", e)
 

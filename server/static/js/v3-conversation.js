@@ -126,6 +126,7 @@
   // ── Module state ────────────────────────────────────────────────────────
   const state = {
     activeConversationId: null,
+    activeParentConversationId: null,
     activeTag:            '',
     activeTitle:          '',
     readOnlySource:       false, // Library-backed engrams/archives are not mutable Dialogues.
@@ -512,6 +513,7 @@
       ? requestedTag
       : '';
     state.activeConversationId = id;
+    state.activeParentConversationId = null;
     state.activeTag = tag;
     state.activeTitle = 'New Dialogue';
     state.readOnlySource = false;
@@ -540,14 +542,16 @@
       return;
     }
     try {
+      const forkBody = {
+        fork_point_turn_index: state.currentTurnIndex,
+      };
+      if (Object.prototype.hasOwnProperty.call(detail, 'tag')) {
+        forkBody.tag = detail.tag;
+      }
       const resp = await fetch(`/api/conversation/${encodeURIComponent(parentId)}/fork`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          Object.prototype.hasOwnProperty.call(detail, 'tag')
-            ? { tag: detail.tag }
-            : {}
-        ),
+        body: JSON.stringify(forkBody),
       });
       let data = null;
       try { data = await resp.json(); } catch (e) {}
@@ -606,10 +610,10 @@
 
   // ── Conversation loading (Backlog 2B) ──────────────────────────────────
   const load = async (conversation_id, opts = {}) => {
-    if (!conversation_id) return;
+    if (!conversation_id) return false;
     if (retiredConversationIds.has(conversation_id)) {
       console.error('[v3-conversation] refused to load retired Dialogue:', conversation_id);
-      return;
+      return false;
     }
     const epoch = ++loadEpoch;
     pendingLoadId = conversation_id;
@@ -649,7 +653,7 @@
     // Never let a delayed fetch reactivate an unavailable Dialogue.
     if (epoch !== loadEpoch
         || pendingLoadId !== conversation_id
-        || retiredConversationIds.has(conversation_id)) return;
+        || retiredConversationIds.has(conversation_id)) return null;
     pendingLoadId = null;
     document.dispatchEvent(new CustomEvent('ora:conversation-loading-state', {
       detail: { conversation_id, loading: false },
@@ -672,10 +676,14 @@
           active_conversation_id: state.activeConversationId,
         },
       }));
-      return;
+      return false;
     }
 
     state.activeConversationId = conversation_id;
+    state.activeParentConversationId = (
+      typeof envelope.parent_conversation_id === 'string'
+      && envelope.parent_conversation_id.trim()
+    ) ? envelope.parent_conversation_id.trim() : null;
     state.activeTag            = envelope.tag || '';
     state.readOnlySource       = !!envelope.archived_source;
     state.hasEnvelope          = true;
@@ -762,6 +770,57 @@
         // Non-fatal.
       }
     }
+    return true;
+  };
+
+  // Exit Stealth changes only which Dialogue is displayed. The Stealth
+  // child remains intact: navigate to its readable direct parent at that
+  // parent's latest turn, or start a fresh Standard Dialogue when lineage
+  // is absent or no longer readable.
+  const exitStealth = async (conversationId) => {
+    const id = conversationId || state.activeConversationId;
+    if (!id
+        || id !== state.activeConversationId
+        || state.activeTag !== 'stealth'
+        || state.readOnlySource
+        || pendingLoadId
+        || lifecycleRequestActive(id)) return null;
+
+    const parentId = state.activeParentConversationId;
+    if (parentId && parentId !== id) {
+      const selection = {
+        conversation_id: parentId,
+        tag: '',
+        title: parentId,
+        source: 'exit-stealth',
+        await_selection: true,
+      };
+      document.dispatchEvent(new CustomEvent('ora:conversation-selected', {
+        detail: selection,
+      }));
+      const loaded = selection.selection_promise
+        ? await selection.selection_promise
+        : null;
+      if (loaded === true
+          && state.activeConversationId === parentId
+          && !pendingLoadId) {
+        refreshSidebar();
+        return { ok: true, destination: 'parent', conversation_id: parentId };
+      }
+      // A newer user navigation supersedes Exit. Only a confirmed missing /
+      // unreadable parent while the child is still active gets the fallback.
+      if (loaded === null || state.activeConversationId !== id || pendingLoadId) {
+        return null;
+      }
+    }
+
+    if (state.activeConversationId !== id) return null;
+    startFresh({ tag: '', source: 'exit-stealth' });
+    return {
+      ok: true,
+      destination: 'fresh-standard',
+      conversation_id: state.activeConversationId,
+    };
   };
 
   // ── Turn navigation ────────────────────────────────────────────────────
@@ -914,9 +973,47 @@
       const fallback = response && response.status
         ? `HTTP ${response.status}`
         : `${actionLabel} failed`;
-      throw new Error(bodyError || (data && data.message) || fallback);
+      const error = new Error(bodyError || (data && data.message) || fallback);
+      error.status = response && response.status;
+      error.responseData = data || {};
+      throw error;
     }
     return data || {};
+  };
+
+  const protectionPendingFrom = (value) => {
+    const data = value && value.responseData ? value.responseData : value;
+    return data && data.status === 'awaiting_system_protection_approval'
+      ? data : null;
+  };
+
+  const surfaceProtectionPending = (actionLabel, conversationId, data) => {
+    const detail = {
+      action: actionLabel,
+      conversation_id: conversationId,
+      queue_id: data.queue_id || '',
+      retry_required: data.retry_required === true,
+    };
+    console.warn(
+      `[v3-conversation] ${actionLabel} awaits System Protection approval for ${conversationId}:`,
+      data
+    );
+    document.dispatchEvent(new CustomEvent('ora:system-protection-approval-required', {
+      detail,
+    }));
+    if (window.OraReviewQueuePanel
+        && typeof window.OraReviewQueuePanel.open === 'function') {
+      window.OraReviewQueuePanel.open({ tab: 'paused' });
+    }
+    window.alert(
+      `${actionLabel} is waiting for System Protection approval. `
+      + 'The Dialogue has not been deleted. Approve the queued action in Review Queue, then retry Delete Forever.'
+    );
+    return Object.assign({}, data, {
+      ok: false,
+      pending_approval: true,
+      active_reset: false,
+    });
   };
 
   const partialErrorsFrom = (data) => {
@@ -1024,6 +1121,7 @@
       // rendered identity without calling startFresh(), which would increment
       // loadEpoch and cancel that newer navigation intent.
       state.activeConversationId = null;
+      state.activeParentConversationId = null;
       state.activeTag = '';
       state.activeTitle = '';
       state.readOnlySource = false;
@@ -1037,6 +1135,7 @@
       // just-cleared draft. Explicit tag:"" guarantees Standard mode even
       // when the previous Dialogue was Private or Stealth.
       state.activeConversationId = null;
+      state.activeParentConversationId = null;
       state.activeTag = '';
       state.activeTitle = '';
       state.readOnlySource = false;
@@ -1159,6 +1258,10 @@
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
         'Delete Forever'
       );
+      const protectionPending = protectionPendingFrom(data);
+      if (protectionPending) {
+        return surfaceProtectionPending('Delete Forever', id, protectionPending);
+      }
       surfacePartialErrors('Delete Forever', id, data);
       surfaceDeleteLimitations(data);
       const firstRetirementInThisTab = !retiredConversationIds.has(id);
@@ -1171,6 +1274,10 @@
       // do not show a contradictory failure or rebroadcast a second pulse.
       if (retiredConversationIds.has(id)) {
         return { ok: true, active_reset: false, cross_tab: true };
+      }
+      const protectionPending = protectionPendingFrom(e);
+      if (protectionPending) {
+        return surfaceProtectionPending('Delete Forever', id, protectionPending);
       }
       console.error(`[v3-conversation] Delete Forever failed for ${id}:`, e);
       window.alert('Delete Forever failed: ' + (e.message || e));
@@ -1726,17 +1833,21 @@
     if (state.hasEnvelope === true) {
       items.push({ label: 'Rename', action: () => beginRenameDisplayName() });
     }
-    items.push(
-      {
-        label: 'Close',
-        action: () => closeConversation(menuConversationId, { tag: menuTag }),
-      },
-      {
+    if (menuTag === 'stealth') {
+      items.push({
+        label: 'Exit Stealth',
+        action: () => exitStealth(menuConversationId),
+      }, {
         label: 'Delete Forever',
         danger: true,
         action: () => deleteForever(menuConversationId, { source: 'output-header' }),
-      },
-    );
+      });
+    } else {
+      items.push({
+        label: 'Close',
+        action: () => closeConversation(menuConversationId, { tag: menuTag }),
+      });
+    }
 
     menu.replaceChildren();
     items.forEach((item) => {
@@ -1849,11 +1960,16 @@
     // already activated by the existing handler in the inline script;
     // this loads the actual content.
     document.addEventListener('ora:conversation-selected', (e) => {
-      const id = e.detail && e.detail.conversation_id;
-      const turnIndex = e.detail && e.detail.matched_turn_index;
-      const tag = e.detail && e.detail.tag;
-      const draftMessage = e.detail && e.detail.draft_message;
-      if (id) load(id, { turnIndex, tag, draftMessage });
+      const detail = (e && e.detail) || {};
+      const id = detail.conversation_id;
+      const turnIndex = detail.matched_turn_index;
+      const tag = detail.tag;
+      const draftMessage = detail.draft_message;
+      if (!id) return;
+      const selectionPromise = load(id, { turnIndex, tag, draftMessage });
+      if (detail.await_selection === true) {
+        detail.selection_promise = selectionPromise;
+      }
     });
 
     document.addEventListener('click', (event) => {
@@ -1898,6 +2014,7 @@
     appendAssistant,
     startFresh,
     forkActive,
+    exitStealth,
     beginRename: beginRenameDisplayName,
     setPrivacyTag,
     closeConversation,

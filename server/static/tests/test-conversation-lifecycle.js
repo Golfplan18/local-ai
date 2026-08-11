@@ -44,6 +44,8 @@ var confirmations = [];
 var alerts = [];
 var tagEvents = [];
 var lifecycleEvents = [];
+var protectionEvents = [];
+var reviewQueueOpens = [];
 var lifecycleChannelMessages = [];
 var lifecycleChannels = [];
 var lateResolve = null;
@@ -75,9 +77,77 @@ var envelopes = {
     tag: '',
     display_name: 'Fork parent',
     messages: [
-      { role: 'user', content: 'Parent question' },
-      { role: 'assistant', content: 'Parent answer' },
+      { role: 'user', content: 'Parent question one' },
+      { role: 'assistant', content: 'Parent answer one' },
+      { role: 'user', content: 'Parent question two' },
+      { role: 'assistant', content: 'Parent answer two' },
     ],
+  },
+  exitParent: {
+    conversation_id: 'exit-parent',
+    tag: '',
+    display_name: 'Exit parent',
+    messages: [
+      { role: 'user', content: 'Earlier parent question' },
+      { role: 'assistant', content: 'Earlier parent answer' },
+      { role: 'user', content: 'Latest parent question' },
+      { role: 'assistant', content: 'Latest parent answer' },
+    ],
+  },
+  exitChild: {
+    conversation_id: 'exit-child',
+    parent_conversation_id: 'exit-parent',
+    tag: 'stealth',
+    display_name: 'Exit child',
+    messages: [
+      { role: 'user', content: 'Local child question' },
+      { role: 'assistant', content: 'Local child answer' },
+    ],
+  },
+  exitStealthParent: {
+    conversation_id: 'exit-stealth-parent',
+    tag: 'stealth',
+    display_name: 'Stealth parent',
+    messages: [
+      { role: 'user', content: 'Parent secret' },
+      { role: 'assistant', content: 'Parent secret answer' },
+    ],
+  },
+  exitNestedChild: {
+    conversation_id: 'exit-nested-child',
+    parent_conversation_id: 'exit-stealth-parent',
+    tag: 'stealth',
+    display_name: 'Nested Stealth child',
+    messages: [
+      { role: 'user', content: 'Nested secret' },
+      { role: 'assistant', content: 'Nested answer' },
+    ],
+  },
+  exitOrphan: {
+    conversation_id: 'exit-orphan',
+    parent_conversation_id: 'missing-parent',
+    tag: 'stealth',
+    display_name: 'Orphan Stealth',
+    messages: [
+      { role: 'user', content: 'Orphan secret' },
+      { role: 'assistant', content: 'Orphan answer' },
+    ],
+  },
+  protectionPending: {
+    conversation_id: 'protection-pending',
+    tag: 'stealth',
+    display_name: 'Protected Stealth',
+    messages: [
+      { role: 'user', content: 'Protected secret' },
+      { role: 'assistant', content: 'Protected answer' },
+    ],
+  },
+  displayForkChild: {
+    conversation_id: 'display-fork-child',
+    parent_conversation_id: 'fork-parent',
+    tag: 'stealth',
+    display_name: 'Displayed-turn child',
+    messages: [],
   },
   slowClose: {
     conversation_id: 'slow-close',
@@ -128,6 +198,9 @@ w.BroadcastChannel.prototype.close = function () {
 w.alert = function (message) {
   alerts.push(String(message));
 };
+w.OraReviewQueuePanel = {
+  open: function (options) { reviewQueueOpens.push(options || {}); },
+};
 w.fetch = function (url, opts) {
   var decoded = decodeURIComponent(String(url));
   opts = opts || {};
@@ -151,10 +224,20 @@ w.fetch = function (url, opts) {
   if (decoded === '/api/conversation/retained') return response(true, envelopes.retained);
   if (decoded === '/api/conversation/stealth') return response(true, envelopes.stealth);
   if (decoded === '/api/conversation/fork-parent') return response(true, envelopes.forkParent);
+  if (decoded === '/api/conversation/exit-parent') return response(true, envelopes.exitParent);
+  if (decoded === '/api/conversation/exit-child') return response(true, envelopes.exitChild);
+  if (decoded === '/api/conversation/exit-stealth-parent') return response(true, envelopes.exitStealthParent);
+  if (decoded === '/api/conversation/exit-nested-child') return response(true, envelopes.exitNestedChild);
+  if (decoded === '/api/conversation/exit-orphan') return response(true, envelopes.exitOrphan);
+  if (decoded === '/api/conversation/protection-pending') return response(true, envelopes.protectionPending);
+  if (decoded === '/api/conversation/display-fork-child') return response(true, envelopes.displayForkChild);
+  if (decoded === '/api/conversation/missing-parent') {
+    return response(false, { error: 'Dialogue not found' }, 404);
+  }
   if (decoded === '/api/conversation/privacy-child') {
     return response(true, {
       conversation_id: 'privacy-child', tag: 'private', display_name: 'Private fork',
-      messages: envelopes.forkParent.messages,
+      parent_conversation_id: 'fork-parent', messages: [],
     });
   }
   if (decoded === '/api/conversation/slow-close') return response(true, envelopes.slowClose);
@@ -168,12 +251,37 @@ w.fetch = function (url, opts) {
   if (decoded === '/api/conversation/timer-a') {
     return response(true, { conversation_id: 'timer-a', tag: '', messages: [] });
   }
+  if (decoded === '/api/active-project') {
+    return response(true, { ok: true, canonical_nexus: 'commons' });
+  }
+  if (decoded.indexOf('/api/projects/meta?') === 0) {
+    return response(true, { projects: [] });
+  }
+  if (decoded === '/api/conversations?project_id=') {
+    return response(true, {
+      pinned: [], errored: [], pending: [], unread: [], active: [],
+    });
+  }
+  if (decoded === '/api/styles/registry') {
+    return response(true, { settings: {}, profiles: [], custom: [] });
+  }
+  if (decoded.indexOf('/api/media-library/') === 0) {
+    return response(true, { entries: [] });
+  }
   if (decoded.indexOf('/api/canvas/load/') === 0) return response(false, {}, 404);
   if (/\/mark-read$/.test(decoded)) return response(true, { ok: true });
   if (/\/privacy-tag$/.test(decoded)) {
     var privacyBody = JSON.parse(opts.body || '{}');
     envelopes.retained.tag = privacyBody.tag;
     return response(true, { ok: true, tag: privacyBody.tag, errors: [] });
+  }
+  if (decoded === '/api/conversation/protection-pending/delete-forever') {
+    return response(false, {
+      status: 'awaiting_system_protection_approval',
+      error: 'queued for exact one-shot approval',
+      queue_id: 'queue-delete-protected',
+      retry_required: true,
+    }, 409);
   }
   if (/\/delete-forever$/.test(decoded)) {
     var disclosure = /\/fresh-delete\/delete-forever$/.test(decoded) ? {
@@ -207,6 +315,9 @@ w.document.addEventListener('ora:conversation-tag-changed', function (event) {
 });
 w.document.addEventListener('ora:conversation-lifecycle-completed', function (event) {
   lifecycleEvents.push(event.detail || {});
+});
+w.document.addEventListener('ora:system-protection-approval-required', function (event) {
+  protectionEvents.push(event.detail || {});
 });
 
 var results = [];
@@ -635,7 +746,10 @@ async function runIndexLifecycleControlsTests() {
       + 'id="modeBtnStealth" aria-expanded="false"></button>'
       + '<button class="spine-button" data-mode-button="private" '
       + 'id="modeBtnPrivate" aria-expanded="false"></button>'
-      + '<span id="bridgeModeLabel"></span><span id="bridgeModeLabelRight"></span>'
+      + '<span class="bridge-mode-label" id="bridgeModeLabel"></span>'
+      + '<span class="bridge-mode-label" id="bridgeModeLabelRight"></span>'
+      + '<span class="mode-bracket" id="modeBracketLeft"></span>'
+      + '<span class="mode-bracket" id="modeBracketRight"></span>'
       + '<span id="bridgeQAMessage"></span>'
       + '<div class="input-pane"><textarea></textarea></div>'
       + '<div class="chat-input-pane"><textarea></textarea></div>'
@@ -647,6 +761,7 @@ async function runIndexLifecycleControlsTests() {
   var activeId = 'stealth-a';
   var activeTag = 'stealth';
   var deleteCalls = [];
+  var exitCalls = [];
   var modeAlerts = [];
   mw.OraConversation = {
     getActiveConversationId: function () { return activeId; },
@@ -654,13 +769,21 @@ async function runIndexLifecycleControlsTests() {
     isReadOnly: function () { return false; },
     canFork: function () { return true; },
     setPrivacyTag: function () { return Promise.resolve({ ok: true }); },
+    exitStealth: function (id) { exitCalls.push(id); return Promise.resolve({ ok: true }); },
     deleteForever: function (id) { deleteCalls.push(id); return Promise.resolve({ ok: true }); },
   };
   mw.alert = function (message) { modeAlerts.push(message); };
   var modeContext = modeDom.getInternalVMContext();
   modeContext.console = console;
-  modeContext.bracketLeft = mw.document.createElement('span');
-  modeContext.bracketRight = mw.document.createElement('span');
+  modeContext.bracketLeft = mw.document.getElementById('modeBracketLeft');
+  modeContext.bracketRight = mw.document.getElementById('modeBracketRight');
+  var modeStyle = mw.document.createElement('style');
+  modeStyle.textContent = fs.readFileSync(
+    path.resolve(__dirname, '..', 'styles', 'components', 'spine.css'), 'utf8'
+  ) + '\n' + fs.readFileSync(
+    path.resolve(__dirname, '..', 'styles', 'components', 'modes.css'), 'utf8'
+  );
+  mw.document.head.appendChild(modeStyle);
 
   var modeCore = sourceSlice(
     indexSource,
@@ -678,6 +801,18 @@ async function runIndexLifecycleControlsTests() {
   var stealthButton = mw.document.getElementById('modeBtnStealth');
   stealthButton.click();
   var menu = mw.document.getElementById('oraModeDropdown');
+  var stealthActions = Array.from(menu.querySelectorAll('[data-action]')).map(function (item) {
+    return item.textContent;
+  });
+  record('Stealth mode menu separates Exit from irreversible deletion',
+    stealthActions.indexOf('Exit Stealth') !== -1
+      && stealthActions.indexOf('Delete Forever') !== -1
+      && stealthActions.indexOf('Close') === -1);
+  mw.document.body.classList.add('stealth-mode');
+  record('runtime Stealth renders one bracket label without overlapping bridge duplicates',
+    mw.getComputedStyle(mw.document.getElementById('bridgeModeLabel')).display === 'none'
+      && mw.getComputedStyle(mw.document.getElementById('modeBracketLeft')).opacity !== '0');
+  mw.document.body.classList.remove('stealth-mode');
   record('spine mode menu exposes ARIA state and focuses its first item',
     stealthButton.getAttribute('aria-expanded') === 'true'
       && mw.document.activeElement.textContent === 'New stealth');
@@ -716,6 +851,14 @@ async function runIndexLifecycleControlsTests() {
       && mw.document.activeElement === stealthButton);
 
   activeId = 'stealth-a';
+  stealthButton.click();
+  menu.querySelector('[data-action="exit-stealth"]').click();
+  record('mode Exit Stealth is navigation-only at the bound Dialogue id',
+    exitCalls.length === 1
+      && exitCalls[0] === 'stealth-a'
+      && deleteCalls.length === 0
+      && mw.document.activeElement === stealthButton);
+
   stealthButton.click();
   menu.querySelector('[data-action="delete-forever"]').click();
   record('mode Delete Forever is bound to the opening Dialogue id',
@@ -1181,6 +1324,155 @@ async function run() {
       && calls.length === 0
       && !w.document.querySelector('.ora-privacy-intervention'));
 
+  await w.OraConversation.load('fork-parent');
+  w.OraConversation.showTurn(0);
+  calls = [];
+  var displayedFork = w.OraConversation.forkActive({
+    tag: 'stealth', source: 'displayed-turn-test', await_selection: true,
+  });
+  await wait(0);
+  var displayedForkCall = calls.find(function (call) {
+    return /\/fork-parent\/fork$/.test(call.url);
+  });
+  var displayedForkBody = JSON.parse(displayedForkCall.opts.body || '{}');
+  forkResolve({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({
+      new_conversation_id: 'display-fork-child', tag: 'stealth',
+    }); },
+  });
+  var displayedForkResult = await displayedFork;
+  record('fork payload uses the zero-based turn currently displayed',
+    displayedForkBody.fork_point_turn_index === 0
+      && displayedForkBody.tag === 'stealth');
+  record('selected fork starts as a true child with no copied parent turns',
+    displayedForkResult && displayedForkResult.selected === true
+      && w.OraConversation.getActiveConversationId() === 'display-fork-child'
+      && w.OraConversation.getTurnCount() === 0
+      && w.document.getElementById('outputPaneTurnPosition').textContent === 'no turns');
+  w.OraConversation.appendUser('First local child question');
+  w.OraConversation.appendAssistant('First local child answer');
+  record('first child exchange is numbered locally as 1 of 1',
+    w.OraConversation.getTurnCount() === 1
+      && w.document.getElementById('outputPaneTurnPosition').textContent === 'turn 1 of 1');
+  await w.OraConversation.load('fork-parent');
+  record('fork leaves the parent transcript unchanged at its latest turn',
+    envelopes.forkParent.messages.length === 4
+      && w.OraConversation.getTurnCount() === 2
+      && w.OraConversation.getCurrentTurn().assistant.content === 'Parent answer two');
+
+  var visualHost = w.document.createElement('div');
+  visualHost.className = 'visual-panel';
+  w.document.body.appendChild(visualHost);
+  var indexSource = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8'
+  );
+  context.closeModeDropdown = function () {};
+  vm.runInContext(sourceSlice(
+    indexSource,
+    '  const currentPaneMode = () => {',
+    '  // Close dropdown on outside click or Escape.'
+  ), context, { filename: 'index-pane-mode-navigation.js' });
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, '..', 'js', 'sidebar.js'), 'utf8'),
+    context,
+    { filename: 'sidebar-exit-navigation.js' }
+  );
+  vm.runInContext(
+    fs.readFileSync(path.resolve(__dirname, '..', 'media-library.js'), 'utf8'),
+    context,
+    { filename: 'media-library-exit-navigation.js' }
+  );
+  w.OraMediaLibrary.init();
+
+  var exitSelections = [];
+  var onExitSelection = function (event) {
+    exitSelections.push(Object.assign({}, event.detail || {}));
+  };
+  w.document.addEventListener('ora:conversation-selected', onExitSelection);
+  var childSelection = {
+    conversation_id: 'exit-child', tag: 'stealth', await_selection: true,
+  };
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: childSelection,
+  }));
+  await childSelection.selection_promise;
+  w.OraPaneMode.set('video');
+  await wait(0);
+  calls = [];
+  var exitChildMessages = JSON.stringify(envelopes.exitChild.messages);
+  var exitedToParent = await w.OraConversation.exitStealth('exit-child');
+  w.document.removeEventListener('ora:conversation-selected', onExitSelection);
+  record('Exit Stealth loads the readable direct parent at its latest turn',
+    exitedToParent && exitedToParent.destination === 'parent'
+      && w.OraConversation.getActiveConversationId() === 'exit-parent'
+      && w.OraConversation.getCurrentTurn().assistant.content === 'Latest parent answer'
+      && w.document.getElementById('outputPaneTurnPosition').textContent === 'turn 2 of 2');
+  record('Exit Stealth completes the normal selection transition from video state',
+    exitSelections.length === 2
+      && exitSelections[1].conversation_id === 'exit-parent'
+      && exitSelections[1].source === 'exit-stealth'
+      && !w.document.body.classList.contains('pane-mode-video')
+      && w.OraMediaLibrary.getState().conversationId === 'exit-parent'
+      && w.OraSidebar.getActiveConversation() === 'exit-parent'
+      && calls.filter(function (call) {
+        return call.url === '/api/conversation/exit-parent';
+      }).length === 1);
+  record('Exit Stealth neither closes nor purges the child',
+    JSON.stringify(envelopes.exitChild.messages) === exitChildMessages
+      && !calls.some(function (call) { return /\/(?:close|delete-forever)$/.test(call.url); }));
+
+  await w.OraConversation.load('exit-nested-child');
+  calls = [];
+  var exitedToStealthParent = await w.OraConversation.exitStealth('exit-nested-child');
+  record('Exit Stealth may navigate to a direct parent that is also Stealth',
+    exitedToStealthParent && exitedToStealthParent.destination === 'parent'
+      && w.OraConversation.getActiveConversationId() === 'exit-stealth-parent'
+      && w.OraConversation.getActiveTag() === 'stealth'
+      && !calls.some(function (call) { return /\/(?:close|delete-forever)$/.test(call.url); }));
+
+  await w.OraConversation.load('exit-orphan');
+  calls = [];
+  var exitedOrphan = await w.OraConversation.exitStealth('exit-orphan');
+  record('missing Exit parent falls back to a fresh Standard Dialogue',
+    exitedOrphan && exitedOrphan.destination === 'fresh-standard'
+      && w.OraConversation.getActiveConversationId() !== 'exit-orphan'
+      && w.OraConversation.getActiveTag() === ''
+      && calls.some(function (call) { return call.url === '/api/conversation/missing-parent'; })
+      && !calls.some(function (call) { return /\/(?:close|delete-forever)$/.test(call.url); }));
+
+  await w.OraConversation.load('protection-pending');
+  var protectedActionsButton = w.document.getElementById('outputPaneActionsBtn');
+  protectedActionsButton.click();
+  var protectedActionLabels = Array.from(
+    w.document.querySelectorAll('#outputPaneActionsMenu .mode-dropdown-item')
+  ).map(function (item) { return item.textContent; });
+  record('Stealth output actions use Exit and Delete Forever, never Close',
+    protectedActionLabels.indexOf('Exit Stealth') !== -1
+      && protectedActionLabels.indexOf('Delete Forever') !== -1
+      && protectedActionLabels.indexOf('Close') === -1);
+  protectedActionsButton.click();
+  w.localStorage.setItem('ora-v3-draft-protection-pending', 'keep this draft');
+  calls = [];
+  protectionEvents = [];
+  reviewQueueOpens = [];
+  var lifecycleCountBeforeProtection = lifecycleEvents.length;
+  var pulseCountBeforeProtection = lifecycleChannelMessages.length;
+  var pendingDelete = await w.OraConversation.deleteForever('protection-pending');
+  record('System Protection hold opens the existing approval workflow and requires retry',
+    pendingDelete && pendingDelete.ok === false
+      && pendingDelete.pending_approval === true
+      && pendingDelete.retry_required === true
+      && pendingDelete.queue_id === 'queue-delete-protected'
+      && reviewQueueOpens.length === 1
+      && reviewQueueOpens[0].tab === 'paused'
+      && protectionEvents.length === 1);
+  record('protection-pending deletion does not pretend success or clear local state',
+    w.OraConversation.getActiveConversationId() === 'protection-pending'
+      && w.localStorage.getItem('ora-v3-draft-protection-pending') === 'keep this draft'
+      && lifecycleEvents.length === lifecycleCountBeforeProtection
+      && lifecycleChannelMessages.length === pulseCountBeforeProtection);
+
   w.document.body.classList.add('stealth-mode');
   w.OraConversation.startFresh({ conversation_id: 'generic-standard' });
   record('generic New ignores the loaded mode and creates Standard',
@@ -1198,7 +1490,7 @@ async function run() {
   w.document.body.classList.remove('stealth-mode');
 
   w.OraConversation.startFresh({ conversation_id: 'fresh-close', tag: '' });
-  record('fresh live Dialogue exposes Close/Delete lifecycle actions',
+  record('fresh live Dialogue exposes its lifecycle action menu',
     !w.document.getElementById('outputPaneActionsBtn').hidden);
   calls = [];
   var freshCloseResult = await w.OraConversation.closeConversation('fresh-close');
@@ -1265,6 +1557,13 @@ async function run() {
   var actionsButton = w.document.getElementById('outputPaneActionsBtn');
   actionsButton.click();
   var actionsMenu = w.document.getElementById('outputPaneActionsMenu');
+  var standardActionLabels = Array.from(
+    actionsMenu.querySelectorAll('.mode-dropdown-item')
+  ).map(function (item) { return item.textContent; });
+  record('Standard output actions use Close and do not expose irreversible deletion',
+    standardActionLabels.indexOf('Close') !== -1
+      && standardActionLabels.indexOf('Delete Forever') === -1
+      && standardActionLabels.indexOf('Exit Stealth') === -1);
   record('output actions menu moves focus to its first item',
     !!actionsMenu
       && actionsButton.getAttribute('aria-expanded') === 'true'
@@ -1316,6 +1615,15 @@ async function run() {
       && tagEvents.some(function (event) {
         return event.conversation_id === 'retained' && event.tag === 'private';
       }));
+  actionsButton.click();
+  var privateActionLabels = Array.from(
+    actionsMenu.querySelectorAll('.mode-dropdown-item')
+  ).map(function (item) { return item.textContent; });
+  record('Private output actions use the same reversible Close lifecycle',
+    privateActionLabels.indexOf('Close') !== -1
+      && privateActionLabels.indexOf('Delete Forever') === -1
+      && privateActionLabels.indexOf('Exit Stealth') === -1);
+  actionsButton.click();
 
   calls = [];
   await w.OraConversation.closeConversation('retained', { tag: 'private' });
