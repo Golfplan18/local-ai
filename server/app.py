@@ -1487,12 +1487,15 @@ def media_library_suggest_edits(conversation_id, entry_id):
 
 # ── A/V Phase 9 — user settings endpoints ────────────────────────────────────
 #
-# Five endpoint shapes:
+# Eight endpoint shapes:
 #   GET    /api/settings                  — current settings + API key status
 #   POST   /api/settings                  — partial update, returns merged state
 #   POST   /api/settings/api-key/verify   — verify where possible
 #   POST   /api/settings/api-key          — store a key in keyring
 #   DELETE /api/settings/api-key/<provider> — remove a key from keyring
+#   GET    /api/settings/chatgpt-subscription — isolated account status
+#   POST   /api/settings/chatgpt-subscription/connect — start browser login
+#   DELETE /api/settings/chatgpt-subscription — log out Ora's session
 #
 # API key values are never returned to the browser. The status endpoint
 # only reports presence (a boolean per provider).
@@ -1533,6 +1536,71 @@ def settings_post():
     except Exception as e:
         return _json_response({"error": str(e)}, status=500)
     return _json_response({"settings": merged})
+
+
+_chatgpt_catalog_signature = None
+_chatgpt_catalog_signature_lock = threading.Lock()
+
+
+def _sync_chatgpt_subscription_router(account_status: dict) -> None:
+    """Reload the process-local Router when subscription availability moves."""
+    global _chatgpt_catalog_signature
+    signature = (
+        account_status.get("state"),
+        account_status.get("catalog_revision"),
+    )
+    with _chatgpt_catalog_signature_lock:
+        if signature == _chatgpt_catalog_signature:
+            return
+        _chatgpt_catalog_signature = signature
+    if not _reload_pipeline_router_after_config_change():
+        # A transient reload failure must remain retryable on the next status
+        # poll; otherwise the in-memory catalogue can stay stale indefinitely.
+        with _chatgpt_catalog_signature_lock:
+            if _chatgpt_catalog_signature == signature:
+                _chatgpt_catalog_signature = None
+
+
+def _chatgpt_subscription_response(payload: dict):
+    status_code = 200
+    if payload.get("state") in {
+        "dependency_unavailable", "secure_storage_unavailable", "error"
+    }:
+        status_code = 503
+    return _json_response(payload, status=status_code)
+
+
+@app.route("/api/settings/chatgpt-subscription", methods=["GET"])
+def settings_chatgpt_subscription_status():
+    from orchestrator import codex_subscription
+
+    payload = codex_subscription.status()
+    _sync_chatgpt_subscription_router(payload)
+    return _chatgpt_subscription_response(payload)
+
+
+@app.route("/api/settings/chatgpt-subscription/connect", methods=["POST"])
+def settings_chatgpt_subscription_connect():
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    from orchestrator import codex_subscription
+
+    payload = codex_subscription.connect()
+    _sync_chatgpt_subscription_router(payload)
+    return _chatgpt_subscription_response(payload)
+
+
+@app.route("/api/settings/chatgpt-subscription", methods=["DELETE"])
+def settings_chatgpt_subscription_disconnect():
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    from orchestrator import codex_subscription
+
+    payload = codex_subscription.disconnect()
+    _sync_chatgpt_subscription_router(payload)
+    return _chatgpt_subscription_response(payload)
 
 
 # ── mind.md (user context layer) ────────────────────────────────────────────
@@ -17183,6 +17251,22 @@ def model_registry_get():
             _rc_path = rp.routing_config_path()
             if _rc_path.exists():
                 _rc = _json2.loads(_rc_path.read_text())
+                _runtime_subscription_endpoints = []
+                try:
+                    from orchestrator import codex_subscription as _codex_sub
+                    if _codex_sub.is_configured():
+                        _runtime_subscription_endpoints = (
+                            _codex_sub.model_endpoints()
+                        )
+                        _sync_chatgpt_subscription_router(
+                            _codex_sub.status()
+                        )
+                except Exception as _codex_sub_err:
+                    print(
+                        "[model-registry] ChatGPT subscription merge skipped: "
+                        f"{type(_codex_sub_err).__name__}",
+                        flush=True,
+                    )
                 # The loop below adds and replaces entries in ``filtered``;
                 # when catalog enrichment was skipped, ``filtered`` can alias
                 # the in-process registry cache itself (wanted=None path) —
@@ -17190,39 +17274,54 @@ def model_registry_get():
                 # stamps, local merges) never leak into the shared cache.
                 if filtered is all_models:
                     filtered = dict(all_models)
-                for ep in (_rc.get("endpoints") or []):
+                for ep in [
+                    *(_rc.get("endpoints") or []),
+                    *_runtime_subscription_endpoints,
+                ]:
                     eid = ep.get("id") or ep.get("name")
                     if not eid:
                         continue
-                    # Subscription endpoints (claude-code:* — executed via the
-                    # local Claude Code CLI on the user's subscription) aren't
-                    # registry entries, so without this merge any config that
-                    # uses them renders DEPRECATED ("not in the registry") and
-                    # invites exactly the wrong fix — observed 2026-06-12 when
-                    # the user re-picked campaign-premium's big-1 onto the
-                    # metered API to clear the flag. Surface them as real,
-                    # pickable models under a "Subscription" vendor group.
+                    # Subscription transports are runtime endpoints rather
+                    # than metered registry entries. Surface both the static
+                    # Claude Code routes and dynamically discovered ChatGPT /
+                    # Codex routes as real, pickable models.
                     if (ep.get("type") == "api"
-                            and ep.get("service") == "claude-code"):
+                            and ep.get("dispatch") == "subscription"):
                         if eid not in filtered:
+                            provider_id = ep.get("provider") or "subscription"
+                            provider_label = ep.get("subscription_provider")
+                            if not provider_label:
+                                provider_label = (
+                                    "Anthropic" if provider_id == "anthropic"
+                                    else str(provider_id).replace("-", " ").title()
+                                )
+                            transport_label = ep.get("subscription_transport")
+                            if not transport_label:
+                                transport_label = (
+                                    "Claude subscription via the local Claude Code CLI"
+                                    if ep.get("service") == "claude-code"
+                                    else "provider-managed subscription runtime"
+                                )
                             filtered[eid] = {
                                 "id": eid,
                                 "display_name": ep.get("display_name") or eid,
-                                "provider": "anthropic",
+                                "description": ep.get("description") or "",
+                                "provider": provider_id,
                                 "vendor": "Subscription",
                                 "category": "chat",
-                                "vision_capable": ep.get("vision_capable", True),
+                                "vision_capable": ep.get("vision_capable", False),
                                 "context_length": ep.get("context_window"),
-                                # Zero marginal dollars on subscription; the
-                                # campaign prices tokens API-equivalent.
                                 "pricing": {"input_per_token": 0,
-                                            "output_per_token": 0},
+                                            "output_per_token": 0,
+                                            "blended_per_m": 0},
                                 "is_free": False,
                                 "reachable": bool(ep.get("enabled", True)
                                                   and ep.get("status") == "active"),
                                 "reachable_rate_limited": False,
                                 "vendor_listed": None,
                                 "_subscription_endpoint": True,
+                                "subscription_provider": provider_label,
+                                "subscription_transport": transport_label,
                             }
                         continue
                     # DIRECT chip: the id has a registered api endpoint with

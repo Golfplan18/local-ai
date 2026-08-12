@@ -14633,10 +14633,10 @@ def call_model(messages: list, endpoint: dict, images: list = None) -> str:
                               "step": _CURRENT_STEP_CV.get() or "",
                               "messages": len(messages)},
             "gate": {"decision": "allowed", "why": "model call"},
-            # The claude-code subscription transport is a CLI subprocess we
-            # cannot intercept per-call — label it honestly.
+            # Subscription transports are SDK/CLI processes whose internal
+            # calls Ora cannot intercept individually — label them honestly.
             "enforcement_model": ("boundary_only"
-                                  if endpoint.get("service") == "claude-code"
+                                  if endpoint.get("dispatch") == "subscription"
                                   else "in_harness"),
         })
     except Exception:
@@ -15286,6 +15286,61 @@ def _call_claude_code_subscription(messages: list, endpoint: dict) -> str:
     return text
 
 
+def _call_codex_subscription(
+    messages: list, endpoint: dict, images: list | None = None
+) -> str:
+    """Run one isolated ChatGPT-subscription turn through openai-codex."""
+    if images:
+        return "[Error codex-subscription: image input is not supported]"
+    try:
+        try:
+            from orchestrator import codex_subscription
+        except ImportError:
+            import codex_subscription
+    except Exception:
+        return (
+            "[Error codex-subscription: support is unavailable — re-run "
+            "the Ora installer]"
+        )
+
+    _record_physical_model_call_config(
+        endpoint,
+        max_tokens=endpoint.get("max_tokens"),
+        attempt_index=1,
+        provider_attempt="codex-subscription",
+    )
+    try:
+        result = codex_subscription.run_completion(
+            messages, endpoint.get("model") or endpoint.get("model_id") or ""
+        )
+    except codex_subscription.CodexSubscriptionError as exc:
+        if exc.kind in {"reauth_required", "not_connected"}:
+            return (
+                "[Error codex-subscription reconnect required: reconnect "
+                "OpenAI (ChatGPT) in Settings → External APIs]"
+            )
+        if exc.kind == "rate_limited":
+            return (
+                "[Error codex-subscription rate-limited: try again after "
+                "the account usage window resets]"
+            )
+        return f"[Error codex-subscription: {exc.safe_message}]"
+    except Exception:
+        return "[Error codex-subscription: the connection is unavailable]"
+
+    _record_model_usage(
+        endpoint,
+        prompt_tokens=result.get("input_tokens"),
+        completion_tokens=result.get("output_tokens"),
+        cache_read_tokens=result.get("cached_input_tokens"),
+        finish_reason="stop",
+    )
+    text = str(result.get("text") or "")
+    if not text.strip():
+        return "[Error codex-subscription: empty result]"
+    return text
+
+
 # ── Direct-vendor dispatch (registry-driven) ─────────────────────────────
 # Ora can reach frontier / open-weight vendors two ways: through OpenRouter
 # (one key, ~5.5% markup) or directly against the vendor's own
@@ -15431,6 +15486,9 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
 
     if service == "claude-code":
         return _call_claude_code_subscription(messages, endpoint)
+
+    if service == "codex-subscription":
+        return _call_codex_subscription(messages, endpoint, images=images)
 
     if service == "claude":
         try:

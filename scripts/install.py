@@ -27,10 +27,11 @@ Steps the script performs in order:
      OpenRouter chat round-trip when a key is already available. Without a
      key, the smoke test validates config and tells the user to add keys
      later in Settings → External APIs.
-  7. Optional External APIs orientation: explain the recommended key set,
-     open official provider pages one at a time if the user wants them, and
-     print the install-complete summary. The tail of ~/ora/install.log lands
-     a deterministic marker the test protocol grep-checks.
+  7. Optional account/API orientation: explain ChatGPT browser sign-in and
+     the recommended API-key set, open official provider pages one at a time
+     if the user wants them, and print the install-complete summary. The tail
+     of ~/ora/install.log lands a deterministic marker the test protocol
+     grep-checks.
 
 Design properties:
   - Idempotent: re-run safely; existing state is honored, not clobbered
@@ -797,7 +798,8 @@ def step_smoke_test(state: dict, dry_run: bool) -> bool:
     if not api_key:
         log("  → No OpenRouter key found in env or keyring; skipping live chat round-trip.")
         log("    Add a key later in Settings → External APIs. The install remains usable with")
-        log("    local models and any API keys you add after first launch.")
+        log("    local models, an optional ChatGPT subscription connection, and any")
+        log("    API keys you add after first launch.")
     else:
         log("  OpenRouter key found; attempting a tiny live chat round-trip.")
         last_error = ""
@@ -822,7 +824,13 @@ def step_smoke_test(state: dict, dry_run: bool) -> bool:
 
 
 def step_external_api_walkthrough(state: dict, dry_run: bool) -> bool:
-    log("Step 8/8: Optional External APIs orientation")
+    log("Step 8/8: Optional ChatGPT subscription and External APIs orientation")
+    log("")
+    log("  Optional ChatGPT subscription route:")
+    log("    - Open Settings → External APIs → OpenAI (ChatGPT), then click Connect.")
+    log("    - Ora's installed openai-codex SDK opens browser sign-in and stores its")
+    log("      isolated session in the system keychain; you do not paste an API key.")
+    log("    - Available Codex access depends on your ChatGPT plan or workspace.")
     log("")
     log("  Ora can run without these keys, and every provider below can be added")
     log("  later in Settings → External APIs. Keys are stored in the system keychain,")
@@ -949,7 +957,7 @@ def main():
     log("")
     for line in _next_launch_instructions():
         log(line)
-    log("Then open Settings → External APIs to paste any keys you created during setup.")
+    log("Then open Settings → External APIs to connect ChatGPT and/or paste any API keys you created during setup.")
 
 
 if __name__ == "__main__":

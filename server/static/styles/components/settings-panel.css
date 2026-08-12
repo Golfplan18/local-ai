@@ -377,6 +377,48 @@
   .ora-settings-apis-top { flex-direction: column; gap: 6px; }
 }
 
+/* Separate managed-account card; unlike the grid below, this never contains
+   a credential field. */
+.ora-settings-chatgpt-card {
+  margin: 12px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 6px;
+  background: var(--background-secondary, #1F1A0F);
+}
+.ora-settings-chatgpt-header,
+.ora-settings-chatgpt-actions,
+.ora-settings-chatgpt-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ora-settings-chatgpt-header { justify-content: space-between; }
+.ora-settings-chatgpt-heading { font-size: 13px; font-weight: 600; }
+.ora-settings-chatgpt-summary { margin: 5px 0; max-width: none; }
+.ora-settings-chatgpt-account {
+  flex-wrap: wrap;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.ora-settings-chatgpt-account span + span {
+  color: var(--text-muted, #A89F8A);
+}
+.ora-settings-chatgpt-message {
+  margin: 6px 0;
+  color: var(--text-muted, #A89F8A);
+  font-size: 12px;
+}
+.ora-settings-chatgpt-actions { margin-top: 8px; }
+.ora-settings-chatgpt-link { text-decoration: none; }
+.ora-settings-chatgpt-status {
+  font-size: 11px;
+  color: var(--text-muted, #A89F8A);
+}
+.ora-settings-chatgpt-status--connected { color: var(--text-success, #8BCB8B); }
+.ora-settings-chatgpt-status--error,
+.ora-settings-chatgpt-status--dependency_unavailable { color: var(--text-error, #E27D7D); }
+
 /* ── API key cards (dense two-column grid, aligned) ──────────────── */
 
 .ora-settings-apikeys-grid {
@@ -1659,9 +1701,8 @@ a.ora-settings-apikey-label:hover {
   color: rgba(110, 220, 200, 1);
 }
 
-/* Subscription chip. Violet — executes through the user's Claude
-   subscription via the local Claude Code CLI (service=claude-code).
-   Zero marginal API cost; campaign tables price tokens API-equivalent. */
+/* Subscription chip. Violet — provider/transport details live in the
+   per-model tooltip because both Claude Code and ChatGPT/Codex use it. */
 .ora-models-chip-subscription {
   background: rgba(150, 110, 220, 0.26);
   color: rgba(205, 175, 255, 1);
