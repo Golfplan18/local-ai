@@ -2,10 +2,10 @@
 then fall back to Gear 3 — never proceed on one model + an error string.
 
 Two layers:
-  * Primitive — `_call_with_retry` retries the SAME model when slot/gear are
-    omitted, and advances to the fallback model when they are passed. This is
-    the building block `_analyst_stream` relies on for "primary retry, then
-    fallback".
+  * Primitive — `_call_with_retry` retries the SAME model when gear is omitted,
+    even when slot metadata is retained, and advances to the fallback model
+    when both slot and gear are passed. This is the building block
+    `_analyst_stream` relies on for "primary retry, then fallback".
   * Orchestration — `run_gear4`'s step-3 recovery: a stream that fails its
     primary tries the fallback model; a stream that fails BOTH is unrecoverable
     and the pipeline falls back to Gear 3 rather than cross-evaluating on one
@@ -37,23 +37,32 @@ GEAR3_SENTINEL = "GEAR3-FALLBACK"
 
 class TestRetrySameVsFallback(unittest.TestCase):
     """`_analyst_stream` gets its 'retry primary, then fallback' ordering by
-    calling the helper with slot/gear omitted (same-model retry) and then
-    advancing the endpoint itself. Pin both halves of that contract."""
+    calling the helper with slot retained but gear omitted (same-model retry)
+    and then advancing the endpoint itself. Pin both halves of that contract."""
 
-    def _fail_then_ok(self, seen):
+    def _fail_then_ok(self, seen, metadata=None):
         def fake_model(messages, endpoint, images=None):
             seen.append(endpoint["name"])
+            if metadata is not None:
+                metadata.append(dict(boot._CALL_METADATA_CV.get() or {}))
             return "short" if len(seen) == 1 else ("substantive output " * 20)
         return fake_model
 
-    def test_slot_none_retries_the_same_model(self):
+    def test_slot_set_with_gear_none_retries_the_same_model(self):
         seen = []
+        metadata = []
         with mock.patch.object(boot, "_run_model_with_tools",
-                               side_effect=self._fail_then_ok(seen)):
+                               side_effect=self._fail_then_ok(seen, metadata)), \
+             mock.patch.object(boot, "_resolve_fallback_endpoint") as resolve:
             text, ok, _ = boot._call_with_retry(
                 [{"role": "user", "content": "x"}], dict(DEPTH_EP), "analyst",
-                slot=None, gear=None)
+                slot="depth", gear=None)
         self.assertEqual(seen, ["depth-primary", "depth-primary"])  # same model
+        self.assertEqual(
+            [(m["step"], m["slot"], m["gear"]) for m in metadata],
+            [("analyst", "depth", None), ("analyst:retry", "depth", None)],
+        )
+        resolve.assert_not_called()
         self.assertTrue(ok)
 
     def test_slot_set_advances_to_fallback_on_retry(self):
@@ -80,6 +89,7 @@ class _Harness:
     def __init__(self, health):
         self.health = health
         self.calls = []  # (step_name, endpoint_name)
+        self.supp_calls = []  # call metadata passed to _call_with_supplement
 
     def _name(self, endpoint):
         return endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
@@ -87,6 +97,12 @@ class _Harness:
     def supp(self, messages, endpoint, step_name, *a, **k):
         name = self._name(endpoint)
         self.calls.append((step_name, name))
+        self.supp_calls.append({
+            "step": step_name,
+            "endpoint": name,
+            "slot": k.get("slot"),
+            "gear": k.get("gear"),
+        })
         if step_name == "analyst":
             ok = self.health.get(name, True)
             return ((f"<<analyst:{name}>> " + "x" * 80) if ok
@@ -151,6 +167,31 @@ def _stream_order(calls, primary, fallback):
 
 
 class TestGear4AnalystRecovery(unittest.TestCase):
+    def test_analyst_slot_metadata_reaches_primary_and_explicit_fallback_calls(self):
+        h = _Harness(health={
+            "depth-primary": False,
+            "breadth-primary": False,
+        })
+        fb = {
+            "depth": {"name": "depth-fallback"},
+            "breadth": {"name": "breadth-fallback"},
+        }
+        with _patched(h, fb_mapping=fb):
+            result = boot.run_gear4(_ctx(), {}, execution_context="interactive")
+
+        self.assertNotEqual(result, GEAR3_SENTINEL)
+        analyst_calls = {
+            call["endpoint"]: (call["slot"], call["gear"])
+            for call in h.supp_calls
+            if call["step"] == "analyst"
+        }
+        self.assertEqual(analyst_calls, {
+            "depth-primary": ("depth", None),
+            "depth-fallback": ("depth", None),
+            "breadth-primary": ("breadth", None),
+            "breadth-fallback": ("breadth", None),
+        })
+
     def test_both_primary_healthy_proceeds_no_fallback(self):
         h = _Harness(health={})
         with _patched(h, fb_mapping={}):
