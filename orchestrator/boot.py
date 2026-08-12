@@ -13140,9 +13140,10 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
 
     # Per-stream analyst recovery (2026-06-29): a refusing/empty model must not
     # let the pipeline proceed on one participant. Each stream tries its PRIMARY
-    # model with one SAME-model retry (slot/gear omitted so _call_with_retry
-    # re-hits the same endpoint rather than auto-advancing the chain); if that
-    # still fails, it advances to the slot's FALLBACK model, also with a
+    # model with one SAME-model retry (slot retained for per-call metadata,
+    # gear omitted so _call_with_retry re-hits the same endpoint rather than
+    # auto-advancing the chain); if that still fails, it advances to the slot's
+    # FALLBACK model, again retaining slot metadata while omitting gear for its
     # same-model retry. A stream that fails both the primary and the fallback is
     # unrecoverable — the caller then falls back to Gear 3 (a complete
     # single-model answer) rather than cross-evaluating an error string.
@@ -13155,7 +13156,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
         ]
         text, ok, reason = _call_with_supplement(
             msgs, primary_endpoint, "analyst", 30, None, images, context_pkg,
-            slot=None, gear=None, config_name=config_name,
+            slot=slot, gear=None, config_name=config_name,
         )
         if ok:
             return text, True, reason, "primary"
@@ -13169,7 +13170,7 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
             return text, False, f"no-fallback-available ({reason})", "no-fallback"
         fb_text, fb_ok, fb_reason = _call_with_supplement(
             msgs, fb, "analyst", 30, None, images, context_pkg,
-            slot=None, gear=None, config_name=config_name,
+            slot=slot, gear=None, config_name=config_name,
         )
         if fb_ok:
             return fb_text, True, f"recovered-on-fallback ({fb_reason})", "fallback"
