@@ -31,6 +31,7 @@ ChromaDB embedding function (nomic via Ollama) is the throughput floor.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -50,6 +51,8 @@ from orchestrator.conversation_chunk import (
     build_chroma_metadata,
     build_chunk_filename,
     build_chunk_markdown,
+    build_embedding_orientation,
+    build_retrieval_document,
 )
 from orchestrator.historical.chain_detector import (
     derive_session_id,
@@ -76,8 +79,8 @@ DEFAULT_CHROMADB_PATH     = str(_rp.chromadb_dir())
 # configured embedders may impose their own bound. Keep a conservative common
 # cap for long pairs (Bible quotes, book outlines, etc.). 10K chars handles
 # dense content (code, non-ASCII, repeated tokens) that can approach ~2
-# chars/token. The chunk MARKDOWN file still carries the full text; only the
-# EMBEDDED retrieval text is truncated.
+# chars/token. The stored document and chunk Markdown remain complete; only
+# the separate query-facing embedding orientation is bounded.
 MAX_EMBED_CHARS = 10_000
 
 _OWNERSHIP_ID_RE = re.compile(
@@ -814,6 +817,7 @@ def emit_chunks_for_session(
     skip_if_chunk_exists: bool = True,
     chromadb_collection = None,
     manifest_path: str | Path | None = None,
+    embedder: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> SessionEmissionResult:
     """Emit chunk files + ChromaDB records for one source-chat session.
 
@@ -1055,7 +1059,10 @@ def emit_chunks_for_session(
 
         result.chunk_ids.append(chunk_id)
 
-        # Embedded document text — paste-free user voice + context header.
+        # Explicit embedding orientation — paste-free user voice + context
+        # header. The separately stored retrieval document remains complete,
+        # including both speakers, so lexical and returned-document retrieval
+        # never loses the assistant response or long exchange content.
         # We exclude pasted segments from the embedding so RAG queries
         # find the user's actual thinking, not pasted articles. The chunk
         # markdown file body still carries the full text including pastes
@@ -1064,15 +1071,18 @@ def emit_chunks_for_session(
         # fall back to context_header alone — at minimum the embedding
         # captures the conversation's session-level context.
         user_voice = _user_voice_only(cp)
-        if user_voice:
-            embedded_text = (
-                f"{context_header}\n\n{user_voice}"
-            )[:MAX_EMBED_CHARS]
-        else:
-            embedded_text = context_header[:MAX_EMBED_CHARS]
+        embedding_text = build_embedding_orientation(
+            context_header, user_voice,
+        )[:MAX_EMBED_CHARS]
+        meta["embedding_text_sha256"] = hashlib.sha256(
+            embedding_text.encode("utf-8")
+        ).hexdigest()
         chroma_records.append({
             "id":       chunk_id,
-            "document": embedded_text,
+            "document": build_retrieval_document(
+                context_header, cp.cleaned_user_input, cp.cleaned_ai_response,
+            ),
+            "embedding_text": embedding_text,
             "metadata": meta,
         })
 
@@ -1081,44 +1091,47 @@ def emit_chunks_for_session(
     # records rather than duplicating them.
     if chroma_records:
         try:
-            chromadb_collection.upsert(
-                ids       = [r["id"]       for r in chroma_records],
-                documents = [r["document"] for r in chroma_records],
-                metadatas = [r["metadata"] for r in chroma_records],
-            )
-            result.chunks_indexed = len(chroma_records)
-        except Exception:
-            # One bad record (e.g. embedding-model context overflow)
-            # would otherwise sink the whole batch. Fall back to per-
-            # record upsert; on context-length overflow, halve the text
-            # and retry until the record fits or is too short to mean
-            # anything (last resort: just the context_header).
-            indexed = 0
-            for r in chroma_records:
-                doc = r["document"]
-                # Progressive truncation on context-length errors.
-                attempt_chars = [len(doc), 6000, 4000, 2500, 1500, 800]
-                last_err: Optional[Exception] = None
-                for cap in attempt_chars:
+            from orchestrator.embedding import EMBEDDING_DIM, get_embedding_function
+            embedding_function = embedder or get_embedding_function()
+            vectors = embedding_function([
+                r["embedding_text"] for r in chroma_records
+            ])
+            if len(vectors) != len(chroma_records):
+                raise ValueError("conversation embedder returned the wrong vector count")
+            if any(len(vector) != EMBEDDING_DIM for vector in vectors):
+                raise ValueError("conversation embedder returned the wrong vector dimension")
+        except Exception as exc:
+            result.errors.append(f"chromadb embedding: {str(exc)[:200]}")
+            vectors = []
+
+        if vectors:
+            try:
+                chromadb_collection.upsert(
+                    ids       = [r["id"]       for r in chroma_records],
+                    documents = [r["document"] for r in chroma_records],
+                    metadatas = [r["metadata"] for r in chroma_records],
+                    embeddings= vectors,
+                )
+                result.chunks_indexed = len(chroma_records)
+            except Exception:
+                # Preserve complete stored documents on batch failure. A
+                # per-record retry isolates bad records without silently
+                # truncating retrievable conversation content.
+                indexed = 0
+                for r, vector in zip(chroma_records, vectors):
                     try:
                         chromadb_collection.upsert(
                             ids=[r["id"]],
-                            documents=[doc[:cap]],
+                            documents=[r["document"]],
                             metadatas=[r["metadata"]],
+                            embeddings=[vector],
                         )
                         indexed += 1
-                        last_err = None
-                        break
-                    except Exception as ee:
-                        msg = str(ee).lower()
-                        last_err = ee
-                        if "context length" not in msg and "exceeds" not in msg:
-                            break  # non-truncation error; don't retry
-                if last_err is not None:
-                    result.errors.append(
-                        f"chromadb upsert {r['id']}: {str(last_err)[:200]}"
-                    )
-            result.chunks_indexed = indexed
+                    except Exception as exc:
+                        result.errors.append(
+                            f"chromadb upsert {r['id']}: {str(exc)[:200]}"
+                        )
+                result.chunks_indexed = indexed
 
     # Finalize: set total_turns + is_last_turn on the chunks for this
     # session. The shared closeout helper does the heavy lifting; we

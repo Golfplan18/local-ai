@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import sys
 import unittest
 
 from orchestrator.tools.extraction_engine import (
@@ -16,6 +17,15 @@ from orchestrator.tools.extraction_engine import (
     extract_sections_for_signals,
     parse_candidate_notes,
 )
+
+try:
+    import boot as boot_module
+    if not hasattr(boot_module, "set_dialogue_history_context"):
+        raise ImportError("namespace package is not orchestrator boot")
+except ImportError:  # pragma: no cover - package-only test context
+    sys.modules.pop("boot", None)
+    from orchestrator import boot as boot_module
+    sys.modules.setdefault("boot", boot_module)
 
 
 def _signal(signal_id: str, location: str = "") -> Signal:
@@ -134,6 +144,124 @@ Short delays preserve the connection between an action and its consequence.
         self.assertEqual(result.candidates[0].source_file, "trusted-source.md")
         self.assertEqual(result.candidates[0].source_section, "Part I > Feedback")
         self.assertEqual(result.candidates[0].generation_mode, "model")
+
+    def test_dialogue_history_is_bounded_once_per_pass_endpoint(self):
+        # Some adjacent suites deliberately reload the top-level ``boot``
+        # module during collection. Resolve the same live module that
+        # ExtractionEngine imports at call time so this test does not bind a
+        # stale ContextVar registry.
+        active_boot = sys.modules.get("boot", boot_module)
+        history = []
+        for index in range(30):
+            history.extend([
+                {
+                    "role": "user",
+                    "content": (
+                        f"U{index:02d}-START " + ("u" * 1200)
+                        + f" U{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                    "_ora_ancestry_depth": 0,
+                },
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"A{index:02d}-START " + ("a" * 1200)
+                        + f" A{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                    "_ora_ancestry_depth": 0,
+                },
+            ])
+
+        endpoints = {
+            "sidebar": {
+                "slot": "sidebar", "type": "api",
+                "context_window": 28_000, "max_tokens": 1_000,
+                "_disable_truncation_retry": True,
+            },
+            "depth": {
+                "slot": "depth", "type": "api",
+                "context_window": 60_000, "max_tokens": 4_096,
+                "_disable_truncation_retry": True,
+            },
+        }
+        calls = []
+
+        def call_fn(messages, endpoint):
+            physical, _stats = active_boot.prepare_messages_with_continuity(
+                messages, endpoint,
+            )
+            calls.append((dict(endpoint), physical))
+            if endpoint["slot"] == "sidebar":
+                return "1. Bounded dialogue history preserves complete turns."
+            return None
+
+        engine = ExtractionEngine(call_fn=call_fn, config={"configured": True})
+        engine._get_endpoint = lambda slot: dict(endpoints[slot])
+        ambient = [
+            {"role": "user", "content": "AMBIENT-POISON-USER"},
+            {"role": "assistant", "content": "AMBIENT-POISON-ASSISTANT"},
+        ]
+        token = active_boot.set_dialogue_history_context(ambient)
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                engine.extract(
+                    "RAW-TRANSCRIPT-POISON",
+                    {"type": "chat"},
+                    "dialogue-id",
+                    history_messages=history,
+                )
+        finally:
+            active_boot.reset_dialogue_history_context(token)
+
+        self.assertEqual([endpoint["slot"] for endpoint, _ in calls],
+                         ["sidebar", "depth"])
+        selected_by_slot = {}
+        for endpoint, messages in calls:
+            rendered = "\n".join(message["content"] for message in messages)
+            self.assertNotIn("AMBIENT-POISON", rendered)
+            self.assertNotIn("RAW-TRANSCRIPT-POISON", rendered)
+            safe_capacity = (
+                endpoint["context_window"]
+                - active_boot._endpoint_output_reserve(
+                    endpoint, endpoint["context_window"],
+                )
+                - 128
+            )
+            self.assertLessEqual(
+                active_boot.estimate_message_tokens(messages, endpoint),
+                safe_capacity,
+            )
+            selected = set()
+            for index in range(30):
+                user_present = f"U{index:02d}-START" in rendered
+                assistant_present = f"A{index:02d}-START" in rendered
+                self.assertEqual(user_present, assistant_present)
+                if not user_present:
+                    continue
+                selected.add(index)
+                self.assertIn(f"U{index:02d}-END", rendered)
+                self.assertIn(f"A{index:02d}-END", rendered)
+                self.assertEqual(rendered.count(f"U{index:02d}-START"), 1)
+                self.assertEqual(rendered.count(f"A{index:02d}-START"), 1)
+            self.assertGreater(len(selected), 0)
+            self.assertLess(len(selected), 30)
+            selected_by_slot[endpoint["slot"]] = selected
+
+        self.assertNotEqual(
+            selected_by_slot["sidebar"], selected_by_slot["depth"],
+        )
+        depth_text = "\n".join(
+            message["content"] for message in calls[1][1]
+        )
+        self.assertEqual(depth_text.count("## Dialogue Source"), 1)
+        self.assertEqual(
+            depth_text.count(
+                "<<<UNTRUSTED_SOURCE_START dialogue_transcript>>>"
+            ),
+            1,
+        )
 
     def test_empty_model_output_fails_open_loudly_to_grounded_degraded_candidate(self):
         source = (

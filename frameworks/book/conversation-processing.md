@@ -86,7 +86,7 @@ Before processing:
 
 ## PURPOSE
 
-This framework processes conversations into structured turn-pair chunks ready for RAG retrieval. **Batch mode** (commercial AI imports) additionally produces a persistent, semantically-preserved cleaned-pair archive at `<historical-archive>/`, which serves as the primary deliverable for imports — downstream extractions (chunks, news outlines, resource notes, atomic notes) consume the cleaned layer rather than the raw exports. **Inline mode** processes live Ora exchanges immediately as part of the output delivery step.
+This framework processes conversations into complete exchange records for retrieval. **Batch mode** (commercial AI imports) additionally produces a persistent, semantically-preserved cleaned-pair archive at `<historical-archive>/`, which serves as the primary import deliverable — downstream chunks, source notes, and atomic notes consume the cleaned layer rather than the raw exports. **Inline mode** persists each live Ora exchange through the same target chunk/index contract.
 
 The cleaned-pair layer exists for two reasons: (1) cleanup is expensive; downstream extractions should iterate cheaply on cleaned material rather than re-cleaning; (2) the cleaned archive is the user's permanent record of intellectual history, with raw exports kept for re-mining but no longer the active surface.
 
@@ -94,7 +94,7 @@ This pipeline is distinct from the Data Formulation Pipeline / Document Processi
 
 **This pipeline operates in two modes:**
 
-- **Inline mode (primary, automatic):** Processes each prompt-response pair immediately after the model delivers its response, as part of the output delivery step. The exchange is appended to the session's raw log, written as a processed chunk file, and indexed into ChromaDB before the system accepts the next user input. This means conversation RAG has access to every exchange in the current session — including the one that just completed. Inline mode does not run the cleanup apparatus — live exchanges are already structured and well-formed.
+- **Inline mode (primary, automatic):** Processes each prompt-response pair after delivery. The authoritative envelope retains the local user-and-assistant turn; the exchange is also written as a processed chunk and indexed for later cross-Dialogue retrieval. Inline mode does not run import cleanup because live exchanges are already structured. Current-Dialogue continuity comes from server-reconstructed envelope history, not from asking RAG to retrieve the Dialogue's own rows.
 
 - **Batch mode (imports, on demand):** Processes files dropped into `<conversations>/raw/` — commercial AI exports (Claude, ChatGPT, Gemini) and any other captured chats from phone, web, or external sessions. The primary invocation is `python3 -m orchestrator.historical.ingest`, which runs the four-stage Batch Ingest Lifecycle below. Batch invocation is manual; there is no automatic overnight batch.
 
@@ -102,8 +102,8 @@ This pipeline is distinct from the Data Formulation Pipeline / Document Processi
 
 **Inline mode inputs:**
 - The prompt-response pair that just completed: user prompt (full text), assistant response (full text), timestamp (current), model identifier, session ID, turn index within the current session.
-- The current session's raw log file path (for appending).
-- Source: provided by the orchestrator (boot.py) as part of the output delivery step.
+- The authoritative Dialogue envelope and raw-log destinations managed by the server.
+- Source: provided by the orchestrator as part of output delivery. Fork ancestry is not copied into this local pair; effective history is reconstructed separately from direct-parent cutoffs.
 
 **Batch mode inputs:**
 - Unprocessed conversation files in `<conversations>/raw/` (or explicit input path). Source: user export from commercial AI services (Claude.ai JSON or Web Clipper markdown, ChatGPT export, Gemini export), or local-Ora session logs.
@@ -122,12 +122,12 @@ Primary outputs:
 
 - **(Batch Stage 2)** Structured source notes for pasted `news`, `opinion`, and `resource` segments, written flat under the vault's `Resources/` directory by `phase3_extraction.py` and indexed into ChromaDB `knowledge`. Earlier drafts and unrelated/uncertain paste classes are not minted as source notes.
 
-- **(Batch Stage 3; both modes)** Processed turn-pair chunk files written to `<conversations>/`. Each file contains one prompt-response pair with contextual header, topic metadata, timestamps, and provenance tag. Format: Markdown with YAML frontmatter. Quality threshold: every chunk is self-contained — a reader or retrieval system encountering the chunk in isolation can understand the exchange without needing the full conversation.
+- **(Batch Stage 3; both modes)** Processed turn-pair chunk files written to `<conversations>/`. Each file contains the contextual header, complete user prompt, complete assistant response, topic metadata, timestamps, and provenance tag. Format: Markdown with YAML frontmatter. The complete exchange is the retrieval unit; a reader encountering it in isolation can identify both speakers and the context that makes the exchange intelligible.
 
 - **(Batch Stage 4)** Atomic engram notes written by `phase5_atomic_extraction.py` under `Engrams/Historical Atomics/`, newest pairs first, with semantic duplicate suppression through ChromaDB `atomic_dedup`.
 
 Secondary index outputs:
-- ChromaDB `conversations` receives every emitted chunk; `knowledge` receives new Phase 3 source notes; `atomic_dedup` records new Phase 5 atomics and increments metadata for near-duplicate sightings.
+- ChromaDB `conversations` receives every emitted complete exchange. Its stored document is Context + User + Assistant; its vector is supplied separately from bounded Context + User. `knowledge` receives new Phase 3 source notes; `atomic_dedup` records new Phase 5 atomics and increments metadata for near-duplicate sightings. Live and historical emission use this same storage/vector contract.
 
 Additional outputs (inline mode):
 - Updated session raw log at `<conversations>/raw/[session-id].md` with the new exchange appended.
@@ -142,7 +142,7 @@ Additional outputs (batch mode):
 
 ## EXECUTION TIER
 
-**Inline mode:** Orchestrator. This pipeline executes as part of the orchestrator's output delivery step — after the model produces a response and before the system accepts the next user input. Processing a single exchange inline must complete in under two seconds to avoid perceptible delay. The inline path runs Layers 3 and 4 only (semantic chunking, header generation, write, and indexing) because the prompt-response pair is already normalized — it comes directly from the orchestrator, not from a file that needs format detection and parsing, and not from a commercial export that needs cleanup.
+**Inline mode:** Orchestrator. This pipeline executes as part of output delivery after the model produces a response. It persists the local turn and emits the complete exchange through the shared chunk/index builder. Live delivery does not create a placeholder row or queue an asynchronous header backfill; success and failure are represented by the synchronous persistence/indexing result. The import cleanup layers are skipped because the exchange is already normalized.
 
 **Batch mode:** Agent. This pipeline runs on demand for processing imported conversation files. The runnable implementation lives in `<ora-home>/orchestrator/historical/`. **The single-command entry point is `python3 -m orchestrator.historical.ingest`**, which chains four stages — cleanup (Layers 1–2.5), Phase 3 source-note extraction, chunk emission + conversation indexing (Layers 3–4), and Phase 5 atomic-engram extraction. `--no-extraction`, `--no-chunks`, and `--no-engrams` skip the three downstream stages; `--backend` selects the model-call path used by model-bearing stages. Per-stage CLIs (`cli`, `phase3_extraction`, `path2_cli`, `phase5_atomic_extraction`) remain available for targeted reruns and repair. Stage boundaries are disk/manifests handoffs rather than one ever-growing model context.
 
@@ -168,7 +168,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
 - **Endpoint produced:**
   (a) A set of cleaned-pair markdown files in `<historical-archive>/`, one per turn pair, with `type: cleaned-pair` frontmatter, multi-level context header, semantically-preserved cleaned user input (pasted segments classified into 4 buckets and annotated), and cleaned assistant response (engagement wrapper stripped per the strict 5-step rule).
   (b) Structured source notes for qualifying pasted news/opinion/resource segments plus `knowledge` index entries.
-  (c) Processed turn-pair chunks in `<conversations>/` plus corresponding `conversations` index entries.
+  (c) Processed complete-exchange chunks in `<conversations>/` plus corresponding `conversations` index entries whose stored documents include Context + User + Assistant and whose separately supplied vectors use bounded Context + User.
   (d) Atomic engram notes plus the shared `atomic_dedup` index.
   (e) Four resume manifests, `chain-index.json`, the engagement-strip audit log, and one aggregate run summary.
 
@@ -176,7 +176,7 @@ This framework's declaration of the project-level milestones it can deliver. Use
   (a) every raw file in the batch's input set is either represented in the updated manifest as completed (with cleaned-pair file count and chunk count), or listed as errored with a reason (unrecognized format, parser failure, or API exhaustion);
   (b) every cleaned-pair file has a unique `(source_chat, source_pair_num)` combination and valid YAML frontmatter that parses programmatically;
   (c) every chunk file has a unique chunk_id with no collisions;
-  (d) ChromaDB conversations collection entry count increases by exactly the number of new (non-duplicate) chunks written, with embeddings generated from contextual header + user prompt per the Embedding Dilution failure mode;
+  (d) ChromaDB conversations collection entry count increases by exactly the number of new non-duplicate chunks written; each stored document contains contextual header + user prompt + assistant response, while its separately supplied embedding is generated from bounded contextual header + user prompt;
   (e) cleaned-pair files belonging to the same source file form a coherent thread (prior_pair / next_pair links are consistent and form a chain without orphans or cycles);
   (f) all ten Evaluation Criteria score 3 or above against the produced cleaned-pair files (criteria 8–10) and chunks (criteria 1–7).
 
@@ -266,15 +266,17 @@ This framework's output is evaluated against these 10 criteria. Each criterion i
 
 ## INLINE MODE PROCESSING
 
-This section describes the processing path for ongoing conversations — every exchange processed immediately as part of the output delivery step. This is the primary operating mode. Batch mode (Layers 1–6 below) is used only for imports.
+This section describes the live-write path for ongoing Dialogues. It persists one complete local exchange at a time. Batch mode (Layers 1–6 below) is the import/replay path, but both modes target the same chunk, stored-document, vector, and metadata contract.
 
 ### Inline Processing Sequence
 
-After the model delivers its response, the orchestrator executes these three steps before accepting the next user input:
+After the model delivers its response, the orchestrator executes three coordinated writes:
 
-**Step 1 — Append to Session Raw Log**
+**Step 1 — Persist the Authoritative Local Turn**
 
-Append the prompt-response pair to the current session's raw log file at `<conversations>/raw/[session-id].md`. The raw log is one file per session, appended throughout. It is the audit trail and the source for reprocessing if the extraction algorithm improves.
+Append the full user prompt and full assistant response to the current Dialogue's authoritative local transcript and raw-log surfaces. The Dialogue envelope remains the source for history reconstruction; chunk and index outputs are rebuildable retrieval representations.
+
+For a fork, this write adds only the child's new local exchange. Parent messages are never copied into the child. The child's first new exchange is local turn 1, and effective history is reconstructed separately through the direct parent plus immutable `fork_point_message_count` at every ancestry edge.
 
 Format for each appended entry:
 ```markdown
@@ -293,13 +295,21 @@ Format for each appended entry:
 [Assistant's response, full text]
 ```
 
-The session ID is generated at session start (e.g., `2026-03-31_session-a7f3`). The raw log filename matches the session ID.
+The raw exchange preserves both speaker roles exactly. Summaries, extracted claims, and model interpretations do not replace it and do not create an accepted-decision store.
 
-**Step 2 — Generate Processed Chunk File**
+**Step 2 — Build the Complete Exchange Chunk**
 
-Generate the contextual header and topic tags for this exchange, then write the processed chunk file to `<conversations>/`. This step applies the same chunking and header logic as Layer 3 (Semantic Chunking and Contextual Header Generation) below, but operates on a single exchange rather than a full conversation file.
+Use the shared conversation-chunk builder to write one processed record to `<conversations>/`. The body is:
 
-For inline processing, the contextual header is generated by the model that just produced the response — it adds minimal latency because the model already has full conversational context. The orchestrator appends a post-response instruction: "Generate a 2–4 sentence contextual header summarizing what this exchange is about, what the user was trying to accomplish, and any relevant prior context. Also provide 1–3 topic tags as short descriptive phrases." The model returns the header and tags, which the orchestrator uses to assemble the chunk file.
+```text
+[bounded contextual header]
+
+User: <full user prompt>
+
+Assistant: <full assistant response>
+```
+
+The contextual header or metadata may orient retrieval, but neither may attribute a decision the user did not make. Live and historical paths use the same builder and complete-exchange body. The chunk is a whole retrieval unit; it is not split or stored without the assistant response.
 
 Chunk filename format:
 ```
@@ -308,26 +318,22 @@ YYYY-MM-DD_HH-MM_session-[short-id]_pair-[NNN]_[topic-slug].md
 
 Example: `2026-03-31_14-23_session-a7f3_pair-004_model-switching.md`
 
-Chunk file format: identical to the format specified in Layer 3 below, including YAML frontmatter with all metadata fields.
-
-For inline mode, the `source_platform` is always `local` and the `source_file` references the session raw log.
+Chunk file format is identical to Layer 3 below, including YAML frontmatter with stable Dialogue/turn identity, source facts that are actually known, privacy, timestamps, and routing metadata. Unknown provenance remains unknown rather than inferred.
 
 **Step 3 — Index into ChromaDB**
 
 Add the chunk to the ChromaDB conversations collection with:
-- Document content: the full chunk text (header + exchange)
-- Metadata: all YAML frontmatter fields, especially timestamp (for recency queries) and topics (for semantic queries)
-- Embedding: generated from the contextual header + user prompt only (not the full assistant response — see Named Failure Mode: The Embedding Dilution)
+- **Stored document:** full Context + User + Assistant.
+- **Metadata:** the flat filter/rebuild fields produced by the shared builder.
+- **Separately supplied vector:** bounded Context + User only. The assistant remains retrievable but does not steer semantic orientation.
 
-After Step 3 completes, the exchange is fully processed. The next query in the same session can retrieve it via conversation RAG.
+The current Dialogue does not depend on retrieving its own row: server-authoritative effective history already reaches Phase A, Direct, G1–G4, and special consumers. The row supports later cross-Dialogue and global retrieval, subject to privacy, archive, ancestry, and source-wide exclusion rules.
 
 ### Inline Mode Performance Constraint
 
-The three-step inline sequence must complete in under two seconds total. The bottleneck is Step 2 (header generation), which requires a model call. Strategies to meet this constraint:
+Inline processing is completion-coupled, not an asynchronous placeholder workflow. It must not claim a retrievable row whose full exchange, metadata, or separately supplied vector has not been written. A slow or failed indexing step is reported through the normal persistence/indexing failure surfaces; the contract is never satisfied by a temporary assistant-omitted document or a queued header backfill.
 
-- Use the sidebar model (smallest, fastest) for header generation rather than the model that produced the response.
-- If header generation exceeds the time budget, write the chunk file with a placeholder header and queue the header for asynchronous generation. The chunk is still indexed immediately with the user prompt as the embedding source (which is the primary embedding content regardless). The header is backfilled when the model completes.
-- Step 1 (file append) and Step 3 (ChromaDB indexing) are I/O operations that complete in milliseconds.
+The endpoint context budget used on the next turn is separate from indexing. It begins with the 200,000-token Dialogue maximum, may shrink for the actual endpoint's payload/output/retry/image/safety requirements, and always packs complete turn or indexed note units.
 
 ---
 
@@ -756,7 +762,7 @@ IF any files failed to process, THEN restate each failure with:
 
 This section consolidates failure modes named throughout the layers above, plus the cross-layer failures that don't fit any single layer.
 
-**The Delivery Block (inline mode).** Inline processing that takes too long blocks the user from entering their next prompt. The two-second budget is a hard constraint. If header generation is slow, write the chunk with a placeholder header and backfill asynchronously — never block the user's workflow to generate a perfect contextual header.
+**The Partial Inline Record.** Delivery reports success after writing a placeholder, assistant-omitted document, or queued header repair. *Prevention:* live writes use the shared complete-exchange builder and report persistence/indexing failure honestly; there is no asynchronous placeholder contract.
 
 **The Encoding Trap (batch mode).** Raw exports from different platforms use different Unicode encodings and escaping schemes. Normalize to UTF-8 during format normalization.
 
@@ -855,21 +861,19 @@ Supporting infrastructure outside `historical/`:
 - `<ora-home>/orchestrator/conversation_chunk.py` — shared chunk-building helpers (live inline + batch historical).
 - `<ora-home>/orchestrator/tools/path2_emitter.py` — chunk emitter; Layer 3/4 in batch mode.
 
-**Historical context:** this implementation was built across April–May 2026 during the one-time historical archive run that processed 39,081 cleaned-pair files from 3,733 source files at a cost of $510.31 with 99.9% pair-level success. Going forward, the same code processes ad-hoc imports of fresh chats captured from phone, web, or any commercial AI service. Drop the export into `<conversations>/raw/` and re-run the CLI; the manifest's resume logic skips everything already processed.
-
 ---
 
 ## AGENT EXECUTION METADATA
 
 ### Inline Mode Execution Path
 
-The inline path is not a staged pipeline — it is a three-step procedure executed by the orchestrator after each model response:
+The inline path is a completion-coupled three-step procedure after each model response:
 
-1. Append exchange to session raw log (file I/O, ~10ms)
-2. Generate contextual header and topic tags (model call to sidebar model, ~500ms–1500ms)
-3. Write chunk file and index into ChromaDB (file I/O + embedding, ~200ms)
+1. Persist the full user/assistant exchange as the Dialogue's next local turn and append the raw-log representation.
+2. Build the contextualized complete-exchange chunk with the shared live/historical builder.
+3. Store Context + User + Assistant in `conversations`, supplying a separate bounded Context + User vector.
 
-Total inline processing budget: under 2 seconds. If Step 2 exceeds budget, write chunk with placeholder header and backfill asynchronously.
+No fixed-duration promise changes the data contract. A failed or incomplete write is reported; it is not converted into a placeholder followed by deferred repair.
 
 ### Stage 1 Cleanup Internal Boundaries
 
@@ -900,8 +904,7 @@ Injected into every batch mode stage's context window:
 OBJECTIVE: Process raw conversation exports into a persistent
 cleaned-pair archive plus self-contained, semantically chunked
 turn-pair files with contextual headers and topic metadata,
-ready for dual-strategy RAG retrieval (timestamp-sorted for
-recency, semantic similarity for relevance) and for downstream
+ready for lexical + semantic RAG retrieval and for downstream
 extraction by news, resource, and atomic-note pipelines.
 
 PATH ROOTS: Resolve every angle-bracket root through
@@ -933,7 +936,8 @@ CONSTRAINTS:
 - Maximum chunk size: 2,000 words
 - Contextual headers: 2-4 sentences, written for retrieval
   orientation
-- Embedding source: contextual header + user prompt only
+- Stored conversation document: contextual header + user prompt + assistant response
+- Separately supplied embedding source: bounded contextual header + user prompt only
 - Context window resets between files and between turn pairs
 - Check manifest before processing to prevent duplicates
 - Parse retry-after header on 429 responses before backoff

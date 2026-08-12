@@ -29,6 +29,8 @@ import math
 import os
 import re
 import stat
+import struct
+import subprocess
 from collections import defaultdict, deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -37,7 +39,11 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
 from orchestrator import runtime_paths as rp
-from orchestrator.conversation_chunk import build_chroma_metadata
+from orchestrator.conversation_chunk import (
+    build_chroma_metadata,
+    build_embedding_orientation,
+    build_retrieval_document,
+)
 from orchestrator.historical.chain_detector import derive_session_id
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
@@ -137,7 +143,7 @@ class ConversationReplayPlan:
         for record in sorted(self.records, key=lambda item: item.row_id):
             digest.update(record.row_id.encode("utf-8"))
             digest.update(b"\0")
-            digest.update(record.payload_fingerprint().encode("ascii"))
+            digest.update(record.source_fingerprint().encode("ascii"))
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -558,6 +564,7 @@ def _historical_records(
     paths = sorted(archive_root.glob("*.md"), key=lambda item: item.name)
     session_numbers: dict[str, list[int]] = defaultdict(list)
     session_privacy: dict[str, set[str]] = defaultdict(set)
+    stealth_sessions: set[str] = set()
     first_user_inputs: dict[str, tuple[int, str]] = {}
     valid_paths: list[Path] = []
     for path in paths:
@@ -572,7 +579,7 @@ def _historical_records(
                 raise ValueError("source_timestamp is missing or invalid")
             lowered_tags = {tag.casefold() for tag in pair.tags}
             if "stealth" in lowered_tags:
-                raise ValueError("cleaned pair contains stealth data")
+                stealth_sessions.add(pair.source_chat)
             valid_paths.append(path)
             session_numbers[pair.source_chat].append(pair.source_pair_num)
             session_privacy[pair.source_chat].add(
@@ -585,7 +592,6 @@ def _historical_records(
                 )
         except Exception as exc:
             plan.errors.append(f"cleaned pair {path}: {exc}")
-    plan.historical_files = len(valid_paths)
 
     try:
         session_to_chain, chain_labels = _load_chain_index(
@@ -595,13 +601,15 @@ def _historical_records(
         plan.errors.append(str(exc))
         session_to_chain, chain_labels = {}, {}
 
-    plan.historical_sessions = len(session_numbers)
+    plan.historical_sessions = len(session_numbers.keys() - stealth_sessions)
     records: list[ReplayRecord] = []
     fingerprints: dict[str, str] = {}
     signatures: set[str] = set()
     invalid_sessions: set[str] = set()
     session_tags: dict[str, str] = {}
     for source_chat, values in session_numbers.items():
+        if source_chat in stealth_sessions:
+            continue
         numbers = sorted(values)
         if len(numbers) != len(set(numbers)):
             plan.errors.append(
@@ -628,8 +636,17 @@ def _historical_records(
             plan.errors.append(f"cleaned pair changed before replay {path}: {exc}")
             continue
         source_chat = pair.source_chat
+        context = _compose_context_header(pair)
+        signature = _source_signature(
+            context, pair.cleaned_user_input, pair.cleaned_ai_response
+        )
+        if source_chat in stealth_sessions:
+            plan.ignored_files.append(str(path))
+            signatures.add(signature)
+            continue
         if source_chat in invalid_sessions:
             continue
+        plan.historical_files += 1
         tag = session_tags[source_chat]
         session_id = derive_session_id(source_chat)
         conversation_id = historical_conversation_id(source_chat)
@@ -637,13 +654,16 @@ def _historical_records(
         chain_label = chain_labels.get(chain_id, "")
         first_user_input = first_user_inputs[source_chat][1]
         final_turn = max(session_numbers[source_chat])
-        context = _compose_context_header(pair)
         topics = _topics_from_pair(pair)
         topic_primary = topics[0] if topics else ""
         document_voice = _user_voice_only(pair)
-        document = (
-            f"{context}\n\n{document_voice}" if document_voice else context
+        embedding_text = (
+            build_embedding_orientation(context, document_voice)
+            if document_voice else context
         )[:MAX_EMBED_CHARS]
+        document = build_retrieval_document(
+            context, pair.cleaned_user_input, pair.cleaned_ai_response,
+        )
         row_id = f"session-{session_id}-pair-{pair.source_pair_num:03d}"
         metadata = build_chroma_metadata(
             user_input=pair.cleaned_user_input,
@@ -671,14 +691,18 @@ def _historical_records(
         metadata["source_path"] = source_chat
         metadata["total_turns"] = final_turn
         metadata["is_last_turn"] = pair.source_pair_num == final_turn
+        metadata["embedding_text_sha256"] = hashlib.sha256(
+            embedding_text.encode("utf-8")
+        ).hexdigest()
         record = ReplayRecord(
             row_id=row_id,
             document=document,
             metadata=metadata,
             source_path=pair.file_path,
             source_kind="historical_cleaned_pair",
+            embedding_text=embedding_text,
         )
-        fingerprint = record.payload_fingerprint()
+        fingerprint = record.source_fingerprint()
         prior = fingerprints.get(row_id)
         if prior is not None and prior != fingerprint:
             plan.errors.append(
@@ -687,9 +711,7 @@ def _historical_records(
         fingerprints[row_id] = fingerprint
         if materialize:
             records.append(record)
-        signatures.add(_source_signature(
-            context, pair.cleaned_user_input, pair.cleaned_ai_response
-        ))
+        signatures.add(signature)
     return records, signatures, fingerprints
 
 
@@ -885,6 +907,7 @@ def _live_records(
     materialize: bool,
 ) -> tuple[list[ReplayRecord], dict[str, str]]:
     pending: list[tuple[_Chunk, ReplayRecord, int | None]] = []
+    stealth_conversations: set[str] = set()
     for path in sorted(conversations_root.glob("*.md"), key=lambda item: item.name):
         try:
             text = _read_text_snapshot(path, conversations_root, label="conversation chunk")
@@ -905,9 +928,6 @@ def _live_records(
             signature = _source_signature(
                 chunk.context, chunk.user_input, chunk.ai_response
             )
-            if signature in historical_signatures:
-                plan.derived_historical_files += 1
-                continue
             parsed_id, model_id, turn_index, total_hint, parsed_title = (
                 _context_identity(chunk.context)
             )
@@ -915,6 +935,39 @@ def _live_records(
             owners = _manifest_owner_for_chunk(
                 chunk, candidates, parsed_id, plan
             )
+            owner_privacy: list[tuple[_ManifestOwner, dict[str, Any], str]] = []
+            for owner in owners:
+                conversation_id = owner.conversation_id
+                if not _SAFE_ID_RE.fullmatch(conversation_id):
+                    raise ValueError(
+                        f"invalid manifest conversation_id {conversation_id!r}"
+                    )
+                envelope: dict[str, Any] = {}
+                if sessions_root is not None:
+                    envelope = _envelope(
+                        sessions_root / conversation_id, sessions_root
+                    )
+                privacy_sources = {
+                    str(envelope.get("tag") or ""),
+                    owner.tag,
+                    *(item.casefold() for item in chunk.tags),
+                }
+                invalid_tags = privacy_sources - {"", "private", "stealth"}
+                if invalid_tags:
+                    raise ValueError(
+                        f"invalid conversation tags {sorted(invalid_tags)!r}"
+                    )
+                tag = (
+                    "stealth" if "stealth" in privacy_sources
+                    else "private" if "private" in privacy_sources
+                    else ""
+                )
+                if tag == "stealth":
+                    stealth_conversations.add(conversation_id)
+                owner_privacy.append((owner, envelope, tag))
+            if signature in historical_signatures:
+                plan.derived_historical_files += 1
+                continue
             if not owners:
                 # A canonical-looking file is not sufficient authority for
                 # deletion/privacy metadata. Only latest manifest-owned rows
@@ -922,12 +975,8 @@ def _live_records(
                 # as ignored rather than guessed into the new corpus.
                 plan.ignored_files.append(str(path))
                 continue
-            for owner in owners:
+            for owner, envelope, tag in owner_privacy:
                 conversation_id = owner.conversation_id
-                if not _SAFE_ID_RE.fullmatch(conversation_id):
-                    raise ValueError(
-                        f"invalid manifest conversation_id {conversation_id!r}"
-                    )
                 row_id = owner.chunk_id
                 owner_turn_index = turn_index
                 session_match = _SESSION_ID_RE.fullmatch(row_id)
@@ -945,27 +994,6 @@ def _live_records(
                     owner_turn_index = (
                         int(filename_pair.group("turn")) if filename_pair else 1
                     )
-
-                envelope: dict[str, Any] = {}
-                if sessions_root is not None:
-                    envelope = _envelope(
-                        sessions_root / conversation_id, sessions_root
-                    )
-                privacy_sources = {
-                    str(envelope.get("tag") or ""),
-                    owner.tag,
-                    *(item.casefold() for item in chunk.tags),
-                }
-                if "stealth" in privacy_sources:
-                    raise ValueError(
-                        "refusing to persist a stealth conversation chunk"
-                    )
-                invalid_tags = privacy_sources - {"", "private"}
-                if invalid_tags:
-                    raise ValueError(
-                        f"invalid conversation tags {sorted(invalid_tags)!r}"
-                    )
-                tag = "private" if "private" in privacy_sources else ""
                 raw_path = owner.raw_path
                 if raw_path:
                     raw_candidate = _absolute(raw_path)
@@ -1008,15 +1036,22 @@ def _live_records(
                 metadata["conversation_title"] = (
                     title or f"Conversation {conversation_id}"
                 )
-                document = (
-                    f"{chunk.context}\n\n{chunk.user_input}"
+                embedding_text = build_embedding_orientation(
+                    chunk.context, chunk.user_input,
                 )[:MAX_EMBED_CHARS]
+                document = build_retrieval_document(
+                    chunk.context, chunk.user_input, chunk.ai_response,
+                )
+                metadata["embedding_text_sha256"] = hashlib.sha256(
+                    embedding_text.encode("utf-8")
+                ).hexdigest()
                 record = ReplayRecord(
                     row_id=row_id,
                     document=document,
                     metadata=metadata,
                     source_path=str(path),
                     source_kind="live_chunk",
+                    embedding_text=embedding_text,
                 )
                 pending.append((chunk, record, total_hint))
         except Exception as exc:
@@ -1027,7 +1062,12 @@ def _live_records(
     for item in pending:
         grouped[str(item[1].metadata["conversation_id"])].append(item)
     finalized_records: list[ReplayRecord] = []
-    for items in grouped.values():
+    for conversation_id, items in grouped.items():
+        if conversation_id in stealth_conversations:
+            for _chunk, record, _hint in items:
+                if record.source_path not in plan.ignored_files:
+                    plan.ignored_files.append(record.source_path)
+            continue
         final_turn = max(
             max(int(item[1].metadata["turn_index"]), int(item[2] or 0))
             for item in items
@@ -1042,6 +1082,7 @@ def _live_records(
                 metadata=metadata,
                 source_path=record.source_path,
                 source_kind=record.source_kind,
+                embedding_text=record.embedding_text,
             )
             finalized_records.append(finalized)
 
@@ -1056,7 +1097,7 @@ def _live_records(
     for base_id, candidates in by_base_id.items():
         by_payload: dict[str, ReplayRecord] = {}
         for candidate in candidates:
-            by_payload.setdefault(candidate.payload_fingerprint(), candidate)
+            by_payload.setdefault(candidate.source_fingerprint(), candidate)
         unique = list(by_payload.values())
         if len(unique) == 1:
             normalized.append(unique[0])
@@ -1073,10 +1114,11 @@ def _live_records(
                 metadata=metadata,
                 source_path=candidate.source_path,
                 source_kind=candidate.source_kind,
+                embedding_text=candidate.embedding_text,
             ))
 
     fingerprints: dict[str, str] = {
-        record.row_id: record.payload_fingerprint() for record in normalized
+        record.row_id: record.source_fingerprint() for record in normalized
     }
     records = normalized if materialize else []
     plan.live_files = len(fingerprints)
@@ -1090,7 +1132,7 @@ def _deduplicate(records: Iterable[ReplayRecord], plan: ConversationReplayPlan) 
         if prior is None:
             by_id[record.row_id] = record
             continue
-        if prior.payload_fingerprint() != record.payload_fingerprint():
+        if prior.source_fingerprint() != record.source_fingerprint():
             plan.errors.append(
                 f"row id {record.row_id!r} maps to conflicting sources "
                 f"{prior.source_path!r} and {record.source_path!r}"
@@ -1225,6 +1267,7 @@ def execute_conversation_replay(
     resume: bool = False,
     client_factory: Callable[[str], Any] | None = None,
     collection_factory: Callable[[Any, dict[str, Any]], Any] | None = None,
+    embedder: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> dict[str, Any]:
     """Embed/upsert a validated plan into an explicit inactive Chroma root."""
     plan.require_valid()
@@ -1296,10 +1339,32 @@ def execute_conversation_replay(
                     f"target unexpectedly already contains {record.row_id!r}"
                 )
         if missing:
+            if any(not record.embedding_text for record in missing):
+                raise RebuildError(
+                    "conversation replay record lacks explicit embedding orientation"
+                )
+            if embedder is None:
+                from orchestrator.embedding import embed_texts
+                active_embedder = embed_texts
+            else:
+                active_embedder = embedder
+            vectors = active_embedder([
+                record.embedding_text for record in missing
+            ])
+            if len(vectors) != len(missing):
+                raise RebuildError(
+                    "conversation embedder returned the wrong vector count"
+                )
+            dimension = int(profile["dimension"])
+            if any(len(vector) != dimension for vector in vectors):
+                raise RebuildError(
+                    "conversation embedder returned the wrong vector dimension"
+                )
             collection.upsert(
                 ids=[record.row_id for record in missing],
                 documents=[record.document for record in missing],
                 metadatas=[record.metadata for record in missing],
+                embeddings=vectors,
             )
         _atomic_json(checkpoint, {
             "schema_version": 1,
@@ -1320,9 +1385,6 @@ def execute_conversation_replay(
             records[index:index + 1000],
             context="final conversation validation",
         )
-    if any(record.metadata.get("tag") == "stealth" for record in records):
-        raise RebuildError("validated target plan unexpectedly contains stealth metadata")
-
     report = {
         "status": "complete",
         "target_chromadb_path": str(target),
@@ -1332,6 +1394,665 @@ def execute_conversation_replay(
     }
     _atomic_json(report_path, report)
     return report
+
+
+# ---------------------------------------------------------------------------
+# Validated conversation promotion / rollback
+# ---------------------------------------------------------------------------
+
+
+_PROMOTION_TAGS = ("", "private")
+_SHA256_RE = re.compile(r"\A[0-9a-f]{64}\Z")
+
+
+def _strict_json(path: Path, label: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise RebuildError(f"{label} is missing or unsafe: {path}")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RebuildError(f"{label} is invalid JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise RebuildError(f"{label} must be a JSON object: {path}")
+    return value
+
+
+def _replay_evidence(inactive: Path, active: Path) -> dict[str, Any]:
+    if (
+        inactive.is_symlink() or not inactive.is_dir()
+        or active.is_symlink() or not active.is_dir()
+    ):
+        raise RebuildError("active/inactive Chroma root is missing or unsafe")
+    inactive_real, active_real = map(
+        Path, (os.path.realpath(inactive), os.path.realpath(active)),
+    )
+    if (
+        inactive_real == active_real
+        or inactive_real in active_real.parents
+        or active_real in inactive_real.parents
+    ):
+        raise RebuildError("active and inactive Chroma roots must be disjoint")
+    report = _strict_json(
+        inactive / "conversation-replay-report.json", "conversation replay report",
+    )
+    checkpoint = _strict_json(
+        inactive / "conversation-replay-checkpoint.json", "conversation replay checkpoint",
+    )
+    profile, plan = report.get("profile"), report.get("plan")
+    if (
+        report.get("status") != "complete"
+        or not isinstance(profile, dict) or checkpoint.get("profile") != profile
+        or not isinstance(plan, dict)
+        or Path(os.path.realpath(str(report.get("target_chromadb_path") or "")))
+        != inactive_real
+    ):
+        raise RebuildError("conversation replay evidence is inconsistent")
+    try:
+        counts = (
+            int(report["target_count"]), int(plan["records"]),
+            int(checkpoint["records"]), int(checkpoint["next_index"]),
+        )
+        normalized = {
+            "provider": profile["provider"], "model": profile["model"],
+            "dimension": int(profile["dimension"]),
+            "physical_collection": profile["physical_collection"],
+        }
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RebuildError("conversation replay evidence is incomplete") from exc
+    fingerprint = plan.get("fingerprint")
+    if (
+        len(set(counts)) != 1 or counts[0] < 1
+        or checkpoint.get("plan_fingerprint") != fingerprint
+        or not isinstance(fingerprint, str) or not _SHA256_RE.fullmatch(fingerprint)
+        or any(not isinstance(normalized[key], str) or not normalized[key]
+               for key in ("provider", "model", "physical_collection"))
+        or normalized["dimension"] < 1
+    ):
+        raise RebuildError("conversation replay evidence does not agree")
+    return {"profile": normalized, "count": counts[0], "fingerprint": fingerprint}
+
+
+def _config_state(
+    path: Path, expected: str,
+) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
+    from orchestrator import retrieval_config
+
+    config = _strict_json(path, "Chroma config")
+    collections, histories = config.get("collections"), config.get("collection_history")
+    if not isinstance(collections, dict) or collections.get("conversations") != expected:
+        found = collections.get("conversations") if isinstance(collections, dict) else None
+        raise RebuildError(f"conversation mapping guard expected {expected!r}, found {found!r}")
+    if histories is None:
+        histories = {}
+    if not isinstance(config.get("embedder"), dict) or not isinstance(histories, dict):
+        raise RebuildError("Chroma config embedder/history is invalid")
+    active = retrieval_config.active_embedding_profile(config)
+    profile = {
+        "provider": active.get("provider"), "model": active.get("model"),
+        "dimension": int(active.get("dimensions") or 0), "profile_id": active.get("id"),
+    }
+    if (
+        not profile["provider"] or not profile["model"] or profile["dimension"] < 1
+        or profile["profile_id"] != f"{profile['provider']}:{profile['model']}"
+    ):
+        raise RebuildError("Chroma config embedding profile is inconsistent")
+    history = histories.get("conversations") or []
+    history = [history] if isinstance(history, str) else history
+    if not isinstance(history, list) or any(
+        not isinstance(name, str) or not name for name in history
+    ):
+        raise RebuildError("conversation collection history is invalid")
+    return config, profile, list(dict.fromkeys(history))
+
+
+def _profile_key(profile: dict[str, Any]) -> tuple[str, str, int]:
+    return profile["provider"], profile["model"], int(profile["dimension"])
+
+
+def _flip_mapping(path: Path, config: dict[str, Any], expected: str, target: str) -> list[str]:
+    if config["collections"].get("conversations") != expected:
+        raise RebuildError("conversation mapping changed before atomic flip")
+    histories = config.get("collection_history") or {}
+    history = histories.get("conversations") or []
+    history = [history] if isinstance(history, str) else history
+    config["collections"] = {**config["collections"], "conversations": target}
+    new_history = [expected, *(name for name in history if name not in {expected, target})]
+    config["collection_history"] = {**histories, "conversations": new_history}
+    rp.atomic_write_text(
+        path, json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        mode=stat.S_IMODE(path.lstat().st_mode),
+    )
+    return new_history
+
+
+def _ora_server_pids(ora_home: str | Path, ps_output: str | None = None) -> list[int]:
+    target = str(Path(os.path.realpath(ora_home)) / "server" / "app.py")
+    if ps_output is None:
+        try:
+            process = subprocess.run(
+                ["ps", "-axww", "-o", "pid=,command="], check=False,
+                capture_output=True, text=True, timeout=5,
+            )
+        except Exception as exc:
+            raise RebuildError("could not verify that Ora is stopped") from exc
+        if process.returncode:
+            raise RebuildError("could not verify that Ora is stopped")
+        ps_output = process.stdout
+    python = re.compile(r"\A[Pp]ython(?:[0-9]+(?:\.[0-9]+)*)?(?:\s+-\S+)*\Z")
+    pids: list[int] = []
+    for line in ps_output.splitlines():
+        match = re.match(r"\s*(\d+)\s+(.+)\Z", line)
+        if not match:
+            continue
+        command = match.group(2)
+        position = command.find(target)
+        if position < 0:
+            continue
+        before = command[:position].rstrip().rsplit("/", 1)[-1]
+        after = command[position + len(target):]
+        if python.fullmatch(before) and (not after or after.startswith(" ")):
+            pids.append(int(match.group(1)))
+    return pids
+
+
+def _require_stopped(home: Path, probe: Callable[[str | Path], list[int]]) -> None:
+    pids = probe(home)
+    if pids:
+        raise RebuildError(
+            f"Ora is active for ORA_HOME {home} (PID(s): {', '.join(map(str, pids))})"
+        )
+
+
+def _collection_names(client: Any) -> set[str]:
+    return {
+        name for item in client.list_collections()
+        if (name := (item if isinstance(item, str) else getattr(item, "name", "")))
+    }
+
+
+def _collection_profile(collection: Any, profile: dict[str, Any]) -> dict[str, Any]:
+    metadata = getattr(collection, "metadata", None)
+    try:
+        dimension = int(metadata.get("ora:embedding_dimension"))
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise RebuildError("conversation collection profile metadata is invalid") from exc
+    if (
+        metadata.get("ora:logical_collection") != "conversations"
+        or metadata.get("ora:embedding_profile")
+        != f"{profile['provider']}:{profile['model']}"
+        or dimension != int(profile["dimension"])
+    ):
+        raise RebuildError("conversation collection embedding profile does not match")
+    return metadata
+
+
+def _collection_ids(collection: Any) -> list[str]:
+    result = collection.get(include=[])
+    ids = result.get("ids") if isinstance(result, dict) else None
+    ids = ids.tolist() if hasattr(ids, "tolist") else ids
+    if (
+        not isinstance(ids, list) or any(not isinstance(value, str) for value in ids)
+        or len(ids) != len(set(ids)) or int(collection.count()) != len(ids)
+    ):
+        raise RebuildError("conversation collection count/id coverage is invalid")
+    return sorted(ids)
+
+
+def _float32_ordered_key(value: float) -> int:
+    """Map a finite float32 value to its monotonic IEEE-754 integer key."""
+    try:
+        bits = struct.unpack(">I", struct.pack(">f", value))[0]
+    except (OverflowError, struct.error) as exc:
+        raise RebuildError("conversation embedding is outside float32 range") from exc
+    magnitude = bits & 0x7FFFFFFF
+    if magnitude == 0:
+        return 0x80000000
+    if bits & 0x80000000:
+        return 0x80000000 - magnitude
+    return 0x80000000 + magnitude
+
+
+def _compare_copied_embeddings(
+    source: Any,
+    target: Any,
+    profile: dict[str, Any],
+    batch_size: int,
+) -> dict[str, int | float]:
+    """Validate one Chroma copy without requiring impossible bitwise identity.
+
+    A cosine collection normalizes supplied vectors when it persists its HNSW
+    index. Reading a vector and upserting it into another cosine collection can
+    therefore move a component by one float32 ULP even though no new embedding
+    was computed. Everything except that single-copy serialization boundary
+    remains exact; two ULPs or any malformed vector fail closed.
+    """
+    if batch_size < 1:
+        raise RebuildError("embedding comparison requires a positive batch")
+    source_ids, target_ids = _collection_ids(source), _collection_ids(target)
+    if source_ids != target_ids:
+        raise RebuildError("copied conversation embedding ids differ")
+    dimension = int(profile["dimension"])
+    drifted_rows = 0
+    drifted_components = 0
+    maximum_ulps = 0
+    maximum_absolute_delta = 0.0
+    for start in range(0, len(source_ids), batch_size):
+        requested = source_ids[start:start + batch_size]
+        batches: list[dict[str, list[float]]] = []
+        for collection in (source, target):
+            result = collection.get(ids=requested, include=["embeddings"])
+            ids = result.get("ids") if isinstance(result, dict) else None
+            embeddings = result.get("embeddings") if isinstance(result, dict) else None
+            ids = ids.tolist() if hasattr(ids, "tolist") else ids
+            embeddings = (
+                embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
+            )
+            if (
+                not isinstance(ids, list) or not isinstance(embeddings, list)
+                or len(ids) != len(requested) or len(embeddings) != len(requested)
+            ):
+                raise RebuildError("copied conversation embeddings are misaligned")
+            rows = dict(zip(ids, embeddings))
+            if len(rows) != len(requested) or set(rows) != set(requested):
+                raise RebuildError("copied conversation embedding ids are incorrect")
+            normalized: dict[str, list[float]] = {}
+            for row_id in requested:
+                vector = rows[row_id]
+                vector = vector.tolist() if hasattr(vector, "tolist") else vector
+                if not isinstance(vector, list) or len(vector) != dimension:
+                    raise RebuildError("copied conversation embedding dimension differs")
+                try:
+                    converted = [float(value) for value in vector]
+                except (TypeError, ValueError) as exc:
+                    raise RebuildError(
+                        "copied conversation embedding is non-numeric"
+                    ) from exc
+                if not all(math.isfinite(value) for value in converted):
+                    raise RebuildError("copied conversation embedding is non-finite")
+                normalized[row_id] = converted
+            batches.append(normalized)
+        source_rows, target_rows = batches
+        for row_id in requested:
+            row_drifted = False
+            for source_value, target_value in zip(
+                source_rows[row_id], target_rows[row_id],
+            ):
+                distance = abs(
+                    _float32_ordered_key(source_value)
+                    - _float32_ordered_key(target_value)
+                )
+                if distance > 1:
+                    raise RebuildError(
+                        "copied conversation embedding exceeds one float32 ULP"
+                    )
+                if distance:
+                    row_drifted = True
+                    drifted_components += 1
+                    maximum_ulps = max(maximum_ulps, distance)
+                    maximum_absolute_delta = max(
+                        maximum_absolute_delta,
+                        abs(source_value - target_value),
+                    )
+            if row_drifted:
+                drifted_rows += 1
+    return {
+        "rows": len(source_ids),
+        "components": len(source_ids) * dimension,
+        "drifted_rows": drifted_rows,
+        "drifted_components": drifted_components,
+        "max_float32_ulp": maximum_ulps,
+        "max_absolute_delta": maximum_absolute_delta,
+    }
+
+
+def _audit(
+    collection: Any, profile: dict[str, Any], batch_size: int, copy_to: Any | None = None,
+) -> tuple[dict[str, Any], dict[str, tuple[str, list[float]]]]:
+    _collection_profile(collection, profile)
+    all_ids = _collection_ids(collection)
+    digests = {
+        key: hashlib.sha256()
+        for key in ("ids", "documents", "metadatas", "embeddings")
+    }
+    privacy, samples = {"": 0, "private": 0, "stealth": 0}, {}
+    for start in range(0, len(all_ids), batch_size):
+        requested = all_ids[start:start + batch_size]
+        result = collection.get(
+            ids=requested, include=["documents", "metadatas", "embeddings"],
+        )
+        values: dict[str, list[Any]] = {}
+        for key in ("ids", "documents", "metadatas", "embeddings"):
+            value = result.get(key) if isinstance(result, dict) else None
+            value = value.tolist() if hasattr(value, "tolist") else value
+            if not isinstance(value, list) or len(value) != len(requested):
+                raise RebuildError("conversation collection returned a misaligned batch")
+            values[key] = value
+        rows = dict(zip(values["ids"], zip(
+            values["documents"], values["metadatas"], values["embeddings"],
+        )))
+        if len(rows) != len(requested) or set(rows) != set(requested):
+            raise RebuildError("conversation collection returned incorrect batch ids")
+        documents, metadatas, embeddings = [], [], []
+        for row_id in requested:
+            document, metadata, vector = rows[row_id]
+            vector = vector.tolist() if hasattr(vector, "tolist") else vector
+            try:
+                vector = [float(value) for value in vector]
+            except (TypeError, ValueError) as exc:
+                raise RebuildError(f"invalid embedding for {row_id!r}") from exc
+            if (
+                not isinstance(document, str) or not isinstance(metadata, dict)
+                or len(vector) != int(profile["dimension"])
+                or not all(math.isfinite(value) for value in vector)
+            ):
+                raise RebuildError(f"invalid conversation payload/vector for {row_id!r}")
+            tag, orientation_hash = metadata.get("tag"), metadata.get(
+                "embedding_text_sha256"
+            )
+            if tag not in _PROMOTION_TAGS:
+                raise RebuildError(f"invalid privacy tag for {row_id!r}")
+            if not isinstance(orientation_hash, str) or not _SHA256_RE.fullmatch(
+                orientation_hash
+            ):
+                raise RebuildError(f"missing orientation hash for {row_id!r}")
+            if not all(part in document for part in (
+                "## Context", "## Exchange", "**User:**", "**Assistant:**",
+            )):
+                raise RebuildError(f"full conversation exchange is absent for {row_id!r}")
+            payloads = {
+                "ids": row_id, "documents": [row_id, document],
+                "metadatas": [row_id, metadata],
+                "embeddings": [row_id, [value.hex() for value in vector]],
+            }
+            for key, payload in payloads.items():
+                digests[key].update(json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                ).encode("utf-8") + b"\n")
+            privacy[tag] += 1
+            samples.setdefault(tag, (row_id, vector))
+            documents.append(document); metadatas.append(metadata); embeddings.append(vector)
+        if copy_to is not None:
+            copy_to.upsert(
+                ids=requested, documents=documents,
+                metadatas=metadatas, embeddings=embeddings,
+            )
+    return ({
+        "count": len(all_ids), "id_sha256": digests["ids"].hexdigest(),
+        "document_sha256": digests["documents"].hexdigest(),
+        "metadata_sha256": digests["metadatas"].hexdigest(),
+        "embedding_sha256": digests["embeddings"].hexdigest(),
+        "dimension": int(profile["dimension"]),
+        "profile": f"{profile['provider']}:{profile['model']}",
+        "privacy_counts": privacy,
+    }, samples)
+
+
+def _privacy_smoke(
+    collection: Any, samples: dict[str, tuple[str, list[float]]],
+) -> dict[str, int]:
+    try:
+        query_vector = next(iter(samples.values()))[1]
+    except StopIteration as exc:
+        raise RebuildError("conversation replay has no audited query vector") from exc
+    checks = (
+        ("standard", {"$and": [
+            {"tag": {"$ne": "private"}}, {"tag": {"$ne": "stealth"}},
+        ]}, {""}),
+        ("private", {"tag": {"$ne": "stealth"}}, {"", "private"}),
+        ("stealth", None, set(_PROMOTION_TAGS)),
+    )
+    counts: dict[str, int] = {}
+    for label, where, allowed in checks:
+        kwargs = {
+            "query_embeddings": [query_vector], "n_results": 5,
+            "include": ["documents", "metadatas"],
+        }
+        if where is not None:
+            kwargs["where"] = where
+        result = collection.query(**kwargs)
+        try:
+            ids, docs, metas = result["ids"][0], result["documents"][0], result["metadatas"][0]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RebuildError(f"{label} query smoke returned invalid rows") from exc
+        if (
+            not all(isinstance(values, list) for values in (ids, docs, metas))
+            or not (len(ids) == len(docs) == len(metas))
+            or any(not isinstance(row_id, str) for row_id in ids)
+            or len(ids) != len(set(ids))
+        ):
+            raise RebuildError(f"{label} query smoke returned invalid rows")
+        if any(
+            not isinstance(meta, dict) or meta.get("tag") not in allowed
+            for meta in metas
+        ):
+            raise RebuildError(f"{label} query smoke violated its privacy filter")
+        if ids:
+            read = collection.get(ids=ids, include=["documents", "metadatas"])
+            read_values = []
+            for key in ("ids", "documents", "metadatas"):
+                value = read.get(key) if isinstance(read, dict) else None
+                value = value.tolist() if hasattr(value, "tolist") else value
+                read_values.append(value)
+            read_ids, read_docs, read_metas = read_values
+            if (
+                not all(isinstance(values, list) for values in read_values)
+                or not (len(read_ids) == len(read_docs) == len(read_metas) == len(ids))
+                or any(not isinstance(row_id, str) for row_id in read_ids)
+                or len(read_ids) != len(set(read_ids))
+                or set(read_ids) != set(ids)
+            ):
+                raise RebuildError(f"{label} query/read smoke payload mismatch")
+            queried = dict(zip(ids, zip(docs, metas)))
+            stored = dict(zip(read_ids, zip(read_docs, read_metas)))
+            if stored != queried:
+                raise RebuildError(f"{label} query/read smoke payload mismatch")
+        counts[label] = len(ids)
+    return counts
+
+
+def _embedding_function(_profile: dict[str, Any]) -> Any:
+    from orchestrator.embedding import get_embedding_function
+    return get_embedding_function()
+
+
+def _chroma_client(path: str) -> Any:
+    import chromadb
+    return chromadb.PersistentClient(path=path)
+
+
+def promote_conversation_replay(
+    *,
+    inactive_chromadb_path: str | Path,
+    target_physical_collection: str,
+    expected_current_physical: str,
+    batch_size: int = 128,
+    lock_timeout: float = rp.DEFAULT_LOCK_TIMEOUT,
+    active_chromadb_path: str | Path | None = None,
+    config_path: str | Path | None = None,
+    ora_home: str | Path | None = None,
+    client_factory: Callable[[str], Any] | None = None,
+    embedding_function_factory: Callable[[dict[str, Any]], Any] | None = None,
+    ora_active_probe: Callable[[str | Path], list[int]] | None = None,
+) -> dict[str, Any]:
+    if (
+        batch_size < 1 or not target_physical_collection or not expected_current_physical
+        or target_physical_collection == expected_current_physical
+    ):
+        raise RebuildError("promotion requires a positive batch and distinct physical names")
+    inactive, active = _absolute(inactive_chromadb_path), _absolute(
+        active_chromadb_path or rp.chromadb_dir()
+    )
+    home = _absolute(ora_home or rp.WORKSPACE)
+    if config_path is None:
+        from orchestrator import retrieval_config
+        config_path = retrieval_config.CHROMADB_CONFIG_PATH
+    config_path = _absolute(config_path)
+    evidence = _replay_evidence(inactive, active)
+    replay_profile, source_name = evidence["profile"], evidence["profile"]["physical_collection"]
+    client_for, ef_for = client_factory or _chroma_client, (
+        embedding_function_factory or _embedding_function
+    )
+    probe = ora_active_probe or _ora_server_pids
+    try:
+        with rp.locked_file(config_path, timeout=lock_timeout):
+            _require_stopped(home, probe)
+            _state, profile, history = _config_state(config_path, expected_current_physical)
+            if _profile_key(profile) != _profile_key(replay_profile):
+                raise RebuildError("replay and active embedding profiles differ")
+            if target_physical_collection in history:
+                raise RebuildError("promotion target is already in collection history")
+            source_client, active_client = client_for(str(inactive)), client_for(str(active))
+            source_names, active_names = (
+                _collection_names(source_client), _collection_names(active_client),
+            )
+            if (
+                source_name not in source_names
+                or expected_current_physical not in active_names
+                or target_physical_collection in active_names
+            ):
+                raise RebuildError("source/current missing or promotion target is not fresh")
+            embedding_function = ef_for(profile)
+            source = source_client.get_collection(
+                name=source_name, embedding_function=embedding_function,
+            )
+            target = active_client.create_collection(
+                name=target_physical_collection,
+                metadata=dict(_collection_profile(source, replay_profile)),
+                embedding_function=embedding_function,
+            )
+            try:
+                source_audit, _ = _audit(
+                    source, replay_profile, batch_size, copy_to=target,
+                )
+                target_audit, samples = _audit(target, replay_profile, batch_size)
+                source_exact = {
+                    key: value for key, value in source_audit.items()
+                    if key != "embedding_sha256"
+                }
+                target_exact = {
+                    key: value for key, value in target_audit.items()
+                    if key != "embedding_sha256"
+                }
+                if (
+                    source_audit["count"] != evidence["count"]
+                    or target_exact != source_exact
+                ):
+                    raise RebuildError("promoted collection count/hash/profile/privacy differs")
+                copy_validation = _compare_copied_embeddings(
+                    source, target, replay_profile, batch_size,
+                )
+                smoke = _privacy_smoke(target, samples)
+                _require_stopped(home, probe)
+                latest, latest_profile, _ = _config_state(
+                    config_path, expected_current_physical,
+                )
+                if _profile_key(latest_profile) != _profile_key(profile):
+                    raise RebuildError("embedding profile changed during promotion")
+                history = _flip_mapping(
+                    config_path, latest, expected_current_physical,
+                    target_physical_collection,
+                )
+            except BaseException:
+                try:
+                    mapped = _strict_json(
+                        config_path, "Chroma config",
+                    ).get("collections", {}).get("conversations")
+                except Exception:
+                    mapped = None
+                if mapped == expected_current_physical:
+                    try:
+                        active_client.delete_collection(name=target_physical_collection)
+                    except Exception as cleanup_error:
+                        raise RebuildError(
+                            "promotion failed and its fresh target could not be removed"
+                        ) from cleanup_error
+                raise
+    except TimeoutError as exc:
+        raise RebuildError("timed out acquiring the Chroma cutover lock") from exc
+    return {
+        "status": "promoted", "active_chromadb_path": str(active),
+        "source_physical_collection": source_name,
+        "previous_physical_collection": expected_current_physical,
+        "active_physical_collection": target_physical_collection,
+        "replay_fingerprint": evidence["fingerprint"], "validation": source_audit,
+        "copy_validation": copy_validation,
+        "query_smoke": smoke, "collection_history": history,
+        "rollback": {
+            "expected_current_physical": target_physical_collection,
+            "restore_physical_collection": expected_current_physical,
+        },
+    }
+
+
+def rollback_conversation_mapping(
+    *,
+    restore_physical_collection: str,
+    expected_current_physical: str,
+    lock_timeout: float = rp.DEFAULT_LOCK_TIMEOUT,
+    active_chromadb_path: str | Path | None = None,
+    config_path: str | Path | None = None,
+    ora_home: str | Path | None = None,
+    client_factory: Callable[[str], Any] | None = None,
+    embedding_function_factory: Callable[[dict[str, Any]], Any] | None = None,
+    ora_active_probe: Callable[[str | Path], list[int]] | None = None,
+) -> dict[str, Any]:
+    if (
+        not restore_physical_collection or not expected_current_physical
+        or restore_physical_collection == expected_current_physical
+    ):
+        raise RebuildError("rollback requires distinct non-empty physical names")
+    active, home = _absolute(active_chromadb_path or rp.chromadb_dir()), _absolute(
+        ora_home or rp.WORKSPACE
+    )
+    if active.is_symlink() or not active.is_dir():
+        raise RebuildError(f"active Chroma root is missing or unsafe: {active}")
+    if config_path is None:
+        from orchestrator import retrieval_config
+        config_path = retrieval_config.CHROMADB_CONFIG_PATH
+    config_path = _absolute(config_path)
+    client_for, ef_for = client_factory or _chroma_client, (
+        embedding_function_factory or _embedding_function
+    )
+    probe = ora_active_probe or _ora_server_pids
+    try:
+        with rp.locked_file(config_path, timeout=lock_timeout):
+            _require_stopped(home, probe)
+            _state, profile, history = _config_state(config_path, expected_current_physical)
+            client = client_for(str(active))
+            names = _collection_names(client)
+            if (
+                restore_physical_collection not in history
+                or expected_current_physical not in names
+                or restore_physical_collection not in names
+            ):
+                raise RebuildError("rollback collection is not retained or present")
+            restore = client.get_collection(
+                name=restore_physical_collection, embedding_function=ef_for(profile),
+            )
+            _collection_profile(restore, profile)
+            restored_count = len(_collection_ids(restore))
+            if not restored_count:
+                raise RebuildError("rollback conversation collection is empty")
+            _require_stopped(home, probe)
+            latest, latest_profile, latest_history = _config_state(
+                config_path, expected_current_physical,
+            )
+            if (
+                _profile_key(latest_profile) != _profile_key(profile)
+                or restore_physical_collection not in latest_history
+            ):
+                raise RebuildError("rollback guard changed during validation")
+            history = _flip_mapping(
+                config_path, latest, expected_current_physical, restore_physical_collection,
+            )
+    except TimeoutError as exc:
+        raise RebuildError("timed out acquiring the Chroma cutover lock") from exc
+    return {
+        "status": "rolled_back", "active_chromadb_path": str(active),
+        "previous_physical_collection": expected_current_physical,
+        "active_physical_collection": restore_physical_collection,
+        "target_count": restored_count, "collection_history": history,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -2539,6 +3260,17 @@ def execute_source_replay(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="phase", required=True)
+
+    promote = subparsers.add_parser("promote-conversations")
+    promote.add_argument("--inactive-chromadb-path", required=True)
+    promote.add_argument("--target-physical-collection", required=True)
+    promote.add_argument("--expected-current-physical", required=True)
+    promote.add_argument("--batch-size", type=int, default=128)
+
+    rollback = subparsers.add_parser("rollback-conversations")
+    rollback.add_argument("--restore-physical-collection", required=True)
+    rollback.add_argument("--expected-current-physical", required=True)
+
     conversations = subparsers.add_parser("conversations")
     conversations.add_argument(
         "--historical-archive", default=str(rp.historical_archive_dir())
@@ -2606,7 +3338,19 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.phase == "conversations":
+    if args.phase == "promote-conversations":
+        report = promote_conversation_replay(
+            inactive_chromadb_path=args.inactive_chromadb_path,
+            target_physical_collection=args.target_physical_collection,
+            expected_current_physical=args.expected_current_physical,
+            batch_size=args.batch_size,
+        )
+    elif args.phase == "rollback-conversations":
+        report = rollback_conversation_mapping(
+            restore_physical_collection=args.restore_physical_collection,
+            expected_current_physical=args.expected_current_physical,
+        )
+    elif args.phase == "conversations":
         plan = build_conversation_replay_plan(
             historical_archive=args.historical_archive,
             conversations_root=args.conversations_root,

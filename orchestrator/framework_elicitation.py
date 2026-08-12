@@ -432,7 +432,12 @@ def _ask_summarizer(
     """Send a structured prompt to the small-model slot. Returns parsed state
     or None if the call fails / response is unparseable."""
     try:
-        from boot import call_model, get_slot_endpoint, get_active_endpoint
+        from boot import (
+            call_model,
+            get_slot_endpoint,
+            get_active_endpoint,
+            pack_conversation_history,
+        )
     except Exception:
         return None
 
@@ -443,9 +448,26 @@ def _ask_summarizer(
     if endpoint is None:
         return None
 
-    conversation_text = _format_conversation(history, latest_user_text)
+    serialized_history = _serialized_conversation_messages(history, "")
+    required_prompt = _build_summarizer_prompt(
+        fw, mode, milestone, "", latest_user_text,
+    )
+    packed_history, _history_budget = pack_conversation_history(
+        serialized_history,
+        endpoint,
+        [
+            {
+                "role": "system",
+                "content": "You are a careful elicitation summarizer.",
+            },
+            {"role": "user", "content": required_prompt},
+        ],
+    )
+    conversation_text = "\n\n".join(
+        message["content"] for message in packed_history
+    )
     prompt = _build_summarizer_prompt(
-        fw, mode, milestone, conversation_text, latest_user_text
+        fw, mode, milestone, conversation_text, latest_user_text,
     )
     messages = [
         {"role": "system", "content": "You are a careful elicitation summarizer."},
@@ -492,10 +514,10 @@ def _build_summarizer_prompt(
         "QUESTION: <the single next question to ask the user, plain language. "
         "Omit this field entirely if ACTION is PRODUCE_DELIVERABLE.>\n\n"
         "===\n"
-        "CONVERSATION SO FAR:\n"
-        f"{conversation_text}\n\n"
-        "USER'S MOST RECENT MESSAGE:\n"
-        f"{latest_user_text or '(no message — the user just invoked the framework)'}\n"
+        "PRIOR CONVERSATION:\n"
+        f"{conversation_text or '(no prior elicitation facts yet)'}\n\n"
+        "CURRENT USER REPLY (required):\n"
+        f"USER: {latest_user_text or '(none supplied)'}\n"
     )
 
 
@@ -609,14 +631,12 @@ def _mechanical_mode_redirect(framework_name: str, mode: str) -> Optional[str]:
     )
 
 
-def _format_conversation(history: list, latest_user_text: str) -> str:
-    """Format prior history + the latest user message for the summarizer prompt.
-
-    Drops system messages; trims content per turn so the prompt doesn't
-    explode on long sessions.
-    """
-    lines = []
+def _conversation_messages(history: list, latest_user_text: str) -> list[dict]:
+    """Return truthful elicitation content with only scaffolding removed."""
+    messages = []
     for msg in history:
+        if not isinstance(msg, dict):
+            continue
         role = msg.get("role", "")
         if role not in ("user", "assistant"):
             continue
@@ -636,12 +656,40 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
         # summarizer's context across re-hold cycles.
         if role == "assistant" and content[:1] in ("✅", "❌"):
             continue
-        if len(content) > 1500:
-            content = content[:1500] + "…"
-        lines.append(f"{role.upper()}: {content}")
+        cleaned = dict(msg)
+        cleaned["role"] = role
+        cleaned["content"] = content
+        messages.append(cleaned)
     if latest_user_text:
-        lines.append(f"USER: {latest_user_text}")
-    return "\n\n".join(lines)
+        messages.append({
+            "role": "user",
+            "content": latest_user_text,
+            "_ora_history_segment": "local",
+        })
+    return messages
+
+
+def _serialized_conversation_messages(
+    history: list,
+    latest_user_text: str,
+) -> list[dict]:
+    """Prepare role-labelled messages for whole-unit capacity packing."""
+    serialized = []
+    for message in _conversation_messages(history, latest_user_text):
+        item = dict(message)
+        item["content"] = f"{item['role'].upper()}: {item['content']}"
+        serialized.append(item)
+    return serialized
+
+
+def _format_conversation(history: list, latest_user_text: str) -> str:
+    """Format the complete eligible conversation without fixed truncation."""
+    return "\n\n".join(
+        message["content"]
+        for message in _serialized_conversation_messages(
+            history, latest_user_text,
+        )
+    )
 
 
 def _wrap_with_marker(

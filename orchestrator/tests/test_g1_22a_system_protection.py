@@ -323,10 +323,160 @@ class TestApprovalAndReceipts(SystemProtectionBase):
         data = json.loads(Path(self.approvals).read_text(encoding="utf-8"))
         data["tokens"][0]["action"] = "substituted"
         Path(self.approvals).write_text(json.dumps(data), encoding="utf-8")
+        tampered = Path(self.approvals).read_bytes()
         with self.assertRaisesRegex(RuntimeError, "authentication failed"):
             tool_events.check_and_consume_approval(
                 "substituted", args_hash, "g1-22a-test",
             )
+        self.assertEqual(Path(self.approvals).read_bytes(), tampered)
+        self.assertEqual(self._queue_records(), [])
+
+    def test_authority_empty_legacy_store_upgrades_without_granting_approval(self):
+        Path(self.approvals).write_text(
+            json.dumps({"tokens": [], "standing": []}), encoding="utf-8",
+        )
+        args_hash = tool_events.normalize_args_hash("diagnostic", {"x": 1})
+
+        self.assertIsNone(tool_events.check_and_consume_approval(
+            "diagnostic", args_hash, "g1-22a-test",
+        ))
+
+        upgraded = json.loads(Path(self.approvals).read_text(encoding="utf-8"))
+        self.assertEqual(upgraded["schema_version"], 2)
+        self.assertEqual(upgraded["tokens"], [])
+        self.assertEqual(upgraded["standing"], [])
+        self.assertEqual(upgraded["pending"], [])
+        if os.name != "nt":
+            self.assertEqual(Path(self.approvals).stat().st_mode & 0o777, 0o600)
+        key = Path(self.approvals + ".auth.key").read_bytes()
+        self.assertEqual(len(key), 32)
+        self.assertEqual(
+            upgraded["store_mac"], tool_events._approval_store_mac(upgraded, key),
+        )
+        self.assertEqual(self._queue_records(), [])
+
+    def test_nonempty_or_malformed_legacy_stores_remain_unchanged_and_closed(self):
+        cases = {
+            "nonempty-tokens": {
+                "tokens": [{"id": "unsigned"}], "standing": [],
+            },
+            "nonempty-standing": {
+                "tokens": [], "standing": [{"scope": "unsigned"}],
+            },
+            "nonempty-pending": {
+                "tokens": [], "standing": [],
+                "pending": [{"nonce": "unsigned"}],
+            },
+            "malformed-tokens": {"tokens": {}, "standing": []},
+            "malformed-standing": {"tokens": [], "standing": None},
+            "malformed-pending": {
+                "tokens": [], "standing": [], "pending": "unsigned",
+            },
+            "unknown-authority-field": {
+                "tokens": [], "standing": [],
+                "standing_allows": [{"scope": "unsigned"}],
+            },
+            "unsupported-version": {
+                "schema_version": 1, "tokens": [], "standing": [],
+            },
+        }
+        args_hash = tool_events.normalize_args_hash("diagnostic", {})
+
+        for name, value in cases.items():
+            with self.subTest(name=name):
+                store = self.root / f"{name}.json"
+                original = json.dumps(value).encode("utf-8")
+                store.write_bytes(original)
+                with mock.patch.object(tool_events, "APPROVALS_PATH", str(store)):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "unsigned or has an unsupported schema",
+                    ):
+                        tool_events.check_and_consume_approval(
+                            "diagnostic", args_hash, "g1-22a-test",
+                        )
+                self.assertEqual(store.read_bytes(), original)
+                self.assertFalse(Path(str(store) + ".auth.key").exists())
+
+    def test_legacy_store_symlink_and_non_regular_file_fail_closed(self):
+        target = self.root / "legacy-target.json"
+        original = json.dumps({"tokens": [], "standing": []}).encode("utf-8")
+        target.write_bytes(original)
+        symlink = self.root / "legacy-link.json"
+        symlink.symlink_to(target)
+        directory = self.root / "legacy-directory.json"
+        directory.mkdir()
+        args_hash = tool_events.normalize_args_hash("diagnostic", {})
+
+        for store, message in (
+            (symlink, "symlink"),
+            (directory, "not a regular file"),
+        ):
+            with self.subTest(store=store), mock.patch.object(
+                tool_events, "APPROVALS_PATH", str(store),
+            ):
+                with self.assertRaisesRegex(RuntimeError, message):
+                    tool_events.check_and_consume_approval(
+                        "diagnostic", args_hash, "g1-22a-test",
+                    )
+
+        self.assertEqual(target.read_bytes(), original)
+        self.assertFalse(Path(str(symlink) + ".auth.key").exists())
+        self.assertFalse(Path(str(directory) + ".auth.key").exists())
+
+    def test_duplicate_legacy_authority_field_is_not_treated_as_empty(self):
+        original = (
+            b'{"tokens":[{"id":"hidden"}],"tokens":[],"standing":[]}'
+        )
+        Path(self.approvals).write_bytes(original)
+
+        with self.assertRaisesRegex(RuntimeError, "duplicate approval-store field"):
+            tool_events.check_and_consume_approval(
+                "diagnostic", tool_events.normalize_args_hash("diagnostic", {}),
+                "g1-22a-test",
+            )
+
+        self.assertEqual(Path(self.approvals).read_bytes(), original)
+        self.assertFalse(Path(self.approvals + ".auth.key").exists())
+
+    def test_concurrent_first_writers_migrate_once_without_lost_updates(self):
+        Path(self.approvals).write_text(
+            json.dumps({"tokens": [], "standing": []}), encoding="utf-8",
+        )
+        count = 8
+        barrier = threading.Barrier(count)
+        outcomes: list[object | None] = [None] * count
+
+        def register(index: int) -> None:
+            try:
+                barrier.wait(timeout=5)
+                outcomes[index] = tool_events._register_pending_approval(
+                    f"concurrent-{index}", f"hash-{index}",
+                    "g1-22a-test", "principal:user",
+                )
+            except BaseException as exc:  # surfaced by the assertion below
+                outcomes[index] = exc
+
+        threads = [
+            threading.Thread(target=register, args=(index,))
+            for index in range(count)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertFalse(any(isinstance(item, BaseException) for item in outcomes))
+        self.assertNotIn(None, outcomes)
+        self.assertEqual(len(set(outcomes)), count)
+        data = tool_events._load_approvals()
+        self.assertEqual(data["tokens"], [])
+        self.assertEqual(data["standing"], [])
+        self.assertEqual(len(data["pending"]), count)
+        self.assertEqual(
+            {item["action"] for item in data["pending"]},
+            {f"concurrent-{index}" for index in range(count)},
+        )
 
     def test_reviewed_selector_and_pre_state_cannot_be_rebound(self):
         target_a = self.root / "a.txt"

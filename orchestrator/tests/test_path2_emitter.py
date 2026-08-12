@@ -133,6 +133,11 @@ class TestEmitPath2Chunks(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def _emit(self, messages=None, **kwargs):
+        from orchestrator.embedding import EMBEDDING_DIM
+        kwargs.setdefault(
+            "embedder",
+            lambda texts: [[0.0] * EMBEDDING_DIM for _ in texts],
+        )
         return emit_path2_chunks(
             messages or SAMPLE_MESSAGES,
             conversation_id=kwargs.pop("conversation_id", "conv-historical-001"),
@@ -147,8 +152,9 @@ class TestEmitPath2Chunks(unittest.TestCase):
 
     def _read_chroma(self, conversation_id=None):
         import chromadb
+        from orchestrator.embedding import get_collection
         client = chromadb.PersistentClient(path=self.chroma_path)
-        col = client.get_collection("conversations")
+        col = get_collection(client, "conversations")
         conversation_id = conversation_id or historical_conversation_id(
             self.raw_path
         )
@@ -264,6 +270,24 @@ class TestEmitPath2Chunks(unittest.TestCase):
             "type",
         ):
             self.assertIn(field, meta, f"missing metadata field: {field}")
+
+    def test_retrieval_document_contains_answer_with_separate_orientation(self):
+        captured = []
+        from orchestrator.embedding import EMBEDDING_DIM
+
+        self._emit(
+            messages=SAMPLE_MESSAGES[:2],
+            embedder=lambda texts: (
+                captured.extend(texts)
+                or [[0.0] * EMBEDDING_DIM for _ in texts]
+            ),
+        )
+        records = self._read_chroma()
+        self.assertIn(SAMPLE_MESSAGES[0]["content"], records["documents"][0])
+        self.assertIn(SAMPLE_MESSAGES[1]["content"], records["documents"][0])
+        self.assertEqual(len(captured), 1)
+        self.assertIn(SAMPLE_MESSAGES[0]["content"], captured[0])
+        self.assertNotIn(SAMPLE_MESSAGES[1]["content"], captured[0])
 
     def test_finalize_sets_total_turns_and_last_turn(self):
         self._emit()

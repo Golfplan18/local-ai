@@ -20,6 +20,7 @@ if _REPO not in sys.path:
 
 from orchestrator.embedding import install_test_stub  # noqa: E402
 from orchestrator.historical.path2_orchestrator import (  # noqa: E402
+    MAX_EMBED_CHARS,
     SessionEmissionResult,
     emit_chunks_for_session,
     emit_chunks_for_all_sessions,
@@ -242,6 +243,46 @@ class TestEmitChunksForSession(unittest.TestCase):
             self.assertEqual(meta["month"], 8)
             self.assertEqual(meta["date"], "2025-08-12")
             self.assertEqual(meta["model_id"], "historical-claude")
+
+    def test_active_writer_stores_full_exchange_with_explicit_bounded_embedding(self):
+        from orchestrator.embedding import EMBEDDING_DIM
+
+        assistant = "ACTIVE-PATH2-ASSISTANT-SENTINEL " + ("answer " * 2400)
+        path = _write_cleaned_pair(
+            self.cp_dir,
+            pair_num=1,
+            timestamp="2025-08-12T10:00:00",
+            user_input="ACTIVE-PATH2-USER asks a focused historical question.",
+            ai_response=assistant,
+        )
+        calls = []
+        orientations = []
+
+        class CapturingCollection:
+            def upsert(self, **kwargs):
+                calls.append(kwargs)
+
+        result = emit_chunks_for_session(
+            [path],
+            conversations_dir=self.conv_dir,
+            chromadb_path=self.chroma,
+            chromadb_collection=CapturingCollection(),
+            embedder=lambda texts: (
+                orientations.extend(texts)
+                or [[0.0] * EMBEDDING_DIM for _ in texts]
+            ),
+        )
+
+        self.assertEqual(result.chunks_indexed, 1)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("ACTIVE-PATH2-USER", calls[0]["documents"][0])
+        self.assertIn(assistant.rstrip(), calls[0]["documents"][0])
+        self.assertIn("embeddings", calls[0])
+        self.assertEqual(len(calls[0]["embeddings"][0]), EMBEDDING_DIM)
+        self.assertEqual(len(orientations), 1)
+        self.assertLessEqual(len(orientations[0]), MAX_EMBED_CHARS)
+        self.assertIn("ACTIVE-PATH2-USER", orientations[0])
+        self.assertNotIn("ACTIVE-PATH2-ASSISTANT-SENTINEL", orientations[0])
 
     def test_chain_id_propagates_to_metadata(self):
         paths = self._make_session()

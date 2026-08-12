@@ -162,6 +162,7 @@ config/model-registry.vendor-authoritative.json
 data/tool-events.jsonl
 data/execution-approvals.json
 data/execution-approvals.json.lock
+data/execution-approvals.json.auth.key
 data/execution-records/
 data/trace-debug/
 data/lifecycle-locks/

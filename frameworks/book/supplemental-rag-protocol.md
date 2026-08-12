@@ -1,27 +1,29 @@
 # Specification — Supplemental RAG Protocol
 
-*Universal standing instruction injected into every analytical pipeline step (analyst, evaluator, reviser, verifier, consolidator). Authorises the model to request additional retrieval when the package is insufficient, instead of confabulating. The orchestrator runs the query against the vault, appends the result to the package, and re-submits as a fresh stateless call. Paired with `~/ora/frameworks/book/supplemental-rag-protocol.md`.*
+*Standing instruction for analytical consumers that need a truthful way to report an evidence gap. A supplemental request promotes eligible material that the current turn already retrieved and validated but could not initially fit. It never starts a fresh query or appends an unbudgeted result.*
 
 ## Why this exists
 
-LLM pipeline outputs that look complete can be subtly wrong — the **Subtle-Calculation-Error Class** of failure documented in `Paper — Subtle-Calculation Errors in LLM Pipelines`. When a step has insufficient information, it produces a plausible-looking answer instead of halting. The fix has to live **at the source step**, not at verification, because the wrong answer is internally coherent and adversarial review cannot catch it.
+An answer can be fluent and internally coherent while depending on a fact that the supplied package does not establish. Later evaluation cannot reliably recover evidence that was never available to the source step.
 
-This protocol gives the model an authorised non-confabulation path. When it cannot verify a factual claim from training and the package does not support it, instead of guessing, the model emits a structured request. The orchestrator fetches the missing material and re-submits the entire package as a fresh stateless call. The supplement-request log is the empirical record of where the vault is thin.
+The protocol therefore gives a model one explicit non-confabulation path. It can identify the unresolved claim and its consequence. The orchestrator then considers only unseen, already-validated whole units in the turn's private deferred inventory, repacks the context within the same endpoint-safe budget, and calls the step again statelessly. If nothing eligible can improve coverage, the gap remains explicit.
 
 ## When to use it
 
-Use the SUPPLEMENTAL RAG REQUEST block any time you encounter:
+Use the `SUPPLEMENTAL RAG REQUEST` block when all of these are true:
 
-- A factual claim, name, date, statistic, or definition you cannot verify from training **and** that the provided package does not support
-- A relationship between two named entities that you cannot confirm from training
-- A canonical fact about a specific person, document, framework, or event referenced in the prompt
-- A specific number (revenue, population, measurement) where confabulation would be measurable error
+- A specific factual claim matters to the requested output.
+- The supplied context does not establish it.
+- The turn's private coverage state says relevant validated contributor or global units were deferred.
+- Continuing without the evidence would require a guess or a materially qualified answer.
 
 **Do NOT use it for:**
-- Reasoning, judgment, opinion, analysis — those are your job, not retrievable
-- Speculation or hypothetical scenarios
-- Items the package already covers (read the package before requesting)
-- Asking the user — supplementation is orchestrator-mediated, not user-mediated
+
+- Reasoning, judgment, opinion, or speculation.
+- Material already present in the package.
+- A new vault, web, or provider search.
+- A question that actually requires the user's intent or decision.
+- A request to enlarge the model endpoint's safe context budget.
 
 ## Request format
 
@@ -30,85 +32,91 @@ Emit the block in your response in this exact format:
 ```
 ## SUPPLEMENTAL RAG REQUEST
 gap_statement: <one sentence: what claim or fact you cannot verify>
-query_terms: <comma-separated terms the orchestrator should search>
+query_terms: <short relevance terms for ranking the deferred inventory>
 why_it_matters: <one sentence: how the gap affects your output if unfilled>
 ```
 
-Place the block **before** the rest of your response, at the top. Continue producing the rest of your analysis after it; use placeholders like `[awaiting supplement on X]` where the missing fact would appear.
+Place the block at the top. `query_terms` are relevance terms used only to rank unseen, already-retrieved and already-validated units in the current private deferred inventory. They never launch a semantic, lexical, vault, web, or provider search. Do not include source identifiers or a provisional fact. The request is a control signal tied to the current inventory, not permission to expand the retrieval universe.
 
 ## Resubmission behaviour
 
-When the orchestrator detects this block:
-1. The `query_terms` are run against the vault knowledge collection (ChromaDB) with provenance ranking.
-2. The result is appended to the system context as a `## SUPPLEMENTAL RAG RESULT` block.
-3. The **entire package is re-submitted as a fresh stateless call** to the same step. You will see your own prior request, the orchestrator's fetched result, and the original task all together. Re-run your analysis with the new information.
+When the orchestrator detects the block, it:
+
+1. Uses `query_terms` to rank the current turn's private inventory of deferred, already-retrieved and already-validated units. The normalized `gap_statement` is used separately for repeat-gap detection.
+2. Promotes relevant unseen contributor units first, then relevant unseen global units. Promotion preserves the original validation, privacy, ancestry, archive, and source-wide exclusion decisions.
+3. Rebuilds the complete package within the **same** endpoint-safe budget. Promoted units are whole context units; nothing is truncated mid-unit.
+4. Re-submits the original step as a fresh stateless call. The prior model response is not appended as evidence.
+
+There is no fresh semantic or lexical query in this loop. Supplementation changes selection among known eligible units; it does not expand the retrieval universe.
 
 ## Caps and degradation
 
-- Maximum **two** supplements per pipeline step.
-- After two supplements, no further requests are honoured. If you still cannot verify a claim, replace the request with a `## COVERAGE GAP` block:
+There is no numeric request cap. Progress and fit determine termination. The loop stops when any of these is true:
+
+- The normalized gap repeats.
+- No relevant unseen eligible unit remains.
+- Eligible units exist but no whole unit fits after the ordinary packing priorities are reapplied.
+- The repacked call resolves the gap and returns a normal answer.
+
+On the first three stop conditions, the step returns a local `COVERAGE GAP` instead of requesting again:
 
 ```
 ## COVERAGE GAP
 unresolved: <one sentence: the claim that remains unverifiable>
-attempts: <summary of what the supplements returned>
 impact: <how this affects the analysis you are producing>
+status: <repeated | no-new | no-fit>
 ```
 
-The COVERAGE GAP is an **admission**, not a failure. The user prefers a partial answer with named gaps over a confident-looking confabulation. Cite COVERAGE GAPs explicitly in your output.
+The gap belongs to that call's output. It does not create a durable decision, change conversation state, or authorize a larger request. Endpoint budgeting still starts from the 200,000-token Dialogue maximum and may be smaller after required request payload, output allowance, retry, image, provider, and safety reserves.
 
 ## Anti-patterns
 
-- **Confabulating** — producing plausible content for facts you cannot verify. The whole protocol exists to avoid this; if you find yourself filling a gap with a guess, stop and emit a SUPPLEMENTAL RAG REQUEST instead.
-- **Omitting** — silently skipping a question because you lack information. The user asked a question; tell them what is missing.
-- **Asking the user** — do not put a question to the user (that would surface as Phase A clarification, not supplemental RAG). The orchestrator is the channel for vault retrieval.
-- **Bundling unrelated gaps** — one request per coherent gap. If you need three different supplements, emit three separate request blocks. (Within the per-step cap of two, you may pick the two most consequential.)
-- **Requesting for opinion-type material** — only retrievable facts qualify. "Find me other people who think this" is not a supplemental RAG request; it's a separate research task.
+- **Fresh-query regression** — running another semantic, lexical, web, or provider query.
+- **Append-only growth** — adding a result after packing instead of rebuilding within the same safe budget.
+- **Partial-unit fitting** — clipping a turn or indexed atomic chunk to force it into the package.
+- **Eligibility bypass** — promoting withheld, missing, privacy- or ancestry-incompatible, unvalidated, or otherwise excluded material. Archive bypass means promoting an archived atomic/global unit; an explicitly contributed archived Dialogue remains eligible read-only context when its ancestry and privacy permit it.
+- **Identity disclosure** — exposing deferred unit IDs, titles, paths, conversation IDs, or source names in public output or ordinary trace fields.
+- **Confabulation or silent omission** — guessing at the unresolved fact or dropping the affected part of the task without a named gap.
+- **Unbounded repetition** — accepting a repeated request when selection did not materially change.
 
 ## Trace and observability
 
-Every SUPPLEMENTAL RAG REQUEST is logged to `~/ora/data/pipeline-traces/<conversation_id>/<turn-ts>/supplemental-rag.jsonl` with:
+Public responses and the ordinary `context_coverage` projection expose only numeric coverage. The projection contains numeric entries from `budget`, each `lanes` member, and `source_counts`, plus optional integer `physical_calls`, `deferred_unit_count`, and `deduplicated_unit_count`. It has no promotion-count or terminal-status field.
 
-- The step that emitted it
-- The gap statement, query terms, why-it-matters
-- The supplement-result length (and content excerpt)
-- Whether the resubmission resolved the gap
-
-This log is the empirical signal of where vault coverage is thin and where models would otherwise have confabulated. Reviewing it monthly identifies content gaps for vault enrichment.
+Those fields must not contain unit IDs, source IDs, titles, paths, snippets, contributor identities, conversation identities, or a reconstructable ordering of private candidates. The sensitive `supplemental-rag.jsonl` forensic record retains the bounded request text and numeric outcome needed for diagnosis, under trace privacy and retention controls. Private runtime mechanics retain candidate identities for deduplication and promotion; those identities are not copied into reader-facing output or ordinary `context_coverage`.
 
 ## Where this protocol is injected
 
-The protocol is added to the system prompt of every model call at these pipeline steps:
+The instruction and handler are enabled only for G3/G4 analyst, evaluator, reviser, verifier, and consolidator roles. Server-authoritative history and ordinary packed context still reach Phase A, Direct, G1–G4, and special consumers, but that broader continuity contract does not enable supplementation.
 
 | Step | Role | Injected |
 |---|---|---|
-| Phase A | Prompt cleanup | No — preprocessing only |
-| Pre-routing | Mode dispatch | No — deterministic logic |
-| Step 3 | Analyst (Depth + Breadth) | Yes |
-| Step 4 | Evaluator | Yes |
-| Step 5 | Reviser | Yes |
-| Step 6 | Verifier | Yes |
-| Step 7 | Consolidator | Yes |
-| Step 8 | Formatter | No — placement only, no new facts |
-
-Detection and resubmission logic lives in `orchestrator/boot.py::_call_with_supplement` (the wrapper around `_call_with_retry`).
+| Phase A, deterministic routing, Direct, G1, and G2 | Cleanup, dispatch, and lower-gear response | No |
+| G3/G4 analyst, evaluator, reviser, verifier, and consolidator | Analysis and review roles using the shared wrapper | Yes |
+| Other special consumers and placement-only formatting | Consumer-specific work or presentation | No |
 
 ## Failure modes named
 
-**The Confident Confabulator.** Model produces a plausible answer without emitting a request. Detection: trace shows no supplement_request, but the answer contains specific verifiable claims the package did not supply. Mitigation: stronger training-time anti-confabulation discipline; the protocol is the structural fix but does not guarantee compliance.
+**The Confident Confabulator.** The model makes a specific unsupported claim instead of requesting supplementation or naming a coverage gap.
 
-**The Always-Requester.** Model emits a request on every step, even when the package is adequate. Detection: trace shows high supplement frequency on prompts that should not need supplementation. Mitigation: tighten the "when to use it" guidance; consider supplements/turn metric in oversight dashboards.
+**The Fresh-Query Regression.** The orchestrator treats the request as permission to retrieve again, which changes the candidate universe and defeats bounded, auditable packing.
 
-**The Unhelpful Supplement.** Orchestrator's fetched result is irrelevant to the gap. Detection: trace shows supplement provided but model still emits COVERAGE GAP. Mitigation: revisit the model's `query_terms` — too narrow or too broad — and tune the vault collection's coverage.
+**The Append Overflow.** A result is tacked onto an already packed request, bypassing endpoint reserves or displacing higher-priority context implicitly.
 
-**The Cap-Forced Confabulation.** Model hits the 2-supplement cap and confabulates instead of emitting COVERAGE GAP. Detection: trace shows two supplements followed by an answer with specific verifiable claims the supplements did not support. Mitigation: the explicit instruction to emit COVERAGE GAP after the cap is the structural fix; if it fails repeatedly, raise the cap or strengthen the post-cap instruction.
+**The Repeated-Request Loop.** The same normalized gap returns after no material coverage change. Repetition must terminate locally.
+
+**The Identity Leak.** Public coverage or ordinary trace projections reveal which private units, sources, or conversations were considered. Numeric aggregate reporting is their boundary; the sensitive forensic request record remains private.
+
+**The Whole-Unit Dead End.** Relevant deferred material exists but no complete unit fits. The correct result is `no-fit` plus a `COVERAGE GAP`, not truncation.
 
 ## Relationship to other frameworks
 
-- **Phase A Prompt Cleanup** handles ambiguity *in the user's prompt*. Supplemental RAG handles ambiguity *in the model's information*. Different surfaces, different fixes.
-- **Framework — Deep Research Protocol** is a heavier-weight retrieval framework for open-ended research questions. Supplemental RAG is per-step micro-retrieval inside an already-running pipeline turn.
-- **Framework — Process Coherence** (Layer B oversight) supervises the pipeline as a whole; it does not handle per-call retrieval gaps.
+- **Phase A Prompt Cleanup** handles ambiguity in the user's prompt. Supplemental RAG handles an evidence gap inside an already packed turn.
+- **Reference — Conversational RAG for Persistent AI Memory** defines eligible conversation and atomic-note candidates, privacy, ancestry, exclusions, stored documents, and vector orientation.
+- **Framework — Conversation Processing Pipeline** defines the consumers and the shared endpoint-budget boundary.
+- **Reference — Pipeline Trace System** defines the numeric public `context_coverage` representation.
+- **Paper — Subtle-Calculation Errors in LLM Pipelines** explains why an explicit evidence-gap path is necessary.
 
 ## Status
 
-Active canonical (v1.0, drafted 2026-05-15). Paired with `~/ora/frameworks/book/supplemental-rag-protocol.md` and implemented by `orchestrator/boot.py::_call_with_supplement` + `_parse_supplemental_request` + `_fetch_supplement` (added 2026-05-15).
+Current protocol. The vault document is canonical; `~/ora/frameworks/book/supplemental-rag-protocol.md` is its exact body mirror.

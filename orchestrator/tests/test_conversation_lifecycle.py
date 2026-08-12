@@ -225,11 +225,18 @@ class TestConversationMemoryLifecycle(unittest.TestCase):
             root = Path(td)
             parent_path = _write_envelope(
                 root, "parent", tag="private", display_name="Research",
-                messages=[{"role": "user", "content": "source"}],
+                messages=[
+                    {"role": "user", "content": "source one"},
+                    {"role": "assistant", "content": "answer one"},
+                    {"role": "user", "content": "source two"},
+                    {"role": "assistant", "content": "answer two"},
+                ],
             )
+            parent_before = parent_path.read_bytes()
 
             child = memory.fork_conversation(
                 "parent", "child-stealth", creation_tag="stealth",
+                fork_point_turn_index=0,
                 fork_point_chunk_id="parent-002", sessions_root=root,
                 timestamp="2026-07-12T10:00:00",
             )
@@ -237,17 +244,130 @@ class TestConversationMemoryLifecycle(unittest.TestCase):
             assert child is not None
             self.assertEqual(child["tag"], "stealth")
             self.assertEqual(child["parent_conversation_id"], "parent")
+            self.assertEqual(child["fork_point_message_count"], 2)
             self.assertEqual(child["fork_point_chunk_id"], "parent-002")
             self.assertEqual(child["display_name"], "Research (fork)")
-            child["messages"][0]["content"] = "changed only in memory"
+            self.assertEqual(child["messages"], [])
             parent = json.loads(parent_path.read_text(encoding="utf-8"))
             self.assertEqual(parent["tag"], "private")
-            self.assertEqual(parent["messages"][0]["content"], "source")
+            self.assertEqual(parent["messages"][0]["content"], "source one")
+            self.assertEqual(parent_path.read_bytes(), parent_before)
 
             inherited = memory.fork_conversation(
                 "parent", "child-inherited", sessions_root=root,
             )
             self.assertEqual(inherited["tag"], "private")
+            self.assertEqual(inherited["fork_point_message_count"], 4)
+            self.assertEqual(inherited["messages"], [])
+
+            memory.save_turn_spatial_state(
+                "parent", "later parent", "later answer", sessions_root=root,
+            )
+            persisted_child = memory.load_conversation_json(
+                "child-inherited", sessions_root=root,
+            )
+            self.assertEqual(persisted_child["fork_point_message_count"], 4)
+            self.assertEqual(persisted_child["messages"], [])
+            summaries = {
+                row["conversation_id"]: row
+                for row in memory.iter_conversations(sessions_root=root)
+            }
+            self.assertEqual(summaries["child-inherited"]["inherited_message_count"], 4)
+            self.assertEqual(summaries["child-inherited"]["local_message_count"], 0)
+
+    def test_fork_rejects_invalid_displayed_turn_without_creating_child(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_envelope(
+                root, "parent",
+                messages=[
+                    {"role": "user", "content": "source"},
+                    {"role": "assistant", "content": "answer"},
+                ],
+            )
+            for index in (-1, 1, True, "0"):
+                with self.subTest(index=index), self.assertRaises(ValueError):
+                    memory.fork_conversation(
+                        "parent", f"child-{index}",
+                        fork_point_turn_index=index,
+                        sessions_root=root,
+                    )
+            self.assertEqual(
+                sorted(path.name for path in root.iterdir()),
+                ["parent"],
+            )
+
+    def test_fork_privacy_lattice_is_enforced_by_storage_helper(self):
+        allowed = {
+            "": {"", "private", "stealth"},
+            "private": {"private", "stealth"},
+            "stealth": {"stealth"},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for parent_tag in ("", "private", "stealth"):
+                parent_id = f"parent-{parent_tag or 'standard'}"
+                _write_envelope(root, parent_id, tag=parent_tag)
+                for child_tag in ("", "private", "stealth"):
+                    child_id = (
+                        f"child-{parent_tag or 'standard'}-"
+                        f"{child_tag or 'standard'}"
+                    )
+                    if child_tag in allowed[parent_tag]:
+                        child = memory.fork_conversation(
+                            parent_id, child_id, creation_tag=child_tag,
+                            sessions_root=root,
+                        )
+                        self.assertEqual(child["tag"], child_tag)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "privacy"):
+                            memory.fork_conversation(
+                                parent_id, child_id, creation_tag=child_tag,
+                                sessions_root=root,
+                            )
+                        self.assertFalse((root / child_id).exists())
+
+    def test_legacy_envelope_backfills_cutoff_on_next_write(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            path = _write_envelope(root, "legacy")
+            self.assertNotIn(
+                "fork_point_message_count",
+                json.loads(path.read_text(encoding="utf-8")),
+            )
+            memory.save_turn_spatial_state(
+                "legacy", "user", "answer", sessions_root=root,
+            )
+            self.assertIsNone(
+                json.loads(path.read_text(encoding="utf-8"))[
+                    "fork_point_message_count"
+                ]
+            )
+
+    def test_standard_and_private_close_are_retained_and_reversible(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for tag in ("", "private"):
+                with self.subTest(tag=tag):
+                    cid = "standard" if not tag else "private"
+                    path = _write_envelope(
+                        root, cid, tag=tag,
+                        messages=[{"role": "user", "content": "keep me"}],
+                    )
+                    with mock.patch.object(
+                        closeout, "_finalize_conversation_chunks",
+                        return_value={"errors": [], "chunks_updated": 0},
+                    ):
+                        result = closeout.close_conversation(
+                            cid, sessions_root=root,
+                        )
+                    self.assertEqual(result["action"], "close")
+                    self.assertTrue(path.exists())
+                    self.assertTrue(json.loads(path.read_text())["closed"])
+                    memory.set_conversation_closed(cid, False, sessions_root=root)
+                    restored = json.loads(path.read_text())
+                    self.assertNotIn("closed", restored)
+                    self.assertEqual(restored["messages"][0]["content"], "keep me")
 
 
 class TestConversationMetadataPropagation(unittest.TestCase):
@@ -1264,12 +1384,199 @@ class TestDeleteConversationForever(unittest.TestCase):
                 if baked_root.startswith(sandbox):
                     sys.modules.pop(name, None)
 
+    def test_delete_helper_refuses_retained_dialogues_without_mutation(self):
+        for tag in ("", "private"):
+            with self.subTest(tag=tag), tempfile.TemporaryDirectory() as td:
+                roots = self._roots(Path(td))
+                envelope = _write_envelope(
+                    roots["sessions"], "retained", tag=tag,
+                    messages=[{"role": "user", "content": "must survive"}],
+                )
+                raw = roots["raw"] / "retained.md"
+                raw.write_text(
+                    "# Session retained\n\npanel_id: retained\n\n---\nkeep\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(PermissionError, "use Close"):
+                    self._run_delete("retained", roots)
+
+                self.assertTrue(envelope.exists())
+                self.assertTrue(raw.exists())
+
+    def test_empty_legacy_approval_store_allows_explicit_stealth_delete_retry(self):
+        repo = Path(__file__).resolve().parents[2]
+        server_dir = str(repo / "server")
+        if server_dir not in sys.path:
+            sys.path.insert(0, server_dir)
+        from server import app as server  # type: ignore
+        import oversight_queue
+        import tool_events
+        from orchestrator import system_protection
+
+        def path_state(path: Path):
+            try:
+                value = os.lstat(path)
+            except FileNotFoundError:
+                return None
+            return (
+                value.st_mode, value.st_dev, value.st_ino,
+                value.st_size, value.st_mtime_ns,
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            roots = self._roots(base)
+            conversation_id = f"legacy-empty-{base.name.lower()}"
+            sibling_id = f"sibling-{base.name.lower()}"
+            _write_envelope(
+                roots["sessions"], conversation_id, tag="stealth",
+                messages=[{"role": "user", "content": "purge only this"}],
+            )
+            _write_envelope(
+                roots["sessions"], sibling_id, tag="stealth",
+                messages=[{"role": "user", "content": "must survive"}],
+            )
+
+            approval_path = roots["data"] / "execution-approvals.json"
+            approval_path.write_text(
+                json.dumps({"tokens": [], "standing": []}), encoding="utf-8",
+            )
+            queue_path = roots["data"] / "oversight" / "human-queue.jsonl"
+            actions_path = roots["data"] / "oversight" / "actions.jsonl"
+            event_path = roots["data"] / "tool-events.jsonl"
+
+            live_approval = Path(tool_events._APPROVALS_BAKED)
+            live_key = Path(str(live_approval) + ".auth.key")
+            live_session = closeout._DEFAULT_SESSIONS_ROOT / conversation_id
+            live_before = {
+                live_approval: path_state(live_approval),
+                live_key: path_state(live_key),
+                live_session: path_state(live_session),
+            }
+            self.assertIsNone(live_before[live_session])
+
+            purged: list[str] = []
+
+            def purge_exact(value: str):
+                self.assertEqual(value, conversation_id)
+                purged.append(value)
+                result = self._run_delete(
+                    value, roots, collection=_FakeCollection([]),
+                )
+                server._deleted_conversations.add(
+                    server._conversation_storage_identity(value),
+                )
+                return result
+
+            server._conversation_creation_tags[
+                server._conversation_storage_identity(conversation_id)
+            ] = "stealth"
+            tool_events._queued_hashes.clear()
+            turn_token = tool_events.set_turn_context(
+                conversation_id=conversation_id,
+                surface="server_api", stealth=False,
+            )
+            try:
+                with (
+                    mock.patch.dict(
+                        os.environ, {"ORA_OVERSIGHT_SANDBOX": str(roots["data"])},
+                    ),
+                    mock.patch.object(
+                        tool_events, "APPROVALS_PATH", str(approval_path),
+                    ),
+                    mock.patch.object(
+                        tool_events, "GLOBAL_SINK_DEFAULT", str(event_path),
+                    ),
+                    mock.patch.object(
+                        oversight_queue, "HUMAN_QUEUE_PATH", str(queue_path),
+                    ),
+                    mock.patch.object(
+                        system_protection, "_actions_path",
+                        return_value=str(actions_path),
+                    ),
+                    mock.patch.object(
+                        server, "_delete_conversation_runtime",
+                        side_effect=purge_exact,
+                    ) as delete_runtime,
+                ):
+                    client = server.app.test_client()
+                    first = client.post(
+                        f"/api/conversation/{conversation_id}/delete-forever",
+                    )
+                    first_payload = json.loads(first.get_data(as_text=True))
+                    self.assertEqual(first.status_code, 409, first_payload)
+                    self.assertEqual(
+                        first_payload["status"],
+                        "awaiting_system_protection_approval",
+                    )
+                    self.assertTrue(first_payload["retry_required"])
+                    delete_runtime.assert_not_called()
+                    self.assertTrue(
+                        (roots["sessions"] / conversation_id).is_dir(),
+                    )
+
+                    migrated = tool_events._load_approvals()
+                    self.assertEqual(migrated["schema_version"], 2)
+                    self.assertEqual(migrated["tokens"], [])
+                    self.assertEqual(migrated["standing"], [])
+                    self.assertEqual(len(migrated["pending"]), 1)
+                    entry = oversight_queue.find_paused_by_id(
+                        first_payload["queue_id"],
+                    )
+                    self.assertIsNotNone(entry)
+                    approved = tool_events.resolve_gate_entry(
+                        entry.to_dict(), approve=True,
+                    )
+                    self.assertIn("One-shot token", approved)
+
+                    after_approval = tool_events._load_approvals()
+                    self.assertEqual(len(after_approval["tokens"]), 1)
+                    self.assertFalse(after_approval["tokens"][0]["used"])
+
+                    retry = client.post(
+                        f"/api/conversation/{conversation_id}/delete-forever",
+                    )
+                    retry_payload = json.loads(retry.get_data(as_text=True))
+                    self.assertEqual(retry.status_code, 200, retry_payload)
+                    self.assertEqual(retry_payload["conversation_id"], conversation_id)
+                    self.assertEqual(retry_payload["tag"], "stealth")
+                    self.assertEqual(retry_payload["action"], "delete_forever")
+                    self.assertTrue(retry_payload["deleted"]["session_dir"])
+                    self.assertEqual(retry_payload["deleted"]["task_tokens"], 1)
+                    self.assertEqual(retry_payload["errors"], [])
+                    self.assertEqual(purged, [conversation_id])
+                    self.assertFalse(
+                        (roots["sessions"] / conversation_id).exists(),
+                    )
+                    self.assertTrue((roots["sessions"] / sibling_id).is_dir())
+
+                    post_purge_store = tool_events._load_approvals()
+                    self.assertEqual(post_purge_store["tokens"], [])
+                    self.assertTrue(all(
+                        item.get("consumed")
+                        for item in post_purge_store["pending"]
+                    ))
+            finally:
+                tool_events.reset_turn_context(turn_token)
+                tool_events._queued_hashes.clear()
+                server._conversation_creation_tags.pop(
+                    server._conversation_storage_identity(conversation_id), None,
+                )
+                server._deleted_conversations.discard(
+                    server._conversation_storage_identity(conversation_id),
+                )
+
+            self.assertEqual(
+                {path: path_state(path) for path in live_before}, live_before,
+            )
+
     def test_delete_removes_ora_managed_layers_but_retains_flat_exports(self):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
             target = "delete-me"
 
-            _write_envelope(roots["sessions"], target, tag="private")
+            _write_envelope(roots["sessions"], target, tag="stealth")
             archived = roots["sessions"] / "archived" / target
             archived.mkdir(parents=True)
             (archived / "conversation.json").write_text("{}")
@@ -1428,7 +1735,7 @@ class TestDeleteConversationForever(unittest.TestCase):
             result = self._run_delete(target, roots, collection=collection)
 
             self.assertEqual(result["conversation_id"], target)
-            self.assertEqual(result["tag"], "private")
+            self.assertEqual(result["tag"], "stealth")
             self.assertEqual(result["action"], "delete_forever")
             self.assertTrue(result["retained"]["explicit_vault_exports"])
             self.assertFalse((roots["sessions"] / target).exists())
@@ -1504,6 +1811,112 @@ class TestDeleteConversationForever(unittest.TestCase):
             self.assertTrue(explicit_figure.exists())
             self.assertTrue((explicit_sidecars / "figure.png").exists())
 
+    def test_delete_detaches_direct_children_without_copying_or_guessing(self):
+        with tempfile.TemporaryDirectory() as td:
+            roots = self._roots(Path(td))
+            parent_messages = [
+                {"role": "user", "content": "parent prompt"},
+                {"role": "assistant", "content": "parent answer"},
+            ]
+            _write_envelope(
+                roots["sessions"], "parent", tag="stealth",
+                messages=parent_messages,
+            )
+
+            memory.fork_conversation(
+                "parent", "current-child", sessions_root=roots["sessions"],
+                fork_point_chunk_id="legacy-readable-pointer",
+            )
+            memory.save_turn_spatial_state(
+                "current-child", "local prompt", "local answer",
+                sessions_root=roots["sessions"],
+            )
+
+            legacy_exact = {
+                "conversation_id": "legacy-exact",
+                "tag": "",
+                "parent_conversation_id": "parent",
+                "fork_point_chunk_id": "old-chunk",
+                "messages": parent_messages + [
+                    {"role": "user", "content": "legacy local"},
+                    {"role": "assistant", "content": "legacy answer"},
+                ],
+                "project_ids": [],
+            }
+            legacy_ambiguous = {
+                "conversation_id": "legacy-ambiguous",
+                "tag": "",
+                "parent_conversation_id": "parent",
+                "fork_point_chunk_id": "old-other-chunk",
+                "messages": [
+                    {"role": "user", "content": "not the parent prefix"},
+                    {"role": "assistant", "content": "must remain"},
+                ],
+                "project_ids": [],
+            }
+            for envelope in (legacy_exact, legacy_ambiguous):
+                path = (
+                    roots["sessions"] / envelope["conversation_id"]
+                    / "conversation.json"
+                )
+                path.parent.mkdir()
+                path.write_text(json.dumps(envelope), encoding="utf-8")
+            grandchild_path = _write_envelope(
+                roots["sessions"], "grandchild",
+                messages=[{"role": "user", "content": "grandchild local"}],
+            )
+            grandchild = json.loads(grandchild_path.read_text())
+            grandchild.update({
+                "parent_conversation_id": "current-child",
+                "fork_point_message_count": 2,
+                "fork_point_chunk_id": None,
+            })
+            grandchild_path.write_text(json.dumps(grandchild), encoding="utf-8")
+
+            result = self._run_delete("parent", roots)
+
+            self.assertFalse((roots["sessions"] / "parent").exists())
+            current = memory.load_conversation_json(
+                "current-child", sessions_root=roots["sessions"],
+            )
+            self.assertIsNone(current["parent_conversation_id"])
+            self.assertIsNone(current["fork_point_message_count"])
+            self.assertIsNone(current["fork_point_chunk_id"])
+            self.assertEqual(
+                [message["content"] for message in current["messages"]],
+                ["local prompt", "local answer"],
+            )
+
+            exact = memory.load_conversation_json(
+                "legacy-exact", sessions_root=roots["sessions"],
+            )
+            self.assertEqual(
+                [message["content"] for message in exact["messages"]],
+                ["legacy local", "legacy answer"],
+            )
+            ambiguous = memory.load_conversation_json(
+                "legacy-ambiguous", sessions_root=roots["sessions"],
+            )
+            self.assertEqual(ambiguous["messages"], legacy_ambiguous["messages"])
+            self.assertIsNone(ambiguous["parent_conversation_id"])
+            self.assertIn("legacy-ambiguous", " ".join(result["errors"]))
+            self.assertIn("preserved", " ".join(result["errors"]))
+
+            untouched_grandchild = json.loads(grandchild_path.read_text())
+            self.assertEqual(
+                untouched_grandchild["parent_conversation_id"], "current-child",
+            )
+            detachment = result["deleted"]["fork_children"]
+            self.assertCountEqual(
+                detachment["children_detached"],
+                ["current-child", "legacy-exact", "legacy-ambiguous"],
+            )
+            self.assertEqual(detachment["legacy_prefix_messages_removed"], 2)
+            self.assertEqual(
+                detachment["ambiguous_children_preserved"],
+                ["legacy-ambiguous"],
+            )
+
     def test_collection_not_found_is_idempotent_but_other_failures_are_loud(self):
         from chromadb.errors import NotFoundError
 
@@ -1536,7 +1949,7 @@ class TestDeleteConversationForever(unittest.TestCase):
             outside = external / "conversation.json"
             outside.write_text(json.dumps({
                 "conversation_id": "escape",
-                "tag": "private",
+                "tag": "stealth",
                 "messages": [{"role": "user", "content": "retain"}],
             }), encoding="utf-8")
             link = roots["sessions"] / "escape"
@@ -1561,7 +1974,7 @@ class TestDeleteConversationForever(unittest.TestCase):
     def test_delete_reports_incomplete_managed_transcript_scan(self):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
-            _write_envelope(roots["sessions"], "target", tag="private")
+            _write_envelope(roots["sessions"], "target", tag="stealth")
             vault_root = roots["vault"].parent
             original_iterdir = Path.iterdir
 
@@ -1581,7 +1994,7 @@ class TestDeleteConversationForever(unittest.TestCase):
     def test_legacy_mixed_case_delete_removes_casefolded_derivatives(self):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
-            _write_envelope(roots["sessions"], "LegacyA", tag="private")
+            _write_envelope(roots["sessions"], "LegacyA", tag="stealth")
             staging = roots["data"] / "extraction-staging"
             staging.mkdir()
             derivative = staging / "private-note.md"
@@ -1610,7 +2023,7 @@ class TestDeleteConversationForever(unittest.TestCase):
     def test_raw_log_scan_never_claims_sibling_session_derivatives(self):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
-            _write_envelope(roots["sessions"], "target", tag="private")
+            _write_envelope(roots["sessions"], "target", tag="stealth")
             (roots["raw"] / "target.md").write_text(
                 "# Session target-run\n\npanel_id: target\n\n---\nsecret\n",
                 encoding="utf-8",
@@ -1704,13 +2117,19 @@ class TestDeleteConversationForever(unittest.TestCase):
             approvals = roots["data"] / "dynamic" / "execution-approvals.json"
             approvals.parent.mkdir()
             standing = {"scope": "project:ora", "granted_via": "test"}
-            approvals.write_text(json.dumps({
-                "tokens": [
-                    {"token": "drop", "conversation_id": target},
-                    {"token": "keep", "conversation_id": "other"},
-                ],
-                "standing_allows": [standing],
-            }), encoding="utf-8")
+            with mock.patch.object(
+                tool_events, "APPROVALS_PATH", str(approvals),
+            ):
+                def seed_signed_store():
+                    data = tool_events._empty_approvals()
+                    data["tokens"] = [
+                        {"token": "drop", "conversation_id": target},
+                        {"token": "keep", "conversation_id": "other"},
+                    ]
+                    data["standing"] = [standing]
+                    tool_events._save_approvals(data)
+
+                tool_events._with_approvals_lock(seed_signed_store)
 
             archive = roots["data"] / "archive" / "tool-events-locked.jsonl.gz"
             with gzip.open(archive, "wt", encoding="utf-8") as stream:
@@ -1745,10 +2164,13 @@ class TestDeleteConversationForever(unittest.TestCase):
                 mock.patch.object(
                     runtime_paths, "locked_file", side_effect=record_lock,
                 ),
+                mock.patch.object(
+                    tool_events._rp, "locked_file", side_effect=record_lock,
+                ),
             ):
                 result = self._run_delete(target, roots)
 
-            resolve_approvals.assert_called_once_with()
+            self.assertGreaterEqual(resolve_approvals.call_count, 1)
             self.assertIn(approvals, locked_paths)
             self.assertIn(archive, locked_paths)
             archive_parents = [
@@ -1757,11 +2179,14 @@ class TestDeleteConversationForever(unittest.TestCase):
             self.assertEqual(len(archive_parents), 1)
             self.assertIn(roots["data"] / "tool-events.jsonl",
                           archive_parents[0])
-            approval_data = json.loads(approvals.read_text(encoding="utf-8"))
+            with mock.patch.object(
+                tool_events, "APPROVALS_PATH", str(approvals),
+            ):
+                approval_data = tool_events._load_approvals()
             self.assertEqual(approval_data["tokens"], [
                 {"token": "keep", "conversation_id": "other"},
             ])
-            self.assertEqual(approval_data["standing_allows"], [standing])
+            self.assertEqual(approval_data["standing"], [standing])
             self.assertEqual(result["deleted"]["task_tokens"], 1)
             with gzip.open(archive, "rt", encoding="utf-8") as stream:
                 self.assertEqual(
@@ -1787,7 +2212,7 @@ class TestDeleteConversationForever(unittest.TestCase):
             roots = self._roots(Path(td))
             target = "derived-delete"
             session_id = "legacy-session-7"
-            _write_envelope(roots["sessions"], target)
+            _write_envelope(roots["sessions"], target, tag="stealth")
 
             staging = roots["data"] / "extraction-staging"
             promoted = roots["data"] / "extraction-promoted"
@@ -1863,7 +2288,7 @@ class TestDeleteConversationForever(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
             target = "cited-dialogue"
-            _write_envelope(roots["sessions"], target)
+            _write_envelope(roots["sessions"], target, tag="stealth")
             engrams = roots["vault"].parent / "Engrams"
             engrams.mkdir()
             user_note = engrams / "User Authored.md"
@@ -1899,7 +2324,7 @@ class TestDeleteConversationForever(unittest.TestCase):
             base = Path(td)
             roots = self._roots(base / "runtime")
             target = "custom-output"
-            _write_envelope(roots["sessions"], target)
+            _write_envelope(roots["sessions"], target, tag="stealth")
             custom_root = base / "custom-chunks"
             custom_root.mkdir()
             custom = custom_root / "turn.md"
@@ -1927,7 +2352,7 @@ class TestDeleteConversationForever(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             roots = self._roots(Path(td))
             target = "partial-delete"
-            _write_envelope(roots["sessions"], target)
+            _write_envelope(roots["sessions"], target, tag="stealth")
             raw_path = roots["raw"] / "target.md"
             raw_path.write_text(f"# Session abc\n\npanel_id: {target}\n\n---\n")
 
@@ -2054,6 +2479,76 @@ class TestServerLifecycleWiring(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("creation-only", response.get_data(as_text=True))
 
+    def test_fork_endpoint_resolves_displayed_turn_and_reports_counts(self):
+        import conversation_memory as legacy_import_memory
+
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            _write_envelope(
+                sessions, "api-parent",
+                messages=[
+                    {"role": "user", "content": "first"},
+                    {"role": "assistant", "content": "first answer"},
+                    {"role": "user", "content": "second"},
+                    {"role": "assistant", "content": "second answer"},
+                ],
+            )
+            with (
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(
+                    legacy_import_memory, "_DEFAULT_SESSIONS_ROOT", sessions,
+                ),
+            ):
+                response = self.server.app.test_client().post(
+                    "/api/conversation/api-parent/fork",
+                    json={
+                        "new_id": "api-child",
+                        "fork_point_turn_index": 0,
+                    },
+                )
+                invalid = self.server.app.test_client().post(
+                    "/api/conversation/api-parent/fork",
+                    json={
+                        "new_id": "invalid-child",
+                        "fork_point_turn_index": 2,
+                    },
+                )
+
+            self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+            payload = json.loads(response.get_data(as_text=True))
+            self.assertEqual(payload["fork_point_message_count"], 2)
+            self.assertEqual(payload["inherited_message_count"], 2)
+            self.assertEqual(payload["local_message_count"], 0)
+            child = json.loads(
+                (sessions / "api-child" / "conversation.json").read_text()
+            )
+            self.assertEqual(child["messages"], [])
+            self.assertEqual(invalid.status_code, 400)
+            self.assertFalse((sessions / "invalid-child").exists())
+
+    def test_fork_endpoint_rejects_weaker_child_privacy(self):
+        import conversation_memory as legacy_import_memory
+
+        with tempfile.TemporaryDirectory() as td:
+            sessions = Path(td) / "sessions"
+            _write_envelope(
+                sessions, "private-api-parent", tag="private",
+                messages=[{"role": "user", "content": "private source"}],
+            )
+            with (
+                mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT", sessions),
+                mock.patch.object(
+                    legacy_import_memory, "_DEFAULT_SESSIONS_ROOT", sessions,
+                ),
+            ):
+                response = self.server.app.test_client().post(
+                    "/api/conversation/private-api-parent/fork",
+                    json={"new_id": "standard-api-child", "tag": ""},
+                )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("privacy", response.get_data(as_text=True))
+            self.assertFalse((sessions / "standard-api-child").exists())
+
     def test_deleted_tombstone_refuses_late_save(self):
         self.server._deleted_conversations.add("gone")
         with mock.patch.object(
@@ -2118,6 +2613,146 @@ class TestServerLifecycleWiring(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 403)
         delete.assert_not_called()
+
+    def test_delete_forever_route_refuses_retained_dialogues_before_approval(self):
+        from orchestrator import system_protection
+
+        for tag in ("", "private"):
+            with self.subTest(tag=tag):
+                with (
+                    mock.patch.object(
+                        memory, "read_conversation_history_envelope",
+                        return_value={"tag": tag, "messages": []},
+                    ),
+                    mock.patch.object(
+                        system_protection, "authorize_server_action",
+                    ) as authorize,
+                ):
+                    response = self.server.app.test_client().post(
+                        "/api/conversation/retained/delete-forever",
+                    )
+                self.assertEqual(response.status_code, 409)
+                self.assertIn("use Close", response.get_data(as_text=True))
+                authorize.assert_not_called()
+
+    def test_delete_runtime_refuses_nonstealth_without_tombstone_or_purge(self):
+        for tag in ("", "private"):
+            conversation_id = f"retained-{tag or 'standard'}"
+            self.server._deleted_conversations.discard(conversation_id)
+            with self.subTest(tag=tag):
+                with (
+                    mock.patch.object(
+                        memory, "read_conversation_history_envelope",
+                        return_value={"tag": tag, "messages": []},
+                    ),
+                    mock.patch.object(
+                        closeout, "delete_conversation_forever",
+                    ) as purge,
+                ):
+                    with self.assertRaises(PermissionError):
+                        self.server._delete_conversation_runtime(conversation_id)
+                self.assertNotIn(
+                    conversation_id, self.server._deleted_conversations,
+                )
+                purge.assert_not_called()
+
+    def test_clarification_resume_and_skip_refresh_history_and_contributors_under_lock(self):
+        import boot as runtime_boot
+
+        fresh_history = [{"role": "assistant", "content": "fresh history"}]
+        fresh_bundle = {
+            "units": [{
+                "lane": "contributor", "unit_id": "fresh-unit",
+                "source_id": "selected-source-0", "content": "fresh source",
+            }],
+            "sources": [{
+                "source_id": "selected-source-0", "status": "available",
+            }],
+            "exclude_conversation_ids": ["fresh-source"],
+            "exclude_paths": [],
+        }
+
+        for route, payload in (
+            ("/api/clarification", {"panel_id": "refresh-resume", "answers": "detail"}),
+            ("/api/clarification/skip", {"panel_id": "refresh-skip"}),
+        ):
+            panel_id = payload["panel_id"]
+            captured = {}
+            self.server._pending_clarification[panel_id] = {
+                "step1": {
+                    "mode": "simple", "triage_tier": 1,
+                    "cleaned_prompt": "original",
+                    "operational_notation": "original",
+                    "pre_routing": {},
+                },
+                "config": {},
+                "history": [{"role": "assistant", "content": "stale history"}],
+                "user_input": "original",
+                "images": None,
+                "extra_context": {
+                    "contributor_bundle": {
+                        "units": [{"content": "stale source"}],
+                        "sources": [{"status": "available"}],
+                    },
+                },
+                "conversation_tag": "",
+                "trace_ref": None,
+            }
+            lifecycle_lock = self.server._conversation_lifecycle_lock(panel_id)
+
+            def authoritative(_conversation_id, _supplied=None):
+                self.assertTrue(lifecycle_lock._is_owned())
+                return fresh_history, {"source": "conversation_json"}
+
+            def contributors(_conversation_id, *, target_tag):
+                self.assertTrue(lifecycle_lock._is_owned())
+                self.assertEqual(target_tag, "private")
+                return fresh_bundle
+
+            def run_from_step2(_step1, _config, history, _user_input, *args, **kwargs):
+                self.assertTrue(lifecycle_lock._is_owned())
+                self.assertEqual(
+                    runtime_boot._CONVERSATION_TAG_CV.get(), "private",
+                )
+                captured["history"] = history
+                captured["extra_context"] = kwargs.get("extra_context")
+                yield self.server._sse("response", text="complete")
+
+            def effective_tag(_conversation_id, _requested=""):
+                self.assertTrue(lifecycle_lock._is_owned())
+                return "private"
+
+            with self.subTest(route=route):
+                with (
+                    mock.patch.object(runtime_boot, "PIPELINE_TRACE_AVAILABLE", False),
+                    mock.patch.object(
+                        self.server, "_effective_conversation_tag",
+                        side_effect=effective_tag,
+                    ),
+                    mock.patch.object(
+                        self.server, "_authoritative_dialogue_history",
+                        side_effect=authoritative,
+                    ),
+                    mock.patch.object(
+                        self.server, "build_contributor_bundle",
+                        side_effect=contributors,
+                    ),
+                    mock.patch.object(
+                        self.server, "_run_pipeline_from_step2",
+                        side_effect=run_from_step2,
+                    ),
+                    mock.patch.object(
+                        self.server, "_save_conversation", return_value=None,
+                    ),
+                ):
+                    response = self.server.app.test_client().post(route, json=payload)
+                    response.get_data()
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(captured["history"], fresh_history)
+                self.assertEqual(
+                    captured["extra_context"]["contributor_bundle"], fresh_bundle,
+                )
 
     def test_zero_turn_close_blocks_late_artifact_creation(self):
         with tempfile.TemporaryDirectory() as td:
@@ -2234,13 +2869,21 @@ class TestServerLifecycleWiring(unittest.TestCase):
             "session_id": "runtime-session",
             "model": "test-model",
         }
-        self.server._conversation_creation_tags[conversation_id] = "private"
+        self.server._conversation_creation_tags[conversation_id] = "stealth"
         with (
             mock.patch.object(self.server, "RUNTIME_PIPELINE_AVAILABLE", True),
             mock.patch.object(self.server, "RuntimePipeline",
                               BlockingRuntimePipeline),
             mock.patch.object(memory, "load_conversation_json",
-                              return_value={"tag": "private", "messages": []}),
+                              return_value={"tag": "stealth", "messages": []}),
+            mock.patch.object(
+                memory, "read_conversation_history_envelope",
+                return_value={"tag": "stealth", "messages": []},
+            ),
+            mock.patch.object(
+                self.server, "_effective_conversation_tag",
+                return_value="private",
+            ),
             mock.patch.object(closeout, "delete_conversation_forever",
                               side_effect=fake_purge),
             mock.patch.object(self.server, "_quiesce_conversation_workers",

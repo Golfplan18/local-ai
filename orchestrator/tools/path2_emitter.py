@@ -21,6 +21,7 @@ The wiring stays the same — only the stage bodies change.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 from dataclasses import dataclass, field
@@ -34,10 +35,13 @@ from orchestrator.conversation_chunk import (
     build_chroma_metadata,
     build_chunk_filename,
     build_chunk_markdown,
+    build_embedding_orientation,
+    build_retrieval_document,
     mechanical_chunk_metadata,
 )
 from orchestrator.historical.chain_detector import derive_session_id
 from orchestrator.historical.path2_orchestrator import (
+    MAX_EMBED_CHARS,
     historical_conversation_id,
     migrate_legacy_path2_identity,
 )
@@ -178,6 +182,7 @@ def emit_path2_chunks(
     finalize: bool = True,
     default_when: Optional[datetime] = None,
     manifest_path: str | Path | None = None,
+    embedder: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> dict[str, Any]:
     """Re-emit a historical chat as conversation chunks (Path 2).
 
@@ -351,9 +356,18 @@ def emit_path2_chunks(
                 if k not in meta:
                     meta[k] = v
 
+        embedding_text = build_embedding_orientation(
+            context_header, pair.user_input,
+        )[:MAX_EMBED_CHARS]
+        meta["embedding_text_sha256"] = hashlib.sha256(
+            embedding_text.encode("utf-8")
+        ).hexdigest()
         chroma_records.append({
             "id":       chunk_id,
-            "document": f"{context_header}\n\n{pair.user_input}",
+            "document": build_retrieval_document(
+                context_header, pair.user_input, pair.ai_response,
+            ),
+            "embedding_text": embedding_text,
             "metadata": meta,
         })
         stats["last_pair_timestamp"] = pair.when.isoformat(timespec="seconds")
@@ -365,15 +379,25 @@ def emit_path2_chunks(
     if chroma_records:
         try:
             import chromadb
-            from orchestrator.embedding import get_or_create_collection
+            from orchestrator.embedding import (
+                EMBEDDING_DIM, embed_texts, get_or_create_collection,
+            )
             client = chromadb.PersistentClient(path=str(chromadb_path))
             # Bind the canonical embedding_function so historical chunks
             # are embedded the same way live ones are.
             col = get_or_create_collection(client, "conversations")
+            vectors = (embedder or embed_texts)([
+                r["embedding_text"] for r in chroma_records
+            ])
+            if len(vectors) != len(chroma_records):
+                raise ValueError("conversation embedder returned the wrong vector count")
+            if any(len(vector) != EMBEDDING_DIM for vector in vectors):
+                raise ValueError("conversation embedder returned the wrong vector dimension")
             col.upsert(
                 ids=[r["id"] for r in chroma_records],
                 documents=[r["document"] for r in chroma_records],
                 metadatas=[r["metadata"] for r in chroma_records],
+                embeddings=vectors,
             )
             stats["chunks_indexed"] = len(chroma_records)
         except Exception as e:

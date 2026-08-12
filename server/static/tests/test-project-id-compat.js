@@ -39,6 +39,11 @@ var dom = new jsdom.JSDOM(
   '      <button id="sidebarProjectNew"></button>' +
   '    </div>' +
   '  </div>' +
+  '  <div class="sidebar-group" data-group="pinned"><div class="sidebar-group-rows"></div></div>' +
+  '  <div class="sidebar-group" data-group="errored"><div class="sidebar-group-rows"></div></div>' +
+  '  <div class="sidebar-group" data-group="unread"><div class="sidebar-group-rows"></div></div>' +
+  '  <div class="sidebar-group" data-group="active"><div class="sidebar-group-rows"></div></div>' +
+  '  <div class="sidebar-group" data-group="pending"><div class="sidebar-group-rows"></div></div>' +
   '</div>' +
   '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
@@ -69,6 +74,7 @@ var projectRowsByStatus = null;
 var statusPosts = [];
 var projectCreatePosts = [];
 var projectOverviewPosts = [];
+var conversationPayload = { pinned: [], errored: [], pending: [], unread: [], active: [] };
 
 function response(payload, ok, status) {
   return Promise.resolve({
@@ -150,7 +156,7 @@ w.fetch = function (url, opts) {
   }
   if (target.indexOf('/api/conversations?project_id=') === 0) {
     conversationUrls.push(target);
-    return response({ pinned: [], errored: [], pending: [], unread: [], active: [] });
+    return response(conversationPayload);
   }
   if (target.indexOf('/api/projects/') === 0) {
     projectPathUrls.push(target);
@@ -229,6 +235,51 @@ async function run() {
     conversationUrls.some(function (url) { return url === '/api/conversations?project_id='; }),
     JSON.stringify(conversationUrls));
 
+  conversationPayload = {
+    pinned: [
+      { conversation_id: 'standard-pinned', tag: '', title: 'Standard pinned', pinned: true },
+      { conversation_id: 'old-stealth', tag: 'stealth', title: 'Old Stealth' },
+    ],
+    errored: [{ conversation_id: 'test-residue', tag: 'stealth', title: 'Test residue', last_status: 'errored' }],
+    pending: [{ conversation_id: 'private-pending', tag: 'private', title: 'Private pending', pending: true }],
+    unread: [{ conversation_id: 'current-stealth', tag: 'stealth', title: 'Current Stealth' }],
+    active: [{ conversation_id: 'standard-active', tag: '', title: 'Standard active' }],
+  };
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: 'current-stealth', tag: 'stealth' },
+  }));
+  await w.OraSidebar.refresh();
+  var visibleDialogueIds = Array.from(w.document.querySelectorAll('.sidebar-row'))
+    .map(function (row) { return row.dataset.conversationId; });
+  record('Commons sidebar keeps all non-Stealth rows plus only active Stealth',
+    visibleDialogueIds.indexOf('standard-pinned') !== -1
+      && visibleDialogueIds.indexOf('private-pending') !== -1
+      && visibleDialogueIds.indexOf('standard-active') !== -1
+      && visibleDialogueIds.indexOf('current-stealth') !== -1
+      && visibleDialogueIds.indexOf('old-stealth') === -1
+      && visibleDialogueIds.indexOf('test-residue') === -1,
+    JSON.stringify(visibleDialogueIds));
+  var standardClose = w.document.querySelector(
+    '.sidebar-row[data-conversation-id="standard-active"] .sidebar-row-close'
+  );
+  var stealthDelete = w.document.querySelector(
+    '.sidebar-row[data-conversation-id="current-stealth"] .sidebar-row-close'
+  );
+  record('sidebar lifecycle labels distinguish Close from Delete Forever',
+    standardClose && standardClose.getAttribute('aria-label') === 'Close'
+      && stealthDelete && stealthDelete.getAttribute('aria-label') === 'Delete Forever');
+  w.document.dispatchEvent(new w.CustomEvent('ora:fresh-conversation-started', {
+    detail: { conversation_id: 'fresh-standard', tag: '' },
+  }));
+  await w.OraSidebar.refresh();
+  visibleDialogueIds = Array.from(w.document.querySelectorAll('.sidebar-row'))
+    .map(function (row) { return row.dataset.conversationId; });
+  record('leaving Stealth removes all Stealth and test-residue rows from the sidebar',
+    visibleDialogueIds.indexOf('current-stealth') === -1
+      && visibleDialogueIds.indexOf('old-stealth') === -1
+      && visibleDialogueIds.indexOf('test-residue') === -1);
+  conversationPayload = { pinned: [], errored: [], pending: [], unread: [], active: [] };
+
   await w.OraSidebar.setActiveProject(' General ', 'Commons');
   record('Commons selection stores version-neutral blank',
     w.localStorage.getItem('ora-sidebar-project') === '');
@@ -259,9 +310,41 @@ async function run() {
   record('GET reconciliation persists the confirmed real project',
     w.localStorage.getItem('ora-sidebar-project') === 'book',
     w.localStorage.getItem('ora-sidebar-project'));
-  record('reconciled project drives the Dialogue filter',
-    conversationUrls.some(function (url) { return url === '/api/conversations?project_id=book'; }),
+  record('project sidebar fetches the active universe for its local membership filter',
+    conversationUrls.every(function (url) { return url === '/api/conversations?project_id='; }),
     JSON.stringify(conversationUrls));
+  conversationPayload = {
+    pinned: [],
+    errored: [
+      { conversation_id: 'law-error', tag: '', title: 'Law error', project_ids: ['law'], last_status: 'errored' },
+    ],
+    pending: [
+      { conversation_id: 'book-private', tag: 'private', title: 'Book Private', project_ids: ['book'], pending: true },
+    ],
+    unread: [
+      { conversation_id: 'book-old-stealth', tag: 'stealth', title: 'Old book Stealth', project_ids: ['book'] },
+      { conversation_id: 'project-stealth', tag: 'stealth', title: 'Current other-project Stealth', project_ids: ['law'] },
+    ],
+    active: [
+      { conversation_id: 'book-standard', tag: '', title: 'Book Standard', project_ids: ['book'] },
+      { conversation_id: 'law-standard', tag: '', title: 'Law Standard', project_ids: ['law'] },
+    ],
+  };
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: 'project-stealth', tag: 'stealth' },
+  }));
+  await w.OraSidebar.refresh();
+  visibleDialogueIds = Array.from(w.document.querySelectorAll('.sidebar-row'))
+    .map(function (row) { return row.dataset.conversationId; });
+  record('project sidebar keeps project members plus only the current Stealth Dialogue',
+    visibleDialogueIds.indexOf('book-private') !== -1
+      && visibleDialogueIds.indexOf('book-standard') !== -1
+      && visibleDialogueIds.indexOf('project-stealth') !== -1
+      && visibleDialogueIds.indexOf('law-error') === -1
+      && visibleDialogueIds.indexOf('law-standard') === -1
+      && visibleDialogueIds.indexOf('book-old-stealth') === -1,
+    JSON.stringify(visibleDialogueIds));
+  conversationPayload = { pinned: [], errored: [], pending: [], unread: [], active: [] };
 
   // A failed pointer write must leave both UI and localStorage on the prior
   // confirmed project.
@@ -325,6 +408,7 @@ async function run() {
   // server authority before this tab continues filtering.
   projectRows.push({ nexus: 'law', name: 'Law', status: 'active', unread_count: 0 });
   activeGetPayload = { ok: true, nexus: 'law' };
+  var conversationsBeforeStorageSync = conversationUrls.length;
   w.dispatchEvent(new w.StorageEvent('storage', {
     key: 'ora-sidebar-project', newValue: 'law', storageArea: w.localStorage,
   }));
@@ -335,16 +419,19 @@ async function run() {
   record('post-startup reconciliation persists the new authority',
     w.localStorage.getItem('ora-sidebar-project') === 'law',
     w.localStorage.getItem('ora-sidebar-project'));
-  record('post-startup reconciliation refreshes the project filter',
-    conversationUrls.some(function (url) { return url === '/api/conversations?project_id=law'; }),
+  record('post-startup reconciliation refreshes the locally filtered list',
+    conversationUrls.length > conversationsBeforeStorageSync
+      && conversationUrls[conversationUrls.length - 1] === '/api/conversations?project_id=',
     JSON.stringify(conversationUrls));
 
   activeGetPayload = { ok: true, nexus: 'book' };
+  var conversationsBeforePeriodicSync = conversationUrls.length;
   await intervalCallbacks[0]();
   record('periodic refresh reconciles pointer changes without a storage event',
     w.OraSidebar.getActiveProject() === 'book', w.OraSidebar.getActiveProject());
-  record('periodic reconciliation refreshes the confirmed project filter',
-    conversationUrls.filter(function (url) { return url === '/api/conversations?project_id=book'; }).length >= 2,
+  record('periodic reconciliation refreshes the locally filtered list',
+    conversationUrls.length > conversationsBeforePeriodicSync
+      && conversationUrls[conversationUrls.length - 1] === '/api/conversations?project_id=',
     JSON.stringify(conversationUrls));
 
   // Path parameters cannot be blank. The current modal must use `general`,

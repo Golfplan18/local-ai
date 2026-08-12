@@ -22,6 +22,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ORCHESTRATOR = os.path.dirname(_HERE)
@@ -641,6 +642,64 @@ class TestSelectionFunnel(unittest.TestCase):
         b = _vault_chunk("engram", 0.55, source="b.md", document="same text")
         ranked = rag_engine.rank_vault_chunks([a, b])  # dedup defaults False
         self.assertEqual(len(ranked), 2)
+
+
+class TestRetrieveRankedChunkExclusions(unittest.TestCase):
+    def test_lineage_and_selected_paths_are_removed_before_fit_gate(self):
+        atomic_path = os.path.realpath("/tmp/selected-atomic.md")
+        chunks = [
+            {
+                **_vault_chunk("chat", 0.9, source="current.md"),
+                "metadata": {
+                    "type": "chat", "source": "current.md",
+                    "conversation_id": "current",
+                },
+            },
+            {
+                **_vault_chunk("chat", 0.8, source="parent.md"),
+                "metadata": {
+                    "type": "chat", "source": "parent.md",
+                    "conversation_id": "parent",
+                },
+            },
+            {
+                **_vault_chunk("engram", 0.7, source="atomic.md"),
+                "metadata": {
+                    "type": "engram", "source": "atomic.md",
+                    "path": atomic_path,
+                },
+            },
+            {
+                **_vault_chunk("chat", 0.6, source="allowed.md"),
+                "metadata": {
+                    "type": "chat", "source": "allowed.md",
+                    "conversation_id": "allowed",
+                },
+            },
+        ]
+        gate_ids = []
+
+        def fit_gate(candidates, _query):
+            gate_ids.extend(candidate["id"] for candidate in candidates)
+            return candidates
+
+        with mock.patch.object(
+            rag_engine._knowledge_search, "knowledge_search_hybrid_raw",
+            return_value=chunks,
+        ), mock.patch.object(rag_engine, "RERANKER_AVAILABLE", False):
+            ranked = rag_engine.retrieve_ranked_chunks(
+                "allowed",
+                collection="conversations",
+                n_results=None,
+                fit_gate=fit_gate,
+                excluded_conversation_ids={"current", "parent"},
+                excluded_paths={atomic_path},
+            )
+        self.assertEqual(gate_ids, ["id_allowed.md"])
+        self.assertEqual(
+            [chunk["metadata"]["conversation_id"] for chunk in ranked],
+            ["allowed"],
+        )
 
 
 if __name__ == "__main__":

@@ -3444,16 +3444,39 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             except Exception as exc:
                 print(f"[pre-routing] resume re-route failed: {exc}")
 
-    context_pkg = run_step2_context_assembly(step1, config, trace_dir=trace_dir,
-                                             config_name=config_name,
-                                             conversation_tag=conversation_tag,
-                                             include_persona=True)
+    try:
+        try:
+            import tool_events as _te_context
+        except ImportError:
+            from orchestrator import tool_events as _te_context
+        _context_conversation_id = (
+            (_te_context.get_turn_context() or {}).get("conversation_id")
+        )
+    except Exception:
+        _context_conversation_id = None
+    _context_exclusions = _boot_context_api()._context_source_exclusions(
+        _context_conversation_id,
+        history,
+        (extra_context or {}).get("contributor_bundle"),
+    )
+    context_pkg = run_step2_context_assembly(
+        step1, config, trace_dir=trace_dir,
+        config_name=config_name,
+        conversation_tag=conversation_tag,
+        include_persona=True,
+        retrieval_exclusions=_context_exclusions,
+    )
     # WP-3.3: thread merged-input extras (spatial_representation, image_path,
     # …) into the context package for build_system_prompt_for_gear.
     if extra_context:
         for k, v in extra_context.items():
             if v is not None:
                 context_pkg[k] = v
+    _boot_context_api()._finalize_optional_context_package(
+        context_pkg,
+        conversation_id=_context_conversation_id,
+        history=history,
+    )
     # Ensure trace_dir is on context_pkg so run_gear3/run_gear4 land their
     # step-3..8 traces in the same per-turn directory. run_step2_context_assembly
     # already does this when given a trace_dir, but make it idempotent.
@@ -3656,8 +3679,6 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             yield _sse("error", text=terminal_value)
             return
         messages = [{"role": "system", "content": system_prompt}]
-        if history:
-            messages.extend([m for m in history if m["role"] != "system"])
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
         response = run_single_pass_with_tools(
             messages, ep,
@@ -3666,6 +3687,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             config_name=config_name,
             images=images,
             step_name="step3-direct-response",
+            history=history,
+            context_pkg=context_pkg,
         )
         if trace_dir:
             try:
@@ -3752,8 +3775,11 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         turn_state["status"] = (
             context_pkg.get("_trace_terminal_status") or "completed"
         )
-    yield _sse("pipeline_stage", stage="complete", gear=gear,
-               mode=step1["mode"], label="Pipeline complete")
+    yield _sse(
+        "pipeline_stage", stage="complete", gear=gear,
+        mode=step1["mode"], label="Pipeline complete",
+        context_coverage=context_pkg.get("context_coverage") or {},
+    )
     yield _sse("response", text=response)
 
     # Execution Review Phase 2: after-clock — record route_observed on this
@@ -4395,15 +4421,15 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     turn_state["kind"] = "chat"
     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
 
+    # Phase A receives structured authoritative history and packs it once
+    # against its own endpoint.  Keep the legacy rendered lane empty here so
+    # the transcript is neither duplicated nor assembled twice in memory.
     conv_context = ""
-    if history:
-        recent = [m for m in history[-6:] if m["role"] != "system"]
-        conv_context = "\n".join(f"{m['role'].upper()}: {m['content'][:500]}" for m in recent)
 
     # History-truncation stats — see boot._summarize_history_truncation.
     try:
         from boot import _summarize_history_truncation as _shx
-        _hist_trunc = _shx(history, window=6, per_message_char_cap=500)
+        _hist_trunc = _shx(history)
     except Exception:
         _hist_trunc = None
 
@@ -4421,7 +4447,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                               trace_dir=trace_dir,
                               history_truncation_stats=_hist_trunc,
                               image_attached=image_attached,
-                              config_name=config_name)
+                              config_name=config_name,
+                              conversation_history=history)
     tier = step1["triage_tier"]
 
     # Manual mode-pick override. When the caller explicitly named a mode
@@ -4757,6 +4784,14 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
     boot_context = _boot_context_api()
     tag_token = boot_context.set_conversation_tag_context(turn_tag)
     trace_token = boot_context.set_turn_trace_context(trace_dir)
+    direct_context = dict(extra_context or {})
+    direct_context.setdefault("cleaned_prompt", user_input)
+    direct_context.setdefault("conversation_context_chunks", [])
+    boot_context._finalize_optional_context_package(
+        direct_context, conversation_id=panel_id, history=history,
+    )
+    history_token = boot_context.set_dialogue_history_context(history)
+    optional_token = boot_context._set_context_units_from_package(direct_context)
     scope = nullcontext()
     try:
         try:
@@ -4779,10 +4814,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
             yield from _direct_stream_impl(
                 user_input, history, images=images, panel_id=panel_id,
                 conversation_tag=turn_tag, risk_override=risk_override,
-                extra_context=extra_context,
+                extra_context=direct_context,
                 turn_state=turn_state,
             )
     finally:
+        boot_context.reset_optional_context_context(optional_token)
+        boot_context.reset_dialogue_history_context(history_token)
         boot_context.reset_turn_trace_context(trace_token)
         boot_context.reset_conversation_tag_context(tag_token)
 
@@ -4866,13 +4903,17 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         yield _sse("error", text=terminal_value)
         return
 
-    messages = list(history)
-    if not messages or messages[0]["role"] != "system":
-        messages.insert(0, {
+    # Keep the current call payload separate from Dialogue continuity.  The
+    # latter is packed once, against this endpoint's real remaining capacity,
+    # immediately before each physical call below.  This also prevents a
+    # client-supplied system message from replacing Ora's Direct prompt.
+    messages = [
+        {
             "role": "system",
             "content": _direct_system_prompt(config, extra_context),
-        })
-    messages.append({"role": "user", "content": user_input})
+        },
+        {"role": "user", "content": user_input},
+    ]
 
     # Auto-approve in server mode (permission handled by UI later).
     # Execution Review Phase 1: auto-approve now only covers the legacy
@@ -4952,9 +4993,10 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
     response = ""
     for iteration in range(MAX_ITERATIONS):
+        call_images = images if iteration == 0 else None
         # Pass images only on the first call (they accompany the user's original message)
         response = _call_direct_stage(
-            messages, endpoint, images=images if iteration == 0 else None,
+            messages, endpoint, images=call_images,
         )
         tool_calls = parse_tool_calls(response)
 
@@ -4978,6 +5020,14 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             if (turn_state is not None
                     and turn_state.get("kind") != "direct"):
                 turn_state["status"] = "completed"
+            coverage = _boot_context_api().get_context_coverage()
+            if coverage:
+                yield _sse(
+                    "pipeline_stage",
+                    stage="context_coverage",
+                    label="Context capacity coverage",
+                    context_coverage=coverage,
+                )
             yield _sse("response", text=clean)
             try:
                 _rgate_ds.record_route_observed(
@@ -6885,7 +6935,7 @@ except Exception as _e:  # pragma: no cover
 @app.route("/api/document/stream")
 def document_stream():
     """SSE stream for document processing events."""
-    def generate_unlocked():
+    def generate():
         q = _stdlib_queue.Queue()
         with _document_subscribers_lock:
             _document_subscribers.append(q)
@@ -6979,7 +7029,10 @@ from orchestrator.conversation_chunk import (  # noqa: E402
     _extract_keywords,
     _compute_pair_hash,
     _v3_tag_to_schema_tags,
+    build_embedding_orientation,
+    build_retrieval_document,
 )
+from orchestrator.historical.path2_orchestrator import MAX_EMBED_CHARS  # noqa: E402
 
 
 def _generate_chunk_metadata(user_input, ai_response, date_str, panel_id, model_id, pair_num):
@@ -7765,11 +7818,11 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
        (YAML frontmatter + contextual header + exchange body, one file per pair)
        Filename: YYYY-MM-DD_HH-MM_session-[id]_pair-[NNN]_[topic-slug].md
 
-    3. Index the processed chunk into the ChromaDB "conversations" collection
-       through the machine-specific embedding profile in config/chromadb.json
-       (tracked fresh-install fallback: Ollama BGE-M3 at 1,024 dimensions;
-       embedding input = header + user prompt only, per the Conversation
-       Processing Pipeline spec)
+    3. For Standard and Private only, index the processed chunk into the
+       ChromaDB "conversations" collection through the machine-specific
+       embedding profile in config/chromadb.json (tracked fresh-install
+       fallback: Ollama BGE-M3 at 1,024 dimensions; embedding input = header +
+       user prompt only, per the Conversation Processing Pipeline spec)
 
     V3 Phase 1.2: ``tag`` (one of CONVERSATION_TAGS — empty / stealth /
     private) is denormalized into the chunk's ChromaDB metadata under the
@@ -7976,6 +8029,12 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
     with open(chunk_path, "w", encoding="utf-8") as f:
         f.write(chunk_content)
 
+    # Stealth exchanges remain authoritative for direct Dialogue continuity
+    # and protected deletion, but never enter persisted/global Conversation
+    # RAG or its embedding-provider path.
+    if tag == "stealth":
+        return chunk_id
+
     # ── Step 3: Index into ChromaDB conversations collection ─────────────────
     # Phase 5.8: ~22-field metadata schema per Conv RAG §2.
     try:
@@ -7987,8 +8046,17 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
         # consistent with reads. Cross-platform via Ollama.
         collection  = get_or_create_collection(client, "conversations")
         # Embed header + user prompt only (not assistant response — per spec)
-        embed_text = f"{context_header}\n\n{user_input}"
+        embed_text = build_embedding_orientation(
+            context_header, user_input,
+        )[:MAX_EMBED_CHARS]
+        retrieval_document = build_retrieval_document(
+            context_header, user_input, ai_response,
+        )
         embedding  = _nomic_embed(embed_text)
+        if embedding is None:
+            raise RuntimeError(
+                "conversation embedding orientation unavailable; source chunk retained for replay"
+            )
 
         # The envelope display_name is authoritative. Clearing it uses the
         # same derived fallback as the sidebar; this keeps future chunks from
@@ -8071,6 +8139,9 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
             "source":              os.path.basename(chunk_path),  # used by knowledge_search formatter
         }
         meta.update(tag_booleans)
+        meta["embedding_text_sha256"] = hashlib.sha256(
+            embed_text.encode("utf-8")
+        ).hexdigest()
 
         # ChromaDB rejects empty list metadata; only emit non-empty lists.
         if topics:
@@ -8085,11 +8156,10 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
 
         add_kwargs = dict(
             ids=[chunk_id],
-            documents=[embed_text],
+            documents=[retrieval_document],
             metadatas=[meta],
+            embeddings=[embedding],
         )
-        if embedding is not None:
-            add_kwargs["embeddings"] = [embedding]
 
         collection.add(**add_kwargs)
     except Exception as _indexing_exc:
@@ -8283,6 +8353,126 @@ def _validate_public_model_profile_override(config_name):
     return name
 
 
+def _normalize_explicit_history(history) -> list[dict]:
+    """Return the truthful subset accepted from a legacy/API caller."""
+    if not isinstance(history, list):
+        return []
+    normalized = []
+    for message in history:
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        content = message.get("content")
+        if role not in {"user", "assistant", "system"}:
+            continue
+        if not isinstance(content, str):
+            continue
+        normalized.append({"role": role, "content": content})
+    return normalized
+
+
+def _authoritative_dialogue_history(
+        conversation_id: str, supplied_history=None) -> tuple[list[dict], dict]:
+    """Resolve one request's ordered history and local turn metadata.
+
+    An existing Dialogue envelope always wins, including an honestly empty
+    child whose visible history consists only of fork ancestry.  Explicit
+    history remains available solely for callers whose id has no envelope;
+    this preserves the legacy/API contract without letting an ordinary V3
+    browser replace or duplicate the server transcript.  An existing but
+    unreadable envelope fails closed to empty history instead of trusting the
+    request.  This function is read-only.
+    """
+    explicit = _normalize_explicit_history(supplied_history)
+    try:
+        from orchestrator.conversation_memory import (
+            _DEFAULT_SESSIONS_ROOT,
+            _conversation_path,
+            _read_history_envelope,
+            resolve_effective_conversation_history,
+        )
+
+        root = _DEFAULT_SESSIONS_ROOT
+        live_path = _conversation_path(conversation_id, root)
+        archived_path = _conversation_path(
+            conversation_id, root / "archived",
+        )
+        envelope_exists = live_path.exists() or archived_path.exists()
+        envelope = _read_history_envelope(conversation_id, root)
+        if envelope_exists:
+            effective = resolve_effective_conversation_history(
+                conversation_id, sessions_root=root,
+            )
+            history = effective if isinstance(effective, list) else []
+            local_raw = (
+                envelope.get("messages")
+                if isinstance(envelope, dict) else []
+            )
+            if not isinstance(local_raw, list):
+                local_raw = []
+            local_messages = [
+                message for message in local_raw
+                if isinstance(message, dict)
+                and message.get("role") in {"user", "assistant", "system"}
+                and isinstance(message.get("content"), str)
+            ]
+            first_user_input = next(
+                (
+                    message["content"] for message in local_messages
+                    if message.get("role") == "user"
+                ),
+                "",
+            )
+            return history, {
+                "source": (
+                    "conversation_json" if envelope is not None
+                    else "unreadable_conversation_json"
+                ),
+                "envelope_exists": True,
+                "local_message_count": len(local_messages),
+                # Every persisted normal turn has exactly one user message;
+                # assistant-only welcome/seed entries do not advance raw/RAG
+                # pair numbering.
+                "local_turn_count": sum(
+                    1 for message in local_messages
+                    if message.get("role") == "user"
+                ),
+                "first_user_input": first_user_input,
+            }
+    except Exception as exc:
+        # Invalid ids are rejected at the HTTP boundary.  A read-path failure
+        # for a valid id must not mutate state or silently accept browser
+        # transcript authority.  The returned state deliberately treats an
+        # uninspectable storage root as if an envelope existed.
+        print(
+            f"[dialogue-history] authoritative read failed for "
+            f"{conversation_id}: {exc}", file=sys.stderr, flush=True,
+        )
+        return [], {
+            "source": "history_read_failure",
+            "envelope_exists": True,
+            "local_message_count": 0,
+            "local_turn_count": 0,
+            "first_user_input": "",
+        }
+
+    return explicit, {
+        "source": "legacy_explicit" if explicit else "new_conversation",
+        "envelope_exists": False,
+        "local_message_count": len(explicit),
+        "local_turn_count": sum(
+            1 for message in explicit if message.get("role") == "user"
+        ),
+        "first_user_input": next(
+            (
+                message["content"] for message in explicit
+                if message.get("role") == "user"
+            ),
+            "",
+        ),
+    }
+
+
 def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=None, extra_context=None, tag="",
                                manual_mode_selection="", manual_lens_selection="",
                                framework_selected="", submission_id="", output_destination="",
@@ -8309,10 +8499,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     back later. The 12-second reconciliation scan in the browser catches
     any submissions whose connection dropped.
 
-    Side-effects (spatial state persistence, end-of-session pipeline)
-    that don't gate the reply continue to fire in daemon threads as
-    before. The save runs synchronously so the chunk_id is known
-    before we reply; the prior pipeline-wide lock is gone (mlx_mutex
+    The conversation.json append is synchronous because it is the next turn's
+    history authority; the end-of-session pipeline remains a daemon-thread
+    side effect. The chunk save also runs synchronously so the chunk_id is
+    known before we reply; the prior pipeline-wide lock is gone (mlx_mutex
     inside call_model handles the MLX SIGSEGV constraint).
 
     WP-3.3: ``extra_context`` is merged into the pipeline's context_pkg
@@ -8343,13 +8533,32 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     extra_context = _apply_style_audience(extra_context, style_audience)
     extra_context = _apply_project_model_locks(extra_context)
 
-    # Sidebar window integration: use rolling window for sidebar panels
+    # Sidebar window integration: use rolling window for sidebar panels.
+    # Every ordinary Dialogue request instead reconstructs immutable/current
+    # continuity from conversation.json under the lifecycle lock; the browser
+    # is neither required nor trusted to post its transcript.
     is_sidebar = panel_id.startswith("sidebar")
     if is_sidebar and SIDEBAR_WINDOW_AVAILABLE:
         sidebar_win = get_sidebar_window(panel_id)
         history = sidebar_win.get_history()  # Override with rolling window
+        history_state = {
+            "source": "sidebar_window",
+            "envelope_exists": False,
+            "local_message_count": len(history),
+            "local_turn_count": sum(
+                1 for message in history
+                if isinstance(message, dict) and message.get("role") == "user"
+            ),
+            "first_user_input": next((
+                message.get("content", "") for message in history
+                if isinstance(message, dict) and message.get("role") == "user"
+            ), ""),
+        }
     else:
         sidebar_win = None
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, history,
+        )
 
     # Mark the conversation as Pending for the duration of the run so the
     # sidebar list endpoint can group it correctly. Cleared in finally.
@@ -8360,6 +8569,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     active_gear    = None
     last_stage     = None
     chunk_id       = None
+    envelope_persisted = False
     failure_summary = None
     cfg            = None
     ep             = None
@@ -8489,7 +8699,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     and SIDEBAR_WINDOW_AVAILABLE and sidebar_win is not None):
                 sidebar_win.add_exchange(clean_input, final_response)
 
-            is_new_session = len(history) == 0
+            # Effective history can be non-empty for a true empty-child fork.
+            # Session/raw numbering is local to the child, while a restarted
+            # ordinary Dialogue resumes from its own persisted turn count.
+            is_new_session = history_state["local_message_count"] == 0
 
             # Initialize session data only while the lifecycle lock is held.
             # A Delete Forever tombstone may be set while the model is still
@@ -8499,15 +8712,20 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     _session_data[panel_id] = {
                         "raw_path": "",  # populated by _save_conversation
                         "session_id": uuid.uuid4().hex,
-                        "pair_count": 0,
+                        "pair_count": history_state["local_turn_count"],
                         "model": (ep.get("name", "unknown") if ep else "unknown"),
                         "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "first_user_input": (
+                            history_state["first_user_input"] or clean_input
+                        ),
+                        "prior_topic": None,
+                        "thread_counter": 0,
                     }
 
-            # V3 Backlog 2A Chunk 2 — synchronous save inside the lock
-            # so the chunk_id is known before we reply. The submission
-            # log finalizer + orphan-marker clear run inline; spatial
-            # state and end-of-session pipeline still fire async.
+            # The user-visible chunk and authoritative conversation envelope
+            # are one acknowledged save boundary. Both complete synchronously
+            # under the lifecycle lock before the pending submission can move
+            # to processed or the HTTP response can report success.
             if final_response is not None:
                 try:
                     chunk_id = _save_conversation(
@@ -8518,20 +8736,51 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
-                if chunk_id:
-                    # This is the first boundary at which every user-visible
-                    # transform, optional file route, and conversation persistence
-                    # has succeeded. The stream wrapper finalized earlier, so the
-                    # terminal recorder also refreshes only the manifest inventory.
-                    _record_http_terminal(
-                        final_response, route="server-conversation-save",
-                        persisted=True,
-                    )
 
-            # Clear orphan-recovery markers if this conversation was
-            # previously interrupted. A successful save means we caught
-            # up; the Errored row should clear.
-            if chunk_id:
+            # WP-5.3 — append this turn before releasing the lifecycle lock.
+            # ``conversation.json`` is the next turn's history authority. A
+            # path return acknowledges success; if a wrapper raises after a
+            # completed write, verify the expected new tail once on disk.
+            if chunk_id and not _is_conversation_deleted(panel_id):
+                persist_issue = ""
+                try:
+                    envelope_persisted = bool(
+                        _persist_turn_spatial_state_unlocked(
+                            panel_id, clean_input, final_response,
+                            extra_context, tag, trace_ref=trace_ref,
+                        )
+                    )
+                except Exception as e:
+                    persist_issue = f"{type(e).__name__}: {e}"
+                    print(
+                        "[WARNING] conversation envelope persist raised: "
+                        f"{persist_issue}"
+                    )
+                if not envelope_persisted:
+                    envelope_persisted = _turn_envelope_acknowledged(
+                        panel_id,
+                        history_state["local_message_count"],
+                        clean_input,
+                        final_response,
+                    )
+                if not envelope_persisted:
+                    failure_summary = "conversation envelope persistence failed"
+                    if persist_issue:
+                        failure_summary += f": {persist_issue}"
+
+            if envelope_persisted:
+                # This is the first boundary at which the complete turn is
+                # durable in both user-visible and history-authoritative stores.
+                _record_http_terminal(
+                    final_response, route="server-conversation-save",
+                    persisted=True,
+                )
+
+            # Clear recovery markers only after the replacement turn reaches
+            # the authoritative envelope. If this was a retry of a previously
+            # unacknowledged submission, retire that older pending record too
+            # so restart recovery cannot surface the same prompt again.
+            if envelope_persisted:
                 try:
                     from conversation_memory import (
                         load_conversation_json,
@@ -8542,6 +8791,9 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                     data = load_conversation_json(panel_id)
                     if data and (data.get("interrupted_input")
                                   or data.get("interrupted_at")):
+                        recovered_submission_id = data.get(
+                            "interrupted_submission_id"
+                        )
                         data.pop("interrupted_input", None)
                         data.pop("interrupted_at", None)
                         data.pop("interrupted_submission_id", None)
@@ -8554,20 +8806,15 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                             ),
                         )
                         clear_conversation_error(panel_id)
+                        if isinstance(recovered_submission_id, str):
+                            _finalize_pending_submission(
+                                recovered_submission_id
+                            )
                 except Exception as e:
                     print(f"[WARNING] orphan-marker clear failed: {e}")
 
-            # WP-5.3 — append this turn to conversation.json so the next
-            # turn can retrieve prior spatial state. Async (best-effort).
-            if chunk_id and not _is_conversation_deleted(panel_id):
-                threading.Thread(
-                    target=_persist_turn_spatial_state,
-                    args=(panel_id, clean_input, final_response, extra_context, tag),
-                    kwargs={"trace_ref": trace_ref},
-                    daemon=True,
-                ).start()
-
-            if chunk_id and is_main and not _is_conversation_deleted(panel_id):
+            if (chunk_id and envelope_persisted and is_main
+                    and not _is_conversation_deleted(panel_id)):
                 recent = list(history[-4:]) + [
                     {"role": "user",      "content": clean_input},
                     {"role": "assistant", "content": final_response},
@@ -8582,7 +8829,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                 }
 
             # Runtime pipeline: fire async end-of-session processing
-            if (chunk_id and RUNTIME_PIPELINE_AVAILABLE and not is_sidebar
+            if (chunk_id and envelope_persisted and RUNTIME_PIPELINE_AVAILABLE
+                    and not is_sidebar
                     and tag != "stealth"
                     and not _is_conversation_deleted(panel_id)):
                 threading.Thread(
@@ -8609,11 +8857,11 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # On a successful save, finalize the submission log (move pending →
     # processed). On a failure, leave the pending file in place — the
     # next boot will surface it as an orphan errored chunk.
-    if chunk_id and submission_id:
+    if chunk_id and envelope_persisted and submission_id:
         _finalize_pending_submission(submission_id)
 
     # ── Build the plain-HTTP reply ──────────────────────────────────────
-    if final_response is not None and chunk_id:
+    if final_response is not None and chunk_id and envelope_persisted:
         payload = {
             "status":          "ok",
             "conversation_id": panel_id,
@@ -8640,7 +8888,16 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
         summary = "pipeline produced no response (no stages observed; check endpoint config)"
     try:
         from conversation_memory import mark_conversation_errored
-        mark_conversation_errored(panel_id, summary)
+        mark_conversation_errored(
+            panel_id,
+            summary,
+            interrupted_input=(
+                clean_input if chunk_id and not envelope_persisted else None
+            ),
+            interrupted_submission_id=(
+                submission_id if chunk_id and not envelope_persisted else None
+            ),
+        )
     except Exception as e:
         print(f"[WARNING] mark_conversation_errored failed: {e}")
 
@@ -8689,9 +8946,17 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None,
                 "conversation_id": panel_id,
             }), 409
         effective_tag = _effective_conversation_tag(panel_id, tag)
+        effective_context = dict(extra_context or {})
+        effective_context.pop("contributor_bundle", None)
+        contributor_bundle = build_contributor_bundle(
+            panel_id, target_tag=effective_tag,
+        )
+        if contributor_bundle.get("sources"):
+            effective_context["contributor_bundle"] = contributor_bundle
         return _invoke_pipeline_unlocked(
             user_input, history, panel_id, is_main,
-            images=images, extra_context=extra_context, tag=effective_tag,
+            images=images, extra_context=effective_context or None,
+            tag=effective_tag,
             manual_mode_selection=manual_mode_selection,
             manual_lens_selection=manual_lens_selection,
             framework_selected=framework_selected,
@@ -8708,7 +8973,8 @@ def chat():
 
     data = request.get_json(force=True)
     user_input = str(data.get("message") or "").strip()
-    history = data.get("history", [])
+    supplied_history = data.get("history", [])
+    history = []
     panel_id = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
     is_main = data.get("is_main_feed", True)
     tag = _normalize_tag(data.get("tag", ""))
@@ -8743,6 +9009,9 @@ def chat():
         except (ValueError, RuntimeError) as exc:
             return _json_response({"error": str(exc)}, 409)
         tag = _effective_conversation_tag(panel_id, tag)
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, supplied_history,
+        )
         submission_id = _log_pending_submission({
             "endpoint": "/chat",
             "conversation_id": panel_id,
@@ -8750,7 +9019,11 @@ def chat():
             "is_main_feed": is_main,
             "tag": tag,
             "user_input": user_input,
-            "history": history,
+            # Preserve what the caller actually submitted for request-audit
+            # fidelity.  Pipeline authority is the separately resolved
+            # ``history`` variable above.
+            "history": supplied_history,
+            "history_source": history_state["source"],
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected": framework_selected,
@@ -8767,9 +9040,6 @@ def chat():
         extra_context["visual_kind"] = manual_visual_type
     if trace_debug_payload:
         extra_context["trace_debug"] = trace_debug_payload
-    contributor_context = build_contributor_context(panel_id, target_tag=tag)
-    if contributor_context:
-        extra_context["contributor_context"] = contributor_context
     return _invoke_pipeline(
         user_input, history, panel_id, is_main, images=images,
         extra_context=extra_context or None,
@@ -8897,6 +9167,19 @@ def chat_multipart():
     exhibits_submission_intent = (
         form.get("exhibits_submission_intent") or ""
     ).strip()
+    # Capture raw optional values once.  History is parsed as a legacy/API
+    # fallback only; an existing conversation.json remains authoritative.
+    spatial_raw = form.get("spatial_representation", "")
+    annotations_raw = form.get("annotations", "")
+    history_raw_str = form.get("history", "")
+    supplied_history = []
+    if history_raw_str:
+        try:
+            supplied_history = json.loads(history_raw_str)
+            if not isinstance(supplied_history, list):
+                supplied_history = []
+        except Exception:
+            supplied_history = []
 
     if not user_input:
         return json.dumps({"error": "empty message"}), 400
@@ -8938,6 +9221,9 @@ def chat_multipart():
         except (ValueError, RuntimeError) as exc:
             return json.dumps({"error": str(exc)}), 409
         tag = _effective_conversation_tag(panel_id, tag)
+        history, history_state = _authoritative_dialogue_history(
+            panel_id, supplied_history,
+        )
 
         # Optional image upload — saved FIRST so the submission log can record
         # the path. Image binaries live separately on disk; the pending file
@@ -8955,10 +9241,6 @@ def chat_multipart():
                 conversation_id, canvas_preview_data_url,
             )
 
-        # Capture raw values before parsing so malformed input is recoverable.
-        spatial_raw     = form.get("spatial_representation", "")
-        annotations_raw = form.get("annotations", "")
-        history_raw_str = form.get("history", "")
         submission_id = _log_pending_submission({
             "endpoint":              "/chat/multipart",
             "conversation_id":       conversation_id,
@@ -8967,6 +9249,7 @@ def chat_multipart():
             "tag":                   tag,
             "user_input":            user_input,
             "history_raw":           history_raw_str,
+            "history_source":        history_state["source"],
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
@@ -8976,16 +9259,6 @@ def chat_multipart():
             "image_path":            image_path,
             "exhibits_submission_intent": exhibits_submission_intent,
         })
-
-    # Optional history as JSON string
-    history = []
-    if history_raw_str:
-        try:
-            history = json.loads(history_raw_str)
-            if not isinstance(history, list):
-                history = []
-        except Exception:
-            history = []
 
     # Optional spatial_representation (JSON string) — validate before proceeding.
     spatial_rep = None
@@ -9114,10 +9387,6 @@ def chat_multipart():
             extra_context["prior_annotations"] = prior_annots
     except Exception as e:
         print(f"[WARNING] prior spatial state lookup failed: {e}")
-
-    contributor_context = build_contributor_context(panel_id, target_tag=tag)
-    if contributor_context:
-        extra_context["contributor_context"] = contributor_context
 
     # Emit a log line so operators can see the merged inputs reached the server.
     annot_count = 0
@@ -9705,7 +9974,7 @@ def _browser_truthy_metadata(value) -> bool:
 
 def _browser_metadata_tags(meta: dict | None) -> list[str]:
     meta = meta or {}
-    tags = _browser_normalize_tags(meta.get("tags"))
+    tags = _browser_normalize_tags([meta.get("tags"), meta.get("tag")])
     seen = set(tags)
     # Boolean extracts are the canonical fast-filter fields and also cover
     # old records whose full ``tags`` metadata was never backfilled.
@@ -9717,6 +9986,21 @@ def _browser_metadata_tags(meta: dict | None) -> list[str]:
             seen.add(tag)
             tags.append(tag)
     return tags
+
+
+def _browser_strictest_privacy_tag(*sources) -> str:
+    """Return the most restrictive truthful tag across metadata sources."""
+    tags: set[str] = set()
+    for source in sources:
+        if isinstance(source, dict):
+            tags.update(_browser_metadata_tags(source))
+        else:
+            tags.update(_browser_normalize_tags(source))
+    if "stealth" in tags:
+        return "stealth"
+    if "private" in tags:
+        return "private"
+    return ""
 
 
 def _browser_row_tags(row: dict | None) -> list[str]:
@@ -10482,8 +10766,60 @@ def _browser_atomic_creation_row(row: dict) -> bool:
 def _browser_creation_row_allowed(row: dict, target_tag: str) -> bool:
     if not _browser_atomic_creation_row(row):
         return False
-    if (row.get("source_kind") or "live") == "engram":
-        return True
+    kind = row.get("source_kind") or "live"
+    if kind == "engram":
+        ref = str(row.get("conversation_id") or "").strip()
+        path = _browser_decode_source_id("engram", ref)
+        if not path:
+            path = str(
+                row.get("path") or row.get("source_conversation_id") or ""
+            ).strip()
+        try:
+            _validated_atomic_contributor_path(
+                path, target_tag=target_tag,
+            )
+            return True
+        except (OSError, ValueError):
+            return False
+    if kind == "live":
+        ref = str(row.get("conversation_id") or "").strip()
+        try:
+            from conversation_memory import (
+                read_conversation_history_envelope,
+                resolve_effective_conversation_history,
+            )
+            lineage: set[str] = set()
+            diagnostics: list[str] = []
+            history = resolve_effective_conversation_history(
+                ref, diagnostics=diagnostics, lineage_sink=lineage,
+            )
+            if history is None or (diagnostics and not history):
+                return False
+            for owner in _resolved_history_owners(history, ref):
+                envelope = read_conversation_history_envelope(owner)
+                if not isinstance(envelope, dict):
+                    return False
+                source_tag = (
+                    envelope.get("tag")
+                    if envelope.get("tag") in _VALID_CONVERSATION_TAGS else ""
+                )
+                if not _contributor_privacy_allows(source_tag, target_tag):
+                    return False
+            return True
+        except Exception:
+            return False
+    if kind == "archive":
+        ref = str(row.get("conversation_id") or "").strip()
+        archive = _browser_archive_envelope(ref)
+        if archive is None:
+            return False
+        try:
+            _resolve_archive_contributor(
+                ref, archive, target_tag=target_tag,
+            )
+            return True
+        except (OSError, ValueError):
+            return False
     source_tag = row.get("tag") if row.get("tag") in _VALID_CONVERSATION_TAGS else ""
     return _contributor_privacy_allows(source_tag, target_tag)
 
@@ -10797,12 +11133,27 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
         return None
 
     messages: list[dict] = []
+    privacy_sources: list = list(chunks)
+    try:
+        from conversation_memory import read_conversation_history_envelope
+        retained_source = read_conversation_history_envelope(source_id)
+    except Exception:
+        retained_source = None
+    if isinstance(retained_source, dict):
+        privacy_sources.append(retained_source)
     first_doc = chunks[0].get("chroma:document") or ""
     title = _browser_source_title(chunks[0], first_doc)
     created = chunks[0].get("timestamp") or chunks[0].get("timestamp_utc") or chunks[0].get("date")
     last_activity = created
     for idx, meta in enumerate(chunks):
         text = _browser_read_chunk_text(meta)
+        privacy_sources.append(_browser_frontmatter_tags(
+            text,
+            path=str(
+                meta.get("chunk_path") or meta.get("obsidian_path")
+                or meta.get("path") or meta.get("_row_id") or ""
+            ),
+        ))
         user_text, assistant_text = _browser_parse_pair_markdown(text)
         ts = meta.get("timestamp") or meta.get("timestamp_utc") or meta.get("date") or created
         if ts:
@@ -10838,7 +11189,7 @@ def _browser_archive_envelope(conversation_id: str) -> dict | None:
         "conversation_id": conversation_id,
         "source_conversation_id": source_id,
         "display_name": title,
-        "tag": chunks[0].get("tag") or "",
+        "tag": _browser_strictest_privacy_tag(*privacy_sources),
         "created": created,
         "last_activity_at": last_activity,
         "archived_source": True,
@@ -10893,91 +11244,409 @@ def _browser_memory_envelope(conversation_id: str) -> dict | None:
 
 
 def _contributor_privacy_allows(source_tag: str, target_tag: str) -> bool:
-    if source_tag == "stealth":
+    try:
+        from conversation_memory import conversation_privacy_allows
+    except ImportError:
+        from orchestrator.conversation_memory import conversation_privacy_allows
+    return conversation_privacy_allows(source_tag, target_tag)
+
+
+def _atomic_contributor_privacy_allows(tags, target_tag: str) -> bool:
+    normalized = set(_browser_normalize_tags(tags))
+    if "archived" in normalized:
+        return False
+    if "stealth" in normalized:
         return target_tag == "stealth"
-    if source_tag == "private":
+    if "private" in normalized:
         return target_tag in {"private", "stealth"}
     return True
 
 
-def _conversation_contributor_excerpt(envelope: dict, *, limit: int = 6000) -> str:
-    parts: list[str] = []
-    description = _clean_conversation_browser_text(envelope.get("description") or "")
+class _ContributorWithheld(ValueError):
+    pass
+
+
+def _resolve_archive_contributor(
+    ref: str,
+    archive: dict,
+    *,
+    target_tag: str,
+    lineage_sink: set[str] | None = None,
+) -> tuple[list[dict], set[str]]:
+    """Return contributor-safe archive messages and their proven lineage.
+
+    A retained fork envelope is the only authority for its ancestry cutoff.
+    If that ancestry is missing, malformed, cyclic, or privacy-incompatible,
+    the archive remains browsable but cannot be injected as a contributor.
+    Legacy/non-fork archives retain their existing chunk reconstruction path.
+    """
+    source_id = str(archive.get("source_conversation_id") or "").strip()
+    if not source_id:
+        source_id = _browser_decode_source_id("archive", ref) or ""
+    if not source_id:
+        raise _ContributorWithheld("archived Dialogue identity is unavailable")
+
+    lineage = lineage_sink if lineage_sink is not None else set()
+    lineage.add(source_id)
+    try:
+        from conversation_memory import (
+            read_conversation_history_envelope,
+            resolve_effective_conversation_history,
+        )
+    except ImportError:
+        from orchestrator.conversation_memory import (
+            read_conversation_history_envelope,
+            resolve_effective_conversation_history,
+        )
+
+    retained = read_conversation_history_envelope(source_id)
+    if not isinstance(retained, dict):
+        raise _ContributorWithheld(
+            "archived Dialogue ancestry cannot be proven without its retained envelope"
+        )
+    stored_id = retained.get("conversation_id")
+    if (not isinstance(stored_id, str)
+            or stored_id.strip().casefold() != source_id.casefold()
+            or not isinstance(retained.get("messages"), list)):
+        raise _ContributorWithheld(
+            "archived Dialogue retained envelope is unreadable"
+        )
+    is_retained_fork = bool(
+        (
+            retained.get("parent_conversation_id") is not None
+            or retained.get("fork_point_message_count") is not None
+            or retained.get("forked_at") is not None
+        )
+    )
+    if is_retained_fork:
+        diagnostics: list[str] = []
+        history = resolve_effective_conversation_history(
+            source_id, diagnostics=diagnostics, lineage_sink=lineage,
+        )
+        if history is None or diagnostics:
+            raise _ContributorWithheld(
+                "archived fork ancestry cannot be proven"
+            )
+        for owner in lineage:
+            ancestor = read_conversation_history_envelope(owner)
+            owner_tag = (
+                ancestor.get("tag")
+                if isinstance(ancestor, dict)
+                and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
+                else ""
+            )
+            if (ancestor is None
+                    or not _contributor_privacy_allows(owner_tag, target_tag)):
+                raise _ContributorWithheld(
+                    "archived fork ancestry crosses a stricter privacy boundary"
+                )
+        return history, lineage
+
+    source_tag = (
+        archive.get("tag")
+        if archive.get("tag") in _VALID_CONVERSATION_TAGS else ""
+    )
+    if not _contributor_privacy_allows(source_tag, target_tag):
+        raise _ContributorWithheld(
+            "archived Dialogue is outside the target privacy boundary"
+        )
+    messages = archive.get("messages")
+    if not isinstance(messages, list):
+        raise _ContributorWithheld("archived Dialogue transcript is unavailable")
+    return messages, lineage
+
+
+def _dialogue_turn_units(
+    messages: list,
+    *,
+    source_id: str,
+    explicit_index: int,
+    description: str = "",
+) -> list[dict]:
+    """Render complete user/assistant semantic units with stable provenance."""
+    units: list[dict] = []
+    pending: list[dict] = []
+
+    def finish() -> None:
+        nonlocal pending, description
+        if not pending:
+            return
+        owner = str(pending[0].get("_ora_history_owner") or source_id)
+        turn_index = pending[0].get("_ora_history_turn_index")
+        if not isinstance(turn_index, int):
+            turn_index = (
+                pending[0].get("archive_pair_num")
+                if isinstance(pending[0].get("archive_pair_num"), int)
+                else len(units) + 1
+            )
+        parts: list[str] = []
+        if description:
+            parts.append("Creation description: " + description)
+            description = ""
+        for message in pending:
+            label = "User" if message.get("role") == "user" else "Ora"
+            parts.append(f"{label}: {message.get('content', '')}")
+        provenance = f"conversation:{owner}:turn:{turn_index}"
+        units.append({
+            "lane": "contributor",
+            "unit_id": provenance,
+            "provenance_id": provenance,
+            "source_id": f"selected-source-{explicit_index}",
+            "source_conversation_id": owner,
+            "explicit_index": explicit_index,
+            "order": len(units),
+            "turn_index": turn_index,
+            "content": "\n\n".join(parts),
+        })
+        pending = []
+
+    for raw in messages or []:
+        if not isinstance(raw, dict):
+            continue
+        role = raw.get("role")
+        if role not in {"user", "assistant"} or not isinstance(raw.get("content"), str):
+            continue
+        message = dict(raw)
+        if role == "user":
+            finish()
+            pending = [message]
+        elif pending and pending[0].get("role") == "user":
+            pending.append(message)
+            finish()
+        else:
+            finish()
+            pending = [message]
+            finish()
+    finish()
     if description:
-        parts.append("Creation description: " + description)
-    messages = envelope.get("messages") if isinstance(envelope.get("messages"), list) else []
-    selected: list[str] = []
-    size = 0
-    for message in reversed(messages):
-        if not isinstance(message, dict) or message.get("role") not in {"user", "assistant"}:
+        provenance = f"conversation:{source_id}:description"
+        units.append({
+            "lane": "contributor",
+            "unit_id": provenance,
+            "provenance_id": provenance,
+            "source_id": f"selected-source-{explicit_index}",
+            "source_conversation_id": source_id,
+            "explicit_index": explicit_index,
+            "order": len(units),
+            "content": "Creation description: " + description,
+        })
+    return units
+
+
+def _resolved_history_owners(messages: list, fallback: str) -> set[str]:
+    """Return only Dialogue identities still present in resolved history."""
+    owners = {
+        str(message.get("_ora_history_owner") or "").strip()
+        for message in messages
+        if isinstance(message, dict)
+        and str(message.get("_ora_history_owner") or "").strip()
+    }
+    return owners or {fallback}
+
+
+def _indexed_atomic_contributor_units(
+    path: Path,
+    *,
+    explicit_index: int,
+    target_tag: str,
+) -> list[dict]:
+    """Load the note's existing complete HCP/knowledge records, read-only."""
+    import chromadb
+    from orchestrator.embedding import get_collection
+
+    client = chromadb.PersistentClient(path=_browser_chromadb_path())
+    collection = get_collection(client, "knowledge")
+    records = collection.get(
+        where={"path": str(path)}, include=["documents", "metadatas"],
+    )
+    ids = records.get("ids") or []
+    documents = records.get("documents") or []
+    metadatas = records.get("metadatas") or []
+    if len(ids) != len(documents) or len(ids) != len(metadatas):
+        raise ValueError("atomic-note index returned mismatched records")
+    rows: list[tuple] = []
+    canonical = str(path.resolve())
+    for record_id, document, metadata in zip(ids, documents, metadatas):
+        if not isinstance(document, str) or not isinstance(metadata, dict):
             continue
-        content = str(message.get("content") or "").strip()
-        if not content:
+        indexed_path = metadata.get("path")
+        try:
+            same_path = str(Path(str(indexed_path)).resolve()) == canonical
+        except (OSError, ValueError):
+            same_path = False
+        if not same_path:
             continue
-        role = "User" if message.get("role") == "user" else "Ora"
-        chunk = f"{role}: {content}"
-        remaining = max(0, limit - size)
-        if remaining <= 0:
-            break
-        selected.append(chunk[:remaining])
-        size += min(len(chunk), remaining)
-    if selected:
-        parts.append("\n\n".join(reversed(selected)))
-    return "\n\n".join(parts)[:limit]
+        indexed_tags = _browser_normalize_tags(
+            metadata.get("tags") or metadata.get("tag")
+        )
+        if metadata.get("tag_private"):
+            indexed_tags.append("private")
+        if metadata.get("tag_stealth"):
+            indexed_tags.append("stealth")
+        if metadata.get("tag_archived"):
+            indexed_tags.append("archived")
+        if not _atomic_contributor_privacy_allows(indexed_tags, target_tag):
+            raise _ContributorWithheld("indexed atomic contributor is withheld")
+        rows.append((
+            int(metadata.get("chunk_index") or 0), str(record_id), document,
+            metadata,
+        ))
+    rows.sort(key=lambda row: (row[0], row[1]))
+    return [{
+        "lane": "contributor",
+        "unit_id": f"knowledge:{row_id}",
+        "provenance_id": f"knowledge:{row_id}",
+        "source_id": f"selected-source-{explicit_index}",
+        "source_path": canonical,
+        "explicit_index": explicit_index,
+        "order": order,
+        "chunk_index": chunk_index,
+        "content": document,
+    } for order, (chunk_index, row_id, document, _metadata) in enumerate(rows)]
+
+
+def build_contributor_bundle(
+    conversation_id: str,
+    *,
+    target_tag: str = "",
+) -> dict:
+    """Resolve every explicit contributor into complete safe semantic units."""
+    try:
+        from conversation_memory import (
+            normalize_contributors,
+            read_conversation_history_envelope,
+            resolve_effective_conversation_history,
+        )
+        envelope = read_conversation_history_envelope(conversation_id)
+    except Exception:
+        envelope = None
+    if not isinstance(envelope, dict):
+        return {"units": [], "sources": [], "exclude_conversation_ids": [], "exclude_paths": []}
+
+    contributors = normalize_contributors(envelope.get("contributors"), strict=True)
+    bundle = {
+        "units": [],
+        "sources": [],
+        "exclude_conversation_ids": [],
+        "exclude_paths": [],
+    }
+    excluded_conversations: set[str] = set()
+    excluded_paths: set[str] = set()
+    for index, contributor in enumerate(contributors):
+        safe_source_id = f"selected-source-{index}"
+        row = {
+            "source_id": safe_source_id,
+            "explicit_index": index,
+            "status": "missing",
+        }
+        units: list[dict] = []
+        if contributor["kind"] == "conversation":
+            ref = contributor["ref"]
+            # Exclude the explicitly selected identity even when its source is
+            # now missing/withheld. A stale global index row for that Dialogue
+            # must not bypass explicit-source accounting or a fork cutoff.
+            excluded_conversations.add(ref)
+            lineage: set[str] = set()
+            diagnostics: list[str] = []
+            history = resolve_effective_conversation_history(
+                ref, diagnostics=diagnostics, lineage_sink=lineage,
+            )
+            source = read_conversation_history_envelope(ref)
+            if source is not None and history is not None:
+                if diagnostics and not history:
+                    row["status"] = "withheld"
+                else:
+                    permitted = True
+                    for owner in _resolved_history_owners(history, ref):
+                        ancestor = read_conversation_history_envelope(owner)
+                        owner_tag = (
+                            ancestor.get("tag")
+                            if isinstance(ancestor, dict)
+                            and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
+                            else ""
+                        )
+                        if ancestor is None or not _contributor_privacy_allows(owner_tag, target_tag):
+                            permitted = False
+                            break
+                    if permitted:
+                        units = _dialogue_turn_units(
+                            history,
+                            source_id=ref,
+                            explicit_index=index,
+                            description=_clean_conversation_browser_text(
+                                source.get("description") or "",
+                            ),
+                        )
+                        row["status"] = "available" if units else "missing"
+                    else:
+                        row["status"] = "withheld"
+            else:
+                archive = _browser_archive_envelope(ref)
+                if archive is not None:
+                    source_identity = str(archive.get("source_conversation_id") or ref)
+                    lineage.add(source_identity)
+                    try:
+                        archive_messages, _archive_lineage = (
+                            _resolve_archive_contributor(
+                                ref, archive, target_tag=target_tag,
+                                lineage_sink=lineage,
+                            )
+                        )
+                        units = _dialogue_turn_units(
+                            archive_messages,
+                            source_id=source_identity,
+                            explicit_index=index,
+                        )
+                        row["status"] = "available" if units else "missing"
+                    except _ContributorWithheld:
+                        row["status"] = "withheld"
+            excluded_conversations.update(lineage)
+        else:
+            # Inventory the declared identity before availability/privacy
+            # validation. A contributor that later becomes missing, archived,
+            # or withheld must still be excluded from ordinary knowledge RAG;
+            # otherwise its stale indexed rows can re-enter as a duplicate.
+            try:
+                excluded_paths.add(os.path.realpath(os.path.abspath(
+                    os.path.expanduser(contributor["path"])
+                )))
+            except (OSError, ValueError):
+                pass
+            try:
+                path = _validated_atomic_contributor_path(
+                    contributor["path"], target_tag=target_tag,
+                )
+                canonical = str(path.resolve())
+                excluded_paths.add(canonical)
+                units = _indexed_atomic_contributor_units(
+                    path, explicit_index=index, target_tag=target_tag,
+                )
+                row["status"] = "available" if units else "missing"
+            except _ContributorWithheld:
+                row["status"] = "withheld"
+            except (OSError, ValueError, RuntimeError):
+                row["status"] = "missing"
+            except Exception:
+                row["status"] = "missing"
+        bundle["units"].extend(units)
+        bundle["sources"].append(row)
+    bundle["exclude_conversation_ids"] = sorted(excluded_conversations, key=str.casefold)
+    bundle["exclude_paths"] = sorted(excluded_paths, key=str.casefold)
+    return bundle
 
 
 def build_contributor_context(
     conversation_id: str,
     *,
     target_tag: str = "",
-    total_limit: int = 24000,
 ) -> str:
-    """Resolve authenticated contributor refs into bounded read-only context."""
-
-    try:
-        from conversation_memory import load_conversation_json, normalize_contributors
-        envelope = load_conversation_json(conversation_id)
-    except Exception:
-        envelope = None
-    if not isinstance(envelope, dict):
-        return ""
-    contributors = normalize_contributors(envelope.get("contributors"), strict=True)
-    blocks: list[str] = []
-    used = 0
-    for contributor in contributors:
-        title = contributor.get("title") or "Contributor"
-        body = ""
-        identity = ""
-        if contributor["kind"] == "conversation":
-            ref = contributor["ref"]
-            source = load_conversation_json(ref)
-            if source is None:
-                source = _browser_memory_envelope(ref)
-            if source is None:
-                body = "[Unavailable: the referenced Dialogue no longer resolves.]"
-            else:
-                source_tag = source.get("tag") if source.get("tag") in _VALID_CONVERSATION_TAGS else ""
-                if not _contributor_privacy_allows(source_tag, target_tag):
-                    body = "[Withheld: the contributor has a stricter privacy boundary.]"
-                else:
-                    body = _conversation_contributor_excerpt(source)
-            identity = f"Dialogue {ref}"
-        else:
-            try:
-                path = _validated_atomic_contributor_path(contributor["path"])
-                content = path.read_text(encoding="utf-8")
-                body = content[:6000]
-                identity = f"Atomic note {path}"
-            except (OSError, ValueError):
-                body = "[Unavailable: the referenced atomic note no longer authenticates.]"
-                identity = f"Atomic note {contributor['path']}"
-        block = f"### {title}\nSource identity: {identity}\n\n{body}".strip()
-        remaining = total_limit - used
-        if remaining <= 0:
-            break
-        blocks.append(block[:remaining])
-        used += min(len(block), remaining)
-    return "\n\n".join(blocks)
+    """Compatibility view of the uncapped structured contributor bundle."""
+    bundle = build_contributor_bundle(conversation_id, target_tag=target_tag)
+    bodies = [unit["content"] for unit in bundle["units"]]
+    for row in bundle["sources"]:
+        if row["status"] in {"missing", "withheld"}:
+            bodies.append(f"[{row['status'].title()} selected contributor]")
+    return "\n\n".join(bodies)
 
 
 def _browser_archive_related_rows(
@@ -11326,7 +11995,11 @@ def conversations_browser():
     return _json_response(payload)
 
 
-def _validated_atomic_contributor_path(path_value: str) -> Path:
+def _validated_atomic_contributor_path(
+    path_value: str,
+    *,
+    target_tag: str | None = None,
+) -> Path:
     path = Path(os.path.abspath(os.path.expanduser(path_value)))
     vault = Path(rp.vault_dir()).resolve()
     if path.is_symlink() or not path.is_file() or path.suffix.lower() != ".md":
@@ -11338,8 +12011,15 @@ def _validated_atomic_contributor_path(path_value: str) -> Path:
         content = resolved.read_text(encoding="utf-8")
     except OSError as exc:
         raise ValueError("atomic-note contributor is unreadable") from exc
-    if "atomic" not in _browser_frontmatter_tags(content, path=str(resolved)):
+    tags = _browser_frontmatter_tags(content, path=str(resolved))
+    if "atomic" not in tags:
         raise ValueError("contributor path is not an atomic note")
+    if target_tag is not None and not _atomic_contributor_privacy_allows(
+        tags, target_tag,
+    ):
+        raise _ContributorWithheld(
+            "atomic-note contributor is outside the target privacy boundary"
+        )
     return resolved
 
 
@@ -11349,8 +12029,8 @@ def _resolve_reviewed_contributors(
     *,
     target_tag: str,
 ) -> list[dict]:
-    if not isinstance(selected_refs, list) or len(selected_refs) > 20:
-        raise ValueError("contributors must be a list of at most 20 reviewed refs")
+    if not isinstance(selected_refs, list):
+        raise ValueError("contributors must be a list of reviewed refs")
     candidates = review.get("candidates") or {}
     contributors: list[dict] = []
     seen: set[str] = set()
@@ -11364,7 +12044,9 @@ def _resolve_reviewed_contributors(
         if not isinstance(candidate, dict):
             raise ValueError("contributor was not part of the reviewed result set")
         if candidate.get("kind") == "atomic_note":
-            exact_path = _validated_atomic_contributor_path(candidate["path"])
+            exact_path = _validated_atomic_contributor_path(
+                candidate["path"], target_tag=target_tag,
+            )
             contributors.append({
                 "kind": "atomic_note",
                 "path": str(exact_path),
@@ -11373,19 +12055,50 @@ def _resolve_reviewed_contributors(
             continue
         ref = str(candidate.get("ref") or "")
         try:
-            from conversation_memory import load_conversation_json
-            source = load_conversation_json(ref)
+            from conversation_memory import (
+                read_conversation_history_envelope,
+                resolve_effective_conversation_history,
+            )
+            source = read_conversation_history_envelope(ref)
         except Exception:
             source = None
         if source is None:
             source = _browser_memory_envelope(ref)
         if source is None:
             raise ValueError("Dialogue contributor is unavailable")
-        source_tag = source.get("tag") if source.get("tag") in _VALID_CONVERSATION_TAGS else ""
-        if source_tag == "private" and target_tag == "":
-            raise ValueError("Private Dialogue cannot contribute to a Standard Dialogue")
-        if source_tag == "stealth" and target_tag != "stealth":
-            raise ValueError("Stealth Dialogue cannot contribute outside Stealth")
+        lineage: set[str] = set()
+        if not source.get("archived_source"):
+            diagnostics: list[str] = []
+            resolved = resolve_effective_conversation_history(
+                ref, diagnostics=diagnostics, lineage_sink=lineage,
+            )
+            if resolved is None or (diagnostics and not resolved):
+                raise ValueError("Dialogue contributor ancestry is unavailable")
+            visible_owners = _resolved_history_owners(resolved, ref)
+        else:
+            try:
+                _resolve_archive_contributor(
+                    ref, source, target_tag=target_tag,
+                    lineage_sink=lineage,
+                )
+            except _ContributorWithheld as exc:
+                raise ValueError(str(exc)) from exc
+            visible_owners = lineage or {ref}
+        for owner in visible_owners:
+            ancestor = (
+                read_conversation_history_envelope(owner)
+                if not source.get("archived_source") else source
+            )
+            source_tag = (
+                ancestor.get("tag")
+                if isinstance(ancestor, dict)
+                and ancestor.get("tag") in _VALID_CONVERSATION_TAGS
+                else ""
+            )
+            if ancestor is None or not _contributor_privacy_allows(source_tag, target_tag):
+                raise ValueError(
+                    "Dialogue contributor ancestry has a stricter privacy boundary"
+                )
         contributors.append({
             "kind": "conversation",
             "ref": ref,
@@ -11404,8 +12117,8 @@ def _normalized_creation_title(value) -> str:
 
 
 def _normalized_creation_refs(value) -> list[str]:
-    if not isinstance(value, list) or len(value) > 20:
-        raise ValueError("contributors must be a list of at most 20 reviewed refs")
+    if not isinstance(value, list):
+        raise ValueError("contributors must be a list of reviewed refs")
     refs: list[str] = []
     seen: set[str] = set()
     for raw in value:
@@ -12061,8 +12774,10 @@ def conversations_mark_read(conversation_id):
 def conversations_fork(conversation_id):
     """V3 spec §4.2 / §5.2 — fork a conversation.
 
-    The child inherits the parent's tag + message history, with
-    ``parent_conversation_id`` pointing at the parent (Backlog 2C).
+    The child inherits the parent's tag but owns a fresh local transcript.
+    Its immutable ``fork_point_message_count`` marks the exact parent message
+    prefix visible at the requested displayed turn (or the latest prefix when
+    no turn is supplied).
     Used by the Stealth and Private dropdowns' Fork option, and may
     also serve general-mode forks.
 
@@ -12070,9 +12785,10 @@ def conversations_fork(conversation_id):
         {
           "new_id": "<override>",            # caller-supplied id; default is
                                              # parent_id + "-fork-<ts>"
+          "fork_point_turn_index": <int>,     # zero-based displayed turn;
+                                             # omitted means latest
           "fork_point_chunk_id": "<id>"      # parent's chunk_id at the
-                                             # fork point (Backlog 2C). Used
-                                             # by pipeline ancestry walks.
+                                             # fork point (legacy compatibility)
         }
 
     Response: 200 with the new envelope, or 404 if parent is missing.
@@ -12103,7 +12819,17 @@ def conversations_fork(conversation_id):
         creation_tag = raw_tag.strip().lower()
 
     fork_point_chunk_id = None
+    fork_point_turn_index = None
     if isinstance(body, dict):
+        if "fork_point_turn_index" in body:
+            raw_turn_index = body.get("fork_point_turn_index")
+            if (isinstance(raw_turn_index, bool)
+                    or not isinstance(raw_turn_index, int)
+                    or raw_turn_index < 0):
+                return json.dumps({
+                    "error": "fork_point_turn_index must be a non-negative integer",
+                }), 400
+            fork_point_turn_index = raw_turn_index
         raw = body.get("fork_point_chunk_id")
         if isinstance(raw, str) and raw.strip():
             fork_point_chunk_id = raw.strip()
@@ -12139,11 +12865,15 @@ def conversations_fork(conversation_id):
                     "error": "could not verify fork destination",
                     "detail": str(exc),
                 }), 500
-            new_envelope = fork_conversation(
-                parent_id, requested_id,
-                fork_point_chunk_id=fork_point_chunk_id,
-                creation_tag=creation_tag,
-            )
+            try:
+                new_envelope = fork_conversation(
+                    parent_id, requested_id,
+                    fork_point_turn_index=fork_point_turn_index,
+                    fork_point_chunk_id=fork_point_chunk_id,
+                    creation_tag=creation_tag,
+                )
+            except ValueError as exc:
+                return json.dumps({"error": str(exc)}), 400
     if new_envelope is None:
         return json.dumps({
             "error":           "parent Dialogue not found or unreadable",
@@ -12155,9 +12885,12 @@ def conversations_fork(conversation_id):
         "new_conversation_id":      new_envelope["conversation_id"],
         "tag":                      new_envelope.get("tag", ""),
         "parent_conversation_id":   new_envelope.get("parent_conversation_id"),
+        "fork_point_message_count": new_envelope.get("fork_point_message_count"),
         "fork_point_chunk_id":      new_envelope.get("fork_point_chunk_id"),
         "created":                  new_envelope.get("created"),
         "forked_at":                new_envelope.get("forked_at"),
+        "inherited_message_count":  new_envelope.get("fork_point_message_count", 0),
+        "local_message_count":      len(new_envelope.get("messages") or []),
         "message_count":            len(new_envelope.get("messages") or []),
     })
 
@@ -12610,20 +13343,58 @@ def _clear_conversation_runtime_state(conversation_id: str) -> dict:
     return {"cleared": counts, "errors": errors}
 
 
+def _assert_stealth_permanent_delete(conversation_id: str) -> None:
+    """Refuse permanent deletion unless Stealth is authoritative."""
+    from orchestrator.conversation_memory import (
+        _DEFAULT_SESSIONS_ROOT,
+        _conversation_path,
+        read_conversation_history_envelope,
+    )
+
+    envelope = read_conversation_history_envelope(conversation_id)
+    if isinstance(envelope, dict):
+        if envelope.get("tag") != "stealth":
+            raise PermissionError(
+                "Delete Forever is available only for Stealth Dialogues; "
+                "Standard and Private Dialogues use Close"
+            )
+        return
+
+    live_path = _conversation_path(conversation_id, _DEFAULT_SESSIONS_ROOT)
+    archived_path = _conversation_path(
+        conversation_id, _DEFAULT_SESSIONS_ROOT / "archived",
+    )
+    if (live_path.exists() or live_path.is_symlink()
+            or archived_path.exists() or archived_path.is_symlink()):
+        raise PermissionError(
+            "Delete Forever requires a readable authoritative Stealth envelope"
+        )
+
+    with _conversation_lifecycle_guard:
+        creation_tag = _conversation_creation_tags.get(
+            _conversation_storage_identity(conversation_id)
+        )
+    if creation_tag != "stealth":
+        raise PermissionError(
+            "Delete Forever is available only for Stealth Dialogues; "
+            "Standard and Private Dialogues use Close"
+        )
+
+
 def _delete_conversation_runtime(conversation_id: str) -> dict:
-    """Tombstone, quiesce, purge, and clear one conversation atomically."""
+    """Tombstone, quiesce, purge, and clear one Stealth conversation."""
     if not _valid_existing_conversation_id(conversation_id):
         raise ValueError("invalid conversation_id")
-    # Mark before waiting: an active turn may still compute, but every late
-    # save sees this tombstone and the purge waits for that turn's lock.
-    with _conversation_lifecycle_guard:
-        _deleted_conversations.add(_conversation_storage_identity(conversation_id))
-
     lifecycle_lock = _conversation_lifecycle_lock(conversation_id)
-    # First drain any request/runtime writer that was already inside the
-    # barrier when the tombstone landed. No later request can enter and write.
+    # Inspect the authoritative envelope under the same barrier as writers,
+    # then install the tombstone before releasing it. A request waiting behind
+    # this block observes the tombstone and cannot create new residue.
     with lifecycle_lock:
-        pass
+        _assert_stealth_permanent_delete(conversation_id)
+        with _conversation_lifecycle_guard:
+            _deleted_conversations.add(
+                _conversation_storage_identity(conversation_id)
+            )
 
     # Worker shutdown may join a thread whose completion callback briefly
     # consults the server lifecycle state. Do not hold the server lock while
@@ -12725,6 +13496,8 @@ def _conversation_protection_state(conversation_id: str) -> dict:
 def _protected_delete_conversation_runtime(conversation_id: str) -> dict:
     """Delete one exact Dialogue only after Paused one-shot approval."""
     from orchestrator import system_protection as _sp
+    with _conversation_lifecycle_lock(conversation_id):
+        _assert_stealth_permanent_delete(conversation_id)
     pre_state = _conversation_protection_state(conversation_id)
     protection = _sp.authorize_server_action(
         "dialogue_delete",
@@ -12878,7 +13651,7 @@ def conversation_close(conversation_id):
 
 @app.route("/api/conversation/<conversation_id>/delete-forever", methods=["POST"])
 def conversation_delete_forever(conversation_id):
-    """Permanently delete all Ora-managed conversation stores.
+    """Permanently delete one Stealth Dialogue's Ora-managed stores.
 
     Explicit flat vault exports and their sidecars remain user-owned.
     """
@@ -12890,6 +13663,8 @@ def conversation_delete_forever(conversation_id):
         return cross_site
     try:
         result = _protected_delete_conversation_runtime(conversation_id)
+    except PermissionError as exc:
+        return _json_response({"error": str(exc)}, status=409)
     except Exception as exc:
         try:
             from orchestrator import system_protection as _sp
@@ -13329,10 +14104,11 @@ def _persist_turn_spatial_state_unlocked(
     ``extra_context`` is None or missing a given field, that slot stores
     as ``None`` — forward-compat safe, backward-compat safe.
 
-    Runs on a background thread; exceptions never propagate back to the
-    caller. This is a side-channel relative to the existing raw .md log +
-    ChromaDB indexing — the conversation.json is specifically the source
-    of truth for visual state continuity.
+    Normal chat completion calls this synchronously under the lifecycle lock;
+    a few legacy resume paths still use the locked background wrapper below.
+    Returns the durable path only when the authoritative append succeeds;
+    exceptions are logged and become a false acknowledgement. conversation.json
+    is the source of truth for both visual state and Dialogue continuity.
     """
     try:
         from orchestrator.conversation_memory import save_turn_spatial_state
@@ -13351,7 +14127,7 @@ def _persist_turn_spatial_state_unlocked(
             _project_ids = resolve_project_ids(get_active_project())
         except Exception:
             _project_ids = None
-        save_turn_spatial_state(
+        return save_turn_spatial_state(
             conversation_id=panel_id,
             user_input=user_input,
             ai_response=ai_response,
@@ -13365,6 +14141,31 @@ def _persist_turn_spatial_state_unlocked(
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
+        return None
+
+
+def _turn_envelope_acknowledged(
+        panel_id, expected_message_count, user_input, ai_response):
+    """Confirm a turn reached the envelope if a writer lost its return value."""
+    try:
+        from orchestrator.conversation_memory import load_conversation_json
+        data = load_conversation_json(panel_id)
+    except Exception:
+        return False
+    messages = data.get("messages") if isinstance(data, dict) else None
+    if not isinstance(messages, list) or not isinstance(expected_message_count, int):
+        return False
+    if len(messages) != expected_message_count + 2:
+        return False
+    user_message, assistant_message = messages[-2:]
+    return (
+        isinstance(user_message, dict)
+        and user_message.get("role") == "user"
+        and user_message.get("content") == user_input
+        and isinstance(assistant_message, dict)
+        and assistant_message.get("role") == "assistant"
+        and assistant_message.get("content") == ai_response
+    )
 
 
 def _persist_turn_spatial_state(panel_id, user_input, ai_response,
@@ -13372,9 +14173,9 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response,
     """Persist envelope state only while the conversation remains live."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
-            return
+            return None
         effective_tag = _effective_conversation_tag(panel_id, tag)
-        _persist_turn_spatial_state_unlocked(
+        return _persist_turn_spatial_state_unlocked(
             panel_id, user_input, ai_response, extra_context, effective_tag,
             trace_ref=trace_ref,
         )
@@ -13399,7 +14200,11 @@ def _run_end_of_session_pipeline_unlocked(user_input, ai_response, panel_id, con
         bridge = _bridge_state.get(panel_id, {})
 
         # Build full conversation history including the current exchange
-        conv_history = list(history or [])
+        conv_history = [
+            dict(message)
+            for message in (history or [])
+            if isinstance(message, dict)
+        ]
         conv_history.append({"role": "user", "content": user_input})
         conv_history.append({"role": "assistant", "content": ai_response})
 
@@ -14764,6 +15569,29 @@ def pipeline_update():
 
 # ── clarification API ────────────────────────────────────────────────────────
 
+def _refresh_clarification_dialogue_context(
+    panel_id: str,
+    pending: dict,
+    target_tag: str,
+) -> tuple[list[dict], dict | None]:
+    """Rebuild mutable Dialogue context at the resume lifecycle seam.
+
+    The caller holds the conversation lifecycle lock.  Paused Step-1/config
+    state remains tied to the original prompt, while history and explicit
+    contributors are re-read because either may have changed during the pause.
+    """
+    history, _history_state = _authoritative_dialogue_history(
+        panel_id, pending.get("history"),
+    )
+    extra_context = dict(pending.get("extra_context") or {})
+    extra_context.pop("contributor_bundle", None)
+    contributor_bundle = build_contributor_bundle(
+        panel_id, target_tag=target_tag,
+    )
+    if contributor_bundle.get("sources"):
+        extra_context["contributor_bundle"] = contributor_bundle
+    return history, extra_context or None
+
 @app.route("/api/clarification", methods=["POST"])
 def clarification_respond():
     """Resume a paused pipeline with the user's clarification answers.
@@ -14780,17 +15608,19 @@ def clarification_respond():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate_unlocked():
+    def generate_unlocked(_resume_tag):
         step1 = pending["step1"]
         config = pending["config"]
-        history = pending["history"]
         user_input = pending["user_input"]
 
         # Open a fresh per-resume trace, honouring stealth tag.
         _resume_trace_dir = None
         _resume_trace_ref = None
-        _resume_tag = _effective_conversation_tag(
-            panel_id, pending.get("conversation_tag") or "")
+        history, refreshed_extra_context = (
+            _refresh_clarification_dialogue_context(
+                panel_id, pending, _resume_tag,
+            )
+        )
         try:
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
             if _pta_r:
@@ -14825,7 +15655,7 @@ def clarification_respond():
         try:
             for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
                                                   images=pending.get("images"),
-                                                  extra_context=pending.get("extra_context"),
+                                                  extra_context=refreshed_extra_context,
                                                   trace_dir=_resume_trace_dir,
                                                   conversation_tag=_resume_tag,
                                                   turn_state=turn_state):
@@ -14875,7 +15705,7 @@ def clarification_respond():
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
-                          pending.get("extra_context"), _resume_tag),
+                          refreshed_extra_context, _resume_tag),
                     kwargs={"trace_ref": _resume_trace_ref},
                     daemon=True,
                 ).start()
@@ -14896,14 +15726,15 @@ def clarification_respond():
         yield _sse("done")
 
     def generate():
-        with _conversation_turn_context(
-            panel_id, pending.get("conversation_tag") or "",
-        ):
-            with _conversation_lifecycle_lock(panel_id):
-                if _is_conversation_deleted(panel_id):
-                    yield _sse("error", text="Conversation was permanently deleted.")
-                    return
-                yield from generate_unlocked()
+        with _conversation_lifecycle_lock(panel_id):
+            if _is_conversation_deleted(panel_id):
+                yield _sse("error", text="Conversation was permanently deleted.")
+                return
+            resolved_tag = _effective_conversation_tag(
+                panel_id, pending.get("conversation_tag") or "",
+            )
+            with _conversation_turn_context(panel_id, resolved_tag):
+                yield from generate_unlocked(resolved_tag)
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",
@@ -14920,17 +15751,19 @@ def clarification_skip():
     if not pending:
         return json.dumps({"error": "No pending clarification for this panel"}), 404
 
-    def generate_unlocked():
+    def generate_unlocked(_skip_tag):
         step1 = pending["step1"]
         config = pending["config"]
-        history = pending["history"]
         user_input = pending["user_input"]
 
         # Open a fresh per-skip trace, honouring stealth tag.
         _skip_trace_dir = None
         _skip_trace_ref = None
-        _skip_tag = _effective_conversation_tag(
-            panel_id, pending.get("conversation_tag") or "")
+        history, refreshed_extra_context = (
+            _refresh_clarification_dialogue_context(
+                panel_id, pending, _skip_tag,
+            )
+        )
         try:
             from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
             if _pta_s:
@@ -14961,7 +15794,7 @@ def clarification_skip():
         try:
             for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
                                                   images=pending.get("images"),
-                                                  extra_context=pending.get("extra_context"),
+                                                  extra_context=refreshed_extra_context,
                                                   trace_dir=_skip_trace_dir,
                                                   conversation_tag=_skip_tag,
                                                   turn_state=turn_state):
@@ -15007,7 +15840,7 @@ def clarification_skip():
                 threading.Thread(
                     target=_persist_turn_spatial_state,
                     args=(panel_id, user_input, final_response[0],
-                          pending.get("extra_context"), _skip_tag),
+                          refreshed_extra_context, _skip_tag),
                     kwargs={"trace_ref": _skip_trace_ref},
                     daemon=True,
                 ).start()
@@ -15016,14 +15849,15 @@ def clarification_skip():
         yield _sse("done")
 
     def generate():
-        with _conversation_turn_context(
-            panel_id, pending.get("conversation_tag") or "",
-        ):
-            with _conversation_lifecycle_lock(panel_id):
-                if _is_conversation_deleted(panel_id):
-                    yield _sse("error", text="Conversation was permanently deleted.")
-                    return
-                yield from generate_unlocked()
+        with _conversation_lifecycle_lock(panel_id):
+            if _is_conversation_deleted(panel_id):
+                yield _sse("error", text="Conversation was permanently deleted.")
+                return
+            resolved_tag = _effective_conversation_tag(
+                panel_id, pending.get("conversation_tag") or "",
+            )
+            with _conversation_turn_context(panel_id, resolved_tag):
+                yield from generate_unlocked(resolved_tag)
 
     return Response(stream_with_context(generate()),
                     mimetype="text/event-stream",

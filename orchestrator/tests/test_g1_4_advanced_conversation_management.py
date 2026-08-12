@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
@@ -89,6 +91,36 @@ class G14ConversationManagementTests(unittest.TestCase):
         }
         row.update(overrides)
         return row
+
+    def _private_contributor_target(self, target_id):
+        source_id = f"{target_id}-private-source"
+        secret = f"PRIVATE-CONTRIBUTOR-TEXT-{target_id}"
+        runtime_memory.create_conversation_envelope(
+            source_id,
+            title="Private contributor",
+            description="Private source for the lifecycle interleaving test.",
+            tag="private",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            source_id,
+            secret,
+            "Private contributor response.",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.create_conversation_envelope(
+            target_id,
+            title="Private target",
+            description="Target whose privacy changes before execution.",
+            tag="private",
+            contributors=[{
+                "kind": "conversation",
+                "ref": source_id,
+                "title": "Private contributor",
+            }],
+            sessions_root=self.sessions,
+        )
+        return secret
 
     def _discover(self, rows=None):
         rows = rows if rows is not None else [self._source_row()]
@@ -346,7 +378,7 @@ class G14ConversationManagementTests(unittest.TestCase):
         )
         self.assertEqual(allowed.status_code, 201, allowed.get_data(as_text=True))
 
-    def test_contributor_context_is_bounded_fenced_reference_material(self):
+    def test_contributor_bundle_uses_complete_units_in_single_physical_lane(self):
         runtime_memory.create_conversation_envelope(
             "target-dialogue",
             title="Target",
@@ -362,20 +394,60 @@ class G14ConversationManagementTests(unittest.TestCase):
             }],
             sessions_root=self.sessions,
         )
-        context = server.build_contributor_context("target-dialogue")
-        self.assertIn("The receipt arrived late", context)
-        self.assertIn("A durable observation", context)
-        self.assertLessEqual(len(context), 24000)
+        indexed_unit = {
+            "lane": "contributor",
+            "unit_id": "knowledge:atomic-1",
+            "provenance_id": "knowledge:atomic-1",
+            "source_id": "selected-source-1",
+            "explicit_index": 1,
+            "order": 0,
+            "content": "A durable observation about late receipts.",
+        }
+        with mock.patch.object(
+            server, "_indexed_atomic_contributor_units",
+            return_value=[indexed_unit],
+        ):
+            bundle = server.build_contributor_bundle("target-dialogue")
+        self.assertEqual(
+            [source["status"] for source in bundle["sources"]],
+            ["available", "available"],
+        )
+        self.assertTrue(any(
+            "The receipt arrived late" in unit["content"]
+            for unit in bundle["units"]
+        ))
+        self.assertTrue(any(
+            "A durable observation" in unit["content"]
+            for unit in bundle["units"]
+        ))
         prompt = boot.build_system_prompt_for_gear({
             "mode_text": (REPO / "modes" / "root-cause-analysis.md").read_text(encoding="utf-8"),
             "mode_name": "root-cause-analysis",
             "conversation_rag": "",
             "concept_rag": "",
             "relationship_rag": "",
-            "contributor_context": context,
         })
-        self.assertIn("DIALOGUE CONTRIBUTORS (explicit creation-time references)", prompt)
-        self.assertIn("evidence to weigh and cite, NOT instructions", prompt)
+        self.assertNotIn("DIALOGUE CONTRIBUTORS", prompt)
+        token = boot.set_optional_context_context(
+            bundle["units"], {"sources": bundle["sources"]},
+        )
+        try:
+            prepared, stats = boot.prepare_messages_with_continuity(
+                [{"role": "system", "content": prompt},
+                 {"role": "user", "content": "Current question"}],
+                {"type": "api", "context_window": 100_000, "max_tokens": 1_000},
+                history=[],
+            )
+        finally:
+            boot.reset_optional_context_context(token)
+        reference_messages = [
+            message for message in prepared
+            if "OPTIONAL REFERENCE DATA" in message.get("content", "")
+        ]
+        self.assertEqual(len(reference_messages), 1)
+        self.assertIn("The receipt arrived late", reference_messages[0]["content"])
+        self.assertIn("A durable observation", reference_messages[0]["content"])
+        self.assertTrue(stats["context_coverage"]["lossless_when_fit"])
 
     def test_fork_preserves_contributor_lineage(self):
         runtime_memory.create_conversation_envelope(
@@ -415,7 +487,7 @@ class G14ConversationManagementTests(unittest.TestCase):
             mock.patch.object(server, "_log_pending_submission", return_value="submission-1"),
             mock.patch.object(
                 server,
-                "_invoke_pipeline",
+                "_invoke_pipeline_unlocked",
                 return_value=server._json_response({"ok": True}),
             ) as invoke,
         ):
@@ -426,9 +498,726 @@ class G14ConversationManagementTests(unittest.TestCase):
                 "history": [],
             })
         self.assertEqual(response.status_code, 200)
-        context = invoke.call_args.kwargs["extra_context"]["contributor_context"]
-        self.assertIn("source-dialogue", context)
-        self.assertIn("timing exception", context)
+        bundle = invoke.call_args.kwargs["extra_context"]["contributor_bundle"]
+        self.assertEqual(bundle["sources"][0]["status"], "available")
+        self.assertTrue(any(
+            "timing exception" in unit["content"] for unit in bundle["units"]
+        ))
+
+    def _assert_private_contributor_rechecked_after_standard_transition(
+        self, route_kind,
+    ):
+        target_id = f"{route_kind}-privacy-race"
+        secret = self._private_contributor_target(target_id)
+        real_invoke = server._invoke_pipeline
+
+        def transition_then_invoke(*args, **kwargs):
+            with server._conversation_lifecycle_lock(target_id):
+                self.assertEqual(
+                    runtime_memory.get_conversation_tag(
+                        target_id, sessions_root=self.sessions,
+                    ),
+                    "private",
+                )
+                runtime_memory.set_conversation_tag(
+                    target_id, "", sessions_root=self.sessions,
+                )
+            return real_invoke(*args, **kwargs)
+
+        with (
+            mock.patch.object(
+                server, "_log_pending_submission",
+                return_value=f"submission-{route_kind}",
+            ),
+            mock.patch.object(
+                server, "_invoke_pipeline", side_effect=transition_then_invoke,
+            ),
+            mock.patch.object(
+                server, "_invoke_pipeline_unlocked",
+                return_value=server._json_response({"ok": True}),
+            ) as invoke,
+        ):
+            if route_kind == "json":
+                response = self.client.post("/chat", json={
+                    "message": "Run after the privacy transition.",
+                    "conversation_id": target_id,
+                    "panel_id": target_id,
+                    "history": [],
+                    "tag": "private",
+                })
+            else:
+                response = self.client.post(
+                    "/chat/multipart",
+                    data={
+                        "message": "Run after the privacy transition.",
+                        "conversation_id": target_id,
+                        "panel_id": target_id,
+                        "history": "[]",
+                        "tag": "private",
+                    },
+                    content_type="multipart/form-data",
+                )
+
+        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        self.assertEqual(invoke.call_args.kwargs["tag"], "")
+        context = invoke.call_args.kwargs["extra_context"]
+        self.assertNotIn(secret, json.dumps(context, sort_keys=True))
+        self.assertEqual(
+            context["contributor_bundle"]["sources"][0]["status"],
+            "withheld",
+        )
+
+    def test_json_private_contributor_is_rechecked_after_standard_transition(self):
+        self._assert_private_contributor_rechecked_after_standard_transition(
+            "json",
+        )
+
+    def test_multipart_private_contributor_is_rechecked_after_standard_transition(self):
+        self._assert_private_contributor_rechecked_after_standard_transition(
+            "multipart",
+        )
+
+    def test_direct_wrapper_binds_the_same_structured_contributor_units(self):
+        observed = {}
+        extra_context = {
+            "contributor_bundle": {
+                "units": [{
+                    "lane": "contributor", "unit_id": "direct-contributor",
+                    "provenance_id": "direct-contributor",
+                    "source_id": "selected-source-0", "explicit_index": 0,
+                    "content": "direct contributor evidence",
+                }],
+                "sources": [{
+                    "source_id": "selected-source-0", "explicit_index": 0,
+                    "status": "available",
+                }],
+                "exclude_conversation_ids": [],
+                "exclude_paths": [],
+            },
+        }
+
+        def implementation(*_args, **_kwargs):
+            state = server._boot_context_api()._OPTIONAL_CONTEXT_CV.get() or {}
+            observed["units"] = list(state.get("units") or [])
+            yield "direct-result"
+
+        with mock.patch.object(
+            server, "_direct_stream_impl", side_effect=implementation,
+        ):
+            result = list(server._direct_stream(
+                "Current question", [], panel_id="direct-target",
+                extra_context=extra_context,
+            ))
+        self.assertEqual(result, ["direct-result"])
+        self.assertEqual(len(observed["units"]), 1)
+        self.assertEqual(
+            observed["units"][0]["content"], "direct contributor evidence",
+        )
+
+    def test_direct_physical_call_emits_coverage_sse_without_duplicate_lane(self):
+        import risk_gate
+        import tool_events
+        from orchestrator import oversight_events
+
+        # Exercise the exact boot module that owns ``server.call_model``.
+        # Another hermetic suite force-loads ``boot`` during collection, so
+        # resolving sys.modules here can otherwise bind ContextVars and the
+        # transport mock to a newer module while this server call remains
+        # bound to its original function globals.
+        call_globals = server.call_model.__globals__
+        legacy_boot = types.SimpleNamespace(**{
+            name: call_globals[name] for name in (
+                "set_conversation_tag_context",
+                "reset_conversation_tag_context",
+                "set_turn_trace_context",
+                "reset_turn_trace_context",
+                "_finalize_optional_context_package",
+                "set_dialogue_history_context",
+                "reset_dialogue_history_context",
+                "_set_context_units_from_package",
+                "reset_optional_context_context",
+                "set_model_stage_context",
+                "reset_model_stage_context",
+                "get_context_coverage",
+            )
+        })
+        endpoint = {
+            "type": "api", "id": "direct-test", "context_window": 100_000,
+            "max_tokens": 1_000,
+        }
+        captured = []
+
+        def transport(messages, _endpoint, images=None):
+            captured.append(messages)
+            return "Direct final answer"
+
+        secret = "/Users/private/SECRET_TITLE.md"
+        extra_context = {
+            "contributor_bundle": {
+                "units": [{
+                    "lane": "contributor", "unit_id": secret,
+                    "provenance_id": secret, "source_id": secret,
+                    "source_path": secret, "title": secret,
+                    "explicit_index": 0,
+                    "content": "DIRECT UNIQUE EVIDENCE",
+                }],
+                "sources": [{
+                    "source_id": secret, "title": secret,
+                    "explicit_index": 0, "status": "available",
+                }],
+                "exclude_conversation_ids": [], "exclude_paths": [],
+            },
+        }
+        with (
+            mock.patch.object(server, "load_config", return_value={}),
+            mock.patch.object(server, "get_endpoint", return_value=endpoint),
+            mock.patch.object(server, "_direct_system_prompt", return_value="system"),
+            mock.patch.object(server, "set_permission_mode"),
+            mock.patch.object(server, "_boot_context_api", return_value=legacy_boot),
+            mock.patch.dict(call_globals, {"call_api_endpoint": transport}),
+            mock.patch.object(risk_gate, "now_ts", return_value=1.0),
+            mock.patch.object(
+                risk_gate, "strip_risk_prefix",
+                side_effect=lambda value: (value, None),
+            ),
+            mock.patch.object(
+                risk_gate, "assign_tier", return_value={"risk_tier": "light"},
+            ),
+            mock.patch.object(risk_gate, "evaluate_hold", return_value=(None, None)),
+            mock.patch.object(risk_gate, "record_route_observed"),
+            mock.patch.object(tool_events, "set_turn_context"),
+            mock.patch.object(tool_events, "update_turn_risk_tier"),
+            mock.patch.object(
+                oversight_events, "lifecycle_context_scope",
+                return_value=mock.MagicMock(
+                    __enter__=mock.Mock(return_value=None),
+                    __exit__=mock.Mock(return_value=False),
+                ),
+            ),
+        ):
+            events = list(server._direct_stream(
+                "Current question", [], panel_id="direct-target",
+                extra_context=extra_context,
+            ))
+        self.assertEqual(len(captured), 1)
+        joined = "\n".join(message["content"] for message in captured[0])
+        self.assertEqual(joined.count("OPTIONAL REFERENCE DATA"), 1)
+        self.assertEqual(joined.count("DIRECT UNIQUE EVIDENCE"), 1)
+        payloads = [
+            json.loads(event.removeprefix("data: ").strip()) for event in events
+        ]
+        coverage_events = [
+            payload for payload in payloads
+            if payload.get("type") == "pipeline_stage"
+            and payload.get("stage") == "context_coverage"
+        ]
+        self.assertEqual(len(coverage_events), 1)
+        coverage = coverage_events[0]["context_coverage"]
+        self.assertEqual(coverage["physical_calls"], 1)
+        self.assertEqual(coverage["lanes"]["contributor"]["selected_units"], 1)
+        self.assertGreater(coverage["budget"]["capacity_tokens"], 0)
+        serialized_events = "".join(events)
+        self.assertNotIn(secret, serialized_events)
+        for key in (
+            "selected_unit_ids", "deferred_unit_ids", "source_coverage",
+        ):
+            self.assertNotIn(key, serialized_events)
+
+    def test_more_than_twenty_contributor_refs_are_persisted(self):
+        candidates = {}
+        for index in range(25):
+            source_id = f"source-{index}"
+            runtime_memory.create_conversation_envelope(
+                source_id,
+                title=f"Source {index}",
+                description=DESCRIPTION,
+                sessions_root=self.sessions,
+            )
+            candidates[source_id] = {
+                "kind": "conversation", "ref": source_id,
+                "title": f"Source {index}",
+            }
+        reviewed = server._resolve_reviewed_contributors(
+            {"candidates": candidates},
+            [f"source-{index}" for index in range(25)],
+            target_tag="",
+        )
+        self.assertEqual(len(reviewed), 25)
+        runtime_memory.create_conversation_envelope(
+            "many-contributors",
+            title="Many contributors",
+            description=DESCRIPTION,
+            contributors=reviewed,
+            sessions_root=self.sessions,
+        )
+        stored = runtime_memory.load_conversation_json(
+            "many-contributors", sessions_root=self.sessions,
+        )
+        self.assertEqual(len(stored["contributors"]), 25)
+        self.assertEqual(stored["contributors"][-1]["ref"], "source-24")
+        runtime_bundle = server.build_contributor_bundle(
+            "many-contributors", target_tag="",
+        )
+        self.assertEqual(len(runtime_bundle["sources"]), 25)
+        self.assertEqual(len(runtime_bundle["units"]), 25)
+
+    def test_dialogue_contributor_inherits_ancestry_at_fork_cutoff(self):
+        runtime_memory.fork_conversation(
+            "source-dialogue", "source-child",
+            fork_point_turn_index=0,
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "source-child", "Child question", "Child answer",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "source-dialogue", "Later parent secret", "Must not cross cutoff",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.create_conversation_envelope(
+            "target-fork-contributor",
+            title="Target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": "source-child", "title": "Child",
+            }],
+            sessions_root=self.sessions,
+        )
+        bundle = server.build_contributor_bundle("target-fork-contributor")
+        content = "\n".join(unit["content"] for unit in bundle["units"])
+        self.assertIn("The receipt arrived late", content)
+        self.assertIn("Child answer", content)
+        self.assertNotIn("Later parent secret", content)
+        self.assertEqual(
+            set(bundle["exclude_conversation_ids"]),
+            {"source-dialogue", "source-child"},
+        )
+
+    def test_archived_fork_uses_retained_ancestry_or_is_withheld(self):
+        runtime_memory.fork_conversation(
+            "source-dialogue", "archived-child",
+            fork_point_turn_index=0,
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "archived-child", "Archived child question", "Archived child answer",
+            sessions_root=self.sessions,
+        )
+        archive_ref = server._browser_encode_source_id(
+            "archive", "archived-child",
+        )
+        archive_chunks = [{
+            "_row_id": 1,
+            "conversation_id": "archived-child",
+            "pair_num": 1,
+            "tag": "",
+            "text": (
+                "---\ntype: chat\ntags: []\n---\n"
+                "## Exchange\n\n**User:**\n\nSTALE ARCHIVE COPY\n\n"
+                "**Assistant:**\n\nMust not replace retained ancestry\n"
+            ),
+        }]
+        runtime_memory.create_conversation_envelope(
+            "archive-fork-target",
+            title="Archive fork target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Archived child",
+            }],
+            sessions_root=self.sessions,
+        )
+
+        with (
+            mock.patch.object(
+                server, "_browser_archive_chunk_metadata",
+                return_value=archive_chunks,
+            ),
+            mock.patch.object(
+                server, "_browser_read_chunk_text",
+                side_effect=lambda metadata: metadata["text"],
+            ),
+        ):
+            available = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            content = "\n".join(unit["content"] for unit in available["units"])
+            self.assertEqual(available["sources"][0]["status"], "available")
+            self.assertIn("The receipt arrived late", content)
+            self.assertIn("Archived child answer", content)
+            self.assertNotIn("STALE ARCHIVE COPY", content)
+
+            runtime_memory.set_conversation_tag(
+                "source-dialogue", "private", sessions_root=self.sessions,
+            )
+            incompatible = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            self.assertEqual(
+                incompatible["sources"][0]["status"], "withheld",
+            )
+            self.assertEqual(incompatible["units"], [])
+
+            runtime_memory.set_conversation_tag(
+                "source-dialogue", "", sessions_root=self.sessions,
+            )
+            (self.sessions / "source-dialogue").rename(
+                self.sessions / "unavailable-parent",
+            )
+            orphaned = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            self.assertEqual(orphaned["sources"][0]["status"], "withheld")
+            self.assertEqual(orphaned["units"], [])
+
+            (self.sessions / "unavailable-parent").rename(
+                self.sessions / "source-dialogue",
+            )
+            parent = runtime_memory.load_conversation_json(
+                "source-dialogue", sessions_root=self.sessions,
+            )
+            detached = runtime_memory.detach_direct_fork_children(
+                "source-dialogue", parent_messages=parent["messages"],
+                sessions_root=self.sessions,
+            )
+            self.assertIn("archived-child", detached["children_detached"])
+            detached_bundle = server.build_contributor_bundle(
+                "archive-fork-target", target_tag="",
+            )
+            detached_content = "\n".join(
+                unit["content"] for unit in detached_bundle["units"]
+            )
+            self.assertEqual(
+                detached_bundle["sources"][0]["status"], "available",
+            )
+            self.assertIn("Archived child answer", detached_content)
+            self.assertNotIn("The receipt arrived late", detached_content)
+            self.assertNotIn("STALE ARCHIVE COPY", detached_content)
+
+    def test_all_declared_atomic_paths_remain_excluded_after_validation(self):
+        missing = self.vault / "Atomic — Missing.md"
+        archived = self.vault / "Atomic — Archived.md"
+        archived.write_text(
+            "---\ntype: engram\ntags: [atomic, archived]\n---\nArchived fact.",
+            encoding="utf-8",
+        )
+        runtime_memory.create_conversation_envelope(
+            "atomic-inventory-target",
+            title="Atomic inventory target",
+            description=DESCRIPTION,
+            contributors=[
+                {"kind": "atomic_note", "path": str(self.atomic),
+                 "title": "Available"},
+                {"kind": "atomic_note", "path": str(missing),
+                 "title": "Missing"},
+                {"kind": "atomic_note", "path": str(archived),
+                 "title": "Withheld"},
+            ],
+            sessions_root=self.sessions,
+        )
+        indexed_unit = {
+            "lane": "contributor",
+            "unit_id": "knowledge:available",
+            "provenance_id": "knowledge:available",
+            "source_id": "selected-source-0",
+            "explicit_index": 0,
+            "order": 0,
+            "content": "Available atomic fact.",
+        }
+        with mock.patch.object(
+            server, "_indexed_atomic_contributor_units",
+            return_value=[indexed_unit],
+        ):
+            bundle = server.build_contributor_bundle(
+                "atomic-inventory-target", target_tag="",
+            )
+
+        self.assertEqual(
+            [source["status"] for source in bundle["sources"]],
+            ["available", "missing", "withheld"],
+        )
+        self.assertEqual(
+            set(bundle["exclude_paths"]),
+            {os.path.realpath(str(path)) for path in (self.atomic, missing, archived)},
+        )
+
+    def test_incompatible_live_ancestor_is_dropped_but_local_child_remains_usable(self):
+        runtime_memory.create_conversation_envelope(
+            "private-parent",
+            title="Private parent",
+            description=DESCRIPTION,
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "private-parent", "Private premise", "Private conclusion",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.fork_conversation(
+            "private-parent", "standard-child",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.save_turn_spatial_state(
+            "standard-child", "Public child premise", "Public child conclusion",
+            sessions_root=self.sessions,
+        )
+        runtime_memory.set_conversation_tag(
+            "private-parent", "private", sessions_root=self.sessions,
+        )
+        row = self._source_row(
+            conversation_id="standard-child", title="Standard child", tag="",
+        )
+        self.assertTrue(server._browser_creation_row_allowed(row, ""))
+        self.assertTrue(server._browser_creation_row_allowed(row, "private"))
+
+        review = {"candidates": {
+            "standard-child": {
+                "kind": "conversation", "ref": "standard-child",
+                "title": "Standard child",
+            },
+        }}
+        reviewed = server._resolve_reviewed_contributors(
+            review, ["standard-child"], target_tag="",
+        )
+        self.assertEqual(reviewed[0]["ref"], "standard-child")
+
+        runtime_memory.create_conversation_envelope(
+            "standard-target",
+            title="Standard target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": "standard-child",
+                "title": "Standard child",
+            }],
+            sessions_root=self.sessions,
+        )
+        bundle = server.build_contributor_bundle(
+            "standard-target", target_tag="",
+        )
+        self.assertEqual(bundle["sources"][0]["status"], "available")
+        content = "\n".join(unit["content"] for unit in bundle["units"])
+        self.assertIn("Public child conclusion", content)
+        self.assertNotIn("Private premise", content)
+        self.assertEqual(
+            set(bundle["exclude_conversation_ids"]),
+            {"private-parent", "standard-child"},
+        )
+
+    def test_archive_mixed_privacy_uses_strictest_at_candidate_review_and_runtime(self):
+        source_id = "archive-mixed-privacy-source"
+        archive_ref = server._browser_encode_source_id("archive", source_id)
+        runtime_memory.create_conversation_envelope(
+            source_id,
+            title="Retained archive authority",
+            description=DESCRIPTION,
+            sessions_root=self.sessions,
+        )
+        chunks = [
+            {
+                "_row_id": 1, "conversation_id": source_id,
+                "pair_num": 1, "tag": "", "conversation_title": "Public hit",
+                "text": (
+                    "---\ntype: chat\ntags: []\n---\n"
+                    "## Exchange\n\n**User:**\n\nPublic prompt\n\n"
+                    "**Assistant:**\n\nPublic response\n"
+                ),
+            },
+            {
+                "_row_id": 2, "conversation_id": source_id,
+                "pair_num": 2, "tag": "", "conversation_title": "Stale standard",
+                "text": (
+                    "---\ntype: chat\ntags: [private]\n---\n"
+                    "## Exchange\n\n**User:**\n\nPRIVATE ARCHIVE CONTENT\n\n"
+                    "**Assistant:**\n\nPrivate response\n"
+                ),
+            },
+        ]
+        row = self._source_row(
+            conversation_id=archive_ref,
+            source_conversation_id=source_id,
+            source_kind="archive",
+            result_type="archive_conversation",
+            tag="",
+            title="PRIVATE ARCHIVE TITLE",
+            snippet="PRIVATE ARCHIVE CONTENT",
+        )
+        patches = (
+            mock.patch.object(
+                server, "_browser_archive_chunk_metadata", return_value=chunks,
+            ),
+            mock.patch.object(
+                server, "_browser_read_chunk_text",
+                side_effect=lambda meta: meta["text"],
+            ),
+        )
+        with patches[0], patches[1]:
+            envelope = server._browser_archive_envelope(archive_ref)
+            self.assertEqual(envelope["tag"], "private")
+            self.assertFalse(server._browser_creation_row_allowed(row, ""))
+            self.assertTrue(server._browser_creation_row_allowed(row, "private"))
+
+            discovery = self._discover(rows=[row])
+            serialized = json.dumps(discovery)
+            self.assertEqual(discovery["rows"], [])
+            self.assertNotIn("PRIVATE ARCHIVE TITLE", serialized)
+            self.assertNotIn("PRIVATE ARCHIVE CONTENT", serialized)
+
+            review = {"candidates": {
+                archive_ref: {
+                    "kind": "conversation", "ref": archive_ref,
+                    "title": "PRIVATE ARCHIVE TITLE",
+                },
+            }}
+            with self.assertRaises(ValueError):
+                server._resolve_reviewed_contributors(
+                    review, [archive_ref], target_tag="",
+                )
+            permitted = server._resolve_reviewed_contributors(
+                review, [archive_ref], target_tag="private",
+            )
+            self.assertEqual(permitted[0]["ref"], archive_ref)
+
+            runtime_memory.create_conversation_envelope(
+                "standard-archive-target",
+                title="Standard archive target",
+                description=DESCRIPTION,
+                contributors=[{
+                    "kind": "conversation", "ref": archive_ref,
+                    "title": "PRIVATE ARCHIVE TITLE",
+                }],
+                sessions_root=self.sessions,
+            )
+            standard_bundle = server.build_contributor_bundle(
+                "standard-archive-target", target_tag="",
+            )
+            self.assertEqual(standard_bundle["sources"][0]["status"], "withheld")
+            self.assertEqual(standard_bundle["units"], [])
+            private_bundle = server.build_contributor_bundle(
+                "standard-archive-target", target_tag="private",
+            )
+            self.assertEqual(private_bundle["sources"][0]["status"], "available")
+            self.assertIn(
+                "PRIVATE ARCHIVE CONTENT",
+                "\n".join(unit["content"] for unit in private_bundle["units"]),
+            )
+
+    def test_unretained_archive_contributor_is_withheld_when_ancestry_is_unprovable(self):
+        source_id = "unretained-archive-source"
+        archive_ref = server._browser_encode_source_id("archive", source_id)
+        chunk = {
+            "_row_id": 1,
+            "conversation_id": source_id,
+            "pair_num": 1,
+            "tag": "",
+            "text": (
+                "---\ntype: chat\ntags: []\n---\n"
+                "## Exchange\n\n**User:**\n\nUnproven history\n\n"
+                "**Assistant:**\n\nMust be withheld\n"
+            ),
+        }
+        runtime_memory.create_conversation_envelope(
+            "unretained-archive-target",
+            title="Unretained archive target",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Unretained archive",
+            }],
+            sessions_root=self.sessions,
+        )
+        row = self._source_row(
+            conversation_id=archive_ref,
+            source_conversation_id=source_id,
+            source_kind="archive",
+            result_type="archive_conversation",
+        )
+        review = {"candidates": {
+            archive_ref: {
+                "kind": "conversation", "ref": archive_ref,
+                "title": "Unretained archive",
+            },
+        }}
+        with (
+            mock.patch.object(
+                server, "_browser_archive_chunk_metadata", return_value=[chunk],
+            ),
+            mock.patch.object(
+                server, "_browser_read_chunk_text",
+                side_effect=lambda metadata: metadata["text"],
+            ),
+        ):
+            self.assertFalse(server._browser_creation_row_allowed(row, ""))
+            with self.assertRaises(ValueError):
+                server._resolve_reviewed_contributors(
+                    review, [archive_ref], target_tag="",
+                )
+            bundle = server.build_contributor_bundle(
+                "unretained-archive-target", target_tag="",
+            )
+
+        self.assertEqual(bundle["sources"][0]["status"], "withheld")
+        self.assertEqual(bundle["units"], [])
+
+    def test_atomic_privacy_matrix_applies_at_candidate_validation_and_runtime(self):
+        matrix = {
+            "": {"": True, "private": False, "stealth": False},
+            "private": {"": True, "private": True, "stealth": False},
+            "stealth": {"": True, "private": True, "stealth": True},
+        }
+        for target_tag, expectations in matrix.items():
+            for source_tag, expected in expectations.items():
+                tags = ["atomic"] + ([source_tag] if source_tag else [])
+                with self.subTest(target=target_tag, source=source_tag):
+                    self.assertEqual(
+                        server._atomic_contributor_privacy_allows(tags, target_tag),
+                        expected,
+                    )
+
+        private_note = self.vault / "Atomic — Private.md"
+        private_note.write_text(
+            "---\ntype: engram\ntags: [atomic, private]\n---\nPrivate fact.",
+            encoding="utf-8",
+        )
+        encoded = server._browser_encode_source_id("engram", str(private_note))
+        row = {
+            "conversation_id": encoded,
+            "source_kind": "engram",
+            "tags": ["atomic", "private"],
+            "title": "Private atomic",
+        }
+        self.assertFalse(server._browser_creation_row_allowed(row, ""))
+        self.assertTrue(server._browser_creation_row_allowed(row, "private"))
+        review = {
+            "candidates": {
+                encoded: {"kind": "atomic_note", "path": str(private_note),
+                          "title": "Private atomic"},
+            },
+        }
+        with self.assertRaises(ValueError):
+            server._resolve_reviewed_contributors(
+                review, [encoded], target_tag="",
+            )
+        self.assertEqual(
+            server._resolve_reviewed_contributors(
+                review, [encoded], target_tag="private",
+            )[0]["path"],
+            str(private_note.resolve()),
+        )
+        runtime_memory.create_conversation_envelope(
+            "standard-runtime-target",
+            title="Standard",
+            description=DESCRIPTION,
+            contributors=[{
+                "kind": "atomic_note", "path": str(private_note),
+                "title": "Private atomic",
+            }],
+            sessions_root=self.sessions,
+        )
+        runtime_bundle = server.build_contributor_bundle(
+            "standard-runtime-target", target_tag="",
+        )
+        self.assertEqual(runtime_bundle["sources"][0]["status"], "withheld")
+        self.assertEqual(runtime_bundle["units"], [])
 
     def test_creation_search_rejects_vague_descriptions(self):
         response = self.client.get(
@@ -447,8 +1236,8 @@ class G14ConversationManagementTests(unittest.TestCase):
             "Start a Dialogue without duplicating prior work",
             "Nothing is created at this point",
             "unsent draft",
-            "one parent and many contributors",
-            "Private material cannot contribute into a Standard Dialogue",
+            "one parent and any number of explicit contributors",
+            "Privacy is cumulative: Standard may use Standard sources",
             "Archived Dialogues and atomic notes remain read-only",
         ):
             self.assertIn(token, guide_body)

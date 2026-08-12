@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sys
+import types
 import unittest
 from unittest import mock
 
@@ -193,11 +194,158 @@ class TestFormatConversation(unittest.TestCase):
         self.assertIn("answer 1", text)
         self.assertIn("answer 2", text)
 
-    def test_truncates_overlong_turns(self):
+    def test_does_not_apply_a_fixed_character_cap(self):
         long_content = "x" * 5000
         history = [{"role": "user", "content": long_content}]
         text = framework_elicitation._format_conversation(history, "")
-        self.assertLess(len(text), 1700)
+        self.assertIn(long_content, text)
+
+    def test_summarizer_packs_long_history_as_whole_units_to_endpoint_capacity(self):
+        import boot
+
+        history = []
+        for index in range(12):
+            history.extend([
+                {
+                    "role": "user",
+                    "content": (
+                        f"FW-U{index:02d}-START " + ("u" * 1800)
+                        + f" FW-U{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                },
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"FW-A{index:02d}-START " + ("a" * 1800)
+                        + f" FW-A{index:02d}-END"
+                    ),
+                    "_ora_history_segment": "local",
+                },
+            ])
+        endpoint = {
+            "id": "framework-bounded", "type": "api",
+            "context_window": 22_000, "max_tokens": 2_000,
+            "_disable_truncation_retry": True,
+        }
+        captured = []
+
+        def summarizer(messages, _endpoint, images=None):
+            captured.append(messages)
+            return (
+                "ELICITED:\n- Current answer recorded\n\n"
+                "PENDING:\n- One detail\n\n"
+                "ACTION: ASK_NEXT\n\nQUESTION: What detail?\n"
+            )
+
+        fw = types.SimpleNamespace(name="Capacity Framework")
+        milestone = types.SimpleNamespace(
+            endpoint_produced="A complete bounded artifact",
+            verification_criterion="Every required field is present",
+            output_format="Markdown",
+        )
+        with (
+            mock.patch.object(boot, "get_slot_endpoint", return_value=endpoint),
+            mock.patch.object(boot, "get_active_endpoint", return_value=None),
+            mock.patch.object(boot, "call_model", side_effect=summarizer),
+        ):
+            state = framework_elicitation._ask_summarizer(
+                fw,
+                "C-Design",
+                milestone,
+                history,
+                "FW-LATEST-CURRENT",
+                {},
+            )
+
+        self.assertIsNotNone(state)
+        messages = captured[0]
+        rendered = "\n".join(message["content"] for message in messages)
+        safe_capacity = (
+            endpoint["context_window"]
+            - boot._endpoint_output_reserve(
+                endpoint, endpoint["context_window"],
+            )
+            - 128
+        )
+        self.assertLessEqual(
+            boot.estimate_message_tokens(messages, endpoint), safe_capacity,
+        )
+        self.assertEqual(rendered.count("FW-LATEST-CURRENT"), 1)
+        selected = 0
+        for index in range(12):
+            user_present = f"FW-U{index:02d}-START" in rendered
+            assistant_present = f"FW-A{index:02d}-START" in rendered
+            self.assertEqual(user_present, assistant_present)
+            if user_present:
+                selected += 1
+                self.assertIn(f"FW-U{index:02d}-END", rendered)
+                self.assertIn(f"FW-A{index:02d}-END", rendered)
+                self.assertEqual(
+                    rendered.count(f"FW-U{index:02d}-START"), 1,
+                )
+        self.assertGreater(selected, 0)
+        self.assertLess(selected, 12)
+
+    def test_current_reply_remains_required_when_history_allowance_is_zero(self):
+        import boot
+
+        fw = types.SimpleNamespace(name="Tight Capacity Framework")
+        milestone = types.SimpleNamespace(
+            endpoint_produced="A complete artifact",
+            verification_criterion="All required facts are present",
+            output_format="Markdown",
+        )
+        latest = "FW-TIGHT-CURRENT " + ("answer " * 30)
+        endpoint = {
+            "id": "framework-tight", "type": "api",
+            "max_tokens": 1_000, "_disable_truncation_retry": True,
+        }
+        required_messages = [
+            {"role": "system",
+             "content": "You are a careful elicitation summarizer."},
+            {"role": "user", "content": framework_elicitation._build_summarizer_prompt(
+                fw, "C-Design", milestone, "", latest,
+            )},
+        ]
+        endpoint["context_window"] = (
+            boot.estimate_message_tokens(required_messages, endpoint)
+            + endpoint["max_tokens"]
+            + 128
+        )
+        captured = []
+
+        with (
+            mock.patch.object(boot, "get_slot_endpoint", return_value=endpoint),
+            mock.patch.object(boot, "get_active_endpoint", return_value=None),
+            mock.patch.object(
+                boot,
+                "call_model",
+                side_effect=lambda messages, _endpoint, images=None: (
+                    captured.append(messages)
+                    or "ELICITED:\n- Current answer recorded\n\n"
+                    "PENDING:\n- One detail\n\nACTION: ASK_NEXT\n\n"
+                    "QUESTION: What detail?\n"
+                ),
+            ),
+        ):
+            state = framework_elicitation._ask_summarizer(
+                fw,
+                "C-Design",
+                milestone,
+                [{"role": "user", "content": "FW-OPTIONAL-OLD-HISTORY"}],
+                latest,
+                {},
+            )
+
+        self.assertIsNotNone(state)
+        rendered = "\n".join(message["content"] for message in captured[0])
+        self.assertEqual(rendered.count("FW-TIGHT-CURRENT"), 1)
+        self.assertNotIn("FW-OPTIONAL-OLD-HISTORY", rendered)
+        self.assertLessEqual(
+            boot.estimate_message_tokens(captured[0], endpoint),
+            endpoint["context_window"] - endpoint["max_tokens"] - 128,
+        )
 
 
 # ---------- start_elicitation flow ----------

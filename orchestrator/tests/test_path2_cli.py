@@ -164,7 +164,10 @@ class TestChunkEmissionEndToEnd(unittest.TestCase):
                 pair_num=i,
                 timestamp=f"2025-08-12T10:{i:02d}:00",
                 user_input="American Jesus narrative discussion topic.",
-                ai_response="Reply.",
+                ai_response=(
+                    "CLI-ACTIVE-WRITER-ASSISTANT-SENTINEL " + ("detail " * 1800)
+                    if i == 1 else "Reply."
+                ),
                 source_chat="~/raw/American Jesus Notes Alpha.md",
                 thread_id=f"thread_aaaa{i:04d}_001",
             )
@@ -213,6 +216,16 @@ class TestChunkEmissionEndToEnd(unittest.TestCase):
         # Stage B reports its work.
         self.assertEqual(emit_stats["sessions_processed"], 3)
         self.assertEqual(emit_stats["chunks_written"], 5)
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection
+        collection = get_or_create_collection(
+            chromadb.PersistentClient(path=self.chroma), "conversations",
+        )
+        documents = collection.get(include=["documents"])["documents"]
+        self.assertTrue(any(
+            "CLI-ACTIVE-WRITER-ASSISTANT-SENTINEL" in document
+            for document in documents
+        ))
 
 
 # ---------------------------------------------------------------------------

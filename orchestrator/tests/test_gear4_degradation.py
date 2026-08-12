@@ -111,6 +111,60 @@ class TestBothAnalystsDegradedFallsBackToGear3(unittest.TestCase):
         # config_name kwarg propagates
         self.assertIsNone(call.kwargs.get("config_name"))
 
+    def test_fallback_merges_outer_and_nested_physical_call_coverage(self):
+        depth_ep = {
+            **_fake_endpoint("depth-fake"),
+            "context_window": 10_000, "max_tokens": 100,
+        }
+        breadth_ep = {
+            **_fake_endpoint("breadth-fake"),
+            "context_window": 10_000, "max_tokens": 100,
+        }
+
+        def run_once():
+            ctx = _minimal_context_pkg()
+            ctx["optional_context_units"] = [{
+                "lane": "global", "unit_id": "coverage-unit",
+                "source_id": "global-source", "content": "reference",
+            }]
+            ctx["context_source_inventory"] = {}
+
+            def degraded(messages, endpoint, _step_name, *_args, **_kwargs):
+                boot.prepare_messages_with_continuity(
+                    messages, endpoint, history=[],
+                )
+                return "[Error calling Test API: simulated failure]", False, "transport_error"
+
+            def fallback(*_args, **_kwargs):
+                boot.prepare_messages_with_continuity(
+                    [{"role": "user", "content": "gear3 fallback"}],
+                    depth_ep, history=[],
+                )
+                return "[gear3-fallback-sentinel]"
+
+            with mock.patch.object(
+                boot, "resolve_gear4_endpoints",
+                return_value=(depth_ep, breadth_ep, True),
+            ), mock.patch.object(
+                boot, "_assemble_step_prompt", return_value="fake system prompt",
+            ), mock.patch.object(
+                boot, "_call_with_supplement", side_effect=degraded,
+            ), mock.patch.object(
+                boot, "_run_gear3_impl", side_effect=fallback,
+            ):
+                result = boot.run_gear4(
+                    ctx, config={}, history=[], images=None, config_name=None,
+                )
+            self.assertEqual(result, "[gear3-fallback-sentinel]")
+            return ctx["context_coverage"]
+
+        first = run_once()
+        second = run_once()
+        # Two streams each exercise primary + recovery fallback, then the
+        # nested Gear-3 fallback makes one physical call: all five survive.
+        self.assertEqual(first["physical_calls"], 5)
+        self.assertEqual(first, second)
+
 
 class TestStepHealthCapturesContingency(unittest.TestCase):
     """When both analysts degrade and a trace_dir is configured, the

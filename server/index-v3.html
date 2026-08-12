@@ -1529,16 +1529,25 @@
     const canFork = conversation && typeof conversation.canFork === 'function'
       ? conversation.canFork()
       : false;
+    const canForkAsMode = canFork && (
+      conversation && typeof conversation.canForkAs === 'function'
+        ? conversation.canForkAs(mode)
+        : (
+            activeTag === ''
+            || (activeTag === 'private' && (mode === 'private' || mode === 'stealth'))
+            || (activeTag === 'stealth' && mode === 'stealth')
+          )
+    );
     modeDropdownAnchor = anchorBtn;
     modeDropdownConversationId = activeId;
     const items = mode === 'private'
       ? [
           { action: 'new',  label: 'New private' },
-          { action: 'fork', label: 'Fork as private', disabled: !canFork },
+          { action: 'fork', label: 'Fork as private', disabled: !canForkAsMode },
         ]
       : [
           { action: 'new',  label: 'New stealth' },
-          { action: 'fork', label: 'Fork as stealth', disabled: !canFork },
+          { action: 'fork', label: 'Fork as stealth', disabled: !canForkAsMode },
         ];
 
     if (mode === 'private' && activeId && !readOnly && activeTag !== 'stealth') {
@@ -1547,6 +1556,7 @@
         : { action: 'make-private', label: 'Make current Private' });
     }
     if (mode === 'stealth' && activeId && !readOnly && activeTag === 'stealth') {
+      items.push({ action: 'exit-stealth', label: 'Exit Stealth' });
       items.push({ action: 'delete-forever', label: 'Delete Forever', danger: true });
     }
 
@@ -1564,7 +1574,9 @@
       if (i.disabled) {
         b.disabled = true;
         b.setAttribute('aria-disabled', 'true');
-        b.title = 'Fork becomes available after the first turn';
+        b.title = canFork
+          ? 'This parent privacy cannot flow into the requested fork mode'
+          : 'Fork becomes available after the first turn';
       }
       b.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1651,6 +1663,16 @@
       }
       if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
       conversation.deleteForever(conversationId, { source: 'mode-dropdown' });
+      return;
+    }
+    if (action === 'exit-stealth') {
+      const conversation = window.OraConversation;
+      if (!conversation || typeof conversation.exitStealth !== 'function') {
+        window.alert('Exit Stealth is unavailable.');
+        return;
+      }
+      if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
+      conversation.exitStealth(conversationId);
       return;
     }
   };

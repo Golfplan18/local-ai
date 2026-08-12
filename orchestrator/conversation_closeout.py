@@ -49,7 +49,13 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import runtime_paths as _rp
-from .conversation_memory import get_conversation_tag, set_conversation_closed
+from .conversation_memory import (
+    detach_direct_fork_children,
+    get_conversation_tag,
+    load_conversation_json,
+    read_conversation_history_envelope,
+    set_conversation_closed,
+)
 
 
 # Purge-target roots flow from runtime_paths (ORA_HOME / ORA_VAULT /
@@ -2003,22 +2009,63 @@ def delete_conversation_forever(
     chromadb_path: Path | None = None,
     vault_sessions: Path | None = None,
 ) -> dict[str, Any]:
-    """Delete all Ora-managed copies of a conversation, regardless of tag.
+    """Delete all Ora-managed copies of a Stealth conversation.
 
     Explicit flat vault exports and their sidecars are deliberately retained.
     The operation is idempotent and best-effort: one failed layer never blocks
-    the remaining layers, and every failure is both logged and returned.
+    the remaining layers, and every failure is both logged and returned.  A
+    retained Standard or Private Dialogue must be closed, never purged.
     """
     cid = _validate_conversation_id(conversation_id)
-    original_tag = get_conversation_tag(cid, sessions_root=sessions_root)
-    result = _purge_stealth(
-        cid,
-        sessions_root=sessions_root,
-        conversations_dir=conversations_dir,
-        conversations_raw=conversations_raw,
-        chromadb_path=chromadb_path,
-        vault_sessions=vault_sessions,
-    )
+    sroot = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    with _rp.conversation_lifecycle_lock(cid):
+        envelope = read_conversation_history_envelope(
+            cid, sessions_root=sroot,
+        )
+        if envelope is None:
+            # Legacy session-directory symlinks are deliberately unlinked by
+            # the purge without following or deleting their targets.  Read the
+            # pointed envelope only to prove this exact Dialogue is Stealth.
+            for container in (sroot, sroot / "archived"):
+                candidate = _safe_child(container, cid) / "conversation.json"
+                if not candidate.parent.is_symlink():
+                    continue
+                try:
+                    pointed = json.loads(candidate.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if (isinstance(pointed, dict)
+                        and isinstance(pointed.get("messages"), list)
+                        and _same_conversation(pointed.get("conversation_id"), cid)):
+                    envelope = pointed
+                    break
+        if envelope is None:
+            # Missing state is an idempotent retry.  Existing unreadable state
+            # is not: without its authoritative tag, Stealth cannot be proven.
+            live_path = _safe_child(sroot, cid) / "conversation.json"
+            retained_path = _safe_child(sroot / "archived", cid) / "conversation.json"
+            if live_path.exists() or live_path.is_symlink() or (
+                retained_path.exists() or retained_path.is_symlink()
+            ):
+                raise PermissionError(
+                    "Delete Forever requires a readable Stealth Dialogue"
+                )
+            original_tag = ""
+        else:
+            original_tag = envelope.get("tag", "")
+            if original_tag != "stealth":
+                raise PermissionError(
+                    "Delete Forever is available only for Stealth Dialogues; "
+                    "use Close for Standard or Private Dialogues"
+                )
+        result = _purge_stealth_unlocked(
+            cid,
+            sessions_root=sroot,
+            conversations_dir=conversations_dir,
+            conversations_raw=conversations_raw,
+            chromadb_path=chromadb_path,
+            vault_sessions=vault_sessions,
+        )
     result["tag"] = original_tag
     result["action"] = "delete_forever"
     result["retained"] = {
@@ -2140,6 +2187,16 @@ def _purge_stealth_unlocked(
     craw = Path(conversations_raw) if conversations_raw else _DEFAULT_CONVERSATIONS_RAW
     chroma = Path(chromadb_path) if chromadb_path else _DEFAULT_CHROMADB_PATH
     vroot = Path(vault_sessions) if vault_sessions else _DEFAULT_VAULT_SESSIONS
+
+    parent_envelope = load_conversation_json(
+        conversation_id, sessions_root=sroot,
+    )
+    parent_messages = (
+        parent_envelope.get("messages")
+        if isinstance(parent_envelope, dict)
+        and isinstance(parent_envelope.get("messages"), list)
+        else None
+    )
 
     errors: list[str] = []
     deleted: dict[str, Any] = {
@@ -2618,33 +2675,28 @@ def _purge_stealth_unlocked(
     # token in data/execution-approvals.json carrying the conversation_id.
     # Scrub any token bound to the purged conversation so the stealth
     # zero-residue promise covers the approval store too (condition 9).
+    deleted["task_tokens"] = 0
     try:
-        import json as _json_tok
         from . import tool_events as _te_tok
-        # Use the writer's call-time path resolver (env/sandbox/monkeypatch
-        # aware), then share its sidecar lock for the full read-modify-replace
-        # cycle so a concurrent grant/consume cannot be lost.
-        _appr = Path(_te_tok._approvals_path())
-        deleted["task_tokens"] = 0
-        with _rp.locked_file(_appr):
-            if _appr.exists():
-                if _appr.is_symlink() or not _appr.is_file():
-                    raise ValueError(f"refusing non-regular approvals store {_appr}")
-                data = _json_tok.loads(_appr.read_text(encoding="utf-8"))
-                if not isinstance(data, dict):
-                    raise ValueError("approvals store is not an object")
-                toks = data.get("tokens", [])
-                if not isinstance(toks, list):
-                    raise ValueError("approvals tokens is not a list")
-                kept_toks = [t for t in toks
-                             if not _record_matches(t, conversation_id)]
-                dropped = len(toks) - len(kept_toks)
-                if dropped:
-                    data["tokens"] = kept_toks
-                    _atomic_write_text(
-                        _appr, _json_tok.dumps(data, ensure_ascii=False) + "\n",
-                    )
-                    deleted["task_tokens"] = dropped
+
+        def drop_conversation_tokens() -> int:
+            data = _te_tok._load_approvals_locked()
+            tokens = data.get("tokens", [])
+            kept = [
+                token for token in tokens
+                if not _record_matches(token, conversation_id)
+            ]
+            dropped = len(tokens) - len(kept)
+            if dropped:
+                data["tokens"] = kept
+                # Re-sign through the approval authority's existing atomic
+                # writer; a raw rewrite would invalidate the v2 store MAC.
+                _te_tok._save_approvals(data)
+            return dropped
+
+        deleted["task_tokens"] = _te_tok._with_approvals_lock(
+            drop_conversation_tokens,
+        )
     except Exception as e:
         _record_error(errors, "task_tokens purge", e)
 
@@ -2810,6 +2862,23 @@ def _purge_stealth_unlocked(
     except Exception as exc:
         deleted["legacy_dispatch_session_logs"] = []
         _record_error(errors, "legacy dispatcher logs", exc)
+
+    # --- Final layer: direct fork detachment -------------------------------
+    # The parent envelope has now been purged. Current children contain only
+    # local turns; legacy copied-history children are scrubbed only when the
+    # deleted parent's complete transcript is an exact prefix.
+    try:
+        fork_children = detach_direct_fork_children(
+            conversation_id,
+            parent_messages=parent_messages,
+            sessions_root=sroot,
+        )
+        deleted["fork_children"] = fork_children
+        for error in fork_children.get("errors") or []:
+            _record_error(errors, "fork child detachment", error)
+    except Exception as exc:
+        deleted["fork_children"] = {}
+        _record_error(errors, "fork child detachment", exc)
 
     return {
         "conversation_id": conversation_id,

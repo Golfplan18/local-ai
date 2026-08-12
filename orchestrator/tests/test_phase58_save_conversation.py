@@ -18,6 +18,7 @@ for legacy dispatch; tag_private boolean added per Phase 5.3).
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -167,8 +168,10 @@ class TestSaveConversationLockstep(unittest.TestCase):
         self.raw_dir = os.path.join(self.tmpdir, "raw")
         self.conv_dir = os.path.join(self.tmpdir, "conversations")
         self.chroma_dir = os.path.join(self.tmpdir, "chromadb")
+        self.data_dir = os.path.join(self.tmpdir, "data")
         os.makedirs(self.raw_dir)
         os.makedirs(self.conv_dir)
+        os.makedirs(self.data_dir)
 
         # Patch module-level paths and dependencies.
         self._patches = [
@@ -183,6 +186,8 @@ class TestSaveConversationLockstep(unittest.TestCase):
         # Stub load_config so the chunk routes to our temp chromadb.
         self._original_load = server.load_config
         server.load_config = lambda: {"chromadb_path": self.chroma_dir}
+        self._original_data_dir = server.rp.DATA_DIR_STR
+        server.rp.DATA_DIR_STR = self.data_dir
 
         # Stub get_endpoint so model_id is predictable.
         self._original_endpoint = server.get_endpoint
@@ -194,9 +199,18 @@ class TestSaveConversationLockstep(unittest.TestCase):
             lambda u, a, d, p, m, n: ("Stub context header.", ["topic-x", "topic-y"])
         )
 
-        # Stub the embedder so we don't hit Ollama.
+        # Stub the embedder so tests never hit a provider. Conversation
+        # indexing now requires the explicit orientation vector; allowing
+        # Chroma to embed the full retrieval document would dilute the query.
+        from orchestrator.embedding import EMBEDDING_DIM
         self._original_embed = server._nomic_embed
-        server._nomic_embed = lambda text: None  # let chroma use default
+        self.embedding_inputs = []
+
+        def fake_embed(text):
+            self.embedding_inputs.append(text)
+            return [0.0] * EMBEDDING_DIM
+
+        server._nomic_embed = fake_embed
 
         # Reset session state.
         self._original_sess = server._session_data
@@ -206,6 +220,7 @@ class TestSaveConversationLockstep(unittest.TestCase):
         for name, _ in self._patches:
             setattr(server, name, self._originals[name])
         server.load_config = self._original_load
+        server.rp.DATA_DIR_STR = self._original_data_dir
         server.get_endpoint = self._original_endpoint
         server._generate_chunk_metadata = self._original_meta
         server._nomic_embed = self._original_embed
@@ -215,7 +230,9 @@ class TestSaveConversationLockstep(unittest.TestCase):
 
     def _save(self, user, assistant, panel="conv-test-001",
               is_new=True, tag=""):
-        server._save_conversation(user, assistant, panel, is_new, tag=tag)
+        return server._save_conversation(
+            user, assistant, panel, is_new, tag=tag,
+        )
 
     def _read_chunk_file(self):
         # The most recent .md file in CONVERSATIONS_DIR.
@@ -230,8 +247,9 @@ class TestSaveConversationLockstep(unittest.TestCase):
 
     def _read_chroma_meta(self, conversation_id):
         import chromadb
+        from orchestrator.embedding import get_collection
         client = chromadb.PersistentClient(path=self.chroma_dir)
-        col = client.get_collection("conversations")
+        col = get_collection(client, "conversations")
         return col.get(where={"conversation_id": conversation_id})
 
     def test_chunk_yaml_has_schema12_keys_only(self):
@@ -282,6 +300,32 @@ class TestSaveConversationLockstep(unittest.TestCase):
         # not appear as a tag value.
         self.assertNotIn("- stealth", body)
 
+    def test_stealth_preserves_sources_without_embedding_or_global_index(self):
+        chunk_id = self._save(
+            "Stealth user text", "Stealth assistant text", tag="stealth",
+        )
+
+        self.assertRegex(chunk_id, r"^session-.+-pair-001$")
+        chunk = self._read_chunk_file()
+        self.assertIn("Stealth user text", chunk)
+        self.assertIn("Stealth assistant text", chunk)
+        raw_files = [
+            os.path.join(self.raw_dir, name)
+            for name in os.listdir(self.raw_dir) if name.endswith(".md")
+        ]
+        self.assertEqual(len(raw_files), 1)
+        with open(raw_files[0], encoding="utf-8") as stream:
+            self.assertIn("Stealth user text", stream.read())
+        manifest_path = os.path.join(
+            self.data_dir, "conversation-manifest.jsonl",
+        )
+        with open(manifest_path, encoding="utf-8") as stream:
+            manifest = json.loads(stream.read())
+        self.assertEqual(manifest["chunk_id"], chunk_id)
+        self.assertEqual(manifest["tag"], "stealth")
+        self.assertEqual(self.embedding_inputs, [])
+        self.assertFalse(os.path.exists(self.chroma_dir))
+
     def test_chromadb_has_full_metadata_schema(self):
         self._save("Hello, what is Python?", "Python is a programming language.")
         result = self._read_chroma_meta("conv-test-001")
@@ -305,6 +349,17 @@ class TestSaveConversationLockstep(unittest.TestCase):
         self.assertIn("tag_archived", meta)
         self.assertIn("tag_incubating", meta)
         self.assertIn("tag_private", meta)
+
+    def test_retrieval_document_contains_answer_but_embedding_orientation_does_not(self):
+        self._save("Unique user question", "Unique assistant answer")
+        result = self._read_chroma_meta("conv-test-001")
+        self.assertIn("**User:**\n\nUnique user question", result["documents"][0])
+        self.assertIn(
+            "**Assistant:**\n\nUnique assistant answer", result["documents"][0],
+        )
+        self.assertEqual(len(self.embedding_inputs), 1)
+        self.assertIn("Unique user question", self.embedding_inputs[0])
+        self.assertNotIn("Unique assistant answer", self.embedding_inputs[0])
 
     def test_chromadb_first_turn_marked_correctly(self):
         self._save("Turn 1", "Response 1")
@@ -401,9 +456,11 @@ class TestOutputDestinationOverride(unittest.TestCase):
         self.default_dir = os.path.join(self.tmpdir, "default")
         self.override_dir = os.path.join(self.tmpdir, "override")
         self.chroma_dir  = os.path.join(self.tmpdir, "chromadb")
+        self.data_dir = os.path.join(self.tmpdir, "data")
         os.makedirs(self.raw_dir)
         os.makedirs(self.default_dir)
         os.makedirs(self.override_dir)
+        os.makedirs(self.data_dir)
 
         self._originals = {
             "CONVERSATIONS_RAW": server.CONVERSATIONS_RAW,
@@ -414,6 +471,8 @@ class TestOutputDestinationOverride(unittest.TestCase):
 
         self._original_load = server.load_config
         server.load_config = lambda: {"chromadb_path": self.chroma_dir}
+        self._original_data_dir = server.rp.DATA_DIR_STR
+        server.rp.DATA_DIR_STR = self.data_dir
         self._original_endpoint = server.get_endpoint
         server.get_endpoint = lambda cfg: {"name": "test-model"}
         self._original_meta = server._generate_chunk_metadata
@@ -429,6 +488,7 @@ class TestOutputDestinationOverride(unittest.TestCase):
         for name, value in self._originals.items():
             setattr(server, name, value)
         server.load_config = self._original_load
+        server.rp.DATA_DIR_STR = self._original_data_dir
         server.get_endpoint = self._original_endpoint
         server._generate_chunk_metadata = self._original_meta
         server._nomic_embed = self._original_embed

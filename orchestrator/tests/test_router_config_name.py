@@ -30,6 +30,98 @@ ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
 from router import Router  # noqa: E402
+import boot  # noqa: E402
+
+
+class TestApiCapacityMetadata(unittest.TestCase):
+    def test_production_api_route_keeps_positive_bounded_phase_a_and_gear_history(self):
+        raw_endpoint = {
+            "id": "openrouter/production-shaped",
+            "type": "api",
+            "service": "openrouter",
+            "model_id": "vendor/production-shaped",
+            "enabled": True,
+            "status": "active",
+            "context_window": 131_072,
+            "max_output_tokens": 8_192,
+            "capabilities": {
+                "tool_access": True,
+                "web_access": False,
+                "retrieval_approach": "pre-assembled",
+            },
+        }
+        router = Router(config_dict={"endpoints": [raw_endpoint]})
+        endpoint = router._to_v1_endpoint(raw_endpoint)
+
+        self.assertEqual(endpoint["context_window"], 131_072)
+        self.assertEqual(endpoint["max_tokens"], 8_192)
+        self.assertEqual(endpoint["max_output_tokens"], 8_192)
+
+        history = []
+        for index in range(40):
+            history.extend([
+                {
+                    "role": "user",
+                    "content": f"ROUTE-U{index:02d}:" + ("u" * 2000),
+                },
+                {
+                    "role": "assistant",
+                    "content": f"ROUTE-A{index:02d}:" + ("a" * 2000),
+                },
+            ])
+
+        gear_messages, gear_stats = boot.prepare_messages_with_continuity(
+            [
+                {"role": "system", "content": "gear system"},
+                {"role": "user", "content": "gear current"},
+            ],
+            endpoint,
+            history,
+        )
+        self.assertGreater(gear_stats["history_selected_units"], 0)
+        self.assertLess(gear_stats["history_selected_units"], 40)
+        self.assertLessEqual(
+            boot.estimate_message_tokens(gear_messages, endpoint),
+            gear_stats["safe_input_capacity"],
+        )
+        self.assertIn("ROUTE-U39:", "\n".join(
+            message["content"] for message in gear_messages
+        ))
+
+        captured = []
+
+        def phase_a(messages, _endpoint, images=None):
+            captured.append(messages)
+            return (
+                "### CLEANED PROMPT (Natural Language)\nAnalyse routing.\n"
+                "### CLEANED PROMPT (Operational Notation)\nanalyse_routing()\n"
+                "### CORRECTIONS LOG\nNone\n"
+                "### INFERRED ITEMS\nNone"
+            )
+
+        with (
+            mock.patch.object(boot, "get_slot_endpoint", return_value=endpoint),
+            mock.patch.object(boot, "call_model", side_effect=phase_a),
+            mock.patch.object(boot, "pre_phase_a_bypass_check", return_value=None),
+        ):
+            boot.run_step1_cleanup(
+                "Analyse routing.",
+                "",
+                {},
+                conversation_history=history,
+            )
+
+        phase_a_text = captured[0][-1]["content"]
+        self.assertIn("ROUTE-U39:", phase_a_text)
+        self.assertNotIn("ROUTE-U00:", phase_a_text)
+        self.assertLessEqual(
+            boot.estimate_message_tokens(captured[0], endpoint),
+            endpoint["context_window"]
+            - boot._endpoint_output_reserve(
+                endpoint, endpoint["context_window"],
+            )
+            - 128,
+        )
 
 
 class TestConfigNameEquivalence(unittest.TestCase):

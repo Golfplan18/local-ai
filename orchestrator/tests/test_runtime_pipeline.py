@@ -81,6 +81,52 @@ class TestStep7ChromadbIngest(unittest.TestCase):
         self.assertIn(os.path.abspath(self.note), fake.added_ids)
         get_collection.assert_called_once_with(os.path.abspath(custom_chroma))
 
+    def test_empty_structured_history_preserves_prompt_output_fallback(self):
+        captured = {}
+
+        class FakeEngine:
+            def __init__(self, **_kwargs):
+                pass
+
+            def extract(self, markdown_text, type_result, **kwargs):
+                captured["markdown_text"] = markdown_text
+                captured["type_result"] = type_result
+                captured.update(kwargs)
+                return types.SimpleNamespace(screened=[])
+
+        fake_input = types.SimpleNamespace(
+            detect_input_type=lambda _text: {
+                "type": "short_document", "details": {},
+            },
+        )
+        fake_extraction = types.SimpleNamespace(ExtractionEngine=FakeEngine)
+        fake_quality = types.SimpleNamespace(evaluate_batch=lambda _items: {})
+        pipeline = rp.RuntimePipeline(config={"configured": True})
+        data = rp.SessionData(
+            session_id="fallback-run",
+            timestamp="2026-08-10T00:00:00",
+            mode="",
+            gear=0,
+            user_prompt="fallback user",
+            final_output="fallback assistant",
+            conversation_history=[],
+        )
+
+        with mock.patch.dict(sys.modules, {
+            "input_detect": fake_input,
+            "extraction_engine": fake_extraction,
+            "quality_gate": fake_quality,
+        }):
+            result = pipeline._step4_knowledge_extraction(data)
+
+        self.assertIn("fallback user", captured["markdown_text"])
+        self.assertIn("fallback assistant", captured["markdown_text"])
+        self.assertIsNone(captured["history_messages"])
+        self.assertEqual(result, {
+            "extracted": 0, "approved": 0, "review": 0,
+            "staged_paths": [],
+        })
+
     def test_explicit_run_paths_do_not_sweep_another_conversation_note(self):
         sibling = os.path.join(self.tmp, "Another conversation.md")
         with open(sibling, "w", encoding="utf-8") as f:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import struct
 import tempfile
 import threading
 import time
@@ -11,6 +13,15 @@ from unittest import mock
 from orchestrator.tools import chroma_source_rebuild as rebuild
 
 
+def _shift_float32_ulps(value: float, steps: int) -> float:
+    bits = struct.unpack(">I", struct.pack(">f", float(value)))[0]
+    if bits & 0x80000000:
+        bits -= steps
+    else:
+        bits += steps
+    return struct.unpack(">f", struct.pack(">I", bits))[0]
+
+
 def _cleaned_pair(
     *,
     source: str = "~/Documents/raw/example.md",
@@ -18,7 +29,9 @@ def _cleaned_pair(
     user: str = "Question",
     assistant: str = "Answer",
     private: bool = False,
+    stealth: bool = False,
 ) -> str:
+    tag = "stealth" if stealth else "private" if private else ""
     return f"""---
 nexus:
 type: cleaned-pair
@@ -33,7 +46,7 @@ prior_pair:
 next_pair:
 processing_model: test
 processed_at: 2026-07-12T00:00:00
-tags: [{"private" if private else ""}]
+tags: [{tag}]
 ---
 
 ## Context
@@ -103,7 +116,7 @@ class _FakeCollection:
         self.rows = {}
         self.fail_once = fail_once
 
-    def upsert(self, *, ids, documents, metadatas):
+    def upsert(self, *, ids, documents, metadatas, embeddings=None):
         if self.fail_once:
             self.fail_once = False
             raise RuntimeError("synthetic interruption")
@@ -203,6 +216,179 @@ class _MSIComposer:
         return Path(filepath).stem
 
 
+class _PromotionCollection:
+    def __init__(
+        self, name, metadata, rows=None, *,
+        fail_upsert=False, corrupt_documents=False, corrupt_embeddings=False,
+        embedding_ulp_drift=0,
+    ):
+        self.name = name
+        self.metadata = dict(metadata)
+        self.rows = dict(rows or {})
+        self.fail_upsert = fail_upsert
+        self.corrupt_documents = corrupt_documents
+        self.corrupt_embeddings = corrupt_embeddings
+        self.embedding_ulp_drift = embedding_ulp_drift
+
+    def count(self):
+        return len(self.rows)
+
+    def get(self, *, ids=None, include=None):
+        selected = list(self.rows) if ids is None else [
+            row_id for row_id in ids if row_id in self.rows
+        ]
+        include = include or []
+        result = {"ids": selected}
+        if "documents" in include:
+            result["documents"] = [self.rows[row_id][0] for row_id in selected]
+            if self.corrupt_documents and result["documents"]:
+                result["documents"][0] += "\ncorrupted"
+        if "metadatas" in include:
+            result["metadatas"] = [self.rows[row_id][1] for row_id in selected]
+        if "embeddings" in include:
+            result["embeddings"] = [self.rows[row_id][2] for row_id in selected]
+            if self.corrupt_embeddings and result["embeddings"]:
+                result["embeddings"][0] = list(result["embeddings"][0])
+                result["embeddings"][0][0] += 0.25
+            elif self.embedding_ulp_drift and result["embeddings"]:
+                result["embeddings"][0] = list(result["embeddings"][0])
+                result["embeddings"][0][0] = _shift_float32_ulps(
+                    result["embeddings"][0][0], self.embedding_ulp_drift,
+                )
+        return result
+
+    def upsert(self, *, ids, documents, metadatas, embeddings):
+        if self.fail_upsert:
+            raise RuntimeError("synthetic copy failure")
+        for row_id, document, metadata, vector in zip(
+            ids, documents, metadatas, embeddings,
+        ):
+            self.rows[row_id] = (document, metadata, list(vector))
+
+    @staticmethod
+    def _matches(metadata, where):
+        if where is None:
+            return True
+        if "$and" in where:
+            return all(
+                _PromotionCollection._matches(metadata, clause)
+                for clause in where["$and"]
+            )
+        key, condition = next(iter(where.items()))
+        if "$ne" in condition:
+            return metadata.get(key) != condition["$ne"]
+        raise AssertionError(f"unsupported fake where clause: {where}")
+
+    def query(self, *, query_embeddings, n_results, include, where=None):
+        query = query_embeddings[0]
+        candidates = [
+            (sum((left - right) ** 2 for left, right in zip(query, vector)), row_id)
+            for row_id, (_document, metadata, vector) in self.rows.items()
+            if self._matches(metadata, where)
+        ]
+        selected = [row_id for _distance, row_id in sorted(candidates)[:n_results]]
+        result = {"ids": [selected]}
+        if "documents" in include:
+            result["documents"] = [[self.rows[row_id][0] for row_id in selected]]
+        if "metadatas" in include:
+            result["metadatas"] = [[self.rows[row_id][1] for row_id in selected]]
+        if "distances" in include:
+            result["distances"] = [[distance for distance, _row_id in sorted(candidates)[:n_results]]]
+        return result
+
+
+class _PromotionClient:
+    def __init__(
+        self, collections, *,
+        fail_created_upsert=False, corrupt_created_documents=False,
+        corrupt_created_embeddings=False,
+        created_embedding_ulp_drift=0,
+    ):
+        self.collections = {collection.name: collection for collection in collections}
+        self.fail_created_upsert = fail_created_upsert
+        self.corrupt_created_documents = corrupt_created_documents
+        self.corrupt_created_embeddings = corrupt_created_embeddings
+        self.created_embedding_ulp_drift = created_embedding_ulp_drift
+        self.created = []
+        self.deleted = []
+
+    def list_collections(self):
+        return list(self.collections.values())
+
+    def get_collection(self, *, name, embedding_function):
+        return self.collections[name]
+
+    def create_collection(self, *, name, metadata, embedding_function):
+        if name in self.collections:
+            raise AssertionError("test attempted to overwrite a collection")
+        collection = _PromotionCollection(
+            name, metadata,
+            fail_upsert=self.fail_created_upsert,
+            corrupt_documents=self.corrupt_created_documents,
+            corrupt_embeddings=self.corrupt_created_embeddings,
+            embedding_ulp_drift=self.created_embedding_ulp_drift,
+        )
+        self.collections[name] = collection
+        self.created.append(name)
+        return collection
+
+    def delete_collection(self, *, name):
+        self.deleted.append(name)
+        del self.collections[name]
+
+
+class CopiedEmbeddingComparisonTests(unittest.TestCase):
+    profile = {"dimension": 3}
+
+    @staticmethod
+    def _collection(vector):
+        return _PromotionCollection(
+            "conversations", {}, {"row": ("document", {}, vector)},
+        )
+
+    def test_nonfinite_and_dimension_mismatch_fail_closed(self):
+        source = self._collection([1.0, 0.0, 0.0])
+        with self.assertRaisesRegex(rebuild.RebuildError, "dimension"):
+            rebuild._compare_copied_embeddings(
+                source, self._collection([1.0, 0.0]), self.profile, 1,
+            )
+        with self.assertRaisesRegex(rebuild.RebuildError, "non-finite"):
+            rebuild._compare_copied_embeddings(
+                source, self._collection([float("nan"), 0.0, 0.0]),
+                self.profile, 1,
+            )
+
+    def test_signed_zero_and_cross_zero_adjacent_values_are_canonical(self):
+        minimum_subnormal = struct.unpack(">f", struct.pack(">I", 1))[0]
+        source = self._collection([-0.0, -minimum_subnormal, 0.0])
+        target = self._collection([0.0, -0.0, minimum_subnormal])
+
+        report = rebuild._compare_copied_embeddings(
+            source, target, self.profile, 1,
+        )
+
+        self.assertEqual(report["drifted_rows"], 1)
+        self.assertEqual(report["drifted_components"], 2)
+        self.assertEqual(report["max_float32_ulp"], 1)
+
+    def test_misaligned_embedding_batch_fails_closed(self):
+        source = self._collection([1.0, 0.0, 0.0])
+        target = self._collection([1.0, 0.0, 0.0])
+        original_get = target.get
+
+        def misaligned_get(*, ids=None, include=None):
+            result = original_get(ids=ids, include=include)
+            if include and "embeddings" in include:
+                result["embeddings"] = []
+            return result
+
+        with mock.patch.object(target, "get", side_effect=misaligned_get):
+            with self.assertRaisesRegex(rebuild.RebuildError, "misaligned"):
+                rebuild._compare_copied_embeddings(
+                    source, target, self.profile, 1,
+                )
+
+
 class ConversationSourceRebuildTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -256,7 +442,10 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(row.metadata["chunk_path"], durable_pair)
         self.assertEqual(row.metadata["obsidian_path"], durable_pair)
         self.assertEqual(row.metadata["source"], "pair.md")
-        self.assertEqual(row.document, f"{context}\n\nQuestion")
+        self.assertIn(context, row.document)
+        self.assertIn("**User:**\n\nQuestion", row.document)
+        self.assertIn("**Assistant:**\n\nAnswer", row.document)
+        self.assertEqual(row.embedding_text, f"{context}\n\nQuestion")
 
     def test_chain_and_private_metadata_are_preserved(self):
         source = "~/Documents/raw/private.md"
@@ -276,6 +465,86 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertTrue(metadata["tag_private"])
         self.assertEqual(metadata["chain_id"], "chain-1")
         self.assertEqual(metadata["chain_label"], "Example chain")
+
+    def test_historical_stealth_pair_is_ignored_without_source_mutation(self):
+        source = self.archive / "stealth-pair.md"
+        content = _cleaned_pair(stealth=True)
+        source.write_text(content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.historical_files, 0)
+        self.assertIn(str(source), plan.ignored_files)
+        self.assertEqual(source.read_text(encoding="utf-8"), content)
+
+    def test_mixed_stealth_session_excludes_all_pairs_and_derived_copy(self):
+        source_chat = "~/Documents/raw/mixed.md"
+        standard = self.archive / "pair-1.md"
+        stealth = self.archive / "pair-2.md"
+        standard_content = _cleaned_pair(
+            source=source_chat,
+            pair=1,
+            user="Standard sibling",
+            assistant="Standard answer",
+        )
+        stealth_content = _cleaned_pair(
+            source=source_chat,
+            pair=2,
+            user="Stealth sibling",
+            assistant="Stealth answer",
+            stealth=True,
+        )
+        standard.write_text(standard_content, encoding="utf-8")
+        stealth.write_text(stealth_content, encoding="utf-8")
+        context = (
+            "Conversation 'Example' on chatgpt, dated 2025-01-02, "
+            "comprising 1 prompt+response pair(s).\n\n"
+            "Pair 1 of 1. Topic keywords for this pair: question."
+        )
+        (self.conversations / "2025-01-02_03-04_question.md").write_text(
+            _chunk(
+                context=context,
+                user="Standard sibling",
+                assistant="Standard answer",
+            ),
+            encoding="utf-8",
+        )
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.historical_files, 0)
+        self.assertEqual(plan.historical_sessions, 0)
+        self.assertEqual(plan.derived_historical_files, 1)
+        self.assertEqual(plan.live_files, 0)
+        self.assertCountEqual(
+            plan.ignored_files,
+            [str(standard), str(stealth)],
+        )
+        self.assertEqual(standard.read_text(encoding="utf-8"), standard_content)
+        self.assertEqual(stealth.read_text(encoding="utf-8"), stealth_content)
+
+    def test_historical_empty_user_voice_reuses_exact_context_orientation(self):
+        (self.archive / "pair.md").write_text(
+            _cleaned_pair(user="Pasted source material"), encoding="utf-8"
+        )
+        with mock.patch.object(rebuild, "_user_voice_only", return_value=""):
+            plan = self._plan()
+
+        plan.require_valid()
+        row = plan.records[0]
+        context = row.document.split(
+            "## Context\n\n", 1,
+        )[1].split("\n\n## Exchange", 1)[0]
+        self.assertEqual(row.embedding_text, context)
+        self.assertNotIn("Pasted source material", row.embedding_text)
+        self.assertEqual(
+            row.metadata["embedding_text_sha256"],
+            hashlib.sha256(context.encode("utf-8")).hexdigest(),
+        )
 
     def test_filtered_pair_gaps_preserve_turn_numbers_and_finalize_at_maximum(self):
         source = "~/Documents/raw/filtered.md"
@@ -321,7 +590,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertTrue(all(row.metadata["tag"] == "private" for row in plan.records))
         self.assertTrue(all(row.metadata["tag_private"] for row in plan.records))
 
-    def test_live_marker_uses_exact_ownership_and_excludes_assistant_from_document(self):
+    def test_live_marker_uses_exact_ownership_and_complete_retrieval_document(self):
         context = (
             "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
             "Turn 2 of an ongoing conversation."
@@ -347,8 +616,10 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(row.row_id, "session-abc-pair-002")
         self.assertEqual(row.metadata["conversation_id"], "conv-1")
         self.assertEqual(row.metadata["turn_index"], 2)
-        self.assertEqual(row.document, f"{context}\n\nQuestion")
-        self.assertNotIn("Answer", row.document)
+        self.assertIn(context, row.document)
+        self.assertIn("**User:**\n\nQuestion", row.document)
+        self.assertIn("**Assistant:**\n\nAnswer", row.document)
+        self.assertEqual(row.embedding_text, f"{context}\n\nQuestion")
 
     def test_latest_matching_manifest_owner_replays_unmarked_legacy_chunk(self):
         context = (
@@ -434,7 +705,140 @@ class ConversationSourceRebuildTests(unittest.TestCase):
         self.assertEqual(plan.records[0].metadata["conversation_id"], "conv-2")
         self.assertEqual(plan.shadowed_manifest_entries, 1)
 
-    def test_stealth_source_is_never_planned(self):
+    def test_manifest_owned_stealth_source_is_excluded_without_mutation(self):
+        context = (
+            "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
+            "Turn 1 of an ongoing conversation."
+        )
+        path = self.conversations / "2026-07-12_12-30_q.md"
+        path.write_text(_chunk(context=context), encoding="utf-8")
+        manifest_content = json.dumps({
+            "conversation_id": "conv-1",
+            "chunk_id": "session-x-pair-001",
+            "chunk_path": str(path),
+            "raw_path": "",
+            "tag": "stealth",
+        }) + "\n"
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+        chunk_content = path.read_text(encoding="utf-8")
+
+        plan = self._plan()
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertIn(str(path), plan.ignored_files)
+        self.assertEqual(path.read_text(encoding="utf-8"), chunk_content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_mixed_live_stealth_session_excludes_every_owned_turn(self):
+        paths = [
+            self.conversations / "2026-07-12_12-30_standard.md",
+            self.conversations / "2026-07-12_12-31_stealth.md",
+        ]
+        contents = []
+        manifest_records = []
+        for turn, (path, tag) in enumerate(zip(paths, ("", "stealth")), 1):
+            context = (
+                "Local AI session on 2026-07-12, panel 'conv-1', "
+                f"model model-x. Turn {turn} of an ongoing conversation."
+            )
+            content = _chunk(
+                context=context,
+                user=f"Question {turn}",
+                assistant=f"Answer {turn}",
+            )
+            path.write_text(content, encoding="utf-8")
+            contents.append(content)
+            manifest_records.append({
+                "conversation_id": "conv-1",
+                "chunk_id": f"session-x-pair-{turn:03d}",
+                "chunk_path": str(path),
+                "raw_path": "",
+                "tag": tag,
+            })
+        manifest_content = "".join(
+            json.dumps(record) + "\n" for record in manifest_records
+        )
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertCountEqual(plan.ignored_files, [str(path) for path in paths])
+        for path, content in zip(paths, contents):
+            self.assertEqual(path.read_text(encoding="utf-8"), content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_shadowed_stealth_turn_excludes_standard_live_sibling(self):
+        historical = self.archive / "historical-pair.md"
+        historical_content = _cleaned_pair(
+            source="~/Documents/raw/unrelated.md",
+        )
+        historical.write_text(historical_content, encoding="utf-8")
+        standard = self.conversations / "2026-07-12_12-30_standard.md"
+        standard_content = _chunk(
+            context=(
+                "Local AI session on 2026-07-12, panel 'conv-1', "
+                "model model-x. Turn 1 of an ongoing conversation."
+            ),
+            user="Standard sibling",
+            assistant="Standard answer",
+        )
+        standard.write_text(standard_content, encoding="utf-8")
+        stealth = self.conversations / "2026-07-12_12-31_stealth.md"
+        historical_context = (
+            "Conversation 'Example' on chatgpt, dated 2025-01-02, "
+            "comprising 1 prompt+response pair(s).\n\n"
+            "Pair 1 of 1. Topic keywords for this pair: question."
+        )
+        stealth_content = _chunk(context=historical_context)
+        stealth.write_text(stealth_content, encoding="utf-8")
+        manifest_records = [
+            {
+                "conversation_id": "conv-1",
+                "chunk_id": "session-x-pair-001",
+                "chunk_path": str(standard),
+                "raw_path": "",
+                "tag": "",
+            },
+            {
+                "conversation_id": "conv-1",
+                "chunk_id": "session-x-pair-002",
+                "chunk_path": str(stealth),
+                "raw_path": "",
+                "tag": "stealth",
+            },
+        ]
+        manifest_content = "".join(
+            json.dumps(record) + "\n" for record in manifest_records
+        )
+        self.manifest.write_text(manifest_content, encoding="utf-8")
+
+        plan = self._plan()
+
+        plan.require_valid()
+        self.assertEqual(len(plan.records), 1)
+        self.assertNotEqual(
+            plan.records[0].metadata["conversation_id"], "conv-1",
+        )
+        self.assertEqual(plan.historical_files, 1)
+        self.assertEqual(plan.live_files, 0)
+        self.assertEqual(plan.derived_historical_files, 1)
+        self.assertEqual(plan.ignored_files, [str(standard)])
+        self.assertEqual(historical.read_text(encoding="utf-8"), historical_content)
+        self.assertEqual(standard.read_text(encoding="utf-8"), standard_content)
+        self.assertEqual(stealth.read_text(encoding="utf-8"), stealth_content)
+        self.assertEqual(
+            self.manifest.read_text(encoding="utf-8"), manifest_content,
+        )
+
+    def test_stealth_envelope_excludes_live_source_with_stale_manifest_tag(self):
         context = (
             "Local AI session on 2026-07-12, panel 'conv-1', model model-x. "
             "Turn 1 of an ongoing conversation."
@@ -446,13 +850,28 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             "chunk_id": "session-x-pair-001",
             "chunk_path": str(path),
             "raw_path": "",
-            "tag": "stealth",
+            "tag": "",
         }) + "\n", encoding="utf-8")
+        envelope_path = self.sessions / "conv-1" / "conversation.json"
+        envelope_path.parent.mkdir()
+        envelope_content = json.dumps({
+            "conversation_id": "conv-1",
+            "tag": "stealth",
+            "messages": [
+                {"role": "user", "content": "Direct continuity source"},
+            ],
+        })
+        envelope_path.write_text(envelope_content, encoding="utf-8")
 
         plan = self._plan()
-        self.assertFalse(any(row.metadata.get("tag") == "stealth" for row in plan.records))
-        with self.assertRaises(rebuild.RebuildError):
-            plan.require_valid()
+
+        plan.require_valid()
+        self.assertEqual(plan.records, [])
+        self.assertEqual(plan.live_files, 0)
+        self.assertIn(str(path), plan.ignored_files)
+        self.assertEqual(
+            envelope_path.read_text(encoding="utf-8"), envelope_content,
+        )
 
     def test_non_chat_recovery_and_continuity_artifacts_are_ignored(self):
         (self.conversations / "recovered.md").write_text(
@@ -496,6 +915,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         target = self.root / "fresh-chroma"
@@ -512,6 +932,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 target_chromadb_path=target,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
             second = rebuild.execute_conversation_replay(
                 plan,
@@ -519,6 +940,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 resume=True,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
         self.assertEqual(first["target_count"], 1)
         self.assertEqual(second["target_count"], 1)
@@ -531,6 +953,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         target = self.root / "fresh-chroma"
@@ -547,6 +970,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                 target_chromadb_path=target,
                 client_factory=lambda _path: object(),
                 collection_factory=lambda _client, _profile: collection,
+                embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
             )
             collection.rows[record.row_id] = (
                 "corrupted document",
@@ -562,6 +986,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                     resume=True,
                     client_factory=lambda _path: object(),
                     collection_factory=lambda _client, _profile: collection,
+                    embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
                 )
 
     def test_final_conversation_validation_rejects_payload_corruption(self):
@@ -571,6 +996,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             metadata={"type": "chat", "tag": "", "conversation_id": "conv"},
             source_path="source.md",
             source_kind="test",
+            embedding_text="orientation",
         )
         plan = rebuild.ConversationReplayPlan(records=[record])
         collection = _FinalReadCorruptingCollection()
@@ -590,6 +1016,7 @@ class ConversationSourceRebuildTests(unittest.TestCase):
                     target_chromadb_path=self.root / "fresh-chroma",
                     client_factory=lambda _path: object(),
                     collection_factory=lambda _client, _profile: collection,
+                    embedder=lambda texts: [[0.0, 0.0, 0.0] for _ in texts],
                 )
 
     def test_dry_run_never_opens_chroma_or_embedder(self):
@@ -608,6 +1035,359 @@ class ConversationSourceRebuildTests(unittest.TestCase):
             ])
         self.assertEqual(result, 0)
         execute.assert_not_called()
+
+
+class ConversationPromotionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.inactive = self.root / "inactive"
+        self.active = self.root / "active"
+        self.home = self.root / "ora-home"
+        self.config_path = self.home / "config" / "chromadb.json"
+        for path in (self.inactive, self.active, self.config_path.parent):
+            path.mkdir(parents=True)
+        self.profile = {
+            "provider": "openrouter",
+            "model": "qwen/test-embedding",
+            "dimension": 3,
+            "physical_collection": "conversations_source",
+        }
+        collection_metadata = {
+            "hnsw:space": "cosine",
+            "ora:logical_collection": "conversations",
+            "ora:embedding_profile": "openrouter:qwen/test-embedding",
+            "ora:embedding_dimension": 3,
+        }
+
+        def row(row_id, tag, vector):
+            document = (
+                f"## Context\n\nContext {row_id}\n\n## Exchange\n\n"
+                f"**User:**\n\nQuestion {row_id}\n\n"
+                f"**Assistant:**\n\nAnswer {row_id}"
+            )
+            metadata = {
+                "tag": tag,
+                "conversation_id": f"conversation-{row_id}",
+                "embedding_text_sha256": hashlib.sha256(
+                    f"orientation-{row_id}".encode()
+                ).hexdigest(),
+            }
+            return document, metadata, vector
+
+        self.available_source_rows = {
+            "row-standard": row("standard", "", [1.0, 0.0, 0.0]),
+            "row-private": row("private", "private", [0.0, 1.0, 0.0]),
+            "row-stealth": row("stealth", "stealth", [0.0, 0.0, 1.0]),
+        }
+        self.source_rows = {
+            row_id: self.available_source_rows[row_id]
+            for row_id in ("row-standard", "row-private")
+        }
+        source = _PromotionCollection(
+            "conversations_source", collection_metadata, self.source_rows,
+        )
+        old = _PromotionCollection(
+            "conversations_old", collection_metadata,
+            {"old-row": row("old", "", [0.5, 0.5, 0.0])},
+        )
+        older = _PromotionCollection(
+            "conversations_older", collection_metadata,
+            {"older-row": row("older", "", [0.5, 0.0, 0.5])},
+        )
+        self.inactive_client = _PromotionClient([source])
+        self.active_client = _PromotionClient([old, older])
+        self.clients = {
+            str(self.inactive.absolute()): self.inactive_client,
+            str(self.active.absolute()): self.active_client,
+        }
+        self.config = {
+            "_schema_version": 1,
+            "embedder": {
+                "profile_id": "openrouter:qwen/test-embedding",
+                "provider": "openrouter",
+                "model": "qwen/test-embedding",
+                "dim": 3,
+                "base_url": "https://example.invalid/v1",
+            },
+            "reranker": {"provider": "none", "model": ""},
+            "collections": {
+                "knowledge": "knowledge_active",
+                "conversations": "conversations_old",
+                "atomics": "atomics_active",
+            },
+            "unrelated": {"must": "survive"},
+        }
+        self._write_config(self.config)
+        fingerprint = "a" * 64
+        report = {
+            "status": "complete",
+            "target_chromadb_path": str(self.inactive.absolute()),
+            "profile": self.profile,
+            "plan": {"records": 2, "fingerprint": fingerprint},
+            "target_count": 2,
+        }
+        checkpoint = {
+            "profile": self.profile,
+            "plan_fingerprint": fingerprint,
+            "records": 2,
+            "next_index": 2,
+        }
+        (self.inactive / "conversation-replay-report.json").write_text(
+            json.dumps(report), encoding="utf-8",
+        )
+        (self.inactive / "conversation-replay-checkpoint.json").write_text(
+            json.dumps(checkpoint), encoding="utf-8",
+        )
+        self.embedding_function = mock.Mock(
+            side_effect=AssertionError("promotion called an embedding provider")
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def _write_config(self, value):
+        self.config_path.write_text(json.dumps(value, indent=2), encoding="utf-8")
+
+    def _read_config(self):
+        return json.loads(self.config_path.read_text(encoding="utf-8"))
+
+    def _use_source_rows(self, *row_ids):
+        self.source_rows = {
+            row_id: self.available_source_rows[row_id] for row_id in row_ids
+        }
+        self.inactive_client.collections["conversations_source"].rows = dict(
+            self.source_rows
+        )
+        count = len(self.source_rows)
+        report_path = self.inactive / "conversation-replay-report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["target_count"] = count
+        report["plan"]["records"] = count
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        checkpoint_path = self.inactive / "conversation-replay-checkpoint.json"
+        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        checkpoint["records"] = count
+        checkpoint["next_index"] = count
+        checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+
+    def _kwargs(self, **overrides):
+        values = {
+            "inactive_chromadb_path": self.inactive,
+            "active_chromadb_path": self.active,
+            "config_path": self.config_path,
+            "ora_home": self.home,
+            "target_physical_collection": "conversations_new",
+            "expected_current_physical": "conversations_old",
+            "batch_size": 2,
+            "client_factory": lambda path: self.clients[path],
+            "embedding_function_factory": lambda _profile: self.embedding_function,
+            "ora_active_probe": lambda _home: [],
+        }
+        values.update(overrides)
+        return values
+
+    def test_promotion_and_rollback_refuse_same_home_active_process(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        process = mock.Mock(
+            returncode=0,
+            stdout=(
+                f" 4242 /opt/homebrew/bin/python3 -u "
+                f"{self.home.resolve()}/server/app.py\n"
+                f" 4243 /opt/homebrew/bin/python3 "
+                f"{self.home.resolve()}/server/app.py.backup\n"
+            ),
+        )
+        with mock.patch.object(rebuild.subprocess, "run", return_value=process):
+            with self.assertRaisesRegex(rebuild.RebuildError, "Ora is active"):
+                rebuild.promote_conversation_replay(**self._kwargs(
+                    ora_active_probe=None,
+                ))
+            with self.assertRaisesRegex(rebuild.RebuildError, "Ora is active"):
+                rebuild.rollback_conversation_mapping(
+                    restore_physical_collection="conversations_older",
+                    expected_current_physical="conversations_old",
+                    active_chromadb_path=self.active,
+                    config_path=self.config_path,
+                    ora_home=self.home,
+                    client_factory=lambda path: self.clients[path],
+                    embedding_function_factory=lambda _profile: self.embedding_function,
+                )
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertEqual(self.active_client.created, [])
+        self.assertEqual(self.active_client.deleted, [])
+
+    def test_copy_failure_leaves_mapping_untouched_and_old_collection_retained(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.fail_created_upsert = True
+        with self.assertRaisesRegex(RuntimeError, "synthetic copy failure"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+        self.assertEqual(
+            self._read_config()["collections"]["conversations"],
+            "conversations_old",
+        )
+
+    def test_target_document_corruption_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.corrupt_created_documents = True
+
+        with self.assertRaisesRegex(
+            rebuild.RebuildError, "count/hash/profile/privacy differs",
+        ):
+            rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_finite_target_vector_corruption_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.corrupt_created_embeddings = True
+        with self.assertRaisesRegex(
+            rebuild.RebuildError, "one float32 ULP",
+        ):
+            rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_one_float32_ulp_copy_drift_is_accepted_and_reported(self):
+        self.active_client.created_embedding_ulp_drift = 1
+
+        report = rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(
+            self._read_config()["collections"]["conversations"],
+            "conversations_new",
+        )
+        self.assertEqual(report["copy_validation"]["rows"], 2)
+        self.assertEqual(report["copy_validation"]["components"], 6)
+        self.assertGreater(report["copy_validation"]["drifted_rows"], 0)
+        self.assertGreater(report["copy_validation"]["drifted_components"], 0)
+        self.assertEqual(report["copy_validation"]["max_float32_ulp"], 1)
+        self.assertGreater(report["copy_validation"]["max_absolute_delta"], 0)
+        self.assertEqual(self.active_client.deleted, [])
+
+    def test_two_float32_ulp_copy_drift_blocks_flip_and_cleans_target(self):
+        before = self.config_path.read_text(encoding="utf-8")
+        self.active_client.created_embedding_ulp_drift = 2
+
+        with self.assertRaisesRegex(rebuild.RebuildError, "one float32 ULP"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn("conversations_new", self.active_client.collections)
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, ["conversations_new"])
+
+    def test_promotion_copies_exact_vectors_then_atomically_flips_mapping(self):
+        before = self._read_config()
+        probe_calls = []
+        report = rebuild.promote_conversation_replay(**self._kwargs(
+            ora_active_probe=lambda home: probe_calls.append(home) or [],
+        ))
+        after = self._read_config()
+        self.assertEqual(after["collections"]["conversations"], "conversations_new")
+        self.assertEqual(
+            after["collection_history"]["conversations"],
+            ["conversations_old"],
+        )
+        self.assertEqual(after["collections"]["knowledge"], before["collections"]["knowledge"])
+        self.assertEqual(after["embedder"], before["embedder"])
+        self.assertEqual(after["unrelated"], before["unrelated"])
+        self.assertEqual(
+            self.active_client.collections["conversations_new"].rows,
+            self.source_rows,
+        )
+        self.assertIn("conversations_old", self.active_client.collections)
+        self.assertEqual(self.active_client.deleted, [])
+        self.assertEqual(report["validation"]["count"], 2)
+        self.assertEqual(len(report["validation"]["embedding_sha256"]), 64)
+        self.assertEqual(report["copy_validation"], {
+            "rows": 2,
+            "components": 6,
+            "drifted_rows": 0,
+            "drifted_components": 0,
+            "max_float32_ulp": 0,
+            "max_absolute_delta": 0.0,
+        })
+        self.assertEqual(
+            report["validation"]["privacy_counts"],
+            {"": 1, "private": 1, "stealth": 0},
+        )
+        self.assertEqual(set(report["query_smoke"]), {"standard", "private", "stealth"})
+        self.assertEqual(len(probe_calls), 2)
+        self.embedding_function.assert_not_called()
+        self.assertTrue(Path(str(self.config_path) + ".lock").exists())
+
+    def test_promotion_accepts_a_corpus_without_stealth_rows(self):
+        self._use_source_rows("row-standard", "row-private")
+        report = rebuild.promote_conversation_replay(**self._kwargs())
+        self.assertEqual(
+            report["validation"]["privacy_counts"],
+            {"": 1, "private": 1, "stealth": 0},
+        )
+        self.assertGreater(report["query_smoke"]["standard"], 0)
+        self.assertGreater(report["query_smoke"]["private"], 0)
+        self.assertGreater(report["query_smoke"]["stealth"], 0)
+        self.assertEqual(
+            self.active_client.collections["conversations_new"].rows,
+            self.source_rows,
+        )
+
+    def test_promotion_rejects_a_corpus_with_stealth_rows(self):
+        self._use_source_rows("row-stealth")
+        before = self.config_path.read_text(encoding="utf-8")
+
+        with self.assertRaisesRegex(rebuild.RebuildError, "invalid privacy tag"):
+            rebuild.promote_conversation_replay(**self._kwargs())
+
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        self.assertNotIn(
+            "conversations_new", self.active_client.collections,
+        )
+        self.assertEqual(
+            self.active_client.deleted, ["conversations_new"],
+        )
+        self.embedding_function.assert_not_called()
+
+    def test_rollback_requires_expected_current_and_only_flips_mapping(self):
+        rebuild.promote_conversation_replay(**self._kwargs())
+        before = self.config_path.read_text(encoding="utf-8")
+        created = list(self.active_client.created)
+        common = {
+            "restore_physical_collection": "conversations_old",
+            "active_chromadb_path": self.active,
+            "config_path": self.config_path,
+            "ora_home": self.home,
+            "client_factory": lambda path: self.clients[path],
+            "embedding_function_factory": lambda _profile: self.embedding_function,
+            "ora_active_probe": lambda _home: [],
+        }
+        with self.assertRaisesRegex(rebuild.RebuildError, "mapping guard"):
+            rebuild.rollback_conversation_mapping(
+                expected_current_physical="wrong-current", **common,
+            )
+        self.assertEqual(self.config_path.read_text(encoding="utf-8"), before)
+        result = rebuild.rollback_conversation_mapping(
+            expected_current_physical="conversations_new", **common,
+        )
+        after = self._read_config()
+        self.assertEqual(after["collections"]["conversations"], "conversations_old")
+        self.assertEqual(
+            after["collection_history"]["conversations"],
+            ["conversations_new"],
+        )
+        self.assertEqual(self.active_client.created, created)
+        self.assertEqual(self.active_client.deleted, [])
+        self.assertEqual(result["target_count"], 1)
+        self.assertIn("conversations_new", self.active_client.collections)
 
 
 class DerivedCorpusSourceRebuildTests(unittest.TestCase):

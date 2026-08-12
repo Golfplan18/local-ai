@@ -119,8 +119,10 @@ class TestWhereClauseComposition(unittest.TestCase):
             collection="knowledge", type_filter=None, include_private=True,
             include_archived=False,
         )
-        # Single filter: should be flat, not wrapped in $and
-        self.assertEqual(result, {"tag_archived": False})
+        self.assertEqual(result, {"$and": [
+            {"tag_archived": {"$ne": True}},
+            {"tag_stealth": {"$ne": True}},
+        ]})
 
     def test_knowledge_archived_and_private(self):
         result = knowledge_search._build_where_clause(
@@ -130,9 +132,10 @@ class TestWhereClauseComposition(unittest.TestCase):
         # Two filters → $and
         self.assertIn("$and", result)
         clauses = result["$and"]
-        self.assertEqual(len(clauses), 2)
-        self.assertIn({"tag_archived": False}, clauses)
-        self.assertIn({"tag_private": False}, clauses)
+        self.assertEqual(len(clauses), 3)
+        self.assertIn({"tag_archived": {"$ne": True}}, clauses)
+        self.assertIn({"tag_private": {"$ne": True}}, clauses)
+        self.assertIn({"tag_stealth": {"$ne": True}}, clauses)
 
     def test_knowledge_full_filter_stack(self):
         result = knowledge_search._build_where_clause(
@@ -143,10 +146,11 @@ class TestWhereClauseComposition(unittest.TestCase):
         )
         self.assertIn("$and", result)
         clauses = result["$and"]
-        self.assertEqual(len(clauses), 3)
+        self.assertEqual(len(clauses), 4)
         self.assertIn({"type": {"$in": ["engram", "resource"]}}, clauses)
-        self.assertIn({"tag_archived": False}, clauses)
-        self.assertIn({"tag_private": False}, clauses)
+        self.assertIn({"tag_archived": {"$ne": True}}, clauses)
+        self.assertIn({"tag_private": {"$ne": True}}, clauses)
+        self.assertIn({"tag_stealth": {"$ne": True}}, clauses)
 
     def test_knowledge_private_included(self):
         # include_private=True: private filter is dropped.
@@ -154,8 +158,11 @@ class TestWhereClauseComposition(unittest.TestCase):
             collection="knowledge", type_filter=None, include_private=True,
             include_archived=False,
         )
-        # Just archived filter remains.
-        self.assertEqual(result, {"tag_archived": False})
+        # Private callers still cannot retrieve Stealth records.
+        self.assertEqual(result, {"$and": [
+            {"tag_archived": {"$ne": True}},
+            {"tag_stealth": {"$ne": True}},
+        ]})
 
     def test_conversations_uses_legacy_tag_string(self):
         # Transitional: conversations collection has no tag_archived/private
@@ -165,18 +172,38 @@ class TestWhereClauseComposition(unittest.TestCase):
             collection="conversations", type_filter=None,
             include_private=False, include_archived=False,
         )
-        # Should produce a tag != "private" filter.
-        self.assertEqual(result, {"tag": {"$ne": "private"}})
+        self.assertEqual(result, {"$and": [
+            {"tag": {"$ne": "private"}},
+            {"tag": {"$ne": "stealth"}},
+        ]})
 
     def test_conversations_include_private(self):
-        # include_private=True on conversations → no filter at all
-        # (or empty), since the only legacy filter we'd apply is the
-        # private exclusion.
+        # include_private=True maps to a Private caller, not Stealth.
         result = knowledge_search._build_where_clause(
             collection="conversations", type_filter=None,
             include_private=True, include_archived=False,
         )
-        self.assertIsNone(result)
+        self.assertEqual(result, {"tag": {"$ne": "stealth"}})
+
+    def test_conversations_explicit_privacy_lattice(self):
+        expected = {
+            "": {"$and": [
+                {"tag": {"$ne": "private"}},
+                {"tag": {"$ne": "stealth"}},
+            ]},
+            "private": {"tag": {"$ne": "stealth"}},
+            "stealth": None,
+        }
+        for privacy_tag, where in expected.items():
+            with self.subTest(privacy_tag=privacy_tag):
+                self.assertEqual(
+                    knowledge_search._build_where_clause(
+                        collection="conversations", type_filter=None,
+                        include_private=False, include_archived=False,
+                        privacy_tag=privacy_tag,
+                    ),
+                    where,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +232,8 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
         col.add(
             ids=["k_engram_active", "k_engram_archived",
                  "k_resource", "k_chat",
-                 "k_engram_incubating", "k_engram_private"],
+                 "k_engram_incubating", "k_engram_private",
+                 "k_engram_legacy_stealth"],
             documents=[
                 "Engram about consciousness — vetted user position.",
                 "Old engram superseded by new framework.",
@@ -213,6 +241,7 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
                 "Conversation chunk about consciousness from last week.",
                 "Engram still being curated about cosmology.",
                 "Private engram about a sensitive topic.",
+                "Legacy stealth engram about a sensitive topic.",
             ],
             metadatas=[
                 {"type": "engram",   "source": "engram_active.md",
@@ -227,6 +256,10 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
                  "tag_archived": False, "tag_incubating": True,  "tag_private": False},
                 {"type": "engram",   "source": "engram_private.md",
                  "tag_archived": False, "tag_incubating": False, "tag_private": True},
+                {"type": "engram",   "source": "engram_legacy_stealth.md",
+                 "tags": ["atomic", "stealth"],
+                 "tag_archived": False, "tag_incubating": False,
+                 "tag_private": False},
             ],
         )
 
@@ -244,6 +277,7 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
         result = self._search()
         self.assertNotIn("engram_archived.md", result)
         self.assertNotIn("engram_private.md", result)
+        self.assertNotIn("engram_legacy_stealth.md", result)
         # active, resource, chat, incubating engram should all be retrievable
         self.assertIn("engram_active.md", result)
 
@@ -281,6 +315,14 @@ class TestKnowledgeSearchEndToEnd(unittest.TestCase):
     def test_include_private_surfaces_private_chunks(self):
         result = self._search(include_private=True)
         self.assertIn("engram_private.md", result)
+        self.assertNotIn("engram_legacy_stealth.md", result)
+
+    def test_stealth_caller_includes_legacy_canonical_stealth_tag(self):
+        result = self._search(
+            query="sensitive topic", privacy_tag="stealth",
+        )
+        self.assertIn("engram_private.md", result)
+        self.assertIn("engram_legacy_stealth.md", result)
 
     def test_include_private_modifier_in_query(self):
         # Legacy V3 modifier: prefix query with `include:private`.
@@ -375,6 +417,34 @@ class TestHybridLexicalRetrieval(unittest.TestCase):
         )
         self.assertIn("lexical", target.get("retrieval_source", ""))
 
+    def test_declared_atomic_path_cannot_reenter_semantic_or_lexical_results(self):
+        excluded = "/vault/Book — Disingenuous Bullshitters Book Report.md"
+        semantic = knowledge_search.knowledge_search_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            excluded_paths=[excluded],
+        )
+        hybrid = knowledge_search.knowledge_search_hybrid_raw(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            lexical_n_results=5,
+            excluded_paths=[excluded],
+        )
+        formatted = knowledge_search.knowledge_search(
+            "Disingenuous Bullshitters Book Report",
+            collection="knowledge",
+            n_results=5,
+            excluded_paths=[excluded],
+        )
+        for chunks in (semantic, hybrid):
+            self.assertNotIn(
+                excluded,
+                {chunk["metadata"].get("path") for chunk in chunks},
+            )
+        self.assertNotIn("Disingenuous Bullshitters", formatted)
+
 
 # ---------------------------------------------------------------------------
 # End-to-end behavior on conversations collection (transitional)
@@ -405,9 +475,12 @@ class TestConversationsLegacyFilter(unittest.TestCase):
                 "Stealth conversation, transient.",
             ],
             metadatas=[
-                {"source": "conv_normal.md",  "tag": ""},
-                {"source": "conv_private.md", "tag": "private"},
-                {"source": "conv_stealth.md", "tag": "stealth"},
+                {"source": "conv_normal.md", "conversation_id": "normal",
+                 "tag": ""},
+                {"source": "conv_private.md", "conversation_id": "private",
+                 "tag": "private"},
+                {"source": "conv_stealth.md", "conversation_id": "stealth",
+                 "tag": "stealth"},
             ],
         )
 
@@ -415,14 +488,13 @@ class TestConversationsLegacyFilter(unittest.TestCase):
         knowledge_search.CHROMADB_PATH = self._original
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def test_default_excludes_private_chunks(self):
+    def test_standard_excludes_private_and_stealth_chunks(self):
         result = knowledge_search.knowledge_search(
             "pipelines", collection="conversations", n_results=10,
         )
         self.assertIn("conv_normal.md", result)
         self.assertNotIn("conv_private.md", result)
-        # Stealth chunks still reachable until close-out purges them.
-        self.assertIn("conv_stealth.md", result)
+        self.assertNotIn("conv_stealth.md", result)
 
     def test_include_private_surfaces_private_chunks(self):
         result = knowledge_search.knowledge_search(
@@ -430,6 +502,159 @@ class TestConversationsLegacyFilter(unittest.TestCase):
             include_private=True,
         )
         self.assertIn("conv_private.md", result)
+        self.assertNotIn("conv_stealth.md", result)
+
+    def test_stealth_caller_surfaces_all_privacy_levels(self):
+        result = knowledge_search.knowledge_search(
+            "pipelines", collection="conversations", n_results=10,
+            privacy_tag="stealth",
+        )
+        self.assertIn("conv_normal.md", result)
+        self.assertIn("conv_private.md", result)
+        self.assertIn("conv_stealth.md", result)
+
+    def test_explicit_dialogue_identity_is_excluded_from_raw_and_formatted_results(self):
+        raw = knowledge_search.knowledge_search_raw(
+            "pipelines", collection="conversations", n_results=10,
+            excluded_conversation_ids=["NORMAL"],
+        )
+        formatted = knowledge_search.knowledge_search(
+            "pipelines", collection="conversations", n_results=10,
+            excluded_conversation_ids=["normal"],
+        )
+        self.assertNotIn(
+            "normal",
+            {chunk["metadata"].get("conversation_id") for chunk in raw},
+        )
+        self.assertNotIn("conv_normal.md", formatted)
+
+
+class TestLegacyAndConflictingPrivacyMetadata(unittest.TestCase):
+    """Missing booleans stay searchable; every truthful privacy signal wins."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.chromadb_path = os.path.join(self.tmpdir, "chromadb")
+        self._original = knowledge_search.CHROMADB_PATH
+        knowledge_search.CHROMADB_PATH = self.chromadb_path
+        knowledge_search._METADATA_CACHE.clear()
+
+        import chromadb
+        from orchestrator.embedding import get_or_create_collection
+        client = chromadb.PersistentClient(path=self.chromadb_path)
+        knowledge = get_or_create_collection(client, "knowledge")
+        knowledge.add(
+            ids=["legacy-standard", "legacy-private", "legacy-stealth",
+                 "legacy-archived", "conflicting-private"],
+            documents=["legacy privacy beacon " + name for name in (
+                "standard", "private", "stealth", "archived", "conflict",
+            )],
+            metadatas=[
+                {"type": "engram", "source": "legacy-standard.md",
+                 "tags": ["atomic"]},
+                {"type": "engram", "source": "legacy-private.md",
+                 "tags": ["atomic", "private"]},
+                {"type": "engram", "source": "legacy-stealth.md",
+                 "tags": ["atomic", "stealth"]},
+                {"type": "engram", "source": "legacy-archived.md",
+                 "tags": ["atomic", "archived"]},
+                {"type": "engram", "source": "conflicting-private.md",
+                 "tag": "", "tags": ["atomic"], "tag_private": True},
+            ],
+        )
+        conversations = get_or_create_collection(client, "conversations")
+        conversations.add(
+            ids=["stale-standard", "stale-tags-private", "stale-bool-private",
+                 "stale-conflict-stealth", "stale-archived"],
+            documents=["conversation privacy beacon " + name for name in (
+                "standard", "tags-private", "bool-private",
+                "conflict-stealth", "archived",
+            )],
+            metadatas=[
+                {"source": "stale-standard.md", "tag": ""},
+                {"source": "stale-tags-private.md", "tag": "",
+                 "tags": ["private"]},
+                {"source": "stale-bool-private.md", "tag": "",
+                 "tag_private": True},
+                {"source": "stale-conflict-stealth.md", "tag": "private",
+                 "tags": ["private"], "tag_stealth": True},
+                {"source": "stale-archived.md", "tag": "",
+                 "tags": ["archived"]},
+            ],
+        )
+
+    def tearDown(self):
+        knowledge_search.CHROMADB_PATH = self._original
+        knowledge_search._METADATA_CACHE.clear()
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    @staticmethod
+    def _sources(chunks):
+        return {chunk["metadata"].get("source") for chunk in chunks}
+
+    def test_knowledge_semantic_lexical_and_tool_use_strictest_privacy(self):
+        expected = {
+            "": {"legacy-standard.md"},
+            "private": {
+                "legacy-standard.md", "legacy-private.md",
+                "conflicting-private.md",
+            },
+            "stealth": {
+                "legacy-standard.md", "legacy-private.md",
+                "legacy-stealth.md", "conflicting-private.md",
+            },
+        }
+        for privacy_tag, allowed in expected.items():
+            with self.subTest(privacy_tag=privacy_tag):
+                semantic = knowledge_search.knowledge_search_raw(
+                    "legacy privacy beacon", "knowledge", n_results=20,
+                    privacy_tag=privacy_tag,
+                )
+                lexical = knowledge_search.lexical_search_raw(
+                    "legacy privacy beacon", "knowledge", n_results=20,
+                    privacy_tag=privacy_tag,
+                )
+                formatted = knowledge_search.knowledge_search(
+                    "legacy privacy beacon", "knowledge", n_results=20,
+                    privacy_tag=privacy_tag,
+                )
+                self.assertEqual(self._sources(semantic), allowed)
+                self.assertEqual(self._sources(lexical), allowed)
+                for source in allowed:
+                    self.assertIn(source, formatted)
+                self.assertNotIn("legacy-archived.md", formatted)
+
+    def test_conversation_semantic_lexical_and_tool_use_strictest_privacy(self):
+        expected = {
+            "": {"stale-standard.md"},
+            "private": {
+                "stale-standard.md", "stale-tags-private.md",
+                "stale-bool-private.md",
+            },
+            "stealth": {
+                "stale-standard.md", "stale-tags-private.md",
+                "stale-bool-private.md", "stale-conflict-stealth.md",
+            },
+        }
+        for privacy_tag, allowed in expected.items():
+            with self.subTest(privacy_tag=privacy_tag):
+                semantic = knowledge_search.knowledge_search_raw(
+                    "conversation privacy beacon", "conversations",
+                    n_results=20, privacy_tag=privacy_tag,
+                )
+                lexical = knowledge_search.lexical_search_raw(
+                    "conversation privacy beacon", "conversations",
+                    n_results=20, privacy_tag=privacy_tag,
+                )
+                formatted = knowledge_search.knowledge_search(
+                    "conversation privacy beacon", "conversations",
+                    n_results=20, privacy_tag=privacy_tag,
+                )
+                self.assertEqual(self._sources(semantic), allowed)
+                self.assertEqual(self._sources(lexical), allowed)
+                for source in allowed:
+                    self.assertIn(source, formatted)
+                self.assertNotIn("stale-archived.md", formatted)
 
 
 if __name__ == "__main__":

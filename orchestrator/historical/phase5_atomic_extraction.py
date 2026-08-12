@@ -96,56 +96,119 @@ _VALID_TYPES = frozenset({
 
 
 _SYSTEM_PROMPT = """\
-You extract ATOMIC KNOWLEDGE NOTES from a single conversation turn pair \
-(user message + AI response). Each atomic note states ONE clear, \
-transferable claim — a complete declarative sentence, not a topic label.
+You extract PERMANENT NOTES from a single conversation turn pair (user \
+message + AI response).
 
-Skip trivial or well-known facts. Be SELECTIVE — only mint notes for \
-genuinely insightful, transferable claims that someone might want to \
-retrieve later. A typical pair yields 0-3 atomics; a substantive deep \
-dive might yield up to 8. If the pair is small talk, status updates, \
-or generic Q&A, return [].
+A permanent note is NOT a record of what was said. It states a claim in \
+general form, detached from the conversation it came from, at a level of \
+abstraction that transfers to other domains. The specific case from the \
+conversation is retained beneath the claim as EVIDENCE, never as the \
+claim itself.
+
+=== TRANSFER TEST — apply to every candidate before you emit it ===
+Could this claim be usefully applied by someone working in a domain \
+unrelated to this conversation? If not, either restate it one level more \
+general so that it can be, or do not mint it at all. A claim that only \
+makes sense inside this conversation's own subject matter is a record of \
+what was said, not a knowledge building block. Do not mint it.
+
+Be SELECTIVE. A typical pair yields 0-3 notes; a substantive deep dive \
+might yield up to 8. Small talk, status updates, and generic Q&A yield [].
+
+=== DO NOT MINT BARE FACTS ===
+A verifiable empirical claim is evidence, not a building block. Attach it \
+as the "Instance:" bullet of the principle it demonstrates. Mint a \
+standalone `fact` note ONLY when it is BOTH (a) not general knowledge a \
+competent model already carries, AND (b) personal, local, or proprietary \
+to this user — their own observation, their own measurement, their own \
+project. Dated news items and textbook facts are never minted.
 
 Categories:
 
 USER-SIDE:
-- fact: verifiable empirical claim
 - principle: generalizable rule about how something works
 - definition: precise definition of a concept
 - causal: assertion that one thing causes / prevents / enables another
 - analogy: structural comparison between two domains
 - evaluative: judgment with explicit criteria
+- fact: personal/local/proprietary only, per the rule above
 
-AI-SIDE (apply a HIGHER quality bar — only use when the AI synthesizes \
+AI-SIDE (apply a HIGHER quality bar — only when the AI synthesizes \
 something that isn't just restating common knowledge):
 - ai_synthesis: AI-generated synthesis combining multiple sources/ideas
 - ai_framework: AI-generated framework or model the user can reuse
 - ai_evidence: AI-cited evidence or example that crystallizes a point
 
+=== TITLE ===
+ONE declarative sentence stating the claim. NEVER put in a title:
+  - proper nouns (people, companies, statutes, products, places) unless \
+the note exists to define that entity
+  - dates, years, "currently", "recently"
+  - a because.../when.../by ...ing clause explaining the mechanism — the \
+title asserts THAT, the body explains HOW
+  - a domain qualifier that is not load-bearing ("in coal towns", "in \
+early dating", "in narrative")
+  - hedges that dissolve the claim (can, may, often, typically, sometimes)
+  - inventory counts ("nine major areas", "three types")
+  - the user's private vocabulary or fiction character names
+  - absolutes the body does not establish: no "cannot", "always", \
+"never", "proves"
+WHERE A STANDARD NAME FOR THE CONCEPT EXISTS — salience bias, moral \
+hazard, regulatory capture, debt peonage, operant extinction, \
+routinization of charisma, Goodhart's law — USE IT VERBATIM in the title, \
+or failing that verbatim in a body bullet. This corpus is searched by \
+keyword AND by meaning; a note matching neither is dead. Naming the \
+concept only in your reasoning is a FAILURE.
+Impose no length limit. A correct general claim is short as a \
+consequence, never as a target.
+
+=== BODY ===
+2-4 bullets.
+  - The FIRST bullets state the mechanism in domain-neutral terms. Name \
+the ROLES that act — the incumbent, the regulator, the borrower, the \
+performer — not the individuals who happened to act in this conversation. \
+Active voice throughout: every bullet says what does what. No "it" / \
+"they" / passive voice.
+  - The LAST bullet begins "Instance:" and carries the specific case from \
+this conversation — names, numbers, dates, domain nouns intact. This is \
+the evidence, and it is what keeps the note findable by keyword.
+  - The Instance line may contain ONLY specifics that appear in this \
+conversation. Never introduce an example, statistic, or illustration that \
+is not in the source. If the pair carried no concrete case, write \
+"Instance: none recorded in source." An invented instance is \
+indistinguishable from a real record and corrupts the evidence layer.
+
+=== FAILURE MODE TO AVOID ===
+Over-generalization into platitude. "Systems tend to favour those with \
+power" is useless. The general claim must remain FALSIFIABLE and SPECIFIC \
+about the mechanism — raised one level, not dissolved. If raising the \
+level would produce a platitude, do not mint the note.
+
 Output format: JSON array. Reply with ONLY the JSON, no preamble or \
-fences. If nothing worth minting, reply with `[]`.
+fences. If nothing is worth minting, reply with `[]`.
 
 Each object must have:
-  - "title": ONE complete declarative sentence stating the claim
+  - "title": the general claim, per the TITLE rules
   - "type": one of the category names above
-  - "body": 1-3 proposition bullets explaining the claim, each with \
-named actors (no "it" / "they" / passive voice — name what does what)
+  - "standard_concept": the canonical name for this concept if one \
+exists, else "" — and if non-empty it MUST also appear in title or body
+  - "body": the bullets, per the BODY rules
   - "source_side": "user" or "ai" (where the claim came from)
-  - "confidence": "high" | "medium" | "low" (your confidence the claim \
-is well-supported by what's actually in the text)
+  - "confidence": "high" | "medium" | "low"
 
 Example output:
 [
   {
-    "title": "Premature abstraction in code increases maintenance cost \
-by forcing future changes through an interface that encoded the wrong \
-assumptions",
+    "title": "Premature abstraction locks in assumptions about variation \
+that later requirements must route around",
     "type": "causal",
-    "body": "- Abstractions designed before requirements stabilize lock \
-in incorrect assumptions about variation\\n- Future changes must route \
-through the abstraction's interface even when the underlying assumption \
-is now wrong\\n- The cost compounds because each new requirement either \
-fights the abstraction or accumulates workaround complexity",
+    "standard_concept": "premature abstraction",
+    "body": "- The designer commits to an interface before the pattern of \
+variation is known, freezing a guess about what will change\\n- Every \
+later requirement either fights that interface or accumulates a \
+workaround beside it, so cost compounds instead of staying flat\\n- \
+Instance: abstractions designed before requirements stabilize force \
+future changes through an interface whose assumption is now wrong",
     "source_side": "user",
     "confidence": "high"
   }
@@ -251,6 +314,10 @@ class AtomicCandidate:
     source_platform: str
     chain_id:        str
     chain_label:     str
+    # Canonical name for the concept, when one exists. Also required to
+    # appear verbatim in title or body — this field is the retrieval
+    # handle, not a substitute for putting the term in the note.
+    standard_concept: str = ""
 
 
 def build_atomic_note(c: AtomicCandidate) -> str:
@@ -275,6 +342,8 @@ def build_atomic_note(c: AtomicCandidate) -> str:
     if c.chain_id:
         yaml_lines.append(f"chain_id: {c.chain_id}")
         yaml_lines.append(f"chain_label: {_yaml_escape(c.chain_label)}")
+    if c.standard_concept:
+        yaml_lines.append(f"standard_concept: {_yaml_escape(c.standard_concept)}")
     yaml_lines.append(f"extraction_model: {EXTRACTION_MODEL}")
     yaml_lines.append(f"confidence: {c.confidence}")
     yaml_lines.append(f"processed_at: {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
@@ -486,6 +555,7 @@ def process_one_pair(
             body=str(raw["body"]),
             source_side=side_raw,
             confidence=raw.get("confidence", "medium"),
+            standard_concept=str(raw.get("standard_concept", "") or "")[:120],
             cleaned_pair_path=cleaned_pair_path,
             pair_num=cp.source_pair_num,
             when=when,
