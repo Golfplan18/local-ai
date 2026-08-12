@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* General settings: dedicated Aside model selector + autosave coverage. */
+/* Settings UI: subscription sign-in recovery plus Aside autosave coverage. */
 'use strict';
 
 var fs = require('fs');
@@ -24,6 +24,24 @@ var dom = new jsdom.JSDOM('<!doctype html><html><body></body></html>', {
 });
 var w = dom.window;
 var saved = [];
+var connectCalls = 0;
+var popupOpenBeforePost = false;
+var popupRequest = null;
+var popupNavigation = null;
+
+w.open = function (url, target) {
+  popupOpenBeforePost = connectCalls === 0;
+  popupRequest = { url: url, target: target };
+  return {
+    closed: false,
+    document: { title: '' },
+    location: {
+      replace: function (next) { popupNavigation = next; },
+    },
+    close: function () { this.closed = true; },
+    opener: w,
+  };
+};
 
 w.fetch = function (url, opts) {
   if (url === '/api/settings' && (!opts || !opts.method)) {
@@ -48,6 +66,23 @@ w.fetch = function (url, opts) {
   }
   if (url === '/api/retrieval/rebuild/status') {
     return Promise.resolve({ json: function () { return Promise.resolve({ in_progress: false }); } });
+  }
+  if (url === '/api/settings/chatgpt-subscription' && (!opts || !opts.method)) {
+    return Promise.resolve({ json: function () { return Promise.resolve({
+      state: 'connecting', connected: false, configured: true,
+      message: 'Complete ChatGPT sign-in in the browser.',
+      catalog_revision: 0,
+    }); } });
+  }
+  if (url === '/api/settings/chatgpt-subscription/connect'
+      && opts && opts.method === 'POST') {
+    connectCalls += 1;
+    return Promise.resolve({ json: function () { return Promise.resolve({
+      state: 'connecting', connected: false, configured: true,
+      message: 'Complete ChatGPT sign-in in the browser.',
+      catalog_revision: 0,
+      auth_url: 'https://auth.openai.test/authorize',
+    }); } });
   }
   if (url === '/api/settings' && opts && opts.method === 'POST') {
     var payload = JSON.parse(opts.body || '{}');
@@ -82,6 +117,25 @@ function record(name, ok, detail) {
 }
 
 async function run() {
+  w.OraSettingsPanel.open({ tab: 'apis' });
+  await wait(0);
+  await wait(0);
+  await wait(0);
+
+  var subscriptionCard = w.document.querySelector('[data-chatgpt-subscription="true"]');
+  var resume = Array.from(subscriptionCard.querySelectorAll('button')).find(function (button) {
+    return button.textContent === 'Resume sign-in';
+  });
+  record('fresh connecting page offers Resume sign-in without a cached URL', !!resume);
+  resume.click();
+  record('Resume sign-in opens a popup synchronously before the guarded POST',
+    popupOpenBeforePost && connectCalls === 1
+      && popupRequest.url === 'about:blank' && popupRequest.target === '_blank');
+  await wait(0);
+  await wait(0);
+  record('Resume sign-in reuses the pending login URL',
+    popupNavigation === 'https://auth.openai.test/authorize', popupNavigation);
+
   w.OraSettingsPanel.open({ tab: 'general' });
   await wait(0);
   await wait(0);

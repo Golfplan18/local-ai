@@ -35,6 +35,9 @@
   var _recordingShortcutId = null;
   var _recordingShortcutButton = null;
   var _globalShortcutHandlerInstalled = false;
+  var _chatgptPollTimer = null;
+  var _chatgptLoginWindow = null;
+  var _chatgptAuthUrl = null;
 
   // Tabs declared in display order. The Buckets tab was retired with
   // install Chunk 10 step 2 — the bucket abstraction has been dissolved
@@ -181,6 +184,7 @@
   }
 
   function _renderTabContent() {
+    if (_activeTab !== 'apis') _stopChatGPTPolling();
     _tabContentEl.innerHTML = '';
     // The Models tab hosts OraModelsPane (install Chunk 10); the Visual
     // tab hosts OraVisualSlotsPane (install Chunk 11). Buckets was
@@ -1740,6 +1744,11 @@
 
     _tabContentEl.appendChild(top);
 
+    // Subscription sign-in is intentionally separate from pasted API keys.
+    // Its status endpoint is fetched only while this tab is rendered, so
+    // ordinary /api/settings reads never start the Codex runtime.
+    _renderChatGPTSubscriptionCard();
+
     // Dense two-column grid. Categories are merged into a few sections so the
     // headers + odd-sized groups don't waste the second column. Where a
     // provider is located doesn't matter, so all direct vendors share one
@@ -1821,6 +1830,216 @@
       'Drops /framework api-key-setup into the input. Review and press Enter to start.';
     addWrap.appendChild(addHint);
     _tabContentEl.appendChild(addWrap);
+  }
+
+  function _stopChatGPTPolling() {
+    if (_chatgptPollTimer) {
+      clearTimeout(_chatgptPollTimer);
+      _chatgptPollTimer = null;
+    }
+  }
+
+  function _chatgptFetch(url, options) {
+    return fetch(url, options).then(function (response) {
+      return response.json().then(function (data) {
+        if (!data || !data.state) {
+          throw new Error((data && data.error) || 'invalid account response');
+        }
+        return data;
+      });
+    });
+  }
+
+  function _chatgptActionLink(label, href) {
+    var link = document.createElement('a');
+    link.className = 'ora-settings-btn ora-settings-btn--ghost ora-settings-chatgpt-link';
+    link.textContent = label;
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    return link;
+  }
+
+  function _renderChatGPTSubscriptionState(card, data) {
+    if (!card || !card.parentNode) return;
+    card.innerHTML = '';
+
+    var header = document.createElement('div');
+    header.className = 'ora-settings-chatgpt-header';
+    var heading = document.createElement('div');
+    heading.className = 'ora-settings-chatgpt-heading';
+    heading.textContent = 'OpenAI (ChatGPT)';
+    header.appendChild(heading);
+    var badge = document.createElement('span');
+    badge.className = 'ora-settings-chatgpt-status ora-settings-chatgpt-status--' + data.state;
+    if (data.state === 'connected') badge.textContent = 'Connected';
+    else if (data.state === 'connecting') badge.textContent = 'Connecting…';
+    else if (data.state === 'disconnected') badge.textContent = 'Not connected';
+    else if (data.state === 'loading') badge.textContent = 'Checking…';
+    else if (data.state === 'dependency_unavailable') badge.textContent = 'Unavailable';
+    else badge.textContent = 'Needs attention';
+    header.appendChild(badge);
+    card.appendChild(header);
+
+    var summary = document.createElement('p');
+    summary.className = 'ora-settings-note ora-settings-chatgpt-summary';
+    summary.textContent = 'Optional ChatGPT subscription route for Codex models. '
+      + 'Browser sign-in is managed by Ora’s bundled Codex runtime and stored '
+      + 'in the system keychain; no API key is pasted here.';
+    card.appendChild(summary);
+
+    if (data.state === 'connected') {
+      var account = document.createElement('div');
+      account.className = 'ora-settings-chatgpt-account';
+      var email = document.createElement('span');
+      email.textContent = data.email || 'Signed-in ChatGPT account';
+      account.appendChild(email);
+      var plan = document.createElement('span');
+      plan.textContent = data.plan ? 'Plan: ' + data.plan : 'Plan not reported';
+      account.appendChild(plan);
+      card.appendChild(account);
+    } else if (data.message) {
+      var message = document.createElement('p');
+      message.className = 'ora-settings-chatgpt-message';
+      message.textContent = data.message;
+      card.appendChild(message);
+    }
+
+    var actions = document.createElement('div');
+    actions.className = 'ora-settings-chatgpt-actions';
+    if (data.state === 'connected') {
+      var disconnectBtn = document.createElement('button');
+      disconnectBtn.type = 'button';
+      disconnectBtn.className = 'ora-settings-btn ora-settings-btn--small ora-settings-btn--danger';
+      disconnectBtn.textContent = 'Disconnect';
+      disconnectBtn.addEventListener('click', function () {
+        if (!confirm('Disconnect Ora from this ChatGPT account?\n'
+            + 'This logs out only Ora’s isolated subscription session.')) return;
+        disconnectBtn.disabled = true;
+        _chatgptFetch('/api/settings/chatgpt-subscription', { method: 'DELETE' })
+          .then(function (next) {
+            _chatgptAuthUrl = null;
+            _stopChatGPTPolling();
+            _renderChatGPTSubscriptionState(card, next);
+          })
+          .catch(function (err) {
+            _renderChatGPTSubscriptionState(card, {
+              state: 'error', message: 'Couldn’t disconnect: ' + err.message,
+            });
+          });
+      });
+      actions.appendChild(disconnectBtn);
+    } else if (data.state === 'connecting') {
+      if (_chatgptAuthUrl) {
+        actions.appendChild(_chatgptActionLink('Open sign-in', _chatgptAuthUrl));
+      } else {
+        var resumeBtn = document.createElement('button');
+        resumeBtn.type = 'button';
+        resumeBtn.className = 'ora-settings-btn ora-settings-btn--small';
+        resumeBtn.textContent = 'Resume sign-in';
+        resumeBtn.addEventListener('click', function () {
+          _connectChatGPTSubscription(card, resumeBtn);
+        });
+        actions.appendChild(resumeBtn);
+      }
+    } else if (data.state !== 'loading') {
+      var connectBtn = document.createElement('button');
+      connectBtn.type = 'button';
+      connectBtn.className = 'ora-settings-btn ora-settings-btn--small';
+      connectBtn.textContent = 'Connect';
+      connectBtn.disabled = data.state === 'dependency_unavailable';
+      connectBtn.addEventListener('click', function () {
+        _connectChatGPTSubscription(card, connectBtn);
+      });
+      actions.appendChild(connectBtn);
+    }
+    actions.appendChild(_chatgptActionLink('View plans', 'https://chatgpt.com/pricing'));
+    card.appendChild(actions);
+  }
+
+  function _scheduleChatGPTPoll(card) {
+    _stopChatGPTPolling();
+    if (_activeTab !== 'apis'
+        || !_backdropEl
+        || !_backdropEl.classList.contains('ora-settings-backdrop--visible')) return;
+    _chatgptPollTimer = setTimeout(function () {
+      _chatgptPollTimer = null;
+      if (!card || !card.parentNode || _activeTab !== 'apis') return;
+      _chatgptFetch('/api/settings/chatgpt-subscription')
+        .then(function (data) {
+          _renderChatGPTSubscriptionState(card, data);
+          if (data.state === 'connecting') {
+            _scheduleChatGPTPoll(card);
+          } else {
+            _chatgptAuthUrl = null;
+            _chatgptLoginWindow = null;
+          }
+        })
+        .catch(function (err) {
+          _renderChatGPTSubscriptionState(card, {
+            state: 'error', message: 'Couldn’t read account status: ' + err.message,
+          });
+        });
+    }, 1500);
+  }
+
+  function _connectChatGPTSubscription(card, button) {
+    _stopChatGPTPolling();
+    button.disabled = true;
+    button.textContent = 'Starting…';
+    // Open synchronously in the click handler so popup blockers see a direct
+    // user gesture; the async endpoint response supplies the final auth URL.
+    try {
+      _chatgptLoginWindow = window.open('about:blank', '_blank');
+      if (_chatgptLoginWindow) {
+        _chatgptLoginWindow.opener = null;
+        try { _chatgptLoginWindow.document.title = 'ChatGPT sign-in'; } catch (_) { /* ignore */ }
+      }
+    } catch (_) {
+      _chatgptLoginWindow = null;
+    }
+    _chatgptFetch('/api/settings/chatgpt-subscription/connect', { method: 'POST' })
+      .then(function (data) {
+        _chatgptAuthUrl = data.auth_url || null;
+        if (_chatgptAuthUrl && _chatgptLoginWindow && !_chatgptLoginWindow.closed) {
+          try { _chatgptLoginWindow.location.replace(_chatgptAuthUrl); } catch (_) { /* link remains in card */ }
+        } else if (data.state !== 'connecting'
+                   && _chatgptLoginWindow && !_chatgptLoginWindow.closed) {
+          try { _chatgptLoginWindow.close(); } catch (_) { /* ignore */ }
+        }
+        _renderChatGPTSubscriptionState(card, data);
+        if (data.state === 'connecting') _scheduleChatGPTPoll(card);
+      })
+      .catch(function (err) {
+        if (_chatgptLoginWindow && !_chatgptLoginWindow.closed) {
+          try { _chatgptLoginWindow.close(); } catch (_) { /* ignore */ }
+        }
+        _chatgptLoginWindow = null;
+        _renderChatGPTSubscriptionState(card, {
+          state: 'error', message: 'Couldn’t start ChatGPT sign-in: ' + err.message,
+        });
+      });
+  }
+
+  function _renderChatGPTSubscriptionCard() {
+    _stopChatGPTPolling();
+    var card = document.createElement('section');
+    card.className = 'ora-settings-chatgpt-card';
+    card.dataset.chatgptSubscription = 'true';
+    _tabContentEl.appendChild(card);
+    _renderChatGPTSubscriptionState(card, {
+      state: 'loading', message: 'Checking ChatGPT connection…',
+    });
+    _chatgptFetch('/api/settings/chatgpt-subscription')
+      .then(function (data) {
+        _renderChatGPTSubscriptionState(card, data);
+        if (data.state === 'connecting') _scheduleChatGPTPoll(card);
+      })
+      .catch(function (err) {
+        _renderChatGPTSubscriptionState(card, {
+          state: 'error', message: 'Couldn’t read account status: ' + err.message,
+        });
+      });
   }
 
   function _renderExportTab() {
@@ -2363,6 +2582,7 @@
   }
 
   function close() {
+    _stopChatGPTPolling();
     if (_backdropEl) {
       _backdropEl.classList.remove('ora-settings-backdrop--visible');
     }

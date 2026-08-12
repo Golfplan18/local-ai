@@ -151,6 +151,7 @@ class Router:
         """
         self._endpoints = {ep["id"]: ep for ep in self.config.get("endpoints", [])}
         self._merge_models_json_local_endpoints()
+        self._merge_codex_subscription_endpoints()
         self._endpoint_aliases = self._build_endpoint_aliases()
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
         self._buckets = self.config.get("buckets", {})
@@ -214,6 +215,31 @@ class Router:
                 "_installed_local_model": True,
             })
             self._endpoints[model_id] = endpoint
+
+    def _merge_codex_subscription_endpoints(self) -> None:
+        """Expose connected ChatGPT/Codex models as runtime endpoints.
+
+        A never-configured user must not pay the cost of starting the bundled
+        Codex runtime.  The adapter's dedicated home is therefore the gate;
+        connected-account and model truth remain SDK-managed and no discovered
+        model is written into routing-config.json.
+        """
+        try:
+            try:
+                from orchestrator import codex_subscription
+            except ImportError:
+                import codex_subscription  # type: ignore
+            if not codex_subscription.is_configured():
+                return
+            for endpoint in codex_subscription.model_endpoints():
+                endpoint_id = endpoint.get("id")
+                if endpoint_id:
+                    self._endpoints[endpoint_id] = endpoint
+        except Exception as exc:
+            print(
+                "[Router] ChatGPT subscription endpoint merge failed: "
+                f"{type(exc).__name__}"
+            )
 
     def _build_endpoint_aliases(self) -> dict[str, str]:
         """Return case-insensitive endpoint aliases for exact routing ids.
@@ -1369,6 +1395,7 @@ class Router:
         elif ep["type"] == "api":
             v1["service"] = ep.get("service", "")
             v1["model"] = ep.get("model_id", "")
+            v1["dispatch"] = ep.get("dispatch", "")
             v1["tool_access"] = ep.get("capabilities", {}).get("tool_access", False)
             v1["web_access"] = ep.get("capabilities", {}).get("web_access", False)
             v1["retrieval_approach"] = ep.get("capabilities", {}).get("retrieval_approach", "pre-assembled")

@@ -2026,14 +2026,15 @@
     if (_picksSet && _picksSet.has(model.id)) {
       chips.push('<span class="ora-models-pick-chip">PICK</span>');
     }
-    // Subscription chip. Merged server-side from routing-config endpoints
-    // with service=claude-code: executes through the user's Claude
-    // subscription via the local Claude Code CLI — zero marginal API
-    // cost. These ids are NOT registry models, which previously made any
-    // configuration using them read DEPRECATED (and invited re-picking
-    // onto the metered API — the wrong fix).
+    // Subscription chip. These runtime endpoints are deliberately distinct
+    // from metered registry/API models; provider and transport labels come
+    // from the server so Claude Code and ChatGPT/Codex remain truthful.
     if (model._subscription_endpoint === true) {
-      chips.push('<span class="ora-models-chip ora-models-chip-subscription" title="Executes through your Claude subscription via the local Claude Code CLI. Zero marginal API cost; campaign cost tables price its tokens at the API-equivalent rate.">SUBSCRIPTION</span>');
+      var subscriptionProvider = model.subscription_provider || model.provider || 'provider';
+      var subscriptionTransport = model.subscription_transport || 'the provider subscription runtime';
+      chips.push('<span class="ora-models-chip ora-models-chip-subscription" title="Executes through your '
+        + _esc(subscriptionProvider) + ' subscription using '
+        + _esc(subscriptionTransport) + '. Zero marginal per-call API cost; availability and rate limits depend on your account plan or workspace.">SUBSCRIPTION</span>');
     }
     // Direct-dispatch chip. Stamped server-side from routing-config
     // endpoints with dispatch=direct: the user holds this vendor's API

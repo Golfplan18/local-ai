@@ -206,6 +206,24 @@ class TestExternalApiWalkthrough(unittest.TestCase):
             ["OpenRouter", "Tavily", "Artificial Analysis"],
         )
 
+    def test_optional_chatgpt_orientation_is_truthful(self):
+        lines = []
+        state = {"steps_completed": []}
+        with mock.patch.object(install, "log", side_effect=lines.append):
+            self.assertTrue(
+                install.step_external_api_walkthrough(state, dry_run=True)
+            )
+        copy = "\n".join(lines)
+        self.assertIn("Optional ChatGPT subscription route", copy)
+        self.assertIn("browser sign-in", copy)
+        self.assertIn("system keychain", copy)
+        self.assertIn("depends on your ChatGPT plan or workspace", copy)
+        self.assertNotIn("every ChatGPT plan", copy)
+
+    def test_requirements_install_codex_sdk_and_pinned_runtime_package(self):
+        requirements = (REPO_ROOT / "requirements.txt").read_text().splitlines()
+        self.assertIn("openai-codex", requirements)
+
 
 if __name__ == "__main__":
     unittest.main()

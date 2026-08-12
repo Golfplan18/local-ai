@@ -444,6 +444,107 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertNotIn("secret-leaks-bad", text,
                          "API key values must never appear in /api/settings response")
 
+    def test_chatgpt_account_endpoints_report_connect_and_disconnect(self):
+        from orchestrator import codex_subscription
+
+        disconnected = {
+            "state": "disconnected", "connected": False,
+            "configured": False, "message": "Not connected.",
+            "catalog_revision": 0,
+        }
+        connecting = {
+            "state": "connecting", "connected": False,
+            "configured": True, "message": "Complete sign-in.",
+            "catalog_revision": 0,
+            "auth_url": "https://auth.openai.test/authorize",
+        }
+        with mock.patch.object(
+            codex_subscription, "status", return_value=disconnected,
+        ), mock.patch.object(
+            codex_subscription, "connect", return_value=connecting,
+        ) as connect, mock.patch.object(
+            codex_subscription, "disconnect", return_value=disconnected,
+        ) as disconnect, mock.patch.object(
+            self.S, "_sync_chatgpt_subscription_router",
+        ) as sync:
+            status_response = self.client.get(
+                "/api/settings/chatgpt-subscription"
+            )
+            connect_response = self.client.post(
+                "/api/settings/chatgpt-subscription/connect"
+            )
+            disconnect_response = self.client.delete(
+                "/api/settings/chatgpt-subscription"
+            )
+
+        self.assertEqual(status_response.status_code, 200)
+        self.assertEqual(status_response.get_json()["state"], "disconnected")
+        self.assertEqual(connect_response.status_code, 200)
+        self.assertEqual(
+            connect_response.get_json()["auth_url"],
+            "https://auth.openai.test/authorize",
+        )
+        self.assertEqual(disconnect_response.status_code, 200)
+        self.assertEqual(disconnect_response.get_json()["state"], "disconnected")
+        connect.assert_called_once_with()
+        disconnect.assert_called_once_with()
+        self.assertEqual(sync.call_count, 3)
+
+    def test_chatgpt_account_mutations_reject_cross_site_requests(self):
+        from orchestrator import codex_subscription
+
+        with mock.patch.object(codex_subscription, "connect") as connect, \
+             mock.patch.object(codex_subscription, "disconnect") as disconnect:
+            connect_response = self.client.post(
+                "/api/settings/chatgpt-subscription/connect",
+                headers={"Origin": "https://attacker.example"},
+            )
+            disconnect_response = self.client.delete(
+                "/api/settings/chatgpt-subscription",
+                headers={"Sec-Fetch-Site": "cross-site"},
+            )
+
+        self.assertEqual(connect_response.status_code, 403)
+        self.assertEqual(disconnect_response.status_code, 403)
+        connect.assert_not_called()
+        disconnect.assert_not_called()
+
+    def test_model_registry_surfaces_connected_codex_model_as_subscription(self):
+        from orchestrator import codex_subscription
+
+        endpoint = {
+            "id": "codex-subscription:sdk-gpt", "type": "api",
+            "status": "active", "enabled": True, "provider": "openai",
+            "display_name": "GPT Codex", "description": "Subscription model",
+            "service": "codex-subscription", "model_id": "gpt-native",
+            "dispatch": "subscription", "vision_capable": False,
+            "subscription_provider": "OpenAI",
+            "subscription_transport": "ChatGPT via the bundled Codex runtime",
+        }
+        with mock.patch.object(
+            codex_subscription, "is_configured", return_value=True,
+        ), mock.patch.object(
+            codex_subscription, "model_endpoints", return_value=[endpoint],
+        ), mock.patch.object(
+            codex_subscription, "status",
+            return_value={"state": "connected", "catalog_revision": 1},
+        ), mock.patch.object(
+            self.S, "_sync_chatgpt_subscription_router",
+        ):
+            response = self.client.get("/api/model-registry?categories=chat")
+
+        self.assertEqual(response.status_code, 200)
+        model = response.get_json()["models"][endpoint["id"]]
+        self.assertTrue(model["_subscription_endpoint"])
+        self.assertEqual(model["subscription_provider"], "OpenAI")
+        self.assertEqual(
+            model["subscription_transport"],
+            "ChatGPT via the bundled Codex runtime",
+        )
+        self.assertFalse(model["vision_capable"])
+        self.assertEqual(model["pricing"]["input_per_token"], 0)
+        self.assertFalse(model["is_free"])
+
     @staticmethod
     def _http_error(code: int) -> urllib.error.HTTPError:
         return urllib.error.HTTPError(
