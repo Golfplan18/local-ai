@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repair the migrated engrams with three DETERMINISTIC passes. No model calls.
+"""Repair the migrated engrams with DETERMINISTIC passes. No model calls.
 
 ONE-TIME MIGRATION TOOL. Delete with the rest of scripts/engram-migration/.
 
@@ -13,20 +13,23 @@ isolated keywords, bare dates, filename debris, numbers stripped of their units 
 and it assembled those fragments into fluent sentences. A 50-note source-grounded
 audit found every edited note needed its Instance line changed.
 
-The fix is not to rewrite those sentences better. It is to stop paraphrasing
-evidence at all. Every one of the 122,118 originals is preserved in
-Archive/Engram Absorbed Sources 2026-08/, complete, with its own body and its own
-source_chat pointer. So the evidence layer becomes a POINTER to the real note
-instead of a summary of keyword debris -- which is both more trustworthy and more
-useful, because the reader lands on the actual source.
+The fix is not to rewrite those sentences better -- it is to delete them. A
+fabricated evidence line is worse than no evidence line: the general claim in the
+title stands on its own, while a fluent-looking fake invites belief. Provenance
+survives in the frontmatter regardless (`sources:` carries the conversation paths
+on 100% of merged notes), so deleting the sentence loses nothing that was true.
 
 Nothing here needs judgement, so nothing here can hallucinate:
 
   PASS 1  Delete the generated `Instance:` line. It is identified structurally
           (a body line whose text begins "Instance:"), not interpreted.
 
-  PASS 2  Append a `## Sources` section of wikilinks built from the note's own
-          `absorbed_from` list. Pure string assembly from existing frontmatter.
+  PASS 2  (OPT-IN, --sources-section) Append a `## Sources` section of wikilinks
+          to the archived originals. OFF by default: the publisher intends to
+          delete the archive once the good notes exist, and these would then be
+          111,133 dead wikilinks. Provenance is already in the frontmatter --
+          `absorbed_from` names the originals, `sources:` names the conversations
+          (on 100% of merged notes) -- so the body section records nothing new.
 
   PASS 3  Restore relationships by remapping edge targets. Edges are keyed by
           claim sentence -- the target note's H1 -- so a changed title dangles
@@ -141,6 +144,15 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="write (default: dry run)")
     ap.add_argument("--sample", type=int, default=0,
                     help="print N before/after examples and stop")
+    ap.add_argument("--sources-section", action="store_true",
+                    help="also append a ## Sources body section of wikilinks to the "
+                         "archived originals. OFF by default: the publisher intends "
+                         "to delete the archive once the good notes exist, and those "
+                         "links would then be 111,133 dead wikilinks. The provenance "
+                         "is already in the frontmatter either way — absorbed_from "
+                         "names the originals and sources: names the conversations "
+                         "(present on 100%% of merged notes) — so the body section "
+                         "adds nothing that is not already recorded.")
     args = ap.parse_args()
 
     vault = Path(args.vault)
@@ -199,7 +211,7 @@ def main() -> int:
 
         # PASS 2 — sources section from absorbed_from
         body2 = re.sub(r"\n##\s+Sources\b.*$", "", body2, flags=re.S).rstrip()
-        if srcs:
+        if srcs and args.sources_section:
             lines = ["", "## Sources", ""]
             for fn in srcs:
                 lines.append(f"- [[{fn[:-3] if fn.endswith('.md') else fn}]]")
