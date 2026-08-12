@@ -38,9 +38,18 @@ members say "1979" and "the late seventies", both go in the list.
 
 This is the evidence layer and the keyword-search surface of the final note.
 
+Source filenames are mechanical identity only. They are not evidence and are
+not included in the material you inspect. Never extract a date, name, slug
+fragment, or any other specific from a filename.
+
 **Never add a specific that does not appear in the source.** If the unit carries
 no concrete specifics, return an empty list. Do not supply plausible ones — an
 invented specific is indistinguishable from a real record.
+
+Each specific must be one contiguous substring copied from one source field,
+identical in case, punctuation, and spacing. Never join separate fragments,
+restore or infer a person's full name, or supply any name not written exactly in
+that source field.
 
 ## What you must not do
 

@@ -1,6 +1,6 @@
 # Engram Permanent-Note Migration — Handoff
 
-Written 2026-08-09. Everything needed to finish this without the session that
+Written 2026-08-09; updated 2026-08-10. Everything needed to finish this without the session that
 started it. Read `README.md` alongside this for the calibrated constants and the
 measured facts; this file covers **state, intent, and what to run next**.
 
@@ -57,7 +57,7 @@ The live vault at `~/Documents/vault` is **untouched**.
 |---|---|
 | 2 — cluster | **done.** 122,118 notes → 72,737 units (25,319 clusters + 46,559 singletons) |
 | 3 — triage + specifics (Haiku) | **done.** 72,539 units. 88.2% KEEP, 7.4% ARCHIVE, 4.5% RESOURCES |
-| 5 — write permanent notes (Opus) | **320 of 63,734 units (0.5%)** — `stage5/` |
+| 5 — write permanent notes (Codex) | **9,055 of 63,734 units (14.2%)** — `stage5/`; 5,020-unit bulk interval measured 63.3 units/min, with no malformed or duplicate results |
 | 6 — checker | built, tested, run on the pilot |
 | 7 — apply to vault | built, sandbox-tested, **never run** |
 | 8 / 8b / 9 | built, tested on pilot output |
@@ -74,8 +74,8 @@ Artifacts live in `~/engram-work/.migration/`:
 
 ```bash
 cd ~/ora
-# 1. Stage 5 — the bulk. Unattended, resumable, ~3,171 batches.
-python3 scripts/engram-migration/stage5_run.py --backend claude-cli --workers 8
+# 1. Stage 5 — the bulk. Unattended, resumable, 2,734 batches remaining.
+python3 scripts/engram-migration/stage5_run.py --backend codex-cli --workers 4
 
 # 2. Conformance check over 100% of output. Must show zero HARD violations.
 python3 scripts/engram-migration/stage6_check.py
@@ -99,7 +99,8 @@ python3 orchestrator/tools/chroma_source_rebuild.py \
 
 `stage5_run.py` re-derives its worklist from what is absent on disk, so
 re-invoking the same command retries failures and continues. There is no resume
-flag.
+flag. Stage 5 now hard-accepts only `codex-cli`; it uses GPT-5.5 with high
+reasoning through ChatGPT authentication and cannot invoke Claude or an API key.
 
 ---
 
@@ -125,6 +126,11 @@ for the corpus. **That was wrong by ~10x.** Two compounding errors:
 
 `--batch` is the main cost lever. 20 is a reasonable default; raising it lowers
 per-unit cost but increases the blast radius of one malformed response.
+The first 100 Codex units measured **963 tokens/unit** and four workers sustained
+about **40 units/minute**, with zero new HARD violations.
+The first real bulk interval added **5,020 units in 79.3 minutes** (**63.3
+units/minute**) before its parent execution session ended; all completed files
+remained valid and resumable.
 
 ---
 
@@ -177,9 +183,10 @@ Local IS suitable for Stage 10 edge typing (constrained classification from a
 13-term vocabulary) and for re-running Stage 3 shards (triage + verbatim
 extraction, where literalism is an asset).
 
-So: **Haiku sorts and extracts (Stage 3, 10); Opus writes (Stage 5, 9).** Do not
-move Stage 5 to a cheaper tier to save tokens — Stage 5 is the only irreplaceable
-judgement in the pipeline, and the ~30M figure already makes it affordable.
+The historical conclusion remains that light and local models are unsuitable for
+Stage 5. The current user instruction supersedes the earlier Claude routing:
+**Stage 5 and Stage 9 must use Codex and must not invoke Claude.** Stage 5 uses
+GPT-5.5 with high reasoning; the quality-first requirement is unchanged.
 
 ---
 
@@ -238,8 +245,8 @@ If a rate looks alarming, inspect real examples before believing it:
    while bodies were written under the broken named-actors rule and may anchor the
    writer toward the instance. That is a hypothesis; `stage5_build.py
    --with-bodies` builds the other arm. Output for the finished arm is in
-   `.migration/stage5_bodies/`. Compare on facet absorption and concept-naming
-   rate before committing the full run.
+   `.migration/stage5_bodies/`. The active migration preserves the calibrated
+   titles-only input; do not reopen this experiment during the run.
 2. **~22% of units carry no specifics at all**, so those notes will read
    `Instance: none recorded in source.` — faithful to the source, but a fifth of
    the corpus will be pure abstraction with no evidence layer and no keyword

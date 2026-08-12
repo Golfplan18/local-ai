@@ -1,97 +1,138 @@
-# Stage 9 — Decide and Perform Cross-Domain Merges (Opus)
+# Stage 9 — Decide, Verify, and Synthesize Cross-Domain Merges
 
-ONE-TIME MIGRATION PROMPT. Deleted with the rest of `scripts/engram-migration/`
-once the engram permanent-note migration lands.
+ONE-TIME MIGRATION SPECIFICATION. Deleted with the rest of
+`scripts/engram-migration/` once the engram permanent-note migration lands.
 
-Stage 8 nominated **candidate groups** of already-generalized permanent notes,
-almost all because two or more independently received the **same canonical
-concept name**. You decide, per group, whether they are one concept or several,
-and write the merged note when they are one.
+Stage 8 produced a lossless candidate workload from already-generalized Stage 5
+notes. Stage 9 uses three independent passes: first partition every candidate
+group, then verify the whole connected components created by those proposals,
+then synthesize only the verified final merge sets. Process every supplied item
+and return only the requested JSON array.
 
-## Why the bar is high
+## The merge bar
 
-Calibration on this corpus found that **every** sampled embedding cluster carried
-a real distinction under adversarial review — 36 groups, three independent
-judges, two refuters each, zero survived as pure duplicates. Assume a group has
-a distinction until you have looked and failed to find one.
+Assume a distinction exists until careful comparison fails to find one. Two
+notes sharing a concept name or title vocabulary are commonly different claims
+about the same subject. Merge only notes that state the same falsifiable claim,
+or facets that must travel together as one claim.
 
-Two notes sharing a canonical concept name are often two **different claims about
-that concept**, not two statements of it. "Costly signaling screens for genuine
-intent" and "A sanction imposed on an advocate raises their standing with
-sympathizers" are both costly signaling, and they are not the same claim.
+The decisive test is whether the claims can come apart:
 
-The publisher's standard, in their words:
+- If one claim could be true while another is false, keep them separate.
+- Different mechanisms, causal directions, scope conditions, actors, outcomes,
+  or exceptions are substantive distinctions.
+- Different wording, emphasis, hedging, or source domain is not a distinction
+  when the underlying falsifiable claim is the same.
+- If unification requires retreating to a broad domain label or platitude, keep
+  the notes separate.
+- Zero merge sets is a valid and expected result.
 
-> "Related but subtly different notes often carry important distinctions. Those
-> distinctions are where the real value lies. Similar notes that can't be
-> distinguished from one another are duplicates that should be eliminated, but if
-> a clear distinction can be identified, then there is something worthy of
-> retaining."
+Never merge to justify the candidate group. The purpose is to remove true
+duplicates without erasing the distinctions that make permanent notes useful.
 
-## Decide
+## Phase 1 — exact candidate-group partition
 
-For each group, one of:
-
-- **MERGE** — the members state the same claim, or facets of one claim. Write one
-  note absorbing every facet. The members are then deleted.
-- **SPLIT** — the members make claims that could come apart: one could be true
-  while another is false, or they name different mechanisms, scope conditions, or
-  causal directions. Leave every member untouched.
-- **PARTIAL** — some members merge and others stand alone. Name exactly which
-  unit_ids merge; the rest are left untouched.
-
-A distinction is real when the claims could come apart. It is **not** real when
-the difference is only wording, emphasis, hedging, or the same claim illustrated
-in a different domain — that last case is precisely what this stage exists to
-merge, since it is what embeddings could not see.
-
-SPLIT is a legitimate and expected outcome. Do not manufacture merges to justify
-the group.
-
-## When you merge
-
-Same rules that produced these notes, because the output is another permanent
-note:
-
-- Title: one declarative sentence. No proper nouns, dates, `because…`/`when…`/
-  `by …ing` mechanism clauses, non-load-bearing domain qualifiers, hedges,
-  inventory counts, private vocabulary, or unearned absolutes. Use the canonical
-  concept name verbatim.
-- Body: one bullet per distinct facet, in domain-neutral terms, naming the ROLE
-  that acts. Every facet from every merged member must survive — a facet you drop
-  dies here.
-- Final bullet begins `Instance:` and may contain **only** specifics already
-  present in the merged members' own Instance lines. Introduce nothing new.
-- No length target. Short is a consequence of correctness.
-- If merging would only be possible by retreating to a platitude, the answer is
-  SPLIT.
-
-## Output
-
-A JSON array, one object per group, written to the path in your instructions:
+Input items contain `group_id`, candidate provenance, and complete Stage 5
+abstractions for every group member. Return exactly:
 
 ```json
-[
-  {
-    "group_id": "g000012",
-    "decision": "MERGE",
-    "merged_unit_ids": ["u000123", "u004567"],
-    "standard_concept": "costly signaling",
-    "new_title": "A signal persuades only when sending it costs the sender something an imposter could not afford",
-    "new_body": "- The sender incurs a cost the audience can verify...\n- ...\n- Instance: ...",
-    "facets_absorbed": 4,
-    "distinction": "",
-    "note": ""
-  },
-  {
-    "group_id": "g000013",
-    "decision": "SPLIT",
-    "merged_unit_ids": [],
-    "distinction": "One claims the cost screens for intent; the other claims a sanction raises standing with sympathisers. A movement whose sanctions raise no one's standing falsifies the second and leaves the first intact.",
-    "note": ""
-  }
-]
+{
+  "group_id": "g000012",
+  "merge_sets": [["u000123", "u004567"]],
+  "singleton_ids": ["u006789"]
+}
 ```
 
-For SPLIT and PARTIAL, `distinction` is mandatory and must name what would have
-been destroyed. Writing the file is the deliverable; reply with one short line.
+Each `merge_sets` entry contains at least two unit IDs that state the same
+falsifiable claim. `merge_sets` and `singleton_ids` must be disjoint and their
+union must equal every member supplied for that group exactly once. Put every
+member that does not belong in a merge set in `singleton_ids`. Do not omit a
+member. Do not import a unit from another group.
+
+## Phase 2 — whole-component verification
+
+The runner forms deterministic connected components using only Phase 1's
+accepted merge sets. A bridge can connect proposals such as A+B and B+C even
+when A+C should not merge. Phase 2 therefore receives each whole component,
+all member abstractions, and exact proposal provenance.
+
+Return exactly:
+
+```json
+{
+  "component_id": "c000012",
+  "merge_sets": [["u000123", "u004567"]],
+  "singleton_ids": ["u006789"]
+}
+```
+
+Re-evaluate the whole component under the same falsifiable-claim standard.
+Preserve a proposal, split it, or repartition bridge members as the complete
+evidence requires. Again, the merge sets and singletons must be a disjoint exact
+partition of every supplied component member. Only Phase 2 merge sets advance.
+
+## Phase 3 — final synthesis
+
+Each Phase 3 item is one verified merge set. It contains:
+
+- the complete Stage 5 abstraction for every member;
+- every nonempty `standard_concept` observed on those members; and
+- a deterministic evidence catalog made only from original Stage 2 source
+  titles and body lines across every member unit. The runner has already
+  filtered this catalog to lines carrying a mechanically identifiable named,
+  quoted, or measured particular; IDs are namespaced to this merge item.
+
+Return exactly:
+
+```json
+{
+  "merge_id": "m000012",
+  "standard_concept": "costly signaling",
+  "new_title": "A signal persuades only when its cost separates commitment from imitation",
+  "mechanism_bullets": [
+    "The sender accepts a cost that an uncommitted imitator would not bear.",
+    "The observer treats the unequal willingness to pay as evidence of commitment."
+  ],
+  "facets_absorbed": 2,
+  "evidence_id": "m000012:e000003"
+}
+```
+
+The runner—not the model—chooses the lexicographically smallest unit ID as the
+keeper, adds Markdown list markers, and copies the selected catalog text into
+the final `Instance:` line. Return mechanism bullets as plain one-line strings:
+no `- ` prefixes and no `Instance:` bullet.
+
+### Synthesis requirements
+
+- Title: one declarative sentence stating the merged claim. No proper nouns,
+  dates, mechanism clauses, non-load-bearing domain qualifiers, hedges,
+  inventory counts, private vocabulary, or unearned absolutes.
+- Body bullets: one per distinct surviving facet, using domain-neutral roles and
+  active language. Every unique facet from every merged note must survive.
+- `standard_concept`: either empty or an exact nonempty concept string observed
+  on a supplied member. Never invent, expand, normalize, or rewrite a concept.
+  When nonempty, use it verbatim in the title or a mechanism bullet.
+- `facets_absorbed`: the positive count of distinct source facets preserved in
+  the synthesized note.
+- `evidence_id`: select one supplied catalog entry that records a concrete case
+  of the merged claim. Prefer the entry that preserves the most informative
+  relationship among named or measured particulars. Use `NONE` if and only if
+  the supplied evidence catalog is empty; when it is nonempty, select one of
+  this merge item's namespaced IDs.
+
+Do not copy or infer an Instance. Do not use filenames or Stage 3 specifics.
+Do not rewrite, combine, or supplement evidence. The runner copies the chosen
+Stage 2 title or body line exactly, apart from removing its Markdown list marker,
+and writes `Instance: none recorded in source.` for `NONE`.
+
+## Output discipline
+
+The transport supplies a phase-specific schema and exact item IDs. For every
+phase:
+
+- return one row for every supplied item and no foreign row;
+- preserve every item and unit ID verbatim;
+- obey the exact key set for that phase;
+- do not include reasoning, distinctions, notes, prose, or a code fence; and
+- return only the JSON array requested by the runner.
