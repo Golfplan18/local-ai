@@ -100,83 +100,105 @@ archived (1,888 tagged `fact`, 505 perishable politics, 577 carrying a year).
 
 ---
 
-## 4. Remaining steps, in order
+## 4. Remaining steps — REVISED after review
 
-Order matters: rewrites change titles, and relationship edges are keyed by title.
+**An independent review found the previous version of this section unsafe to
+execute. Do not use commands from any earlier copy.** The blocking findings are in
+§4a; the corrected order is §4b. Step A may continue; nothing after it is ready.
 
-### Step A — finish the rewrite (running)
+### 4a. Blocking findings (all verified against the code)
+
+**E1 — Phase C would destroy the existing graph.** Without `--paths-file` it globs
+every `*.md` under the root (all 75,734) and `write_note_with_relationships` does
+`new_fm["relationships"] = relationships if relationships else []` — it REPLACES,
+and empties the field when the model finds nothing. The manifest is absent, so
+nothing is marked done and resume would not protect anything. Running the naive
+command would replace 64,090 working relationship sets and 604,099 edges.
+*Never invoke Phase C without an explicit `--paths-file` naming only notes that
+lack relationships.*
+
+**E2 — Phase C marks errors and skips as completed.** `completed[p] = entry` runs
+regardless of `r.error` or `r.skipped`, so resume never retries a failure. This is
+the same trap §6 documents elsewhere. It also caps neighbour bodies at 600
+characters (`NEIGHBOR_MAX_CHARS`), affecting 17,671 notes, and does not retain
+malformed replies.
+
+**E3 — the vector-store step is wrong twice.** `chroma_source_rebuild.py` requires
+a subcommand and `--target-chromadb-path`, and it must be run with `cwd=~/ora` or
+the `orchestrator` import fails. Even corrected it rebuilds `knowledge`, while
+Phase C queries `atomics`. The live atomics index is profoundly stale: only 6,689
+of its 129,900 distinct titles overlap the corpus's 75,675 current H1s, so using it
+would generate obsolete and dangling targets at scale.
+
+**E4 — the vector-store ORDER is backwards.** Knowledge metadata stores
+relationships and absolute note paths. Building before Phase C omits the new
+relationships; building from `~/engram-work` bakes in paths inside a worktree that
+Step F deletes. Final indexes must be built AFTER landing, from the canonical
+`~/Documents/vault/Engrams`.
+
+**E5 — SPLIT has no graph semantics.** `split_second_note` carries only a title and
+body, while `source_files` remains one undivided list. Undefined: which child
+inherits the old title's inbound edges, how provenance divides, the second
+filename and frontmatter, collision handling, and what happens to inbound edges on
+ARCHIVE. At inspection there were 40 SPLITs and 39 affected notes carried 1,899
+inbound edges. **This is a decision to be made, not code to be written.**
+
+**E6 — `fix_notes.py` is not a title substitution.** It reconstructs the whole
+graph from the archived originals. Its `remap` dict silently overwrites duplicates:
+**29 archived H1s map to two different merged notes**, and 801 archived edges
+reference those ambiguous titles. SPLIT worsens the ambiguity. Verified: 110,908
+remap keys, 29 ambiguous.
+
+**E7 — Step A has no completion gate.** The runner treats any existing output file
+as complete, validates little past ID and title, increments `ok` even where a
+result was rejected, and exits zero with failures outstanding. Observed defects in
+current output: array-valued `body` fields, and one body containing model
+commentary. **Require an exact 4,038 input/output bijection and validate every
+verdict, title, body, source list and SPLIT child before applying anything.**
+
+**E8 — Step F does not land the work.** `git push` cannot push uncommitted B/C/E
+changes; feature and main have diverged; untracked `.migration/` blocks ordinary
+worktree removal. Final commit, feature push, merge, main push and remote readback
+are all missing. And `rm -rf scripts/engram-migration` would delete tracked files
+without committing the teardown.
+
+### 4b. Corrected order
+
+1. **Finish Step A.** Then validate all 4,038 outputs against a schema and retry
+   every invalid result. No applying until the bijection is exact.
+2. **Decide SPLIT/ARCHIVE semantics** — edge inheritance, provenance division,
+   filenames, collisions. Write the decision down before coding it.
+3. **Apply the complete batch atomically**, with a collision-free preflight and a
+   commit as the rollback point.
+4. **Remap the accepted graph.** Resolve the 29 duplicate H1s explicitly and the
+   one zero-byte note.
+5. **Build a TEMPORARY current atomics index** for Phase C to query.
+6. **Derive the exact post-apply set lacking relationships** and pass only those
+   via `--paths-file`. Afterwards, prove the relationship-bearing notes were
+   untouched — compare edge counts before and after.
+7. **Land and merge the corpus** — commit, push feature, merge, push main, read
+   back the remote.
+8. **Rebuild final atomics and knowledge indexes from `~/Documents/vault/Engrams`**
+   after landing, and cut over.
+9. **Verify** remote state, graph resolution, stored paths, live queries, and
+   rollback. Only then delete archives and scaffolding — as a committed change.
+
+### 4c. Step A, the one command that is safe to run now
 
 ```bash
-python3 ~/ora/scripts/engram-migration/rewrite_run.py --apply \
+cd ~/ora && python3 scripts/engram-migration/rewrite_run.py --apply \
   --worklist ~/engram-work/.migration/opus_worklist.json --workers 8
 ```
 
-4,038 notes carrying a mechanically detected defect. **~4,900 tokens per note,
-~19.8M total.** Opus, batch 1. Writes one JSON per note to
-`.migration/rewrite/`; touches no vault file.
+Opus, batch 1, ~4,900 tokens per note, ~19.8M total. Writes one JSON per note to
+`.migration/rewrite/` and touches no vault file. Re-run to retry failures.
 
-### Step B — apply the rewrites to the notes
-
-**NOT YET BUILT.** Reads `.migration/rewrite/*.json` and writes each `title` and
-`body` into its note, preserving frontmatter. Must handle `verdict`:
-
-- `KEEP` — replace title and body
-- `SPLIT` — write the note plus a second note from `split_second_note` (the
-  grouping audit found 20% of multi-source groups carry two claims and 8%
-  contradict outright; ~1 in 20 rewrites returns SPLIT)
-- `ARCHIVE` — move to Archive (the general form would be a truism)
-
-### Step C — remap relationship edges to the new titles
+Check it with `ps`, never `pgrep` (§6):
 
 ```bash
-python3 ~/ora/scripts/engram-migration/fix_notes.py --apply
+tail -5 ~/engram-work/.migration/rewrite-run.log
+ps -eo pid=,etime=,args= | grep "[r]ewrite_run.py"
 ```
-
-Edges are keyed by **claim sentence** — the target note's H1 — so every retitle
-dangles the edges pointing at it. `fix_notes.py` rebuilds the old→new mapping from
-`absorbed_from` plus the archived H1s and rewrites the targets. Deterministic, no
-model. It already did this once for 604,099 edges across 64,089 notes.
-
-*It may need extending:* it currently maps archived-original H1s to current H1s.
-After Step B the mapping is current-H1 → new-H1, which is a different pair. Verify
-before trusting it.
-
-### Step D — rebuild the vector store
-
-```bash
-python3 ~/ora/orchestrator/tools/chroma_source_rebuild.py --engrams-root ~/engram-work/Engrams
-```
-
-Also clears **8,021 orphaned records** that resolve to no file and inflate every
-similarity query today.
-
-### Step E — relationships for the 11,644 incorporated notes
-
-```bash
-python3 ~/ora/orchestrator/historical/phase_c_relationship_extraction.py \
-  --vault-root ~/engram-work/Engrams
-```
-
-ChromaDB nearest-neighbours plus a **Haiku** classification per note, resumable via
-`~/ora/data/phase-c-manifest.json`. Roughly 24M Haiku tokens. Haiku is the correct
-tier here — constrained classification against a fixed vocabulary is where its
-literalism is an asset.
-
-### Step F — land it and tear down
-
-```bash
-git -C ~/engram-work push origin engram-permanent-notes
-# merge into the vault's default branch, then:
-git -C ~/Documents/vault worktree remove ~/engram-work
-rm -rf ~/engram-backups ~/ora/scripts/engram-migration
-```
-
-The owner has decided the 122,118 archived originals **stay in Archive until this
-is proven done properly**, then may be deleted. Nothing depends on them after
-Step B: provenance lives in each note's own frontmatter, and the source
-conversations they point at are 85% gone anyway.
-
----
 
 ## 5. What a note must be — the writing standard
 
@@ -325,11 +347,19 @@ before any output), and no local endpoint declares `max_tokens` so
 
 ## 8. What is still unresolved
 
-1. **Step B does not exist.** The rewrites are accumulating as JSON with nothing to
-   apply them.
-2. **`fix_notes.py` may need extending for Step C** — its mapping is
-   archived-H1 → current-H1, but after Step B it needs current-H1 → new-H1.
-3. **The 11,644 incorporated notes have no relationships** until Step E.
+1. **The apply step does not exist.** Rewrites are accumulating as JSON with
+   nothing to write them into the notes. See E5 — it cannot be written until the
+   SPLIT/ARCHIVE graph semantics are decided.
+2. **`fix_notes.py` cannot be reused as-is** for the post-apply remap. See E6: it
+   rebuilds the graph from archived originals and its remap silently drops one of
+   each ambiguous pair (29 of them).
+3. **The 11,644 incorporated notes have no relationships**, and the tool that
+   would supply them will destroy the other 64,090 unless driven by an explicit
+   `--paths-file`. See E1.
+4. **The atomics index Phase C queries is stale** — 6,689 of 129,900 titles
+   overlap the current corpus. It must be rebuilt before Phase C runs, and
+   rebuilt again from the canonical vault path after landing. See E3, E4.
+5. **Step A has no completion gate.** See E7.
 4. **~51,600 notes were never flagged and never rewritten.** The prescan finds
    defects with mechanical signatures; a note that is merely bland, or generalized
    one notch too far, passes clean. Those exist and are not findable mechanically.
