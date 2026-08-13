@@ -40,20 +40,27 @@ worktree of the vault at `~/Documents/vault`. **The live vault is untouched.**
 |---|---|
 | `Engrams/` — the single corpus | **75,734 notes**, flat, no subdirectories |
 | with working relationships | 64,090 (84.6%), **604,099 edges** |
-| missing relationships | **11,644** (the incorporated Historical Atomics notes) |
+| missing relationships | **11,644** — 11,572 incorporated Historical Atomics plus 72 other notes |
 | `Archive/Engram Absorbed Sources 2026-08/` | 122,118 pre-merge originals |
 | `Archive/Historical Atomics Not Incorporated 2026-08/` | 2,477 (facts, perishable, dated, 3 predictions) |
-| Rewrite in progress | **1,644 of 4,038** done, ~2.2 h remaining |
+| Rewrite artifacts | **3,148 of 4,038** present; 3,145 strict-valid, 3 invalid |
 
-**A rewrite process is running right now**, detached (`ppid 1`), 8 workers:
+**No model process is running.** The prior Opus run stopped after 139 minutes.
+Three saved malformed wrappers contain recoverable note objects; 890 output files
+are absent, so 893 worklist entries do not yet have a strict-valid output. No
+rewrite has been applied to a note.
+
+Check before starting any model work:
 
 ```bash
 tail -5 ~/engram-work/.migration/rewrite-run.log
 ps -eo pid=,etime=,args= | grep "[r]ewrite_run.py"     # NOT pgrep — see §6
 ```
 
-It is resumable and idempotent. If it dies, re-run the identical command; the
-worklist is derived from which output files already exist.
+`rewrite_run.py` now validates existing files before treating them as complete,
+validates new records before persisting them, and refuses Opus. The next action is
+a representative GPT-5.6 Sol pilot in an isolated output directory, not the full
+remaining worklist.
 
 ---
 
@@ -104,7 +111,7 @@ archived (1,888 tagged `fact`, 505 perishable politics, 577 carrying a year).
 
 **An independent review found the previous version of this section unsafe to
 execute. Do not use commands from any earlier copy.** The blocking findings are in
-§4a; the corrected order is §4b. Step A may continue; nothing after it is ready.
+§4a; the corrected order is §4b. No bulk model run or corpus apply is ready yet.
 
 ### 4a. Blocking findings (all verified against the code)
 
@@ -140,7 +147,7 @@ Step F deletes. Final indexes must be built AFTER landing, from the canonical
 body, while `source_files` remains one undivided list. Undefined: which child
 inherits the old title's inbound edges, how provenance divides, the second
 filename and frontmatter, collision handling, and what happens to inbound edges on
-ARCHIVE. At inspection there were 40 SPLITs and 39 affected notes carried 1,899
+ARCHIVE. At inspection there were 44 SPLITs and 43 affected notes carried 1,949
 inbound edges. **This is a decision to be made, not code to be written.**
 
 **E6 — `fix_notes.py` is not a title substitution.** It reconstructs the whole
@@ -149,12 +156,12 @@ graph from the archived originals. Its `remap` dict silently overwrites duplicat
 reference those ambiguous titles. SPLIT worsens the ambiguity. Verified: 110,908
 remap keys, 29 ambiguous.
 
-**E7 — Step A has no completion gate.** The runner treats any existing output file
-as complete, validates little past ID and title, increments `ok` even where a
-result was rejected, and exits zero with failures outstanding. Observed defects in
-current output: array-valued `body` fields, and one body containing model
-commentary. **Require an exact 4,038 input/output bijection and validate every
-verdict, title, body, source list and SPLIT child before applying anything.**
+**E7 — Step A had no completion gate.** This is now repaired in the runner: an
+existing file counts only when ID, verdict, title, bullet-only body, source list,
+and SPLIT shape validate; new replies are checked before atomic persistence; a
+failed run exits nonzero. The current scan finds 3,145 valid and exactly three
+invalid files (two array-valued bodies and one body containing commentary). The
+full 4,038-entry bijection is still required before applying anything.
 
 **E8 — Step F does not land the work.** `git push` cannot push uncommitted B/C/E
 changes; feature and main have diverged; untracked `.migration/` blocks ordinary
@@ -164,34 +171,42 @@ without committing the teardown.
 
 ### 4b. Corrected order
 
-1. **Finish Step A.** Then validate all 4,038 outputs against a schema and retry
-   every invalid result. No applying until the bijection is exact.
+1. **Prove the non-Opus writing route, then finish Step A.** Run a representative
+   GPT-5.6 Sol pilot in an isolated output directory and compare real notes against
+   their full sources and the accepted writing standard. If it meets the bar,
+   recover the six structurally damaged-but-complete artifacts where lossless,
+   finish the remaining work, and require an exact 4,038-file valid bijection.
 2. **Decide SPLIT/ARCHIVE semantics** — edge inheritance, provenance division,
    filenames, collisions. Write the decision down before coding it.
 3. **Apply the complete batch atomically**, with a collision-free preflight and a
    commit as the rollback point.
-4. **Remap the accepted graph.** Resolve the 29 duplicate H1s explicitly and the
-   one zero-byte note.
-5. **Build a TEMPORARY current atomics index** for Phase C to query.
+4. **Remap the accepted graph without blindly rerunning `fix_notes.py`.** Preserve
+   the accepted relationship graph for ordinary retitles, resolve SPLIT/ARCHIVE
+   edges under the decision from step 2, and separately resolve the 58 current
+   duplicate H1 values and the one zero-byte note. The 29 archived-H1 collisions
+   matter only if archived graph reconstruction remains necessary.
+5. **Repair Phase C and build a TEMPORARY current atomics index.** Expose the
+   temporary Chroma path to its CLI; remove the 600-character neighbour cap; save
+   malformed replies; retry errors/skips; and exit nonzero while any remain.
 6. **Derive the exact post-apply set lacking relationships** and pass only those
-   via `--paths-file`. Afterwards, prove the relationship-bearing notes were
-   untouched — compare edge counts before and after.
+   via `--paths-file`. Afterwards, prove every pre-existing relationship block is
+   byte-identical, not merely that aggregate edge counts match.
 7. **Land and merge the corpus** — commit, push feature, merge, push main, read
    back the remote.
 8. **Rebuild final atomics and knowledge indexes from `~/Documents/vault/Engrams`**
-   after landing, and cut over.
+   after landing, validate inactive copies, then cut over with a retained rollback.
 9. **Verify** remote state, graph resolution, stored paths, live queries, and
    rollback. Only then delete archives and scaffolding — as a committed change.
 
-### 4c. Step A, the one command that is safe to run now
+### 4c. Step A, current safe boundary
 
-```bash
-cd ~/ora && python3 scripts/engram-migration/rewrite_run.py --apply \
-  --worklist ~/engram-work/.migration/opus_worklist.json --workers 8
-```
-
-Opus, batch 1, ~4,900 tokens per note, ~19.8M total. Writes one JSON per note to
-`.migration/rewrite/` and touches no vault file. Re-run to retry failures.
+The runner accepts only `--backend codex-cli --model gpt-5.6-sol`; every other
+backend and model is rejected by argument parsing. It requires Codex CLI 0.147.0
+or newer and refuses to run without an explicit worklist. The isolated ChatGPT
+route passed a real schema-constrained smoke call. It writes one JSON per note and
+touches no vault note. First run the representative pilot into a separate staging
+directory; do not point it at `.migration/rewrite/` until the real pilot artifacts
+meet the writing bar.
 
 Check it with `ps`, never `pgrep` (§6):
 
@@ -281,8 +296,12 @@ was caught only by noticing the number was implausible:
 to the last `}` discarded 17–45% of *valid* replies — anything with trailing CLI
 output or braces inside a string. Diagnosed wrongly three times (transient, then
 concurrency, then truncation) before the fix that worked: **write every unparseable
-reply to disk instead of theorising.** The moment failures became inspectable the
-rate went to zero. `rewrite_run.py` now records them in `.migration/rewrite_failures/`.
+reply to disk instead of theorising.** Inspection exposed a second malformed
+wrapper shape: a complete inner note followed by object fields stranded inside
+the surrounding array. The current parser recovers the three retained examples,
+but the stopped process used the older parser and logged four failures. Strict
+record validation now prevents a recovered fragment from becoming “complete”
+unless every note-building field is valid.
 
 **A silent-loss bug in the same function.** When a returned `note_id` did not match
 the request, the loop `continue`d, wrote nothing, and **still counted the call a
@@ -325,13 +344,14 @@ nothing in the running system imports from it.
 | `prescan.py --historical` | pre-migration defect scan (over-fires; see §6) | none |
 | `fix_notes.py` | deletes keyword-dump Instance lines, remaps relationship edges | **none** |
 | `incorporate_historical.py` | folds Historical Atomics in, archives non-corpus kinds | none |
-| `rewrite_run.py` | rewrites flagged notes from full sources | Opus |
+| `rewrite_run.py` | rewrites flagged notes from full sources | prior: Opus; next: GPT-5.6 Sol after pilot |
 | `rewrite_prompt.md` | the writing standard, 15 calibrated rules | — |
 | `daemonize.py` | double-fork detach (macOS has no `setsid`) | — |
 | `compare_arms.py` | scores rewrite variants against the bar | — |
 
-**Measured model assignment.** Opus for writing (Stage 5, 9): on 300 identical
-notes Haiku paraphrased where asked to transform and invented canonical-sounding
+**Historical measured model assignment.** Opus produced the existing 3,148 files;
+it is no longer authorized. On 300 identical notes,
+Haiku paraphrased where asked to transform and invented canonical-sounding
 terms — "Bad faith reasoning" where the real term is *techniques of
 neutralization*. Haiku for triage and constrained classification (Stage 3, `phase_c`):
 63.6% source retention against Opus's 54.2%, half the fabrication rate. A local
@@ -353,23 +373,23 @@ before any output), and no local endpoint declares `max_tokens` so
 2. **`fix_notes.py` cannot be reused as-is** for the post-apply remap. See E6: it
    rebuilds the graph from archived originals and its remap silently drops one of
    each ambiguous pair (29 of them).
-3. **The 11,644 incorporated notes have no relationships**, and the tool that
-   would supply them will destroy the other 64,090 unless driven by an explicit
-   `--paths-file`. See E1.
+3. **11,644 notes have no relationships** — 11,572 incorporated Historical
+   Atomics and 72 others. The tool that would supply them will destroy the other
+   64,090 unless driven by an explicit `--paths-file`. See E1.
 4. **The atomics index Phase C queries is stale** — 6,689 of 129,900 titles
    overlap the current corpus. It must be rebuilt before Phase C runs, and
    rebuilt again from the canonical vault path after landing. See E3, E4.
-5. **Step A has no completion gate.** See E7.
-4. **~51,600 notes were never flagged and never rewritten.** The prescan finds
+5. **GPT-5.6 Sol has not yet been measured against this writing bar.** Run the
+   isolated representative pilot before spending the remaining worklist through it.
+6. **~51,600 notes were never flagged and never rewritten.** The prescan finds
    defects with mechanical signatures; a note that is merely bland, or generalized
    one notch too far, passes clean. Those exist and are not findable mechanically.
    Re-running clean notes is measurably harmful — two owner-approved titles came
    back *worse* when re-processed under new rules — so leaving them is the correct
    default, not laziness.
-5. **The tier/batch matrix was run but never judged.** Titles for nine
-   model/batch conditions are in `.migration/MEASUREMENTS.json`; two of three
-   judges failed on a file-path bug. Sonnet at batch 1 is untested and could cut
-   cost several-fold if it meets the bar.
+7. **The tier/batch matrix was not fully judged.** `MEASUREMENTS.json` contains
+   four title arms and two judge-result arrays. Sonnet at batch 1 remains untested,
+   but it is not the current route.
 
 ---
 
@@ -382,7 +402,8 @@ before any output), and no local endpoint declares `max_tokens` so
   violation produced a defect.
 - **State corrections plainly and move on.** No hedging about whether a number
   might be wrong — check it, then say what it is.
-- **Do not add gates, kill switches, or default-off flags to content pipelines.**
-  Fail open with loud logging.
+- **Do not add discretionary gates, kill switches, or default-off flags to content
+  pipelines.** Fail open with loud logging. Structural validation that prevents a
+  malformed or missing artifact from being marked complete is required.
 - **Deliver, don't audit indefinitely.** The owner tired of audits before the work
   was done, correctly. Audit when a decision genuinely turns on the answer.

@@ -309,6 +309,9 @@ Never state a name, number, date, or example that does not appear in the sources
 
 ## Output
 
-The note as markdown: `# title`, blank line, then the bullets. Then a line `---`,
-then two or three sentences on what you preserved that a careless summary would
-have dropped, and anything in the sources you judged false or unsupported.
+Return only the JSON object requested by the caller. The `title` value is plain
+text with no Markdown. The `body` value contains only the note's bullet lines,
+each beginning `- `; put no heading, separator, explanation, or editorial
+commentary in it. State the title's conversion in `conversion`, set
+`domain_bound` truthfully, and use `split_second_note` only when two claims do not
+belong in one note.

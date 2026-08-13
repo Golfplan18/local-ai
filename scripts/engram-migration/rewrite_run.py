@@ -19,9 +19,10 @@ here is a measurement, not a preference:
   at batch 1 and 12/16 at batch 8. Batching costs about a quarter of the quality.
   --batch is available for measuring, but 1 is the measured default.
 
-  OPUS. Same test: Sonnet 2/16 and Haiku 0/16 at batch 8. Tier and batch are
-  confounded in those two numbers, so batch-1 figures for the cheaper tiers may be
-  better -- but nothing below Opus has yet met the bar.
+  MODEL ROUTE. The original run used Opus. Further work uses the explicit
+  ``codex-cli`` backend and GPT-5.6 Sol; validate a representative pilot before
+  completing the remaining work so a transport change cannot silently lower the
+  writing standard.
 
   SHARDING, so N independent processes cannot collide. Resume works by checking
   which output files exist, which means two processes sharing a worklist would both
@@ -54,7 +55,42 @@ if ORA_HOME not in sys.path:
     sys.path.insert(0, ORA_HOME)
 
 ARCHIVE_SUBDIR = "Archive/Engram Absorbed Sources 2026-08"
-MODEL_HINT = "claude-opus-4-6"
+MODEL_HINT = "gpt-5.6-sol"
+
+_CHILD_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["title", "body"],
+    "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "body": {"type": "string", "minLength": 1},
+    },
+}
+_NOTE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "note_id", "verdict", "title", "body", "conversion",
+        "domain_bound", "split_second_note",
+    ],
+    "properties": {
+        "note_id": {"type": "string", "minLength": 1},
+        "verdict": {"type": "string", "enum": ["KEEP", "SPLIT", "ARCHIVE"]},
+        "title": {"type": "string", "minLength": 1},
+        "body": {"type": "string", "minLength": 1},
+        "conversion": {"type": "string", "minLength": 1},
+        "domain_bound": {"type": "boolean"},
+        "split_second_note": {"anyOf": [_CHILD_SCHEMA, {"type": "null"}]},
+    },
+}
+REWRITE_RESPONSE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["notes"],
+    "properties": {
+        "notes": {"type": "array", "minItems": 1, "items": _NOTE_SCHEMA},
+    },
+}
 
 _ABSORBED = re.compile(r"^absorbed_from:\s*\n((?:[ \t]*-[ \t]+\S.*\n)+)", re.M)
 _H1 = re.compile(r"^#\s+(.+)$", re.M)
@@ -111,13 +147,34 @@ def _balanced(raw: str, start: int) -> str | None:
     return None
 
 
+def _contains_json_value(raw: str) -> bool:
+    for i, char in enumerate(raw):
+        if char not in "{[":
+            continue
+        candidate = _balanced(raw, i)
+        if not candidate:
+            continue
+        try:
+            json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        return True
+    return False
+
+
 def parse_reply(text: str) -> dict | None:
     raw = (text or "").strip()
     m = _FENCE.search(raw)
     if m:
+        prefix = raw[:m.start()].strip()
+        suffix = raw[m.end():].strip()
+        if _contains_json_value(prefix) or _contains_json_value(suffix):
+            return None
         raw = m.group(1).strip()
-    # Try every plausible JSON start, nearest first, and take the first that
-    # yields a balanced value containing a "notes" list.
+    # Try every plausible JSON start. Accept a complete wrapper only when any
+    # surrounding text is plain CLI prose: braces/brackets in surrounding text
+    # are ambiguous and could hide a conflicting duplicate from batch-level ID
+    # validation.
     starts = [i for i, c in enumerate(raw) if c in "{["]
     for i in starts[:6]:
         cand = _balanced(raw, i)
@@ -127,21 +184,20 @@ def parse_reply(text: str) -> dict | None:
             v = json.loads(cand)
         except json.JSONDecodeError:
             continue
+        wrapped = None
         if isinstance(v, dict) and isinstance(v.get("notes"), list):
-            return v
-        if isinstance(v, list) and v and isinstance(v[0], dict):
-            return {"notes": v}
-        # A bare note-shaped object. Observed failure mode: the model closes the
-        # note object early and continues with more key-value pairs as if still
-        # inside it --
-        #   {"notes": [{...note...}, "conversion": "...", "domain_bound": true}]}
-        # The wrapper is then invalid JSON while the inner note object is complete
-        # and intact. Only `conversion` and `domain_bound` are stranded, and
-        # neither is used downstream, so recovering the inner object loses nothing
-        # that matters. This shape accounted for every parse failure in the live
-        # run after the balanced-brace fix.
-        if isinstance(v, dict) and v.get("note_id") and v.get("title"):
-            return {"notes": [v]}
+            wrapped = v
+        elif isinstance(v, list) and v and isinstance(v[0], dict):
+            wrapped = {"notes": v}
+        if wrapped is not None:
+            prefix = raw[:i].strip()
+            tail = raw[i + len(cand):].strip()
+            if _contains_json_value(prefix) or _contains_json_value(tail):
+                return None
+            return wrapped
+        # Do not return the first bare note object here. A malformed response may
+        # contain duplicate or unexpected note IDs; the scavenger below must keep
+        # every candidate so batch validation can reject that ambiguity.
     # Last resort: scavenge every balanced object that looks like a note. Covers a
     # malformed wrapper around a multi-note reply, where no single start yields a
     # usable value.
@@ -159,13 +215,105 @@ def parse_reply(text: str) -> dict | None:
         if isinstance(v, dict) and v.get("note_id") and v.get("title"):
             found.append(v)
     if found:
-        seen, uniq = set(), []
-        for v in found:
-            if v["note_id"] not in seen:
-                seen.add(v["note_id"])
-                uniq.append(v)
-        return {"notes": uniq}
+        return {"notes": found}
     return None
+
+
+def _text_error(value: object, label: str) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return f"{label} must be a non-empty string"
+    return None
+
+
+def _note_text_error(title: object, body: object, prefix: str = "") -> str | None:
+    error = _text_error(title, f"{prefix}title")
+    if error:
+        return error
+    assert isinstance(title, str)
+    if title != title.strip() or "\n" in title or "\r" in title:
+        return f"{prefix}title must be one trimmed line"
+    if any(mark in title for mark in ("*", "_", "`", "#")):
+        return f"{prefix}title contains forbidden markdown"
+    error = _text_error(body, f"{prefix}body")
+    if error:
+        return error
+    assert isinstance(body, str)
+    lines = body.strip().splitlines()
+    if not lines or any(not line.startswith("- ") for line in lines):
+        return f"{prefix}body must contain only non-empty '- ' bullet lines"
+    if any(line.strip() == "---" for line in lines):
+        return f"{prefix}body contains a diagnostic separator"
+    return None
+
+
+def record_error(rec: object, *, expected_note_id: str | None = None,
+                 expected_sources: list[str] | None = None) -> str | None:
+    """Return why a rewrite record is unsafe to persist, or ``None``.
+
+    ``conversion`` and ``domain_bound`` are diagnostic fields: new structured
+    output requires them, but older recovered records may omit them without
+    losing any field used to build a note. If present, their types remain strict.
+    """
+    if not isinstance(rec, dict):
+        return "record must be an object"
+    allowed = {
+        "note_id", "verdict", "title", "body", "conversion", "domain_bound",
+        "split_second_note", "source_files",
+    }
+    unknown = sorted(set(rec) - allowed)
+    if unknown:
+        return f"unexpected fields: {', '.join(unknown)}"
+    note_id = rec.get("note_id")
+    if not isinstance(note_id, str) or not note_id:
+        return "note_id must be a non-empty string"
+    if expected_note_id is not None and note_id != expected_note_id:
+        return f"note_id {note_id!r} does not match {expected_note_id!r}"
+    verdict = rec.get("verdict")
+    if verdict not in {"KEEP", "SPLIT", "ARCHIVE"}:
+        return f"invalid verdict {verdict!r}"
+    error = _note_text_error(rec.get("title"), rec.get("body"))
+    if error:
+        return error
+    if "conversion" in rec:
+        error = _text_error(rec["conversion"], "conversion")
+        if error:
+            return error
+    if "domain_bound" in rec and not isinstance(rec["domain_bound"], bool):
+        return "domain_bound must be a boolean"
+    child = rec.get("split_second_note")
+    if verdict == "SPLIT":
+        if not isinstance(child, dict):
+            return "SPLIT requires split_second_note"
+        child_allowed = {"title", "body"}
+        child_unknown = sorted(set(child) - child_allowed)
+        if child_unknown:
+            return f"split_second_note has unexpected fields: {', '.join(child_unknown)}"
+        error = _note_text_error(child.get("title"), child.get("body"), "split ")
+        if error:
+            return error
+    elif child is not None:
+        return f"{verdict} must not contain split_second_note"
+    if expected_sources is not None:
+        sources = rec.get("source_files")
+        if sources != expected_sources:
+            return "source_files do not exactly match the note's absorbed_from list"
+    elif "source_files" in rec:
+        sources = rec["source_files"]
+        if (not isinstance(sources, list)
+                or any(not isinstance(item, str) or not item for item in sources)):
+            return "source_files must be a list of non-empty strings"
+    return None
+
+
+def output_file_error(path: Path, *, note_id: str,
+                      expected_sources: list[str]) -> str | None:
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return f"cannot read valid JSON: {exc}"
+    return record_error(
+        rec, expected_note_id=note_id, expected_sources=expected_sources,
+    )
 
 
 def build_user(units: list[dict]) -> str:
@@ -184,12 +332,13 @@ def build_user(units: list[dict]) -> str:
         "Return ONLY a JSON object: {\"notes\": [{\"note_id\": ..., \"verdict\": "
         "\"KEEP\"|\"SPLIT\"|\"ARCHIVE\", \"title\": ..., \"body\": ..., "
         "\"conversion\": ..., \"domain_bound\": true|false, \"split_second_note\": "
-        "{\"title\": ..., \"body\": ...}}]}\n\n"
+        "null|{\"title\": ..., \"body\": ...}}]}\n\n"
         "`body` is the bullet lines, each starting \"- \". Use SPLIT when the "
         "sources carry two claims one note would have to fudge — 20% of "
         "multi-source groups do, and 8% actually contradict each other; put the "
-        "second claim in split_second_note. Use ARCHIVE only when the general form "
-        "would be a truism.\n\n"
+        "second claim in split_second_note; otherwise set it to null. Use ARCHIVE "
+        "only when the general form would be a truism. Put no headings, separators, "
+        "or editorial commentary in body.\n\n"
         + json.dumps(payload, ensure_ascii=False)
     )
 
@@ -200,8 +349,10 @@ def main() -> int:
     ap.add_argument("--vault", default=str(Path.home() / "engram-work"))
     ap.add_argument("--out", default=None, help="default <vault>/.migration/rewrite")
     ap.add_argument("--prompt", default=str(Path(__file__).with_name("rewrite_prompt.md")))
-    ap.add_argument("--backend", default="claude-cli",
-                    choices=("api", "claude-cli", "ora-slots", "openrouter"))
+    ap.add_argument("--backend", default="codex-cli", choices=("codex-cli",),
+                    help="pinned non-Opus transport (the only accepted value)")
+    ap.add_argument("--model", default=MODEL_HINT, choices=(MODEL_HINT,),
+                    help="pinned non-Opus model (the only accepted value)")
     ap.add_argument("--batch", type=int, default=1,
                     help="notes per model call. 1 is measured-optimal; 8 costs ~25%% "
                          "of quality. Raise only to re-measure.")
@@ -217,9 +368,12 @@ def main() -> int:
                          "Without it the runner walks all 64,144 merged notes, which "
                          "is 16x the work: the prescan finds 4,038 with a detectable "
                          "defect and re-running a clean note measurably damages it.")
-    ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--apply", action="store_true", help="make the calls (default: dry run)")
     args = ap.parse_args()
+
+    if not args.worklist:
+        print("[rewrite] refusing to run without an explicit --worklist", file=sys.stderr)
+        return 2
 
     vault = Path(args.vault)
     engrams = vault / "Engrams"
@@ -244,8 +398,27 @@ def main() -> int:
     worklist: set[str] | None = None
     if args.worklist:
         wl = json.loads(Path(args.worklist).read_text())
-        worklist = {Path(x).name for x in wl}
+        if (not isinstance(wl, list)
+                or any(not isinstance(item, str) or not item for item in wl)):
+            print("[rewrite] worklist must be a JSON list of filenames", file=sys.stderr)
+            return 2
+        names = [Path(item).name for item in wl]
+        if len(set(names)) != len(names):
+            print("[rewrite] worklist contains duplicate filenames", file=sys.stderr)
+            return 2
+        worklist = set(names)
         print(f"[rewrite] worklist: {len(worklist):,} notes from {args.worklist}")
+        expected_outputs = {
+            Path(name).with_suffix(".json").name for name in worklist
+        }
+        extras = sorted(
+            path.name for path in outdir.glob("*.json")
+            if path.name not in expected_outputs
+        )
+        if extras:
+            print(f"[rewrite] refusing output outside worklist: {extras[0]} "
+                  f"({len(extras):,} total)", file=sys.stderr)
+            return 2
 
     print("[rewrite] indexing archived source notes...", flush=True)
     arch: dict[str, str] = {}
@@ -255,6 +428,10 @@ def main() -> int:
 
     units: list[dict] = []
     skipped_no_src = 0
+    valid_existing = 0
+    invalid_existing = 0
+    accounted: set[str] = set()
+    missing_source_refs: list[tuple[str, str]] = []
     for p in sorted(engrams.glob("*.md")):
         if worklist is not None and p.name not in worklist:
             continue
@@ -264,24 +441,54 @@ def main() -> int:
         if "migration: permanent-note" not in text:
             continue
         dest = outdir / (p.stem + ".json")
-        if dest.exists():
+        absorbed = absorbed_of(text)
+        missing = [name for name in absorbed if name not in arch]
+        if missing:
+            missing_source_refs.extend((p.name, name) for name in missing)
             continue
-        srcs = [{"file": fn, "full_text": arch[fn]} for fn in absorbed_of(text) if fn in arch]
+        srcs = [{"file": fn, "full_text": arch[fn]} for fn in absorbed if fn in arch]
         if not srcs:
             skipped_no_src += 1
             continue
+        accounted.add(p.name)
+        source_files = [item["file"] for item in srcs]
+        existing_error = None
+        if dest.exists():
+            existing_error = output_file_error(
+                dest, note_id=p.stem, expected_sources=source_files,
+            )
+            if existing_error is None:
+                valid_existing += 1
+                continue
+            invalid_existing += 1
         units.append({"note_id": p.stem, "dest": dest,
-                      "current_note": body_of(text), "originals": srcs})
-    if args.limit:
-        units = units[:args.limit]
-
+                      "current_note": body_of(text), "originals": srcs,
+                      "existing_error": existing_error})
+    if missing_source_refs:
+        note, source = missing_source_refs[0]
+        print(f"[rewrite] refusing partial-source rewrite: {note} references "
+              f"missing archive source {source} "
+              f"({len(missing_source_refs):,} missing references total)",
+              file=sys.stderr)
+        return 2
+    if worklist is not None:
+        expected_worklist = {
+            name for name in worklist
+            if shard_n is None or shard_of(name, shard_n) == shard_k
+        }
+        unaccounted = sorted(expected_worklist - accounted)
+        if unaccounted:
+            print(f"[rewrite] worklist note was not eligible or had no sources: "
+                  f"{unaccounted[0]} ({len(unaccounted):,} total)", file=sys.stderr)
+            return 2
     batches = [units[i:i + args.batch] for i in range(0, len(units), args.batch)]
     src_chars = sum(len(o["full_text"]) for u in units for o in u["originals"])
-    already = len(list(outdir.glob("*.json")))
     print(f"[rewrite] worklist={'yes' if worklist else 'NO — all notes'}  "
           f"shard={args.shard or 'all'}  todo={len(units):,}  "
-          f"already done={already:,}  no-sources={skipped_no_src:,}")
-    print(f"[rewrite] batch={args.batch} workers={args.workers} backend={args.backend}")
+          f"already valid={valid_existing:,}  invalid={invalid_existing:,}  "
+          f"no-sources={skipped_no_src:,}")
+    print(f"[rewrite] batch={args.batch} workers={args.workers} "
+          f"backend={args.backend} model={args.model}")
     print(f"[rewrite] source text {src_chars/1e6:.1f}M chars (~{src_chars//4:,} tok) "
           f"+ {len(system)//4:,} tok system per call (cacheable)")
     if not units:
@@ -293,15 +500,17 @@ def main() -> int:
         print(f"\n[rewrite] re-run with --apply to make {len(batches):,} calls")
         return 0
 
-    from orchestrator.historical.cleanup_backends import build_client
-    client = build_client(args.backend)
+    from orchestrator.historical.cleanup_backends import CodexCLIClient
+    client = CodexCLIClient(
+        model=MODEL_HINT, output_schema=REWRITE_RESPONSE_SCHEMA,
+    )
     agg = {"ok": 0, "failed": 0, "notes": 0, "split": 0, "archive": 0,
            "id_mismatch": 0, "in": 0, "out": 0, "cost": 0.0}
     start = time.monotonic()
 
     def run(batch: list[dict]) -> None:
         res = client.call(system=system, user=build_user(batch),
-                          model=MODEL_HINT, max_tokens=8192 * len(batch),   # headroom: a KEEP+SPLIT reply carries two notes
+                          model=args.model, max_tokens=8192 * len(batch),   # headroom: a KEEP+SPLIT reply carries two notes
                           temperature=0.0)
         with _lock:
             agg["in"] += getattr(res, "input_tokens", 0) or 0
@@ -327,17 +536,57 @@ def main() -> int:
                   f"({len(res.text or '')} chars, saved)", file=sys.stderr)
             return
         by_id = {u["note_id"]: u for u in batch}
-        wrote_any = False
+        prepared: list[tuple[dict, dict]] = []
+        seen: set[str] = set()
         for rec in recs:
-            u = by_id.get(rec.get("note_id"))
-            if not u or not rec.get("title"):
-                # Previously this counted as a success and wrote nothing, so a
-                # returned id that did not match went unnoticed.
+            rec_id = rec.get("note_id") if isinstance(rec, dict) else None
+            u = by_id.get(rec_id)
+            if not u or rec_id in seen:
                 with _lock:
                     agg["id_mismatch"] += 1
-                continue
-            wrote_any = True
-            rec["source_files"] = [o["file"] for o in u["originals"]]
+                    agg["failed"] += 1
+                print(f"[rewrite] response id mismatch or duplicate: {rec_id!r}",
+                      file=sys.stderr)
+                return
+            error = record_error(rec, expected_note_id=u["note_id"])
+            if error:
+                faildir = outdir.parent / "rewrite_failures"
+                faildir.mkdir(parents=True, exist_ok=True)
+                (faildir / (u["note_id"] + ".txt")).write_text(
+                    (res.text or "<EMPTY REPLY>"), encoding="utf-8")
+                with _lock:
+                    agg["failed"] += 1
+                print(f"[rewrite] invalid record for {u['note_id'][:48]}: {error} "
+                      "(raw reply saved)", file=sys.stderr)
+                return
+            saved = dict(rec)
+            saved["source_files"] = [o["file"] for o in u["originals"]]
+            error = record_error(
+                saved, expected_note_id=u["note_id"],
+                expected_sources=saved["source_files"],
+            )
+            if error:
+                with _lock:
+                    agg["failed"] += 1
+                print(f"[rewrite] refused unsafe saved record: {error}", file=sys.stderr)
+                return
+            seen.add(rec_id)
+            prepared.append((saved, u))
+        if seen != set(by_id):
+            with _lock:
+                agg["id_mismatch"] += len(set(by_id) - seen)
+                agg["failed"] += 1
+            print("[rewrite] response omitted one or more requested note ids", file=sys.stderr)
+            return
+        for rec, u in prepared:
+            if u["dest"].exists():
+                raw = u["dest"].read_bytes()
+                digest = hashlib.sha256(raw).hexdigest()[:12]
+                faildir = outdir.parent / "rewrite_failures"
+                faildir.mkdir(parents=True, exist_ok=True)
+                backup = faildir / f"{u['note_id']}.invalid-{digest}.json"
+                if not backup.exists():
+                    backup.write_bytes(raw)
             tmp = u["dest"].with_suffix(".tmp")
             tmp.write_text(json.dumps(rec, indent=1, ensure_ascii=False), encoding="utf-8")
             tmp.replace(u["dest"])
@@ -350,35 +599,38 @@ def main() -> int:
         with _lock:
             agg["ok"] += 1
 
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futs = [pool.submit(run, b) for b in batches]
-        done = 0
-        for f in as_completed(futs):
-            try:
-                f.result()
-            except Exception as e:
-                with _lock:
-                    agg["failed"] += 1
-                print(f"[rewrite] worker error: {type(e).__name__}: {e}", file=sys.stderr)
-            done += 1
-            if done % 25 == 0 or done == len(batches):
-                el = time.monotonic() - start
-                rate = done / max(0.1, el)
-                eta = (len(batches) - done) / max(1e-6, rate) / 3600
-                per = (agg["in"] + agg["out"]) / max(1, agg["notes"])
-                print(f"[rewrite] {done:,}/{len(batches):,}  notes={agg['notes']:,}  "
-                      f"{el/60:.0f}m  ETA {eta:.1f}h  {per:.0f} tok/note  "
-                      f"${agg['cost']:.2f}  fail={agg['failed']}", flush=True)
+    try:
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            futs = [pool.submit(run, b) for b in batches]
+            done = 0
+            for f in as_completed(futs):
+                try:
+                    f.result()
+                except Exception as e:
+                    with _lock:
+                        agg["failed"] += 1
+                    print(f"[rewrite] worker error: {type(e).__name__}: {e}", file=sys.stderr)
+                done += 1
+                if done % 25 == 0 or done == len(batches):
+                    el = time.monotonic() - start
+                    rate = done / max(0.1, el)
+                    eta = (len(batches) - done) / max(1e-6, rate) / 3600
+                    per = (agg["in"] + agg["out"]) / max(1, agg["notes"])
+                    print(f"[rewrite] {done:,}/{len(batches):,}  notes={agg['notes']:,}  "
+                          f"{el/60:.0f}m  ETA {eta:.1f}h  {per:.0f} tok/note  "
+                          f"${agg['cost']:.2f}  fail={agg['failed']}", flush=True)
+    finally:
+        client.close()
 
     el = time.monotonic() - start
     print(f"\n[rewrite] done in {el/3600:.2f}h — {agg['ok']:,} calls ok, "
           f"{agg['failed']:,} failed, {agg['notes']:,} notes written")
     print(f"[rewrite]   SPLIT={agg['split']:,}  ARCHIVE={agg['archive']:,}"
           f"  id_mismatch={agg['id_mismatch']:,}")
-    print(f"[rewrite]   tokens in={agg['in']:,} out={agg['out']:,} "
+    print(f"[rewrite]   estimated tokens in={agg['in']:,} out={agg['out']:,} "
           f"({(agg['in']+agg['out'])/max(1,agg['notes']):.0f}/note)  cost=${agg['cost']:.2f}")
     print("[rewrite] re-run the same command to retry failures and continue")
-    return 0
+    return 1 if agg["failed"] or agg["id_mismatch"] else 0
 
 
 if __name__ == "__main__":
