@@ -185,6 +185,24 @@ class TestMainPreflight(unittest.TestCase):
             with patch.object(sys, "argv", argv):
                 self.assertEqual(runner.main(), 2)
 
+    def test_backend_and_model_must_stay_paired(self):
+        """MiniMax is selectable — PLAN.md 4's blind judging measured M3 as the
+        better writer here — but only with that backend's own pinned model, so
+        adding a transport cannot quietly change which model does the writing.
+        """
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            vault = root / "vault"
+            (vault / "Engrams").mkdir(parents=True)
+            (vault / runner.ARCHIVE_SUBDIR).mkdir(parents=True)
+            worklist = root / "worklist.json"
+            worklist.write_text("[]", encoding="utf-8")
+            base = ["rewrite_run.py", "--vault", str(vault),
+                    "--out", str(root / "out"), "--worklist", str(worklist)]
+            mismatched = base + ["--backend", "minimax", "--model", "gpt-5.6-sol"]
+            with patch.object(sys, "argv", mismatched):
+                self.assertEqual(runner.main(), 2)
+
     def test_cli_refuses_every_backend_and_model_except_pinned_codex_sol(self):
         for flag, value in (
             ("--backend", "claude-cli"),

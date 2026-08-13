@@ -280,9 +280,11 @@ this corpus, about one note in three is of this kind.
 A standing-condition title is held to the same bar by a different test. A
 conversion earns its place by showing the perverse output. A standing condition
 earns its place by naming WHAT IT COSTS OR WHO IT SERVES — the reason the
-condition is worth recording rather than a neutral description of it. If you can
-state neither a conversion nor a cost nor a beneficiary, the note is not an
-insight and the verdict is ARCHIVE.
+condition is worth recording rather than a neutral description of it. If the
+sources support neither a conversion nor a cost nor a beneficiary, state the
+claim as plainly and exactly as they do support it. Do not reach for a verdict
+that removes the note: ARCHIVE is for the truism test above, and across 4,038
+rewrites of this corpus it has correctly fired zero times.
 
 Do not manufacture an inversion the sources do not contain. A fabricated
 conversion is a false claim, and ranks with importing a term of art among the
@@ -413,6 +415,9 @@ commentary in it. State the title's conversion in `conversion`. For a
 standing-condition note, begin that field with exactly
 `none — standing condition:` and then name what the condition costs or who it
 serves. The fixed prefix keeps the two shapes countable; what follows it is the
-standing-condition bar stated in your own words. Never leave `conversion` empty
-and never invent a conversion to fill it. Set `domain_bound` truthfully, and use
-`split_second_note` only when two claims do not belong in one note.
+standing-condition bar stated in your own words. On a KEEP or a SPLIT, never
+leave `conversion` empty and never invent a conversion to fill it. On the rare
+ARCHIVE, put the truism you found in `title` — so the removal is readable and
+checkable — and leave `body` and `conversion` empty rather than writing content
+for a note you are recommending be removed. Set `domain_bound` truthfully, and
+use `split_second_note` only when two claims do not belong in one note.

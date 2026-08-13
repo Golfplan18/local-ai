@@ -81,8 +81,12 @@ _NOTE_SCHEMA = {
         "note_id": {"type": "string", "minLength": 1},
         "verdict": {"type": "string", "enum": ["KEEP", "SPLIT", "ARCHIVE"]},
         "title": {"type": "string", "minLength": 1},
-        "body": {"type": "string", "minLength": 1},
-        "conversion": {"type": "string", "minLength": 1},
+        # No minLength on body/conversion: an ARCHIVE verdict has neither, and a
+        # generation-time floor would force the model to invent content for a
+        # note it is recommending be removed. record_error still requires both
+        # to be non-empty for KEEP and SPLIT, which is where it belongs.
+        "body": {"type": "string"},
+        "conversion": {"type": "string"},
         "domain_bound": {"type": "boolean"},
         "split_second_note": {"anyOf": [_CHILD_SCHEMA, {"type": "null"}]},
     },
@@ -229,7 +233,15 @@ def _text_error(value: object, label: str) -> str | None:
     return None
 
 
-def _note_text_error(title: object, body: object, prefix: str = "") -> str | None:
+def _note_text_error(title: object, body: object, prefix: str = "",
+                     require_body: bool = True) -> str | None:
+    """``require_body=False`` for an ARCHIVE, which has no note to write.
+
+    validate_rewrites.py — the completion gate — already exempts ARCHIVE from
+    carrying a body ("body not required"). This validator did not, so a model
+    doing the correct thing for an ARCHIVE (returning nothing to write) was
+    rejected here while the gate downstream would have accepted it.
+    """
     error = _text_error(title, f"{prefix}title")
     if error:
         return error
@@ -238,6 +250,8 @@ def _note_text_error(title: object, body: object, prefix: str = "") -> str | Non
         return f"{prefix}title must be one trimmed line"
     if any(mark in title for mark in ("*", "_", "`", "#")):
         return f"{prefix}title contains forbidden markdown"
+    if not require_body:
+        return None
     error = _text_error(body, f"{prefix}body")
     if error:
         return error
@@ -275,10 +289,15 @@ def record_error(rec: object, *, expected_note_id: str | None = None,
     verdict = rec.get("verdict")
     if verdict not in {"KEEP", "SPLIT", "ARCHIVE"}:
         return f"invalid verdict {verdict!r}"
-    error = _note_text_error(rec.get("title"), rec.get("body"))
+    archiving = verdict == "ARCHIVE"
+    error = _note_text_error(rec.get("title"), rec.get("body"),
+                             require_body=not archiving)
     if error:
         return error
-    if "conversion" in rec:
+    # An ARCHIVE says the note should not exist, so it has no body and no
+    # conversion to state. Requiring either forced the model to invent content
+    # for a note it was recommending be removed.
+    if "conversion" in rec and not archiving:
         error = _text_error(rec["conversion"], "conversion")
         if error:
             return error
@@ -366,8 +385,10 @@ def main() -> int:
                          "which blind judging measured as the better writer here — "
                          "17/12 met the bar against Opus's 11 (PLAN.md 4).")
     ap.add_argument("--model", default=None,
-                    help="override this backend's pinned model. Opus is refused on "
-                         "this path regardless of backend.")
+                    choices=tuple(BACKEND_MODELS.values()),
+                    help="must be the pinned model of the chosen backend. Kept "
+                         "strict so a transport change cannot quietly lower the "
+                         "writing standard; Opus is refused regardless.")
     ap.add_argument("--batch", type=int, default=1,
                     help="notes per model call. 1 is measured-optimal; 8 costs ~25%% "
                          "of quality. Raise only to re-measure.")
@@ -391,6 +412,10 @@ def main() -> int:
         return 2
 
     model_name = args.model or BACKEND_MODELS[args.backend]
+    if model_name != BACKEND_MODELS[args.backend]:
+        print(f"[rewrite] {model_name} is not the pinned model for backend "
+              f"{args.backend} ({BACKEND_MODELS[args.backend]})", file=sys.stderr)
+        return 2
     if "opus" in model_name.lower():
         print(f"[rewrite] refusing Opus on this path: {model_name}", file=sys.stderr)
         return 2
