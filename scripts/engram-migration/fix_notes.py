@@ -91,8 +91,31 @@ def split_note(text: str) -> tuple[str, str]:
     return parts[1], parts[2]
 
 
-def strip_instance(body: str) -> tuple[str, bool]:
-    """Remove the generated Instance line. Structural, not interpretive."""
+def _load_dump_detector():
+    """Reuse prescan's D1 signature rather than reimplementing it."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "_ps", str(Path(__file__).with_name("prescan.py")))
+    ps = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ps)
+    return ps.d1_keyword_dump, ps.instance_line
+
+
+def strip_instance(body: str, only_dumps: bool = True,
+                   is_dump=None, get_inst=None) -> tuple[str, bool]:
+    """Remove the generated Instance line.
+
+    only_dumps (the default) removes it ONLY where prescan's D1 signature fires.
+    An earlier version deleted all 64,144 unconditionally, which was wrong: the
+    audit found grounded, useful Instance lines — one carried the verbatim beat
+    notation "[S]etup, [A]ction, [R]esult, [E]vent" that every source confirmed,
+    another the parts-per-X conversion. 13.6% are keyword dumps; the rest are not
+    ours to delete.
+    """
+    if only_dumps:
+        inst = get_inst(body)
+        if inst is None or not is_dump(inst):
+            return body, False
     out, removed = [], False
     for ln in body.splitlines():
         if ln.strip().lstrip("-").strip().lower().startswith("instance:"):
@@ -144,6 +167,11 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="write (default: dry run)")
     ap.add_argument("--sample", type=int, default=0,
                     help="print N before/after examples and stop")
+    ap.add_argument("--all-instance-lines", action="store_true",
+                    help="delete EVERY Instance line rather than only the keyword "
+                         "dumps prescan flags. Not recommended: 13.6%% carry the "
+                         "fragment-assembly signature, and the rest include "
+                         "grounded lines the audit confirmed against their sources.")
     ap.add_argument("--sources-section", action="store_true",
                     help="also append a ## Sources body section of wikilinks to the "
                          "archived originals. OFF by default: the publisher intends "
@@ -154,6 +182,9 @@ def main() -> int:
                          "(present on 100%% of merged notes) — so the body section "
                          "adds nothing that is not already recorded.")
     args = ap.parse_args()
+
+    global _IS_DUMP, _GET_INST
+    _IS_DUMP, _GET_INST = _load_dump_detector()
 
     vault = Path(args.vault)
     engrams = vault / "Engrams"
@@ -205,9 +236,12 @@ def main() -> int:
             continue
 
         before = text
-        body2, removed = strip_instance(body)
+        body2, removed = strip_instance(body, only_dumps=not args.all_instance_lines,
+                                        is_dump=_IS_DUMP, get_inst=_GET_INST)
         if removed:
             stats["instance_removed"] += 1
+        elif _GET_INST(body) is not None:
+            stats["instance_kept"] += 1
 
         # PASS 2 — sources section from absorbed_from
         body2 = re.sub(r"\n##\s+Sources\b.*$", "", body2, flags=re.S).rstrip()
@@ -274,7 +308,7 @@ def main() -> int:
         return 0
 
     print("\n[fix] " + ("APPLIED" if args.apply else "DRY RUN — nothing written"))
-    for k in ("instance_removed", "sources_added", "notes_with_edges",
+    for k in ("instance_removed", "instance_kept", "sources_added", "notes_with_edges",
               "edges_kept", "edges_dropped", "written", "no_frontmatter"):
         if stats[k]:
             print(f"[fix]   {k:20s} {stats[k]:>9,}")
