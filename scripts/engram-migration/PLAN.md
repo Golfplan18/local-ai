@@ -31,38 +31,56 @@ below is required to stop the corpus getting worse — it is repair of what exis
 
 ---
 
-## 2. Current state
+## 2. Current state (2026-08-13)
 
-Working tree **`~/engram-work`**, branch `engram-permanent-notes`. This is a git
-worktree of the vault at `~/Documents/vault`. **The live vault is untouched.**
+Working tree **`~/engram-work`**, branch `engram-permanent-notes`, a git worktree of
+`~/Documents/vault`. **The live vault is untouched.** Rollback points: `516100a1d`
+(before the rewrites landed), `c637f57995` (after).
 
 | | |
 |---|---|
-| `Engrams/` — the single corpus | **75,734 notes**, flat, no subdirectories |
-| with working relationships | 64,090 (84.6%), **604,099 edges** |
-| missing relationships | **11,644** — 11,572 incorporated Historical Atomics plus 72 other notes |
+| `Engrams/` — the single corpus | **75,834 notes**, flat, no subdirectories |
+| with working relationships | 64,090 · **604,099 edges, 100% resolving, zero dangling** |
+| missing relationships | **11,744** (the incorporated Historical Atomics notes) |
 | `Archive/Engram Absorbed Sources 2026-08/` | 122,118 pre-merge originals |
-| `Archive/Historical Atomics Not Incorporated 2026-08/` | 2,477 (facts, perishable, dated, 3 predictions) |
-| Rewrite artifacts | **3,148 of 4,038** present; 3,145 strict-valid, 3 invalid |
+| `Archive/Historical Atomics Not Incorporated 2026-08/` | 2,477 |
+| Disk | 1.0 GB (was 3.5) |
 
-**No model process is running.** The prior Opus run stopped after 139 minutes.
-Three saved malformed wrappers contain recoverable note objects; 890 output files
-are absent, so 893 worklist entries do not yet have a strict-valid output. No
-rewrite has been applied to a note.
+### THE NUMBER THAT MATTERS MOST
 
-Check before starting any model work:
+Only **5.3%** of the corpus has been rewritten from good input:
 
-```bash
-tail -5 ~/engram-work/.migration/rewrite-run.log
-ps -eo pid=,etime=,args= | grep "[r]ewrite_run.py"     # NOT pgrep — see §6
-```
+| where each note's current text comes from | notes | |
+|---|---|---|
+| Rewritten from full source text | 4,026 | **5.3%** |
+| Incorporated from Historical Atomics, never revised | 11,572 | 15.3% |
+| **Merged text from the defective pass, never revised** | **60,236** | **79.4%** |
 
-`rewrite_run.py` now validates existing files before treating them as complete,
-validates new records before persisting them, and refuses Opus. The next action is
-a representative GPT-5.6 Sol pilot in an isolated output directory, not the full
-remaining worklist.
+The 48-note audit sampled *random* merged notes and found **52% needed a fix**. The
+prescan flagged only 19%, so it found roughly a third of what needs work — its
+signatures catch fabrication and dropped concessive clauses, and cannot detect "true
+but says nothing." **Do not read the completed 4,038 as meaning the corpus is fixed.**
 
----
+### Done
+
+* Both extractors fixed (`3d4ab7d1`, `bd4f2b31`) — new conversations mint proper notes.
+* Migration (Codex): 122,118 originals → 64,144 merged notes; originals archived.
+* 8,744 keyword-dump `Instance:` lines deleted; **55,400 grounded ones kept**.
+* 604,099 relationship edges restored from the archived originals' frontmatter.
+* Historical Atomics folded in (11,572), non-corpus kinds archived (2,474 + 3 predictions).
+* 4,038 flagged notes rewritten from full sources; **validation gate passes 4,038/4,038**.
+* Rewrites applied; 56,397 edge targets remapped; 100 SPLIT children created.
+* MiniMax M3 wired as a backend and **tested on both classification and rewriting**.
+
+### In flight
+
+Temporary atomics index building at `.migration/chroma-temp` from the worktree
+(75,834 embeddings, ~$1, ~19/s). Needed because the live atomics index overlaps the
+current corpus on only 6,689 of its 129,900 titles.
+
+A blind 3-judge comparison of Opus vs M3 (thinking on/off) on 12 full rewrites was
+launched and **its result is not in this document** — check
+`.migration/` and the session transcript, or re-run it.
 
 ## 3. How the corpus got to this shape
 
@@ -107,113 +125,123 @@ archived (1,888 tagged `fact`, 505 perishable politics, 577 carrying a year).
 
 ---
 
-## 4. Remaining steps — REVISED after review
+## 4. Remaining steps
 
-**An independent review found the previous version of this section unsafe to
-execute. Do not use commands from any earlier copy.** The blocking findings are in
-§4a; the corrected order is §4b. No bulk model run or corpus apply is ready yet.
+Steps A (rewrite the flagged notes), its validation gate, and the apply-plus-remap
+are **complete**. What follows is what is left.
 
-### 4a. Blocking findings (all verified against the code)
+### The MiniMax finding, which changes the cost of everything below
 
-**E1 — Phase C would destroy the existing graph.** Without `--paths-file` it globs
-every `*.md` under the root (all 75,734) and `write_note_with_relationships` does
-`new_fm["relationships"] = relationships if relationships else []` — it REPLACES,
-and empties the field when the model finds nothing. The manifest is absent, so
-nothing is marked done and resume would not protect anything. Running the naive
-command would replace 64,090 working relationship sets and 604,099 edges.
-*Never invoke Phase C without an explicit `--paths-file` naming only notes that
-lack relationships.*
+M3 was tested on the full rewrite task against the 4,038 Opus rewrites as reference,
+12 notes, 2 to 12 sources each:
 
-**E2 — Phase C marks errors and skips as completed.** `completed[p] = entry` runs
-regardless of `r.error` or `r.skipped`, so resume never retries a failure. This is
-the same trap §6 documents elsewhere. It also caps neighbour bodies at 600
-characters (`NEIGHBOR_MAX_CHARS`), affecting 17,671 notes, and does not retain
-malformed replies.
+| | parsed | speed | out-tokens | title | **qualifying clauses kept** | false terms |
+|---|---|---|---|---|---|---|
+| Opus | 12/12 | — | — | 22.6w | **14/24 — 58%** | 0 |
+| M3 thinking-ON | 12/12 | 67s | 6,492 | 21.6w | **18/24 — 75%** | 0 |
+| M3 thinking-OFF | 12/12 | 5s | 286 | 18.5w | **15/24 — 62%** | 0 |
 
-**E3 — the vector-store step is wrong twice.** `chroma_source_rebuild.py` requires
-a subcommand and `--target-chromadb-path`, and it must be run with `cwd=~/ora` or
-the `orchestrator` import fails. Even corrected it rebuilds `knowledge`, while
-Phase C queries `atomics`. The live atomics index is profoundly stale: only 6,689
-of its 129,900 distinct titles overlap the corpus's 75,675 current H1s, so using it
-would generate obsolete and dangling targets at scale.
+**M3 preserves the load-bearing qualifying clauses BETTER than Opus** — the exact
+failure that de-fanged 56% of the corpus. Neither variant imported a false term of
+art. Small sample (24 clauses), so treat the ordering as indicative and the
+"not worse than Opus" conclusion as solid.
 
-**E4 — the vector-store ORDER is backwards.** Knowledge metadata stores
-relationships and absolute note paths. Building before Phase C omits the new
-relationships; building from `~/engram-work` bakes in paths inside a worktree that
-Step F deletes. Final indexes must be built AFTER landing, from the canonical
-`~/Documents/vault/Engrams`.
+Unresolved: M3-off is closest to the owner's 18-word standard but may be losing the
+perverse-conversion shape for brevity — it produced "Stories last when their themes
+answer questions humans have always asked", which is true, flat, and not a
+conversion. That is what the blind judging was measuring.
 
-**E5 — SPLIT has no graph semantics.** `split_second_note` carries only a title and
-body, while `source_files` remains one undivided list. Undefined: which child
-inherits the old title's inbound edges, how provenance divides, the second
-filename and frontmatter, collision handling, and what happens to inbound edges on
-ARCHIVE. At inspection there were 44 SPLITs and 43 affected notes carried 1,949
-inbound edges. **This is a decision to be made, not code to be written.**
+Two configuration facts, both measured:
 
-**E6 — `fix_notes.py` is not a title substitution.** It reconstructs the whole
-graph from the archived originals. Its `remap` dict silently overwrites duplicates:
-**29 archived H1s map to two different merged notes**, and 801 archived edges
-reference those ambiguous titles. SPLIT worsens the ambiguity. Verified: 110,908
-remap keys, 29 ambiguous.
+* **Rewriting needs `max_tokens` ≈ 32768.** M3's `<think>` block ran 13,760
+  characters and consumed all 8,192 tokens on the first attempt, finishing inside
+  the reasoning with no answer. The client floor is now 32768.
+* **Thinking is load-bearing for CLASSIFICATION but maybe not for REWRITING.** With
+  thinking disabled, Phase C linked a golf-swing note to political blame as
+  `analogous-to`; a deliberate distractor. For rewriting, thinking-off was 13x
+  faster with comparable output. Do not carry one finding to the other task.
 
-**E7 — Step A had no completion gate.** This is now repaired in the runner: an
-existing file counts only when ID, verdict, title, bullet-only body, source list,
-and SPLIT shape validate; new replies are checked before atomic persistence; a
-failed run exits nonzero. The current scan finds 3,145 valid and exactly three
-invalid files (two array-valued bodies and one body containing commentary). The
-full 4,038-entry bijection is still required before applying anything.
+### Order matters — rewrite before generating relationships
 
-**E8 — Step F does not land the work.** `git push` cannot push uncommitted B/C/E
-changes; feature and main have diverged; untracked `.migration/` blocks ordinary
-worktree removal. Final commit, feature push, merge, main push and remote readback
-are all missing. And `rm -rf scripts/engram-migration` would delete tracked files
-without committing the teardown.
+Rewriting **5.3%** of notes put a changed claim on at least one end of **16.3%** of
+edges (98,187 of 604,099). Rewriting 40% would touch most of the graph.
 
-### 4b. Corrected order
+The remap is deterministic and free, and it repairs the *pointers* perfectly (proven:
+100% resolution). It cannot verify that "A supports B" is still TRUE once B's claim
+has been rewritten. Nothing detects a now-false edge.
 
-1. **Prove the non-Opus writing route, then finish Step A.** Run a representative
-   GPT-5.6 Sol pilot in an isolated output directory and compare real notes against
-   their full sources and the accepted writing standard. If it meets the bar,
-   recover the six structurally damaged-but-complete artifacts where lossless,
-   finish the remaining work, and require an exact 4,038-file valid bijection.
-2. **Decide SPLIT/ARCHIVE semantics** — edge inheritance, provenance division,
-   filenames, collisions. Write the decision down before coding it.
-3. **Apply the complete batch atomically**, with a collision-free preflight and a
-   commit as the rollback point.
-4. **Remap the accepted graph without blindly rerunning `fix_notes.py`.** Preserve
-   the accepted relationship graph for ordinary retitles, resolve SPLIT/ARCHIVE
-   edges under the decision from step 2, and separately resolve the 58 current
-   duplicate H1 values and the one zero-byte note. The 29 archived-H1 collisions
-   matter only if archived graph reconstruction remains necessary.
-5. **Repair Phase C and build a TEMPORARY current atomics index.** Expose the
-   temporary Chroma path to its CLI; remove the 600-character neighbour cap; save
-   malformed replies; retry errors/skips; and exit nonzero while any remain.
-6. **Derive the exact post-apply set lacking relationships** and pass only those
-   via `--paths-file`. Afterwards, prove every pre-existing relationship block is
-   byte-identical, not merely that aggregate edge counts match.
-7. **Land and merge the corpus** — commit, push feature, merge, push main, read
-   back the remote.
-8. **Rebuild final atomics and knowledge indexes from `~/Documents/vault/Engrams`**
-   after landing, validate inactive copies, then cut over with a retained rollback.
-9. **Verify** remote state, graph resolution, stored paths, live queries, and
-   rollback. Only then delete archives and scaffolding — as a committed change.
+And the 604,099 restored edges were extracted by a model reading the
+**pre-migration instance-locked notes**. They already describe relationships between
+claims that no longer exist in that form.
 
-### 4c. Step A, current safe boundary
+**So: if the remaining ~60,000 are to be rewritten, rewrite them FIRST and generate
+the graph ONCE at the end.** On MiniMax that final pass is near-free, which is what
+makes the sequence affordable. Do not generate relationships for a note you intend
+to rewrite.
 
-The runner accepts only `--backend codex-cli --model gpt-5.6-sol`; every other
-backend and model is rejected by argument parsing. It requires Codex CLI 0.147.0
-or newer and refuses to run without an explicit worklist. The isolated ChatGPT
-route passed a real schema-constrained smoke call. It writes one JSON per note and
-touches no vault note. First run the representative pilot into a separate staging
-directory; do not point it at `.migration/rewrite/` until the real pilot artifacts
-meet the writing bar.
+### 4a. Finish the relationship pass for the 11,744 (safe now)
 
-Check it with `ps`, never `pgrep` (§6):
+These notes are NOT scheduled for rewriting, so their relationships will not need
+redoing.
 
 ```bash
-tail -5 ~/engram-work/.migration/rewrite-run.log
-ps -eo pid=,etime=,args= | grep "[r]ewrite_run.py"
+cd ~/ora && PYTHONPATH=~/ora python3 orchestrator/historical/phase_c_relationship_extraction.py \
+  --vault-root ~/engram-work/Engrams \
+  --paths-file ~/engram-work/.migration/phase_c_paths.txt \
+  --chromadb-path ~/engram-work/.migration/chroma-temp \
+  --backend minimax --max-workers 8
 ```
+
+**`--paths-file` is mandatory.** Without it Phase C globs all 75,834 notes and
+`write_note_with_relationships` REPLACES the field, emptying it where the model finds
+nothing — destroying 604,099 working edges. The paths file holds exactly the 11,744
+that lack relationships.
+
+Afterwards, prove the others were untouched. Baseline recorded before the run:
+
+```
+64,090 relationship-bearing notes · 604,099 edges · fingerprint aaf814bc9f640db3
+```
+(`.migration/phase_c_baseline.txt`; the fingerprint is sha256 over `name:edgecount`
+for every relationship-bearing note, sorted.)
+
+### 4b. The open decision: rewrite the remaining ~60,236
+
+On the audit's 52% rate roughly 30,000 need work, and the prescan cannot find them
+(it caught a third). Options:
+
+1. **Rewrite all 60,236 on M3.** Effectively free, overnight at 5s/note single-stream
+   and far less in parallel. Takes the corpus from 5.3% properly rewritten to ~100%.
+2. **Sample-audit 40 unrevised notes first** against their archived sources to confirm
+   the 52% rate still holds, then decide.
+3. **Leave them.** Nothing is junk — zero rejects in 48 audited — they are blunted,
+   not wrong.
+
+Option 1 is only defensible once the blind judging confirms M3 clears the bar.
+
+### 4c. Then land it
+
+```bash
+git -C ~/engram-work add -A Engrams Archive && git -C ~/engram-work commit
+git -C ~/engram-work push origin engram-permanent-notes
+# merge into the vault's default branch, push main, read back the remote
+```
+
+`.migration/` is untracked and will block an ordinary `git worktree remove`; delete
+it (or `--force`) as a deliberate step. Removing `scripts/engram-migration/` deletes
+tracked files — commit that teardown, do not just `rm -rf`.
+
+### 4d. Only after landing: final indexes from the canonical path
+
+```bash
+mkdir -p /tmp/atomics-final && PYTHONPATH=~/ora python3 \
+  orchestrator/historical/rebuild_atomic_dedup.py --chromadb-path /tmp/atomics-final \
+  --vault-root ~/Documents/vault/Engrams --expected-source-count <N>
+```
+
+Knowledge metadata stores absolute note paths. Building from `~/engram-work` bakes in
+paths inside a worktree that gets deleted. `chroma_source_rebuild.py knowledge` needs
+its subcommand and `--target-chromadb-path`, and must run with cwd `~/ora`.
 
 ## 5. What a note must be — the writing standard
 
@@ -335,35 +363,36 @@ Grant it to `/Applications/Claude.app` (not the nested binary) and restart the a
 
 ## 7. Tools
 
-All in `~/ora/scripts/engram-migration/`. Delete the directory when this lands;
-nothing in the running system imports from it.
+All in `~/ora/scripts/engram-migration/`. Delete the directory when this lands —
+nothing in the running system imports from it, but do it as a committed change.
 
 | tool | what it does | model |
 |---|---|---|
-| `prescan.py` | finds which notes need work by mechanical signature | **none** |
-| `prescan.py --historical` | pre-migration defect scan (over-fires; see §6) | none |
-| `fix_notes.py` | deletes keyword-dump Instance lines, remaps relationship edges | **none** |
+| `prescan.py` | finds notes needing work by mechanical signature | **none** |
+| `prescan.py --historical` | pre-migration defect scan — OVER-FIRES, see §6 | none |
+| `fix_notes.py` | deletes keyword-dump Instance lines, restores edges from the archive | **none** |
 | `incorporate_historical.py` | folds Historical Atomics in, archives non-corpus kinds | none |
-| `rewrite_run.py` | rewrites flagged notes from full sources | prior: Opus; next: GPT-5.6 Sol after pilot |
+| `rewrite_run.py` | rewrites flagged notes from full sources; `--worklist`, `--shard k/N`, `--backend` | Opus / M3 |
+| `validate_rewrites.py` | completion gate: bijection + per-record schema | **none** |
+| `apply_rewrites.py` | writes rewrites into notes AND remaps the graph, one pass | **none** |
 | `rewrite_prompt.md` | the writing standard, 15 calibrated rules | — |
 | `daemonize.py` | double-fork detach (macOS has no `setsid`) | — |
-| `compare_arms.py` | scores rewrite variants against the bar | — |
 
-**Historical measured model assignment.** Opus produced the existing 3,148 files;
-it is no longer authorized. On 300 identical notes,
-Haiku paraphrased where asked to transform and invented canonical-sounding
-terms — "Bad faith reasoning" where the real term is *techniques of
-neutralization*. Haiku for triage and constrained classification (Stage 3, `phase_c`):
-63.6% source retention against Opus's 54.2%, half the fabrication rate. A local
-Qwen3.5-122B was tested and rejected for writing: format and speed were fine
-(2.9 s/unit) but it paraphrased inside the source domain and named no concepts.
+**Measured model assignment.** Haiku for triage and constrained classification (63.6%
+source retention against Opus's 54.2%, half the fabrication rate). Opus WAS the only
+tier trusted for writing until M3 was tested — see §4, where M3 preserved qualifying
+clauses better than Opus. A local Qwen3.5-122B was tested and rejected for writing:
+format and speed fine, but it paraphrased inside the source domain and named no
+concepts.
 
-Two local-model configuration traps, if local is ever tried again: the Qwen chat
-template defaults `enable_thinking` **on** (26,756 characters of chain-of-thought
-before any output), and no local endpoint declares `max_tokens` so
-`boot.call_local_endpoint` falls back to `999_999_999`.
+Local-model traps if that is ever revisited: the Qwen chat template defaults
+`enable_thinking` ON (26,756 characters of chain-of-thought before any output), and no
+local endpoint declares `max_tokens`, so `boot.call_local_endpoint` falls back to
+`999_999_999`.
 
----
+**Credentials.** MiniMax key is in the macOS keyring, `service='ora'`,
+`username='minimax-api-key'` — never in a file. OpenRouter key likewise
+(`openrouter-api-key`); the embedder uses it.
 
 ## 8. What is still unresolved
 
@@ -379,8 +408,11 @@ before any output), and no local endpoint declares `max_tokens` so
 4. **The atomics index Phase C queries is stale** — 6,689 of 129,900 titles
    overlap the current corpus. It must be rebuilt before Phase C runs, and
    rebuilt again from the canonical vault path after landing. See E3, E4.
-5. **GPT-5.6 Sol has not yet been measured against this writing bar.** Run the
-   isolated representative pilot before spending the remaining worklist through it.
+5. **GPT-5.6 Sol has not yet met this writing bar.** Two isolated pilots failed
+   the content bar despite perfect structure: 6/13 and 9/13 groups needed
+   substantive correction. The prompt now states those measured SPLIT, coverage,
+   actor, domain, comparison, and title-entailment defects; rerun the identical
+   pilot once more before spending the remaining worklist through Sol.
 6. **~51,600 notes were never flagged and never rewritten.** The prescan finds
    defects with mechanical signatures; a note that is merely bland, or generalized
    one notch too far, passes clean. Those exist and are not findable mechanically.

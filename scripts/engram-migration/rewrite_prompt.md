@@ -161,6 +161,11 @@ a character's arc convincing to readers is knowledge about writing. Say so — "
 novelist", "the reader" — and generalise only WITHIN that domain. A note that
 cannot survive leaving its field should keep its field.
 
+This applies to every child of a SPLIT. A domain-bound group cannot produce a
+child whose title reads as a universal factual claim merely because the shared
+`domain_bound` field remains true. Each child title and body must name the domain
+needed to make its own claim true.
+
 ## Do not let compression make the claim false
 
 A note about self-paced performance was compressed to "a performer with no opponent
@@ -171,6 +176,33 @@ is an error, not compression.
 
 Check every simplification against the sources: does the shorter phrase still say
 something true?
+
+## Every condition in the title must govern every claim it appears to govern
+
+The bullets can all be faithful while the title still makes the note false. Read
+the title literally. Every proposition its grammar asserts must be supported by
+the sources. Map each cause, condition, modifier, and conjunction to the exact
+claim it governs; never let a condition from one claim grammatically scope over
+another. If accurate parallel wording can keep the claims together, rewrite the
+title; otherwise SPLIT only when the independent-reuse test below passes.
+
+Audit the title's logical joins. If either of two failures independently produces
+the result, do not say `neither A nor B` as though both must fail together; say
+`A or B`, or separate the claims. If a source reports a tendency or comparison,
+the title must state that comparison or a different claim that remains true under
+it. Keep the limiting finding in the same body. The ban on hedges in titles is not
+permission to turn probability into causation or an absolute.
+
+Finally, test the premise as a whole, not only its nouns. Do not substitute a
+related variable for the one the sources name. If the result follows only from a
+subset of the premise named in the title, the title is too broad even when every
+noun passes the substitution test.
+
+A comparison must keep both sides truthful. If one thing receives more of a
+quality than another, do not say the second thing lacks that quality. If a result
+requires two mechanisms together, do not name only one as its cause. Every
+load-bearing input to the title's result must remain in the title, or the result
+must be narrowed to what the named input actually produces.
 
 ## Watch for words that inverse-read
 
@@ -186,6 +218,16 @@ force and still owe no answer." The owner: which side the listener is on matters
 a listener from the opposing camp lets the claim bounce off, while one hearing it
 from inside their own camp feels its force. Collapsing two parties who behave
 oppositely makes the claim unclear. And "owe no answer" — to whom?
+
+When a claim depends on the direction of a relationship, name the role that bears
+the dependency or obligation and the role it points to. A generic actor such as
+"users" or "people" must not erase which side depends, cites, consumes, owes, or
+remains independent.
+
+Preserve who stated a boundary and who violated it. A party enforcing its own
+scope is not the same mechanism as a respondent ignoring a scope the other party
+declared. Do not attribute a declaration, refusal, or action to every participant
+in the interaction merely because it appears in the same source.
 
 ## A SECOND STANDARD, from the owner
 
@@ -294,9 +336,46 @@ There is no cap on the number of bullets. A group of twelve sources carrying
 twelve distinct claims gets twelve bullets. Collapse only genuine near-duplicates;
 never drop a distinction to shorten the note.
 
+Before returning KEEP or SPLIT, trace every source's unique claim and every
+limiting clause to an output bullet. If no bullet carries a source's unique
+contribution, the output is incomplete. After genuine near-duplicates are
+collapsed, every distinct claim must appear in exactly one body.
+
+Do this audit by proposition, not just by source filename. One source can carry a
+second reusable mechanism—a feedback loop, diagnostic, exception, or consequence—
+that no other bullet preserves. Covering another claim from that same source does
+not make the output complete.
+
 If the sources disagree with each other, say so in a bullet rather than splitting
 the difference. If they are two claims that do not belong together, say SPLIT and
 describe both.
+
+## SPLIT by independent reuse; never split away a limiting qualification
+
+Two claims belong in separate notes when they answer different retrieval
+questions and each remains coherent and useful without the other. A domain-specific
+claim and a reusable diagnostic or method derived from it may answer different
+retrieval questions even when they appear in the same example.
+
+Each proposed child must itself carry one coherent claim. Moving several
+incompatible explanations into one generically titled child does not resolve
+their disagreement; keep them as explicit alternatives in the body of the claim
+they qualify unless each can stand as its own output.
+
+A qualification, counterexample, or empirical constraint that changes how the
+main claim must be read is NOT an independent child. Keep it in the primary body.
+If retrieving the primary note without the proposed child would leave a false or
+materially misleading claim, the split is harmful. Positive and failed instances
+of the same boundary or mechanism may also belong together when their contrast is
+the insight rather than two reusable mechanisms.
+
+Before returning SPLIT, mentally partition the source claims and apply both tests:
+
+- Each child must state an insight a reader could retrieve and use on its own.
+- Removing either child must not make the other child overstate, hide, or reverse
+  a qualification that limits it.
+
+A split is not permission to discard the claim that does not fit the first title.
 
 ## The case, only if the sources give you one
 
