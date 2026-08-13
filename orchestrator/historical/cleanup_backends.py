@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import re
 import subprocess
 import tempfile
 import threading
@@ -844,8 +845,10 @@ BACKEND_API        = "api"
 BACKEND_CLAUDE_CLI = "claude-cli"
 BACKEND_ORA_SLOTS  = "ora-slots"
 BACKEND_OPENROUTER = "openrouter"
+BACKEND_MINIMAX    = "minimax"
 BACKEND_CHOICES    = (
     BACKEND_API, BACKEND_CLAUDE_CLI, BACKEND_ORA_SLOTS, BACKEND_OPENROUTER,
+    BACKEND_MINIMAX,
 )
 
 
@@ -860,6 +863,8 @@ def build_client(backend: str = BACKEND_API):
         return OraSlotClient()
     if backend == BACKEND_OPENROUTER:
         return OpenRouterClient()
+    if backend in (BACKEND_MINIMAX, "minimax-api"):
+        return MiniMaxClient()
     raise ValueError(
         f"unknown backend '{backend}' — choose from {BACKEND_CHOICES}"
     )
@@ -870,10 +875,12 @@ __all__ = [
     "BACKEND_CLAUDE_CLI",
     "BACKEND_ORA_SLOTS",
     "BACKEND_OPENROUTER",
+    "BACKEND_MINIMAX",
     "BACKEND_CHOICES",
     "CLI_RECOMMENDED_MAX_WORKERS",
     "CODEX_RECOMMENDED_MAX_WORKERS",
     "OPENROUTER_RECOMMENDED_MAX_WORKERS",
+    "MiniMaxClient",
     "OPENROUTER_BASE_URL",
     "DEFAULT_OPENROUTER_MODEL",
     "DEFAULT_CODEX_MODEL",
@@ -883,3 +890,123 @@ __all__ = [
     "CodexCLIClient",
     "build_client",
 ]
+
+# ---------------------------------------------------------------------------
+# MiniMax (direct API, OpenAI-compatible). Added for Phase C relationship
+# classification, where a cheap model is safe: the model returns a
+# candidate_index into a numbered list rather than writing a target title, and
+# both the index and the relationship type are validated against closed sets, so
+# invalid output is dropped rather than written. The only failure mode is
+# under-linking, which is countable.
+#
+# MEASURED, and load-bearing: M3 emits <think> blocks and the thinking is doing
+# the real work. Given four candidates including a deliberate distractor (a golf
+# swing note against a note about political blame), M3 with thinking enabled
+# rejected the distractor; with {"thinking": {"type": "disabled"}} it linked all
+# four. Phase C's whole job is rejecting embedding-nearby-but-unrelated
+# candidates, so thinking must stay ON and max_tokens must accommodate it —
+# observed 908-1324 total tokens where Phase C's default was 1024.
+# "reasoning_effort": "minimal" made the think block LARGER, not smaller.
+# ---------------------------------------------------------------------------
+
+MINIMAX_BASE_URL            = "https://api.minimax.io/v1"
+MINIMAX_KEYRING_SERVICE     = "ora"
+MINIMAX_KEYRING_USERNAME    = "minimax-api-key"
+ENV_MINIMAX_KEY             = "MINIMAX_API_KEY"
+ENV_MINIMAX_MODEL           = "ORA_MINIMAX_MODEL"
+DEFAULT_MINIMAX_MODEL       = "MiniMax-M3"
+MINIMAX_TIMEOUT             = 300
+MINIMAX_RETRIES             = 4
+_THINK_RE = re.compile(r"<think>.*?</think>", re.S)
+
+
+class MiniMaxClient:
+    """Model calls via the MiniMax API. OpenAI-compatible request/response shape."""
+
+    def __init__(self, model: str = DEFAULT_MINIMAX_MODEL,
+                 timeout_secs: int = MINIMAX_TIMEOUT,
+                 retries: int = MINIMAX_RETRIES):
+        self.model = os.environ.get(ENV_MINIMAX_MODEL) or model
+        self.timeout_secs = timeout_secs
+        self.retries = retries
+        self.api_key = self._resolve_key()
+        if not self.api_key:
+            raise RuntimeError(
+                "No MiniMax API key. Set it in the keyring "
+                f"(service='{MINIMAX_KEYRING_SERVICE}', "
+                f"username='{MINIMAX_KEYRING_USERNAME}') or export "
+                f"{ENV_MINIMAX_KEY}.")
+
+    @staticmethod
+    def _resolve_key() -> str | None:
+        v = os.environ.get(ENV_MINIMAX_KEY)
+        if v:
+            return v.strip()
+        try:
+            import keyring
+            return keyring.get_password(MINIMAX_KEYRING_SERVICE,
+                                        MINIMAX_KEYRING_USERNAME)
+        except Exception:
+            return None
+
+    def call(self, *, system: str = "", user: str = "", model: str = "",
+             max_tokens: int = 4096, temperature: float = 0.0) -> "CallResult":
+        import urllib.error
+        import urllib.request
+
+        use_model = os.environ.get(ENV_MINIMAX_MODEL) or self.model
+        result = CallResult(model=f"minimax:{use_model}")
+        msgs = []
+        if system:
+            msgs.append({"role": "system", "content": system})
+        msgs.append({"role": "user", "content": user})
+        # Headroom for the <think> block, which must not be suppressed.
+        payload = json.dumps({
+            "model": use_model,
+            "messages": msgs,
+            "max_tokens": max(max_tokens, 3072),
+            "temperature": temperature,
+        }).encode()
+
+        last = ""
+        for attempt in range(self.retries):
+            req = urllib.request.Request(
+                f"{MINIMAX_BASE_URL}/chat/completions", data=payload,
+                headers={"Authorization": f"Bearer {self.api_key}",
+                         "Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout_secs) as resp:
+                    d = json.loads(resp.read())
+                choice = (d.get("choices") or [{}])[0]
+                raw = ((choice.get("message") or {}).get("content") or "")
+                # Strip reasoning; keep the answer.
+                result.text = _THINK_RE.sub("", raw).strip()
+                usage = d.get("usage") or {}
+                result.input_tokens = usage.get("prompt_tokens") or 0
+                result.output_tokens = usage.get("completion_tokens") or 0
+                if not result.input_tokens and usage.get("total_tokens"):
+                    result.input_tokens = usage["total_tokens"]
+                if choice.get("finish_reason") == "length" and not result.text:
+                    result.error = "minimax: truncated inside <think>, no answer"
+                    return result
+                if not result.text:
+                    last = "empty reply"
+                    time.sleep(2 ** attempt)
+                    continue
+                return result
+            except urllib.error.HTTPError as e:
+                body = ""
+                try:
+                    body = e.read().decode()[:200]
+                except Exception:
+                    pass
+                last = f"HTTP {e.code}: {body}"
+                if e.code in (429, 500, 502, 503, 529):
+                    time.sleep(2 ** attempt)
+                    continue
+                break
+            except Exception as e:
+                last = f"{type(e).__name__}: {e}"
+                time.sleep(2 ** attempt)
+        result.error = f"minimax: {last}"
+        return result
