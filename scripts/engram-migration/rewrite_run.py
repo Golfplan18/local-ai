@@ -142,6 +142,12 @@ def main() -> int:
     ap.add_argument("--shard", default=None, metavar="K/N",
                     help="process only shard K of N (0-indexed). Lets N independent "
                          "processes run with no coordination and no overlap.")
+    ap.add_argument("--worklist", default=None,
+                    help="JSON list of note filenames to process, e.g. "
+                         "<vault>/.migration/opus_worklist.json from prescan.py. "
+                         "Without it the runner walks all 64,144 merged notes, which "
+                         "is 16x the work: the prescan finds 4,038 with a detectable "
+                         "defect and re-running a clean note measurably damages it.")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--apply", action="store_true", help="make the calls (default: dry run)")
     args = ap.parse_args()
@@ -166,6 +172,12 @@ def main() -> int:
             print("[rewrite] --shard must look like 3/8 with 0 <= K < N", file=sys.stderr)
             return 2
 
+    worklist: set[str] | None = None
+    if args.worklist:
+        wl = json.loads(Path(args.worklist).read_text())
+        worklist = {Path(x).name for x in wl}
+        print(f"[rewrite] worklist: {len(worklist):,} notes from {args.worklist}")
+
     print("[rewrite] indexing archived source notes...", flush=True)
     arch: dict[str, str] = {}
     for p in archive.glob("*.md"):
@@ -175,6 +187,8 @@ def main() -> int:
     units: list[dict] = []
     skipped_no_src = 0
     for p in sorted(engrams.glob("*.md")):
+        if worklist is not None and p.name not in worklist:
+            continue
         if shard_n is not None and shard_of(p.name, shard_n) != shard_k:
             continue
         text = p.read_text(encoding="utf-8", errors="replace")
@@ -195,7 +209,8 @@ def main() -> int:
     batches = [units[i:i + args.batch] for i in range(0, len(units), args.batch)]
     src_chars = sum(len(o["full_text"]) for u in units for o in u["originals"])
     already = len(list(outdir.glob("*.json")))
-    print(f"[rewrite] shard={args.shard or 'all'}  todo={len(units):,}  "
+    print(f"[rewrite] worklist={'yes' if worklist else 'NO — all notes'}  "
+          f"shard={args.shard or 'all'}  todo={len(units):,}  "
           f"already done={already:,}  no-sources={skipped_no_src:,}")
     print(f"[rewrite] batch={args.batch} workers={args.workers} backend={args.backend}")
     print(f"[rewrite] source text {src_chars/1e6:.1f}M chars (~{src_chars//4:,} tok) "
