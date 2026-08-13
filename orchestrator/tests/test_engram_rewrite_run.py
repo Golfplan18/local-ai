@@ -143,8 +143,20 @@ class TestPromptContract(unittest.TestCase):
         output_section = prompt.split("## Output", 1)[1]
         self.assertIn("Return only the JSON object", output_section)
         self.assertIn("body", output_section)
+        self.assertIn("independent reuse", prompt)
+        self.assertIn("never split away a limiting qualification", prompt)
         self.assertNotIn("The note as markdown", output_section)
         self.assertNotIn("Then a line `---`", output_section)
+
+    def test_request_repeats_the_split_safety_rule(self):
+        request = runner.build_user([{
+            "note_id": "note-a",
+            "current_note": "# Old\n\n- Body",
+            "originals": [{"file": "source.md", "full_text": "# Source\n\n- Claim"}],
+        }])
+        self.assertIn("independently reusable", request)
+        self.assertIn("never split away a qualification", request)
+        self.assertIn("do not bundle incompatible alternatives", request)
 
 
 class TestMainPreflight(unittest.TestCase):

@@ -964,7 +964,11 @@ class MiniMaxClient:
         payload = json.dumps({
             "model": use_model,
             "messages": msgs,
-            "max_tokens": max(max_tokens, 3072),
+            # Floor high: the <think> block for a full note rewrite ran 13,760
+            # characters and consumed all 8,192 output tokens on one test, finishing
+            # inside the reasoning with no answer at all. Classification needs ~3k;
+            # generation needs an order of magnitude more headroom.
+            "max_tokens": max(max_tokens, 32768),
             "temperature": temperature,
         }).encode()
 
