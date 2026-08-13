@@ -82,21 +82,56 @@ def shard_of(name: str, n: int) -> int:
     return int(hashlib.sha1(name.encode("utf-8")).hexdigest()[:8], 16) % n
 
 
+def _balanced(raw: str, start: int) -> str | None:
+    """Extract the balanced JSON value starting at raw[start], respecting strings
+    and escapes. A first-brace-to-last-brace slice breaks whenever the CLI appends
+    anything after the JSON (a status line, a rate-limit notice), which is the
+    failure this replaces."""
+    opener = raw[start]
+    closer = {"{": "}", "[": "]"}[opener]
+    depth, i, in_str, esc = 0, start, False, False
+    while i < len(raw):
+        c = raw[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c == opener:
+            depth += 1
+        elif c == closer:
+            depth -= 1
+            if depth == 0:
+                return raw[start:i + 1]
+        i += 1
+    return None
+
+
 def parse_reply(text: str) -> dict | None:
     raw = (text or "").strip()
     m = _FENCE.search(raw)
     if m:
-        raw = m.group(1)
-    if not raw.startswith(("{", "[")):
-        i = min([x for x in (raw.find("{"), raw.find("[")) if x >= 0] or [-1])
-        j = max(raw.rfind("}"), raw.rfind("]"))
-        if i < 0 or j <= i:
-            return None
-        raw = raw[i:j + 1]
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return None
+        raw = m.group(1).strip()
+    # Try every plausible JSON start, nearest first, and take the first that
+    # yields a balanced value containing a "notes" list.
+    starts = [i for i, c in enumerate(raw) if c in "{["]
+    for i in starts[:6]:
+        cand = _balanced(raw, i)
+        if not cand:
+            continue
+        try:
+            v = json.loads(cand)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(v, dict) and isinstance(v.get("notes"), list):
+            return v
+        if isinstance(v, list) and v and isinstance(v[0], dict):
+            return {"notes": v}
+    return None
 
 
 def build_user(units: list[dict]) -> str:
@@ -227,7 +262,7 @@ def main() -> int:
     from orchestrator.historical.cleanup_backends import build_client
     client = build_client(args.backend)
     agg = {"ok": 0, "failed": 0, "notes": 0, "split": 0, "archive": 0,
-           "in": 0, "out": 0, "cost": 0.0}
+           "id_mismatch": 0, "in": 0, "out": 0, "cost": 0.0}
     start = time.monotonic()
 
     def run(batch: list[dict]) -> None:
@@ -245,15 +280,29 @@ def main() -> int:
         parsed = parse_reply(res.text)
         recs = (parsed or {}).get("notes") if isinstance(parsed, dict) else parsed
         if not isinstance(recs, list) or not recs:
+            # Write the raw reply next to the output so the failure can be read
+            # rather than theorised about. Three rounds of guessing at these cost
+            # more than the disk ever will.
+            faildir = outdir.parent / "rewrite_failures"
+            faildir.mkdir(parents=True, exist_ok=True)
+            (faildir / (batch[0]["note_id"] + ".txt")).write_text(
+                (res.text or "<EMPTY REPLY>"), encoding="utf-8")
             with _lock:
                 agg["failed"] += 1
-            print(f"[rewrite] unusable reply for {batch[0]['note_id'][:48]}", file=sys.stderr)
+            print(f"[rewrite] unusable reply for {batch[0]['note_id'][:48]} "
+                  f"({len(res.text or '')} chars, saved)", file=sys.stderr)
             return
         by_id = {u["note_id"]: u for u in batch}
+        wrote_any = False
         for rec in recs:
             u = by_id.get(rec.get("note_id"))
             if not u or not rec.get("title"):
+                # Previously this counted as a success and wrote nothing, so a
+                # returned id that did not match went unnoticed.
+                with _lock:
+                    agg["id_mismatch"] += 1
                 continue
+            wrote_any = True
             rec["source_files"] = [o["file"] for o in u["originals"]]
             tmp = u["dest"].with_suffix(".tmp")
             tmp.write_text(json.dumps(rec, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -290,7 +339,8 @@ def main() -> int:
     el = time.monotonic() - start
     print(f"\n[rewrite] done in {el/3600:.2f}h — {agg['ok']:,} calls ok, "
           f"{agg['failed']:,} failed, {agg['notes']:,} notes written")
-    print(f"[rewrite]   SPLIT={agg['split']:,}  ARCHIVE={agg['archive']:,}")
+    print(f"[rewrite]   SPLIT={agg['split']:,}  ARCHIVE={agg['archive']:,}"
+          f"  id_mismatch={agg['id_mismatch']:,}")
     print(f"[rewrite]   tokens in={agg['in']:,} out={agg['out']:,} "
           f"({(agg['in']+agg['out'])/max(1,agg['notes']):.0f}/note)  cost=${agg['cost']:.2f}")
     print("[rewrite] re-run the same command to retry failures and continue")
