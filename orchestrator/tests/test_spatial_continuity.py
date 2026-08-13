@@ -238,6 +238,20 @@ class ConversationJsonPersistenceTests(unittest.TestCase):
         self.assertIsNone(asst_turn["annotations"])
         self.assertIsNone(asst_turn["vision_extraction_result"])
 
+    def test_visual_checkpoint_identity_is_stored_on_user_message(self) -> None:
+        from conversation_memory import save_turn_spatial_state, load_conversation_json
+        checkpoint = "20260813T123456123456Z-deadbeef"
+        save_turn_spatial_state(
+            conversation_id="sess-checkpoint",
+            user_input="exact scene",
+            ai_response="response",
+            visual_checkpoint_id=checkpoint,
+            sessions_root=self._tmp,
+        )
+        data = load_conversation_json("sess-checkpoint", sessions_root=self._tmp)
+        self.assertEqual(data["messages"][0]["visual_checkpoint_id"], checkpoint)
+        self.assertNotIn("visual_checkpoint_id", data["messages"][1])
+
     def test_save_append_preserves_prior_turns(self) -> None:
         from conversation_memory import save_turn_spatial_state, load_conversation_json
         save_turn_spatial_state(

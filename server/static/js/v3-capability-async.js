@@ -108,6 +108,7 @@
     listenerBound: false,
     activeListener: null,
     convChangeListener: null,
+    canvasMountedListener: null,
     pruneTimer:   null,
   };
 
@@ -151,6 +152,9 @@
 
   function _initCapabilityHandlers() {
     var panel = _getVisualPanel();
+    var editorController = (window.OraCanvas
+      && typeof window.OraCanvas.insertImageObject === 'function')
+      ? window.OraCanvas : panel;
     // Init-style modules: ASYNC + SYNC together (same signature).
     var initEntries = ASYNC_SLOT_MODULES.concat(SYNC_INIT_MODULES);
     initEntries.forEach(function (entry) {
@@ -170,7 +174,8 @@
       try {
         mod.init({
           hostEl: document.body,
-          visualPanel: panel,
+          visualPanel: SYNC_INIT_MODULES.indexOf(entry) >= 0
+            ? editorController : panel,
         });
         console.info('[v3-capability-async] initialised ' + entry.global);
       } catch (e) {
@@ -195,6 +200,27 @@
         console.info('[v3-capability-async] attached ' + entry.global);
       } catch (e) {
         console.warn('[v3-capability-async] ' + entry.global + ' attach failed:', e && e.message);
+      }
+    });
+  }
+
+  function _retargetCapabilityHandlers() {
+    var editorController = (window.OraCanvas
+      && typeof window.OraCanvas.insertImageObject === 'function')
+      ? window.OraCanvas : _getVisualPanel();
+    SYNC_INIT_MODULES.forEach(function (entry) {
+      var mod = window[entry.global];
+      if (mod && typeof mod.setVisualPanel === 'function') {
+        mod.setVisualPanel(editorController);
+      }
+    });
+    // These older handlers close over the panel supplied to attach(), so
+    // reattach once the deferred canvas controller has mounted.
+    var panel = _getVisualPanel();
+    ATTACH_MODULES.forEach(function (entry) {
+      var mod = window[entry.global];
+      if (mod && typeof mod.attach === 'function') {
+        mod.attach({ hostEl: document.body, panel: panel });
       }
     });
   }
@@ -444,6 +470,8 @@
 
     state.convChangeListener = function () { _onConversationSelected(); };
     document.addEventListener('ora:conversation-selected', state.convChangeListener);
+    state.canvasMountedListener = function () { _retargetCapabilityHandlers(); };
+    document.addEventListener('ora:canvas-mounted', state.canvasMountedListener);
 
     _startPolling();
 
@@ -466,6 +494,10 @@
     if (state.convChangeListener) {
       document.removeEventListener('ora:conversation-selected', state.convChangeListener);
       state.convChangeListener = null;
+    }
+    if (state.canvasMountedListener) {
+      document.removeEventListener('ora:canvas-mounted', state.canvasMountedListener);
+      state.canvasMountedListener = null;
     }
     var list = document.getElementById('v3JobsList');
     if (list && list.parentNode) list.parentNode.removeChild(list);

@@ -25,6 +25,7 @@ tests are fast and model-free.
 from __future__ import annotations
 
 import io
+import base64
 import json
 import os
 import re
@@ -330,6 +331,423 @@ class MultipartEndpointIntegrationTests(unittest.TestCase):
         )
         # The cleaned text reached the pipeline.
         self.assertIn("Just text", captured["clean_input"])
+
+
+class VisualCheckpointAtomicityTests(unittest.TestCase):
+    """Focused checkpoint identity, commit-marker, and rollback behavior."""
+
+    def setUp(self) -> None:
+        from server import app as server
+        self.server = server
+        self.client = server.app.test_client()
+        self._tmp = tempfile.mkdtemp(prefix="ora-visual-checkpoint-")
+        self._old_canvas_root = server.CANVAS_ROOT
+        self._old_uploads_root = server.VISUAL_UPLOADS_ROOT
+        self._old_pending = server.CONVERSATIONS_PENDING
+        self._old_processed = server.CONVERSATIONS_PROCESSED
+        server.CANVAS_ROOT = self._tmp
+        server.VISUAL_UPLOADS_ROOT = self._tmp
+        server.CONVERSATIONS_PENDING = os.path.join(self._tmp, "pending")
+        server.CONVERSATIONS_PROCESSED = os.path.join(self._tmp, "processed")
+        self.scene = json.dumps({
+            "type": "excalidraw",
+            "version": 2,
+            "source": "local",
+            "elements": [{"id": "editable-rectangle", "type": "rectangle"}],
+            "appState": {"viewBackgroundColor": "#ffffff"},
+            "files": {},
+        }).encode()
+        self.png = b"\x89PNG\r\n\x1a\ncanonical-preview"
+
+    def tearDown(self) -> None:
+        self.server.CANVAS_ROOT = self._old_canvas_root
+        self.server.VISUAL_UPLOADS_ROOT = self._old_uploads_root
+        self.server.CONVERSATIONS_PENDING = self._old_pending
+        self.server.CONVERSATIONS_PROCESSED = self._old_processed
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _visual_form(self, conversation_id: str) -> dict:
+        return {
+            "message": "Use this exact visual.",
+            "conversation_id": conversation_id,
+            "panel_id": conversation_id,
+            "visual_editor": "excalidraw",
+            "visual_native": (io.BytesIO(self.scene), "scene.excalidraw"),
+            "canvas_preview_png": (io.BytesIO(self.png), "preview.png"),
+            "exhibits_submission_intent": "explicit_send",
+        }
+
+    def test_pending_marker_records_both_paths_and_checkpoint(self) -> None:
+        captured = {}
+
+        def invoke(*args, **kwargs):
+            captured["extra_context"] = kwargs.get("extra_context")
+            captured["submission_id"] = kwargs.get("submission_id")
+            return json.dumps({"status": "ok"})
+
+        with mock.patch.object(self.server, "_invoke_pipeline", side_effect=invoke), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart",
+                data=self._visual_form("checkpoint-atomic-success"),
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        submission_id = captured["submission_id"]
+        marker = Path(self.server.CONVERSATIONS_PENDING, submission_id + ".json")
+        payload = json.loads(marker.read_text(encoding="utf-8"))
+        self.assertEqual(payload["visual_checkpoint_id"], submission_id)
+        self.assertTrue(Path(payload["visual_native_path"]).is_file())
+        self.assertTrue(Path(payload["canvas_preview_path"]).is_file())
+        self.assertEqual(
+            captured["extra_context"]["visual_checkpoint_id"], submission_id,
+        )
+        self.assertEqual(
+            captured["extra_context"]["image_path"], payload["canvas_preview_path"],
+        )
+
+    def test_drawing_only_submit_reaches_pipeline_with_empty_message(self) -> None:
+        captured = {}
+
+        def invoke(*args, **kwargs):
+            captured["message"] = args[0]
+            captured["extra_context"] = kwargs.get("extra_context")
+            return json.dumps({"status": "ok"})
+
+        form = self._visual_form("checkpoint-drawing-only")
+        form["message"] = ""
+        with mock.patch.object(self.server, "_invoke_pipeline", side_effect=invoke), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart", data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(captured["message"], "")
+        self.assertIsNotNone(captured["extra_context"]["visual_checkpoint_id"])
+
+    def test_pipeline_guard_allows_empty_text_only_for_validated_checkpoint(self) -> None:
+        with mock.patch.object(
+            self.server, "parse_user_command",
+            side_effect=RuntimeError("passed content guard"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "passed content guard"):
+                self.server._invoke_pipeline_unlocked(
+                    "", [], "checkpoint-guard-visual", False,
+                    extra_context={
+                        "visual_checkpoint_id": "20260813T123456123456Z-deadbeef",
+                    },
+                )
+
+        response, status = self.server._invoke_pipeline_unlocked(
+            "", [], "checkpoint-guard-empty", False,
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(response)["error"], "empty message")
+
+    def test_empty_scene_does_not_authorize_empty_message(self) -> None:
+        invoked = mock.Mock()
+        empty_scene = json.dumps({
+            "type": "excalidraw",
+            "version": 2,
+            "source": "local",
+            "elements": [],
+            "appState": {"viewBackgroundColor": "#ffffff"},
+            "files": {},
+        }).encode()
+        form = self._visual_form("checkpoint-empty-scene")
+        form["message"] = ""
+        form["visual_native"] = (io.BytesIO(empty_scene), "scene.excalidraw")
+        with mock.patch.object(self.server, "_invoke_pipeline", invoked), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart", data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        invoked.assert_not_called()
+
+    def test_attachment_is_removed_when_visual_checkpoint_is_invalid(self) -> None:
+        invoked = mock.Mock()
+        form = self._visual_form("checkpoint-invalid-with-attachment")
+        form["image"] = (io.BytesIO(b"ordinary-attachment"), "ordinary.png")
+        form["visual_native"] = (io.BytesIO(b"not-an-excalidraw-scene"), "scene.excalidraw")
+        with mock.patch.object(self.server, "_invoke_pipeline", invoked), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart", data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        invoked.assert_not_called()
+        self.assertFalse([
+            path for path in Path(self._tmp).rglob("*") if path.is_file()
+        ])
+
+    def test_attachment_and_canvas_preview_both_reach_model_input(self) -> None:
+        captured = {}
+        attachment = b"\x89PNG\r\n\x1a\nordinary-attachment"
+
+        def invoke(*args, **kwargs):
+            captured["images"] = kwargs.get("images")
+            return json.dumps({"status": "ok"})
+
+        form = self._visual_form("checkpoint-two-images")
+        form["image"] = (io.BytesIO(attachment), "ordinary.png")
+        with mock.patch.object(self.server, "_invoke_pipeline", side_effect=invoke), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart", data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(captured["images"]), 2)
+        self.assertEqual(
+            [base64.b64decode(image["base64"]) for image in captured["images"]],
+            [attachment, self.png],
+        )
+
+    def test_pending_marker_failure_removes_checkpoint_and_skips_model(self) -> None:
+        invoked = mock.Mock()
+        form = self._visual_form("checkpoint-atomic-failure")
+        form["image"] = (io.BytesIO(b"ordinary-attachment"), "ordinary.png")
+        with mock.patch.object(self.server, "_invoke_pipeline", invoked), \
+             mock.patch.object(self.server, "_log_pending_submission", return_value=""), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post(
+                "/chat/multipart",
+                data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 500)
+        invoked.assert_not_called()
+        canvas = Path(self._tmp, "checkpoint-atomic-failure", "canvas")
+        self.assertFalse(list(canvas.glob("*.excalidraw")))
+        self.assertFalse(list(canvas.glob("*.preview.png")))
+        self.assertFalse([
+            path for path in Path(self._tmp, "checkpoint-atomic-failure").rglob("*")
+            if path.is_file()
+        ])
+
+    def test_pending_marker_failure_removes_separate_legacy_preview(self) -> None:
+        invoked = mock.Mock()
+        preview_data_url = "data:image/png;base64," + base64.b64encode(
+            self.png
+        ).decode("ascii")
+        with mock.patch.object(self.server, "_invoke_pipeline", invoked), \
+             mock.patch.object(self.server, "_log_pending_submission", return_value=""), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("", False),
+             ):
+            response = self.client.post("/chat/multipart", data={
+                "message": "Legacy preview must roll back.",
+                "conversation_id": "checkpoint-legacy-preview-failure",
+                "panel_id": "checkpoint-legacy-preview-failure",
+                "canvas_preview_png_data_url": preview_data_url,
+            }, content_type="multipart/form-data")
+
+        self.assertEqual(response.status_code, 500)
+        invoked.assert_not_called()
+        self.assertFalse([
+            path for path in Path(
+                self._tmp, "checkpoint-legacy-preview-failure"
+            ).rglob("*") if path.is_file()
+        ])
+
+    def test_exact_checkpoint_load_ignores_newer_autosave(self) -> None:
+        checkpoint_id = "20260813T123456123456Z-deadbeef"
+        conversation_id = "checkpoint-exact-load"
+        with mock.patch.object(
+            self.server, "_canonical_live_conversation_id",
+            side_effect=lambda value: value,
+        ):
+            self.server._write_visual_checkpoint(
+                conversation_id, checkpoint_id, "excalidraw", self.scene, self.png,
+            )
+        canvas = Path(self._tmp, conversation_id, "canvas")
+        (canvas / "20990101-000000-000000.ora-canvas").write_bytes(b"newer autosave")
+        response = self.client.get(
+            f"/api/canvas/load/{conversation_id}?checkpoint={checkpoint_id}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["X-Ora-Visual-Editor"], "excalidraw")
+        self.assertEqual(response.data, self.scene)
+
+    def test_private_child_retry_copies_parent_checkpoint_under_child_id(self) -> None:
+        parent_id = "checkpoint-retry-parent"
+        child_id = "checkpoint-retry-private"
+        source_id = "20260813T123456123456Z-deadbeef"
+        with mock.patch.object(
+            self.server, "_canonical_live_conversation_id",
+            side_effect=lambda value: value,
+        ):
+            self.server._write_visual_checkpoint(
+                parent_id, source_id, "excalidraw", self.scene, self.png,
+            )
+        captured = {}
+
+        def invoke(*args, **kwargs):
+            captured["extra_context"] = kwargs.get("extra_context")
+            captured["submission_id"] = kwargs.get("submission_id")
+            return json.dumps({"status": "ok"})
+
+        form = {
+            "message": "Retry this private visual.",
+            "conversation_id": child_id,
+            "panel_id": child_id,
+            "tag": "private",
+            "retry_visual_checkpoint_id": source_id,
+            "retry_visual_source_conversation_id": parent_id,
+            "exhibits_submission_intent": "explicit_send",
+        }
+        with mock.patch.object(
+            self.server, "_canonical_live_conversation_id",
+            side_effect=lambda value: value,
+        ), mock.patch(
+            "conversation_memory.load_conversation_json",
+            return_value={"parent_conversation_id": parent_id},
+        ), mock.patch.object(
+            self.server, "_invoke_pipeline", side_effect=invoke,
+        ), mock.patch.object(
+            self.server, "_ensure_artifact_conversation_envelope",
+            return_value=("private", False),
+        ):
+            response = self.client.post(
+                "/chat/multipart", data=form,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        child_checkpoint_id = captured["submission_id"]
+        self.assertNotEqual(child_checkpoint_id, source_id)
+        child_canvas = Path(self._tmp, child_id, "canvas")
+        self.assertEqual(
+            (child_canvas / f"{child_checkpoint_id}.excalidraw").read_bytes(),
+            self.scene,
+        )
+        self.assertEqual(
+            (child_canvas / f"{child_checkpoint_id}.preview.png").read_bytes(),
+            self.png,
+        )
+        self.assertEqual(
+            captured["extra_context"]["visual_checkpoint_id"],
+            child_checkpoint_id,
+        )
+        self.assertEqual(
+            captured["extra_context"]["image_path"],
+            str(child_canvas / f"{child_checkpoint_id}.preview.png"),
+        )
+        self.assertTrue(
+            Path(self._tmp, parent_id, "canvas", f"{source_id}.excalidraw").is_file()
+        )
+        marker = json.loads(Path(
+            self.server.CONVERSATIONS_PENDING,
+            child_checkpoint_id + ".json",
+        ).read_text(encoding="utf-8"))
+        self.assertEqual(marker["visual_checkpoint_id"], child_checkpoint_id)
+        self.assertIn(f"/{child_id}/canvas/", marker["visual_native_path"])
+        self.assertIn(f"/{child_id}/canvas/", marker["canvas_preview_path"])
+
+    def test_private_child_retry_copy_failure_skips_model_and_cleans_pair(self) -> None:
+        parent_id = "checkpoint-retry-fail-parent"
+        child_id = "checkpoint-retry-fail-child"
+        source_id = "20260813T123456123456Z-deadbeef"
+        with mock.patch.object(
+            self.server, "_canonical_live_conversation_id",
+            side_effect=lambda value: value,
+        ):
+            self.server._write_visual_checkpoint(
+                parent_id, source_id, "excalidraw", self.scene, self.png,
+            )
+        invoked = mock.Mock()
+        original_atomic = self.server.rp.atomic_write_bytes
+        writes = 0
+
+        def fail_second(path, payload, **kwargs):
+            nonlocal writes
+            writes += 1
+            if writes == 2:
+                raise OSError("preview copy failed")
+            return original_atomic(path, payload, **kwargs)
+
+        with mock.patch.object(
+            self.server, "_canonical_live_conversation_id",
+            side_effect=lambda value: value,
+        ), mock.patch(
+            "conversation_memory.load_conversation_json",
+            return_value={"parent_conversation_id": parent_id},
+        ), mock.patch.object(
+            self.server.rp, "atomic_write_bytes", side_effect=fail_second,
+        ), mock.patch.object(self.server, "_invoke_pipeline", invoked), \
+             mock.patch.object(
+                 self.server, "_ensure_artifact_conversation_envelope",
+                 return_value=("private", False),
+             ):
+            response = self.client.post("/chat/multipart", data={
+                "message": "Retry this private visual.",
+                "conversation_id": child_id,
+                "panel_id": child_id,
+                "tag": "private",
+                "retry_visual_checkpoint_id": source_id,
+                "retry_visual_source_conversation_id": parent_id,
+                "exhibits_submission_intent": "explicit_send",
+            }, content_type="multipart/form-data")
+
+        self.assertEqual(response.status_code, 500)
+        invoked.assert_not_called()
+        child_canvas = Path(self._tmp, child_id, "canvas")
+        self.assertFalse(list(child_canvas.glob("*.excalidraw")))
+        self.assertFalse(list(child_canvas.glob("*.preview.png")))
+
+    def test_retry_lookup_carries_validated_source_checkpoint_identity(self) -> None:
+        checkpoint_id = "20260813T123456123456Z-deadbeef"
+        with mock.patch(
+            "conversation_memory.load_conversation_json",
+            return_value={
+                "tag": "",
+                "messages": [{
+                    "role": "user",
+                    "content": "Retry this visual.",
+                    "visual_checkpoint_id": checkpoint_id,
+                }],
+            },
+        ):
+            response = self.client.post(
+                "/api/conversation/retry-visual-source/retry"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.data)
+        self.assertEqual(payload["visual_checkpoint_id"], checkpoint_id)
+        self.assertEqual(
+            payload["visual_checkpoint_source_conversation_id"],
+            "retry-visual-source",
+        )
 
 
 class BuildSystemPromptIncludesSpatialTests(unittest.TestCase):

@@ -71,9 +71,13 @@ w.OraSidebar = {
   getActiveConversation: function () { return 'test-conv-1'; },
 };
 
-// Stub OraPanels so the module can find a visual panel (returns null —
-// the module gracefully handles missing panel).
-w.OraPanels = { visual: { _getActive: function () { return null; } } };
+// Keep the loaded Konva panel distinct from the dual-editor controller. Image
+// capability results must target OraCanvas so the active editor receives them;
+// Konva-specific async/legacy handlers still receive the native panel.
+var rawKonvaPanel = { id: 'konva-panel' };
+var editorController = { insertImageObject: function () {} };
+w.OraPanels = { visual: { _getActive: function () { return rawKonvaPanel; } } };
+w.OraCanvas = editorController;
 
 // Stub the capability handler modules with init counters so we can
 // confirm the wiring module calls them.
@@ -93,14 +97,17 @@ w.OraCapabilityStyleTrains = {
 // args so the test can assert the wiring module called all six with
 // the right shape.
 var syncInitCalls = {};
+var syncSetPanelCalls = {};
 [
   'OraCapabilityImageGenerates', 'OraCapabilityImageUpscales',
   'OraCapabilityImageStyles', 'OraCapabilityImageVaries',
   'OraCapabilityImageToPrompt', 'OraCapabilityImageCritique',
 ].forEach(function (name) {
   syncInitCalls[name] = [];
+  syncSetPanelCalls[name] = [];
   w[name] = {
     init: function (opts) { syncInitCalls[name].push(opts); return { _stub: name }; },
+    setVisualPanel: function (panel) { syncSetPanelCalls[name].push(panel); },
     _getActive: function () { return null; },
   };
 });
@@ -152,6 +159,7 @@ function resetState() {
   videoInitCalls.length = 0;
   trainsInitCalls.length = 0;
   Object.keys(syncInitCalls).forEach(function (k) { syncInitCalls[k].length = 0; });
+  Object.keys(syncSetPanelCalls).forEach(function (k) { syncSetPanelCalls[k].length = 0; });
   Object.keys(attachCalls).forEach(function (k) { attachCalls[k].length = 0; });
   jobQueueInitCalls.length = 0;
   cancelRequests.length = 0;
@@ -213,7 +221,7 @@ function testSyncInitWiring() {
     record(name + '.init received {hostEl, visualPanel} signature',
       syncInitCalls[name].length === 1
         && 'hostEl' in syncInitCalls[name][0]
-        && 'visualPanel' in syncInitCalls[name][0],
+        && syncInitCalls[name][0].visualPanel === editorController,
       'opts keys=' + (syncInitCalls[name][0] ? Object.keys(syncInitCalls[name][0]).join(',') : 'none'));
   });
 }
@@ -232,10 +240,36 @@ function testAttachStyleWiring() {
     record(name + '.attach received {hostEl, panel} signature (not visualPanel)',
       attachCalls[name].length === 1
         && 'hostEl' in attachCalls[name][0]
-        && 'panel' in attachCalls[name][0]
+        && attachCalls[name][0].panel === rawKonvaPanel
         && !('visualPanel' in attachCalls[name][0]),
       'opts keys=' + (attachCalls[name][0] ? Object.keys(attachCalls[name][0]).join(',') : 'none'));
   });
+}
+
+function testDeferredCanvasRetarget() {
+  resetState();
+  var mountedController = { insertImageObject: function () {} };
+  w.OraCanvas = null;
+  V3.init();
+  w.OraCanvas = mountedController;
+  w.document.dispatchEvent(new w.CustomEvent('ora:canvas-mounted'));
+
+  [
+    'OraCapabilityImageGenerates', 'OraCapabilityImageUpscales',
+    'OraCapabilityImageStyles', 'OraCapabilityImageVaries',
+  ].forEach(function (name) {
+    record('ora:canvas-mounted retargets ' + name + ' to OraCanvas',
+      syncSetPanelCalls[name].length === 1
+        && syncSetPanelCalls[name][0] === mountedController,
+      'calls=' + syncSetPanelCalls[name].length);
+  });
+  ['OraImageOutpaints', 'OraImageEdits'].forEach(function (name) {
+    record('ora:canvas-mounted reattaches ' + name + ' to live Konva',
+      attachCalls[name].length === 2
+        && attachCalls[name][1].panel === rawKonvaPanel,
+      'calls=' + attachCalls[name].length);
+  });
+  w.OraCanvas = editorController;
 }
 
 // ── Test 2: _handleEvent renders a card ─────────────────────────────────────
@@ -425,6 +459,7 @@ function testConversationSwitchResetsLastSeenAssert() {
   testInitWiring();
   testSyncInitWiring();
   testAttachStyleWiring();
+  testDeferredCanvasRetarget();
   testHandleEventRendersCard();
   testWindowEventRoutes();
   testTerminalJobGrace();

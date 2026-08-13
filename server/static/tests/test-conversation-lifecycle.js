@@ -511,6 +511,7 @@ async function runIndexPrivacyEgressTests() {
   var events = [];
   var analyzerCalls = 0;
   var allowPrivacy = true;
+  var frameworkVisualSnapshot = { editor: 'excalidraw', elements: [{ id: 'framework-visual' }] };
   pw.OraInputState = {
     getFramework: function () {
       return { id: 'terrain-mapping', kind: 'framework' };
@@ -531,7 +532,8 @@ async function runIndexPrivacyEgressTests() {
       events.push('privacy:' + text);
       if (!allowPrivacy) return false;
       events.push('approved-draft:' + String(options && options.draftText || ''));
-      await submit();
+      events.push('capture-option:' + String(!!(options && options.captureVisualSnapshot)));
+      await submit({ visualSnapshot: frameworkVisualSnapshot });
       return true;
     },
   };
@@ -540,8 +542,9 @@ async function runIndexPrivacyEgressTests() {
   privacyContext.renderAssistantTurn = function (message) {
     events.push('assistant:' + message);
   };
-  privacyContext.submitToMainPipeline = async function (text) {
+  privacyContext.submitToMainPipeline = async function (text, _display, _approved, visualSnapshot) {
     events.push('submit:' + text);
+    events.push('submit-visual:' + String(visualSnapshot === frameworkVisualSnapshot));
     return true;
   };
   privacyContext._analyzeFrameworkInputs = async function (request) {
@@ -581,7 +584,9 @@ async function runIndexPrivacyEgressTests() {
     privacyIndex > events.indexOf('analyze:Base prompt')
       && secondAnalyzeIndex > privacyIndex
       && submits.length === 1
-      && /framework-secret/.test(submits[0]));
+      && /framework-secret/.test(submits[0])
+      && events.includes('capture-option:true')
+      && events.includes('submit-visual:true'));
   record('framework privacy fork receives the complete augmented draft',
     events.some(function (event) {
       return event === 'approved-draft:Base prompt\nMy private key is framework-secret.';
@@ -602,6 +607,144 @@ async function runIndexPrivacyEgressTests() {
   record('cancelled initial framework privacy sends no analyzer request',
     analyzerCalls === 0
       && events[0] === 'privacy:My password is initial-secret.');
+
+  var blankDom = new jsdom.JSDOM(
+    '<!doctype html><html><body></body></html>',
+    { url: 'http://localhost/', runScripts: 'outside-only' }
+  );
+  var bw = blankDom.window;
+  var snapshotCalls = 0;
+  var submittedFields = null;
+  bw.OraCanvas = {
+    hasContent: function () { return false; },
+    snapshotForSubmit: function () { snapshotCalls += 1; return {}; },
+  };
+  bw.fetch = function (_url, options) {
+    submittedFields = {};
+    options.body.forEach(function (value, key) { submittedFields[key] = value; });
+    return Promise.resolve({
+      ok: true, status: 200,
+      json: function () { return Promise.resolve({ status: 'ok' }); },
+    });
+  };
+  var blankContext = blankDom.getInternalVMContext();
+  blankContext.console = console;
+  blankContext.fetch = bw.fetch;
+  blankContext.currentConversationId = function () { return 'text-only'; };
+  blankContext.currentTag = function () { return ''; };
+  blankContext.renderAssistantTurn = function () {};
+  blankContext.refreshSidebarAfterSubmit = function () {};
+  vm.runInContext(
+    sourceSlice(indexSource, '  const _submitToMainPipeline = async',
+      '  const submitToMainPipeline = async')
+      + '\nglobalThis.__submitTextOnly = _submitToMainPipeline;',
+    blankContext,
+    { filename: 'index-text-only-submit.js' }
+  );
+  await bw.__submitTextOnly('Text only');
+  record('text-only Inquiry omits blank visual checkpoint and PNG',
+    snapshotCalls === 0
+      && submittedFields.message === 'Text only'
+      && !Object.prototype.hasOwnProperty.call(submittedFields, 'visual_native')
+      && !Object.prototype.hasOwnProperty.call(submittedFields, 'canvas_preview_png'));
+
+  var backgroundState = {
+    objects: [{ id: 'bg-image', kind: 'image', layer: 'background' }],
+  };
+  bw.OraCanvas = {
+    hasContent: function () { return backgroundState.objects.length > 0; },
+    snapshotForSubmit: function () {
+      snapshotCalls += 1;
+      return { editor: 'konva', state: backgroundState };
+    },
+    materializeSnapshot: function () {
+      return Promise.resolve({
+        editor: 'konva',
+        native: new bw.Blob(['native']),
+        preview: new bw.Blob(['png'], { type: 'image/png' }),
+        spatial: null,
+      });
+    },
+  };
+  submittedFields = null;
+  await bw.__submitTextOnly('');
+  record('drawing-only Konva handoff submits blank text, native state, and canonical PNG',
+    snapshotCalls === 1
+      && submittedFields.message === ''
+      && submittedFields.visual_editor === 'konva'
+      && submittedFields.visual_native instanceof bw.Blob
+      && submittedFields.canvas_preview_png instanceof bw.Blob
+      && submittedFields.exhibits_submission_intent === 'explicit_send');
+
+  var carriedSnapshot = {
+    editor: 'excalidraw', conversationId: 'standard-parent',
+    elements: [{ id: 'private-visual' }], appState: {}, files: {},
+  };
+  var materializedSnapshot = null;
+  var persistedSnapshot = null;
+  var persistedOwner = null;
+  bw.OraCanvas = {
+    hasContent: function () { return false; },
+    snapshotForSubmit: function () { snapshotCalls += 1; return null; },
+    materializeSnapshot: function (snapshot) {
+      materializedSnapshot = snapshot;
+      return Promise.resolve({
+        editor: 'excalidraw',
+        native: new bw.Blob(['private-native']),
+        preview: new bw.Blob(['private-png'], { type: 'image/png' }),
+        spatial: null,
+      });
+    },
+    persistSnapshotDraft: function (snapshot, ownerId) {
+      persistedSnapshot = snapshot;
+      persistedOwner = ownerId;
+      return Promise.resolve();
+    },
+  };
+  blankContext.currentConversationId = function () { return 'private-child'; };
+  var capturesBeforeCarriedSubmit = snapshotCalls;
+  submittedFields = null;
+  await bw.__submitTextOnly('Sensitive visual', carriedSnapshot);
+  record('privacy-carried parent snapshot becomes the Private child multipart checkpoint',
+    snapshotCalls === capturesBeforeCarriedSubmit
+      && materializedSnapshot === carriedSnapshot
+      && persistedSnapshot === carriedSnapshot
+      && persistedOwner === 'private-child'
+      && submittedFields.conversation_id === 'private-child'
+      && submittedFields.visual_editor === 'excalidraw'
+      && submittedFields.visual_native instanceof bw.Blob
+      && submittedFields.canvas_preview_png instanceof bw.Blob);
+  bw.OraCanvas = {
+    hasContent: function () { return backgroundState.objects.length > 0; },
+  };
+
+  var gatedSubmissions = [];
+  blankContext.rightInputArea = { value: '' };
+  blankContext.leftInputArea = { value: '' };
+  blankContext.requireMutableInquiry = function () { return true; };
+  blankContext.imageGenerateMode = false;
+  blankContext._looksLikeImageGenerationRequest = function () { return false; };
+  blankContext.submitWithFrameworkCheck = function (text) {
+    gatedSubmissions.push(text);
+  };
+  blankContext.renderUserTurn = function () {};
+  blankContext.setImageGenerateMode = function () {};
+  blankContext.submitImageGenerationPrompt = function () {};
+  vm.runInContext(
+    sourceSlice(indexSource, '  const submitInput = async',
+      '  // V3 Backlog 7 — pulse the O on submit')
+      + '\nglobalThis.__submitInput = submitInput;',
+    blankContext,
+    { filename: 'index-drawing-only-submit.js' }
+  );
+  backgroundState.objects = [];
+  await bw.__submitInput();
+  record('blank text and blank canvas remain blocked', gatedSubmissions.length === 0);
+  backgroundState.objects.push({ id: 'drawn-rect', kind: 'shape', layer: 'user_input' });
+  await bw.__submitInput();
+  record('drawing-only Inquiry passes the send gate without invented model text',
+    gatedSubmissions.length === 1 && gatedSubmissions[0] === '');
+  blankDom.window.close();
 }
 
 async function runSidebarRetryPrivacyTests() {
@@ -657,6 +800,8 @@ async function runSidebarRetryPrivacyTests() {
             last_user_prompt: prompt,
             tag: '',
             source: 'interrupted_input',
+            visual_checkpoint_id: '20260813T123456123456Z-deadbeef',
+            visual_checkpoint_source_conversation_id: 'errored-parent',
           });
         },
       });
@@ -712,7 +857,12 @@ async function runSidebarRetryPrivacyTests() {
       && multipartBodies[0].panel_id === 'retry-private-child');
   record('approved retry preserves multipart metadata and Private tag',
     multipartBodies[0].is_main_feed === 'true'
-      && multipartBodies[0].tag === 'private');
+      && multipartBodies[0].tag === 'private'
+      && multipartBodies[0].retry_visual_checkpoint_id
+        === '20260813T123456123456Z-deadbeef'
+      && multipartBodies[0].retry_visual_source_conversation_id
+        === 'errored-parent'
+      && multipartBodies[0].exhibits_submission_intent === 'explicit_send');
   record('child-bound retry dismisses only the original errored row',
     dismissCalls.length === 1
       && dismissCalls[0] === '/api/conversation/errored-parent/dismiss-error');
@@ -1211,10 +1361,29 @@ async function run() {
   var privacyInput = w.document.querySelector('.input-pane textarea');
   privacyInput.value = 'My secret key is abc';
   w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);
+  var parentVisualSnapshot = {
+    editor: 'excalidraw', conversationId: 'fork-parent', elements: [{ id: 'parent-visual' }],
+  };
+  var carriedVisualSnapshot = null;
+  var visualCapturedBeforeFork = false;
+  w.OraCanvas = {
+    hasContent: function () { return true; },
+    snapshotForSubmit: function () {
+      visualCapturedBeforeFork = !calls.some(function (call) {
+        return /\/fork$/.test(call.url);
+      });
+      return parentVisualSnapshot;
+    },
+    flushDraft: function () { return Promise.resolve(); },
+    setConversationContext: function () {},
+    loadCheckpoint: function () { return Promise.resolve(false); },
+    clear: function () {},
+  };
   calls = [];
   var forkPromise = w.OraConversation.submitAfterPrivacy(
     privacyInput.value,
-    function () {
+    function (submissionContext) {
+      carriedVisualSnapshot = submissionContext.visualSnapshot;
       return w.fetch('/chat', {
         method: 'POST',
         body: JSON.stringify({
@@ -1222,7 +1391,8 @@ async function run() {
           prompt: privacyInput.value,
         }),
       });
-    }
+    },
+    { captureVisualSnapshot: true }
   );
   await wait(0);
   w.document.querySelector('.ora-privacy-intervention [data-choice="private"]').click();
@@ -1246,9 +1416,12 @@ async function run() {
       && w.OraConversation.getActiveConversationId() === 'privacy-child'
       && w.OraConversation.getActiveTag() === 'private'
       && privacyInput.value === 'My secret key is abc'
+      && visualCapturedBeforeFork
+      && carriedVisualSnapshot === parentVisualSnapshot
       && w.localStorage.getItem('ora-v3-draft-privacy-child') === 'My secret key is abc'
       && w.localStorage.getItem('ora-v3-draft-fork-parent') === null
       && calls.filter(function (call) { return /\/fork$/.test(call.url); }).length === 1);
+  delete w.OraCanvas;
 
   await w.OraConversation.load('fork-parent');
   calls = [];
@@ -1358,8 +1531,38 @@ async function run() {
       && calls.filter(function (call) { return /\/fork$/.test(call.url); }).length === 0
       && alerts.some(function (message) { return /weaker privacy/.test(message); }));
 
+  var turnCanvasLoads = [];
+  w.OraCanvas = {
+    flushDraft: function () { return Promise.resolve(); },
+    setConversationContext: function () {},
+    loadCheckpoint: function (conversationId, checkpointId, turnIndex, visualState, options) {
+      turnCanvasLoads.push({
+        conversationId: conversationId,
+        checkpointId: checkpointId,
+        turnIndex: turnIndex,
+        options: options,
+      });
+      return Promise.resolve(true);
+    },
+  };
   await w.OraConversation.load('fork-parent');
+  turnCanvasLoads = [];
   w.OraConversation.showTurn(0);
+  await wait(0);
+  w.OraConversation.showTurn(1);
+  await wait(0);
+  var historicalCanvasLoad = turnCanvasLoads[0];
+  var latestCanvasLoad = turnCanvasLoads[1];
+  record('turn navigation keeps historical visuals transient and restores the latest draft',
+    historicalCanvasLoad
+      && historicalCanvasLoad.options.currentDialogue === false
+      && historicalCanvasLoad.options.preferDraft === false
+      && latestCanvasLoad
+      && latestCanvasLoad.options.currentDialogue === true
+      && latestCanvasLoad.options.preferDraft === true);
+  w.OraConversation.showTurn(0);
+  await wait(0);
+  delete w.OraCanvas;
   calls = [];
   var displayedFork = w.OraConversation.forkActive({
     tag: 'stealth', source: 'displayed-turn-test', await_selection: true,

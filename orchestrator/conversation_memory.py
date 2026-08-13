@@ -842,6 +842,7 @@ def save_turn_spatial_state(
     tag: str = "",
     project_ids: list[str] | None = None,
     trace_ref: str | None = None,
+    visual_checkpoint_id: str | None = None,
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Append a user+assistant pair to conversation.json with optional
@@ -900,7 +901,7 @@ def save_turn_spatial_state(
                 return _do_write(path, conversation_id, user_input, ai_response,
                                  tag, timestamp, spatial_representation,
                                  annotations, vision_extraction_result,
-                                 project_ids, trace_ref)
+                                 project_ids, trace_ref, visual_checkpoint_id)
         except (OSError, TimeoutError):
             return None
 
@@ -917,6 +918,7 @@ def _do_write(
     vision_extraction_result: dict | None,
     project_ids: list[str] | None = None,
     trace_ref: str | None = None,
+    visual_checkpoint_id: str | None = None,
 ) -> Path | None:
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
@@ -1027,6 +1029,7 @@ def _do_write(
         "spatial_representation": spatial_representation,
         "annotations": annotations_normalized,
         "vision_extraction_result": vision_extraction_result,
+        "visual_checkpoint_id": visual_checkpoint_id,
     }
     assistant_turn = {
         "role": "assistant",
@@ -1042,6 +1045,32 @@ def _do_write(
     existing["messages"].append(assistant_turn)
 
     return path if _atomic_write_envelope(path, existing) else None
+
+
+def set_visual_state(
+    conversation_id: str,
+    visual_state: dict[str, Any],
+    *,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Atomically replace Ora's editor-switch provenance on an envelope."""
+    active = visual_state.get("active_editor") if isinstance(visual_state, dict) else None
+    if active not in {"excalidraw", "konva"}:
+        return None
+    clean: dict[str, str] = {"active_editor": active}
+    for key in (
+        "resume_excalidraw_checkpoint_id",
+        "konva_baseline_checkpoint_id",
+    ):
+        value = visual_state.get(key)
+        if isinstance(value, str) and value:
+            clean[key] = value
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+
+    def mutate(envelope: dict[str, Any]) -> None:
+        envelope["visual_state"] = copy.deepcopy(clean)
+
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 # ---------------------------------------------------------------------------
@@ -2016,6 +2045,7 @@ __all__ = [
     "resolve_effective_conversation_history",
     "ensure_conversation_envelope",
     "save_turn_spatial_state",
+    "set_visual_state",
     "get_prior_spatial_state",
     "get_prior_annotations",
     "get_conversation_tag",

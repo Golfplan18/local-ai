@@ -13,6 +13,9 @@
      panel class is available when the mount script runs. visual-panel.js
      degrades gracefully if optional deps (toolbar, dock) are missing. -->
 <link rel="stylesheet" href="/static/css/visual-panel.css">
+<link rel="stylesheet" href="/static/vendor/excalidraw/excalidraw.css">
+<script>window.EXCALIDRAW_ASSET_PATH = '/static/vendor/excalidraw/';</script>
+<script src="/static/vendor/excalidraw/ora-excalidraw.js" defer></script>
 <script src="/static/vendor/konva/konva.min.js"></script>
 <script src="/static/visual-toolbar.js"></script>
 <script src="/static/keyboard-shortcuts.js"></script>
@@ -1942,13 +1945,15 @@
     }
   };
 
-  const _submitToMainPipeline = async (text) => {
+  const _submitToMainPipeline = async (text, carriedVisualSnapshot = null) => {
+    const submissionConversationId = currentConversationId();
+    const submissionTag = currentTag();
     const body = new FormData();
     body.append('message', text);
-    body.append('conversation_id', currentConversationId());
-    body.append('panel_id',        currentConversationId());
+    body.append('conversation_id', submissionConversationId);
+    body.append('panel_id',        submissionConversationId);
     body.append('is_main_feed',    'true');
-    body.append('tag',             currentTag());
+    body.append('tag',             submissionTag);
     // V3 Input Handling Phase 4 — pass the picker's framework selection
     // through to the pipeline so the framework branch of
     // compare_intent_with_mode resolves correctly. Per design doc Q3
@@ -1982,46 +1987,53 @@
       }
     } catch (e) {}
 
-    // V3 Phase 7.2 / G1.1 Phase 2.7 — include canvas content only in this
-    // explicit Inquiry submission. captureFromPanel
-    // returns null when the userInputLayer has no shapes, in which case
-    // we omit the field. /chat/multipart accepts spatial-only or
-    // text-only or combined.
-    let canvasHasContent = false;
-    if (window.OraCanvas && typeof window.OraCanvas.capture === 'function') {
+    // Atomic Exhibits capture. This is deliberately the final synchronous
+    // operation before the function's first await: active Excalidraw text is
+    // committed and an immutable native snapshot is taken at this boundary.
+    // Native scene, canonical PNG, and (Konva only) spatial metadata are all
+    // materialized from that exact snapshot.
+    let visualSnapshot = carriedVisualSnapshot;
+    if (!visualSnapshot && window.OraCanvas
+        && (typeof window.OraCanvas.hasContent !== 'function'
+            || window.OraCanvas.hasContent())
+        && typeof window.OraCanvas.snapshotForSubmit === 'function') {
       try {
-        const spatial = window.OraCanvas.capture();
-        if (spatial) {
-          body.append('spatial_representation', JSON.stringify(spatial));
-          body.append('exhibits_submission_intent', 'explicit_send');
-          canvasHasContent = true;
-        }
+        visualSnapshot = window.OraCanvas.snapshotForSubmit();
       } catch (e) {
-        console.warn('[v3 submit] canvas capture failed:', e);
+        renderAssistantTurn('[Exhibits capture failed; Inquiry was not sent: '
+          + (e.message || e) + ']');
+        return;
       }
     }
-
-    // V3 Item 12 Q1 follow-up — vision-capable rendered-snapshot
-    // bundling. When the canvas has content, attach a PNG preview so
-    // image-capable models can read the visual gestalt directly. Text-
-    // only models ignore this field (the pipeline already covers their
-    // path via spatial_representation). The field name is distinct from
-    // the user-attached `image` field so the two intents don't conflate.
-    if (canvasHasContent
-        && window.OraSaveCanvas
-        && typeof window.OraSaveCanvas._capturePreview === 'function'
-        && window.OraPanels && window.OraPanels.visual
-        && typeof window.OraPanels.visual._getActive === 'function') {
+    if (visualSnapshot) {
+      let visualPayload;
       try {
-        const _activePanelForPreview = window.OraPanels.visual._getActive();
-        if (_activePanelForPreview) {
-          const previewDataUrl = window.OraSaveCanvas._capturePreview(_activePanelForPreview);
-          if (previewDataUrl) {
-            body.append('canvas_preview_png', previewDataUrl);
-          }
+        visualPayload = await window.OraCanvas.materializeSnapshot(visualSnapshot);
+      } catch (e) {
+        renderAssistantTurn('[Exhibits export failed; Inquiry was not sent: '
+          + (e.message || e) + ']');
+        return;
+      }
+      try {
+        if (typeof window.OraCanvas.persistSnapshotDraft === 'function') {
+          await window.OraCanvas.persistSnapshotDraft(
+            visualSnapshot, submissionConversationId, submissionTag
+          );
         }
       } catch (e) {
-        console.warn('[v3 submit] canvas preview capture failed:', e);
+        renderAssistantTurn('[Exhibits draft save failed; Inquiry was not sent: '
+          + (e.message || e) + ']');
+        return;
+      }
+      body.append('visual_editor', visualPayload.editor);
+      body.append(
+        'visual_native', visualPayload.native,
+        visualPayload.editor === 'excalidraw' ? 'scene.excalidraw' : 'scene.ora-canvas'
+      );
+      body.append('canvas_preview_png', visualPayload.preview, 'preview.png');
+      body.append('exhibits_submission_intent', 'explicit_send');
+      if (visualPayload.editor === 'konva' && visualPayload.spatial) {
+        body.append('spatial_representation', JSON.stringify(visualPayload.spatial));
       }
     }
 
@@ -2060,29 +2072,6 @@
       return;
     }
 
-    // V3 Input Handling Phase 9 — per-turn canvas snapshot. Save the
-    // visual pane's state to ~/ora/sessions/<id>/canvas/<ts>.ora-canvas
-    // (with a stable latest.ora-canvas mirror) immediately after the
-    // chat request goes out. Fire-and-forget — the save lands in the
-    // background and must not block the streamed response. Stealth /
-    // private routing is the canvas-save endpoint's responsibility; we
-    // pass the conversation_id and let the server resolve the right
-    // destination (vault Incubator vs ephemeral temp dir).
-    if (window.OraSaveCanvas && typeof window.OraSaveCanvas.saveImmediate === 'function'
-        && window.OraPanels && window.OraPanels.visual
-        && typeof window.OraPanels.visual._getActive === 'function') {
-      const _activePanel = window.OraPanels.visual._getActive();
-      if (_activePanel) {
-        try {
-          // saveImmediate returns a Promise; we deliberately don't await
-          // so the streamed response renders without waiting for disk I/O.
-          window.OraSaveCanvas.saveImmediate(_activePanel, 'turn-snapshot')
-            .catch((e) => console.warn('[v3 submit] canvas save failed:', e));
-        } catch (e) {
-          console.warn('[v3 submit] canvas save threw:', e);
-        }
-      }
-    }
     if (!resp.ok) {
       // Network / 4xx / 5xx. The submission log on the server side
       // either persists (orphan-recovery on next boot) or was deleted
@@ -2119,20 +2108,27 @@
   const submitToMainPipeline = async (
     text,
     displayText = text,
-    privacyApprovedText = null
+    privacyApprovedText = null,
+    carriedVisualSnapshot = null
   ) => {
-    const submit = async () => {
+    const submit = async (submissionContext = {}) => {
       leftInputArea.value = '';
       if (displayText) renderUserTurn(displayText);
-      return _submitToMainPipeline(text);
+      return _submitToMainPipeline(
+        text, submissionContext.visualSnapshot || carriedVisualSnapshot
+      );
     };
-    if (privacyApprovedText === text) return submit();
+    if (privacyApprovedText === text) {
+      return submit({ visualSnapshot: carriedVisualSnapshot });
+    }
     if (!window.OraConversation
         || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
       renderAssistantTurn('[Privacy check unavailable; Inquiry was not sent.]');
       return;
     }
-    return window.OraConversation.submitAfterPrivacy(text, submit);
+    return window.OraConversation.submitAfterPrivacy(
+      text, submit, { captureVisualSnapshot: true }
+    );
   };
 
   // ─── V3 Input Handling Phase 7 — pre-flight framework input gap check ───
@@ -2248,18 +2244,23 @@
 
   const submitWithFrameworkCheck = async (
     text,
-    privacyApprovedText = null
+    privacyApprovedText = null,
+    carriedVisualSnapshot = null
   ) => {
     const fw = (window.OraInputState && window.OraInputState.getFramework())
       ? window.OraInputState.getFramework() : null;
     if (!fw || !fw.id) {
-      return submitToMainPipeline(text, text, privacyApprovedText);
+      return submitToMainPipeline(
+        text, text, privacyApprovedText, carriedVisualSnapshot
+      );
     }
     if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
       // Popup module didn't load — fall back to direct submit so the user
       // isn't blocked by missing UI. The pipeline still receives the
       // framework selection.
-      return submitToMainPipeline(text, text, privacyApprovedText);
+      return submitToMainPipeline(
+        text, text, privacyApprovedText, carriedVisualSnapshot
+      );
     }
     if (text && privacyApprovedText !== text) {
       if (!window.OraConversation
@@ -2268,7 +2269,10 @@
         return;
       }
       const approved = await window.OraConversation.submitAfterPrivacy(
-        text, async () => {}, { draftText: text }
+        text, async (submissionContext = {}) => {
+          carriedVisualSnapshot = submissionContext.visualSnapshot
+            || carriedVisualSnapshot;
+        }, { draftText: text, captureVisualSnapshot: true }
       );
       if (!approved) return;
       privacyApprovedText = text;
@@ -2295,11 +2299,15 @@
         // Analyzer down — submit anyway so the user isn't trapped. Phase
         // 7 should be advisory, not a hard gate when infrastructure is
         // unavailable.
-        return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
+        return submitToMainPipeline(
+          augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
+        );
       }
 
       if (!_hasGaps(report)) {
-        return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
+        return submitToMainPipeline(
+          augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
+        );
       }
 
       const choice = await window.OraFrameworkSetupPopup.show(report);
@@ -2328,7 +2336,10 @@
           return;
         }
         const approved = await window.OraConversation.submitAfterPrivacy(
-          responseText, async () => {}, { draftText: augmentedPrompt }
+          responseText, async (submissionContext = {}) => {
+            carriedVisualSnapshot = submissionContext.visualSnapshot
+              || carriedVisualSnapshot;
+          }, { draftText: augmentedPrompt, captureVisualSnapshot: true }
         );
         if (!approved) return;
       }
@@ -2337,7 +2348,8 @@
       if (choice.action === 'run-anyway') {
         const note = _runAnywayNote(choice.missing_summary, report.requirements);
         return submitToMainPipeline(
-          augmentedPrompt + note, text, augmentedPrompt + note
+          augmentedPrompt + note, text, augmentedPrompt + note,
+          carriedVisualSnapshot
         );
       }
 
@@ -2347,7 +2359,9 @@
     }
 
     // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(augmentedPrompt, text, approvedPrompt);
+    return submitToMainPipeline(
+      augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
+    );
   };
 
   let imageGenerateMode = false;
@@ -2564,8 +2578,8 @@
     // spec §1.8. Check whether the canvas has any drawn shapes so an
     // empty-text + canvas-only submission still fires the pipeline.
     let canvasHasContent = false;
-    if (window.OraCanvas && typeof window.OraCanvas.capture === 'function') {
-      try { canvasHasContent = !!window.OraCanvas.capture(); }
+    if (window.OraCanvas && typeof window.OraCanvas.hasContent === 'function') {
+      try { canvasHasContent = window.OraCanvas.hasContent(); }
       catch (e) { canvasHasContent = false; }
     }
     if (!leftContent && !canvasHasContent) return;

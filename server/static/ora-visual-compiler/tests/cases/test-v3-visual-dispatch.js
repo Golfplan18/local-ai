@@ -10,11 +10,12 @@
  *   2. extractBlocks finds multiple fences in order.
  *   3. Malformed-JSON fence is skipped by extractBlocks.
  *   4. Text with no fences → empty array, untouched by stripBlocks.
- *   5. stripBlocks replaces parseable fences with the placeholder.
+ *   5. stripBlocks replaces parseable fences with a neutral handoff marker.
  *   6. stripBlocks leaves malformed fences in place.
  *   7. dispatch hands {ora_visual_blocks} to OraPanels.visual.onBridgeUpdate.
  *   8. dispatch dedupes on repeated key; new key re-dispatches.
- *   9. dispatch with no panel registry still returns the block count.
+ *   9. an unsupported asynchronous result is surfaced visibly.
+ *  10. dispatch with no panel registry still returns the block count.
  */
 
 'use strict';
@@ -35,7 +36,7 @@ function fenced(json) {
 module.exports = {
   label: 'V3 visual dispatch (envelope extraction + panel hand-off)',
 
-  run: function (ctx, record) {
+  run: async function (ctx, record) {
     const win = ctx.win;
 
     // Load the module under test into the jsdom window. Plain IIFE —
@@ -70,11 +71,14 @@ module.exports = {
     record('extract: no fences → empty', none.length === 0, 'count=' + none.length);
     record('strip: fence-free text untouched', D.stripBlocks(untouched) === untouched);
 
-    // 5. Strip replaces parseable fences
+    // 5. Strip replaces parseable fences without claiming render success.
     const stripped = D.stripBlocks('Before.\n' + fenced(ENVELOPE) + '\nAfter.');
-    record('strip: parseable fence → placeholder',
+    record('strip: parseable fence → neutral handoff marker',
            stripped.indexOf(D.PLACEHOLDER) !== -1 && stripped.indexOf('ora-visual') === -1,
            stripped.slice(0, 80));
+    record('strip: marker does not claim rendered success',
+           D.PLACEHOLDER.indexOf('rendered') === -1,
+           D.PLACEHOLDER);
 
     // 6. Strip leaves malformed fences alone
     const keptRaw = D.stripBlocks(fenced('{broken'));
@@ -99,7 +103,32 @@ module.exports = {
     D.dispatch(text, 'conv1#1');
     record('dispatch: new key re-dispatches', calls.length === 2, 'calls=' + calls.length);
 
-    // 9. No registry → still counts, no throw
+    // 9. The controller's asynchronous unsupported result reaches an existing
+    // visible UI surface instead of disappearing into the console.
+    const alerts = [];
+    const priorAlert = win.alert;
+    win.alert = function (message) { alerts.push(String(message)); };
+    win.OraPanels = { visual: { onBridgeUpdate: function () {
+      return Promise.resolve([{
+        action: 'annotate',
+        unsupported: true,
+        warnings: [
+          'Excalidraw cannot apply semantic canvas annotations. '
+          + 'The scene was preserved; switch to Konva to apply this annotation.'
+        ],
+      }]);
+    } } };
+    D.resetDedupe();
+    const nUnsupported = D.dispatch(text, 'conv-annotate#0');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    record('dispatch: unsupported result is visible and truthful',
+           nUnsupported === 1 && alerts.length === 1
+           && alerts[0].indexOf('Excalidraw cannot apply') !== -1
+           && alerts[0].indexOf('scene was preserved') !== -1
+           && alerts[0].indexOf('switch to Konva') !== -1,
+           'alerts=' + JSON.stringify(alerts));
+
+    // 10. No registry → still counts, no throw
     win.OraPanels = undefined;
     D.resetDedupe();
     let threw = false, n3 = 0;
@@ -107,5 +136,6 @@ module.exports = {
     record('dispatch: registry absent is safe', !threw && n3 === 1, 'threw=' + threw + ' n=' + n3);
 
     win.OraPanels = priorRegistry;
+    win.alert = priorAlert;
   },
 };
