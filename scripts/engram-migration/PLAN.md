@@ -72,15 +72,23 @@ but says nothing." **Do not read the completed 4,038 as meaning the corpus is fi
 * Rewrites applied; 56,397 edge targets remapped; 100 SPLIT children created.
 * MiniMax M3 wired as a backend and **tested on both classification and rewriting**.
 
-### In flight
+### Nothing is in flight
 
-Temporary atomics index building at `.migration/chroma-temp` from the worktree
-(75,834 embeddings, ~$1, ~19/s). Needed because the live atomics index overlaps the
-current corpus on only 6,689 of its 129,900 titles.
+**Temporary atomics index is BUILT** at `.migration/chroma-temp` — 75,834 embedded,
+0 errors, 0 duplicate ids, final_count 75,834, 61 minutes, 1.6 GB. It was needed
+because the live atomics index overlaps the current corpus on only 6,689 of its
+129,900 titles. **This is what Phase C must query** (`--chromadb-path`).
 
-A blind 3-judge comparison of Opus vs M3 (thinking on/off) on 12 full rewrites was
-launched and **its result is not in this document** — check
-`.migration/` and the session transcript, or re-run it.
+It is a temporary artifact: it holds worktree paths and must be deleted after the
+final index is built from `~/Documents/vault/Engrams` post-merge (§4d).
+
+The blind judging of Opus vs M3 is **complete and recorded in §4.**
+
+### The immediate next action
+
+Run §4a — Phase C for the 11,744 notes lacking relationships, on MiniMax, with
+`--paths-file`. Everything it needs exists: the paths file, the temp index, the
+baseline fingerprint. It is the last step before the open decision in §4b.
 
 ## 3. How the corpus got to this shape
 
