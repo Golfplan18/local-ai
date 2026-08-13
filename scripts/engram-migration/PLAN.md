@@ -146,10 +146,33 @@ failure that de-fanged 56% of the corpus. Neither variant imported a false term 
 art. Small sample (24 clauses), so treat the ordering as indicative and the
 "not worse than Opus" conclusion as solid.
 
-Unresolved: M3-off is closest to the owner's 18-word standard but may be losing the
-perverse-conversion shape for brevity — it produced "Stories last when their themes
-answer questions humans have always asked", which is true, flat, and not a
-conversion. That is what the blind judging was measuring.
+**RESOLVED by blind judging** — 12 notes, 3 judges, letters shuffled per note:
+
+| condition | met the bar | conversion found | judged best |
+|---|---|---|---|
+| Opus | 11 | **19** | 16 |
+| **M3 thinking-ON** | **17** | 17 | 16 |
+| M3 thinking-off | 8 | 16 | 4 |
+
+**M3 with thinking beat Opus on meeting the bar (17 vs 11) and tied on best.** Use
+M3 with thinking ON for rewriting. Thinking-off is NOT viable despite being 13x
+faster with an 18.5-word average — judges put it best on 4 of 36. Opus found
+conversions most often but met the full bar least, because its titles ran long and
+clause-stacked ("spends 27 words restating its own first bullet almost verbatim").
+
+### The conversion rule does not apply to every note
+
+**15 of 36 judgements found NO variant met the bar; 12 of 36 found no variant
+contained a conversion at all** — because the sources have none. Judges, verbatim:
+"Nothing in this note converts — every title states a static blind spot"; "No title
+inverts anything — all three merely report that a capacity practised in one
+relationship is withheld in another."
+
+Some notes are plainly descriptive. Forcing a perverse conversion onto them would be
+fabrication, and "meets the bar" is the wrong metric for roughly a third of the
+corpus. `rewrite_prompt.md` §"Find the CONVERSION" should be softened to say: state
+the conversion where the sources contain one, and where they do not, state the claim
+plainly rather than manufacturing an inversion. That edit has NOT been made.
 
 Two configuration facts, both measured:
 
