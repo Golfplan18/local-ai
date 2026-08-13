@@ -56,6 +56,10 @@ if ORA_HOME not in sys.path:
 
 ARCHIVE_SUBDIR = "Archive/Engram Absorbed Sources 2026-08"
 MODEL_HINT = "gpt-5.6-sol"
+# Each backend's pinned model. Both are non-Opus by construction; the explicit
+# Opus refusal below is what enforces that intent, rather than an enumeration
+# that has to be widened every time a transport is added.
+BACKEND_MODELS = {"codex-cli": MODEL_HINT, "minimax": "MiniMax-M3"}
 
 _CHILD_SCHEMA = {
     "type": "object",
@@ -353,10 +357,17 @@ def main() -> int:
     ap.add_argument("--vault", default=str(Path.home() / "engram-work"))
     ap.add_argument("--out", default=None, help="default <vault>/.migration/rewrite")
     ap.add_argument("--prompt", default=str(Path(__file__).with_name("rewrite_prompt.md")))
-    ap.add_argument("--backend", default="codex-cli", choices=("codex-cli",),
-                    help="pinned non-Opus transport (the only accepted value)")
-    ap.add_argument("--model", default=MODEL_HINT, choices=(MODEL_HINT,),
-                    help="pinned non-Opus model (the only accepted value)")
+    ap.add_argument("--backend", default="codex-cli",
+                    choices=tuple(BACKEND_MODELS),
+                    help="non-Opus transport. 'codex-cli' runs GPT-5.6 Sol with a "
+                         "generation-time JSON schema, and has NOT yet met this "
+                         "writing bar (PLAN.md 8.5: two pilots needed substantive "
+                         "correction). 'minimax' runs MiniMax-M3 with thinking ON, "
+                         "which blind judging measured as the better writer here — "
+                         "17/12 met the bar against Opus's 11 (PLAN.md 4).")
+    ap.add_argument("--model", default=None,
+                    help="override this backend's pinned model. Opus is refused on "
+                         "this path regardless of backend.")
     ap.add_argument("--batch", type=int, default=1,
                     help="notes per model call. 1 is measured-optimal; 8 costs ~25%% "
                          "of quality. Raise only to re-measure.")
@@ -377,6 +388,11 @@ def main() -> int:
 
     if not args.worklist:
         print("[rewrite] refusing to run without an explicit --worklist", file=sys.stderr)
+        return 2
+
+    model_name = args.model or BACKEND_MODELS[args.backend]
+    if "opus" in model_name.lower():
+        print(f"[rewrite] refusing Opus on this path: {model_name}", file=sys.stderr)
         return 2
 
     vault = Path(args.vault)
@@ -492,7 +508,7 @@ def main() -> int:
           f"already valid={valid_existing:,}  invalid={invalid_existing:,}  "
           f"no-sources={skipped_no_src:,}")
     print(f"[rewrite] batch={args.batch} workers={args.workers} "
-          f"backend={args.backend} model={args.model}")
+          f"backend={args.backend} model={model_name}")
     print(f"[rewrite] source text {src_chars/1e6:.1f}M chars (~{src_chars//4:,} tok) "
           f"+ {len(system)//4:,} tok system per call (cacheable)")
     if not units:
@@ -504,17 +520,25 @@ def main() -> int:
         print(f"\n[rewrite] re-run with --apply to make {len(batches):,} calls")
         return 0
 
-    from orchestrator.historical.cleanup_backends import CodexCLIClient
-    client = CodexCLIClient(
-        model=MODEL_HINT, output_schema=REWRITE_RESPONSE_SCHEMA,
-    )
+    if args.backend == "minimax":
+        from orchestrator.historical.cleanup_backends import MiniMaxClient
+        # No generation-time schema on this transport: the reply is free-form
+        # JSON recovered by parse_reply, and every record still has to clear
+        # record_error before it can become a note. max_tokens is floored at
+        # 32768 inside the client — M3's <think> block alone ran past 8192.
+        client = MiniMaxClient(model=model_name)
+    else:
+        from orchestrator.historical.cleanup_backends import CodexCLIClient
+        client = CodexCLIClient(
+            model=model_name, output_schema=REWRITE_RESPONSE_SCHEMA,
+        )
     agg = {"ok": 0, "failed": 0, "notes": 0, "split": 0, "archive": 0,
            "id_mismatch": 0, "in": 0, "out": 0, "cost": 0.0}
     start = time.monotonic()
 
     def run(batch: list[dict]) -> None:
         res = client.call(system=system, user=build_user(batch),
-                          model=args.model, max_tokens=8192 * len(batch),   # headroom: a KEEP+SPLIT reply carries two notes
+                          model=model_name, max_tokens=8192 * len(batch),   # headroom: a KEEP+SPLIT reply carries two notes
                           temperature=0.0)
         with _lock:
             agg["in"] += getattr(res, "input_tokens", 0) or 0
@@ -624,7 +648,11 @@ def main() -> int:
                           f"{el/60:.0f}m  ETA {eta:.1f}h  {per:.0f} tok/note  "
                           f"${agg['cost']:.2f}  fail={agg['failed']}", flush=True)
     finally:
-        client.close()
+        # Not every transport holds resources: CodexCLIClient manages a temp
+        # CODEX_HOME and must be closed, MiniMaxClient is stateless urllib.
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
 
     el = time.monotonic() - start
     print(f"\n[rewrite] done in {el/3600:.2f}h — {agg['ok']:,} calls ok, "
