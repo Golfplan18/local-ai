@@ -1,3 +1,19 @@
+# Engram migration scripts — SUPERSEDED README
+
+**Read `PLAN.md`. Nothing else in this directory describes the current
+approach.** This README, and the CODEX_PROMPT.md / HANDOFF.md that were
+deleted alongside it, documented a pipeline whose writing pass was measured
+defective: it fed the writer extracted keyword fragments instead of the source
+notes, which de-fanged 56% of the corpus. A fresh agent following those
+documents would rebuild the failure.
+
+The stage-numbered prompts (stage3/stage5/stage9) were deleted for the same
+reason. `rewrite_prompt.md` is the current writing standard.
+
+Original content follows for reference only.
+
+---
+
 # Engram Permanent-Note Migration — Runbook
 
 **ONE-TIME MIGRATION. This whole directory gets deleted when the migration

@@ -131,6 +131,40 @@ def parse_reply(text: str) -> dict | None:
             return v
         if isinstance(v, list) and v and isinstance(v[0], dict):
             return {"notes": v}
+        # A bare note-shaped object. Observed failure mode: the model closes the
+        # note object early and continues with more key-value pairs as if still
+        # inside it --
+        #   {"notes": [{...note...}, "conversion": "...", "domain_bound": true}]}
+        # The wrapper is then invalid JSON while the inner note object is complete
+        # and intact. Only `conversion` and `domain_bound` are stranded, and
+        # neither is used downstream, so recovering the inner object loses nothing
+        # that matters. This shape accounted for every parse failure in the live
+        # run after the balanced-brace fix.
+        if isinstance(v, dict) and v.get("note_id") and v.get("title"):
+            return {"notes": [v]}
+    # Last resort: scavenge every balanced object that looks like a note. Covers a
+    # malformed wrapper around a multi-note reply, where no single start yields a
+    # usable value.
+    found = []
+    for i, c in enumerate(raw):
+        if c != "{":
+            continue
+        cand = _balanced(raw, i)
+        if not cand:
+            continue
+        try:
+            v = json.loads(cand)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(v, dict) and v.get("note_id") and v.get("title"):
+            found.append(v)
+    if found:
+        seen, uniq = set(), []
+        for v in found:
+            if v["note_id"] not in seen:
+                seen.add(v["note_id"])
+                uniq.append(v)
+        return {"notes": uniq}
     return None
 
 
