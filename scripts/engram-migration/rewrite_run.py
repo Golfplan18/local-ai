@@ -232,7 +232,7 @@ def main() -> int:
 
     def run(batch: list[dict]) -> None:
         res = client.call(system=system, user=build_user(batch),
-                          model=MODEL_HINT, max_tokens=4096 * len(batch),
+                          model=MODEL_HINT, max_tokens=8192 * len(batch),   # headroom: a KEEP+SPLIT reply carries two notes
                           temperature=0.0)
         with _lock:
             agg["in"] += getattr(res, "input_tokens", 0) or 0

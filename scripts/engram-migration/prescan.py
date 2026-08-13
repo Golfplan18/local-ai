@@ -198,18 +198,100 @@ def d4_tautology(title: str, bullets: list[str]) -> bool:
     return len(tw & bw) / len(tw) >= 0.7
 
 
+# ---------------------------------------------------------------------------
+# HISTORICAL MODE (--historical)
+#
+# The D1-D4 checks above measure MIGRATION damage: they compare a merged note
+# against the archived originals it absorbed. Engrams/Historical Atomics/ never
+# went through the migration -- 14,049 notes extracted July 2026, no
+# absorbed_from, no archived sources, and its own source conversations are 85%
+# missing from disk. So there is nothing to diff against.
+#
+# What it CAN be scanned for is the defect that motivated this whole project: the
+# extraction prompt in force at the time required naming the actor in every
+# bullet, so notes came out welded to whatever example happened to arise. On a
+# 45-note sample of the original corpus ~60% could not be applied outside their
+# source domain. That is detectable from the note alone.
+# ---------------------------------------------------------------------------
+
+_YEAR = re.compile(r"\b(19|20)\d\d\b")
+_HEDGE = re.compile(r"\b(can|may|might|often|typically|sometimes|tends? to|generally|usually)\b", re.I)
+_ABS = re.compile(r"\b(never|always|cannot|proves|all|every)\b", re.I)
+_MECH = re.compile(r"\b(because|when|by \w+ing|through \w+ing|so that|which \w+s|"
+                   r"causes?|produces?|creates?|leads? to|forces?|turns? .* into|"
+                   r"prevents?|enables?|requires?)\b", re.I)
+_PERISH = re.compile(r"\b(Trump|Biden|Harris|Paxton|Cornyn|Hegseth|Senate|House|midterm|runoff|"
+                     r"polling|primary|tariff|indictment|pardon|impeach|election|Fed|CHIPS Act|"
+                     r"Supreme Court|Congress)\b")
+_BENIGN_CAPS = set("""The A An In On At By For With When Where What How Why This That These Those It Its
+They Their There If As But And Or So Not No One Two Three Four Five Each Every Both Any All Some Most
+Many Few Such Once Only Even Still Yet Using Placing Treating Framing Naming Making Because""".split())
+
+
+def title_proper_nouns(title: str, whole_note: str) -> set[str]:
+    """Mid-sentence capitalised tokens in the title that never appear lowercase
+    anywhere in the note. Sentence-initial capitals are excluded -- an earlier
+    checker counted them and reported a phantom 92% failure rate."""
+    lower = {w.lower() for w in re.findall(r"\b[a-z][a-z\-']{2,}\b", whole_note)}
+    out = set()
+    for tok in re.findall(r"\S+", title)[1:]:
+        m = re.match(r"([A-Z][a-zA-Z][a-zA-Z\-'\.]{1,})", tok)
+        if m:
+            w = m.group(1).rstrip(".")
+            if w not in _BENIGN_CAPS and w.lower() not in lower:
+                out.add(w)
+    return out
+
+
+def scan_historical(note_text: str) -> tuple[list[str], dict]:
+    body = body_of(note_text)
+    m = _H1.search(body)
+    title = m.group(1).strip() if m else ""
+    bullets = mechanism_bullets(body)
+    reasons: list[str] = []
+    detail: dict = {}
+
+    pn = title_proper_nouns(title, note_text)
+    if pn:
+        reasons.append("P1_instance_locked")
+        detail["proper_nouns"] = sorted(pn)[:6]
+    if _YEAR.search(title):
+        reasons.append("P2_dated_title")
+    if _PERISH.search(title):
+        reasons.append("P3_perishable_subject")
+    if _HEDGE.search(title):
+        reasons.append("P4_hedged_title")
+    if _ABS.search(title):
+        reasons.append("P5_absolute_title")
+    if title and not _MECH.search(title):
+        reasons.append("P6_no_mechanism")   # states a fact, not how something works
+    if d4_tautology(title, bullets):
+        reasons.append("P7_tautology")
+    if not bullets:
+        reasons.append("P8_no_bullets")
+    return reasons, detail
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--vault", default=str(Path.home() / "engram-work"))
     ap.add_argument("--out", default=None, help="default <vault>/.migration/prescan.json")
     ap.add_argument("--examples", type=int, default=0, help="print N examples per defect")
+    ap.add_argument("--historical", action="store_true",
+                    help="scan Engrams/Historical Atomics/ for PRE-migration defects "
+                         "(instance-locked titles, dated or perishable subjects, "
+                         "fact-not-mechanism) instead of migration damage. Those notes "
+                         "have no archived sources to diff against, so D1-D4 cannot run.")
     args = ap.parse_args()
 
     vault = Path(args.vault)
     engrams = vault / "Engrams"
     archive = vault / ARCHIVE_SUBDIR
     out = Path(args.out) if args.out else vault / ".migration" / "prescan.json"
+
+    if args.historical:
+        return _run_historical(engrams / "Historical Atomics", out, args.examples)
 
     print("[prescan] indexing archived sources...", flush=True)
     arch = {p.name: body_of(p.read_text(encoding="utf-8", errors="replace"))
@@ -283,6 +365,53 @@ def main() -> int:
     out.write_text(json.dumps(flagged, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"\n[prescan] worklist -> {out}  ({len(flagged):,} notes)")
     print(f"[prescan] cost of this scan: 0 tokens")
+    return 0
+
+
+def _run_historical(root: Path, out: Path, n_examples: int) -> int:
+    if not root.is_dir():
+        print(f"[prescan] missing {root}", file=sys.stderr)
+        return 2
+    stats = collections.Counter()
+    flagged: list[dict] = []
+    examples: dict[str, list] = collections.defaultdict(list)
+    total = 0
+    for p in sorted(root.rglob("*.md")):
+        text = p.read_text(encoding="utf-8", errors="replace")
+        total += 1
+        reasons, detail = scan_historical(text)
+        m = _H1.search(body_of(text))
+        title = m.group(1).strip() if m else ""
+        for r in reasons:
+            stats[r] += 1
+            if n_examples and len(examples[r]) < n_examples:
+                examples[r].append((title, detail))
+        if reasons:
+            stats["ANY"] += 1
+            flagged.append({"note": str(p.relative_to(root)), "title": title,
+                            "reasons": reasons, **detail})
+        else:
+            stats["CLEAN"] += 1
+
+    print(f"[prescan] Historical Atomics scanned: {total:,}")
+    print(f"[prescan]   CLEAN (no detectable defect): {stats['CLEAN']:,} "
+          f"({stats['CLEAN']/max(1,total)*100:.1f}%)")
+    print(f"[prescan]   FLAGGED:                     {stats['ANY']:,} "
+          f"({stats['ANY']/max(1,total)*100:.1f}%)")
+    for k in ("P1_instance_locked", "P2_dated_title", "P3_perishable_subject",
+              "P4_hedged_title", "P5_absolute_title", "P6_no_mechanism",
+              "P7_tautology", "P8_no_bullets"):
+        if stats[k]:
+            print(f"[prescan]     {k:24s} {stats[k]:>7,}  ({stats[k]/max(1,total)*100:5.1f}%)")
+    for r, ex in examples.items():
+        print(f"\n--- {r} ---")
+        for title, detail in ex:
+            print(f"  {title[:112]}")
+            if detail:
+                print(f"    {detail}")
+    out = out.with_name("prescan-historical.json")
+    out.write_text(json.dumps(flagged, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"\n[prescan] worklist -> {out}  ({len(flagged):,} notes)   0 tokens")
     return 0
 
 
