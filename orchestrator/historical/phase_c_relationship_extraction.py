@@ -116,18 +116,74 @@ def get_title(fm: dict, body: str, fallback_path: Path) -> str:
     return fallback_path.stem
 
 
+def _yaml_block_scalar(value: str, indent: str = "    ") -> str:
+    """Render a claim sentence safely. Claim sentences carry colons and quotes
+    often enough that quoting is fragile; a folded block scalar is not.
+
+    Ported from ``scripts/engram-migration/fix_notes.py``, which wrote the
+    relationship blocks on the corpus's existing 64,090 notes. Keeping the two
+    renderers identical is what stops the corpus carrying two YAML styles.
+    """
+    if len(value) <= 90 and not any(c in value for c in ":#\"'{}[]|>&*!%@`\n"):
+        return value
+    wrapped, line = [], indent
+    for word in value.split():
+        if len(line) + len(word) + 1 > 78 and line.strip():
+            wrapped.append(line.rstrip())
+            line = indent + word
+        else:
+            line = (line + " " + word) if line.strip() else indent + word
+    wrapped.append(line.rstrip())
+    return ">-\n" + "\n".join(wrapped)
+
+
+_RELATIONSHIPS_BLOCK_RE = re.compile(
+    r"\nrelationships:\s*\n(?:[ \t]+.*\n|[ \t]*-.*\n)+"
+)
+
+
 def write_note_with_relationships(
     path: Path,
-    fm: dict,
-    body: str,
     relationships: list[dict],
 ) -> None:
-    """Replace `relationships:` in frontmatter, preserve everything else."""
-    new_fm = dict(fm)
-    new_fm["relationships"] = relationships if relationships else []
-    # Serialize with consistent ordering (relationships near end)
-    yaml_str = yaml.safe_dump(new_fm, default_flow_style=False, sort_keys=False, allow_unicode=True)
-    out = f"---\n{yaml_str}---\n{body}"
+    """Splice ``relationships:`` into the note's frontmatter, preserving every
+    other byte of the file.
+
+    This previously parsed the frontmatter and re-emitted it with
+    ``yaml.safe_dump``, which silently rewrote every note it touched even where
+    no value changed: a bare ``nexus:`` became ``nexus: null``, ``processed_at``
+    lost its ISO ``T`` separator, long scalars were re-wrapped, and list
+    indentation shifted. ``apply_rewrites.py`` keeps frontmatter verbatim by
+    design (``split_note``: "Frontmatter is kept verbatim"), so the two passes
+    disagreed about the same corpus and would have left each note normalized or
+    not depending on which one ran last. Splicing matches both that policy and
+    ``fix_notes.py``, which wrote the existing relationship blocks.
+
+    A note whose classifier found no links is left byte-identical rather than
+    gaining an empty ``relationships: []`` property. That a note was processed
+    and yielded nothing is recorded in the run manifest, which is where that
+    fact belongs.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        raise ValueError(f"no frontmatter to splice: {path.name}")
+    front = m.group(1)
+    rest = text[m.end():]
+
+    # Drop any existing block so a re-run replaces rather than duplicates. Pad
+    # both ends so a block sitting first or last still matches the anchors.
+    front = _RELATIONSHIPS_BLOCK_RE.sub("\n", "\n" + front + "\n")[1:].rstrip("\n")
+
+    if relationships:
+        lines = ["relationships:"]
+        for rel in relationships:
+            lines.append(f"- type: {rel['type']}")
+            lines.append(f"  target: {_yaml_block_scalar(str(rel['target']), '    ')}")
+            lines.append(f"  confidence: {rel['confidence']}")
+        front = front + "\n" + "\n".join(lines)
+
+    out = f"---\n{front}\n---\n{rest}"
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(out, encoding="utf-8")
     os.replace(tmp, path)
@@ -340,9 +396,10 @@ def process_one_note(
 
     res.candidates_considered = len(candidates)
     if not candidates:
-        # Write empty relationships and return
+        # No candidates: leave the note untouched. The manifest records that it
+        # was processed and yielded nothing.
         try:
-            write_note_with_relationships(p, fm, body, [])
+            write_note_with_relationships(p, [])
         except Exception as e:
             res.error = f"write_empty: {e}"
         return res
@@ -358,7 +415,7 @@ def process_one_note(
         return res
 
     try:
-        write_note_with_relationships(p, fm, body, rels)
+        write_note_with_relationships(p, rels)
         res.relationships_written = len(rels)
     except Exception as e:
         res.error = f"write: {e}"

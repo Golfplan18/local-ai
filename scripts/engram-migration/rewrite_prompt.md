@@ -266,9 +266,27 @@ something, and the result is the opposite of what it should be:
 - an exemption from rules becomes PEOPLE STRANDED IN AN EMERGENCY
 - an easy win becomes A MEASURE OF YOUR TECHNIQUE, NOT THE PERSON
 
-So ask: what goes in, what comes out, and why is the output perverse? Put the
-conversion in the title. When you can state either the mechanism or its perverse
-result, the perverse result is the insight; the mechanism is a bullet.
+So ask: what goes in, what comes out, and why is the output perverse? When there
+is a conversion, put it in the title; when you can state either the mechanism or
+its perverse result, the perverse result is the insight and the mechanism is a
+bullet.
+
+But notes come in two shapes, and only one of them converts. The second is a
+STANDING CONDITION: something that holds, persists, or is withheld, where
+nothing turns into its opposite. "A capacity practised in one relationship is
+withheld in another" does not convert; it is still worth knowing. Measured on
+this corpus, about one note in three is of this kind.
+
+A standing-condition title is held to the same bar by a different test. A
+conversion earns its place by showing the perverse output. A standing condition
+earns its place by naming WHAT IT COSTS OR WHO IT SERVES — the reason the
+condition is worth recording rather than a neutral description of it. If you can
+state neither a conversion nor a cost nor a beneficiary, the note is not an
+insight and the verdict is ARCHIVE.
+
+Do not manufacture an inversion the sources do not contain. A fabricated
+conversion is a false claim, and ranks with importing a term of art among the
+defects this document exists to prevent.
 
 ## The actor may be a thing, and must not be over-specified
 
@@ -391,6 +409,10 @@ Never state a name, number, date, or example that does not appear in the sources
 Return only the JSON object requested by the caller. The `title` value is plain
 text with no Markdown. The `body` value contains only the note's bullet lines,
 each beginning `- `; put no heading, separator, explanation, or editorial
-commentary in it. State the title's conversion in `conversion`, set
-`domain_bound` truthfully, and use `split_second_note` only when two claims do not
-belong in one note.
+commentary in it. State the title's conversion in `conversion`. For a
+standing-condition note, begin that field with exactly
+`none — standing condition:` and then name what the condition costs or who it
+serves. The fixed prefix keeps the two shapes countable; what follows it is the
+standing-condition bar stated in your own words. Never leave `conversion` empty
+and never invent a conversion to fill it. Set `domain_bound` truthfully, and use
+`split_second_note` only when two claims do not belong in one note.
