@@ -514,6 +514,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                         "fabricate an edge.")
     p.add_argument("--model", default=None,
                    help="override the relationship model for this run")
+    p.add_argument("--chromadb-path", default=None,
+                   help="query an explicit Chroma directory instead of the active "
+                        "one. Required when the live atomics index is stale: it "
+                        "currently overlaps the corpus on only 6,689 of 129,900 "
+                        "titles, so querying it returns obsolete neighbours.")
     args = p.parse_args(argv)
 
     global RELATION_MODEL, _CLIENT_BACKEND
@@ -533,7 +538,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         paths = paths[: args.limit]
 
     print(f"Notes to consider: {len(paths)}")
-    run_phase_c(paths, manifest_path=args.manifest, max_workers=args.max_workers)
+    run_phase_c(paths, manifest_path=args.manifest, max_workers=args.max_workers,
+                chromadb_path=args.chromadb_path or DEFAULT_CHROMADB_PATH)
     return 0
 
 
