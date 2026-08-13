@@ -8,12 +8,12 @@
  * renderSpec path never fired (2026-06-11 audit finding).
  *
  * This module is the V3 replacement. v3-conversation.js calls
- * `dispatch(text, key)` whenever it renders an assistant turn; the last
+ * `dispatch(text, key)` whenever it renders an assistant turn; every
  * envelope in the text is applied to the active visual panel through
- * `OraPanels.visual.onBridgeUpdate`, which runs the canvas_action state
- * machine (replace / update / annotate / clear — user drawings survive
- * everything except an explicit replace/clear). `stripBlocks` swaps the
- * raw JSON fences for a one-line marker so the transcript stays readable.
+ * `OraPanels.visual.onBridgeUpdate`, which runs the active editor's
+ * canvas_action state machine. `stripBlocks` swaps the raw JSON fences for
+ * a neutral handoff marker; completion or rejection is reported separately
+ * so the transcript never claims an unsupported action rendered.
  *
  * The `key` argument deduplicates: renderAll() re-renders the same turn
  * on header refreshes and the same envelope must not re-fire (it would
@@ -28,7 +28,7 @@
   // tagged ora-visual, JSON payload, closing fence on its own line.
   const FENCE_RE = /```ora-visual\s*\n([\s\S]*?)\n[ \t]*```/g;
 
-  const PLACEHOLDER = '*\u{1F4CA} Diagram rendered in the Exhibits pane.*';
+  const PLACEHOLDER = '*\u{1F4CA} Visual request sent to the Exhibits pane.*';
 
   let _lastKey = null;
 
@@ -65,6 +65,29 @@
     });
   }
 
+  function surfaceDispatchFailure(message) {
+    const detail = message || 'The visual request could not be applied.';
+    console.warn('[v3-visual-dispatch] ' + detail);
+    if (typeof window.alert === 'function') window.alert(detail);
+  }
+
+  function surfaceDispatchResult(result) {
+    const results = Array.isArray(result) ? result : [result];
+    const unsupported = results.filter((item) => item && item.unsupported === true);
+    if (unsupported.length === 0) return;
+    const warnings = [];
+    unsupported.forEach((item) => {
+      (Array.isArray(item.warnings) ? item.warnings : []).forEach((warning) => {
+        if (typeof warning === 'string' && warning && !warnings.includes(warning)) {
+          warnings.push(warning);
+        }
+      });
+    });
+    surfaceDispatchFailure(
+      warnings.join('\n') || 'This visual action is not supported by the active editor.'
+    );
+  }
+
   /** Extract + hand off to the visual panel. Returns the number of blocks
    *  found (0 = nothing to do). Same key twice in a row is a no-op. */
   function dispatch(text, key) {
@@ -75,9 +98,23 @@
     if (!panel || typeof panel.onBridgeUpdate !== 'function') return blocks.length;
     _lastKey = key != null ? key : null;
     try {
-      panel.onBridgeUpdate({ ora_visual_blocks: blocks });
+      const result = panel.onBridgeUpdate({
+        ora_visual_blocks: blocks,
+        ora_visual_dispatch_key: key != null ? String(key) : null,
+      });
+      if (result && typeof result.then === 'function') {
+        Promise.resolve(result).then(surfaceDispatchResult).catch((error) => {
+          surfaceDispatchFailure(
+            'The visual request could not be applied: ' + (error && error.message || error)
+          );
+        });
+      } else {
+        surfaceDispatchResult(result);
+      }
     } catch (e) {
-      console.warn('[v3-visual-dispatch] panel dispatch failed:', e);
+      surfaceDispatchFailure(
+        'The visual request could not be applied: ' + (e && e.message || e)
+      );
     }
     return blocks.length;
   }

@@ -134,6 +134,8 @@
     messages:             [],   // raw conversation.json messages[]
     turns:                [],   // grouped: [{user, assistant}, ...]
     currentTurnIndex:     0,    // -1 if no turns
+    visualState:          null,
+    visualReadyTurnIndex: -1,
   };
   let loadEpoch = 0;
   let pendingLoadId = null;
@@ -381,7 +383,8 @@
       // Model-emitted ora-visual envelopes: hand the turn's blocks to the
       // visual pane (canvas_action semantics, deduped per conversation+turn)
       // and swap the raw JSON fences for a one-line marker in the transcript.
-      if (window.OraV3VisualDispatch) {
+      if (window.OraV3VisualDispatch
+          && state.visualReadyTurnIndex === state.currentTurnIndex) {
         const key = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
         window.OraV3VisualDispatch.dispatch(content, key);
         content = window.OraV3VisualDispatch.stripBlocks(content);
@@ -429,6 +432,10 @@
       if (window.OraV3VisualDispatch
           && typeof window.OraV3VisualDispatch.resetDedupe === 'function') {
         window.OraV3VisualDispatch.resetDedupe();
+      }
+      if (window.OraCanvas && typeof window.OraCanvas.clear === 'function') {
+        window.OraCanvas.clear();
+        return;
       }
       if (window.OraPanels && window.OraPanels.visual) {
         const visual = window.OraPanels.visual;
@@ -496,8 +503,17 @@
     }, 0);
   };
 
-  const startFresh = (detail = {}) => {
+  const startFresh = async (detail = {}) => {
     if (detail.bootstrap === true || detail.dossier === true) return;
+    if (!detail.skip_visual_flush
+        && window.OraCanvas && typeof window.OraCanvas.flushDraft === 'function') {
+      try {
+        await window.OraCanvas.flushDraft();
+      } catch (e) {
+        console.warn('[v3-conversation] new Dialogue draft flush failed:', e);
+        return false;
+      }
+    }
     refreshDOMRefs();
     const cancelledLoadId = pendingLoadId;
     loadEpoch += 1;
@@ -536,6 +552,10 @@
     state.turns = [];
     state.currentTurnIndex = 0;
     window._oraLatestCanvasBytes = null;
+
+    if (window.OraCanvas && typeof window.OraCanvas.setConversationContext === 'function') {
+      window.OraCanvas.setConversationContext(id, tag);
+    }
 
     if (leftInput) leftInput.value = '';
     clearInputAddOns();
@@ -637,6 +657,15 @@
       return false;
     }
     const epoch = ++loadEpoch;
+    if (window.OraCanvas && typeof window.OraCanvas.flushDraft === 'function') {
+      try {
+        await window.OraCanvas.flushDraft();
+      } catch (e) {
+        console.warn('[v3-conversation] Excalidraw draft flush failed:', e);
+        return false;
+      }
+      if (epoch !== loadEpoch) return null;
+    }
     pendingLoadId = conversation_id;
     document.dispatchEvent(new CustomEvent('ora:conversation-loading-state', {
       detail: { conversation_id, loading: true },
@@ -710,6 +739,8 @@
     state.hasEnvelope          = true;
     state.messages             = envelope.messages || [];
     state.turns                = groupTurns(state.messages);
+    state.visualState          = envelope.visual_state || null;
+    state.visualReadyTurnIndex = -1;
     state.currentTurnIndex     = Math.max(0, state.turns.length - 1);
     if (Number.isInteger(opts.turnIndex)
         && opts.turnIndex >= 0
@@ -754,15 +785,26 @@
         saveDraft(conversation_id, suppliedDraft);
       }
     }
+    if (window.OraCanvas && typeof window.OraCanvas.setConversationContext === 'function') {
+      window.OraCanvas.setConversationContext(conversation_id, state.activeTag);
+    }
 
-    // The visual pane must track the turn being shown. Clear stale state
-    // first, render the text turn, then load that turn's saved canvas if it
-    // exists. If it does not, loadTurnCanvas blanks the visual pane unless
-    // the assistant text itself contains an ora-visual block.
+    // The visual pane must track the turn being shown. Do not clear the
+    // Excalidraw scene after changing context: a programmatic empty scene
+    // must never become the target Dialogue's recovery draft. The exact load
+    // below replaces it, or clears safely on a confirmed miss.
     window._oraLatestCanvasBytes = null;
-    clearVisualPane();
     renderAll();
-    loadTurnCanvas(state.currentTurnIndex);
+    const loadingCurrentDialogue = (
+      state.turns.length === 0 || state.currentTurnIndex === state.turns.length - 1
+    );
+    await loadTurnCanvas(state.currentTurnIndex, {
+      currentDialogue: loadingCurrentDialogue,
+      preferDraft: !!(
+        loadingCurrentDialogue
+        && (!state.visualState || state.visualState.active_editor === 'excalidraw')
+      ),
+    });
 
     // The loaded envelope is authoritative over sidebar/request metadata.
     if (envelope) {
@@ -836,7 +878,7 @@
     }
 
     if (state.activeConversationId !== id) return null;
-    startFresh({ tag: '', source: 'exit-stealth' });
+    await startFresh({ tag: '', source: 'exit-stealth' });
     return {
       ok: true,
       destination: 'fresh-standard',
@@ -855,38 +897,38 @@
     return typeof content === 'string' && content.indexOf('ora-visual') !== -1;
   };
 
-  const loadTurnCanvas = async (turnIndex) => {
+  const loadTurnCanvas = async (turnIndex, options = {}) => {
     if (!state.activeConversationId) return;
     const requestedConversationId = state.activeConversationId;
+    const requestedTurnIndex = turnIndex;
     try {
-      const url = `/api/canvas/load/${encodeURIComponent(requestedConversationId)}?turn=${turnIndex}`;
-      const resp = await fetch(url);
-      if (requestedConversationId !== state.activeConversationId) return;
-      if (!resp.ok) {
-        window._oraLatestCanvasBytes = null;
-        if (!currentTurnHasVisualBlock()) {
-          clearVisualPane();
-        }
-        return;
+      const turn = state.turns[turnIndex];
+      const checkpointId = turn && turn.user && turn.user.visual_checkpoint_id;
+      let loaded = false;
+      if (window.OraCanvas && typeof window.OraCanvas.loadCheckpoint === 'function') {
+        loaded = await window.OraCanvas.loadCheckpoint(
+          requestedConversationId,
+          checkpointId || null,
+          checkpointId ? null : turnIndex,
+          state.visualState,
+          options
+        );
       }
-      const buf = await resp.arrayBuffer();
-      if (requestedConversationId !== state.activeConversationId) return;
-      window._oraLatestCanvasBytes = new Uint8Array(buf);
-      if (window.OraCanvasFileFormat
-          && typeof window.OraCanvasFileFormat.read === 'function') {
-        const cs = await window.OraCanvasFileFormat.read(window._oraLatestCanvasBytes);
-        const panel = (window.OraPanels && window.OraPanels.visual
-                        && typeof window.OraPanels.visual._getActive === 'function')
-                      ? window.OraPanels.visual._getActive()
-                      : null;
-        if (panel && typeof panel.loadCanvasState === 'function') {
-          panel.loadCanvasState(cs);
-        }
-      }
+      if (requestedConversationId !== state.activeConversationId
+          || requestedTurnIndex !== state.currentTurnIndex) return;
+      if (!loaded && !currentTurnHasVisualBlock()) clearVisualPane();
     } catch (e) {
       console.warn('[v3-conversation] turn-canvas load failed:', e);
       if (!currentTurnHasVisualBlock()) {
         clearVisualPane();
+      }
+    } finally {
+      if (requestedConversationId === state.activeConversationId
+          && requestedTurnIndex === state.currentTurnIndex) {
+        state.visualReadyTurnIndex = requestedTurnIndex;
+        // Dispatch assistant visuals only after their input checkpoint has
+        // settled, so a slow load can never overwrite the inserted PNG.
+        renderTurn();
       }
     }
   };
@@ -896,11 +938,19 @@
     if (total === 0) return;
     const clamped = Math.max(0, Math.min(total - 1, index));
     state.currentTurnIndex = clamped;
+    state.visualReadyTurnIndex = -1;
     renderHeader();
     renderTurn();
     // Pull the canvas snapshot that was saved alongside this turn so the
     // visual pane stays in sync with the text output.
-    loadTurnCanvas(clamped);
+    const currentDialogue = clamped === total - 1;
+    loadTurnCanvas(clamped, {
+      currentDialogue,
+      preferDraft: !!(
+        currentDialogue
+        && (!state.visualState || state.visualState.active_editor === 'excalidraw')
+      ),
+    });
   };
 
   const goBack    = () => showTurn(state.currentTurnIndex - 1);
@@ -1164,7 +1214,9 @@
       state.messages = [];
       state.turns = [];
       state.currentTurnIndex = 0;
-      startFresh({ tag: '', source: `${action}-complete` });
+      startFresh({
+        tag: '', source: `${action}-complete`, skip_visual_flush: true,
+      });
     }
     document.dispatchEvent(new CustomEvent('ora:conversation-lifecycle-completed', {
       detail: {
@@ -1316,6 +1368,10 @@
 
     setLifecycleRequestActive(id, true);
     try {
+      if (id === state.activeConversationId
+          && window.OraCanvas && typeof window.OraCanvas.flushDraft === 'function') {
+        await window.OraCanvas.flushDraft();
+      }
       return await performDeleteForever(id, options);
     } finally {
       setLifecycleRequestActive(id, false);
@@ -1394,6 +1450,10 @@
 
     setLifecycleRequestActive(id, true);
     try {
+      if (id === state.activeConversationId
+          && window.OraCanvas && typeof window.OraCanvas.flushDraft === 'function') {
+        await window.OraCanvas.flushDraft();
+      }
       return await performCloseConversation(id, options);
     } finally {
       setLifecycleRequestActive(id, false);
@@ -1569,6 +1629,23 @@
         && state.activeTag === 'private';
     }
 
+    // Capture the parent scene before forkActive selects/loads the empty
+    // child. The submit callback carries this immutable snapshot across that
+    // navigation boundary and persists/posts it under the selected child.
+    const submissionContext = options.submissionContext;
+    if (options.captureVisualSnapshot && submissionContext && window.OraCanvas
+        && (typeof window.OraCanvas.hasContent !== 'function'
+            || window.OraCanvas.hasContent())
+        && typeof window.OraCanvas.snapshotForSubmit === 'function') {
+      try {
+        submissionContext.visualSnapshot = window.OraCanvas.snapshotForSubmit();
+      } catch (e) {
+        console.warn('[v3-conversation] privacy-fork Exhibits capture failed:', e);
+        window.alert('Exhibits capture failed; Inquiry was not sent.');
+        return false;
+      }
+    }
+
     refreshDOMRefs();
     const draft = typeof options.draftText === 'string'
       ? options.draftText
@@ -1603,8 +1680,10 @@
   };
 
   const submitAfterPrivacy = async (text, submit, options = {}) => {
-    if (!(await prepareStandardSubmission(text, options))) return false;
-    await submit();
+    const submissionContext = {};
+    const prepareOptions = Object.assign({}, options, { submissionContext });
+    if (!(await prepareStandardSubmission(text, prepareOptions))) return false;
+    await submit(submissionContext);
     return true;
   };
 

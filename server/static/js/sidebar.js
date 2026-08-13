@@ -831,6 +831,8 @@
   const onRetryClick = async (row) => {
     let prompt = '';
     let tag = row.tag || '';
+    let visualCheckpointId = '';
+    let visualCheckpointSourceId = '';
     try {
       const r = await fetch(`/api/conversation/${encodeURIComponent(row.conversation_id)}/retry`, { method: 'POST' });
       if (!r.ok) {
@@ -840,6 +842,8 @@
       const data = await r.json();
       prompt = data.last_user_prompt || '';
       tag = data.tag || tag;
+      visualCheckpointId = data.visual_checkpoint_id || '';
+      visualCheckpointSourceId = data.visual_checkpoint_source_conversation_id || '';
     } catch (e) {
       alert('Retry failed: ' + (e.message || e));
       return;
@@ -871,6 +875,14 @@
         body.append('panel_id',        targetId);
         body.append('is_main_feed',    'true');
         body.append('tag',             targetTag || tag);
+        if (visualCheckpointId) {
+          body.append('retry_visual_checkpoint_id', visualCheckpointId);
+          body.append(
+            'retry_visual_source_conversation_id',
+            visualCheckpointSourceId || row.conversation_id
+          );
+          body.append('exhibits_submission_intent', 'explicit_send');
+        }
 
         const resp = await fetch('/chat/multipart', { method: 'POST', body });
         if (resp.ok) {

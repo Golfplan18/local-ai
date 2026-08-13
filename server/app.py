@@ -7531,27 +7531,29 @@ def _new_submission_id() -> str:
     return f"{ts}-{uuid.uuid4().hex[:8]}"
 
 
-def _log_pending_submission(payload: dict) -> str:
+def _log_pending_submission(payload: dict, submission_id: str | None = None) -> str:
     """Write a submission to ``pending/`` immediately at handler entry.
 
     Called BEFORE any other processing — before validation, before parsing,
     before any error path that could 400. Returns the ``submission_id``
     the caller threads into ``_invoke_pipeline`` for later finalization.
 
-    On any I/O failure, returns an empty string and prints a warning. The
-    handler should still proceed — we do not want a disk error to drop
-    the user's submission entirely. (It will at least live in memory long
-    enough to reach ``_save_conversation``'s raw-log append.)
+    On any I/O failure, returns an empty string and prints a warning. Legacy
+    callers retain their historical best-effort behavior. Atomic visual
+    submits treat an empty return as a hard stop because this pending file is
+    the commit marker that authorizes the model call.
     """
-    submission_id = _new_submission_id()
+    submission_id = submission_id or _new_submission_id()
     try:
         os.makedirs(CONVERSATIONS_PENDING, exist_ok=True)
         body = dict(payload)
         body["submission_id"] = submission_id
         body.setdefault("captured_at", datetime.utcnow().isoformat() + "Z")
         path = os.path.join(CONVERSATIONS_PENDING, f"{submission_id}.json")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(body, f, ensure_ascii=False, indent=2, default=str)
+        rp.atomic_write_text(
+            path,
+            json.dumps(body, ensure_ascii=False, indent=2, default=str),
+        )
         return submission_id
     except Exception as e:
         print(f"[WARNING] _log_pending_submission failed: {e}")
@@ -7752,6 +7754,14 @@ def _surface_orphan_as_errored_chunk(payload: dict) -> None:
         data["interrupted_input"]    = user_input
         data["interrupted_at"]       = captured_at
         data["interrupted_submission_id"] = submission_id
+        visual_checkpoint_id = payload.get("visual_checkpoint_id")
+        canvas_preview_path = payload.get("canvas_preview_path")
+        if (isinstance(visual_checkpoint_id, str)
+                and _VISUAL_CHECKPOINT_ID_RE.fullmatch(visual_checkpoint_id)
+                and isinstance(canvas_preview_path, str)
+                and os.path.isfile(canvas_preview_path)
+                and not os.path.islink(canvas_preview_path)):
+            data["interrupted_visual_checkpoint_id"] = visual_checkpoint_id
         env_path.write_text(
             json.dumps(data, indent=2, ensure_ascii=False),
             encoding="utf-8",
@@ -8516,7 +8526,9 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     ``manual_lens_selection`` and ``framework_selected`` carry the user's
     input-box-toolbar choices.
     """
-    if not user_input:
+    if not user_input and not (
+        extra_context and extra_context.get("visual_checkpoint_id")
+    ):
         return json.dumps({"error": "empty message"}), 400
 
     # Parse /direct, /save, /saveboth, /style commands from input
@@ -8797,6 +8809,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                         data.pop("interrupted_input", None)
                         data.pop("interrupted_at", None)
                         data.pop("interrupted_submission_id", None)
+                        data.pop("interrupted_visual_checkpoint_id", None)
                         env_path = _conversation_path(panel_id,
                                                       _DEFAULT_SESSIONS_ROOT)
                         rp.atomic_write_text(
@@ -9155,6 +9168,12 @@ def chat_multipart():
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
+    retry_visual_checkpoint_id = (
+        form.get("retry_visual_checkpoint_id") or ""
+    ).strip()
+    retry_visual_source_conversation_id = (
+        form.get("retry_visual_source_conversation_id") or ""
+    ).strip()
     # Obsidian Plugin Design (2026-05-17) — same override field as /chat.
     output_destination    = (form.get("output_destination") or "").strip()
     # Install Chunk 2c — same config_name field as /chat for per-request
@@ -9167,6 +9186,9 @@ def chat_multipart():
     exhibits_submission_intent = (
         form.get("exhibits_submission_intent") or ""
     ).strip()
+    visual_editor = (form.get("visual_editor") or "").strip()
+    visual_native_file = request.files.get("visual_native")
+    visual_preview_file = request.files.get("canvas_preview_png")
     # Capture raw optional values once.  History is parsed as a legacy/API
     # fallback only; an existing conversation.json remains authoritative.
     spatial_raw = form.get("spatial_representation", "")
@@ -9181,7 +9203,13 @@ def chat_multipart():
         except Exception:
             supplied_history = []
 
-    if not user_input:
+    if (visual_native_file is None) != (visual_preview_file is None):
+        return _json_response({
+            "error": "visual_native and canvas_preview_png must be supplied together",
+        }, 400)
+    if visual_native_file is not None and visual_editor not in {"excalidraw", "konva"}:
+        return _json_response({"error": "invalid visual_editor"}, 400)
+    if not user_input and visual_native_file is None:
         return json.dumps({"error": "empty message"}), 400
     if not conversation_id:
         return json.dumps({"error": "missing conversation_id"}), 400
@@ -9204,6 +9232,64 @@ def chat_multipart():
             "required": "explicit_send",
         }, 422)
 
+    # Validate structured visual metadata before creating any durable files.
+    spatial_rep = None
+    if spatial_raw:
+        try:
+            spatial_rep = json.loads(spatial_raw)
+        except Exception as exc:
+            return _json_response({
+                "error": "invalid spatial_representation JSON",
+                "detail": str(exc),
+            }, 400)
+        try:
+            from visual_validator import validate_spatial_representation
+            result = validate_spatial_representation(spatial_rep)
+            if not result.valid:
+                return _json_response({
+                    "error": "spatial_representation failed validation",
+                    "errors": [error.as_dict() for error in result.errors],
+                    "warnings": [warning.as_dict() for warning in result.warnings],
+                }, 400)
+        except Exception as exc:
+            print(f"[WARNING] spatial_representation validation error: {exc}")
+            spatial_rep = None
+
+    annotations_payload = None
+    if annotations_raw:
+        try:
+            annotations_parsed = json.loads(annotations_raw)
+        except Exception as exc:
+            return _json_response({
+                "error": "invalid annotations JSON", "detail": str(exc),
+            }, 400)
+        try:
+            from visual_validator import validate_annotations
+            result = validate_annotations(annotations_parsed)
+            if not result.valid:
+                return _json_response({
+                    "error": "annotations failed validation",
+                    "errors": [error.as_dict() for error in result.errors],
+                    "warnings": [warning.as_dict() for warning in result.warnings],
+                }, 400)
+            annotations_payload = (
+                {"annotations": annotations_parsed}
+                if isinstance(annotations_parsed, list)
+                else annotations_parsed
+            )
+        except Exception as exc:
+            print(f"[WARNING] annotations validation error: {exc}")
+            annotations_payload = None
+
+    if (retry_visual_checkpoint_id
+            and not _VISUAL_CHECKPOINT_ID_RE.fullmatch(retry_visual_checkpoint_id)):
+        return _json_response({"error": "invalid retry visual checkpoint"}, 400)
+    if (retry_visual_source_conversation_id
+            and not _valid_live_conversation_id(
+                retry_visual_source_conversation_id
+            )):
+        return _json_response({"error": "invalid retry visual source Dialogue"}, 400)
+
     # Serialize artifact capture with Delete Forever. If deletion starts
     # while this block is active it waits, then removes every upload/log this
     # request created; if deletion already started this request creates none.
@@ -9225,23 +9311,160 @@ def chat_multipart():
             panel_id, supplied_history,
         )
 
-        # Optional image upload — saved FIRST so the submission log can record
+        # Allocate the existing submission identity before any checkpoint
+        # write. It names both immutable visual files and the pending marker.
+        submission_id = _new_submission_id()
+
+        created_paths: list[str] = []
+
+        def reject_uncommitted(payload, status):
+            for path in created_paths:
+                try:
+                    if os.path.isfile(path) and not os.path.islink(path):
+                        os.remove(path)
+                except OSError:
+                    pass
+            return _json_response(payload, status)
+
+        # Optional image upload — saved first so the pending record can carry
         # the path. Image binaries live separately on disk; the pending file
         # carries only the path reference, not the bytes.
         image_path = None
+        image_mime = None
         file_storage = request.files.get("image")
         if file_storage is not None:
+            image_mime = file_storage.mimetype or "image/png"
             image_path = _save_multipart_image(conversation_id, file_storage)
+            if image_path:
+                created_paths.append(image_path)
 
-        # V3 Item 12 Q1 follow-up — vision-capable canvas preview bundling.
+        # Native scene and canonical preview are one accepted checkpoint. The
+        # pending submission is written LAST and therefore acts as the commit
+        # marker that authorizes the model call.
+        visual_checkpoint_id = None
         canvas_preview_path = None
-        canvas_preview_data_url = (form.get("canvas_preview_png") or "").strip()
-        if canvas_preview_data_url and not image_path:
+        visual_native_path = None
+        checkpoint_paths = ()
+        if visual_native_file is not None:
+            try:
+                native = visual_native_file.read(_VISUAL_NATIVE_MAX_BYTES + 1)
+                preview = visual_preview_file.read(_VISUAL_PREVIEW_MAX_BYTES + 1)
+            except Exception as exc:
+                return reject_uncommitted({
+                    "error": "visual checkpoint read failed", "message": str(exc),
+                }, 400)
+            try:
+                checkpoint_paths = _write_visual_checkpoint(
+                    conversation_id, submission_id, visual_editor, native, preview,
+                    require_content=not user_input,
+                )
+            except ValueError as exc:
+                return reject_uncommitted({"error": str(exc)}, 400)
+            except Exception as exc:
+                return reject_uncommitted({
+                    "error": "visual checkpoint write failed", "message": str(exc),
+                }, 500)
+            created_paths.extend(checkpoint_paths)
+            visual_checkpoint_id = submission_id
+            visual_native_path = checkpoint_paths[0]
+            canvas_preview_path = checkpoint_paths[1]
+        elif retry_visual_checkpoint_id:
+            retry_source_id = (
+                retry_visual_source_conversation_id or conversation_id
+            )
+            try:
+                retry_dir = str(rp.safe_owned_subdir(
+                    CANVAS_ROOT,
+                    _canonical_live_conversation_id(retry_source_id),
+                    "canvas",
+                    create=False,
+                ))
+            except (OSError, ValueError) as exc:
+                return reject_uncommitted({
+                    "error": "retry visual checkpoint is unavailable",
+                    "message": str(exc),
+                }, 409)
+            retry_preview = os.path.join(
+                retry_dir, retry_visual_checkpoint_id + ".preview.png",
+            )
+            retry_excalidraw = os.path.join(
+                retry_dir, retry_visual_checkpoint_id + ".excalidraw",
+            )
+            retry_konva = os.path.join(
+                retry_dir, retry_visual_checkpoint_id + ".ora-canvas",
+            )
+            if (not os.path.isfile(retry_preview) or os.path.islink(retry_preview)
+                    or not any(
+                        os.path.isfile(path) and not os.path.islink(path)
+                        for path in (retry_excalidraw, retry_konva)
+                    )):
+                return reject_uncommitted({
+                    "error": "retry visual checkpoint is unavailable",
+                }, 409)
+            source_native_path = (
+                retry_excalidraw if os.path.isfile(retry_excalidraw) else retry_konva
+            )
+            source_editor = (
+                "excalidraw" if source_native_path.endswith(".excalidraw") else "konva"
+            )
+            if retry_source_id == conversation_id:
+                visual_checkpoint_id = retry_visual_checkpoint_id
+                visual_native_path = source_native_path
+                canvas_preview_path = retry_preview
+            else:
+                try:
+                    from conversation_memory import load_conversation_json
+                    retry_target = load_conversation_json(conversation_id) or {}
+                except Exception as exc:
+                    return reject_uncommitted({
+                        "error": "retry visual checkpoint is unavailable",
+                        "message": str(exc),
+                    }, 409)
+                if retry_target.get("parent_conversation_id") != retry_source_id:
+                    return reject_uncommitted({
+                        "error": "retry visual source is not the target Dialogue parent",
+                    }, 409)
+                try:
+                    with open(source_native_path, "rb") as stream:
+                        retry_native = stream.read(_VISUAL_NATIVE_MAX_BYTES + 1)
+                    with open(retry_preview, "rb") as stream:
+                        retry_preview_bytes = stream.read(_VISUAL_PREVIEW_MAX_BYTES + 1)
+                    checkpoint_paths = _write_visual_checkpoint(
+                        conversation_id,
+                        submission_id,
+                        source_editor,
+                        retry_native,
+                        retry_preview_bytes,
+                    )
+                except ValueError as exc:
+                    return reject_uncommitted({
+                        "error": "retry visual checkpoint is invalid",
+                        "message": str(exc),
+                    }, 409)
+                except Exception as exc:
+                    return reject_uncommitted({
+                        "error": "retry visual checkpoint copy failed",
+                        "message": str(exc),
+                    }, 500)
+                created_paths.extend(checkpoint_paths)
+                visual_checkpoint_id = submission_id
+                visual_native_path, canvas_preview_path = checkpoint_paths
+            visual_editor = source_editor
+        # Legacy/API callers post this as a data-URL form string. New clients
+        # use a file with the same semantic field name in request.files.
+        canvas_preview_data_url = (
+            form.get("canvas_preview_png")
+            or form.get("canvas_preview_png_data_url")
+            or ""
+        ).strip()
+        if canvas_preview_data_url and not image_path and not canvas_preview_path:
             canvas_preview_path = _save_canvas_preview_png(
                 conversation_id, canvas_preview_data_url,
             )
+            if canvas_preview_path:
+                created_paths.append(canvas_preview_path)
 
-        submission_id = _log_pending_submission({
+        committed_submission_id = _log_pending_submission({
             "endpoint":              "/chat/multipart",
             "conversation_id":       conversation_id,
             "panel_id":              panel_id,
@@ -9258,67 +9481,36 @@ def chat_multipart():
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
             "exhibits_submission_intent": exhibits_submission_intent,
-        })
-
-    # Optional spatial_representation (JSON string) — validate before proceeding.
-    spatial_rep = None
-    if spatial_raw:
-        try:
-            spatial_rep = json.loads(spatial_raw)
-        except Exception as e:
-            _delete_pending_submission(submission_id)
-            return json.dumps({
-                "error": "invalid spatial_representation JSON",
-                "detail": str(e),
-            }), 400
-        try:
-            from visual_validator import validate_spatial_representation
-            result = validate_spatial_representation(spatial_rep)
-            if not result.valid:
-                _delete_pending_submission(submission_id)
-                return json.dumps({
-                    "error": "spatial_representation failed validation",
-                    "errors": [e.as_dict() for e in result.errors],
-                    "warnings": [w.as_dict() for w in result.warnings],
-                }), 400
-        except Exception as e:
-            print(f"[WARNING] spatial_representation validation error: {e}")
-            # Fail-open on unexpected validator error — treat as text-only.
-            spatial_rep = None
-
-    # WP-5.2 — optional annotations (JSON string) — validate before proceeding.
-    annotations_payload = None
-    if annotations_raw:
-        try:
-            annotations_parsed = json.loads(annotations_raw)
-        except Exception as e:
-            _delete_pending_submission(submission_id)
-            return json.dumps({
-                "error": "invalid annotations JSON",
-                "detail": str(e),
-            }), 400
-        try:
-            from visual_validator import validate_annotations
-            result = validate_annotations(annotations_parsed)
-            if not result.valid:
-                _delete_pending_submission(submission_id)
-                return json.dumps({
-                    "error": "annotations failed validation",
-                    "errors": [e.as_dict() for e in result.errors],
-                    "warnings": [w.as_dict() for w in result.warnings],
-                }), 400
-            # Normalize onto the wrapper shape for downstream consumption.
-            if isinstance(annotations_parsed, list):
-                annotations_payload = {"annotations": annotations_parsed}
-            else:
-                annotations_payload = annotations_parsed
-        except Exception as e:
-            print(f"[WARNING] annotations validation error: {e}")
-            # Fail-open: treat as absent rather than blocking the user's turn.
-            annotations_payload = None
+            "visual_checkpoint_id": visual_checkpoint_id,
+            "visual_editor": visual_editor or None,
+            "visual_native_path": visual_native_path,
+            "canvas_preview_path": canvas_preview_path,
+            "retry_visual_source_conversation_id": (
+                retry_visual_source_conversation_id or None
+            ),
+        }, submission_id=submission_id)
+        if not committed_submission_id:
+            return reject_uncommitted({"error": "submission commit failed"}, 500)
 
     # Build extra_context threaded into the pipeline
     extra_context = {}
+    model_images = []
+    if image_path is not None:
+        model_images.append({
+            "name": os.path.basename(image_path),
+            "mime": image_mime or "image/png",
+            "base64": base64.b64encode(Path(image_path).read_bytes()).decode("ascii"),
+        })
+    if canvas_preview_path is not None:
+        model_images.append({
+            "name": os.path.basename(canvas_preview_path),
+            "mime": "image/png",
+            "base64": base64.b64encode(
+                Path(canvas_preview_path).read_bytes()
+            ).decode("ascii"),
+        })
+    if visual_checkpoint_id is not None:
+        extra_context["visual_checkpoint_id"] = visual_checkpoint_id
     if spatial_rep is not None:
         extra_context["spatial_representation"] = spatial_rep
     if image_path is not None:
@@ -9401,7 +9593,7 @@ def chat_multipart():
 
     return _invoke_pipeline(
         user_input, history, panel_id, is_main,
-        images=None,  # Image flows via image_path, not the inline base64 channel.
+        images=model_images or None,
         extra_context=extra_context or None,
         tag=tag,
         manual_mode_selection=manual_mode_selection,
@@ -9430,6 +9622,180 @@ def _canvas_dir(conversation_id: str) -> str:
     return str(rp.safe_owned_subdir(
         CANVAS_ROOT, canonical_id, "canvas", create=True,
     ))
+
+
+_VISUAL_CHECKPOINT_ID_RE = re.compile(r"^[0-9]{8}T[0-9]{12}Z-[0-9a-f]{8}$")
+_VISUAL_NATIVE_MAX_BYTES = 64 * 1024 * 1024
+_VISUAL_PREVIEW_MAX_BYTES = 32 * 1024 * 1024
+
+
+def _validate_visual_checkpoint_payload(
+        editor: str, native: bytes, preview: bytes,
+        *, require_content: bool = False) -> None:
+    """Validate the two immutable files before either reaches the canvas dir."""
+    if editor not in {"excalidraw", "konva"}:
+        raise ValueError("editor must be excalidraw or konva")
+    if not native or len(native) > _VISUAL_NATIVE_MAX_BYTES:
+        raise ValueError("invalid visual native payload size")
+    if (not preview or len(preview) > _VISUAL_PREVIEW_MAX_BYTES
+            or not preview.startswith(b"\x89PNG\r\n\x1a\n")):
+        raise ValueError("preview must be a valid bounded PNG")
+    if editor == "excalidraw":
+        try:
+            scene = json.loads(native.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid Excalidraw scene: {exc}") from exc
+        if (not isinstance(scene, dict)
+                or scene.get("type") != "excalidraw"
+                or not isinstance(scene.get("elements"), list)
+                or not isinstance(scene.get("appState"), dict)
+                or not isinstance(scene.get("files", {}), dict)):
+            raise ValueError("invalid Excalidraw scene shape")
+        if require_content and not any(
+            isinstance(element, dict) and not element.get("isDeleted", False)
+            for element in scene["elements"]
+        ):
+            raise ValueError("visual content is empty")
+    else:
+        from orchestrator import canvas_file_format as cff
+        state = cff.read_bytes(native)
+        if require_content and not state.get("objects"):
+            raise ValueError("visual content is empty")
+
+
+def _write_visual_checkpoint(
+        conversation_id: str, checkpoint_id: str, editor: str,
+        native: bytes, preview: bytes,
+        *, require_content: bool = False) -> tuple[str, str]:
+    """Write one immutable native+PNG checkpoint, cleaning up partial failure."""
+    if not _VISUAL_CHECKPOINT_ID_RE.fullmatch(checkpoint_id or ""):
+        raise ValueError("invalid checkpoint id")
+    _validate_visual_checkpoint_payload(
+        editor, native, preview, require_content=require_content,
+    )
+    out_dir = _canvas_dir(conversation_id)
+    extension = ".excalidraw" if editor == "excalidraw" else ".ora-canvas"
+    native_path = os.path.join(out_dir, checkpoint_id + extension)
+    preview_path = os.path.join(out_dir, checkpoint_id + ".preview.png")
+    if os.path.lexists(native_path) or os.path.lexists(preview_path):
+        raise FileExistsError("visual checkpoint already exists")
+    try:
+        rp.atomic_write_bytes(native_path, native)
+        rp.atomic_write_bytes(preview_path, preview)
+    except Exception:
+        for path in (native_path, preview_path):
+            try:
+                if os.path.isfile(path) and not os.path.islink(path):
+                    os.remove(path)
+            except OSError:
+                pass
+        raise
+    return native_path, preview_path
+
+
+@app.route("/api/canvas/checkpoint", methods=["POST"])
+def canvas_checkpoint():
+    """Durably create an immutable native scene and canonical PNG pair."""
+    form = request.form
+    conversation_id = (form.get("conversation_id") or "main").strip() or "main"
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, 400)
+    editor = (form.get("editor") or "").strip()
+    native_file = request.files.get("native")
+    preview_file = request.files.get("preview")
+    if native_file is None or preview_file is None:
+        return _json_response({"error": "native and preview files are required"}, 400)
+    native = native_file.read(_VISUAL_NATIVE_MAX_BYTES + 1)
+    preview = preview_file.read(_VISUAL_PREVIEW_MAX_BYTES + 1)
+    checkpoint_id = _new_submission_id()
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, 410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, form.get("tag", ""),
+            )
+            native_path, preview_path = _write_visual_checkpoint(
+                conversation_id, checkpoint_id, editor, native, preview,
+            )
+        except ValueError as exc:
+            return _json_response({"error": str(exc)}, 400)
+        except Exception as exc:
+            return _json_response({"error": "checkpoint write failed", "message": str(exc)}, 500)
+    return _json_response({
+        "ok": True,
+        "checkpoint_id": checkpoint_id,
+        "editor": editor,
+        "path": native_path,
+        "preview_path": preview_path,
+    })
+
+
+@app.route("/api/canvas/draft", methods=["POST"])
+def canvas_excalidraw_draft():
+    """Replace only latest.excalidraw; drafts never identify a turn."""
+    form = request.form
+    conversation_id = (form.get("conversation_id") or "main").strip() or "main"
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, 400)
+    scene_file = request.files.get("scene")
+    if scene_file is None:
+        return _json_response({"error": "missing scene"}, 400)
+    scene = scene_file.read(_VISUAL_NATIVE_MAX_BYTES + 1)
+    try:
+        # Validation requires a PNG for checkpoints; draft validation is the
+        # same native scene shape without inventing a preview identity.
+        parsed = json.loads(scene.decode("utf-8"))
+        if (not isinstance(parsed, dict) or parsed.get("type") != "excalidraw"
+                or not isinstance(parsed.get("elements"), list)
+                or not isinstance(parsed.get("appState"), dict)):
+            raise ValueError("invalid Excalidraw draft")
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        return _json_response({"error": str(exc)}, 400)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, 410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, form.get("tag", ""),
+            )
+            path = os.path.join(_canvas_dir(conversation_id), "latest.excalidraw")
+            rp.atomic_write_bytes(path, scene)
+        except Exception as exc:
+            return _json_response({"error": "draft write failed", "message": str(exc)}, 500)
+    return _json_response({"ok": True, "path": path})
+
+
+@app.route("/api/canvas/visual-state/<conversation_id>", methods=["POST"])
+def canvas_visual_state(conversation_id):
+    """Atomically publish the active editor after its durable files exist."""
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_live_conversation_id(conversation_id):
+        return _json_response({"error": "invalid conversation_id"}, 400)
+    payload = request.get_json(silent=True) or {}
+    state = payload.get("visual_state")
+    if not isinstance(state, dict) or state.get("active_editor") not in {
+        "excalidraw", "konva",
+    }:
+        return _json_response({"error": "invalid visual_state"}, 400)
+    for key in ("resume_excalidraw_checkpoint_id", "konva_baseline_checkpoint_id"):
+        value = state.get(key)
+        if value is not None and not _VISUAL_CHECKPOINT_ID_RE.fullmatch(str(value)):
+            return _json_response({"error": f"invalid {key}"}, 400)
+    with _conversation_lifecycle_lock(conversation_id):
+        if _is_conversation_deleted(conversation_id):
+            return _json_response({"status": "deleted"}, 410)
+        try:
+            _ensure_artifact_conversation_envelope(
+                conversation_id, payload.get("tag", ""),
+            )
+            from orchestrator.conversation_memory import set_visual_state
+            path = set_visual_state(conversation_id, state)
+            if path is None:
+                raise OSError("conversation envelope mutation failed")
+        except Exception as exc:
+            return _json_response({"error": "visual state write failed", "message": str(exc)}, 500)
+    return _json_response({"ok": True, "visual_state": state})
 
 
 def _decode_preview_data_url(data_url: str) -> bytes | None:
@@ -9561,14 +9927,11 @@ def canvas_save():
 
 @app.route("/api/canvas/load/<conversation_id>", methods=["GET"])
 def canvas_load(conversation_id):
-    """V3 Input Handling Phase 9 — return a canvas snapshot.
+    """Return an exact immutable visual checkpoint or a legacy Konva save.
 
-    Without ``?turn=`` returns ``latest.ora-canvas`` (most recent snapshot).
-    With ``?turn=<idx>`` returns the snapshot for the N-th turn (0-indexed)
-    by sorting all per-turn ``<ts>.ora-canvas`` files by timestamp and
-    picking index N. The N-th canvas file corresponds to the canvas state
-    at the moment the N-th user message was submitted, which is the
-    visual that accompanied that turn's assistant response.
+    ``?checkpoint=<id>`` is authoritative for new turns. ``?turn=<idx>`` is
+    retained only for conversations created before checkpoint ids existed.
+    ``?preview=1`` returns the checkpoint's canonical flattened PNG.
 
     Response shape::
 
@@ -9587,10 +9950,35 @@ def canvas_load(conversation_id):
     except ValueError as exc:
         return json.dumps({"error": str(exc)}), 409
 
+    checkpoint_arg = (request.args.get("checkpoint") or "").strip()
     turn_arg = request.args.get("turn")
+    draft_arg = (request.args.get("draft") or "").strip()
+    preview_only = request.args.get("preview") in {"1", "true", "yes"}
     target_path: str | None = None
+    editor = "konva"
 
-    if turn_arg is not None:
+    if checkpoint_arg:
+        if not _VISUAL_CHECKPOINT_ID_RE.fullmatch(checkpoint_arg):
+            return _json_response({"error": "invalid checkpoint id"}, 400)
+        if preview_only:
+            target_path = os.path.join(canvas_dir, checkpoint_arg + ".preview.png")
+            # Editor remains useful to recovery callers even for a preview.
+            if os.path.isfile(os.path.join(canvas_dir, checkpoint_arg + ".excalidraw")):
+                editor = "excalidraw"
+        else:
+            excalidraw_path = os.path.join(canvas_dir, checkpoint_arg + ".excalidraw")
+            konva_path = os.path.join(canvas_dir, checkpoint_arg + ".ora-canvas")
+            if os.path.isfile(excalidraw_path) and not os.path.islink(excalidraw_path):
+                target_path = excalidraw_path
+                editor = "excalidraw"
+            elif os.path.isfile(konva_path) and not os.path.islink(konva_path):
+                target_path = konva_path
+    elif draft_arg:
+        if draft_arg != "excalidraw" or preview_only:
+            return _json_response({"error": "invalid draft selector"}, 400)
+        target_path = os.path.join(canvas_dir, "latest.excalidraw")
+        editor = "excalidraw"
+    elif turn_arg is not None:
         try:
             turn_idx = int(turn_arg)
         except (TypeError, ValueError):
@@ -9603,7 +9991,7 @@ def canvas_load(conversation_id):
         # preview PNG sidecars.
         snaps = sorted(
             f for f in os.listdir(canvas_dir)
-            if f.endswith(".ora-canvas") and f != "latest.ora-canvas"
+            if re.fullmatch(r"[0-9]{8}-[0-9]{6}-[0-9]{6}\.ora-canvas", f)
         )
         if not snaps or turn_idx < 0 or turn_idx >= len(snaps):
             return json.dumps({"error": "no canvas for that turn", "available": len(snaps)}), 404, {"Content-Type": "application/json"}
@@ -9620,7 +10008,13 @@ def canvas_load(conversation_id):
             blob = f.read()
     except Exception as e:
         return json.dumps({"error": "read failed", "message": str(e)}), 500, {"Content-Type": "application/json"}
-    return Response(blob, mimetype="application/octet-stream")
+    response = Response(
+        blob,
+        mimetype="image/png" if preview_only else "application/octet-stream",
+    )
+    response.headers["X-Ora-Visual-Editor"] = editor
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # ── V3 Phase 2: conversation list + fetch + mark-read ────────────────────────
@@ -13178,29 +13572,42 @@ def conversations_retry(conversation_id):
     # typed, not the prior turn's prompt.
     interrupted = data.get("interrupted_input")
     if isinstance(interrupted, str) and interrupted.strip():
-        return json.dumps({
+        response = {
             "ok":               True,
             "conversation_id":  conversation_id,
             "last_user_prompt": interrupted,
             "tag":              data.get("tag", "") or "",
             "source":           "interrupted_input",
-        })
+        }
+        checkpoint_id = data.get("interrupted_visual_checkpoint_id")
+        if (isinstance(checkpoint_id, str)
+                and _VISUAL_CHECKPOINT_ID_RE.fullmatch(checkpoint_id)):
+            response["visual_checkpoint_id"] = checkpoint_id
+            response["visual_checkpoint_source_conversation_id"] = conversation_id
+        return json.dumps(response)
 
     messages = data.get("messages") or []
-    last_user = None
+    last_user_message = None
     for m in reversed(messages):
         if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str):
-            last_user = m["content"]
+            last_user_message = m
             break
+    last_user = last_user_message.get("content") if last_user_message else None
     if not last_user:
         return json.dumps({"error": "no user prompt to retry", "conversation_id": conversation_id}), 404
-    return json.dumps({
+    response = {
         "ok":               True,
         "conversation_id":  conversation_id,
         "last_user_prompt": last_user,
         "tag":              data.get("tag", "") or "",
         "source":           "messages",
-    })
+    }
+    checkpoint_id = last_user_message.get("visual_checkpoint_id")
+    if (isinstance(checkpoint_id, str)
+            and _VISUAL_CHECKPOINT_ID_RE.fullmatch(checkpoint_id)):
+        response["visual_checkpoint_id"] = checkpoint_id
+        response["visual_checkpoint_source_conversation_id"] = conversation_id
+    return json.dumps(response)
 
 
 # ── V3 Phase 1.5: conversation close-out dispatch ────────────────────────────
@@ -14115,10 +14522,12 @@ def _persist_turn_spatial_state_unlocked(
         spatial_rep = None
         annotations = None
         vision_extr = None
+        visual_checkpoint_id = None
         if isinstance(extra_context, dict):
             spatial_rep = extra_context.get("spatial_representation")
             annotations = extra_context.get("annotations")
             vision_extr = extra_context.get("vision_extraction_result")
+            visual_checkpoint_id = extra_context.get("visual_checkpoint_id")
         try:
             from orchestrator.active_project import (
                 get_active_project,
@@ -14138,6 +14547,7 @@ def _persist_turn_spatial_state_unlocked(
             tag=tag,
             project_ids=_project_ids,
             trace_ref=trace_ref,
+            visual_checkpoint_id=visual_checkpoint_id,
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
