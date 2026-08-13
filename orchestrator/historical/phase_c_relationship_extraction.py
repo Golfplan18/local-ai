@@ -34,6 +34,7 @@ import yaml
 
 from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
+from orchestrator.historical import cleanup_backends as _backends
 
 
 # ---------------------------------------------------------------------------
@@ -48,12 +49,30 @@ DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "phase-c-manifest.json")
 
 # Haiku 4.5 — fast classifier for the relationship typing task.
+# Overridable per run; the runner sets it from --backend/--model.
 RELATION_MODEL = "claude-haiku-4-5"
 
 # Retrieval params
-NEIGHBOR_K = 15
-SOURCE_MAX_CHARS = 2000        # snippet of source note body
-NEIGHBOR_MAX_CHARS = 600       # snippet per neighbor
+# These three were cost caps, and cost caps are how every defect in this project
+# got introduced: truncating the writer's input de-fanged 56% of the corpus,
+# capping title length replaced actors with pronouns, and extracting "specifics"
+# instead of passing text produced fabricated evidence lines. The publisher's
+# instruction on the model now used here is explicit — treat its tokens as free —
+# so nothing is truncated that the classifier could use.
+#
+# NEIGHBOR_MAX_CHARS at 600 truncated the body of 13,309 notes (17.6% of the
+# corpus). Mean body is 500 chars and only 265 notes exceed 1,200, so a 4,000
+# ceiling is effectively "no truncation" while still bounding a pathological note.
+#
+# NEIGHBOR_K governs how many candidates the classifier gets to judge. More
+# candidates cannot produce a wrong edge — the model returns an index and both the
+# index and the type are validated against closed sets — but fewer candidates
+# silently loses real relationships that embedding retrieval did surface.
+_CLIENT_BACKEND = "api"
+
+NEIGHBOR_K = 30
+SOURCE_MAX_CHARS = 8000        # source note body: effectively untruncated
+NEIGHBOR_MAX_CHARS = 4000      # per candidate: effectively untruncated
 
 # Valid relationship types per the 13-type taxonomy
 _VALID_REL_TYPES = frozenset({
@@ -399,7 +418,8 @@ def run_phase_c(
     max_workers: int = 16,
     save_every: int = 50,
 ) -> None:
-    client = AnthropicClient()
+    client = _backends.build_client(_CLIENT_BACKEND)
+    print(f"Phase C model: {RELATION_MODEL} via backend '{_CLIENT_BACKEND}'")
     collection = _open_collection(chromadb_path, dedup_collection)
     manifest = _load_manifest(manifest_path)
     completed = manifest["completed_notes"]
@@ -434,7 +454,17 @@ def run_phase_c(
                 entry["skipped"] = r.skipped
             if r.error:
                 entry["error"] = r.error
-            completed[p] = entry
+            # E2 fix. This previously ran unconditionally, so a note that errored
+            # or was skipped was recorded as completed and resume never retried it
+            # — the same defect as marking a failed call 'ok'. Only a genuine
+            # success is recorded; failures stay on the worklist. Errors are also
+            # kept in a separate list so a run's failures are inspectable rather
+            # than inferred.
+            if r.error:
+                manifest.setdefault("errors", {})[p] = r.error
+            else:
+                completed[p] = entry
+                manifest.get("errors", {}).pop(p, None)
 
             tot = manifest["totals"]
             tot["notes_processed"] += 1
@@ -476,7 +506,22 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--max-workers", type=int, default=16)
     p.add_argument("--limit", type=int, default=0, help="process only first N notes (sample mode)")
     p.add_argument("--paths-file", help="optional file with newline-delimited note paths")
+    p.add_argument("--backend", default="api", choices=_backends.BACKEND_CHOICES,
+                   help="model backend. 'minimax' is measured-suitable here: the "
+                        "classifier returns a candidate index rather than writing a "
+                        "target title, and both index and type are validated against "
+                        "closed sets, so a weak model can only under-link, never "
+                        "fabricate an edge.")
+    p.add_argument("--model", default=None,
+                   help="override the relationship model for this run")
     args = p.parse_args(argv)
+
+    global RELATION_MODEL, _CLIENT_BACKEND
+    if args.model:
+        RELATION_MODEL = args.model
+    elif args.backend == "minimax":
+        RELATION_MODEL = "MiniMax-M3"
+    _CLIENT_BACKEND = args.backend
 
     if args.paths_file:
         with open(args.paths_file) as fh:
