@@ -42,6 +42,18 @@ import tempfile
 
 ENV_VAR = "ORA_OVERSIGHT_SANDBOX"
 
+# The vector store needs the same quarantine for the same reason. A test run
+# that opens the live store holds a multi-gigabyte SQLite file open, contends
+# with any real indexing job, and — because collections there are bound to a
+# network embedding function — can issue real API calls from a unit test. A
+# full-suite run was observed deadlocked on a mutex inside ChromaDB's Rust
+# bindings while holding the live 7 GB store open with sockets to the embedding
+# provider in CLOSE_WAIT. runtime_paths resolves this env var at call time, so
+# arming it here covers every module that derives its path properly; modules
+# that hardcode os.path.expanduser("~/ora/chromadb") bypass it and are being
+# migrated to runtime_paths separately.
+CHROMADB_ENV_VAR = "ORA_CHROMADB_PATH"
+
 
 def arm() -> str:
     """Ensure ORA_OVERSIGHT_SANDBOX points at a directory under the system temp
@@ -70,4 +82,28 @@ def arm() -> str:
     return box
 
 
+def arm_chromadb() -> str:
+    """Point ORA_CHROMADB_PATH at a throwaway store unless already set.
+
+    Same contract as ``arm``: a pre-set ABSOLUTE path is honored (so a test can
+    aim at a fixture store), a relative one is replaced loudly, and a freshly
+    created directory is removed at exit. Tests that want their own store keep
+    passing an explicit path — this only decides where an *unqualified* open
+    lands, and the point is that it must never be the user's real vector store.
+    """
+    box = os.environ.get(CHROMADB_ENV_VAR)
+    if box and not os.path.isabs(box):
+        sys.stderr.write(
+            f"[live_guard] ignoring non-absolute {CHROMADB_ENV_VAR}={box!r}; a "
+            "relative vector-store path would write into the cwd — using a "
+            "fresh tempdir instead\n")
+        box = None
+    if not box:
+        box = tempfile.mkdtemp(prefix="ora-chromadb-sandbox-")
+        os.environ[CHROMADB_ENV_VAR] = box
+        atexit.register(shutil.rmtree, box, ignore_errors=True)
+    return box
+
+
 SANDBOX_DIR = arm()
+CHROMADB_SANDBOX_DIR = arm_chromadb()
