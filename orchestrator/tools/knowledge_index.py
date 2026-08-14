@@ -70,11 +70,22 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 from typing import Any, Callable, Iterable
 
 import yaml
 
 CHROMADB_PATH = os.path.expanduser("~/ora/chromadb/")
+
+# Chroma writes are serialized. The directory walk embeds concurrently
+# because that leg is network-bound (one API round trip per note, which
+# is why a sequential 75,834-note run measured 0.7 notes/sec — 27 hours
+# against the batched atomics rebuild's 63 minutes). The add() itself
+# stays single-threaded: a full-suite run was found deadlocked on a mutex
+# inside ChromaDB's Rust bindings, so concurrent writes into one
+# collection are not a risk worth taking for a rebuild that is already
+# dominated by network latency.
+_WRITE_LOCK = threading.Lock()
 
 
 def _resolved_chromadb_path(chromadb_path: str | os.PathLike[str] | None = None) -> str:
@@ -656,7 +667,8 @@ def _index_chunked(collection, filepath: str, doc_id: str,
     # the single-record path).
 
     try:
-        collection.add(**add_kwargs)
+        with _WRITE_LOCK:
+            collection.add(**add_kwargs)
     except Exception as e:
         print(f"  HCP chunked collection.add() failed for {filepath} "
               f"({type(e).__name__}: {e}) — falling back to single-record "
@@ -771,8 +783,9 @@ def index_file(
     if embedding is not None:
         add_kwargs["embeddings"] = [embedding]
 
-    collection.add(**add_kwargs)
-    stats["indexed"] += 1
+    with _WRITE_LOCK:
+        collection.add(**add_kwargs)
+        stats["indexed"] += 1
     if verbose:
         print(f"  + {chroma_meta['title']}")
 
@@ -866,8 +879,24 @@ def index_path(
                 if f.endswith(".md") and not f.startswith("."):
                     md_files.append(os.path.join(root, f))
         print(f"Indexing {len(md_files)} files from {path}")
-        for fp in sorted(md_files):
-            index_file(collection, fp, stats)
+        # Concurrency here is purely for the embedding round trip; Chroma
+        # writes remain serialized behind _WRITE_LOCK. Override with
+        # ORA_KNOWLEDGE_INDEX_WORKERS=1 to restore strictly sequential
+        # behaviour for debugging.
+        try:
+            workers = max(1, int(os.environ.get("ORA_KNOWLEDGE_INDEX_WORKERS", "8")))
+        except ValueError:
+            workers = 8
+        ordered = sorted(md_files)
+        if workers == 1:
+            for fp in ordered:
+                index_file(collection, fp, stats)
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                for _ in pool.map(lambda fp: index_file(collection, fp, stats),
+                                  ordered):
+                    pass
     else:
         print(f"Path not found: {path}")
         return
