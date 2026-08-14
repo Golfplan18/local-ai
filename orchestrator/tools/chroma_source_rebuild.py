@@ -3301,7 +3301,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     knowledge.add_argument(
         "--mental-models-root",
-        default=str(Path(rp.WORKSPACE) / "knowledge" / "mental-models"),
+        # lenses/ replaced knowledge/mental-models; the old default no longer
+        # exists, so the knowledge phase aborted on its source-plan check
+        # before doing anything.
+        default=str(Path(rp.WORKSPACE) / "lenses"),
     )
     knowledge.add_argument(
         "--msi-news-root", default=str(rp.vault_dir() / "MSI News")
