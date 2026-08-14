@@ -817,21 +817,41 @@ def index_path(
     """Index a file or directory into the knowledge collection."""
     import chromadb
     # Lazy import to avoid circular dependencies at module load.
-    from orchestrator.embedding import delete_collection, get_or_create_collection
+    from orchestrator.embedding import get_or_create_collection
 
     client = chromadb.PersistentClient(path=_resolved_chromadb_path(chromadb_path))
-
-    if reindex:
-        try:
-            delete_collection(client, "knowledge")
-            print("Cleared existing knowledge collection.")
-        except Exception:
-            pass
 
     # Bind the active configured embedding function to the collection so all
     # add/query operations use the selected provider, model, and dimension.
     # Never fall back silently to ChromaDB's default embedder.
     collection = get_or_create_collection(client, "knowledge")
+
+    if reindex:
+        # Scoped to the path being indexed. This previously called
+        # delete_collection(client, "knowledge"), which dropped the ENTIRE
+        # collection and then re-indexed only the given path — so
+        # `--reindex <Engrams>` silently destroyed the MSI News and Resources
+        # records (27,827 of them) that nothing was going to put back. Worse,
+        # main() passes reindex through to every path argument, so a
+        # multi-path invocation wiped the collection before EACH path and only
+        # the last one survived. Re-indexing a directory means replacing that
+        # directory's records, nothing else.
+        target = os.path.abspath(os.path.expanduser(path)).rstrip(os.sep)
+        stale: list[str] = []
+        total = collection.count()
+        offset = 0
+        while offset < total:
+            got = collection.get(limit=2000, offset=offset, include=["metadatas"])
+            for rid, meta in zip(got["ids"], got["metadatas"] or []):
+                # Chunked files use "<abspath>#chunk-N" ids; the id is a
+                # reliable fallback when metadata carries no path.
+                stored = str((meta or {}).get("path") or rid).split("#chunk-")[0]
+                if stored == target or stored.startswith(target + os.sep):
+                    stale.append(rid)
+            offset += 2000
+        for start in range(0, len(stale), 5000):
+            collection.delete(ids=stale[start:start + 5000])
+        print(f"Cleared {len(stale):,} existing records under {target}")
 
     stats = {"indexed": 0, "skipped": 0, "errors": 0}
     path = os.path.expanduser(path)

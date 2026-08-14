@@ -705,3 +705,76 @@ class TestEndToEndIndexing(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _ScopedReindexCollection:
+    """Minimal Chroma stand-in recording what a reindex deletes."""
+
+    def __init__(self, records):
+        self._records = dict(records)   # id -> metadata
+        self.deleted: list[str] = []
+
+    def count(self):
+        return len(self._records)
+
+    def get(self, limit=None, offset=0, include=None):
+        items = list(self._records.items())[offset:offset + (limit or len(self._records))]
+        return {"ids": [i for i, _ in items], "metadatas": [m for _, m in items]}
+
+    def delete(self, ids=None, **_):
+        for i in ids or []:
+            self._records.pop(i, None)
+            self.deleted.append(i)
+
+    def add(self, **_):
+        pass
+
+
+class TestReindexIsScopedToThePath(unittest.TestCase):
+    """--reindex must replace only the given path's records.
+
+    It previously called delete_collection(client, "knowledge"), dropping the
+    ENTIRE collection and then re-indexing only the path given — so
+    `--reindex <Engrams>` destroyed the MSI News and Resources records that
+    nothing was going to put back. main() also passes reindex through to every
+    path argument, so a multi-path run wiped the collection before each one and
+    only the last survived.
+    """
+
+    def test_only_records_under_the_indexed_path_are_deleted(self):
+        from unittest.mock import patch
+        from orchestrator.tools import knowledge_index
+
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as temp:
+            target = os.path.join(temp, "Engrams")
+            os.makedirs(target)
+            keep_dir = os.path.join(temp, "MSI News")
+            os.makedirs(keep_dir)
+
+            fake = _ScopedReindexCollection({
+                os.path.join(target, "a.md"): {"path": os.path.join(target, "a.md")},
+                os.path.join(target, "b.md") + "#chunk-2": {
+                    "path": os.path.join(target, "b.md")},
+                os.path.join(keep_dir, "keep.md"): {
+                    "path": os.path.join(keep_dir, "keep.md")},
+                os.path.join(temp, "lenses", "lens.md"): {
+                    "path": os.path.join(temp, "lenses", "lens.md")},
+            })
+
+            with patch.object(knowledge_index, "chromadb", create=True), \
+                    patch("chromadb.PersistentClient"), \
+                    patch("orchestrator.embedding.get_or_create_collection",
+                          return_value=fake):
+                knowledge_index.index_path(target, reindex=True)
+
+            self.assertEqual(
+                sorted(fake.deleted),
+                sorted([os.path.join(target, "a.md"),
+                        os.path.join(target, "b.md") + "#chunk-2"]),
+                "reindex must delete the indexed path's records, including chunked ids",
+            )
+            self.assertIn(os.path.join(keep_dir, "keep.md"), fake._records,
+                          "records outside the indexed path must survive")
+            self.assertIn(os.path.join(temp, "lenses", "lens.md"), fake._records,
+                          "the lens library must survive an Engrams reindex")
