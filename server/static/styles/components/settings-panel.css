@@ -1228,9 +1228,9 @@ a.ora-settings-apikey-label:hover {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  /* Cap to one compact row; scroll inside this strip when saved
+  /* Cap to one complete card row; scroll inside this strip when saved
      configurations grow beyond four. */
-  max-height: 125px;
+  max-height: 225px;
   overflow-y: auto;
 }
 

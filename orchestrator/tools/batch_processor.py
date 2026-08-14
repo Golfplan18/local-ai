@@ -342,9 +342,9 @@ class BatchProcessor:
                     messages = _parse_raw_session_log(markdown)
                     if messages:
                         conversation_id = os.path.basename(file_status.path)
+                        from orchestrator import runtime_paths as _rp
                         chromadb_path = self.config.get(
-                            "chromadb_path",
-                            os.path.expanduser("~/ora/chromadb/"),
+                            "chromadb_path", str(_rp.chromadb_dir()),
                         )
                         conversations_dir = os.path.expanduser(
                             "~/Documents/conversations/",

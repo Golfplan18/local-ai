@@ -38,6 +38,29 @@ def _make_step1(mode: str = "root-cause-analysis") -> dict:
 class RagIsolationWebOnlyFlag(unittest.TestCase):
     """Verify rag_isolation: web_only skips all three RAG channels."""
 
+    def setUp(self):
+        """Block live web consultation for every test in this class.
+
+        `rag_isolation: web_only` routes step 2 into
+        web_consultation.assemble_consultation_package, which fans out to real
+        model calls with no timeout. These tests exercise flag RESOLUTION, not
+        consultation, so an unmocked call here is purely an accident of the
+        code path — and it deadlocked the whole suite: the module hung
+        indefinitely on a future waiting for a live model response.
+
+        Patch the name boot actually calls. This module puts `orchestrator/`
+        on sys.path, so boot does `from web_consultation import ...` — binding
+        a TOP-LEVEL `web_consultation` module, not `orchestrator.web_
+        consultation`. Patching the dotted path silently misses: it decorates a
+        different module object while boot keeps calling the real function.
+        """
+        patcher = patch.object(
+            boot, "assemble_consultation_package", create=True,
+            return_value=None,
+        )
+        self.mock_consultation = patcher.start()
+        self.addCleanup(patcher.stop)
+
     @patch.object(boot, "knowledge_search", create=True)
     @patch.object(boot, "assemble_ranked_context", create=True)
     def test_web_only_flag_skips_rag_engine_calls(self, mock_rag, mock_legacy):
