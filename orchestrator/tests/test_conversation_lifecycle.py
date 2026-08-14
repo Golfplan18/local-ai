@@ -2771,6 +2771,22 @@ class TestServerLifecycleWiring(unittest.TestCase):
                 "closed-before-artifact", "private",
             )
 
+    def test_durable_envelope_reconciles_closed_cache(self):
+        identity = self.server._conversation_storage_identity("cache-state")
+        self.server._closed_conversations.add(identity)
+        with mock.patch.object(
+            memory,
+            "load_conversation_json",
+            return_value={"conversation_id": "cache-state", "messages": []},
+        ):
+            self.assertFalse(self.server._is_conversation_closed("cache-state"))
+        self.assertNotIn(identity, self.server._closed_conversations)
+
+        self.server._closed_conversations.add(identity)
+        with mock.patch.object(memory, "load_conversation_json", return_value=None):
+            self.assertTrue(self.server._is_conversation_closed("cache-state"))
+        self.assertIn(identity, self.server._closed_conversations)
+
     def test_privacy_route_uses_save_configured_chromadb_path(self):
         custom = os.path.abspath("/tmp/ora-custom-chroma")
         with (

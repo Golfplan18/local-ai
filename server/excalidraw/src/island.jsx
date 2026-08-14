@@ -4,6 +4,7 @@ import {
   Excalidraw,
   convertToExcalidrawElements,
   exportToBlob,
+  exportToSvg,
   loadFromBlob,
   serializeAsJSON,
 } from "@excalidraw/excalidraw";
@@ -43,7 +44,7 @@ function cleanAppState(appState) {
   };
 }
 
-async function canonicalPng(snapshot) {
+async function exportRaster(snapshot, mimeType, quality) {
   if (!snapshot.elements.some((element) => !element.isDeleted)) {
     const canvas = document.createElement("canvas");
     canvas.width = PADDING * 2;
@@ -53,14 +54,16 @@ async function canonicalPng(snapshot) {
     context.fillRect(0, 0, canvas.width, canvas.height);
     return new Promise((resolve, reject) => canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error("Could not export empty visual")),
-      "image/png",
+      mimeType,
+      quality,
     ));
   }
   return exportToBlob({
     elements: snapshot.elements,
     appState: cleanAppState(snapshot.appState),
     files: snapshot.files,
-    mimeType: "image/png",
+    mimeType,
+    quality,
     exportPadding: PADDING,
     getDimensions(width, height) {
       const scale = Math.min(1, MAX_SIDE / Math.max(width, height, 1));
@@ -71,6 +74,24 @@ async function canonicalPng(snapshot) {
       };
     },
   });
+}
+
+function canonicalPng(snapshot) {
+  return exportRaster(snapshot, "image/png");
+}
+
+function exportJpeg(snapshot) {
+  return exportRaster(snapshot, "image/jpeg", 0.92);
+}
+
+async function exportSvgBlob(snapshot) {
+  const svg = await exportToSvg({
+    elements: snapshot.elements,
+    appState: cleanAppState(snapshot.appState),
+    files: snapshot.files,
+    exportPadding: PADDING,
+  });
+  return new Blob([svg.outerHTML], { type: "image/svg+xml" });
 }
 
 function serialize(snapshot) {
@@ -173,7 +194,16 @@ function mount(host, options = {}) {
         options.onReady?.(api);
       },
       onChange,
-      UIOptions: { canvasActions: { export: false, loadScene: false, saveToActiveFile: false } },
+      UIOptions: {
+        canvasActions: {
+          changeViewBackgroundColor: false,
+          export: false,
+          loadScene: false,
+          saveAsImage: false,
+          saveToActiveFile: false,
+        },
+        tools: { image: false },
+      },
     });
   }
 
@@ -193,6 +223,8 @@ window.OraExcalidrawIsland = {
   serialize,
   load,
   canonicalPng,
+  exportJpeg,
+  exportSvg: exportSvgBlob,
   imageBackedScene,
   insertPng,
   constants: { background: WHITE, maxSide: MAX_SIDE, padding: PADDING },

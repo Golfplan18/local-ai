@@ -112,16 +112,16 @@ body.ora-auto-hide-controls .visual-toolbar-host:not(:focus-within) {
   pointer-events: none;
 }
 
-body.ora-auto-hide-controls .visual-pane-footer:not(:focus-within):not(.has-status) {
+body.ora-auto-hide-controls .visual-pane-footer:not(:focus-within):not(.has-status) > * {
   opacity: 0;
   pointer-events: none;
 }
 
 body.ora-auto-hide-controls .visual-pane-header:hover .visual-toolbar-host,
 body.ora-auto-hide-controls .visual-toolbar-host:focus-within,
-body.ora-auto-hide-controls .visual-pane-shell:hover .visual-pane-footer,
-body.ora-auto-hide-controls .visual-pane-footer:focus-within,
-body.ora-auto-hide-controls .visual-pane-footer.has-status {
+body.ora-auto-hide-controls .visual-pane-shell:hover .visual-pane-footer > *,
+body.ora-auto-hide-controls .visual-pane-footer:focus-within > *,
+body.ora-auto-hide-controls .visual-pane-footer.has-status > * {
   opacity: 1;
   pointer-events: auto;
 }

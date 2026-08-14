@@ -7295,19 +7295,22 @@ def _is_conversation_deleted(conversation_id: str) -> bool:
 def _is_conversation_closed(conversation_id: str) -> bool:
     identity = _conversation_storage_identity(conversation_id)
     with _conversation_lifecycle_guard:
-        if identity in _closed_conversations:
-            return True
+        cached = identity in _closed_conversations
     try:
         from orchestrator.conversation_memory import load_conversation_json
         envelope = load_conversation_json(conversation_id)
-        closed = bool(isinstance(envelope, dict) and envelope.get("closed"))
     except Exception as exc:
-        print(f"[conversation-lifecycle] closed-state read failed open for "
+        print(f"[conversation-lifecycle] closed-state read failed; using cache for "
               f"{conversation_id}: {exc}", file=sys.stderr, flush=True)
-        return False
-    if closed:
-        with _conversation_lifecycle_guard:
+        return cached
+    if not isinstance(envelope, dict):
+        return cached
+    closed = bool(envelope.get("closed"))
+    with _conversation_lifecycle_guard:
+        if closed:
             _closed_conversations.add(identity)
+        else:
+            _closed_conversations.discard(identity)
     return closed
 
 

@@ -15,7 +15,9 @@
     if (!pane || pane.querySelector('.export-toolbar')) return;
 
     const bar = document.createElement('div');
-    bar.className = 'export-toolbar';
+    bar.className = 'pane-footer findings-pane-footer export-toolbar';
+    bar.setAttribute('role', 'toolbar');
+    bar.setAttribute('aria-label', 'Findings output actions');
     bar.innerHTML = `
       <div class="export-toolbar__status" id="exportToolbarStatus" aria-live="polite"></div>
       <button type="button" class="export-toolbar__btn" id="traceWalkBtn" title="No trace for this turn" disabled>Trace</button>

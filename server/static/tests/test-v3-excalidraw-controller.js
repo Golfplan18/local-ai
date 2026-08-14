@@ -13,8 +13,25 @@ const source = fs.readFileSync(
   path.resolve(__dirname, '..', 'js', 'v3-canvas-mount.js'), 'utf8'
 );
 const dom = new JSDOM(
-  '<!doctype html><html><body><div class="right-pane"></div><div id="logo-o"></div>'
-    + '<button id="visualExportPng" disabled>Export</button></body></html>',
+  '<!doctype html><html><body><section class="visual-pane-shell">'
+    + '<div class="right-pane"></div><div id="visualPaneFooter">'
+    + '<span id="visualPaneFooterStatus"></span>'
+    + '<div id="visualZoomFallback" role="group" aria-label="Canvas zoom controls">'
+    + '<button data-visual-zoom="out" aria-label="Zoom out"></button>'
+    + '<button data-visual-zoom="reset" aria-label="Reset zoom to 100%">'
+    + '<span id="visualZoomValue">100%</span></button>'
+    + '<button data-visual-zoom="in" aria-label="Zoom in"></button></div>'
+    + '<div id="visualExportMenu"><button id="visualExportButton" disabled '
+    + 'aria-haspopup="menu" aria-expanded="false"></button>'
+    + '<div id="visualExportMenuPopup" role="menu" hidden>'
+    + '<button role="menuitem" data-export-format="png">PNG</button>'
+    + '<button role="menuitem" data-export-format="jpeg">JPEG</button>'
+    + '<button role="menuitem" data-export-format="svg">SVG</button>'
+    + '<button role="menuitem" data-export-format="pdf">PDF</button>'
+    + '</div></div></div></section>'
+    + '<button id="visualEditorSwitch" type="button"></button>'
+    + '<div id="logo-o"></div>'
+    + '</body></html>',
   { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true }
 );
 const w = dom.window;
@@ -28,7 +45,7 @@ const drafts = new Map();
 let islandOptions = null;
 let islandHost = null;
 let checkpointCounter = 0;
-let failVisualState = false;
+let checkpointFailure = null;
 let imageBackedCalls = 0;
 let assistantImageCalls = 0;
 let capabilityImageCalls = 0;
@@ -42,6 +59,9 @@ let liveObjects = [{ id: 'flattened', x: 0, y: 0, width: 100, height: 100 }];
 let currentKonva = null;
 const assistantEvents = [];
 const compiledEnvelopeIds = [];
+const exportRoutes = [];
+const downloadedFilenames = [];
+let shareGateCalls = 0;
 
 const layer = {
   on() {},
@@ -97,7 +117,7 @@ const api = {
   },
   updateScene(scene) {
     if (scene.elements) this.elements = scene.elements;
-    if (scene.appState) this.appState = scene.appState;
+    if (scene.appState) this.appState = { ...this.appState, ...scene.appState };
     // Exercise the real hazard: Excalidraw reports programmatic updates.
     islandOptions.onChange(this.elements, this.appState, this.files);
   },
@@ -157,6 +177,14 @@ w.OraExcalidrawIsland = {
     return blob;
   },
   canonicalPng() { return Promise.resolve(new w.Blob(['png'], { type: 'image/png' })); },
+  exportJpeg() {
+    exportRoutes.push('excalidraw:jpeg');
+    return Promise.resolve(new w.Blob(['jpeg'], { type: 'image/jpeg' }));
+  },
+  exportSvg() {
+    exportRoutes.push('excalidraw:svg');
+    return Promise.resolve(new w.Blob(['svg'], { type: 'image/svg+xml' }));
+  },
   imageBackedScene(_png, locked, customData) {
     let id = 'image-backed-B';
     if (customData && customData.oraAssistantVisual) {
@@ -177,6 +205,50 @@ w.OraExcalidrawIsland = {
       }],
       appState: {}, files: { [id]: { id } },
     });
+  },
+};
+w.OraExportRaster = {
+  _runShareGate() {
+    shareGateCalls += 1;
+    return Promise.resolve({ confirmed: true });
+  },
+  _triggerDownload(_dataUrl, filename) {
+    downloadedFilenames.push(filename);
+    if (/\.png$/.test(filename)) exportRoutes.push('excalidraw:png');
+  },
+  exportPNG(_panel, options) {
+    shareGateCalls += 1;
+    exportRoutes.push('konva:png');
+    downloadedFilenames.push(options.filename);
+    return Promise.resolve({ ok: true });
+  },
+  exportJPG(_panel, options) {
+    shareGateCalls += 1;
+    exportRoutes.push('konva:jpeg');
+    downloadedFilenames.push(options.filename);
+    return Promise.resolve({ ok: true });
+  },
+};
+w.OraExportSVG = {
+  exportNow(_panel, options) {
+    shareGateCalls += 1;
+    exportRoutes.push('konva:svg');
+    downloadedFilenames.push(options.filename);
+    return Promise.resolve({ ok: true });
+  },
+};
+w.OraExportPdf = {
+  buildPdf() {
+    return { doc: { save(filename) {
+      exportRoutes.push('excalidraw:pdf');
+      downloadedFilenames.push(filename);
+    } } };
+  },
+  apply(_panel, options) {
+    shareGateCalls += 1;
+    exportRoutes.push('konva:pdf');
+    downloadedFilenames.push(options.filename);
+    return Promise.resolve({ ok: true });
   },
 };
 w.OraVisualCompiler = {
@@ -255,6 +327,13 @@ w.fetch = function (url, options = {}) {
     });
   }
   if (String(url) === '/api/canvas/checkpoint') {
+    if (checkpointFailure) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json() { return Promise.resolve(checkpointFailure); },
+      });
+    }
     const id = 'checkpoint-' + (++checkpointCounter);
     const native = options.body.get('native');
     if (options.body.get('editor') === 'excalidraw') {
@@ -268,7 +347,6 @@ w.fetch = function (url, options = {}) {
     return Promise.resolve({ ok: true, json() { return Promise.resolve({ checkpoint_id: id }); } });
   }
   if (String(url).includes('/api/canvas/visual-state/')) {
-    if (failVisualState) return Promise.resolve({ ok: false, status: 500 });
     visualStates.push(JSON.parse(options.body).visual_state);
     return Promise.resolve({ ok: true, json() { return Promise.resolve({ ok: true }); } });
   }
@@ -302,9 +380,17 @@ context.fetch = w.fetch;
 context.VisualPanel = VisualPanel;
 context.Konva = w.Konva;
 vm.runInContext(source, context, { filename: 'v3-canvas-mount.js' });
-w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const exportThroughMenu = async (format) => {
+  const button = w.document.getElementById('visualExportButton');
+  const popup = w.document.getElementById('visualExportMenuPopup');
+  button.click();
+  if (popup.hidden) throw new Error('Export menu did not open');
+  popup.querySelector(`[data-export-format="${format}"]`).click();
+  for (let index = 0; index < 12 && button.disabled; index += 1) await tick();
+  if (button.disabled) throw new Error(`${format} export did not finish`);
+};
 
 (async () => {
   await tick();
@@ -321,6 +407,31 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
         x: excalHost.style.getPropertyValue('--ora-excal-grid-x'),
         y: excalHost.style.getPropertyValue('--ora-excal-grid-y'),
       }));
+  }
+  const zoomGroup = w.document.getElementById('visualZoomFallback');
+  if (!zoomGroup || zoomGroup.getAttribute('role') !== 'group'
+      || zoomGroup.querySelectorAll('[data-visual-zoom]').length !== 3
+      || w.document.querySelector('.visual-pane-shell').dataset.activeEditor !== 'excalidraw') {
+    throw new Error('narrow Excalidraw zoom controls are not present and reachable');
+  }
+  api.appState = {
+    zoom: { value: 1 }, scrollX: 0, scrollY: 0, offsetLeft: 0, offsetTop: 0,
+  };
+  const wheelCanvas = originalCreateElement('canvas');
+  wheelCanvas.className = 'excalidraw__canvas';
+  islandHost.appendChild(wheelCanvas);
+  const wheel = new w.WheelEvent('wheel', {
+    bubbles: true, cancelable: true, deltaY: -100, clientX: 40, clientY: 30,
+  });
+  wheelCanvas.dispatchEvent(wheel);
+  const wheelState = api.getAppState();
+  const wheelZoom = wheelState.zoom.value;
+  const anchoredX = 40 / wheelZoom - wheelState.scrollX;
+  const anchoredY = 30 / wheelZoom - wheelState.scrollY;
+  if (!wheel.defaultPrevented || wheelZoom <= 1
+      || Math.abs(anchoredX - 40) > 0.0001
+      || Math.abs(anchoredY - 30) > 0.0001) {
+    throw new Error('ordinary wheel did not zoom around the pointer without native panning');
   }
   // A user edit made while the old Dialogue is visible may become dirty after
   // load() starts but before its target envelope resolves. Binding dirtiness
@@ -347,8 +458,33 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   }
   if (sceneLoads[0] !== 'current-B'
       || canvasStateEvents !== stateEventsBeforeLoad + 1
-      || w.document.getElementById('visualExportPng').disabled) {
+      || w.document.getElementById('visualExportButton').disabled) {
     throw new Error('current-dialogue load did not refresh the non-empty canvas/export state once');
+  }
+
+  const exportButton = w.document.getElementById('visualExportButton');
+  const exportPopup = w.document.getElementById('visualExportMenuPopup');
+  exportButton.dispatchEvent(new w.KeyboardEvent('keydown', {
+    key: 'ArrowDown', bubbles: true, cancelable: true,
+  }));
+  if (exportPopup.hidden || w.document.activeElement.dataset.exportFormat !== 'png') {
+    throw new Error('Export menu keyboard opening did not focus its first format');
+  }
+  exportPopup.dispatchEvent(new w.KeyboardEvent('keydown', {
+    key: 'Escape', bubbles: true, cancelable: true,
+  }));
+  if (!exportPopup.hidden || w.document.activeElement !== exportButton) {
+    throw new Error('Export menu Escape handling did not close and restore focus');
+  }
+  exportButton.click();
+  w.document.body.dispatchEvent(new w.Event('pointerdown', { bubbles: true }));
+  if (!exportPopup.hidden) throw new Error('Export menu did not close outside');
+  for (const format of ['png', 'jpeg', 'svg', 'pdf']) await exportThroughMenu(format);
+  if (exportRoutes.join(',') !== 'excalidraw:png,excalidraw:jpeg,excalidraw:svg,excalidraw:pdf'
+      || shareGateCalls !== 4
+      || downloadedFilenames.map((name) => path.extname(name)).join(',') !== '.png,.jpg,.svg,.pdf') {
+    throw new Error('Excalidraw Export menu did not route four formats through one share gate each: '
+      + JSON.stringify({ exportRoutes, shareGateCalls, downloadedFilenames }));
   }
 
   w.OraCanvas.setConversationContext('privacy-parent', '');
@@ -392,7 +528,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
       || compiledEnvelopeIds.join(',') !== 'assistant-one'
       || assistantEvents.filter((event) => event === 'png-inserted:true').length !== 1
       || canvasStateEvents !== stateEventsBeforeAssistant + 1
-      || w.document.getElementById('visualExportPng').disabled
+      || w.document.getElementById('visualExportButton').disabled
       || draftCountAfterAssistant !== draftCountBeforeAssistant) {
     throw new Error('historical assistant blocks did not load checkpoint, preserve unsupported annotation, and avoid drafting: '
       + JSON.stringify({ assistantEvents, compiledEnvelopeIds,
@@ -563,7 +699,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   if (api.elements.length !== 0
       || compiledEnvelopeIds.length !== compiledBeforeClear
       || canvasStateEvents !== stateEventsBeforeClear + 1
-      || !w.document.getElementById('visualExportPng').disabled) {
+      || !w.document.getElementById('visualExportButton').disabled) {
     throw new Error('clear did not empty the scene and refresh canvas/export state once');
   }
 
@@ -597,6 +733,12 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
       || !checkpoints.has(xToK.konva_baseline_checkpoint_id)
       || !currentKonva) {
     throw new Error('X→K did not publish provenance only after both checkpoints');
+  }
+  for (const format of ['png', 'jpeg', 'svg', 'pdf']) await exportThroughMenu(format);
+  if (exportRoutes.slice(4).join(',') !== 'konva:png,konva:jpeg,konva:svg,konva:pdf'
+      || shareGateCalls !== 8) {
+    throw new Error('Konva Export menu did not route four formats through one share gate each: '
+      + JSON.stringify({ exportRoutes, shareGateCalls }));
   }
   const statesBeforeWarning = visualStates.length;
   let confirmAnswer = false;
@@ -672,14 +814,37 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     throw new Error('changed K→X did not create the image-backed checkpoint B');
   }
 
-  failVisualState = true;
-  let failed = false;
-  try { await w.OraCanvas.switchEditor(); } catch (_) { failed = true; }
-  if (!failed || w.OraCanvas.getActiveEditor() !== 'excalidraw') {
-    throw new Error('failed X→K publication did not keep the last durable editor');
+  checkpointFailure = {
+    error: 'checkpoint write failed',
+    message: 'conversation is closed',
+  };
+  const failedSwitchButton = w.document.getElementById('visualEditorSwitch');
+  failedSwitchButton.click();
+  for (let index = 0; index < 12; index += 1) await tick();
+  const failedSwitchStatus = w.document.getElementById('visualPaneFooterStatus');
+  if (w.OraCanvas.getActiveEditor() !== 'excalidraw'
+      || failedSwitchButton.disabled
+      || !failedSwitchStatus.classList.contains('is-error')
+      || !failedSwitchStatus.textContent.includes(
+        'Checkpoint write failed for target-dialogue (500): '
+        + 'checkpoint write failed: conversation is closed'
+      )) {
+    throw new Error('production-shaped checkpoint failure was not visibly parsed while keeping the durable editor');
+  }
+  checkpointFailure = null;
+  failedSwitchButton.click();
+  for (let index = 0; index < 12 && w.OraCanvas.getActiveEditor() !== 'konva'; index += 1) {
+    await tick();
+  }
+  failedSwitchButton.click();
+  for (let index = 0; index < 12 && w.OraCanvas.getActiveEditor() !== 'excalidraw'; index += 1) {
+    await tick();
+  }
+  if (w.OraCanvas.getActiveEditor() !== 'excalidraw') {
+    throw new Error('checkpoint recovery did not switch Excalidraw → Konva → Excalidraw');
   }
 
-  console.log('ok - Excalidraw load/dispatch, exact identity, and durable switches');
+  console.log('ok - Excalidraw wheel/export, exact identity, and durable switches');
   dom.window.close();
 })().catch((error) => {
   console.error(error.stack || error);

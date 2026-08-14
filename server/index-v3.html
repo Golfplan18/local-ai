@@ -1114,17 +1114,18 @@
     <div class="chat-zone" id="chatZone">
       <div class="pane chat-input-pane">
         <div class="pane-header aside-pane-header">
-          <span class="pane-header__title">Aside</span>
-          <span class="pane-header__notice" id="bridgeQAMessage">Informational only</span>
+          <span class="pane-header__notice" id="bridgeQAMessage">Aside: Quick answers · system help · not saved</span>
         </div>
         <textarea spellcheck="false"
-                  aria-label="Aside (informational, not saved or sent to Runs)"
+                  aria-label="Aside: quick answers, system help, not saved"
                   data-authoritative="false" data-persisted="false"></textarea>
         <button type="button" class="chat-zone-minimize-btn" id="chatZoneMinimizeBtn"
-                aria-label="Minimize Aside" title="Minimize Aside">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor"
-               stroke-width="1.5" stroke-linecap="round">
-            <line x1="3" y1="10" x2="11" y2="10"/>
+                aria-label="Minimize Aside" title="Minimize Aside"
+                aria-controls="chatZone" aria-expanded="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <polyline points="6 15 12 9 18 15"/>
           </svg>
         </button>
       </div>
@@ -1180,7 +1181,6 @@
     </div>
     <section class="visual-pane-shell" aria-label="Exhibits">
       <div class="pane-header visual-pane-header">
-        <span class="pane-header__title">Exhibits</span>
         <div class="visual-toolbar-host" id="visualToolbarHost"
              aria-label="Visual editor tools"></div>
       </div>
@@ -1189,15 +1189,35 @@
            aria-label="Visual output actions">
         <span class="visual-pane-footer__status" id="visualPaneFooterStatus"
               role="status" aria-live="polite"></span>
-        <button class="export-toolbar__btn" type="button" id="visualExportPng"
-                title="Export the current Exhibits canvas as a PNG" disabled>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round"
-               stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
-          </svg>
-          Export PNG
-        </button>
+        <div class="visual-zoom-fallback" id="visualZoomFallback"
+             role="group" aria-label="Canvas zoom controls">
+          <button type="button" data-visual-zoom="out" aria-label="Zoom out">−</button>
+          <button type="button" class="visual-zoom-fallback__reset"
+                  data-visual-zoom="reset" aria-label="Reset zoom to 100%">
+            <span id="visualZoomValue">100%</span>
+          </button>
+          <button type="button" data-visual-zoom="in" aria-label="Zoom in">+</button>
+        </div>
+        <div class="visual-export-menu" id="visualExportMenu">
+          <button class="export-toolbar__btn" type="button" id="visualExportButton"
+                  aria-haspopup="menu" aria-expanded="false"
+                  aria-controls="visualExportMenuPopup"
+                  aria-label="Export the current Exhibits canvas" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+            </svg>
+            <span>Export</span>
+          </button>
+          <div class="visual-export-menu__popup" id="visualExportMenuPopup"
+               role="menu" aria-label="Export format" hidden>
+            <button type="button" role="menuitem" data-export-format="png">PNG</button>
+            <button type="button" role="menuitem" data-export-format="jpeg">JPEG</button>
+            <button type="button" role="menuitem" data-export-format="svg">SVG</button>
+            <button type="button" role="menuitem" data-export-format="pdf">PDF</button>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -1459,11 +1479,7 @@
 
   // The notice belongs to Aside's own header, not the inter-pane bridge.
   const updateQAMessage = () => {
-    if (document.activeElement === rightInputArea) {
-      qaMessage.textContent = 'Questions and Answers are not saved';
-    } else {
-      qaMessage.textContent = 'Informational only';
-    }
+    qaMessage.textContent = 'Aside: Quick answers · system help · not saved';
   };
 
   document.addEventListener('ora:bridge-orientation-changed', (event) => {

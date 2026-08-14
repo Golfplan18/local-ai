@@ -84,6 +84,26 @@
     return true;
   };
 
+  const responseError = async (response, fallback) => {
+    let detail = '';
+    let payload = null;
+    try {
+      const body = String(await response.text()).trim();
+      try { payload = JSON.parse(body); } catch (_) { detail = body; }
+    } catch (_) {
+      try { payload = await response.json(); } catch (_) { payload = null; }
+    }
+    if (payload && typeof payload === 'object') {
+      detail = [payload.error, payload.message]
+        .filter((value, index, values) => (
+          typeof value === 'string' && value && values.indexOf(value) === index
+        ))
+        .join(': ');
+    }
+    const status = response && response.status ? ` (${response.status})` : '';
+    return new Error(`${fallback}${status}${detail ? `: ${detail}` : ''}`);
+  };
+
   const rasterizeSvg = async (svg) => {
     const source = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(source);
@@ -209,7 +229,13 @@
     const visualShell = right.closest('.visual-pane-shell');
     const importButton = document.getElementById('visualImportImage');
     const importInput = document.getElementById('visualImportImageFile');
-    const exportButton = document.getElementById('visualExportPng');
+    const exportButton = document.getElementById('visualExportButton');
+    const exportMenu = document.getElementById('visualExportMenu');
+    const exportMenuPopup = document.getElementById('visualExportMenuPopup');
+    const exportMenuItems = exportMenuPopup
+      ? Array.from(exportMenuPopup.querySelectorAll('[data-export-format]')) : [];
+    const zoomControls = Array.from(document.querySelectorAll('[data-visual-zoom]'));
+    const zoomValue = document.getElementById('visualZoomValue');
     const footer = document.getElementById('visualPaneFooter');
     const footerStatus = document.getElementById('visualPaneFooterStatus');
 
@@ -281,7 +307,75 @@
       host.style.setProperty(
         '--ora-excal-grid-y', `${size / 2 + scrollY * zoom}px`
       );
+      if (zoomValue) zoomValue.textContent = `${Math.round(zoom * 100)}%`;
     };
+
+    const normalizedZoom = (value) => Math.min(
+      30, Math.max(0.1, Math.round(value * 1000000) / 1000000)
+    );
+
+    const updateExcalidrawZoom = (nextValue, viewportX, viewportY) => {
+      if (!excalidrawApi) return;
+      const appState = excalidrawApi.getAppState();
+      const rawZoom = typeof appState.zoom === 'number'
+        ? appState.zoom : appState.zoom && appState.zoom.value;
+      const currentZoom = Number(rawZoom) || 1;
+      const nextZoom = normalizedZoom(nextValue);
+      if (nextZoom === currentZoom) return;
+      const appLayerX = viewportX - (Number(appState.offsetLeft) || 0);
+      const appLayerY = viewportY - (Number(appState.offsetTop) || 0);
+      excalidrawApi.updateScene({
+        appState: {
+          zoom: { value: nextZoom },
+          scrollX: (Number(appState.scrollX) || 0)
+            + appLayerX / nextZoom - appLayerX / currentZoom,
+          scrollY: (Number(appState.scrollY) || 0)
+            + appLayerY / nextZoom - appLayerY / currentZoom,
+        },
+      });
+      syncExcalidrawGrid(excalidrawApi.getAppState());
+    };
+
+    const zoomAtCanvasCenter = (nextValue) => {
+      const bounds = host.getBoundingClientRect();
+      updateExcalidrawZoom(
+        nextValue,
+        bounds.left + bounds.width / 2,
+        bounds.top + bounds.height / 2
+      );
+    };
+
+    host.addEventListener('wheel', (event) => {
+      const surface = event.target && event.target.closest
+        ? event.target.closest('.excalidraw__canvas-wrapper, canvas.excalidraw__canvas')
+        : null;
+      if (editor !== 'excalidraw' || !excalidrawApi || !surface
+          || !host.contains(surface)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const rawDelta = Number(event.deltaY) || 0;
+      if (!rawDelta) return;
+      const appState = excalidrawApi.getAppState();
+      const rawZoom = typeof appState.zoom === 'number'
+        ? appState.zoom : appState.zoom && appState.zoom.value;
+      const currentZoom = Number(rawZoom) || 1;
+      const deltaUnit = event.deltaMode === 1 ? 16
+        : event.deltaMode === 2 ? Math.max(1, host.clientHeight) : 1;
+      const delta = Math.max(-100, Math.min(100, rawDelta * deltaUnit));
+      const nextZoom = currentZoom * Math.exp(-delta * 0.002);
+      updateExcalidrawZoom(nextZoom, event.clientX, event.clientY);
+    }, { capture: true, passive: false });
+
+    zoomControls.forEach((button) => button.addEventListener('click', () => {
+      if (!excalidrawApi) return;
+      const appState = excalidrawApi.getAppState();
+      const rawZoom = typeof appState.zoom === 'number'
+        ? appState.zoom : appState.zoom && appState.zoom.value;
+      const currentZoom = Number(rawZoom) || 1;
+      const action = button.dataset.visualZoom;
+      zoomAtCanvasCenter(action === 'reset'
+        ? 1 : currentZoom + (action === 'in' ? 0.1 : -0.1));
+    }));
 
     if (window.OraCanvasShareReminder
         && typeof window.OraCanvasShareReminder.init === 'function') {
@@ -372,48 +466,59 @@
       : snapshotKonva();
 
     const materialize = async (snapshot) => {
+      const owner = {
+        conversationId: snapshot.conversationId || conversationId || 'main',
+        conversationTag: snapshot.conversationTag || conversationTag || '',
+      };
       if (snapshot.editor === 'excalidraw') {
         const native = window.OraExcalidrawIsland.serialize(snapshot);
         const preview = await window.OraExcalidrawIsland.canonicalPng(snapshot);
-        return { editor: 'excalidraw', native, preview, spatial: null };
+        return Object.assign(owner, {
+          editor: 'excalidraw', native, preview, spatial: null,
+        });
       }
       const bounded = window.OraSaveCanvas.boundStateToContent(clone(snapshot.state), 100);
       const [bytes, preview] = await Promise.all([
         window.OraCanvasFileFormat.write(bounded.state, { compressed: true }),
         canonicalizeKonva(snapshot),
       ]);
-      return {
+      return Object.assign(owner, {
         editor: 'konva',
         native: new Blob([bytes], { type: 'application/gzip' }),
         preview,
         spatial: snapshot.spatial,
-      };
+      });
     };
 
     const postCheckpoint = async (materialized) => {
+      const ownerId = materialized.conversationId || conversationId || 'main';
       const body = new FormData();
-      body.append('conversation_id', conversationId || 'main');
-      body.append('tag', conversationTag || '');
+      body.append('conversation_id', ownerId);
+      body.append('tag', materialized.conversationTag || '');
       body.append('editor', materialized.editor);
       body.append('native', materialized.native,
         materialized.editor === 'excalidraw' ? 'scene.excalidraw' : 'scene.ora-canvas');
       body.append('preview', materialized.preview, 'preview.png');
       const response = await fetch('/api/canvas/checkpoint', { method: 'POST', body });
-      if (!response.ok) throw new Error(`Checkpoint write failed (${response.status})`);
+      if (!response.ok) {
+        throw await responseError(response, `Checkpoint write failed for ${ownerId}`);
+      }
       return response.json();
     };
 
-    const postVisualState = async (state) => {
+    const postVisualState = async (
+      state, ownerId = conversationId, ownerTag = conversationTag
+    ) => {
       const response = await fetch(
-        `/api/canvas/visual-state/${encodeURIComponent(conversationId || 'main')}`,
+        `/api/canvas/visual-state/${encodeURIComponent(ownerId || 'main')}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tag: conversationTag || '', visual_state: state }),
+          body: JSON.stringify({ tag: ownerTag || '', visual_state: state }),
         }
       );
       if (!response.ok) throw new Error(`Visual editor state write failed (${response.status})`);
-      visualState = state;
+      if (conversationId === ownerId) visualState = state;
       return response.json();
     };
 
@@ -441,7 +546,7 @@
 
     const writeCurrentKonva = async (materialized) => {
       const body = new FormData();
-      body.append('conversation_id', conversationId || 'main');
+      body.append('conversation_id', materialized.conversationId || conversationId || 'main');
       body.append('canvas', materialized.native, 'latest.ora-canvas');
       body.append('preview', await blobToDataURL(materialized.preview));
       body.append('reason', 'editor-switch');
@@ -599,13 +704,15 @@
       await flushDraftNow();
     };
 
-    const fetchCheckpoint = async (checkpointId, legacyTurn, previewOnly = false) => {
+    const fetchCheckpoint = async (
+      checkpointId, legacyTurn, previewOnly = false, ownerId = conversationId
+    ) => {
       const params = new URLSearchParams();
       if (checkpointId) params.set('checkpoint', checkpointId);
       else if (Number.isInteger(legacyTurn)) params.set('turn', String(legacyTurn));
       if (previewOnly) params.set('preview', '1');
       const response = await fetch(
-        `/api/canvas/load/${encodeURIComponent(conversationId)}?${params.toString()}`
+        `/api/canvas/load/${encodeURIComponent(ownerId)}?${params.toString()}`
       );
       if (!response.ok) return null;
       return {
@@ -651,7 +758,9 @@
         konva_baseline_checkpoint_id: baseline.checkpoint_id,
         konva_edit_warning_acknowledged: false,
       };
-      await postVisualState(nextState);
+      await postVisualState(
+        nextState, materialized.conversationId, materialized.conversationTag
+      );
       pendingKonvaEditabilityWarning = true;
       setEditor('konva');
     };
@@ -712,13 +821,17 @@
     const switchExcalidrawToKonva = async () => {
       await flushDraftNow();
       const sourceSnapshot = snapshotExcalidraw();
+      const ownerId = sourceSnapshot.conversationId;
+      const ownerTag = sourceSnapshot.conversationTag;
       const hadEditableContent = sourceSnapshot.elements.some(
         (element) => element && !element.isDeleted && !isAssistantArtifact(element)
       );
       const source = await materialize(sourceSnapshot);
       const savedSource = await postCheckpoint(source);
       await resetKonvaToPng(source.preview);
-      const baselineMaterialized = await materialize(snapshotKonva());
+      const baselineMaterialized = await materialize(Object.assign(
+        {}, snapshotKonva(), { conversationId: ownerId, conversationTag: ownerTag }
+      ));
       const baseline = await postCheckpoint(baselineMaterialized);
       // Current-dialogue reloads use latest.ora-canvas so later Konva
       // autosaves win. Initialize that recoverable source from the exact K
@@ -731,7 +844,10 @@
         konva_baseline_checkpoint_id: baseline.checkpoint_id,
         konva_edit_warning_acknowledged: !hadEditableContent,
       };
-      await postVisualState(state);
+      await postVisualState(state, ownerId, ownerTag);
+      if (conversationId !== ownerId) {
+        throw new Error('Dialogue changed while switching editor');
+      }
       pendingKonvaEditabilityWarning = hadEditableContent;
       setEditor('konva');
     };
@@ -739,23 +855,27 @@
     const switchKonvaToExcalidraw = async () => {
       if (!excalidrawApi) throw new Error('Excalidraw is unavailable');
       const current = await materialize(snapshotKonva());
+      const ownerId = current.conversationId;
+      const ownerTag = current.conversationTag;
       const resumeId = visualState && visualState.resume_excalidraw_checkpoint_id;
       const baselineId = visualState && visualState.konva_baseline_checkpoint_id;
       let unchanged = false;
       if (resumeId && baselineId) {
-        const baseline = await fetchCheckpoint(baselineId, null, true);
+        const baseline = await fetchCheckpoint(baselineId, null, true, ownerId);
         unchanged = !!baseline && await equalBlobs(current.preview, baseline.blob);
       }
       let scene;
       let durableSceneSnapshot;
       if (unchanged) {
-        const saved = await fetchCheckpoint(resumeId, null, false);
+        const saved = await fetchCheckpoint(resumeId, null, false, ownerId);
         if (!saved || saved.editor !== 'excalidraw') {
           throw new Error('The saved Excalidraw source is unavailable');
         }
         scene = await window.OraExcalidrawIsland.load(saved.blob);
         durableSceneSnapshot = Object.freeze({
           editor: 'excalidraw',
+          conversationId: ownerId,
+          conversationTag: ownerTag,
           elements: clone(scene.elements),
           appState: clone(scene.appState),
           files: clone(scene.files || {}),
@@ -764,6 +884,8 @@
         scene = await window.OraExcalidrawIsland.imageBackedScene(current.preview, true);
         durableSceneSnapshot = Object.freeze({
           editor: 'excalidraw',
+          conversationId: ownerId,
+          conversationTag: ownerTag,
           elements: clone(scene.elements),
           appState: clone(scene.appState),
           files: clone(scene.files),
@@ -772,8 +894,11 @@
       }
       // latest.excalidraw is the current-dialogue recovery source. It must be
       // durable before provenance is cleared, especially for the new B scene.
-      await writeDraft(durableSceneSnapshot);
-      await postVisualState({ active_editor: 'excalidraw' });
+      await writeDraft(durableSceneSnapshot, ownerId, ownerTag);
+      await postVisualState({ active_editor: 'excalidraw' }, ownerId, ownerTag);
+      if (conversationId !== ownerId) {
+        throw new Error('Dialogue changed while switching editor');
+      }
       pendingKonvaEditabilityWarning = false;
       updateExcalidraw(scene);
       setEditor('excalidraw');
@@ -907,10 +1032,16 @@
     };
 
     toggle.addEventListener('click', () => {
-      switchEditor().catch((error) => {
-        console.warn('[visual editor] switch failed; keeping durable editor:', error);
-        updateEditorPresentation();
-      });
+      setFooterStatus('Switching editor…');
+      switchEditor()
+        .then(() => setFooterStatus(
+          editor === 'konva' ? 'Konva ready' : 'Excalidraw ready'
+        ))
+        .catch((error) => {
+          console.warn('[visual editor] switch failed; keeping durable editor:', error);
+          setFooterStatus(`Switch failed: ${error && error.message || error}`, true);
+          updateEditorPresentation();
+        });
     });
 
     const originalVisualFacade = window.OraPanels && window.OraPanels.visual;
@@ -1027,36 +1158,147 @@
       });
     }
 
-    if (exportButton) {
-      exportButton.addEventListener('click', async () => {
-        exportButton.disabled = true;
-        setFooterStatus('Preparing PNG…');
-        try {
-          const safeId = String(conversationId || 'exhibits')
-            .replace(/[^a-zA-Z0-9_-]+/g, '-');
-          const filename = `${safeId}-exhibits.png`;
-          const raster = window.OraExportRaster;
-          if (!raster) throw new Error('PNG export is unavailable');
-          if (editor === 'konva') {
-            const result = await raster.exportPNG(panel, {
-              conversation_id: conversationId,
-              filename,
-            });
-            setFooterStatus(result && result.cancelled ? 'Export cancelled' : 'PNG exported');
-          } else {
-            const materialized = await materialize(snapshotExcalidraw());
-            const gate = await raster._runShareGate(conversationId, filename);
-            if (!gate.confirmed) {
-              setFooterStatus('Export cancelled');
-              return;
-            }
-            raster._triggerDownload(await blobToDataURL(materialized.preview), filename);
-            setFooterStatus('PNG exported');
-          }
-        } catch (error) {
-          setFooterStatus(`Export failed: ${error && error.message || error}`, true);
-        } finally {
-          exportButton.disabled = !window.OraCanvas.hasContent();
+    const exportFormats = {
+      png: { label: 'PNG', extension: 'png' },
+      jpeg: { label: 'JPEG', extension: 'jpg' },
+      svg: { label: 'SVG', extension: 'svg' },
+      pdf: { label: 'PDF', extension: 'pdf' },
+    };
+
+    const closeExportMenu = (restoreFocus = false) => {
+      if (!exportButton || !exportMenuPopup) return;
+      exportMenuPopup.hidden = true;
+      exportButton.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) exportButton.focus();
+    };
+
+    const openExportMenu = (focusIndex = null) => {
+      if (!exportButton || !exportMenuPopup || exportButton.disabled) return;
+      exportMenuPopup.hidden = false;
+      exportButton.setAttribute('aria-expanded', 'true');
+      if (Number.isInteger(focusIndex) && exportMenuItems[focusIndex]) {
+        exportMenuItems[focusIndex].focus();
+      }
+    };
+
+    const exportExcalidraw = async (format, filename) => {
+      const raster = window.OraExportRaster;
+      const island = window.OraExcalidrawIsland;
+      if (!raster || typeof raster._runShareGate !== 'function'
+          || typeof raster._triggerDownload !== 'function') {
+        throw new Error('Visual export is unavailable');
+      }
+      const gate = await raster._runShareGate(conversationId, filename);
+      if (!gate.confirmed) return { cancelled: true };
+      const snapshot = snapshotExcalidraw();
+      if (format === 'pdf') {
+        const pdf = window.OraExportPdf;
+        if (!pdf || typeof pdf.buildPdf !== 'function') {
+          throw new Error('PDF export is unavailable');
+        }
+        const png = await island.canonicalPng(snapshot);
+        const dataUrl = await blobToDataURL(png);
+        const image = await imageFromSource(dataUrl);
+        const width = image.naturalWidth || image.width || 1;
+        const height = image.naturalHeight || image.height || 1;
+        pdf.buildPdf(dataUrl, { x: 0, y: 0, width, height }).doc.save(filename);
+        return { ok: true };
+      }
+      let blob;
+      if (format === 'png') blob = await island.canonicalPng(snapshot);
+      else if (format === 'jpeg') blob = await island.exportJpeg(snapshot);
+      else if (format === 'svg') blob = await island.exportSvg(snapshot);
+      else throw new Error(`Unsupported export format: ${format}`);
+      raster._triggerDownload(await blobToDataURL(blob), filename);
+      return { ok: true };
+    };
+
+    const exportKonva = (format, filename) => {
+      if (format === 'png' || format === 'jpeg') {
+        const raster = window.OraExportRaster;
+        const handler = raster && (format === 'png' ? raster.exportPNG : raster.exportJPG);
+        if (typeof handler !== 'function') {
+          throw new Error(`${exportFormats[format].label} export is unavailable`);
+        }
+        return handler(panel, { conversation_id: conversationId, filename });
+      }
+      if (format === 'svg') {
+        if (!window.OraExportSVG || typeof window.OraExportSVG.exportNow !== 'function') {
+          throw new Error('SVG export is unavailable');
+        }
+        return window.OraExportSVG.exportNow(panel, { filename });
+      }
+      if (format === 'pdf') {
+        if (!window.OraExportPdf || typeof window.OraExportPdf.apply !== 'function') {
+          throw new Error('PDF export is unavailable');
+        }
+        return window.OraExportPdf.apply(panel, { filename });
+      }
+      throw new Error(`Unsupported export format: ${format}`);
+    };
+
+    const exportVisual = async (format) => {
+      const config = exportFormats[format];
+      if (!config || !exportButton) return;
+      const restoreFocus = !!(
+        exportMenuPopup && exportMenuPopup.contains(document.activeElement)
+      );
+      closeExportMenu();
+      exportButton.disabled = true;
+      setFooterStatus(`Preparing ${config.label}…`);
+      try {
+        const safeId = String(conversationId || 'exhibits')
+          .replace(/[^a-zA-Z0-9_-]+/g, '-');
+        const filename = `${safeId}-exhibits.${config.extension}`;
+        const result = editor === 'konva'
+          ? await exportKonva(format, filename)
+          : await exportExcalidraw(format, filename);
+        setFooterStatus(result && result.cancelled
+          ? 'Export cancelled' : `${config.label} exported`);
+      } catch (error) {
+        setFooterStatus(`Export failed: ${error && error.message || error}`, true);
+      } finally {
+        exportButton.disabled = !window.OraCanvas.hasContent();
+        if (restoreFocus && !exportButton.disabled) exportButton.focus();
+      }
+    };
+
+    if (exportButton && exportMenuPopup) {
+      exportButton.addEventListener('click', () => {
+        if (exportMenuPopup.hidden) openExportMenu();
+        else closeExportMenu();
+      });
+      exportButton.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          openExportMenu(event.key === 'ArrowDown' ? 0 : exportMenuItems.length - 1);
+        } else if (event.key === 'Escape') {
+          closeExportMenu();
+        }
+      });
+      exportMenuPopup.addEventListener('keydown', (event) => {
+        const current = exportMenuItems.indexOf(document.activeElement);
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeExportMenu(true);
+        } else if (event.key === 'Tab') {
+          closeExportMenu();
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp'
+                   || event.key === 'Home' || event.key === 'End') {
+          event.preventDefault();
+          let next = event.key === 'Home' ? 0 : event.key === 'End'
+            ? exportMenuItems.length - 1
+            : (current + (event.key === 'ArrowDown' ? 1 : -1)
+              + exportMenuItems.length) % exportMenuItems.length;
+          exportMenuItems[next].focus();
+        }
+      });
+      exportMenuItems.forEach((item) => item.addEventListener('click', () => {
+        exportVisual(item.dataset.exportFormat);
+      }));
+      document.addEventListener('pointerdown', (event) => {
+        if (!exportMenuPopup.hidden && exportMenu && !exportMenu.contains(event.target)) {
+          closeExportMenu();
         }
       });
     }
@@ -1070,6 +1312,7 @@
         detail: { hasContent },
       }));
       if (exportButton) exportButton.disabled = !hasContent;
+      if (!hasContent) closeExportMenu();
     }
     if (panel && panel.userInputLayer && panel.userInputLayer.on) {
       panel.userInputLayer.on('add.vp3-state remove.vp3-state', updateCanvasState);
