@@ -7,7 +7,7 @@
      Defaults to 1fr/1fr (equal split) until JS sets explicit pixel
      widths via --ora-left-w / --ora-right-w. */
   display: grid;
-  grid-template-columns: auto var(--ora-left-w, 1fr) 48px var(--ora-right-w, 1fr);
+  grid-template-columns: auto var(--ora-left-w, 1fr) 56px var(--ora-right-w, 1fr);
   column-gap: 0;
   padding: 16px;
   height: 100vh;
@@ -15,7 +15,7 @@
 
 /* The center track is the complete perceived spine corridor. Keep the
    unrelated sidebar-to-workspace gutter without adding invisible width on
-   either side of the 48px spine. */
+   either side of the 56px spine. */
 .left-sidebar {
   margin-right: 10px;
 }

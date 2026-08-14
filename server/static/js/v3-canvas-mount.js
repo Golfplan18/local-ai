@@ -50,6 +50,41 @@
     image.src = source;
   });
 
+  const normalizeLegacyWhiteHandoff = async (scene) => {
+    const elements = Array.isArray(scene && scene.elements)
+      ? scene.elements.filter((element) => element && !element.isDeleted) : [];
+    if (elements.length !== 1) return scene;
+    const [element] = elements;
+    if (element.type !== 'image' || element.locked !== true
+        || element.customData != null
+        || typeof element.fileId !== 'string'
+        || !element.fileId.startsWith('ora-image-')) return scene;
+    const file = scene.files && scene.files[element.fileId];
+    if (!file || file.id !== element.fileId || file.mimeType !== 'image/png'
+        || typeof file.dataURL !== 'string'
+        || !file.dataURL.startsWith('data:image/png;base64,')) return scene;
+    try {
+      const image = await imageFromSource(file.dataURL);
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      if (!(width > 0) || !(height > 0)) return scene;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context || typeof context.getImageData !== 'function') return scene;
+      context.drawImage(image, 0, 0);
+      const rgba = context.getImageData(0, 0, width, height).data;
+      if (rgba.length !== width * height * 4) return scene;
+      for (let index = 0; index < rgba.length; index += 1) {
+        if (rgba[index] !== 255) return scene;
+      }
+      return Object.assign({}, scene, { elements: [], files: {} });
+    } catch (_) {
+      return scene;
+    }
+  };
+
   const canvasBlob = (canvas) => new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error('Could not encode canonical PNG')),
@@ -804,7 +839,9 @@
       }
       if (loaded.editor === 'excalidraw') {
         try {
-          const scene = await window.OraExcalidrawIsland.load(loaded.blob);
+          const scene = await normalizeLegacyWhiteHandoff(
+            await window.OraExcalidrawIsland.load(loaded.blob)
+          );
           updateExcalidraw(scene);
           setEditor('excalidraw');
         } catch (error) {
@@ -876,7 +913,9 @@
         if (!saved || saved.editor !== 'excalidraw') {
           throw new Error('The saved Excalidraw source is unavailable');
         }
-        scene = await window.OraExcalidrawIsland.load(saved.blob);
+        scene = await normalizeLegacyWhiteHandoff(
+          await window.OraExcalidrawIsland.load(saved.blob)
+        );
         durableSceneSnapshot = Object.freeze({
           editor: 'excalidraw',
           conversationId: ownerId,

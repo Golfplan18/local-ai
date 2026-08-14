@@ -100,6 +100,15 @@ body.chat-dragging .chatbot-divider::after {
 
 .bridge-toolbar--right { margin-left: auto; }
 
+/* The four Inquiry bridge buttons need one stronger material step on dark
+   paper. Override their inherited material tokens so the existing hover,
+   active, selected, focus, and disabled rules continue to own behavior. */
+.theme-dark .bridge-strip .bridge-toolbar--left {
+  --interactive-normal: var(--background-modifier-form-field);
+  --ora-button-border: var(--background-modifier-border-focus);
+  --ora-highlight-raised: var(--background-modifier-border-focus);
+}
+
 .bridge-toolbar,
 .visual-toolbar-host,
 .visual-pane-footer,

@@ -40,9 +40,9 @@ body {
   --ora-button-border: rgb(32, 32, 32);
 
   /* Wordmark */
-  --ora-wordmark-base: rgb(88, 88, 88);
-  --ora-wordmark-bright: rgb(128, 128, 128);
-  --ora-wordmark-hover: rgb(220, 220, 220);
+  --ora-wordmark-base: var(--icon-color);
+  --ora-wordmark-bright: var(--text-normal);
+  --ora-wordmark-hover: var(--icon-color-hover);
 
   /* Bridge */
   --ora-bridge-handle: rgba(255, 255, 255, 0.18);
