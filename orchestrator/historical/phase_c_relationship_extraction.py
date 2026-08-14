@@ -34,6 +34,7 @@ import yaml
 
 from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
+from orchestrator.historical import cleanup_backends as _backends
 
 
 # ---------------------------------------------------------------------------
@@ -48,12 +49,30 @@ DEFAULT_DEDUP_COLLECTION = "atomics"
 DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "phase-c-manifest.json")
 
 # Haiku 4.5 — fast classifier for the relationship typing task.
+# Overridable per run; the runner sets it from --backend/--model.
 RELATION_MODEL = "claude-haiku-4-5"
 
 # Retrieval params
-NEIGHBOR_K = 15
-SOURCE_MAX_CHARS = 2000        # snippet of source note body
-NEIGHBOR_MAX_CHARS = 600       # snippet per neighbor
+# These three were cost caps, and cost caps are how every defect in this project
+# got introduced: truncating the writer's input de-fanged 56% of the corpus,
+# capping title length replaced actors with pronouns, and extracting "specifics"
+# instead of passing text produced fabricated evidence lines. The publisher's
+# instruction on the model now used here is explicit — treat its tokens as free —
+# so nothing is truncated that the classifier could use.
+#
+# NEIGHBOR_MAX_CHARS at 600 truncated the body of 13,309 notes (17.6% of the
+# corpus). Mean body is 500 chars and only 265 notes exceed 1,200, so a 4,000
+# ceiling is effectively "no truncation" while still bounding a pathological note.
+#
+# NEIGHBOR_K governs how many candidates the classifier gets to judge. More
+# candidates cannot produce a wrong edge — the model returns an index and both the
+# index and the type are validated against closed sets — but fewer candidates
+# silently loses real relationships that embedding retrieval did surface.
+_CLIENT_BACKEND = "api"
+
+NEIGHBOR_K = 30
+SOURCE_MAX_CHARS = 8000        # source note body: effectively untruncated
+NEIGHBOR_MAX_CHARS = 4000      # per candidate: effectively untruncated
 
 # Valid relationship types per the 13-type taxonomy
 _VALID_REL_TYPES = frozenset({
@@ -97,18 +116,74 @@ def get_title(fm: dict, body: str, fallback_path: Path) -> str:
     return fallback_path.stem
 
 
+def _yaml_block_scalar(value: str, indent: str = "    ") -> str:
+    """Render a claim sentence safely. Claim sentences carry colons and quotes
+    often enough that quoting is fragile; a folded block scalar is not.
+
+    Ported from ``scripts/engram-migration/fix_notes.py``, which wrote the
+    relationship blocks on the corpus's existing 64,090 notes. Keeping the two
+    renderers identical is what stops the corpus carrying two YAML styles.
+    """
+    if len(value) <= 90 and not any(c in value for c in ":#\"'{}[]|>&*!%@`\n"):
+        return value
+    wrapped, line = [], indent
+    for word in value.split():
+        if len(line) + len(word) + 1 > 78 and line.strip():
+            wrapped.append(line.rstrip())
+            line = indent + word
+        else:
+            line = (line + " " + word) if line.strip() else indent + word
+    wrapped.append(line.rstrip())
+    return ">-\n" + "\n".join(wrapped)
+
+
+_RELATIONSHIPS_BLOCK_RE = re.compile(
+    r"\nrelationships:\s*\n(?:[ \t]+.*\n|[ \t]*-.*\n)+"
+)
+
+
 def write_note_with_relationships(
     path: Path,
-    fm: dict,
-    body: str,
     relationships: list[dict],
 ) -> None:
-    """Replace `relationships:` in frontmatter, preserve everything else."""
-    new_fm = dict(fm)
-    new_fm["relationships"] = relationships if relationships else []
-    # Serialize with consistent ordering (relationships near end)
-    yaml_str = yaml.safe_dump(new_fm, default_flow_style=False, sort_keys=False, allow_unicode=True)
-    out = f"---\n{yaml_str}---\n{body}"
+    """Splice ``relationships:`` into the note's frontmatter, preserving every
+    other byte of the file.
+
+    This previously parsed the frontmatter and re-emitted it with
+    ``yaml.safe_dump``, which silently rewrote every note it touched even where
+    no value changed: a bare ``nexus:`` became ``nexus: null``, ``processed_at``
+    lost its ISO ``T`` separator, long scalars were re-wrapped, and list
+    indentation shifted. ``apply_rewrites.py`` keeps frontmatter verbatim by
+    design (``split_note``: "Frontmatter is kept verbatim"), so the two passes
+    disagreed about the same corpus and would have left each note normalized or
+    not depending on which one ran last. Splicing matches both that policy and
+    ``fix_notes.py``, which wrote the existing relationship blocks.
+
+    A note whose classifier found no links is left byte-identical rather than
+    gaining an empty ``relationships: []`` property. That a note was processed
+    and yielded nothing is recorded in the run manifest, which is where that
+    fact belongs.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        raise ValueError(f"no frontmatter to splice: {path.name}")
+    front = m.group(1)
+    rest = text[m.end():]
+
+    # Drop any existing block so a re-run replaces rather than duplicates. Pad
+    # both ends so a block sitting first or last still matches the anchors.
+    front = _RELATIONSHIPS_BLOCK_RE.sub("\n", "\n" + front + "\n")[1:].rstrip("\n")
+
+    if relationships:
+        lines = ["relationships:"]
+        for rel in relationships:
+            lines.append(f"- type: {rel['type']}")
+            lines.append(f"  target: {_yaml_block_scalar(str(rel['target']), '    ')}")
+            lines.append(f"  confidence: {rel['confidence']}")
+        front = front + "\n" + "\n".join(lines)
+
+    out = f"---\n{front}\n---\n{rest}"
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(out, encoding="utf-8")
     os.replace(tmp, path)
@@ -321,9 +396,10 @@ def process_one_note(
 
     res.candidates_considered = len(candidates)
     if not candidates:
-        # Write empty relationships and return
+        # No candidates: leave the note untouched. The manifest records that it
+        # was processed and yielded nothing.
         try:
-            write_note_with_relationships(p, fm, body, [])
+            write_note_with_relationships(p, [])
         except Exception as e:
             res.error = f"write_empty: {e}"
         return res
@@ -339,7 +415,7 @@ def process_one_note(
         return res
 
     try:
-        write_note_with_relationships(p, fm, body, rels)
+        write_note_with_relationships(p, rels)
         res.relationships_written = len(rels)
     except Exception as e:
         res.error = f"write: {e}"
@@ -399,7 +475,8 @@ def run_phase_c(
     max_workers: int = 16,
     save_every: int = 50,
 ) -> None:
-    client = AnthropicClient()
+    client = _backends.build_client(_CLIENT_BACKEND)
+    print(f"Phase C model: {RELATION_MODEL} via backend '{_CLIENT_BACKEND}'")
     collection = _open_collection(chromadb_path, dedup_collection)
     manifest = _load_manifest(manifest_path)
     completed = manifest["completed_notes"]
@@ -434,7 +511,17 @@ def run_phase_c(
                 entry["skipped"] = r.skipped
             if r.error:
                 entry["error"] = r.error
-            completed[p] = entry
+            # E2 fix. This previously ran unconditionally, so a note that errored
+            # or was skipped was recorded as completed and resume never retried it
+            # — the same defect as marking a failed call 'ok'. Only a genuine
+            # success is recorded; failures stay on the worklist. Errors are also
+            # kept in a separate list so a run's failures are inspectable rather
+            # than inferred.
+            if r.error:
+                manifest.setdefault("errors", {})[p] = r.error
+            else:
+                completed[p] = entry
+                manifest.get("errors", {}).pop(p, None)
 
             tot = manifest["totals"]
             tot["notes_processed"] += 1
@@ -476,7 +563,27 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--max-workers", type=int, default=16)
     p.add_argument("--limit", type=int, default=0, help="process only first N notes (sample mode)")
     p.add_argument("--paths-file", help="optional file with newline-delimited note paths")
+    p.add_argument("--backend", default="api", choices=_backends.BACKEND_CHOICES,
+                   help="model backend. 'minimax' is measured-suitable here: the "
+                        "classifier returns a candidate index rather than writing a "
+                        "target title, and both index and type are validated against "
+                        "closed sets, so a weak model can only under-link, never "
+                        "fabricate an edge.")
+    p.add_argument("--model", default=None,
+                   help="override the relationship model for this run")
+    p.add_argument("--chromadb-path", default=None,
+                   help="query an explicit Chroma directory instead of the active "
+                        "one. Required when the live atomics index is stale: it "
+                        "currently overlaps the corpus on only 6,689 of 129,900 "
+                        "titles, so querying it returns obsolete neighbours.")
     args = p.parse_args(argv)
+
+    global RELATION_MODEL, _CLIENT_BACKEND
+    if args.model:
+        RELATION_MODEL = args.model
+    elif args.backend == "minimax":
+        RELATION_MODEL = "MiniMax-M3"
+    _CLIENT_BACKEND = args.backend
 
     if args.paths_file:
         with open(args.paths_file) as fh:
@@ -488,7 +595,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         paths = paths[: args.limit]
 
     print(f"Notes to consider: {len(paths)}")
-    run_phase_c(paths, manifest_path=args.manifest, max_workers=args.max_workers)
+    run_phase_c(paths, manifest_path=args.manifest, max_workers=args.max_workers,
+                chromadb_path=args.chromadb_path or DEFAULT_CHROMADB_PATH)
     return 0
 
 

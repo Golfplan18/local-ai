@@ -523,7 +523,13 @@ def embed_text(text: str) -> list[float]:
         raise RuntimeError(
             f"Configured embedder returned {count} vectors for one input"
         )
-    vector = list(vectors[0])
+    # Coerce to real Python floats. The configured embedding function returns
+    # numpy arrays, and ``list(ndarray)`` yields np.float32 scalars, not floats
+    # — which satisfies the dim check below but is rejected by Chroma's
+    # ``query_embeddings`` validator ("expected a list of floats or ints, a
+    # numpy array, or a list of numpy arrays"). The annotation says list[float];
+    # honour it here so every caller gets the declared type.
+    vector = [float(x) for x in vectors[0]]
     if len(vector) != EMBEDDING_DIM:
         raise RuntimeError(
             f"Configured embedder returned vector dim {len(vector)}, "

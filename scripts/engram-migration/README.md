@@ -1,3 +1,19 @@
+# Engram migration scripts — SUPERSEDED README
+
+**Read `PLAN.md`. Nothing else in this directory describes the current
+approach.** This README, and the CODEX_PROMPT.md / HANDOFF.md that were
+deleted alongside it, documented a pipeline whose writing pass was measured
+defective: it fed the writer extracted keyword fragments instead of the source
+notes, which de-fanged 56% of the corpus. A fresh agent following those
+documents would rebuild the failure.
+
+The stage-numbered prompts (stage3/stage5/stage9) were deleted for the same
+reason. `rewrite_prompt.md` is the current writing standard.
+
+Original content follows for reference only.
+
+---
+
 # Engram Permanent-Note Migration — Runbook
 
 **ONE-TIME MIGRATION. This whole directory gets deleted when the migration
@@ -41,24 +57,26 @@ This directory converts the existing corpus.
 |---|---|---|
 | 2 | `stage2_cluster.py --out ~/engram-work/.migration` | free |
 | 3 | `stage3_run.js` via Workflow (Haiku) | ~51M tokens |
-| 5 | `stage5_prompt.md` via Workflow (Opus) | ~29M tokens |
+| 5 | `stage5_run.py --backend codex-cli --workers 4` (GPT-5.5/high) | 963 tokens/unit in the first 100 Codex units |
 | 6 | `stage6_check.py` | free |
 | 7 | `stage7_apply.py` (dry run), then `--apply` | free |
 | 8 | `stage8_lexical.py` | free |
 | 8b | `stage8b_concept_audit.py` + one batched model pass | small |
-| 9 | `stage9_prompt.md` via Workflow (Opus) | small |
+| 9 | `stage9_prompt.md` via Codex | small |
 | 10 | `orchestrator/historical/phase_c_relationship_extraction.py --vault-root ~/engram-work/Engrams` | existing tool |
 | 11 | `orchestrator/tools/chroma_source_rebuild.py --engrams-root ~/engram-work/Engrams` | existing tool |
 
 Stages 10 and 11 reuse tooling that already exists. Do not write new versions.
 
-Model assignment is not arbitrary — it follows a measured A/B on 300 identical
+The historical model assignment followed a measured A/B on 300 identical
 notes. Haiku **paraphrases** where it is asked to transform: given "Exposure
 holds up a mirror to recognizable selfish choices", it returned a reshuffle of
 the same words while Opus produced "The critic who names particular selfish
 choices lets the audience check the charge against the conduct". Haiku also
 invents canonical-sounding terms that do not exist, claiming a concept name 100%
-of the time against Opus's 66%. So Haiku sorts and extracts; Opus writes.
+of the time against Opus's 66%. That evidence still rejects light and local
+models for Stage 5. The current user instruction supersedes Claude routing:
+Stage 5 and Stage 9 use Codex, and `stage5_run.py` hard-rejects other backends.
 
 ## Resumability
 
