@@ -153,13 +153,24 @@ SUBTYPE_SCHEMAS = {
     },
 }
 
-# The four grammar rules.
+# The five grammar rules.
 #
 # Rule 1 previously read "Every bullet must name its actor explicitly" and was
 # applied literally: bullets named the individual who happened to act in the
 # source ("Honnold memorizes each hold"), which pinned every note to its
 # instance and destroyed transferability. Naming a ROLE keeps the anti-vagueness
 # benefit the rule was written for while letting the claim travel.
+#
+# Rule 2 previously read "Restate the role rather than using 'it', 'they',
+# 'this'." Applied literally that produces the failure the vault owner rejected
+# outright: a sentence naming one role six times, which is noise rather than
+# clarity and buries the claim it was meant to expose. The calibrated rule bans
+# a pronoun whose party is named NOWHERE — not a pronoun whose referent is named
+# in the same sentence.
+#
+# Rule 5 is new. Dropping a limiting clause is the most-measured way a true note
+# becomes an empty one: it de-fanged 56% of a 122k-note corpus, leaving general
+# claims that had lost the condition giving them force.
 GRAMMAR_RULES = """
 Rule 1 — Named Roles: Every bullet names the ROLE that acts, not the individual
 who happened to act in this source. No implicit subjects, no abstractions
@@ -168,11 +179,18 @@ floating without an agent.
   Bad:  "Margins are reinvested" (no actor)
   Bad:  "Crown Castle reinvests its margin" (the individual, not the role — the
         specific case belongs in the Instance bullet, not the mechanism)
+  The acting party need not be a person: a tool, a rule, a market, an
+  institution, an incentive each acts, and forcing one into a person clouds the
+  claim. Only parties that DO something must be identified — demanding an owner
+  for every abstract noun makes writing impossible.
 
-Rule 2 — Resolved Pronouns: No unresolved pronouns. Restate the role rather than
-using "it", "they", "this".
-  Good: "The linter enforces property order across all vault files"
-  Bad:  "It enforces property order across all files"
+Rule 2 — Named Antecedents: Every pronoun refers to a party named in the same
+sentence. Ordinary pronouns are fine once their referent is named: "a
+legislature ... its own refusals" is clear. What is banned is a pronoun standing
+for a party named NOWHERE — "no one", "your" with no owner, a passive whose
+actor never appears.
+  Do NOT repeat a role noun three times in one sentence to prove you named it.
+  Read each bullet aloud; if you would not say it that way, restructure.
 
 Rule 3 — Concrete Verbs: Active voice with specific, concrete verbs. No passive
 with hidden actors.
@@ -188,6 +206,19 @@ layer. If the source carried no concrete case, write
 "Instance: none recorded in source."
   The Instance bullet is also what keeps the note findable by keyword, so do not
   strip the domain vocabulary out of it while generalising the bullets above.
+
+Rule 5 — Qualifications Survive: Preserve every clause that qualifies or limits
+the claim. A clause saying DESPITE something, EVEN WHEN something, ONLY IF
+something, or WITHOUT something is usually the entire point, and dropping it is
+the most common way a true claim becomes an empty one: one note lost "despite
+the dual mandate of price stability and full employment" and was left asserting
+only that captured institutions favour their capturers — circular.
+  Qualifications belong in the bullets, never in the title, but they must
+  survive SOMEWHERE. A shorter phrasing that asserts something untrue is an
+  error, not compression.
+  There is no cap on the number of bullets. One bullet per distinct claim;
+  collapse only genuine near-duplicates, and never drop a distinction to
+  shorten the note.
 """
 
 # Relationship taxonomy
@@ -302,6 +333,35 @@ If raising the level of abstraction would produce a platitude — "systems tend
 to favour those with power" — do not emit the note. The general claim must
 stay falsifiable and specific about mechanism: raised one level, not dissolved.
 
+## Generalization has a FLOOR as well as a ceiling
+
+Raising the level is not reaching for the most abstract available word — that
+makes the claim ambiguous, and often false. "A provider who stays outside a
+shared system to escape its rules keeps the savings and strands the people it
+serves" fails because a grazing commons is a shared system too, and the claim is
+untrue there; the mechanism needs a system supplying MUTUAL BACKUP.
+
+Run the substitution test on every noun you generalise, BOTH ways. Too broad:
+name two or three other things the noun covers and check the claim stays true of
+each; if not, step down to the most general word for which it stays TRUE. Too
+narrow is equally a defect: check the noun reaches everything the mechanism
+reaches — "comforts and commerce contradict its professed values" was
+under-general, because privilege and power contradict professed values the same
+way. Widen until the first check would start failing, no further. Ambiguity is
+not generality.
+
+## Some claims are domain-bound — keep the field when the field IS the subject
+
+The transfer test has one exception, worth roughly one claim in nine. Craft
+knowledge — how to make a character's arc convincing to readers, how a physical
+technique works — is knowledge ABOUT that domain. The domain is the subject, not
+costume over a universal principle, and stripping it produces gibberish: one
+such note became "a teller who shows small fixes failing repeatedly", and its
+own author could not tell what it was about. When the domain is the subject,
+keep it — say "a novelist", "the reader" — and generalise only WITHIN it. A
+claim that cannot survive leaving its field should keep its field rather than be
+discarded or stretched into nonsense.
+
 ## Title Rules
 
 The title is one declarative sentence stating the claim. NEVER put in a title:
@@ -318,12 +378,39 @@ The title is one declarative sentence stating the claim. NEVER put in a title:
   - absolutes the body does not establish: no "cannot", "always", "never",
     "proves"
 
+### Find the CONVERSION — this is what makes a title an insight
+
+A title stating a procedure is worth less than one stating a conversion. Most
+claims worth keeping have the shape SOMETHING TURNS INTO SOMETHING AND THE
+RESULT IS PERVERSE: criticism of a leader's policy becomes proof his enemies are
+real; a victim's private shame becomes protection for whoever harmed them. Ask
+what goes in, what comes out, and why the output is perverse. Where you can
+state either the mechanism or its perverse result, the result is the title and
+the mechanism is a bullet.
+
+Only one of the two claim shapes converts. The other is a STANDING CONDITION —
+something that holds, persists, or is withheld, where nothing turns into its
+opposite ("a capacity practised in one relationship is withheld in another").
+Roughly one claim in three is of this kind, and it meets the same bar by a
+different test: it earns its place by naming WHAT IT COSTS OR WHO IT SERVES.
+Where the source supports neither a conversion nor a cost nor a beneficiary,
+state the claim as plainly and exactly as it does support. Never manufacture an
+inversion the source does not contain — a fabricated conversion is a false claim.
+
+### Naming the concept
+
 WHERE A STANDARD NAME FOR THE CONCEPT EXISTS — salience bias, moral hazard,
 regulatory capture, debt peonage, operant extinction, routinization of
 charisma, Goodhart's law — USE IT VERBATIM in the title, or failing that
 verbatim in a body bullet. This vault is searched by keyword AND by meaning; a
 note matching neither is dead. Naming the concept only in your reasoning is a
 failure, not a partial success.
+
+Name a concept ONLY when the source's own content IS that concept. Never
+introduce a term of art the source does not support: earlier notes claimed "the
+framing effect", "photographic memory", "identity-protective cognition", each
+naming a different mechanism than the note itself described. A label close but
+not exact is a false claim, not a findability win.
 
 Impose no length limit on titles. A correct general claim comes out short as a
 consequence, never as a target. Do not truncate meaning to hit a word count.
