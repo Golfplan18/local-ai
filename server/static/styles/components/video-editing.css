@@ -9,13 +9,19 @@
  * from Phase 1; this file fills in the rest.
  */
 
-/* When in video mode: hide the canvas viewport and the drawing toolbar
- * inside the visual pane. They stay in the DOM (no destruction) so
- * exiting the mode restores the prior canvas state intact. */
+/* When in video mode: hide the Konva viewport and drawing toolbar inside
+ * the visual pane. They stay in the DOM (no destruction) so exiting the
+ * mode restores the prior canvas state intact. */
 body.pane-mode-video .visual-panel .visual-panel__viewport,
 body.pane-mode-video .visual-panel .visual-panel__toolbar {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Excalidraw descendants can explicitly restore visibility, so hide the
+ * still-mounted island itself while video mode owns the pane. */
+body.pane-mode-video .visual-panel .ora-excalidraw-island {
+  display: none;
 }
 
 /* The visual-panel root gets a video-editing background so the user

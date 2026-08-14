@@ -50,6 +50,9 @@ let imageBackedCalls = 0;
 let assistantImageCalls = 0;
 let capabilityImageCalls = 0;
 let konvaAttachCalls = 0;
+let konvaArtifactClearCalls = 0;
+let konvaPendingImageClearCalls = 0;
+let konvaEmptyStateLoadCalls = 0;
 let stageRevision = 'baseline';
 let stageWidth = 100;
 let stageHeight = 100;
@@ -93,8 +96,16 @@ function VisualPanel(element, config) {
   };
 }
 VisualPanel.prototype.init = function () {};
-VisualPanel.prototype.clearArtifact = function () {};
-VisualPanel.prototype.loadCanvasState = function () {};
+VisualPanel.prototype.clearArtifact = function () { konvaArtifactClearCalls += 1; };
+VisualPanel.prototype.clearPendingImage = function () {
+  konvaPendingImageClearCalls += 1;
+  liveObjects = [];
+};
+VisualPanel.prototype.loadCanvasState = function (state) {
+  if (state && Array.isArray(state.objects) && state.objects.length === 0) {
+    konvaEmptyStateLoadCalls += 1;
+  }
+};
 VisualPanel.prototype.attachImage = function () {
   konvaAttachCalls += 1;
   liveObjects = [{
@@ -722,10 +733,33 @@ const exportThroughMenu = async (format) => {
     throw new Error('image capability result did not land in and persist the active Excalidraw scene');
   }
 
+  api.elements = [{ id: 'deleted-only', type: 'rectangle', isDeleted: true }];
+  const attachBeforeEmptyXToK = konvaAttachCalls;
+  const artifactClearsBeforeEmptyXToK = konvaArtifactClearCalls;
+  const pendingClearsBeforeEmptyXToK = konvaPendingImageClearCalls;
+  const stateClearsBeforeEmptyXToK = konvaEmptyStateLoadCalls;
+  await w.OraCanvas.switchEditor();
+  if (w.OraCanvas.getActiveEditor() !== 'konva'
+      || konvaAttachCalls !== attachBeforeEmptyXToK
+      || konvaArtifactClearCalls !== artifactClearsBeforeEmptyXToK + 1
+      || konvaPendingImageClearCalls !== pendingClearsBeforeEmptyXToK + 1
+      || konvaEmptyStateLoadCalls !== stateClearsBeforeEmptyXToK + 1) {
+    throw new Error('empty X→K did not clear Konva without attaching the blank PNG');
+  }
+  await w.OraCanvas.switchEditor();
+  if (w.OraCanvas.getActiveEditor() !== 'excalidraw'
+      || imageBackedCalls !== 0
+      || !api.elements[0]
+      || api.elements[0].id !== 'deleted-only') {
+    throw new Error('empty X→K→X did not reopen its native checkpoint');
+  }
+
   api.elements = [{ id: 'editable-A', type: 'rectangle' }];
+  const attachBeforeNonemptyXToK = konvaAttachCalls;
   await w.OraCanvas.switchEditor();
   const xToK = visualStates[visualStates.length - 1];
   if (w.OraCanvas.getActiveEditor() !== 'konva'
+      || konvaAttachCalls !== attachBeforeNonemptyXToK + 1
       || xToK.active_editor !== 'konva'
       || !xToK.resume_excalidraw_checkpoint_id
       || !xToK.konva_baseline_checkpoint_id
