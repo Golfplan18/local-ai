@@ -112,6 +112,35 @@ general so that it can be, or do not mint it at all. A claim that only \
 makes sense inside this conversation's own subject matter is a record of \
 what was said, not a knowledge building block. Do not mint it.
 
+=== GENERALIZATION HAS A FLOOR AS WELL AS A CEILING ===
+Raising the level is not reaching for the most abstract available word — \
+that makes the claim ambiguous, and often false. "A provider who stays \
+outside a shared system to escape its rules keeps the savings and strands \
+the people it serves" fails because a grazing commons is a shared system \
+too, and the claim is untrue there; the mechanism needs a system supplying \
+MUTUAL BACKUP.
+Run the substitution test on every noun you generalise, BOTH ways. Too \
+broad: name two or three other things the noun covers and check the claim \
+stays true of each; if not, step down to the most general word for which \
+it stays TRUE. Too narrow is equally a defect: check the noun reaches \
+everything the mechanism reaches — "comforts and commerce contradict its \
+professed values" was under-general, because privilege and power \
+contradict professed values the same way. Widen until the first check \
+would start failing, no further. Ambiguity is not generality.
+
+=== SOME CLAIMS ARE DOMAIN-BOUND — KEEP THE FIELD WHEN THE FIELD IS THE \
+SUBJECT ===
+The transfer test has one exception, worth roughly one claim in nine. \
+Craft knowledge — how to make a character's arc convincing to readers, how \
+a physical technique works — is knowledge ABOUT that domain. The domain is \
+the subject, not costume over a universal principle, and stripping it \
+produces gibberish: one such note became "a teller who shows small fixes \
+failing repeatedly", and its own author could not tell what it was about. \
+When the domain is the subject, keep it — say "a novelist", "the reader" — \
+and generalise only WITHIN it. A claim that cannot survive leaving its \
+field should keep its field rather than be discarded or stretched into \
+nonsense.
+
 Be SELECTIVE. A typical pair yields 0-3 notes; a substantive deep dive \
 might yield up to 8. Small talk, status updates, and generic Q&A yield [].
 
@@ -153,22 +182,67 @@ early dating", "in narrative")
   - the user's private vocabulary or fiction character names
   - absolutes the body does not establish: no "cannot", "always", \
 "never", "proves"
+
+FIND THE CONVERSION. This is what makes a title an insight. A title \
+stating a procedure is worth less than one stating a conversion. Most \
+claims worth keeping have the shape SOMETHING TURNS INTO SOMETHING AND THE \
+RESULT IS PERVERSE: criticism of a leader's policy becomes proof his \
+enemies are real; a victim's private shame becomes protection for whoever \
+harmed them. Ask what goes in, what comes out, and why the output is \
+perverse. Where you can state either the mechanism or its perverse result, \
+the result is the title and the mechanism is a bullet.
+Only one of the two claim shapes converts. The other is a STANDING \
+CONDITION — something that holds, persists, or is withheld, where nothing \
+turns into its opposite ("a capacity practised in one relationship is \
+withheld in another"). Roughly one claim in three is of this kind, and it \
+meets the same bar by a different test: it earns its place by naming WHAT \
+IT COSTS OR WHO IT SERVES. Where the conversation supports neither a \
+conversion nor a cost nor a beneficiary, state the claim as plainly and \
+exactly as it does support. Never manufacture an inversion the \
+conversation does not contain — a fabricated conversion is a false claim.
+
 WHERE A STANDARD NAME FOR THE CONCEPT EXISTS — salience bias, moral \
 hazard, regulatory capture, debt peonage, operant extinction, \
 routinization of charisma, Goodhart's law — USE IT VERBATIM in the title, \
 or failing that verbatim in a body bullet. This corpus is searched by \
 keyword AND by meaning; a note matching neither is dead. Naming the \
 concept only in your reasoning is a FAILURE.
+Name a concept ONLY when the conversation's own content IS that concept. \
+Never introduce a term of art the conversation does not support: earlier \
+notes claimed "the framing effect", "photographic memory", \
+"identity-protective cognition", each naming a different mechanism than \
+the note itself described. A label close but not exact is a false claim, \
+not a findability win.
 Impose no length limit. A correct general claim is short as a \
 consequence, never as a target.
 
 === BODY ===
-2-4 bullets.
+One bullet per distinct claim. There is no cap: a pair carrying six \
+distinct claims gets six bullets. Collapse only genuine near-duplicates, \
+and never drop a distinction to shorten the note.
   - The FIRST bullets state the mechanism in domain-neutral terms. Name \
 the ROLES that act — the incumbent, the regulator, the borrower, the \
 performer — not the individuals who happened to act in this conversation. \
-Active voice throughout: every bullet says what does what. No "it" / \
-"they" / passive voice.
+The acting party need not be a person: a tool, a rule, a market, an \
+institution, an incentive each acts, and forcing one into a person clouds \
+the claim. Only parties that DO something must be identified — demanding \
+an owner for every abstract noun makes writing impossible.
+  - Active voice throughout: every bullet says what does what. Every \
+pronoun refers to a party named in the same sentence — "a legislature ... \
+its own refusals" is clear. What is banned is a pronoun standing for a \
+party named NOWHERE: "no one", "your" with no owner, a passive whose actor \
+never appears. Do NOT repeat a role noun three times in one sentence to \
+prove you named it. Read each bullet aloud; if you would not say it that \
+way, restructure until you would.
+  - PRESERVE EVERY CLAUSE THAT QUALIFIES OR LIMITS THE CLAIM. A clause \
+saying DESPITE something, EVEN WHEN something, ONLY IF something, or \
+WITHOUT something is usually the entire point, and dropping it is the most \
+common way a true claim becomes an empty one: one note lost "despite the \
+dual mandate of price stability and full employment" and was left \
+asserting only that captured institutions favour their capturers — \
+circular. Qualifications belong in the bullets, never in the title, but \
+they must survive SOMEWHERE. A shorter phrasing that asserts something \
+untrue is an error, not compression.
   - The LAST bullet begins "Instance:" and carries the specific case from \
 this conversation — names, numbers, dates, domain nouns intact. This is \
 the evidence, and it is what keeps the note findable by keyword.
