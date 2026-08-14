@@ -17,11 +17,38 @@
   border-right: 2px solid var(--background-modifier-border);
   background: var(--background-secondary);
   transition: width 180ms ease;
+  position: relative;
 }
 
 .left-sidebar.expanded {
   width: var(--ora-sidebar-expanded-w);
   min-width: var(--ora-sidebar-expanded-w);
+}
+
+body.sidebar-resizing,
+body.sidebar-resizing .left-sidebar {
+  cursor: ew-resize;
+  user-select: none;
+}
+body.sidebar-resizing .left-sidebar { transition: none; }
+
+.sidebar-resize-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 30;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.left-sidebar.expanded .sidebar-resize-handle { display: block; }
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:focus-visible {
+  background: color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+  outline: none;
 }
 
 /* ── Collapsed dashboard (5 vertical items) ─────────────────── */
@@ -32,6 +59,14 @@
   align-items: center;
   padding: 10px 0;
   gap: 10px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.sidebar-dash-icon--bottom { margin-top: auto; }
+
+body.ora-auto-hide-controls .sidebar-collapsed-dashboard:not(:hover):not(:focus-within) .sidebar-dash-icon {
+  opacity: 0.12;
 }
 
 .left-sidebar.expanded .sidebar-collapsed-dashboard {
@@ -44,9 +79,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  border-radius: 7px;
+  box-shadow:
+    2px 3px 5px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
   cursor: pointer;
   /* --interactive-normal is a *background* token (matches the page surface in
      both modes) so the SVG strokes that inherit currentColor disappeared.
@@ -57,16 +95,34 @@
 
 .sidebar-dash-icon:hover {
   background: var(--background-modifier-hover);
+  border-color: var(--icon-color-hover, var(--text-normal));
   color: var(--icon-color-hover, var(--text-normal));
 }
 
+.sidebar-dash-icon:active {
+  transform: translate(1px, 1px);
+  box-shadow:
+    1px 2px 3px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+}
+
 .sidebar-dash-count {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-monospace, ui-monospace, SFMono-Regular, monospace);
-  font-size: 24px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-muted);
-  text-align: center;
-  min-height: 32px;
-  line-height: 32px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  border-radius: 7px;
+  box-shadow:
+    2px 3px 5px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
   cursor: default;
 }
 
@@ -88,6 +144,38 @@
 .left-sidebar.expanded .sidebar-expanded-panel {
   display: flex;
 }
+
+.sidebar-outputstyle-menu {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 100%;
+  z-index: 80;
+  max-height: 280px;
+  overflow: auto;
+  padding: 5px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-primary);
+  box-shadow: 0 10px 28px var(--ora-shadow-raised, rgba(0, 0, 0, 0.3));
+}
+.sidebar-outputstyle-menu[hidden] { display: none; }
+.sidebar-outputstyle-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-outputstyle-menu button:hover,
+.sidebar-outputstyle-menu button[aria-selected="true"] {
+  background: var(--background-modifier-hover);
+}
+.sidebar-outputstyle-menu button[aria-selected="true"] { font-weight: 700; }
 
 .sidebar-new-thread-cmd {
   display: flex;
@@ -384,6 +472,7 @@
   display: none;
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding-top: 4px;
 }

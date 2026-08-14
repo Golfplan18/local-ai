@@ -48,8 +48,19 @@
       if (on) window.OraTooltip.enable();
       else window.OraTooltip.disable();
       var showVisualHelp = payload.interface.visual_help_enabled === true;
+      var autoHideControls = payload.interface.auto_hide_controls === true;
       if (document.body) {
         document.body.classList.toggle('ora-show-visual-help', showVisualHelp);
+        document.body.classList.toggle('ora-auto-hide-controls', autoHideControls);
+      }
+      if (!autoHideControls) {
+        document.querySelectorAll('.visual-panel.chrome-hidden').forEach(function (panel) {
+          if (panel._oraPanel && typeof panel._oraPanel._setChromeHidden === 'function') {
+            panel._oraPanel._setChromeHidden(false);
+          } else {
+            panel.classList.remove('chrome-hidden');
+          }
+        });
       }
       try {
         document.dispatchEvent(new CustomEvent('ora:visual-help-setting', {
@@ -332,6 +343,21 @@
           <polyline points="9 18 15 12 9 6"/>
         </svg>
       </button>
+      <button class="sidebar-dash-icon" type="button" id="sidebarDashProject"
+              aria-label="Choose Active Project" title="Active Project">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h7l2 2"/>
+        </svg>
+      </button>
+      <button class="sidebar-dash-icon" type="button" id="sidebarDashModel"
+              aria-label="Choose Model Profile" title="Model Profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <rect x="4" y="4" width="16" height="16" rx="3"/>
+          <path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+        </svg>
+      </button>
       <button class="sidebar-dash-icon" type="button" id="sidebarDashNewChat"
               aria-label="Start new Dialogue">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -347,7 +373,19 @@
             data-count="0" title="Active Dialogues">0</span>
       <span class="sidebar-dash-count" id="sidebarDashPending"
             data-count="0" title="Pending operations">0</span>
+      <button class="sidebar-dash-icon sidebar-dash-icon--bottom" type="button"
+              id="sidebarDashOutputStyle" aria-label="Choose Output Style"
+              title="Output Style">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M4 6h16M4 12h10M4 18h7"/>
+        </svg>
+      </button>
     </div>
+
+    <div class="sidebar-resize-handle" id="sidebarResizeHandle" role="separator"
+         aria-orientation="vertical" aria-label="Resize Dialogues sidebar"
+         tabindex="0"></div>
 
     <div class="sidebar-expanded-panel">
       <style>
@@ -580,7 +618,18 @@
         </div>
       </div>
       <div class="sidebar-fixed-section sidebar-modelconfig-section">
-        <div class="sidebar-group-label">Model Profile</div>
+        <div class="sidebar-group-label sidebar-project-label">
+          <span>Model Profile</span>
+          <button class="sidebar-project-manage" type="button"
+                  id="sidebarModelSettingsBtn"
+                  title="Manage Model Profiles" aria-label="Manage Model Profiles">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
         <button class="sidebar-modelconfig-current" id="sidebarModelConfigBtn" type="button"
                 title="Choose this project's Model Profile"
                 aria-haspopup="menu" aria-expanded="false">
@@ -698,8 +747,61 @@
   <!-- LEFT COLUMN — input on top, draggable bridge strip, output on bottom -->
   <div class="left-column">
     <div class="pane input-pane">
-      <textarea spellcheck="false" placeholder="What should happen?"
-                aria-label="What should happen?"></textarea>
+      <div class="pane-header input-pane-header">
+        <span class="pane-header__notice">Ask, direct, or explore…</span>
+        <div class="input-pane-toolbar input-pane-header-controls"
+             role="toolbar" aria-label="Current-turn Inquiry settings">
+          <button class="input-pane-toolbar__btn input-pane-toolbar__btn--state" type="button"
+                  id="inputToolbarImageGenerate"
+                  aria-label="Input: Text"
+                  aria-pressed="false"
+                  title="Input: Text"
+                  data-input-toolbar="image-generate">
+            <svg class="input-toolbar-entry-text" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 5h14M12 5v14M8 19h8"/>
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="input-toolbar-entry-image" aria-hidden="true">
+              <path d="M16 5h6"/><path d="M19 2v6"/>
+              <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/>
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+              <circle cx="9" cy="9" r="2"/>
+            </svg>
+            <span class="input-pane-toolbar__state-label">Text</span>
+          </button>
+          <button class="input-pane-toolbar__btn input-pane-toolbar__btn--state is-audience-internal" type="button"
+                  id="inputToolbarAudience"
+                  aria-label="Audience: In (project default)"
+                  aria-pressed="false"
+                  title="Audience: In — project interaction style"
+                  data-input-toolbar="audience">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="input-toolbar-audience-internal" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span class="input-pane-toolbar__state-label">In</span>
+          </button>
+          <button class="input-pane-toolbar__btn input-pane-toolbar__btn--text" type="button"
+                  id="inputToolbarModelProfile"
+                  aria-label="Model Profile inherited"
+                  aria-haspopup="menu" aria-expanded="false"
+                  title="Choose a Model Profile for the next run"
+                  data-input-toolbar="model-profile">—</button>
+        </div>
+      </div>
+      <textarea spellcheck="false"
+                aria-label="Inquiry: ask, direct, or explore"></textarea>
       <!-- V3 Input Handling Phase 8 — attachment chip row. The
            file-drop dispatcher (in this file's inline script) renders
            per-file chips here when a file is dropped on the pane or
@@ -708,11 +810,19 @@
            visual treatment is consistent regardless of file type. -->
       <div class="input-pane-attachments" id="inputPaneAttachments"
            aria-live="polite" aria-label="Attached files"></div>
-      <!-- V3 Input Handling Phase 3 — bottom-right toolbar:
-           framework picker, analyses picker, image-generation intent toggle, attach.
-           Click handlers dispatch `ora:input-toolbar:*` events; picker modules
-           wire the framework and analysis dropdowns. -->
-      <div class="input-pane-toolbar" role="toolbar" aria-label="Inquiry options">
+    </div>
+    <div class="bridge-strip" id="bridgeStrip" role="separator"
+         aria-orientation="horizontal" aria-label="Resize Inquiry pane">
+      <div class="input-pane-toolbar bridge-toolbar bridge-toolbar--left"
+           role="toolbar" aria-label="Inquiry tools">
+        <button class="input-pane-toolbar__btn" type="button"
+                id="inputToolbarAttach" aria-label="Attach file"
+                data-input-toolbar="attach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
         <button class="input-pane-toolbar__btn" type="button"
                 id="inputToolbarProgramming"
                 aria-label="Programming"
@@ -757,61 +867,9 @@
             <line x1="16" y1="18" x2="16" y2="22"/>
           </svg>
         </button>
-        <button class="input-pane-toolbar__btn" type="button"
-                id="inputToolbarAudience"
-                aria-label="Audience: external (deliverable)"
-                aria-pressed="false"
-                title="External — reads for the world (output style). Click for Internal (interaction style)."
-                data-input-toolbar="audience">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               class="input-toolbar-audience-internal" aria-hidden="true">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </button>
-        <button class="input-pane-toolbar__btn input-pane-toolbar__btn--text" type="button"
-                id="inputToolbarModelProfile"
-                aria-label="Model Profile inherited"
-                aria-haspopup="menu"
-                aria-expanded="false"
-                title="Choose a Model Profile for the next run"
-                data-input-toolbar="model-profile">—</button>
-        <button class="input-pane-toolbar__btn" type="button"
-                id="inputToolbarImageGenerate"
-                aria-label="Generate image from prompt"
-                aria-pressed="false"
-                data-input-toolbar="image-generate">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 5h6"/>
-            <path d="M19 2v6"/>
-            <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/>
-            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-            <circle cx="9" cy="9" r="2"/>
-          </svg>
-        </button>
-        <button class="input-pane-toolbar__btn" type="button"
-                id="inputToolbarAttach"
-                aria-label="Attach file"
-                data-input-toolbar="attach">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-          </svg>
-        </button>
         <input type="file" id="inputToolbarAttachFile" multiple
                style="display: none" aria-hidden="true">
       </div>
-    </div>
-    <div class="bridge-strip" id="bridgeStrip" role="separator"
-         aria-orientation="horizontal" aria-label="Resize Inquiry pane">
       <!-- V3 Input Handling Phase 5 — left-justified input-selection label.
            Set by framework / analysis picker events; empty when no explicit
            selection is set for the current input. -->
@@ -827,10 +885,6 @@
         </svg>
       </button>
       <span class="bridge-framework-label" id="bridgeFrameworkLabel"></span>
-      <!-- Right-justified conversation-mode label (stealth/private),
-           owned by V3 Item 5 / Phase 1.x. Mirrored on the right bridge
-           strip near the spine R glyph. -->
-      <span class="bridge-mode-label" id="bridgeModeLabel"></span>
     </div>
     <!-- V3 design backlog item 8B: prompt overlay. Hidden by default;
          shown via the expand button in the output pane header below.
@@ -895,7 +949,7 @@
            Real data flow (display name from conversation.json, turn
            position from 2B load endpoint, timestamp from chunk YAML)
            wires in later. -->
-      <div class="output-pane-header">
+      <div class="pane-header output-pane-header">
         <div class="output-pane-header-left">
           <span class="output-pane-mode-icon" id="outputPaneModeIcon" aria-hidden="true"></span>
           <span class="output-pane-display-name" id="outputPaneDisplayName">Dialogue</span>
@@ -946,12 +1000,11 @@
   <!-- SPINE — bare; icon clusters flush with pane top/bottom -->
   <div class="spine">
 
-    <!-- TOP cluster — V3 spec §2.2: Position 1 (top) = Stealth (⊘),
-         Position 2 = Private (◎). Order matches §1.1's "two mode toggle
-         buttons" enumeration. -->
+    <!-- TOP cluster — confidentiality modes. The stored `stealth` value is
+         retained for compatibility; only the user-facing name changes. -->
     <div class="spine-top">
 
-      <button class="spine-button" type="button" aria-label="Stealth"
+      <button class="spine-button" type="button" aria-label="Off Record"
               data-mode-button="stealth" id="modeBtnStealth"
               aria-haspopup="menu" aria-expanded="false"
               aria-controls="oraModeDropdown">
@@ -1022,46 +1075,8 @@
     <span class="mode-bracket mode-bracket-left"  id="modeBracketLeft"  aria-hidden="true"></span>
     <span class="mode-bracket mode-bracket-right" id="modeBracketRight" aria-hidden="true"></span>
 
-    <!-- BOTTOM cluster — V3 spec §2.2 + Audio/Video Phase 1:
-         Position 3 (Plus)             = New thread (opens §6 bootstrap flow)
-         Position 4 (Hamburger)        = Sidebar toggle (opens/closes §1.3)
-         Position 5 (Video camera)     = Video editing pane-mode toggle
-         Position 6 (Sliders)          = Configuration / settings
-         Position 7 (Painter's palette)= Theme & Appearance
-         data-mode-button is reserved for content-confidentiality modes
-         (Stealth, Private). The video toggle uses data-pane-mode-button
-         so it composes with — does not conflict with — those modes. -->
+    <!-- BOTTOM cluster — app-wide configuration and appearance only. -->
     <div class="spine-bottom">
-
-      <button class="spine-button" type="button" aria-label="New Dialogue"
-              id="spineNewThread">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
-
-      <button class="spine-button" type="button" aria-label="Sidebar toggle"
-              id="spineSidebarToggle">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round">
-          <line x1="4" y1="6" x2="20" y2="6"/>
-          <line x1="4" y1="12" x2="20" y2="12"/>
-          <line x1="4" y1="18" x2="20" y2="18"/>
-        </svg>
-      </button>
-
-      <button class="spine-button" type="button" aria-label="Video editing"
-              data-pane-mode-button="video" id="spineVideoMode">
-        <!-- Video camera glyph in the same minimalist line-stroke style as
-             the other spine icons. Body + lens triangle. -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="7" width="13" height="10" rx="1.5" ry="1.5"/>
-          <polygon points="16 10 21 7 21 17 16 14 16 10"/>
-        </svg>
-      </button>
 
       <button class="spine-button" type="button" aria-label="Configuration"
               id="spineSettingsBtn"
@@ -1098,9 +1113,12 @@
   <div class="right-column">
     <div class="chat-zone" id="chatZone">
       <div class="pane chat-input-pane">
+        <div class="pane-header aside-pane-header">
+          <span class="pane-header__title">Aside</span>
+          <span class="pane-header__notice" id="bridgeQAMessage">Informational only</span>
+        </div>
         <textarea spellcheck="false"
                   aria-label="Aside (informational, not saved or sent to Runs)"
-                  placeholder="Ask Aside — informational only"
                   data-authoritative="false" data-persisted="false"></textarea>
         <button type="button" class="chat-zone-minimize-btn" id="chatZoneMinimizeBtn"
                 aria-label="Minimize Aside" title="Minimize Aside">
@@ -1116,10 +1134,72 @@
     </div>
     <div class="bridge-strip-right" id="bridgeStripRight" role="separator"
          aria-orientation="horizontal" aria-label="Resize main split">
-      <span class="bridge-mode-label" id="bridgeModeLabelRight"></span>
-      <span class="bridge-qa-message" id="bridgeQAMessage"></span>
+      <div class="input-pane-toolbar bridge-toolbar bridge-toolbar--right"
+           role="toolbar" aria-label="Visual workspace modes">
+        <button class="input-pane-toolbar__btn"
+                type="button" id="visualEditorSwitch"
+                aria-label="Visual editor: Excalidraw. Switch to Konva"
+                title="Excalidraw — switch to Konva"
+                data-active-editor="excalidraw">
+          <svg class="visual-editor-icon visual-editor-icon--excalidraw"
+               viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <path d="m12 3 8 8-8 8-8-8z"/>
+            <path d="M7.5 13.5c1.5-4 3 3 4.5-1s3 2.5 4.5-1"/>
+          </svg>
+          <svg class="visual-editor-icon visual-editor-icon--konva"
+               viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <rect x="4" y="4" width="13" height="13" rx="1.5"/>
+            <path d="M8 8h12v12H8z"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                aria-label="Video editing" data-pane-mode-button="video"
+                id="spineVideoMode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="13" height="10" rx="1.5" ry="1.5"/>
+            <polygon points="16 10 21 7 21 17 16 14 16 10"/>
+          </svg>
+        </button>
+        <button class="input-pane-toolbar__btn" type="button"
+                id="visualImportImage" aria-label="Import image" title="Import image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="m21 15-5-5L5 21"/><path d="M12 3v6M9 6h6"/>
+          </svg>
+        </button>
+        <input type="file" id="visualImportImageFile" accept="image/*"
+               hidden aria-hidden="true">
+      </div>
     </div>
-    <div class="pane right-pane"></div>
+    <section class="visual-pane-shell" aria-label="Exhibits">
+      <div class="pane-header visual-pane-header">
+        <span class="pane-header__title">Exhibits</span>
+        <div class="visual-toolbar-host" id="visualToolbarHost"
+             aria-label="Visual editor tools"></div>
+      </div>
+      <div class="pane right-pane"></div>
+      <div class="visual-pane-footer" id="visualPaneFooter"
+           aria-label="Visual output actions">
+        <span class="visual-pane-footer__status" id="visualPaneFooterStatus"
+              role="status" aria-live="polite"></span>
+        <button class="export-toolbar__btn" type="button" id="visualExportPng"
+                title="Export the current Exhibits canvas as a PNG" disabled>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+          </svg>
+          Export PNG
+        </button>
+      </div>
+    </section>
   </div>
 
 </div>
@@ -1150,12 +1230,12 @@
   const topCluster      = document.querySelector('.spine-top');
   const bottomCluster   = document.querySelector('.spine-bottom');
 
-  const MIN_INPUT             = 60;
+  const MIN_INPUT             = 80;
   const MAX_INPUT_RATIO       = 0.7;
   const ICON_GAP              = 18;
   const R_CENTER_RATIO        = 0.5534;
   const CHAT_SMALL_GAP        = 18;
-  const MIN_CHAT_INPUT        = 80;   /* leaves room for 2 rows of text inside the 14px outer padding + browser textarea padding so the scrollbar never appears at minimum */
+  const MIN_CHAT_INPUT        = 96;   /* keeps the textarea usable below the uniformly taller recessed header */
   const MAX_CHAT_INPUT_RATIO  = 0.7;     // of the chat-zone height
 
   // ─── Wordmark placement: r-center pinned to left bridge center ───
@@ -1212,6 +1292,7 @@
   let mainDrag = false, mainStartY = 0, mainStartH = 0;
 
   const mainDown = (e) => {
+    if (e.target.closest('button, input, [role="menu"], [role="dialog"]')) return;
     mainDrag    = true;
     mainStartY  = e.clientY;
     mainStartH  = input.offsetHeight;
@@ -1339,15 +1420,13 @@
 
   window.addEventListener('resize', clampAndPlace);
 
-  // ─── Mode labels (left + right bridges) + Q&A message (centered, separate) ───
-  const modeLabel       = document.getElementById('bridgeModeLabel');
-  const modeLabelRight  = document.getElementById('bridgeModeLabelRight');
+  // ─── Dialogue mode state + Aside notice ───
   const qaMessage       = document.getElementById('bridgeQAMessage');
   const leftInputArea   = document.querySelector('.input-pane textarea');
   const rightInputArea  = document.querySelector('.chat-input-pane textarea');
   const logoO           = document.getElementById('logo-o');
   const themeToggleBtn  = document.getElementById('themeToggleBtn');
-  const MODE_LABELS = { private: 'Private', stealth: 'Stealth' };
+  const MODE_LABELS = { private: 'Private', stealth: 'Off Record' };
 
   const currentMode = () => {
     for (const c of document.body.classList) {
@@ -1363,15 +1442,11 @@
     if (mode) {
       document.body.classList.add(mode + '-mode');
       const label = MODE_LABELS[mode] || '';
-      modeLabel.textContent = label;
-      modeLabelRight.textContent = label;
       // V3 spec §3 — bracketing text on R glyph, mirrors the mode label
       // verbatim (just uppercase, letter-spaced via CSS).
       if (bracketLeft)  bracketLeft.textContent  = label;
       if (bracketRight) bracketRight.textContent = label;
     } else {
-      modeLabel.textContent = '';
-      modeLabelRight.textContent = '';
       if (bracketLeft)  bracketLeft.textContent  = '';
       if (bracketRight) bracketRight.textContent = '';
     }
@@ -1382,17 +1457,27 @@
     updateModeButtonState();
   };
 
-  // Q&A message lives in its own element, centered in the right bridge,
-  // so it doesn't cover the right-bridge mode label at the inner edge.
+  // The notice belongs to Aside's own header, not the inter-pane bridge.
   const updateQAMessage = () => {
     if (document.activeElement === rightInputArea) {
-      qaMessage.textContent = 'Questions and Answers are NOT saved.';
-      qaMessage.classList.add('show');
+      qaMessage.textContent = 'Questions and Answers are not saved';
     } else {
-      qaMessage.textContent = '';
-      qaMessage.classList.remove('show');
+      qaMessage.textContent = 'Informational only';
     }
   };
+
+  document.addEventListener('ora:bridge-orientation-changed', (event) => {
+    if (!event.detail || event.detail.side !== 'left') return;
+    if (window.OraFrameworkPicker && typeof window.OraFrameworkPicker.close === 'function') {
+      window.OraFrameworkPicker.close();
+    }
+    if (window.OraAnalysisPicker && typeof window.OraAnalysisPicker.close === 'function') {
+      window.OraAnalysisPicker.close();
+    }
+    if (window.OraModelProfiles && typeof window.OraModelProfiles.close === 'function') {
+      window.OraModelProfiles.close();
+    }
+  });
 
   // Confidentiality belongs to the active Dialogue, but the two spine
   // menus are creation surfaces as well. Keep both available across modes;
@@ -1549,8 +1634,8 @@
           { action: 'fork', label: 'Fork as private', disabled: !canForkAsMode },
         ]
       : [
-          { action: 'new',  label: 'New stealth' },
-          { action: 'fork', label: 'Fork as stealth', disabled: !canForkAsMode },
+          { action: 'new',  label: 'New Off Record' },
+          { action: 'fork', label: 'Fork as Off Record', disabled: !canForkAsMode },
         ];
 
     if (mode === 'private' && activeId && !readOnly && activeTag !== 'stealth') {
@@ -1559,7 +1644,7 @@
         : { action: 'make-private', label: 'Make current Private' });
     }
     if (mode === 'stealth' && activeId && !readOnly && activeTag === 'stealth') {
-      items.push({ action: 'exit-stealth', label: 'Exit Stealth' });
+      items.push({ action: 'exit-stealth', label: 'Exit Off Record' });
       items.push({ action: 'delete-forever', label: 'Delete Forever', danger: true });
     }
 
@@ -1671,7 +1756,7 @@
     if (action === 'exit-stealth') {
       const conversation = window.OraConversation;
       if (!conversation || typeof conversation.exitStealth !== 'function') {
-        window.alert('Exit Stealth is unavailable.');
+        window.alert('Exit Off Record is unavailable.');
         return;
       }
       if (!modeMenuTargetIsCurrent(conversation, conversationId)) return;
@@ -1718,14 +1803,14 @@
       .filter(c => c.startsWith('pane-mode-'))
       .forEach(c => document.body.classList.remove(c));
     if (mode) document.body.classList.add('pane-mode-' + mode);
-    document.querySelectorAll('.spine-button[data-pane-mode-button]').forEach(b => {
+    document.querySelectorAll('[data-pane-mode-button]').forEach(b => {
       b.setAttribute('aria-pressed', b.dataset.paneModeButton === mode ? 'true' : 'false');
     });
     document.dispatchEvent(new CustomEvent('ora:pane-mode-toggle', {
       detail: { previous: prev, current: mode || null },
     }));
   };
-  document.querySelectorAll('.spine-button[data-pane-mode-button]').forEach(btn => {
+  document.querySelectorAll('[data-pane-mode-button]').forEach(btn => {
     btn.setAttribute('aria-pressed', 'false');
     const mode = btn.dataset.paneModeButton;
     btn.addEventListener('click', (e) => {
@@ -1875,6 +1960,61 @@
     return '';
   };
 
+  // A long-running submit may finish after navigation. Only committed
+  // navigation advances this epoch: an optimistic selection that fails still
+  // belongs to the Dialogue that remained on screen.
+  let inquiryNavigationRevision = 0;
+  let inquiryDraftRevision = 0;
+  let pendingInquiryCompositionTarget = null;
+  if (leftInputArea) {
+    leftInputArea.addEventListener('input', () => { inquiryDraftRevision += 1; });
+  }
+
+  // Turn-level selectors belong to the composed Inquiry, not to a Dialogue.
+  // Ordinary navigation abandons that composition only after its target loads.
+  // Privacy intervention loads its approved child directly, so it carries the
+  // selectors into the child-bound submission instead of clearing them.
+  const clearOneTurnInquiryComposition = () => {
+    if (window.OraModelProfiles
+        && typeof window.OraModelProfiles.clearOneRunOverride === 'function') {
+      window.OraModelProfiles.clearOneRunOverride();
+    }
+    if (window.OraStyleAudience && typeof window.OraStyleAudience.set === 'function') {
+      window.OraStyleAudience.set('internal');
+    }
+    if (window.OraInputState && typeof window.OraInputState.clearSelection === 'function') {
+      window.OraInputState.clearSelection();
+    }
+  };
+  document.addEventListener('ora:conversation-selected', (event) => {
+    const detail = (event && event.detail) || {};
+    const target = detail.conversation_id || detail.id || null;
+    if (target && target !== currentConversationId()) {
+      pendingInquiryCompositionTarget = target;
+    }
+  });
+  document.addEventListener('ora:conversation-tag-changed', (event) => {
+    const detail = (event && event.detail) || {};
+    if (detail.source === 'conversation-load-failed-restore') return;
+    inquiryNavigationRevision += 1;
+    if (pendingInquiryCompositionTarget
+        && detail.conversation_id === pendingInquiryCompositionTarget) {
+      pendingInquiryCompositionTarget = null;
+      clearOneTurnInquiryComposition();
+    }
+  });
+  document.addEventListener('ora:conversation-load-failed', (event) => {
+    const detail = (event && event.detail) || {};
+    if (detail.conversation_id === pendingInquiryCompositionTarget) {
+      pendingInquiryCompositionTarget = null;
+    }
+  });
+  document.addEventListener('ora:fresh-conversation-started', () => {
+    pendingInquiryCompositionTarget = null;
+    inquiryNavigationRevision += 1;
+    clearOneTurnInquiryComposition();
+  });
+
   const inquiryMutationBlockMessage = () => {
     const conversation = window.OraConversation;
     if (!conversation || typeof conversation.isReadOnly !== 'function'
@@ -1945,9 +2085,320 @@
     }
   };
 
-  const _submitToMainPipeline = async (text, carriedVisualSnapshot = null) => {
-    const submissionConversationId = currentConversationId();
-    const submissionTag = currentTag();
+  const mainPipelineSubmissionsInFlight = [];
+
+  const _visualSnapshotIdentity = (snapshot) => {
+    if (!snapshot) return 'none';
+    try {
+      if (snapshot.editor === 'excalidraw') {
+        return JSON.stringify({
+          editor: 'excalidraw',
+          elements: snapshot.elements || [],
+          files: snapshot.files || {},
+          background: snapshot.appState && snapshot.appState.viewBackgroundColor || '',
+        });
+      }
+      if (snapshot.editor === 'konva') {
+        return JSON.stringify({
+          editor: 'konva',
+          state: snapshot.state || null,
+          spatial: snapshot.spatial || null,
+          svg: snapshot.svg || '',
+        });
+      }
+      return JSON.stringify(snapshot);
+    } catch (_) {
+      // Ora's submit snapshots are serializable. Retain object identity as a
+      // conservative fallback if an external canvas adapter violates that
+      // contract: it may admit a repeat, but never suppress a changed scene.
+      return snapshot;
+    }
+  };
+
+  const _submissionKey = (composition, inputSnapshot, modelSnapshot,
+    audienceSnapshot, attachmentSnapshot) => ({
+    conversationId: composition.conversationId,
+    tag: composition.tag,
+    navigationRevision: composition.navigationRevision,
+    draftRevision: composition.draftRevision,
+    text: composition.text,
+    displayText: composition.displayText,
+    inputRevision: inputSnapshot ? inputSnapshot.revision : null,
+    modelRevision: modelSnapshot ? modelSnapshot.revision : null,
+    audienceRevision: audienceSnapshot ? audienceSnapshot.revision : null,
+    attachmentRevision: attachmentSnapshot ? attachmentSnapshot.revision : null,
+    visualIdentity: composition.visualIdentity,
+    attachmentEntries: attachmentSnapshot && Array.isArray(attachmentSnapshot.entries)
+      ? attachmentSnapshot.entries.slice() : [],
+  });
+
+  const _sameSubmissionKey = (left, right) => !!left && !!right
+    && left.conversationId === right.conversationId
+    && left.tag === right.tag
+    && left.navigationRevision === right.navigationRevision
+    && left.draftRevision === right.draftRevision
+    && left.text === right.text
+    && left.displayText === right.displayText
+    && left.inputRevision === right.inputRevision
+    && left.modelRevision === right.modelRevision
+    && left.audienceRevision === right.audienceRevision
+    && left.attachmentRevision === right.attachmentRevision
+    && left.visualIdentity === right.visualIdentity
+    && left.attachmentEntries.length === right.attachmentEntries.length
+    && left.attachmentEntries.every((entry, index) => (
+      entry === right.attachmentEntries[index]
+    ));
+
+  // Freeze and reserve the entire one-turn composition synchronously. This
+  // boundary deliberately sits before privacy prompts, framework analysis,
+  // canvas materialization, and every other await: a later Inquiry can use
+  // fresh controls without changing the turn already being prepared.
+  const _reserveInquiryComposition = (text, displayText = text,
+    carriedVisualSnapshot = null) => {
+    const composition = {
+      conversationId: currentConversationId(),
+      tag: currentTag(),
+      navigationRevision: inquiryNavigationRevision,
+      draftRevision: inquiryDraftRevision,
+      text: String(text == null ? '' : text),
+      displayText: String(displayText == null ? '' : displayText),
+      restoreDraftText: String(displayText == null ? '' : displayText),
+      inputSnapshot: window.OraInputState
+          && typeof window.OraInputState.snapshotForSubmission === 'function'
+        ? window.OraInputState.snapshotForSubmission() : null,
+      modelSnapshot: window.OraModelProfiles
+          && typeof window.OraModelProfiles.snapshotForSubmission === 'function'
+        ? window.OraModelProfiles.snapshotForSubmission() : null,
+      audienceSnapshot: window.OraStyleAudience
+          && typeof window.OraStyleAudience.snapshotForSubmission === 'function'
+        ? window.OraStyleAudience.snapshotForSubmission() : null,
+      attachmentSnapshot: window.OraInputAttachments
+          && typeof window.OraInputAttachments.snapshotForSubmission === 'function'
+        ? window.OraInputAttachments.snapshotForSubmission() : null,
+      visualSnapshot: carriedVisualSnapshot,
+      canvasSummary: '',
+      accepted: false,
+      released: false,
+    };
+    if (!composition.visualSnapshot && window.OraCanvas
+        && (typeof window.OraCanvas.hasContent !== 'function'
+            || window.OraCanvas.hasContent())
+        && typeof window.OraCanvas.snapshotForSubmit === 'function') {
+      try {
+        composition.visualSnapshot = window.OraCanvas.snapshotForSubmit();
+      } catch (e) {
+        renderAssistantTurn('[Exhibits capture failed; Inquiry was not sent: '
+          + (e.message || e) + ']');
+        return null;
+      }
+    }
+    composition.visualIdentity = _visualSnapshotIdentity(composition.visualSnapshot);
+    const originalKey = _submissionKey(
+      composition,
+      composition.inputSnapshot,
+      composition.modelSnapshot,
+      composition.audienceSnapshot,
+      composition.attachmentSnapshot
+    );
+    const duplicate = mainPipelineSubmissionsInFlight.some((active) => (
+      _sameSubmissionKey(active.originalKey, originalKey)
+        || _sameSubmissionKey(active.successorKey, originalKey)
+    ));
+    if (duplicate) return null;
+
+    const submittedInput = typeof leftInputArea !== 'undefined' ? leftInputArea : null;
+    const draftReserved = !!(
+      submittedInput
+      && currentConversationId() === composition.conversationId
+      && inquiryNavigationRevision === composition.navigationRevision
+      && submittedInput.value.trim() === composition.displayText.trim()
+    );
+    const reservation = {
+      model: window.OraModelProfiles
+          && typeof window.OraModelProfiles.reserveSubmission === 'function'
+        ? window.OraModelProfiles.reserveSubmission(composition.modelSnapshot) : null,
+      audience: window.OraStyleAudience
+          && typeof window.OraStyleAudience.reserveSubmission === 'function'
+        ? window.OraStyleAudience.reserveSubmission(composition.audienceSnapshot) : null,
+      input: window.OraInputState
+          && typeof window.OraInputState.reserveSubmission === 'function'
+        ? window.OraInputState.reserveSubmission(composition.inputSnapshot) : null,
+      attachments: window.OraInputAttachments
+          && typeof window.OraInputAttachments.reserveSubmission === 'function'
+        ? window.OraInputAttachments.reserveSubmission(composition.attachmentSnapshot) : null,
+      draftReserved,
+      draftRevision: inquiryDraftRevision,
+      submittedInput,
+    };
+    if (draftReserved) submittedInput.value = '';
+    composition.reservation = reservation;
+    composition.record = { originalKey, successorKey: null };
+    composition.record.successorKey = _submissionKey(
+      composition,
+      window.OraInputState
+          && typeof window.OraInputState.snapshotForSubmission === 'function'
+        ? window.OraInputState.snapshotForSubmission() : null,
+      window.OraModelProfiles
+          && typeof window.OraModelProfiles.snapshotForSubmission === 'function'
+        ? window.OraModelProfiles.snapshotForSubmission() : null,
+      window.OraStyleAudience
+          && typeof window.OraStyleAudience.snapshotForSubmission === 'function'
+        ? window.OraStyleAudience.snapshotForSubmission() : null,
+      window.OraInputAttachments
+          && typeof window.OraInputAttachments.snapshotForSubmission === 'function'
+        ? window.OraInputAttachments.snapshotForSubmission() : null
+    );
+    mainPipelineSubmissionsInFlight.push(composition.record);
+    return composition;
+  };
+
+  // Privacy intervention may commit a Standard turn to its newly selected
+  // Private child. That is the only navigation boundary a reserved turn may
+  // cross; its frozen selectors/files remain unchanged while ownership and
+  // the exact cleared draft are rebound to the authoritative child.
+  const _rebindReservedComposition = (
+    composition, exactDraftText = composition && composition.displayText
+  ) => {
+    if (!composition || composition.released) return false;
+    const nextConversationId = currentConversationId();
+    const nextTag = currentTag();
+    const changedDialogue = nextConversationId !== composition.conversationId;
+    if (changedDialogue && !(composition.tag === '' && nextTag === 'private')) {
+      return false;
+    }
+    composition.conversationId = nextConversationId;
+    composition.tag = nextTag;
+    composition.navigationRevision = inquiryNavigationRevision;
+    composition.draftRevision = inquiryDraftRevision;
+    const reservation = composition.reservation;
+    if (reservation && reservation.attachments && changedDialogue
+        && window.OraInputAttachments
+        && typeof window.OraInputAttachments.rebindSubmission === 'function'
+        && !window.OraInputAttachments.rebindSubmission(
+          reservation.attachments, nextConversationId
+        )) return false;
+    if (reservation) {
+      const submittedInput = reservation.submittedInput;
+      const childDraftIsExact = !!(
+        submittedInput
+        && submittedInput.value.trim() === String(exactDraftText || '').trim()
+      );
+      if (childDraftIsExact) {
+        submittedInput.value = '';
+        composition.restoreDraftText = String(exactDraftText || '');
+      }
+      reservation.draftReserved = reservation.draftReserved || childDraftIsExact;
+      reservation.draftRevision = inquiryDraftRevision;
+    }
+    return true;
+  };
+
+  const _releaseInquiryComposition = (composition) => {
+    if (!composition || composition.released) return;
+    composition.released = true;
+    const reservation = composition.reservation;
+    if (!composition.accepted && reservation) {
+      const sameDialogue = currentConversationId() === composition.conversationId
+        && inquiryNavigationRevision === composition.navigationRevision;
+      const draftUnchanged = inquiryDraftRevision === reservation.draftRevision
+        && (!reservation.submittedInput
+          || (reservation.draftReserved && reservation.submittedInput.value === ''));
+      const programmingInactive = !(window.OraProgramming
+        && typeof window.OraProgramming.isActive === 'function'
+        && window.OraProgramming.isActive());
+      const imageEntryInactive = typeof imageGenerateMode === 'undefined'
+        || imageGenerateMode === false;
+      const currentModel = window.OraModelProfiles
+          && typeof window.OraModelProfiles.snapshotForSubmission === 'function'
+        ? window.OraModelProfiles.snapshotForSubmission() : null;
+      const currentAudience = window.OraStyleAudience
+          && typeof window.OraStyleAudience.snapshotForSubmission === 'function'
+        ? window.OraStyleAudience.snapshotForSubmission() : null;
+      const currentInput = window.OraInputState
+          && typeof window.OraInputState.snapshotForSubmission === 'function'
+        ? window.OraInputState.snapshotForSubmission() : null;
+      const currentAttachments = window.OraInputAttachments
+          && typeof window.OraInputAttachments.snapshotForSubmission === 'function'
+        ? window.OraInputAttachments.snapshotForSubmission() : null;
+      const reservationsUnchanged = (
+        (!reservation.model || (currentModel
+          && currentModel.revision === reservation.model.reservedRevision))
+        && (!reservation.audience || (currentAudience
+          && currentAudience.revision === reservation.audience.reservedRevision))
+        && (!reservation.input || (currentInput
+          && currentInput.revision === reservation.input.reservedRevision))
+        && (!reservation.attachments || (currentAttachments
+          && currentAttachments.conversationId === reservation.attachments.conversationId
+          && currentAttachments.revision === reservation.attachments.reservedRevision))
+      );
+      if (sameDialogue && draftUnchanged && programmingInactive
+          && imageEntryInactive && reservationsUnchanged) {
+        if (window.OraInputAttachments
+            && typeof window.OraInputAttachments.restoreSubmission === 'function') {
+          window.OraInputAttachments.restoreSubmission(reservation.attachments);
+        }
+        if (window.OraInputState
+            && typeof window.OraInputState.restoreSubmission === 'function') {
+          window.OraInputState.restoreSubmission(reservation.input);
+        }
+        if (window.OraStyleAudience
+            && typeof window.OraStyleAudience.restoreSubmission === 'function') {
+          window.OraStyleAudience.restoreSubmission(reservation.audience);
+        }
+        if (window.OraModelProfiles
+            && typeof window.OraModelProfiles.restoreSubmission === 'function') {
+          window.OraModelProfiles.restoreSubmission(reservation.model);
+        }
+        if (reservation.draftReserved && reservation.submittedInput) {
+          reservation.submittedInput.value = composition.restoreDraftText;
+        }
+      }
+    }
+    const index = mainPipelineSubmissionsInFlight.indexOf(composition.record);
+    if (index >= 0) mainPipelineSubmissionsInFlight.splice(index, 1);
+  };
+
+  const _submitToMainPipeline = async (
+    text,
+    carriedVisualSnapshot = null,
+    displayText = text,
+    reservedComposition = null
+  ) => {
+    const ownsReservation = !reservedComposition;
+    const composition = reservedComposition || _reserveInquiryComposition(
+      text, displayText, carriedVisualSnapshot
+    );
+    if (!composition) return;
+    const submissionConversationId = composition.conversationId;
+    const submissionTag = composition.tag;
+    const submissionNavigationRevision = composition.navigationRevision;
+    const submissionInputSnapshot = composition.inputSnapshot;
+    const submissionFramework = submissionInputSnapshot
+      ? submissionInputSnapshot.framework
+      : (window.OraInputState && typeof window.OraInputState.getFramework === 'function'
+        ? window.OraInputState.getFramework() : null);
+    const submissionAnalysisMode = submissionInputSnapshot
+      ? submissionInputSnapshot.analysisMode
+      : (window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function'
+        ? window.OraInputState.getAnalysisMode() : null);
+    const submissionAnalysisLens = submissionInputSnapshot
+      ? submissionInputSnapshot.analysisLens
+      : (window.OraInputState && typeof window.OraInputState.getAnalysisLens === 'function'
+        ? window.OraInputState.getAnalysisLens() : null);
+    const submissionModelSnapshot = composition.modelSnapshot;
+    const submissionModelProfile = submissionModelSnapshot
+      ? submissionModelSnapshot.value
+      : (window.OraModelProfiles
+        && typeof window.OraModelProfiles.getOneRunOverride === 'function'
+        ? window.OraModelProfiles.getOneRunOverride() : '');
+    const submissionAudienceSnapshot = composition.audienceSnapshot;
+    const submissionAudience = submissionAudienceSnapshot
+      ? submissionAudienceSnapshot.value
+      : (window.OraStyleAudience
+        && typeof window.OraStyleAudience.get === 'function'
+        ? window.OraStyleAudience.get() : 'internal');
+    const submissionAttachments = composition.attachmentSnapshot;
+    try {
     const body = new FormData();
     body.append('message', text);
     body.append('conversation_id', submissionConversationId);
@@ -1959,52 +2410,34 @@
     // compare_intent_with_mode resolves correctly. Per design doc Q3
     // stickiness rule the selection is per-input only — cleared below
     // after the request goes out.
-    if (window.OraInputState && typeof window.OraInputState.getFramework === 'function') {
-      const fw = window.OraInputState.getFramework();
-      if (fw && fw.id) body.append('framework_selected', fw.id);
+    if (submissionFramework && submissionFramework.id) {
+      body.append('framework_selected', submissionFramework.id);
     }
-    if (window.OraInputState && typeof window.OraInputState.getAnalysisMode === 'function') {
-      const mode = window.OraInputState.getAnalysisMode();
-      if (mode && mode.id) body.append('manual_mode_selection', mode.id);
+    if (submissionAnalysisMode && submissionAnalysisMode.id) {
+      body.append('manual_mode_selection', submissionAnalysisMode.id);
     }
-    if (window.OraInputState && typeof window.OraInputState.getAnalysisLens === 'function') {
-      const lens = window.OraInputState.getAnalysisLens();
-      if (lens && lens.id) body.append('manual_lens_selection', lens.id);
+    if (submissionAnalysisLens && submissionAnalysisLens.id) {
+      body.append('manual_lens_selection', submissionAnalysisLens.id);
     }
     // G1.16 — the input-box selection is a one-run override. It travels on
     // the existing authenticated multipart field and is cleared as soon as
     // this exact request is on the wire.
-    if (window.OraModelProfiles
-        && typeof window.OraModelProfiles.getOneRunOverride === 'function') {
-      const profile = window.OraModelProfiles.getOneRunOverride();
-      if (profile) body.append('config_name', profile);
-    }
-    // G1.36 honne/tatemae — mark this turn internal so it reads in the project's
-    // interaction style (default external uses the output style).
+    if (submissionModelProfile) body.append('config_name', submissionModelProfile);
+    // G1.36 honne/tatemae — In is the project interaction default. Out omits
+    // this marker and uses the project's output style for this turn.
     try {
-      if (window.OraStyleAudience && window.OraStyleAudience.get() === 'internal') {
+      if (submissionAudience === 'internal') {
         body.append('style_audience', 'internal');
       }
     } catch (e) {}
 
-    // Atomic Exhibits capture. This is deliberately the final synchronous
-    // operation before the function's first await: active Excalidraw text is
-    // committed and an immutable native snapshot is taken at this boundary.
-    // Native scene, canonical PNG, and (Konva only) spatial metadata are all
-    // materialized from that exact snapshot.
-    let visualSnapshot = carriedVisualSnapshot;
-    if (!visualSnapshot && window.OraCanvas
-        && (typeof window.OraCanvas.hasContent !== 'function'
-            || window.OraCanvas.hasContent())
-        && typeof window.OraCanvas.snapshotForSubmit === 'function') {
-      try {
-        visualSnapshot = window.OraCanvas.snapshotForSubmit();
-      } catch (e) {
-        renderAssistantTurn('[Exhibits capture failed; Inquiry was not sent: '
-          + (e.message || e) + ']');
-        return;
-      }
-    }
+    // The snapshot was captured at the reservation boundary, before any
+    // privacy/framework await. Materialization may be asynchronous, but it
+    // can no longer observe a later Inquiry's canvas.
+    const visualSnapshot = composition.visualSnapshot;
+    if (currentConversationId() !== submissionConversationId
+        || inquiryNavigationRevision !== submissionNavigationRevision) return;
+
     if (visualSnapshot) {
       let visualPayload;
       try {
@@ -2037,31 +2470,18 @@
       }
     }
 
-    if (window.OraInputAttachments
-        && typeof window.OraInputAttachments.imageFiles === 'function') {
-      const imageFiles = window.OraInputAttachments.imageFiles();
+    if (window.OraInputAttachments) {
+      const imageFiles = submissionAttachments
+          && Array.isArray(submissionAttachments.entries)
+        ? submissionAttachments.entries
+            .filter((entry) => entry && entry.kind === 'image' && entry.file)
+            .map((entry) => entry.file)
+        : (typeof window.OraInputAttachments.imageFiles === 'function'
+          ? window.OraInputAttachments.imageFiles() : []);
       if (imageFiles.length) {
         const imageFile = imageFiles[0];
         body.append('image', imageFile, imageFile.name || 'attached-image');
       }
-    }
-
-    // Clear the per-input framework selection now that the request is on
-    // the wire. Done before the await so that if the user starts typing a
-    // follow-up while waiting, the toolbar/bridge already reflect the
-    // cleared state.
-    if (window.OraInputState && typeof window.OraInputState.clearFramework === 'function') {
-      window.OraInputState.clearFramework();
-    }
-    if (window.OraInputState && typeof window.OraInputState.clearAnalysisMode === 'function') {
-      window.OraInputState.clearAnalysisMode();
-    }
-    // V3 Input Handling Phase 8 — same per-input stickiness applies to
-    // attachments. The document/audio jobs already submitted continue
-    // running in the background; clearing this list just resets the
-    // input pane's state for the next prompt.
-    if (window.OraInputAttachments && typeof window.OraInputAttachments.clear === 'function') {
-      window.OraInputAttachments.clear();
     }
 
     let resp;
@@ -2081,10 +2501,13 @@
       refreshSidebarAfterSubmit();
       return;
     }
-    if (window.OraModelProfiles
-        && typeof window.OraModelProfiles.acknowledgeSubmission === 'function') {
-      window.OraModelProfiles.acknowledgeSubmission(resp);
-    }
+    composition.accepted = true;
+    const submissionStillOwnsDialogue = (
+      currentConversationId() === submissionConversationId
+        && inquiryNavigationRevision === submissionNavigationRevision
+    );
+    if (submissionStillOwnsDialogue && displayText
+        && typeof renderUserTurn === 'function') renderUserTurn(displayText);
 
     // V3 Backlog 2A — plain-HTTP reply. {status, conversation_id, chunk_id}
     // on success, {status: "errored", failure_summary} on pipeline failure.
@@ -2103,19 +2526,26 @@
                    payload.failure_summary || '(no summary)');
     }
     refreshSidebarAfterSubmit();
+    } finally {
+      if (ownsReservation) _releaseInquiryComposition(composition);
+    }
   };
 
   const submitToMainPipeline = async (
     text,
     displayText = text,
     privacyApprovedText = null,
-    carriedVisualSnapshot = null
+    carriedVisualSnapshot = null,
+    reservedComposition = null
   ) => {
     const submit = async (submissionContext = {}) => {
-      leftInputArea.value = '';
-      if (displayText) renderUserTurn(displayText);
+      if (reservedComposition
+          && !_rebindReservedComposition(reservedComposition)) return false;
       return _submitToMainPipeline(
-        text, submissionContext.visualSnapshot || carriedVisualSnapshot
+        text,
+        submissionContext.visualSnapshot || carriedVisualSnapshot,
+        displayText,
+        reservedComposition
       );
     };
     if (privacyApprovedText === text) {
@@ -2127,7 +2557,7 @@
       return;
     }
     return window.OraConversation.submitAfterPrivacy(
-      text, submit, { captureVisualSnapshot: true }
+      text, submit, { draftText: displayText, captureVisualSnapshot: false }
     );
   };
 
@@ -2152,15 +2582,17 @@
   // The whole augmented prompt then enters submitToMainPipeline like any
   // other text input.
 
-  const _summarizeAttachments = () => {
+  const _summarizeAttachments = (snapshot = null) => {
     // V3 Input Handling Phase 8 — the file-drop dispatcher tracks every
     // dropped/attached file in window.OraInputAttachments. Pass each
     // entry's name + type so the gap analyzer can mark a "Document or
     // files" requirement as PROVIDED when the user has dropped a
     // document, even before the document_input pipeline finishes
     // converting it.
-    if (!window.OraInputAttachments) return [];
-    return window.OraInputAttachments.list().map(a => ({
+    const entries = snapshot && Array.isArray(snapshot.entries)
+      ? snapshot.entries
+      : (window.OraInputAttachments ? window.OraInputAttachments.list() : []);
+    return entries.map(a => ({
       name: a.name,
       type: a.type || a.kind || '',
     }));
@@ -2182,12 +2614,14 @@
     }
   };
 
-  const _analyzeFrameworkInputs = async ({ frameworkId, prompt, priorResponses }) => {
+  const _analyzeFrameworkInputs = async ({
+    frameworkId, prompt, priorResponses, attachments, canvasSummary,
+  }) => {
     const body = {
       framework_id: frameworkId,
       prompt,
-      attachments: _summarizeAttachments(),
-      canvas_summary: _summarizeCanvas(),
+      attachments: attachments || [],
+      canvas_summary: canvasSummary || '',
       prior_responses: priorResponses || {},
     };
     const resp = await fetch('/api/framework/analyze-inputs', {
@@ -2247,121 +2681,135 @@
     privacyApprovedText = null,
     carriedVisualSnapshot = null
   ) => {
-    const fw = (window.OraInputState && window.OraInputState.getFramework())
-      ? window.OraInputState.getFramework() : null;
-    if (!fw || !fw.id) {
-      return submitToMainPipeline(
-        text, text, privacyApprovedText, carriedVisualSnapshot
-      );
-    }
-    if (!window.OraFrameworkSetupPopup || typeof window.OraFrameworkSetupPopup.show !== 'function') {
-      // Popup module didn't load — fall back to direct submit so the user
-      // isn't blocked by missing UI. The pipeline still receives the
-      // framework selection.
-      return submitToMainPipeline(
-        text, text, privacyApprovedText, carriedVisualSnapshot
-      );
-    }
-    if (text && privacyApprovedText !== text) {
-      if (!window.OraConversation
-          || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
-        renderAssistantTurn('[Privacy check unavailable; framework Inquiry was not sent.]');
-        return;
-      }
-      const approved = await window.OraConversation.submitAfterPrivacy(
-        text, async (submissionContext = {}) => {
-          carriedVisualSnapshot = submissionContext.visualSnapshot
-            || carriedVisualSnapshot;
-        }, { draftText: text, captureVisualSnapshot: true }
-      );
-      if (!approved) return;
-      privacyApprovedText = text;
-    }
-
-    // Iteration loop. Round N: analyze with priorResponses, popup if
-    // gaps, collect responses, decide. We accumulate ALL responses across
-    // rounds so a question answered in round 1 stays answered in round 2.
-    let priorResponses = {};
-    let priorOnCanvas  = {};
-    let augmentedPrompt = text;
-    let approvedPrompt = privacyApprovedText;
-
-    for (let round = 0; round < 5; round += 1) {
-      let report;
-      try {
-        report = await _analyzeFrameworkInputs({
-          frameworkId: fw.id,
-          prompt: augmentedPrompt,
-          priorResponses,
-        });
-      } catch (e) {
-        console.warn('[framework gap] analyzer call failed:', e);
-        // Analyzer down — submit anyway so the user isn't trapped. Phase
-        // 7 should be advisory, not a hard gate when infrastructure is
-        // unavailable.
-        return submitToMainPipeline(
-          augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
+    const composition = _reserveInquiryComposition(
+      text, text, carriedVisualSnapshot
+    );
+    if (!composition) return;
+    composition.canvasSummary = _summarizeCanvas();
+    const fw = composition.inputSnapshot
+      ? composition.inputSnapshot.framework
+      : null;
+    try {
+      if (!fw || !fw.id) {
+        return await submitToMainPipeline(
+          text, text, privacyApprovedText, composition.visualSnapshot, composition
         );
       }
-
-      if (!_hasGaps(report)) {
-        return submitToMainPipeline(
-          augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
+      if (!window.OraFrameworkSetupPopup
+          || typeof window.OraFrameworkSetupPopup.show !== 'function') {
+        // Popup module didn't load — fall back to direct submit so the user
+        // isn't blocked by missing UI. The frozen framework still travels.
+        return await submitToMainPipeline(
+          text, text, privacyApprovedText, composition.visualSnapshot, composition
         );
       }
-
-      const choice = await window.OraFrameworkSetupPopup.show(report);
-
-      if (choice.action === 'cancel') {
-        if (window.OraInputState) window.OraInputState.clearFramework();
-        return; // do not submit
-      }
-
-      // Merge this round's responses into the running state.
-      for (const k of Object.keys(choice.responses || {})) {
-        priorResponses[k] = choice.responses[k];
-      }
-      for (const k of Object.keys(choice.on_canvas || {})) {
-        priorOnCanvas[k] = choice.on_canvas[k];
-      }
-      augmentedPrompt = _augmentPromptWithResponses(text, priorResponses, priorOnCanvas);
-      const responseText = Object.values(choice.responses || {})
-        .map((value) => String(value || '').trim())
-        .filter(Boolean)
-        .join('\n');
-      if (responseText) {
+      if (text && privacyApprovedText !== text) {
         if (!window.OraConversation
             || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
-          renderAssistantTurn('[Privacy check unavailable; framework response was not sent.]');
+          renderAssistantTurn('[Privacy check unavailable; framework Inquiry was not sent.]');
           return;
         }
+        let rebound = true;
         const approved = await window.OraConversation.submitAfterPrivacy(
-          responseText, async (submissionContext = {}) => {
-            carriedVisualSnapshot = submissionContext.visualSnapshot
-              || carriedVisualSnapshot;
-          }, { draftText: augmentedPrompt, captureVisualSnapshot: true }
+          text, async () => { rebound = _rebindReservedComposition(composition, text); },
+          { draftText: text, captureVisualSnapshot: false }
         );
-        if (!approved) return;
-      }
-      approvedPrompt = augmentedPrompt;
-
-      if (choice.action === 'run-anyway') {
-        const note = _runAnywayNote(choice.missing_summary, report.requirements);
-        return submitToMainPipeline(
-          augmentedPrompt + note, text, augmentedPrompt + note,
-          carriedVisualSnapshot
-        );
+        if (!approved || !rebound) return;
+        privacyApprovedText = text;
       }
 
-      // choice.action === 'continue' — loop and re-analyze. If the user's
-      // responses cover everything, the next round's _hasGaps returns
-      // false and we submit. If gaps remain, popup re-fires.
+      // Iteration loop. Round N: analyze with priorResponses, popup if
+      // gaps, collect responses, decide. We accumulate ALL responses across
+      // rounds so a question answered in round 1 stays answered in round 2.
+      let priorResponses = {};
+      let priorOnCanvas  = {};
+      let augmentedPrompt = text;
+      let approvedPrompt = privacyApprovedText;
+
+      for (let round = 0; round < 5; round += 1) {
+        let report;
+        try {
+          report = await _analyzeFrameworkInputs({
+            frameworkId: fw.id,
+            prompt: augmentedPrompt,
+            priorResponses,
+            attachments: _summarizeAttachments(composition.attachmentSnapshot),
+            canvasSummary: composition.canvasSummary,
+          });
+        } catch (e) {
+          console.warn('[framework gap] analyzer call failed:', e);
+          // Analyzer down — submit anyway so the user isn't trapped. Phase
+          // 7 should be advisory, not a hard gate when infrastructure is
+          // unavailable.
+          return await submitToMainPipeline(
+            augmentedPrompt, text, approvedPrompt, composition.visualSnapshot,
+            composition
+          );
+        }
+
+        if (!_hasGaps(report)) {
+          return await submitToMainPipeline(
+            augmentedPrompt, text, approvedPrompt, composition.visualSnapshot,
+            composition
+          );
+        }
+
+        const choice = await window.OraFrameworkSetupPopup.show(report);
+
+        if (choice.action === 'cancel') return; // restore the frozen composition
+
+        // Merge this round's responses into the running state.
+        for (const k of Object.keys(choice.responses || {})) {
+          priorResponses[k] = choice.responses[k];
+        }
+        for (const k of Object.keys(choice.on_canvas || {})) {
+          priorOnCanvas[k] = choice.on_canvas[k];
+        }
+        augmentedPrompt = _augmentPromptWithResponses(text, priorResponses, priorOnCanvas);
+        composition.restoreDraftText = augmentedPrompt;
+        const responseText = Object.values(choice.responses || {})
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+          .join('\n');
+        if (responseText) {
+          if (!window.OraConversation
+              || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
+            renderAssistantTurn('[Privacy check unavailable; framework response was not sent.]');
+            return;
+          }
+          let rebound = true;
+          const approved = await window.OraConversation.submitAfterPrivacy(
+            responseText,
+            async () => {
+              rebound = _rebindReservedComposition(composition, augmentedPrompt);
+            },
+            { draftText: augmentedPrompt, captureVisualSnapshot: false }
+          );
+          if (!approved || !rebound) return;
+        }
+        approvedPrompt = augmentedPrompt;
+
+        if (choice.action === 'run-anyway') {
+          const note = _runAnywayNote(choice.missing_summary, report.requirements);
+          return await submitToMainPipeline(
+            augmentedPrompt + note, text, augmentedPrompt + note,
+            composition.visualSnapshot, composition
+          );
+        }
+
+        // choice.action === 'continue' — loop and re-analyze. If the user's
+        // responses cover everything, the next round's _hasGaps returns
+        // false and we submit. If gaps remain, popup re-fires.
+      }
+
+      // Safety net: after 5 rounds, just submit with whatever we have.
+      return await submitToMainPipeline(
+        augmentedPrompt, text, approvedPrompt, composition.visualSnapshot,
+        composition
+      );
+    } finally {
+      _releaseInquiryComposition(composition);
     }
-
-    // Safety net: after 5 rounds, just submit with whatever we have.
-    return submitToMainPipeline(
-      augmentedPrompt, text, approvedPrompt, carriedVisualSnapshot
-    );
   };
 
   let imageGenerateMode = false;
@@ -2369,14 +2817,29 @@
 
   const setImageGenerateMode = (on) => {
     imageGenerateMode = !!on;
+    if (imageGenerateMode) {
+      if (window.OraProgramming && typeof window.OraProgramming.setActive === 'function') {
+        window.OraProgramming.setActive(false);
+      }
+      if (window.OraInputState && typeof window.OraInputState.clearSelection === 'function') {
+        window.OraInputState.clearSelection();
+      }
+    }
     if (_imageGenerateBtn) {
+      const stateLabel = _imageGenerateBtn.querySelector('.input-pane-toolbar__state-label');
       _imageGenerateBtn.classList.toggle('is-active', imageGenerateMode);
+      _imageGenerateBtn.classList.toggle('is-image-entry', imageGenerateMode);
       _imageGenerateBtn.setAttribute('aria-pressed', imageGenerateMode ? 'true' : 'false');
-      _imageGenerateBtn.title = imageGenerateMode
-        ? 'Image generation is on for the next prompt'
-        : 'Generate image from prompt';
+      _imageGenerateBtn.setAttribute('aria-label', imageGenerateMode ? 'Input: Image' : 'Input: Text');
+      _imageGenerateBtn.title = imageGenerateMode ? 'Input: Image' : 'Input: Text';
+      if (stateLabel) stateLabel.textContent = imageGenerateMode ? 'Image' : 'Text';
     }
   };
+
+  document.addEventListener('ora:programming-mode-changed', (event) => {
+    if (event.detail && event.detail.active) setImageGenerateMode(false);
+  });
+  document.addEventListener('ora:turn-tool-selected', () => setImageGenerateMode(false));
 
   const _looksLikeImageGenerationRequest = (text) => {
     const t = (text || '').trim().toLowerCase();
@@ -2614,13 +3077,13 @@
       return;
     }
     if (window.OraProgramming && window.OraProgramming.isActive()) {
-      const started = await window.OraProgramming.submit(leftContent, {
+      await window.OraProgramming.submit(leftContent, {
+        renderUser: (message) => {
+          leftInputArea.value = '';
+          renderUserTurn(message);
+        },
         renderAssistant: renderAssistantTurn,
       });
-      if (started) {
-        leftInputArea.value = '';
-        renderUserTurn(leftContent);
-      }
       return;
     }
     return submitWithFrameworkCheck(leftContent);
@@ -2770,7 +3233,7 @@
   // listens to those events to open the picker dropdowns. The attach button
   // opens the hidden file input directly so users can browse files now;
   // Phase 8 wires the file-drop dispatcher that consumes the chosen files.
-  document.querySelectorAll('.input-pane-toolbar__btn').forEach(btn => {
+  document.querySelectorAll('.input-pane-toolbar__btn[data-input-toolbar]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const action = btn.dataset.inputToolbar;
       if (action === 'image-generate') {
@@ -2824,9 +3287,11 @@
   const _pendingAttachments = [];
   let _attachmentOwnerConversationId = null;
   let _attachmentGeneration = 0;
+  let _attachmentRevision = 0;
 
   const _clearAttachmentComposition = (nextOwnerConversationId) => {
     _attachmentGeneration += 1;
+    _attachmentRevision += 1;
     _attachmentOwnerConversationId = nextOwnerConversationId || null;
     _pendingAttachments.length = 0;
     if (_attachmentRow) _attachmentRow.replaceChildren();
@@ -2854,12 +3319,16 @@
       file: kind === 'image' ? file : null,
     };
     _pendingAttachments.push(entry);
+    _attachmentRevision += 1;
     return entry;
   };
 
   const _removePendingAttachment = (entry) => {
     const index = _pendingAttachments.indexOf(entry);
-    if (index >= 0) _pendingAttachments.splice(index, 1);
+    if (index >= 0) {
+      _pendingAttachments.splice(index, 1);
+      _attachmentRevision += 1;
+    }
   };
 
   const _bindPendingAttachmentDismiss = (host, kind, processingId, entry) => {
@@ -2871,6 +3340,7 @@
     const chip = Array.from(host.querySelectorAll(selector)).find(
       candidate => candidate.dataset[dataKey] === String(processingId)
     );
+    if (chip) entry.element = chip;
     const close = chip && chip.querySelector('.transcribe-chip__close');
     if (close) {
       close.addEventListener('click', () => _removePendingAttachment(entry), { once: true });
@@ -2952,6 +3422,7 @@
     chip.appendChild(body);
     chip.appendChild(close);
     _attachmentRow.appendChild(chip);
+    entry.element = chip;
   };
 
   const _renderUnsupportedChip = (file) => {
@@ -3089,18 +3560,39 @@
   const queueAttachmentSurfaceSync = () => {
     Promise.resolve().then(syncAttachmentSurfaceAvailability);
   };
+  let _pendingAttachmentOwnerTarget = null;
   const syncAttachmentOwnerFromNavigation = (event) => {
     const detail = (event && event.detail) || {};
-    let nextConversationId = null;
-    if (event.type === 'ora:conversation-load-failed') {
-      nextConversationId = detail.active_conversation_id || null;
-    } else if (event.type !== 'ora:conversation-loading-state' || detail.loading) {
-      nextConversationId = detail.conversation_id || detail.id || null;
+    const target = detail.conversation_id || detail.id || null;
+    if (event.type === 'ora:conversation-selected') {
+      if (target && target !== _attachmentOwnerConversationId) {
+        _pendingAttachmentOwnerTarget = target;
+      }
+      return;
     }
-    if (nextConversationId) _setAttachmentOwner(nextConversationId);
+    if (event.type === 'ora:conversation-load-failed') {
+      if (target === _pendingAttachmentOwnerTarget) {
+        _pendingAttachmentOwnerTarget = null;
+      }
+      return;
+    }
+    if (event.type === 'ora:conversation-tag-changed') {
+      if (target && target === currentConversationId()
+          && (!_pendingAttachmentOwnerTarget
+          || target === _pendingAttachmentOwnerTarget)) {
+        _pendingAttachmentOwnerTarget = null;
+        _setAttachmentOwner(target);
+      }
+      return;
+    }
+    if (event.type === 'ora:fresh-conversation-started'
+        && target && target === currentConversationId()) {
+      _pendingAttachmentOwnerTarget = null;
+      _setAttachmentOwner(target);
+    }
   };
   document.addEventListener('ora:conversation-selected', syncAttachmentOwnerFromNavigation);
-  document.addEventListener('ora:conversation-loading-state', syncAttachmentOwnerFromNavigation);
+  document.addEventListener('ora:conversation-tag-changed', syncAttachmentOwnerFromNavigation);
   document.addEventListener('ora:conversation-load-failed', syncAttachmentOwnerFromNavigation);
   document.addEventListener('ora:fresh-conversation-started', syncAttachmentOwnerFromNavigation);
   document.addEventListener('ora:conversation-selected', queueAttachmentSurfaceSync);
@@ -3125,6 +3617,86 @@
       .map(a => a.file),
     canAttach: () => !inquiryMutationBlockMessage(),
     addFiles: dispatchFiles,
+    snapshotForSubmission: () => ({
+      conversationId: _attachmentOwnerConversationId,
+      revision: _attachmentRevision,
+      entries: _attachmentOwnerConversationId === currentConversationId()
+        ? _pendingAttachments.slice() : [],
+    }),
+    reserveSubmission: (snapshot) => {
+      if (!snapshot || snapshot.conversationId !== _attachmentOwnerConversationId
+          || snapshot.revision !== _attachmentRevision
+          || !Array.isArray(snapshot.entries)) return null;
+      const submitted = new Set(snapshot.entries);
+      if (snapshot.entries.some((entry) => !_pendingAttachments.includes(entry))) return null;
+      const token = {
+        conversationId: snapshot.conversationId,
+        revision: snapshot.revision,
+        items: snapshot.entries.map((entry) => ({
+          entry,
+          index: _pendingAttachments.indexOf(entry),
+        })),
+      };
+      for (let index = _pendingAttachments.length - 1; index >= 0; index -= 1) {
+        const entry = _pendingAttachments[index];
+        if (!submitted.has(entry)) continue;
+        _pendingAttachments.splice(index, 1);
+        if (entry.element && entry.element.parentNode) entry.element.remove();
+      }
+      _attachmentRevision += 1;
+      token.reservedRevision = _attachmentRevision;
+      token.reservedGeneration = _attachmentGeneration;
+      return token;
+    },
+    rebindSubmission: (token, conversationId) => {
+      if (!token || !conversationId
+          || _attachmentOwnerConversationId !== conversationId
+          || _pendingAttachments.length !== 0
+          || _attachmentGeneration !== token.reservedGeneration + 1
+          || _attachmentRevision !== token.reservedRevision + 1) return false;
+      token.conversationId = conversationId;
+      token.reservedGeneration = _attachmentGeneration;
+      token.reservedRevision = _attachmentRevision;
+      token.items.forEach((item) => {
+        if (item && item.entry) item.entry.conversation_id = conversationId;
+      });
+      return true;
+    },
+    restoreSubmission: (token) => {
+      if (!token || token.conversationId !== _attachmentOwnerConversationId
+          || token.reservedRevision !== _attachmentRevision
+          || !Array.isArray(token.items)) return false;
+      token.items.slice().sort((a, b) => a.index - b.index).forEach((item) => {
+        const at = Math.max(0, Math.min(item.index, _pendingAttachments.length));
+        _pendingAttachments.splice(at, 0, item.entry);
+        if (_attachmentRow && item.entry.element) {
+          const nextEntry = _pendingAttachments[at + 1];
+          const nextNode = nextEntry && nextEntry.element;
+          if (nextNode && nextNode.parentNode === _attachmentRow) {
+            _attachmentRow.insertBefore(item.entry.element, nextNode);
+          } else {
+            _attachmentRow.appendChild(item.entry.element);
+          }
+        }
+      });
+      _attachmentRevision += 1;
+      return true;
+    },
+    acknowledgeSubmission: (snapshot) => {
+      if (!snapshot || snapshot.conversationId !== _attachmentOwnerConversationId
+          || !Array.isArray(snapshot.entries)) return false;
+      const submitted = new Set(snapshot.entries);
+      let removed = false;
+      for (let index = _pendingAttachments.length - 1; index >= 0; index -= 1) {
+        const entry = _pendingAttachments[index];
+        if (!submitted.has(entry)) continue;
+        _pendingAttachments.splice(index, 1);
+        if (entry.element && entry.element.isConnected) entry.element.remove();
+        removed = true;
+      }
+      if (removed) _attachmentRevision += 1;
+      return removed;
+    },
     clear: () => _clearAttachmentComposition(_attachmentOwnerConversationId),
   };
 

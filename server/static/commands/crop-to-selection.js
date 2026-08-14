@@ -474,6 +474,11 @@
       }
     }
 
+    if (panel && typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('crop-to-selection')) {
+      return { cancelled: true, changed: false };
+    }
+
     // 4. Destroy outside objects.
     var destroyed = _destroyNodesByIds(panel, discard);
 

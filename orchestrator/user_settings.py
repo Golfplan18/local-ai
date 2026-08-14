@@ -97,6 +97,9 @@ DEFAULTS: dict = {
         # Optional visual-pane help/menu affordance. Off by default to
         # preserve the minimal canvas surface.
         "visual_help_enabled": False,
+        # Keep the interface orienting controls visible by default. Users who
+        # prefer the minimal presentation can opt into hover/focus reveal.
+        "auto_hide_controls": False,
     },
     "aside": {
         # Dedicated default, intentionally independent of the active model
@@ -269,6 +272,14 @@ def _validate_updates(updates: dict) -> None:
     kb = updates.get("keyboard") or {}
     if "shortcuts" in kb and not isinstance(kb["shortcuts"], dict):
         raise SettingsError("keyboard.shortcuts must be a dict")
+
+    interface = updates.get("interface")
+    if interface is not None and not isinstance(interface, dict):
+        raise SettingsError("interface must be an object")
+    interface = interface or {}
+    for key in ("tooltips_enabled", "visual_help_enabled", "auto_hide_controls"):
+        if key in interface and not isinstance(interface[key], bool):
+            raise SettingsError(f"interface.{key} must be a boolean")
 
     st = updates.get("styles") or {}
     if "default_id" in st and not isinstance(st["default_id"], str):

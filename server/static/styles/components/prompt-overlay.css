@@ -16,26 +16,15 @@
 
 .output-pane {
   /* Reserve space at the top for the absolute-positioned header */
-  padding-top: 36px;
+  padding-top: calc(var(--ora-pane-header-h) + 12px);
 }
 
 .output-pane-header {
   position: absolute;
-  /* At floor level — flush with pane edges so the .pane::after recess
-     shadow casts onto the header itself, not around it. */
   top: 0;
   left: 0;
   right: 0;
   z-index: 5;
-  height: 36px;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--font-ui-small, 13px);
-  color: var(--text-muted);
-  background: var(--background-primary);
-  border-bottom: 1px solid var(--background-modifier-border);
   pointer-events: auto;
 }
 
@@ -65,7 +54,7 @@
    mode-tag class is on body. The actual icon is rendered by JS. */
 
 .output-pane-display-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-normal);
   max-width: 280px;
   overflow: hidden;

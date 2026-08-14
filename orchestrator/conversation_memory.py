@@ -1057,7 +1057,7 @@ def set_visual_state(
     active = visual_state.get("active_editor") if isinstance(visual_state, dict) else None
     if active not in {"excalidraw", "konva"}:
         return None
-    clean: dict[str, str] = {"active_editor": active}
+    clean: dict[str, Any] = {"active_editor": active}
     for key in (
         "resume_excalidraw_checkpoint_id",
         "konva_baseline_checkpoint_id",
@@ -1065,6 +1065,9 @@ def set_visual_state(
         value = visual_state.get(key)
         if isinstance(value, str) and value:
             clean[key] = value
+    warning_acknowledged = visual_state.get("konva_edit_warning_acknowledged")
+    if isinstance(warning_acknowledged, bool):
+        clean["konva_edit_warning_acknowledged"] = warning_acknowledged
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
 
     def mutate(envelope: dict[str, Any]) -> None:
@@ -1222,7 +1225,7 @@ def set_conversation_tag(
         return _mutate_conversation_envelope(conversation_id, root, mutate)
     except _StealthMutationRequested:
         raise PermissionError(
-            "Stealth is creation-only and cannot be retagged",
+            "Off Record is creation-only and cannot be retagged",
         ) from None
 
 
@@ -2031,6 +2034,30 @@ def set_conversation_projects(
     return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
+def add_conversation_project(
+    conversation_id: str,
+    project_id: str,
+    *,
+    sessions_root: Path | None = None,
+) -> list[str] | None:
+    """Atomically add one explicit project membership and return the stored list."""
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    stored_project_ids: list[str] | None = None
+
+    def mutate(data: dict[str, Any]) -> None:
+        nonlocal stored_project_ids
+        stored_project_ids = normalize_project_ids([
+            *(data.get("project_ids") or []),
+            project_id,
+        ])
+        data["project_ids"] = stored_project_ids
+
+    path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    if path is None or stored_project_ids is None:
+        return None
+    return list(stored_project_ids)
+
+
 __all__ = [
     "TURN_SPATIAL_FIELDS",
     "CONVERSATION_TAGS",
@@ -2062,4 +2089,5 @@ __all__ = [
     "set_conversation_pinned",
     "set_conversation_closed",
     "set_conversation_projects",
+    "add_conversation_project",
 ]

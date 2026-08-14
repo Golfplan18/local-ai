@@ -421,11 +421,19 @@
 
   // ── Apply paths ────────────────────────────────────────────────────────
 
+  function _replaceCanvasState(panel, state) {
+    if (!state) return false;
+    if (typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('new-canvas')) return false;
+    panel.loadCanvasState(state);
+    return true;
+  }
+
   function _applyBlank(panel) {
     _ensurePanelLoadState(panel);
     if (window.OraCanvasFileFormat && typeof window.OraCanvasFileFormat.newCanvasState === 'function') {
       var blank = window.OraCanvasFileFormat.newCanvasState({});
-      panel.loadCanvasState(blank);
+      if (!_replaceCanvasState(panel, blank)) return;
     }
     close();
   }
@@ -434,7 +442,7 @@
     _ensurePanelLoadState(panel);
     if (template && template.canvas_state) {
       try {
-        panel.loadCanvasState(template.canvas_state);
+        if (!_replaceCanvasState(panel, template.canvas_state)) return;
       } catch (e) {
         console.warn('[v3-template-gallery] applyPackTemplate failed:', e && e.message);
       }
@@ -444,7 +452,7 @@
 
   function _applyUserTemplate(ut, panel) {
     _ensurePanelLoadState(panel);
-    panel.loadCanvasState(ut.canvas_state);
+    if (!_replaceCanvasState(panel, ut && ut.canvas_state)) return;
     close();
   }
 

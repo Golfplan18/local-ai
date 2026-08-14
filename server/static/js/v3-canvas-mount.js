@@ -9,6 +9,7 @@
   'use strict';
 
   const WHITE = '#ffffff';
+  const EXCALIDRAW_UI_BACKGROUND = 'transparent';
   const PADDING = 16;
   const MAX_SIDE = 4096;
   const DRAFT_DELAY_MS = 700;
@@ -55,6 +56,24 @@
       'image/png'
     );
   });
+
+  const normalizeImageToPng = async (file) => {
+    if (file && file.type === 'image/png') return file;
+    const source = URL.createObjectURL(file);
+    try {
+      const image = await imageFromSource(source);
+      const naturalWidth = image.naturalWidth || image.width || 1;
+      const naturalHeight = image.naturalHeight || image.height || 1;
+      const scale = Math.min(1, MAX_SIDE / Math.max(naturalWidth, naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvasBlob(canvas);
+    } finally {
+      URL.revokeObjectURL(source);
+    }
+  };
 
   const equalBlobs = async (left, right) => {
     if (!left || !right || left.size !== right.size) return false;
@@ -186,11 +205,25 @@
     if (!right) return;
     right.classList.add('visual-panel', 'ora-visual-editor-host');
 
+    const toolbarHost = document.getElementById('visualToolbarHost');
+    const visualShell = right.closest('.visual-pane-shell');
+    const importButton = document.getElementById('visualImportImage');
+    const importInput = document.getElementById('visualImportImageFile');
+    const exportButton = document.getElementById('visualExportPng');
+    const footer = document.getElementById('visualPaneFooter');
+    const footerStatus = document.getElementById('visualPaneFooterStatus');
+
     let panel = null;
     try {
       if (typeof Konva !== 'undefined' && typeof VisualPanel !== 'undefined') {
-        panel = new VisualPanel(right, { id: 'v3-canvas' });
+        panel = new VisualPanel(right, { id: 'v3-canvas', toolbarHost });
         panel.init();
+        panel.saveCanvas = () => {
+          if (!window.OraSaveCanvas || typeof window.OraSaveCanvas.saveImmediate !== 'function') {
+            return Promise.reject(new Error('Canvas save is unavailable'));
+          }
+          return window.OraSaveCanvas.saveImmediate(panel, 'manual');
+        };
       }
     } catch (error) {
       console.warn('[v3-canvas-mount] Konva fallback failed:', error);
@@ -201,11 +234,13 @@
     host.setAttribute('aria-label', 'Excalidraw editor');
     right.appendChild(host);
 
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'ora-visual-editor-toggle';
-    toggle.setAttribute('aria-label', 'Switch visual editor');
-    right.appendChild(toggle);
+    let toggle = document.getElementById('visualEditorSwitch');
+    if (!toggle) {
+      toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'ora-visual-editor-toggle';
+      right.appendChild(toggle);
+    }
 
     let editor = 'excalidraw';
     let excalidrawApi = null;
@@ -220,11 +255,38 @@
     let draftRevision = 0;
     let applyingScene = 0;
     let viewIsCurrent = true;
+    let pendingKonvaEditabilityWarning = false;
     // Excalidraw reports an initial empty onChange while mounting. Until an
     // explicit load/clear establishes the active Dialogue's scene, that event
     // must never become a recoverable draft for the default/next identity.
     let sceneReady = false;
     let operations = Promise.resolve();
+
+    const syncExcalidrawGrid = (appState) => {
+      if (!appState) return;
+      const rawZoom = typeof appState.zoom === 'number'
+        ? appState.zoom : appState.zoom && appState.zoom.value;
+      const zoom = Number.isFinite(Number(rawZoom)) && Number(rawZoom) > 0
+        ? Number(rawZoom) : 1;
+      const baseSize = parseFloat(
+        getComputedStyle(host).getPropertyValue('--size-4-6')
+      ) || 24;
+      const size = baseSize * zoom;
+      const scrollX = Number.isFinite(Number(appState.scrollX)) ? Number(appState.scrollX) : 0;
+      const scrollY = Number.isFinite(Number(appState.scrollY)) ? Number(appState.scrollY) : 0;
+      host.style.setProperty('--ora-excal-grid-size', `${size}px`);
+      host.style.setProperty(
+        '--ora-excal-grid-x', `${size / 2 + scrollX * zoom}px`
+      );
+      host.style.setProperty(
+        '--ora-excal-grid-y', `${size / 2 + scrollY * zoom}px`
+      );
+    };
+
+    if (window.OraCanvasShareReminder
+        && typeof window.OraCanvasShareReminder.init === 'function') {
+      window.OraCanvasShareReminder.init();
+    }
 
     const enqueue = (operation) => {
       const run = operations.then(operation, operation);
@@ -237,8 +299,17 @@
       right.classList.toggle('ora-editor-excalidraw', useExcalidraw);
       right.classList.toggle('ora-editor-konva', !useExcalidraw);
       host.hidden = !useExcalidraw;
-      toggle.textContent = useExcalidraw ? 'Konva' : 'Excalidraw';
-      toggle.title = useExcalidraw ? 'Switch to Konva' : 'Switch to Excalidraw';
+      toggle.title = useExcalidraw
+        ? 'Excalidraw — switch to Konva'
+        : 'Konva — switch to Excalidraw';
+      toggle.setAttribute(
+        'aria-label',
+        useExcalidraw ? 'Visual editor: Excalidraw. Switch to Konva'
+          : 'Visual editor: Konva. Switch to Excalidraw'
+      );
+      toggle.setAttribute('data-active-editor', useExcalidraw ? 'excalidraw' : 'konva');
+      if (toolbarHost) toolbarHost.hidden = useExcalidraw;
+      if (visualShell) visualShell.dataset.activeEditor = useExcalidraw ? 'excalidraw' : 'konva';
       document.dispatchEvent(new CustomEvent('ora:visual-editor-changed', {
         detail: { active_editor: useExcalidraw ? 'excalidraw' : 'konva' },
       }));
@@ -346,6 +417,28 @@
       return response.json();
     };
 
+    const confirmKonvaMutation = () => {
+      if (editor !== 'konva' || !pendingKonvaEditabilityWarning) return true;
+      const confirmed = typeof window.confirm !== 'function' || window.confirm(
+        'This is a flattened Konva copy. Editing it means the next switch to '
+        + 'Excalidraw will open a flattened image instead of the original editable '
+        + 'objects. The original Excalidraw checkpoint will remain saved. Continue?'
+      );
+      if (!confirmed) return false;
+      pendingKonvaEditabilityWarning = false;
+      const nextState = Object.assign({}, visualState || {}, {
+        active_editor: 'konva',
+        konva_edit_warning_acknowledged: true,
+      });
+      visualState = nextState;
+      enqueue(() => postVisualState(nextState)).catch((error) => {
+        console.warn('[visual editor] editability acknowledgement was not persisted:', error);
+      });
+      return true;
+    };
+
+    if (panel && panel.config) panel.config.beforeUserMutation = confirmKonvaMutation;
+
     const writeCurrentKonva = async (materialized) => {
       const body = new FormData();
       body.append('conversation_id', conversationId || 'main');
@@ -422,16 +515,21 @@
         excalidrawApi.updateScene({
           elements: scene.elements || [],
           appState: Object.assign({}, scene.appState || {}, {
-            theme: 'light', viewBackgroundColor: WHITE,
+            theme: 'light', viewBackgroundColor: EXCALIDRAW_UI_BACKGROUND,
+            gridModeEnabled: false,
           }),
         });
         excalidrawApi.scrollToContent(scene.elements || [], { fitToContent: true });
+        syncExcalidrawGrid(excalidrawApi.getAppState());
         draftDirty = false;
         sceneReady = true;
       } finally {
         // Excalidraw may deliver its onChange callback on a microtask after
         // updateScene. Hold the guard through that callback turn.
-        queueMicrotask(() => { applyingScene = Math.max(0, applyingScene - 1); });
+        queueMicrotask(() => {
+          applyingScene = Math.max(0, applyingScene - 1);
+          updateCanvasState();
+        });
       }
     };
 
@@ -551,8 +649,10 @@
         active_editor: 'konva',
         resume_excalidraw_checkpoint_id: checkpointId,
         konva_baseline_checkpoint_id: baseline.checkpoint_id,
+        konva_edit_warning_acknowledged: false,
       };
       await postVisualState(nextState);
+      pendingKonvaEditabilityWarning = true;
       setEditor('konva');
     };
 
@@ -561,6 +661,14 @@
       conversationId = id || 'main';
       visualState = state || null;
       viewIsCurrent = options.currentDialogue !== false;
+      pendingKonvaEditabilityWarning = !!(
+        viewIsCurrent
+        && state
+        && state.active_editor === 'konva'
+        && state.resume_excalidraw_checkpoint_id
+        && state.konva_baseline_checkpoint_id
+        && state.konva_edit_warning_acknowledged !== true
+      );
       let loaded = null;
       if (options.currentDialogue && state && state.active_editor === 'konva') {
         loaded = await fetchCurrentKonva();
@@ -603,7 +711,11 @@
 
     const switchExcalidrawToKonva = async () => {
       await flushDraftNow();
-      const source = await materialize(snapshotExcalidraw());
+      const sourceSnapshot = snapshotExcalidraw();
+      const hadEditableContent = sourceSnapshot.elements.some(
+        (element) => element && !element.isDeleted && !isAssistantArtifact(element)
+      );
+      const source = await materialize(sourceSnapshot);
       const savedSource = await postCheckpoint(source);
       await resetKonvaToPng(source.preview);
       const baselineMaterialized = await materialize(snapshotKonva());
@@ -617,8 +729,10 @@
         active_editor: 'konva',
         resume_excalidraw_checkpoint_id: savedSource.checkpoint_id,
         konva_baseline_checkpoint_id: baseline.checkpoint_id,
+        konva_edit_warning_acknowledged: !hadEditableContent,
       };
       await postVisualState(state);
+      pendingKonvaEditabilityWarning = hadEditableContent;
       setEditor('konva');
     };
 
@@ -660,6 +774,7 @@
       // durable before provenance is cleared, especially for the new B scene.
       await writeDraft(durableSceneSnapshot);
       await postVisualState({ active_editor: 'excalidraw' });
+      pendingKonvaEditabilityWarning = false;
       updateExcalidraw(scene);
       setEditor('excalidraw');
     };
@@ -769,13 +884,27 @@
         return panel && typeof panel.attachImage === 'function'
           ? panel.attachImage(file) : null;
       }
-      const placed = await placeExcalidrawPng(file, {
+      const png = await normalizeImageToPng(file);
+      const placed = await placeExcalidrawPng(png, {
         action: 'append', locked: false,
         customData: { oraCapabilityOutput: true },
       });
       await persistExcalidrawMutation(viewIsCurrent);
       return placed;
     });
+
+    let footerStatusTimer = null;
+    const setFooterStatus = (message, isError = false) => {
+      if (!footerStatus || !footer) return;
+      if (footerStatusTimer) clearTimeout(footerStatusTimer);
+      footerStatusTimer = null;
+      footerStatus.textContent = message || '';
+      footerStatus.classList.toggle('is-error', !!isError);
+      footer.classList.toggle('has-status', !!message);
+      if (message && !isError && !String(message).endsWith('…')) {
+        footerStatusTimer = setTimeout(() => setFooterStatus(''), 2400);
+      }
+    };
 
     toggle.addEventListener('click', () => {
       switchEditor().catch((error) => {
@@ -875,7 +1004,64 @@
       _equalBlobs: equalBlobs,
     };
 
-    const updateCanvasState = () => {
+    if (importButton && importInput) {
+      importButton.addEventListener('click', () => importInput.click());
+      importInput.addEventListener('change', async () => {
+        const file = importInput.files && importInput.files[0];
+        importInput.value = '';
+        if (!file) return;
+        importButton.disabled = true;
+        setFooterStatus('Importing image…');
+        try {
+          const imported = await window.OraCanvas.attachImage(file);
+          if (!imported) {
+            setFooterStatus('Image was not imported');
+          } else {
+            setFooterStatus('Image imported');
+          }
+        } catch (error) {
+          setFooterStatus(`Import failed: ${error && error.message || error}`, true);
+        } finally {
+          importButton.disabled = false;
+        }
+      });
+    }
+
+    if (exportButton) {
+      exportButton.addEventListener('click', async () => {
+        exportButton.disabled = true;
+        setFooterStatus('Preparing PNG…');
+        try {
+          const safeId = String(conversationId || 'exhibits')
+            .replace(/[^a-zA-Z0-9_-]+/g, '-');
+          const filename = `${safeId}-exhibits.png`;
+          const raster = window.OraExportRaster;
+          if (!raster) throw new Error('PNG export is unavailable');
+          if (editor === 'konva') {
+            const result = await raster.exportPNG(panel, {
+              conversation_id: conversationId,
+              filename,
+            });
+            setFooterStatus(result && result.cancelled ? 'Export cancelled' : 'PNG exported');
+          } else {
+            const materialized = await materialize(snapshotExcalidraw());
+            const gate = await raster._runShareGate(conversationId, filename);
+            if (!gate.confirmed) {
+              setFooterStatus('Export cancelled');
+              return;
+            }
+            raster._triggerDownload(await blobToDataURL(materialized.preview), filename);
+            setFooterStatus('PNG exported');
+          }
+        } catch (error) {
+          setFooterStatus(`Export failed: ${error && error.message || error}`, true);
+        } finally {
+          exportButton.disabled = !window.OraCanvas.hasContent();
+        }
+      });
+    }
+
+    function updateCanvasState() {
       const hasContent = window.OraCanvas.hasContent();
       right.classList.toggle('canvas-empty', !hasContent);
       const logo = document.getElementById('logo-o');
@@ -883,7 +1069,8 @@
       document.dispatchEvent(new CustomEvent('ora:canvas-state-changed', {
         detail: { hasContent },
       }));
-    };
+      if (exportButton) exportButton.disabled = !hasContent;
+    }
     if (panel && panel.userInputLayer && panel.userInputLayer.on) {
       panel.userInputLayer.on('add.vp3-state remove.vp3-state', updateCanvasState);
     }
@@ -891,13 +1078,23 @@
     try {
       if (!window.OraExcalidrawIsland) throw new Error('Local Excalidraw bundle did not load');
       islandRoot = window.OraExcalidrawIsland.mount(host, {
+        initialData: {
+          elements: [], files: {},
+          appState: {
+            theme: 'light',
+            viewBackgroundColor: EXCALIDRAW_UI_BACKGROUND,
+            gridModeEnabled: false,
+          },
+        },
         onReady(api) {
           excalidrawApi = api;
+          syncExcalidrawGrid(api.getAppState());
           setEditor('excalidraw');
           updateCanvasState();
           document.dispatchEvent(new CustomEvent('ora:excalidraw-ready'));
         },
-        onChange() {
+        onChange(_elements, appState) {
+          syncExcalidrawGrid(appState);
           if (!sceneReady || applyingScene || !viewIsCurrent) return;
           scheduleDraft();
           updateCanvasState();

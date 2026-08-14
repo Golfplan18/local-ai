@@ -252,6 +252,31 @@ class ConversationJsonPersistenceTests(unittest.TestCase):
         self.assertEqual(data["messages"][0]["visual_checkpoint_id"], checkpoint)
         self.assertNotIn("visual_checkpoint_id", data["messages"][1])
 
+    def test_visual_state_preserves_first_edit_warning_acknowledgement(self) -> None:
+        from conversation_memory import (
+            load_conversation_json,
+            save_turn_spatial_state,
+            set_visual_state,
+        )
+        save_turn_spatial_state(
+            conversation_id="sess-visual-state",
+            user_input="visual state",
+            ai_response="response",
+            sessions_root=self._tmp,
+        )
+        set_visual_state(
+            "sess-visual-state",
+            {
+                "active_editor": "konva",
+                "resume_excalidraw_checkpoint_id": "20260813T123456123456Z-deadbeef",
+                "konva_baseline_checkpoint_id": "20260813T123456123457Z-cafebabe",
+                "konva_edit_warning_acknowledged": True,
+            },
+            sessions_root=self._tmp,
+        )
+        data = load_conversation_json("sess-visual-state", sessions_root=self._tmp)
+        self.assertTrue(data["visual_state"]["konva_edit_warning_acknowledged"])
+
     def test_save_append_preserves_prior_turns(self) -> None:
         from conversation_memory import save_turn_spatial_state, load_conversation_json
         save_turn_spatial_state(

@@ -15,12 +15,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: auto;
+}
+body.ora-auto-hide-controls .export-toolbar:not(:focus-within):not(.is-open) {
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.14s ease, transform 0.14s ease;
   pointer-events: none;
 }
-.output-pane:hover .export-toolbar,
+body.ora-auto-hide-controls .output-pane:hover .export-toolbar,
 .export-toolbar:focus-within,
 .export-toolbar.is-open {
   opacity: 1;

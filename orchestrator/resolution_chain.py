@@ -408,7 +408,7 @@ def continue_resolution(
         stealth, _conversation_id = resolve_lifecycle_context()
         if stealth:
             return (
-                "[Resolution commits are suppressed in Stealth. "
+                "[Resolution commits are suppressed in Off Record. "
                 "Continue this resolution from a Standard or Private Dialogue.]"
             )
 

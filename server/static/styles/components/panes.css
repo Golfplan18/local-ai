@@ -7,12 +7,47 @@
    ============================================================ */
 
 .pane {
+  --ora-pane-header-h: 44px;
   background: var(--background-secondary);
   border: 2px solid var(--background-modifier-border);
   border-radius: 6px;
   overflow: hidden;
   position: relative;
   transition: border-color 0.2s;
+}
+
+/* The four primary work surfaces share one header geometry while retaining
+   pane-specific content and controls. */
+.pane-header {
+  height: var(--ora-pane-header-h);
+  min-height: var(--ora-pane-header-h);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-sizing: border-box;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  border-radius: 0;
+  box-shadow: none;
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1;
+}
+
+.pane-header__title {
+  color: var(--text-normal);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pane-header__notice {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Recess shadow drawn OVER all pane content, so the rim casts onto
@@ -35,9 +70,14 @@
 .input-pane {
   height: 120px;
   flex-shrink: 0;
-  padding: 14px 18px;
+  padding: calc(var(--ora-pane-header-h) + 14px) 18px 10px;
   background: var(--background-modifier-form-field);
   border-color: var(--ora-input-pane-border);
+}
+.input-pane > .pane-header,
+.chat-input-pane > .pane-header {
+  position: absolute;
+  inset: 0 0 auto;
 }
 .input-pane textarea {
   width: 100%;
@@ -88,12 +128,127 @@
   border-color: var(--ora-visual-canvas-border);
 }
 
+.visual-pane-shell {
+  --ora-pane-header-h: 44px;
+  --ora-pane-header-inset: 6px;
+  --ora-excal-toolbar-shift: -58px;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  position: relative;
+  container: ora-visual-pane / inline-size;
+  overflow: hidden;
+  background: var(--background-secondary);
+  border: 2px solid var(--ora-visual-canvas-border);
+  border-radius: 6px;
+}
+
+.visual-pane-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 8px 8px 14px var(--ora-shadow-recess),
+    inset -1px -1px 0 var(--ora-highlight-recess);
+}
+
+.visual-pane-header {
+  flex: 0 0 auto;
+  z-index: 21;
+  anchor-name: --ora-exhibits-header;
+}
+
+.visual-toolbar-host {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.visual-toolbar-host[hidden] {
+  display: none;
+}
+
+.visual-toolbar-host > .ora-toolbar {
+  justify-content: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0;
+  scrollbar-width: none;
+}
+
+.visual-toolbar-host > .ora-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.visual-pane-shell > .right-pane {
+  border: 0;
+  border-radius: 0;
+}
+
+.visual-pane-shell > .right-pane::after {
+  display: none;
+}
+
+.visual-pane-shell > .right-pane.ora-editor-excalidraw {
+  overflow: visible;
+}
+
+.visual-pane-footer {
+  min-height: 32px;
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  margin: 0 var(--ora-pane-header-inset) var(--ora-pane-header-inset);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.visual-pane-footer > #visualExportPng {
+  height: 28px;
+  gap: 4px;
+  padding-inline: 8px;
+}
+
+.visual-pane-footer__status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.visual-pane-footer__status:empty {
+  display: none;
+}
+
+.visual-pane-footer__status.is-error {
+  color: var(--text-error);
+}
+
 .chat-input-pane {
-  height: 80px;
+  height: 96px;
   flex-shrink: 0;
-  padding: 14px 18px;
+  padding: calc(var(--ora-pane-header-h) + 14px) 18px 10px;
   background: var(--background-modifier-form-field);
   border-color: var(--ora-input-pane-border);
+}
+
+.aside-pane-header {
+  padding-right: 34px;
 }
 .chat-input-pane textarea {
   width: 100%;
@@ -113,8 +268,8 @@
    chat-input-pane and sits above the recess shadow overlay. */
 .chat-zone-minimize-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 11px;
+  right: 12px;
   width: 22px;
   height: 22px;
   padding: 0;

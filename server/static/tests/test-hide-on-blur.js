@@ -56,7 +56,7 @@ function assertTrue(name, cond, detail) {
 
 // ── per-case fresh module + jsdom -----------------------------------------
 
-function freshHarness() {
+function freshHarness(autoHide) {
   // Drop any cached module so the IIFE re-binds to the new window.
   delete require.cache[require.resolve(MODULE_PATH)];
 
@@ -66,6 +66,7 @@ function freshHarness() {
   });
   var win = dom.window;
   var doc = win.document;
+  if (autoHide) doc.body.classList.add('ora-auto-hide-controls');
 
   // Map jsdom globals so the IIFE's `typeof window/document` checks succeed.
   // Note: we deliberately do NOT remap setTimeout/clearTimeout — Node's are
@@ -119,9 +120,21 @@ process.stdout.write('\n--- visual-panel hide-on-blur (WP-7.1.4) ---\n');
 
 async function run() {
 
+  // Always Show is the durable default. Pointer exit must not hide controls
+  // until the user explicitly enables the shared auto-hide preference.
+  await (async function caseDefaultAlwaysShows() {
+    var h = freshHarness(false);
+    try {
+      dispatchMouseEvent(h.host, 'mouseleave');
+      await wait(260);
+      assertEqual('default preference keeps chrome visible',
+        h.host.classList.contains('chrome-hidden'), false);
+    } finally { teardown(h); }
+  })();
+
   // Case 1: mouseleave hides after the 200 ms grace.
   await (async function caseMouseLeaveHides() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       assertEqual('initial: chrome-hidden absent', h.host.classList.contains('chrome-hidden'), false);
 
@@ -137,7 +150,7 @@ async function run() {
 
   // Case 2: mouseenter cancels the pending hide.
   await (async function caseMouseEnterCancels() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       dispatchMouseEvent(h.host, 'mouseleave');
       // Re-enter before grace elapses.
@@ -150,7 +163,7 @@ async function run() {
 
   // Case 3: hide first, then mouseenter restores chrome.
   await (async function caseMouseEnterRestores() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       dispatchMouseEvent(h.host, 'mouseleave');
       await wait(260);
@@ -163,7 +176,7 @@ async function run() {
 
   // Case 4: focusin while hidden restores chrome.
   await (async function caseFocusInShows() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       dispatchMouseEvent(h.host, 'mouseleave');
       await wait(260);
@@ -176,7 +189,7 @@ async function run() {
 
   // Case 5: mid-draw the panel does NOT hide.
   await (async function caseMidDrawNoHide() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       h.panel._drawContext = { type: 'rect', start: { x: 0, y: 0 } };
       dispatchMouseEvent(h.host, 'mouseleave');
@@ -188,7 +201,7 @@ async function run() {
 
   // Case 6: mid-pen-stroke the panel does NOT hide.
   await (async function caseMidPenNoHide() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       h.panel._penContext = { line: {} };
       dispatchMouseEvent(h.host, 'mouseleave');
@@ -200,7 +213,7 @@ async function run() {
 
   // Case 7: mid-text-entry (text tool) does NOT hide.
   await (async function caseMidTextNoHide() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       h.panel._textInputEl = h.doc.createElement('input');
       dispatchMouseEvent(h.host, 'mouseleave');
@@ -212,7 +225,7 @@ async function run() {
 
   // Case 8: mid-annotation-text-entry (callout/sticky) does NOT hide.
   await (async function caseMidAnnotInputNoHide() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       h.panel._annotInputEl = h.doc.createElement('input');
       dispatchMouseEvent(h.host, 'mouseleave');
@@ -224,7 +237,7 @@ async function run() {
 
   // Case 9: mid-pan does NOT hide.
   await (async function caseMidPanNoHide() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       h.panel._panning = true;
       dispatchMouseEvent(h.host, 'mouseleave');
@@ -236,7 +249,7 @@ async function run() {
 
   // Case 10: destroy() restores chrome and clears the timer.
   await (async function caseDestroyClearsState() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       dispatchMouseEvent(h.host, 'mouseleave');
       await wait(260);
@@ -259,7 +272,7 @@ async function run() {
 
   // Case 11: re-enter cancels even after multiple consecutive leave events.
   await (async function caseRapidToggleConverges() {
-    var h = freshHarness();
+    var h = freshHarness(true);
     try {
       for (var i = 0; i < 5; i++) {
         dispatchMouseEvent(h.host, 'mouseleave');

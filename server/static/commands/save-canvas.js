@@ -775,7 +775,7 @@
       var ret = orig.call(this, frame);
       // Suppressed pushes (replays during undo/redo) don't dirty the canvas
       // — undo is by definition a return to a prior saved state.
-      if (!this._suppressHistory) this._dirty = true;
+      if (!this._suppressHistory && ret !== false) this._dirty = true;
       return ret;
     };
   }

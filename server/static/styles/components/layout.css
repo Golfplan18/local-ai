@@ -7,8 +7,8 @@
      Defaults to 1fr/1fr (equal split) until JS sets explicit pixel
      widths via --ora-left-w / --ora-right-w. */
   display: grid;
-  grid-template-columns: auto var(--ora-left-w, 1fr) 68px var(--ora-right-w, 1fr);
-  gap: 14px;
+  grid-template-columns: auto var(--ora-left-w, 1fr) 48px var(--ora-right-w, 1fr);
+  gap: 10px;
   padding: 16px;
   height: 100vh;
 }
@@ -77,10 +77,26 @@ body.spine-dragging .spine {
   background: var(--background-secondary, transparent);
 }
 
-.left-column.collapsed > *,
-.right-column.collapsed > * {
-  visibility: hidden;
-  pointer-events: none;
+.left-column.collapsed > :not(.bridge-strip),
+.right-column.collapsed > :not(.bridge-strip-right) {
+  display: none;
+}
+
+.left-column.collapsed > .bridge-strip,
+.right-column.collapsed > .bridge-strip-right {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  cursor: default;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-column.collapsed > .bridge-strip::after,
+.right-column.collapsed > .bridge-strip-right::after {
+  display: none;
 }
 
 .left-column.collapsed:hover,
@@ -107,13 +123,18 @@ body.spine-dragging .spine {
   pointer-events: none;
 }
 
-/* When the chat-zone is collapsed, shrink the bridge handle to a slim
-   gap (~10px). The visual pane is then pushed down by chat-zone (40px)
-   + this gap, leaving a small band of background between the
-   minimized chatbox and the top of the visual pane — without the full
-   48px bridge that the expanded state uses. */
+/* When Aside is collapsed, its bridge occupies the same condensed 40px
+   strip. The bridge remains logically separate, but the three visual-owned
+   controls stay centered in the top rail instead of floating across the
+   Exhibits header. Blank rail clicks pass through to expand Aside. */
 .chat-zone.collapsed + .bridge-strip-right {
-  height: 10px;
+  height: 40px;
+  margin-top: -40px;
+  z-index: 22;
+  pointer-events: none;
+}
+.chat-zone.collapsed + .bridge-strip-right .bridge-toolbar {
+  pointer-events: auto;
 }
 .chat-zone.collapsed + .bridge-strip-right::after {
   display: none;

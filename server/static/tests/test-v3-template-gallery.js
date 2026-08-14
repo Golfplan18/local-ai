@@ -420,6 +420,33 @@ function testApplyBlankCallsLoadCanvasState() {
     overlay ? overlay.style.display : 'no overlay');
 }
 
+function testNewCanvasGuardRunsOnlyOnApply() {
+  resetState();
+  setLoaders({
+    ctlList: [],
+    packListInstalled: [],
+    canvasFileFormat: {
+      newCanvasState: function () { return { __blank: 'guarded' }; }
+    },
+  });
+  var panel = makePanelSpy();
+  var guardCalls = 0;
+  panel._allowUserMutation = function () { guardCalls += 1; return false; };
+  Gallery.open(panel);
+  var overlay = w.document.getElementById('ora-template-gallery-overlay');
+  var sections = w.document.getElementById('ora-template-gallery-modal').querySelectorAll('section');
+  var blankBtn = sections[0].querySelectorAll('button')[0];
+  record('opening New canvas does not consume the mutation guard',
+    guardCalls === 0,
+    'guardCalls=' + guardCalls);
+  blankBtn.click();
+  record('declining the apply-time guard preserves the canvas and open gallery',
+    guardCalls === 1 && panel.loadCalls.length === 0 && overlay.style.display === 'flex',
+    'guardCalls=' + guardCalls + ' loadCalls=' + panel.loadCalls.length
+      + ' display=' + overlay.style.display);
+  Gallery.close();
+}
+
 function testApplyPackTemplateCallsLoadCanvasState() {
   resetState();
   setLoaders({
@@ -615,6 +642,7 @@ testSaveCurrentRejectsEmptyLabel();
 testDeleteUserTemplateRemoves();
 testDeleteUserTemplateNoMatchIsNoOp();
 testApplyBlankCallsLoadCanvasState();
+testNewCanvasGuardRunsOnlyOnApply();
 testApplyPackTemplateCallsLoadCanvasState();
 testApplyPackTemplateSwallowsThrow();
 testApplyUserTemplateCallsLoadCanvasState();

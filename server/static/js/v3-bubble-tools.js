@@ -202,6 +202,8 @@
   function placeAt(panel, kind, x, y, opts) {
     var K = window.Konva;
     if (!K || !panel || !panel.userInputLayer) return null;
+    if (typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('place-bubble')) return null;
     var node = _build(kind, K, x, y, opts);
     if (!node) return null;
     panel.userInputLayer.add(node);

@@ -28,6 +28,9 @@
 
   const dash         = sidebar.querySelector('.sidebar-collapsed-dashboard');
   const expandIcon   = sidebar.querySelector('#sidebarDashExpand');
+  const dashProject  = sidebar.querySelector('#sidebarDashProject');
+  const dashModel    = sidebar.querySelector('#sidebarDashModel');
+  const dashStyle    = sidebar.querySelector('#sidebarDashOutputStyle');
   const newChatIcon  = sidebar.querySelector('#sidebarDashNewChat');
   const dashUnread   = sidebar.querySelector('#sidebarDashUnread');
   const dashActive   = sidebar.querySelector('#sidebarDashActive');
@@ -56,6 +59,28 @@
   const projectManageItem = sidebar.querySelector('#sidebarProjectManageItem');
   const outputStyleBtn  = sidebar.querySelector('#sidebarOutputStyleBtn');
   const outputStyleName = sidebar.querySelector('#sidebarOutputStyleName');
+  const modelSettingsBtn = sidebar.querySelector('#sidebarModelSettingsBtn');
+  const resizeHandle = sidebar.querySelector('#sidebarResizeHandle');
+
+  const SIDEBAR_WIDTH_KEY = 'ora-sidebar-width';
+  const MIN_SIDEBAR_WIDTH = 280;
+  let expandedSidebarWidth = MIN_SIDEBAR_WIDTH;
+  const maxSidebarWidth = () => Math.max(
+    MIN_SIDEBAR_WIDTH,
+    Math.min(520, Math.floor(window.innerWidth * 0.45))
+  );
+  const applySidebarWidth = (value, persist) => {
+    const width = Math.max(MIN_SIDEBAR_WIDTH, Math.min(maxSidebarWidth(), Number(value) || MIN_SIDEBAR_WIDTH));
+    sidebar.style.setProperty('--ora-sidebar-expanded-w', width + 'px');
+    expandedSidebarWidth = width;
+    if (resizeHandle) resizeHandle.setAttribute('aria-valuenow', String(width));
+    if (persist) {
+      try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width)); } catch (_) {}
+    }
+    return width;
+  };
+  try { applySidebarWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY), false); }
+  catch (_) { applySidebarWidth(MIN_SIDEBAR_WIDTH, false); }
 
   const ACTIVE_PROJECT_KEY = 'ora-sidebar-project';
   const canonicalProjectId = (nexus) => {
@@ -92,6 +117,9 @@
   let browserSort = null;
   let browserRows = null;
   let browserStatus = null;
+  let browserBulkBar = null;
+  let browserBulkProject = null;
+  let browserBulkAdd = null;
   let browserConversationsToggle = null;
   let browserEngramsToggle = null;
   let browserTagsInput = null;
@@ -100,6 +128,7 @@
   let browserRelevanceValue = null;
   let browserResizeObserver = null;
   let browserDismissedIds = new Set();
+  const browserSelectedIds = new Set();
   let browserRowsCache = [];
   let browserLastData = null;
   let browserIncludeConversations = true;
@@ -134,6 +163,37 @@
     sidebar.classList.toggle('expanded', !!on);
     document.body.classList.toggle('sidebar-expanded', !!on);
   };
+
+  if (resizeHandle) {
+    resizeHandle.setAttribute('aria-valuemin', String(MIN_SIDEBAR_WIDTH));
+    resizeHandle.setAttribute('aria-valuemax', String(maxSidebarWidth()));
+    let resizeStartX = 0;
+    let resizeStartWidth = MIN_SIDEBAR_WIDTH;
+    const moveResize = (event) => applySidebarWidth(resizeStartWidth + event.clientX - resizeStartX, false);
+    const finishResize = () => {
+      document.removeEventListener('pointermove', moveResize);
+      document.removeEventListener('pointerup', finishResize);
+      applySidebarWidth(sidebar.getBoundingClientRect().width, true);
+      document.body.classList.remove('sidebar-resizing');
+    };
+    resizeHandle.addEventListener('pointerdown', (event) => {
+      resizeStartX = event.clientX;
+      resizeStartWidth = sidebar.getBoundingClientRect().width;
+      document.body.classList.add('sidebar-resizing');
+      resizeHandle.setPointerCapture && resizeHandle.setPointerCapture(event.pointerId);
+      document.addEventListener('pointermove', moveResize);
+      document.addEventListener('pointerup', finishResize);
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    resizeHandle.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const delta = event.key === 'ArrowRight' ? 16 : -16;
+      applySidebarWidth(sidebar.getBoundingClientRect().width + delta, true);
+      event.preventDefault();
+    });
+    window.addEventListener('resize', () => applySidebarWidth(expandedSidebarWidth, false));
+  }
 
   const isExpanded = () => sidebar.classList.contains('expanded');
 
@@ -632,6 +692,7 @@
     modal.classList.add('is-open');
     modal.querySelector('.project-manager-search').value = '';
     await renderProjectManager();
+    if (!modal.classList.contains('is-open')) return;
     modal.querySelector('.project-manager-search').focus();
   };
 
@@ -1351,7 +1412,7 @@
     resetCreationReview();
     creationOverlay.classList.add('is-open');
     const heading = creationOverlay.querySelector('#conversationCreateHeading');
-    heading.textContent = `New ${creationTag === 'private' ? 'Private ' : creationTag === 'stealth' ? 'Stealth ' : ''}Dialogue`;
+    heading.textContent = `New ${creationTag === 'private' ? 'Private ' : creationTag === 'stealth' ? 'Off Record ' : ''}Dialogue`;
     setTimeout(() => creationTitle.focus(), 0);
   };
 
@@ -1383,6 +1444,16 @@
         </div>
         <div class="conversation-browser-summary">
           <div class="conversation-browser-status" aria-live="polite"></div>
+          <div class="conversation-browser-bulk" hidden>
+            <span class="conversation-browser-bulk-count"></span>
+            <label>Project
+              <select class="conversation-browser-bulk-project"
+                      aria-label="Project for selected Dialogues"></select>
+            </label>
+            <button class="conversation-browser-bulk-add" type="button">
+              Add selected
+            </button>
+          </div>
           <div class="conversation-browser-filters">
             <label class="conversation-browser-tags"
                    title="Comma-separated tags; all selected tags must match">
@@ -1429,10 +1500,14 @@
     browserRelevanceValue = browserOverlay.querySelector('.conversation-browser-relevance-value');
     browserRows = browserOverlay.querySelector('.conversation-browser-rows');
     browserStatus = browserOverlay.querySelector('.conversation-browser-status');
+    browserBulkBar = browserOverlay.querySelector('.conversation-browser-bulk');
+    browserBulkProject = browserOverlay.querySelector('.conversation-browser-bulk-project');
+    browserBulkAdd = browserOverlay.querySelector('.conversation-browser-bulk-add');
     browserOverlay.querySelector('.conversation-browser-close')
       .addEventListener('click', closeBrowser);
     browserOverlay.querySelector('.conversation-browser-search-btn')
       .addEventListener('click', () => fetchBrowser(browserSearch.value));
+    if (browserBulkAdd) browserBulkAdd.addEventListener('click', addSelectedBrowserRowsToProject);
     browserOverlay.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       e.preventDefault();
@@ -1590,6 +1665,7 @@
         : browseCmd;
     }
     browserOverlay.classList.add('is-open');
+    refreshBrowserBulkProjects();
     updateBrowserFilterUI();
     startBrowserPositioning();
     fetchBrowser('');
@@ -1627,6 +1703,12 @@
       const data = await r.json();
       browserLastData = data;
       browserRowsCache = data.rows || [];
+      const retainedLiveIds = new Set(browserRowsCache
+        .filter(row => (row.source_kind || 'live') === 'live')
+        .map(row => row.conversation_id));
+      Array.from(browserSelectedIds).forEach(id => {
+        if (!retainedLiveIds.has(id)) browserSelectedIds.delete(id);
+      });
       renderBrowserRows(browserRowsCache, data.query || '');
       updateBrowserStatus();
     } catch (e) {
@@ -1674,6 +1756,83 @@
     }
   };
 
+  function refreshBrowserBulkProjects() {
+    if (!browserBulkProject) return;
+    const previous = browserBulkProject.value;
+    const render = () => {
+      browserBulkProject.innerHTML = '';
+      projectsCache
+        .filter(project => canonicalProjectRecordId(project) !== 'commons')
+        .forEach(project => {
+          const option = document.createElement('option');
+          option.value = canonicalProjectRecordId(project);
+          option.textContent = project.name || project.nexus || option.value;
+          browserBulkProject.appendChild(option);
+        });
+      if (previous && Array.from(browserBulkProject.options).some(option => option.value === previous)) {
+        browserBulkProject.value = previous;
+      } else if (activeProjectId !== 'commons'
+          && Array.from(browserBulkProject.options).some(option => option.value === activeProjectId)) {
+        browserBulkProject.value = activeProjectId;
+      }
+      updateBrowserBulkState();
+    };
+    if (projectsCache.length) render();
+    else fetchProjects().then(render).catch(render);
+  }
+
+  function updateBrowserBulkState() {
+    if (!browserBulkBar) return;
+    const count = browserSelectedIds.size;
+    browserBulkBar.hidden = count === 0;
+    const countEl = browserBulkBar.querySelector('.conversation-browser-bulk-count');
+    if (countEl) countEl.textContent = `${count} selected`;
+    if (browserBulkAdd) browserBulkAdd.disabled = count === 0
+      || !browserBulkProject || !browserBulkProject.value;
+  }
+
+  async function addSelectedBrowserRowsToProject() {
+    const projectId = canonicalProjectId(browserBulkProject && browserBulkProject.value);
+    if (!projectId || projectId === 'commons' || browserSelectedIds.size === 0) return;
+    const selectedRows = Array.from(browserSelectedIds)
+      .map(id => browserRowsCache.find(row => row.conversation_id === id))
+      .filter(row => row && (row.source_kind || 'live') === 'live');
+    if (!selectedRows.length) return;
+    browserBulkAdd.disabled = true;
+    browserBulkAdd.textContent = 'Adding…';
+    browserStatus.textContent = `Adding ${selectedRows.length} selected Dialogue${selectedRows.length === 1 ? '' : 's'}…`;
+    let succeeded = 0;
+    const failed = [];
+    for (const row of selectedRows) {
+      try {
+        const response = await fetch(
+          `/api/conversation/${encodeURIComponent(row.conversation_id)}/projects`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ add_project_id: projectId }),
+          }
+        );
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        row.project_ids = Array.isArray(data.project_ids) ? data.project_ids : row.project_ids;
+        browserSelectedIds.delete(row.conversation_id);
+        succeeded += 1;
+      } catch (error) {
+        failed.push({ row, error });
+      }
+    }
+    browserBulkAdd.textContent = 'Add selected';
+    renderBrowserRows(browserRowsCache, (browserLastData && browserLastData.query) || '');
+    updateBrowserBulkState();
+    if (failed.length) {
+      browserStatus.textContent = `${succeeded} added; ${failed.length} failed and remain selected`;
+    } else {
+      browserStatus.textContent = `${succeeded} Dialogue${succeeded === 1 ? '' : 's'} added to project`;
+    }
+    fetchList();
+  }
+
   const renderBrowserRows = (rows, query) => {
     browserRows.innerHTML = '';
     browserVisibleRows().forEach((row) => {
@@ -1693,9 +1852,16 @@
       const check = document.createElement('input');
       check.type = 'checkbox';
       check.className = 'conversation-browser-check';
-      check.checked = false;
+      const assignable = (row.source_kind || 'live') === 'live';
+      check.checked = assignable && browserSelectedIds.has(row.conversation_id);
+      check.disabled = !assignable;
       check.setAttribute('aria-label', `Select ${rowKind}: ${rowTitle}`);
       check.addEventListener('click', (e) => e.stopPropagation());
+      check.addEventListener('change', () => {
+        if (check.checked) browserSelectedIds.add(row.conversation_id);
+        else browserSelectedIds.delete(row.conversation_id);
+        updateBrowserBulkState();
+      });
       item.appendChild(check);
 
       const title = document.createElement('button');
@@ -1770,14 +1936,17 @@
       dismiss.addEventListener('click', (e) => {
         e.stopPropagation();
         browserDismissedIds.add(row.conversation_id);
+        browserSelectedIds.delete(row.conversation_id);
         renderBrowserRows(browserRowsCache, query);
         updateBrowserStatus();
+        updateBrowserBulkState();
       });
       item.appendChild(dismiss);
 
       item.addEventListener('click', () => activateBrowserRow(row));
       browserRows.appendChild(item);
     });
+    updateBrowserBulkState();
   };
 
   const fetchRelated = async (conversationId) => {
@@ -1820,10 +1989,32 @@
 
   // ── Wire-up ─────────────────────────────────────────────────────────
   if (expandIcon)  expandIcon.addEventListener('click',  () => setExpanded(true));
+  if (dashProject) dashProject.addEventListener('click', openProjectManager);
+  if (dashModel) dashModel.addEventListener('click', () => {
+    if (window.OraSettingsPanel && typeof window.OraSettingsPanel.open === 'function') {
+      window.OraSettingsPanel.open({ tab: 'models' });
+    }
+  });
+  if (dashStyle) dashStyle.addEventListener('click', () => {
+    if (window.OraSettingsPanel && typeof window.OraSettingsPanel.open === 'function') {
+      window.OraSettingsPanel.open({ tab: 'styles' });
+    }
+  });
+  if (modelSettingsBtn) modelSettingsBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (window.OraSettingsPanel && typeof window.OraSettingsPanel.open === 'function') {
+      window.OraSettingsPanel.open({ tab: 'models' });
+    }
+  });
   if (newChatIcon) newChatIcon.addEventListener('click', onNewThread);
   if (newThreadCmd) newThreadCmd.addEventListener('click', onNewThread);
   if (forkThreadCmd) forkThreadCmd.addEventListener('click', onForkThread);
   if (browseCmd) browseCmd.addEventListener('click', openBrowser);
+  if (dash) {
+    dash.addEventListener('click', (event) => {
+      if (event.target === dash) setExpanded(true);
+    });
+  }
 
   document.addEventListener('ora:conversation-selected', (e) => {
     const id = e && e.detail && e.detail.conversation_id;
@@ -2099,13 +2290,16 @@
     e.stopPropagation(); openProjectManager();
   });
 
-  // ── Output-style section. Shows the active
-  // Output Style; clicking opens Settings → Output Styles. ────────────────
+  // ── Output-style default selector. Preset management remains in Settings;
+  // this compact surface selects the same account default directly. ───────
+  let outputStyleRegistry = null;
+  let outputStyleMenu = null;
   const fetchOutputStyle = async () => {
     try {
       const r = await fetch('/api/styles/registry');
       if (!r.ok) return;
       const d = await r.json();
+      outputStyleRegistry = d || {};
       const id = d && d.settings && d.settings.default_id;
       let name = 'None';
       if (id) {
@@ -2114,13 +2308,79 @@
         name = p ? p.display_name : id;
       }
       if (outputStyleName) outputStyleName.textContent = name;
+      return d;
     } catch (e) {}
   };
-  if (outputStyleBtn) outputStyleBtn.addEventListener('click', () => {
-    try {
-      const sp = window.OraSettingsPanel;
-      if (sp && typeof sp.open === 'function') sp.open({ tab: 'styles' });
-    } catch (e) {}
+  const closeOutputStyleMenu = () => {
+    if (outputStyleMenu) outputStyleMenu.hidden = true;
+    if (outputStyleBtn) outputStyleBtn.setAttribute('aria-expanded', 'false');
+  };
+  const chooseOutputStyle = async (id, name) => {
+    const response = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates: { styles: { default_id: id } } }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (outputStyleName) outputStyleName.textContent = name || 'None';
+    if (outputStyleRegistry) {
+      outputStyleRegistry.settings = Object.assign({}, outputStyleRegistry.settings, {
+        default_id: id,
+      });
+    }
+    closeOutputStyleMenu();
+    document.dispatchEvent(new CustomEvent('ora:settings-saved', {
+      detail: data.settings || {},
+    }));
+  };
+  const openOutputStyleMenu = async () => {
+    if (outputStyleMenu && !outputStyleMenu.hidden) {
+      closeOutputStyleMenu();
+      return;
+    }
+    const registry = outputStyleRegistry || await fetchOutputStyle() || {};
+    if (!outputStyleMenu) {
+      outputStyleMenu = document.createElement('div');
+      outputStyleMenu.className = 'sidebar-outputstyle-menu';
+      outputStyleMenu.setAttribute('role', 'listbox');
+      outputStyleBtn.parentElement.appendChild(outputStyleMenu);
+    }
+    outputStyleMenu.innerHTML = '';
+    const profiles = [{ id: '', display_name: 'None' }]
+      .concat(registry.profiles || [], registry.custom || []);
+    profiles.forEach(profile => {
+      if (!profile || typeof profile.id !== 'string') return;
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.setAttribute('role', 'option');
+      option.textContent = profile.display_name || profile.id || 'None';
+      option.setAttribute(
+        'aria-selected',
+        registry.settings && registry.settings.default_id === profile.id ? 'true' : 'false'
+      );
+      option.addEventListener('click', () => {
+        chooseOutputStyle(profile.id, option.textContent).catch(error => {
+          window.alert('Output Style was not changed: ' + (error.message || error));
+        });
+      });
+      outputStyleMenu.appendChild(option);
+    });
+    outputStyleMenu.hidden = false;
+    outputStyleBtn.setAttribute('aria-expanded', 'true');
+  };
+  if (outputStyleBtn) {
+    outputStyleBtn.setAttribute('aria-haspopup', 'listbox');
+    outputStyleBtn.setAttribute('aria-expanded', 'false');
+    outputStyleBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openOutputStyleMenu();
+    });
+  }
+  document.addEventListener('click', (event) => {
+    if (outputStyleMenu && !outputStyleMenu.hidden
+        && !outputStyleMenu.contains(event.target)
+        && event.target !== outputStyleBtn) closeOutputStyleMenu();
   });
   fetchOutputStyle();
 

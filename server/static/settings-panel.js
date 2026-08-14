@@ -371,6 +371,17 @@
       + 'the specialty toolbar menu. Leave it off for the uncluttered canvas.'
     );
 
+    var autoHide = iface.auto_hide_controls !== undefined
+      ? iface.auto_hide_controls
+      : (src.auto_hide_controls === true);
+    _appendField('Auto-hide inactive controls',
+      _checkboxInput('interface.auto_hide_controls', autoHide));
+    _appendNote(
+      'When on, eligible bridge, sidebar, footer, and Konva toolbar controls '
+      + 'fade until pointer hover or keyboard focus. Active modes, counts, '
+      + 'progress, and errors stay visible.'
+    );
+
     var resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'ora-settings-btn';
@@ -1085,7 +1096,7 @@
                    cap.default_directory || src.default_directory || ''));
       _appendNote(
         'Where finished recordings land. Applies from the next recording; '
-        + 'stealth Dialogues keep their recordings inside the '
+        + 'Off Record Dialogues keep their recordings inside the '
         + 'Dialogue\'s own folder regardless.'
       );
 
