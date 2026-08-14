@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-09-16_owned-infrastructure-changes-optimization-from-cost-avoidance-to::v1",
+ "verdict": "SOUND",
+ "defect_kind": "none",
+ "reason": "The note accurately synthesizes both sources. The inversion of optimization from minimizing usage to maximizing utilization is directly supported by Source 1 ('optimization goal flips from use less to keep resources busy') and Source 2 ('suicidal for commercial models but optimal for individual sovereignty'). The wasting-asset framing matches Source 1's 'idle compute cycles a wasting asset since electricity cost is fixed and time cannot be recovered.' The bus metaphor and its elaboration come directly from Source 2 ('view idle agent capacity as waste, like running an empty bus'). The 24/7 qualifier is supported by Source 2's '24/7 local AI agent team' framing. No fabrication, dropped qualifications, or unsupported hardening detected."
+}

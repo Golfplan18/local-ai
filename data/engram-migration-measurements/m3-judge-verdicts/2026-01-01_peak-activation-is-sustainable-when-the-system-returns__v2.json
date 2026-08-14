@@ -1,0 +1,6 @@
+{
+ "case_id": "2026-01-01_peak-activation-is-sustainable-when-the-system-returns::v2",
+ "verdict": "DEFECT",
+ "defect_kind": "unsupported_hardening",
+ "reason": "The note's central thesis \u2014 'The peak intensity is the same in both cases; only what happens after reveals which energy was actually at work' \u2014 is not supported by the source. The source distinguishes Vajra energy from ordinary anger by qualitative features (precision vs. reactivity, residue vs. no residue) and aftermath (silence vs. lingering agitation), but never claims that the peak intensity is identical. In fact, the related engram characterizes Vajra wrath as having 'maximum intensity with zero residue,' which can be read as Vajra specifically reaching a higher intensity peak than ordinary anger. The note flattens a contrast into an identity claim (same peak intensity), which the source does not assert."
+}

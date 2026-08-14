@@ -1,0 +1,12 @@
+{
+ "note_id": "2025-03-12_cognitive-appraisal-converts-selective-negative-attention-into-retaliatory",
+ "verdict": "KEEP",
+ "title": "A person who focuses only on what is wrong with something turns dislike into an urge to attack or escape it",
+ "body": "- A person first singles out a specific target — a person, situation, or event — and judges it undesirable.\n- Attention then narrows onto the target's negative features while filtering out positive or neutral qualities, producing perceptual distortion.\n- The narrowed perception culminates in blaming the target and generating an urge to attack it or escape from it.",
+ "conversion": "Selective attention to negatives converts measured dislike into an impulse to attack or escape, because the positives that would have tempered the reaction have been filtered out.",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2025-03-12_anger-arises-through-a-multi-step-cognitive-process.md"
+ ]
+}

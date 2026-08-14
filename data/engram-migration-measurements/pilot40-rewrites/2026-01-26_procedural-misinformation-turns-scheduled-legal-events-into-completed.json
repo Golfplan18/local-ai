@@ -1,0 +1,12 @@
+{
+ "note_id": "2026-01-26_procedural-misinformation-turns-scheduled-legal-events-into-completed",
+ "verdict": "KEEP",
+ "title": "A communicator who treats an institution's pending procedure as a completed decision manufactures certainty the institution has not produced",
+ "body": "- A claim confuses a scheduled hearing with an issued order, presenting the institution's future consideration as a decision it has already made.\n- The error converts a procedure that has not yet produced an outcome into a narrative that asserts the outcome as completed.\n- The misstep hinges on collapsing the temporal distinction between \"will consider\" and \"has ordered.\"\n- The collapsed framing circulates as misinformation because an asserted ruling carries more apparent force than notice that a hearing is scheduled.\n- Because the institution has not actually acted, the claim supplies a certainty the source cannot back.\n- Case: A claim that a judge had ordered a halt to White House renovation misrepresented an upcoming preliminary-injunction hearing as an injunction already in force.",
+ "conversion": "a pending procedure becomes a completed decision, manufacturing certainty the institution has not produced",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2026-01-26_misinformation-about-legal-proceedings-often-conflates-scheduled-hearings.md"
+ ]
+}

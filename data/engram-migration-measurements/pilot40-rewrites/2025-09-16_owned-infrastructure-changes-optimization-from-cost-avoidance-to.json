@@ -1,0 +1,13 @@
+{
+ "note_id": "2025-09-16_owned-infrastructure-changes-optimization-from-cost-avoidance-to",
+ "verdict": "KEEP",
+ "title": "An owner of fixed-cost assets turns idle capacity into waste, inverting optimization from minimizing use to maximizing productive work",
+ "body": "- Under metered pricing each unit costs money, so the rational response is to minimize use; idle time costs nothing.\n- Owning the asset inverts this: baseline costs run whether or not the asset is used, so idle time turns paid money into zero output.\n- The optimization flips from \"use less\" to \"keep the asset productive\" because productive work reclaims value that has already been paid for.\n- A commercial provider paying the variable cost sees heavy always-on usage as eroding margins, while an owner bearing the fixed cost sees the same usage as recovering a wasting asset.\n- This divergence means the same workload can be ruinous for one party and the rational move for the other.",
+ "conversion": "idle capacity turns from a saving into a waste, inverting optimization from minimizing use to maximizing productive work",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2025-09-16_owning-compute-infrastructure-inverts-the-optimization-goal-from.md",
+  "2025-11-18_a-24-7-local-ai-agent-team-transforms.md"
+ ]
+}

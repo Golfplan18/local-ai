@@ -1,0 +1,6 @@
+{
+ "case_id": "2026-03-29_low-monetization-reduces-litigation-priority-when-rights-holders::v1",
+ "verdict": "DEFECT",
+ "defect_kind": "fabrication",
+ "reason": "The note's parenthetical lists examples of cheap automated consequences as '(automated takedowns, account bans, standard notices).' The source only mentions one specific consequence: 'automated DMCA takedowns.' The terms 'account bans' and 'standard notices' are not in the source and are fabricated additions as examples of what 'cheap automatic penalty' means."
+}

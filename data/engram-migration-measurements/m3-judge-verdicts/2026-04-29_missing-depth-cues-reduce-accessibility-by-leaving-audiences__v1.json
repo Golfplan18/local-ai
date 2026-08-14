@@ -1,0 +1,6 @@
+{
+ "case_id": "2026-04-29_missing-depth-cues-reduce-accessibility-by-leaving-audiences::v1",
+ "verdict": "DEFECT",
+ "defect_kind": "fabrication",
+ "reason": "The note specifies 'motive, stakes, or feeling' as the components of depth elements that anchor a story's surface, but these three categories appear nowhere in the source. The source only states generically that 'Depth elements provide the substance that allows stories to resonate across cultures' and that 'Missing depth elements reduce the story's ability to connect with diverse audiences.' The note also fabricates the framing of being 'bound to its time and place' / 'stops at the moment that produced it' \u2014 the source only references 'enduring truths' and 'timeless authenticity,' not temporal/place confinement."
+}

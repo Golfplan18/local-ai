@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-04-21_political-persuasion-gains-force-when-disruption-and-policy::v2",
+ "verdict": "DEFECT",
+ "defect_kind": "fabrication",
+ "reason": "Bullet 6 claims detailed policy positions 'force the disruptor into defensive explanations aimed at a sympathetic audience,' but the qualifying phrase 'aimed at a sympathetic audience' appears nowhere in any of the three sources. Source 3 only says detailed policy positions 'create attack surfaces and force the figure into defensive explanations' \u2014 it never specifies the audience. This is an invented detail. (Additionally, bullet 5 hardens 'dilute the emotional impact of moral messaging' (Source 3) into the broader claim that policy papers 'waste the disruptor's strategic value,' which goes beyond what the source supports.)"
+}

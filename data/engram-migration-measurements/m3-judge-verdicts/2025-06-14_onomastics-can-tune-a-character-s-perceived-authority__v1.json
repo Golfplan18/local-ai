@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-06-14_onomastics-can-tune-a-character-s-perceived-authority::v1",
+ "verdict": "DEFECT",
+ "defect_kind": "unsupported_hardening",
+ "reason": "The first bullet adds that 'naming is characterization work the novelist performs whether they intend it or not.' The source says names 'signal' gravitas and create 'immediate association,' but never claims the effect occurs regardless of authorial intent. This is a flat assertion of an automatic, unintentional effect that the source does not support."
+}
