@@ -65,6 +65,7 @@ const compiledEnvelopeIds = [];
 const exportRoutes = [];
 const downloadedFilenames = [];
 let shareGateCalls = 0;
+const rasterFixtures = new Map();
 
 const layer = {
   on() {},
@@ -178,7 +179,10 @@ w.OraExcalidrawIsland = {
       elements: blob.elements
         ? blob.elements.map((element) => ({ ...element }))
         : [{ id: blob.marker, type: 'rectangle' }],
-      appState: {}, files: {},
+      appState: { ...(blob.appState || {}) },
+      files: Object.fromEntries(Object.entries(blob.files || {}).map(
+        ([id, file]) => [id, { ...file }]
+      )),
     });
   },
   serialize(snapshot) {
@@ -277,8 +281,10 @@ w.URL.revokeObjectURL = function () {};
 w.Image = class {
   set src(value) {
     this._src = value;
-    this.naturalWidth = 100;
-    this.naturalHeight = 100;
+    const fixture = rasterFixtures.get(value);
+    this.naturalWidth = fixture ? fixture.width : 100;
+    this.naturalHeight = fixture ? fixture.height : 100;
+    this._rgba = fixture && fixture.rgba;
     setTimeout(() => this.onload && this.onload(), 0);
   }
   get src() { return this._src; }
@@ -287,6 +293,7 @@ const originalCreateElement = w.document.createElement.bind(w.document);
 w.document.createElement = function (name, options) {
   if (String(name).toLowerCase() !== 'canvas') return originalCreateElement(name, options);
   let raster = '';
+  let drawnImage = null;
   return {
     width: 0,
     height: 0,
@@ -294,7 +301,14 @@ w.document.createElement = function (name, options) {
       return {
         fillStyle: '',
         fillRect() {},
-        drawImage(image) { raster += image.src || ''; },
+        drawImage(image) {
+          drawnImage = image;
+          raster += image.src || '';
+        },
+        getImageData() {
+          return { data: drawnImage && drawnImage._rgba
+            ? drawnImage._rgba : new w.Uint8ClampedArray([0, 0, 0, 255]) };
+        },
       };
     },
     toBlob(callback) { callback(new w.Blob([raster], { type: 'image/png' })); },
@@ -516,6 +530,65 @@ const exportThroughMenu = async (format) => {
   );
   if (sceneLoads[1] !== 'historical-A') {
     throw new Error('historical navigation did not load exact checkpoint A');
+  }
+
+  const legacyWhiteDataURL = 'data:image/png;base64,bGVnYWN5LXdoaXRl';
+  const nonwhiteDataURL = 'data:image/png;base64,bm9ud2hpdGU=';
+  rasterFixtures.set(legacyWhiteDataURL, {
+    width: 2, height: 2, rgba: new w.Uint8ClampedArray(16).fill(255),
+  });
+  const nonwhitePixels = new w.Uint8ClampedArray(16).fill(255);
+  nonwhitePixels[0] = 254;
+  rasterFixtures.set(nonwhiteDataURL, { width: 2, height: 2, rgba: nonwhitePixels });
+  const legacyImage = (id, dataURL, customData) => ({
+    marker: id,
+    elements: [{
+      id: `${id}-element`, type: 'image', locked: true,
+      fileId: `ora-image-${id}`, customData,
+    }],
+    appState: { legacyStateMarker: id },
+    files: {
+      [`ora-image-${id}`]: {
+        id: `ora-image-${id}`, dataURL, mimeType: 'image/png',
+      },
+    },
+  });
+  checkpoints.set('legacy-white', {
+    editor: 'excalidraw', native: legacyImage('white', legacyWhiteDataURL),
+    preview: new w.Blob(['legacy-white'], { type: 'image/png' }),
+  });
+  await w.OraCanvas.loadCheckpoint(
+    'target-dialogue', 'legacy-white', null,
+    { active_editor: 'excalidraw' }, { currentDialogue: false, preferDraft: false }
+  );
+  if (api.elements.length !== 0 || Object.keys(api.files).length !== 0
+      || api.appState.legacyStateMarker !== 'white') {
+    throw new Error('opaque-white legacy singleton did not normalize while retaining appState');
+  }
+  checkpoints.set('legacy-marked', {
+    editor: 'excalidraw',
+    native: legacyImage('marked', legacyWhiteDataURL, { oraAssistantVisual: true }),
+    preview: new w.Blob(['legacy-marked'], { type: 'image/png' }),
+  });
+  await w.OraCanvas.loadCheckpoint(
+    'target-dialogue', 'legacy-marked', null,
+    { active_editor: 'excalidraw' }, { currentDialogue: false, preferDraft: false }
+  );
+  if (api.elements.length !== 1 || api.elements[0].id !== 'marked-element'
+      || !api.files['ora-image-marked']) {
+    throw new Error('marked opaque-white image was incorrectly normalized');
+  }
+  checkpoints.set('legacy-nonwhite', {
+    editor: 'excalidraw', native: legacyImage('nonwhite', nonwhiteDataURL),
+    preview: new w.Blob(['legacy-nonwhite'], { type: 'image/png' }),
+  });
+  await w.OraCanvas.loadCheckpoint(
+    'target-dialogue', 'legacy-nonwhite', null,
+    { active_editor: 'excalidraw' }, { currentDialogue: false, preferDraft: false }
+  );
+  if (api.elements.length !== 1 || api.elements[0].id !== 'nonwhite-element'
+      || !api.files['ora-image-nonwhite']) {
+    throw new Error('nonwhite flattened image was incorrectly normalized');
   }
 
   assistantEvents.length = 0;

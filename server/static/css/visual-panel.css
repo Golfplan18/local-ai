@@ -1566,6 +1566,94 @@ body.pane-mode-video .visual-panel {
   box-shadow: none !important;
 }
 
+/* Neutral utility controls belong to Ora's flat footer plane. Remove only
+   their resting islands; native hover, focus, open, selected, active, and
+   disabled selectors remain authoritative. */
+.ora-excalidraw-island .excalidraw .App-menu_bottom :is(
+  .zoom-actions,
+  .undo-redo-buttons
+) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.ora-excalidraw-island .excalidraw :is(
+  .main-menu-trigger:not(:has(~ [data-testid="dropdown-menu"])),
+  .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"]) button
+):not(:hover):not(:focus-visible):not(:active):not(.active):not(.ToolIcon--selected):not([aria-pressed="true"]):not([aria-expanded="true"]):not([data-state="open"]):not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ora-excalidraw-island .excalidraw :is(
+  .main-menu-trigger,
+  .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"]) button
+):disabled {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ora-excalidraw-island .excalidraw :is(
+  .App-menu_bottom .zoom-actions .zoom-button,
+  .App-menu_bottom .undo-redo-buttons button
+):not(:hover):not(:focus-visible):not(:active):not(.active):not(.ToolIcon--selected):not([aria-pressed="true"]):not([aria-expanded="true"]):not([data-state="open"]):not(:disabled),
+.ora-excalidraw-island .excalidraw :is(
+  .App-menu_bottom .zoom-actions .zoom-button,
+  .App-menu_bottom .undo-redo-buttons button
+):disabled {
+  background-color: transparent !important;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ora-excalidraw-island .excalidraw
+  .sidebar-trigger__label-element:not(:hover):not(:focus-within):not(:active):not(:has(> input:checked)):not(:has(> input:disabled))
+  > .default-sidebar-trigger,
+.ora-excalidraw-island .excalidraw
+  .sidebar-trigger__label-element:has(> input:disabled)
+  > .default-sidebar-trigger {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+body:not(:has(.excalidraw-modal-container .HelpDialog))
+  .ora-excalidraw-island .excalidraw
+  .App-menu_bottom .help-icon:not(:hover):not(:focus-visible):not(:active):not(.active):not(.ToolIcon--selected):not([aria-pressed="true"]):not([aria-expanded="true"]):not([data-state="open"]):not(:disabled),
+.ora-excalidraw-island .excalidraw .App-menu_bottom .help-icon:disabled {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Excalidraw keeps its light-theme icon palette even when Ora is dark. Once
+   the neutral islands are transparent, give only those resting controls the
+   surrounding footer color; native hover/open/selected and disabled colors
+   still win in their own states. */
+.theme-dark .ora-excalidraw-island .excalidraw :is(
+  .main-menu-trigger:not(:has(~ [data-testid="dropdown-menu"])),
+  .App-menu_bottom .zoom-actions .zoom-button:not(:disabled),
+  .App-menu_bottom .undo-redo-buttons button:not(:disabled),
+  .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"]) button:not(:disabled)
+):not(:hover):not(:focus-visible):not(:active):not(.active):not(.ToolIcon--selected):not([aria-pressed="true"]):not([aria-expanded="true"]):not([data-state="open"]),
+.theme-dark .ora-excalidraw-island .excalidraw
+  .sidebar-trigger__label-element:not(:hover):not(:focus-within):not(:active):not(:has(> input:checked)):not(:has(> input:disabled))
+  > .default-sidebar-trigger,
+body.theme-dark:not(:has(.excalidraw-modal-container .HelpDialog))
+  .ora-excalidraw-island .excalidraw
+  .App-menu_bottom .help-icon:not(:hover):not(:focus-visible):not(:active):not(.active):not(.ToolIcon--selected):not([aria-pressed="true"]):not([aria-expanded="true"]):not([data-state="open"]):not(:disabled) {
+  color: var(--text-normal) !important;
+}
+
+/* Suppress the accidental horizontal property-rail bar, and let its height
+   reach the footer before retaining vertical overflow for short panes. */
+.ora-excalidraw-island .excalidraw .App-menu__left {
+  max-height: calc(100% - 0.75rem) !important;
+  overflow-x: hidden;
+}
+
 /* Excalidraw's light-canvas icon color is too dark for Ora's header/footer
    bands. Keep native selected colors, but give unselected exposed controls
    the surrounding Ora text color. */
